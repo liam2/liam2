@@ -1,0 +1,12 @@
+import_export:
+    csv_path: "param"
+    globals_path: "param\\globals.csv"
+    first_period: 2001 # optional
+    last_period: 2001  # optional
+    oldnames:
+        person:
+            dead: co_alive
+        household:
+            dead: co_alive
+    invert: 
+        person: [dead]    
