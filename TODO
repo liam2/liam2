@@ -97,6 +97,11 @@
  other missing features
  ----------------------
 
+ - includes
+ - allow using/access to local variables in step by step mode
+ - watches in step by step mode (which are recomputed/displayed automatically
+   after each step)
+ - recursive macros
  - numpy methods (min/max/...) on zero-length array
  - reimplement SubscriptableVariable, possibly as a more generic concept:
    generic "indexed table"

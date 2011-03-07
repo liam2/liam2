@@ -6,7 +6,7 @@ from expr import expr_eval, parse
 import entities
 
 
-class autoflushfile(object):
+class AutoflushFile(object):
     def __init__(self, f):
         self.f = f
 
@@ -16,9 +16,9 @@ class autoflushfile(object):
 
 
 class Console(object):
-    def __init__(self):
-        self.entity = None
-        self.period = None
+    def __init__(self, entity=None, period=None):
+        self.entity = entity
+        self.period = period
     
     def list_entities(self):
         ent_names = [repr(k) for k in entities.entity_registry.keys()]
@@ -73,24 +73,39 @@ class Console(object):
         ctx = entities.EntityContext(entity, {'period': period})
         return expr_eval(expr, ctx)
     
-    def run(self):
-        sys.stdout = autoflushfile(sys.stdout)
-        help = """
-Welcome to LIAM interactive console.        
-    "help": print this help
-    "q", "quit" or "exit": quit the console
-    "entity [name]": set the current entity (this is required before any query)
-    "period [period]": set the current period (if not set, uses the last 
-                       period simulated)
-    "fields [entity]": list the fields of that entity (or the current entity)
+    def run(self, debugger=False):
+        sys.stdout = AutoflushFile(sys.stdout)
+        if debugger:
+            help = """
+Commands:
+    help:            print this help
+    s[tep]:          execute the next process 
+    r[esume]:        resume normal execution
+    
+    entity [name]:   set the current entity to another entity
+    period [period]: set the current period
+    fields [entity]: list the fields of that entity (or the current entity)
+    
     show is implicit on all commands
 """
-        print help
+        else:
+            help = """
+Welcome to LIAM interactive console.        
+    help:            print this help
+    q[uit] or exit:  quit the console
+    
+    entity [name]:   set the current entity (this is required before any query)
+    period [period]: set the current period (if not set, uses the last period 
+                     simulated)
+    fields [entity]: list the fields of that entity (or the current entity)
+    
+    show is implicit on all commands
+"""
+        if not debugger:
+            print help
         while True:
             s = raw_input('>>> ').strip()
-            if s in ('q', 'quit', 'exit'):
-                break
-            elif s == '':
+            if s == '':
                 continue
             elif s == 'help':
                 print help
@@ -106,6 +121,13 @@ Welcome to LIAM interactive console.
                     self.list_fields(s[7:])
                 else:
                     self.list_fields()
+            elif debugger and s in ('s', 'step'):
+                sys.stdout = sys.stdout.f
+                return 'step'
+            elif debugger and s in ('r', 'resume') or \
+                 not debugger and s in ('q', 'quit', 'exit'):
+                sys.stdout = sys.stdout.f
+                return
             else:
                 try:
                     res = self.execute(s)

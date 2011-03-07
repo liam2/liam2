@@ -8,8 +8,13 @@ from expr import Expr, Variable, Where, functions, as_string, dtype, \
                  collect_variables, missing_values
 from entities import entity_registry, EntityContext, context_length
 import utils
+import console
 
 num_tmp = 0
+
+class BreakpointException(Exception):
+    pass
+
 
 def ispresent(values):
     dtype = values.dtype
@@ -36,24 +41,41 @@ class Link(object):
     __getattr__ = get
 
 
+
 class Process(object):
-    def __init__(self, expr):
+    def __init__(self):
         self.name = None
-        self.predictor = None
         self.entity = None
+
+    def attach(self, name, entity):
+        self.name = name
+        self.entity = entity
+
+    def run_guarded(self, globals):
+        try:
+            context = EntityContext(self.entity, globals.copy())
+            self.run(context)
+        except BreakpointException:
+            self.entity.simulation.stepbystep = True
+        
+    def run(self, context):
+        raise NotImplementedError()
+
+
+class Assignment(Process):
+    def __init__(self, expr):
+        super(Assignment, self).__init__()
+        self.predictor = None
         self.kind = None # period_individual, period, individual, global
         self.expr = expr
 
     def attach(self, name, entity, kind=None):
-        self.name = name
+        super(Assignment, self).attach(name, entity)
         if self.predictor is None:
             self.predictor = name
-        self.entity = entity
         self.kind = kind
 
-    def run(self, globals):
-        context = EntityContext(self.entity, globals.copy())
-
+    def run(self, context):
         value = expr_eval(self.expr, context)
         self.store_result(value)
             
@@ -108,16 +130,21 @@ class Process(object):
 
 class ProcessGroup(Process):
     def __init__(self, name, subprocesses):
-        super(ProcessGroup, self).__init__(None)
+        super(ProcessGroup, self).__init__()
         self.name = name
         self.subprocesses = subprocesses
     
-    def run(self, context):
+    def run_guarded(self, globals):
         print
         for k, v in self.subprocesses:
-            print "    * %s" % k,
-            v.run(context)
+            print "    *",
+            if k is None:
+                print v,
+            else:
+                print k,
+            v.run_guarded(globals)
             print "done."
+            v.entity.simulation.start_console(v.entity, globals['period'])
 
 
 class EvaluableExpression(Expr):
@@ -1008,5 +1035,5 @@ functions.update({
     'round': Round,
     # misc
     'new': CreateIndividual,
-    'dump': Dump
+    'dump': Dump,
 })

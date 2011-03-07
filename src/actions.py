@@ -5,29 +5,27 @@ import numpy as np
 
 from expr import functions, Expr, expr_eval
 import simulation
-
-class Action(Expr):
-    def __init__(self, filter=None):
-        self.filter = filter
-    
-    def run(self, context):
-        raise NotImplementedError
-    
-    def eval(self, context):
-        self.run(context)
+from properties import Process, BreakpointException
 
 
-class Print(Action):
+class Show(Process):
     def __init__(self, *args):
-        Action.__init__(self)
+        Process.__init__(self)
         self.args = args
 
     def run(self, context):
         values = [expr_eval(expr, context) for expr in self.args]
         print ' '.join(str(v) for v in values),
 
+    def __str__(self):
+        #TODO: the differenciation shouldn't be needed. I guess I should
+        # have __repr__ defined for all properties
+        str_args = [str(arg) if isinstance(arg, Expr) else repr(arg)
+                    for arg in self.args]
+        return 'show(%s)' % ', '.join(str_args) 
 
-class CSV(Action):
+
+class CSV(Process):
     def __init__(self, expr, suffix=''):
         self.expr = expr
         #TODO: make base class for Dump & GroupBy
@@ -51,10 +49,10 @@ class CSV(Action):
             dataWriter.writerows(data)
 
 
-class RemoveIndividuals(Action):
+class RemoveIndividuals(Process):
     def __init__(self, filter):
-        # the only difference with Action is that filter is mandatory
-        Action.__init__(self, filter)
+        Process.__init__(self)
+        self.filter = filter
 
     def run(self, context):
         filter = expr_eval(self.filter, context)
@@ -83,11 +81,26 @@ class RemoveIndividuals(Action):
                 temp_variables[name] = temp_value[not_removed]
 
         print "%d %s(s) removed" % (filter.sum(), entity.name),
-    
+
+
+class Breakpoint(Process):
+    def __init__(self, period=None):
+        Process.__init__(self)
+        self.period = period
+
+    def run(self, context):
+        if self.period is None or self.period == context['period']:
+            raise BreakpointException()
+
+    def __str__(self):
+        return 'breakpoint(%d)' % self.period if self.period is not None else '' 
+
+
 functions.update({
     # can't use "print" in python 2.x because it's a keyword, not a function        
 #    'print': Print,
     'csv': CSV,
-    'show': Print,
-    'remove': RemoveIndividuals
+    'show': Show,
+    'remove': RemoveIndividuals,
+    'breakpoint': Breakpoint,
 })

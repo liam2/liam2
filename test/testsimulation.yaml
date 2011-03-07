@@ -18,11 +18,11 @@ entities:
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
-            num_persons: "countlink(persons)"
-            nch: "countlink(persons, age <= 18)"
-            maxnch: "grpmax(nch)"
-            dump_csv_h: "csv(dump())"
-            cleanup: "remove(lag(dead))"
+            num_persons: countlink(persons)
+            nch: countlink(persons, age <= 18)
+            maxnch: grpmax(nch)
+            dump_csv_h: csv(dump())
+            cleanup: remove(lag(dead))
 
     person:
         fields:
@@ -62,47 +62,49 @@ entities:
             mc: {type: one2many, target: person, field: m_id}
         
         macros:
-            ISCHILD: "age < 18"
+            ISCHILD: age < 18
 
         # possible transitions & regressions. The actual list used in the
         # simulation must be defined below
         processes:
             test_init:
-                - eduach: "choice([2, 3, 4], [0.40, 0.35, 0.25])"
+                - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
 
-            test9: "MINR[2005]"
-            test10: "MINR[period - 1]"
+            test9: MINR[2005]
+            test10: MINR[period - 1]
 
             test_macro:
-                - ischild: "age < 18"
-                - test_nonmacro1: "show(grpsum(ischild))"
-                - test_macro1: "show(grpsum(ISCHILD))"
+                - ischild: age < 18
+                - test_nonmacro1: show(grpsum(ischild))
+                - test_macro1: show(grpsum(ISCHILD))
+                - breakpoint(2002)
             
-                - age: "age + 1"
+                - age: age + 1
             
-                - test_nonmacro2: "show(grpsum(ischild))"
-                - test_macro2: "show(grpsum(ISCHILD))"
+                - test_nonmacro2: show(grpsum(ischild))
+                - show("test grpsum:", grpsum(ischild))
+                - test_macro2: show(grpsum(ISCHILD))
             
-            agegroup: "if(age < 50, 5 * (age / 5), 10 * (age / 10))"
+            agegroup: if(age < 50, 5 * (age / 5), 10 * (age / 10))
 
-            dead: "if(gender, 
+            dead: if(gender, 
                       align(logit_score(0.0), 
                             take=age > 95, leave=ISCHILD,
                             fname='al_p_dead_m.csv'),
                       align(logit_score(0.0),
                             take=age > 95, leave=ISCHILD,
-                            fname='al_p_dead_f.csv'))"
+                            fname='al_p_dead_f.csv'))
 
-            show_95_notdead: "show(grpsum(not dead and (age > 95)))"
-            show_0_dead: "show(grpsum(dead and ISCHILD))"
+            show_95_notdead: show(grpsum(not dead and (age > 95)))
+            show_0_dead: show(grpsum(dead and ISCHILD))
 
             test_logit: 
-                - simple: "logit_regr(0.0)"
+                - simple: logit_regr(0.0)
             
-            to_give_birth: "if(not gender and (age >= 15) and (age <= 50),
+            to_give_birth: if(not gender and (age >= 15) and (age <= 50),
                                logit_regr(0.0, align='al_p_birth.csv'),
-                               False)" 
-            newbirth: "if(to_give_birth,
+                               False) 
+            newbirth: if(to_give_birth,
                           if(age > 120,
                              new('person',
                                  partner_id=-1,
@@ -119,47 +121,47 @@ entities:
                                  m_age=__parent__.age,
                                  young_mother=True, 
                                  gender=logit_regr(0.0))),
-                          -1)"
+                          -1)
             
             test_o2m:
-                - nch: "countlink(mc)"
-                - nch_012: "countlink(mc, age <= 12)"
-                - nch_012_sum: "sumlink(mc, age, age <= 12)"
-                - nch_012_sum2: "sumlink(mc, age * 2, age <= 12)"
-                - nch_012_avg: "avglink(mc, age, age <= 12)"
-                - ch_minage: "minlink(mc, age)"
-                - ch_maxage: "maxlink(mc, age)"
-                - xx: "show(dump(nch, nch_012, nch_012_sum, nch_012_sum2,
-                                 nch_012_avg, filter=(nch > 0) and (id < 200)))" 
+                - nch: countlink(mc)
+                - nch_012: countlink(mc, age <= 12)
+                - nch_012_sum: sumlink(mc, age, age <= 12)
+                - nch_012_sum2: sumlink(mc, age * 2, age <= 12)
+                - nch_012_avg: avglink(mc, age, age <= 12)
+                - ch_minage: minlink(mc, age)
+                - ch_maxage: maxlink(mc, age)
+                - xx: show(dump(nch, nch_012, nch_012_sum, nch_012_sum2,
+                                 nch_012_avg, filter=(nch > 0) and (id < 200))) 
 
             plop_compute:
                 predictor: plop
-                expr: "if(age < 10, age ** 3, age ** 2)"
+                expr: if(age < 10, age ** 3, age ** 2)
             plop_compute2:
                 predictor: plop
-                expr: "if(age >= 10, 100, plop)"
+                expr: if(age >= 10, 100, plop)
 
             test_predictor:
                 - plop2_compute:
                     predictor: plop2
-                    expr: "if(age < 10, age ** 3, age ** 2)"
+                    expr: if(age < 10, age ** 3, age ** 2)
                 - plop2_compute2:
                     predictor: plop2
-                    expr: "if(age >= 50, 100, plop2)"
+                    expr: if(age >= 50, 100, plop2)
                 - show_plop: show(plop2)
             
             marriage:
-                - married: "partner_id != -1"            
+                - married: partner_id != -1
 
-                - to_marry: "(age >= 18) and (age <= 90) and not married"
+                - to_marry: (age >= 18) and (age <= 90) and not married
 
-                - avg_age_men: "grpavg(age, filter=to_marry and gender)" 
-                - difficult_match: "if(to_marry and not gender,
+                - avg_age_men: grpavg(age, filter=to_marry and gender) 
+                - difficult_match: if(to_marry and not gender,
                                        abs(age - avg_age_men),
-                                       nan)"
+                                       nan)
 
                 - partner_id: 
-                     "if(to_marry, 
+                     if(to_marry, 
                          matching(set1filter=not gender,
                                   set2filter=gender,
                                   score='- 0.4893 * other.age 
@@ -177,73 +179,73 @@ entities:
                                          - 1.5530 * ((other.eduach == 4) and (eduach == 2)) 
                                          - 0.5451 * ((other.eduach == 2) and (eduach == 2))',
                                   orderby=difficult_match),
-                         partner_id)"
+                         partner_id)
                               
-                - just_married: "to_marry and (partner_id != -1)"
+                - just_married: to_marry and (partner_id != -1)
 
-                - newhousehold: "new('household', filter=just_married and not gender,
-                                     start_period=period)"
+                - newhousehold: new('household', filter=just_married and not gender,
+                                     start_period=period)
                     
-                - hh_id: "if(just_married,
+                - hh_id: if(just_married,
                              if(gender, ps.newhousehold, newhousehold),
-                             hh_id)"
+                             hh_id)
 
             test_lag:
-                - lagavg: "show(lag(grpavg(age)))"
-                - avglag: "show(grpavg(lag(age)))"
-                - lagage: "show(lag(age))"
-                - lagage_fill_zero: "show(lag(age, missing=0))"
-                - shouldbenumbirth: "show(grpcount(lag(age) == -1))"
-                - shouldbezero: "show(grpcount(lag(age, missing=0) == -1))"
-                - num1yearold: "show(grpcount(age == 1))"
-                - shouldbenumbirthand1yearold: "show(grpcount(lag(age, missing=0) == 0))"
+                - lagavg: show(lag(grpavg(age)))
+                - avglag: show(grpavg(lag(age)))
+                - lagage: show(lag(age))
+                - lagage_fill_zero: show(lag(age, missing=0))
+                - shouldbenumbirth: show(grpcount(lag(age) == -1))
+                - shouldbezero: show(grpcount(lag(age, missing=0) == -1))
+                - num1yearold: show(grpcount(age == 1))
+                - shouldbenumbirthand1yearold: show(grpcount(lag(age, missing=0) == 0))
                 
             test_link_get:
-                - simple_link: "show(ph.num_persons)"
-                - link_get: "show(ph.get(countlink(persons)))"
+                - simple_link: show(ph.num_persons)
+                - link_get: show(ph.get(countlink(persons)))
                 
-            diff_age: "if(partner_id != -1, age - ps.age, -1)"
+            diff_age: if(partner_id != -1, age - ps.age, -1)
     
-            show_dead: "show(grpsum(dead))"
-            show_nch: "show(grpavg(nch, filter=(not gender) and (age>20) and (age<60)))"
+            show_dead: show(grpsum(dead))
+            show_nch: show(grpavg(nch, filter=(not gender) and (age>20) and (age<60)))
             test_dump: 
-#                - expr: "csv(dump(gender, age, partner_id, ps.age),
-#                             suffix='test')"
-#                - full: "csv(dump())"
-                - test_show: "show(dump(gender, age, filter=id < 10))"
+#                - expr: csv(dump(gender, age, partner_id, ps.age),
+#                             suffix='test')
+#                - full: csv(dump())
+                - test_show: show(dump(gender, age, filter=id < 10))
 
-            cleanup: "remove(lag(dead))"
+            cleanup: remove(lag(dead))
             
-            test_o2m_aggregate: "show(grpavg(countlink(mc)))"
+            test_o2m_aggregate: show(grpavg(countlink(mc)))
 
             test_groupby:
-                - test_logit: "show(groupby(round(logit_score(0.0), 1)))"
-                - explicit_count: "show(groupby(round(logit_score(0.0), 1), 
-                                                expr=grpcount()))"
-                - num_persons2: "show(groupby(agegroup, gender))"
-                - num_persons2_percent: "show(groupby(agegroup, gender, percent=True))"
-                - num_persons_csv: "csv(groupby(agegroup, gender), suffix='groupby')"
-                - num_persons3: "show(groupby(agegroup, dead, gender))"
+                - test_logit: show(groupby(round(logit_score(0.0), 1)))
+                - explicit_count: show(groupby(round(logit_score(0.0), 1), 
+                                                expr=grpcount()))
+                - num_persons2: show(groupby(agegroup, gender))
+                - num_persons2_percent: show(groupby(agegroup, gender, percent=True))
+                - num_persons_csv: csv(groupby(agegroup, gender), suffix='groupby')
+                - num_persons3: show(groupby(agegroup, dead, gender))
                 
-                - ismarried: "partner_id != -1"
-                - num_persons3t: "show(groupby(agegroup, gender, ismarried))"
-                - num_alive: "show(groupby(agegroup, gender,
-                                           expr=grpcount(not dead)))"
-                - num_married: "show(groupby(agegroup, gender,
-                                             expr=grpcount(ismarried)))"
-                - num_widows: "show(groupby(agegroup, gender, 
-                                            expr=grpcount(ps.dead)))"
-                - bad_partners: "if(partner_id != -1, id != ps.ps.id, nan)"
-                - num_bad_partner: "show(groupby(agegroup, gender, 
+                - ismarried: partner_id != -1
+                - num_persons3t: show(groupby(agegroup, gender, ismarried))
+                - num_alive: show(groupby(agegroup, gender,
+                                           expr=grpcount(not dead)))
+                - num_married: show(groupby(agegroup, gender,
+                                             expr=grpcount(ismarried)))
+                - num_widows: show(groupby(agegroup, gender, 
+                                            expr=grpcount(ps.dead)))
+                - bad_partners: if(partner_id != -1, id != ps.ps.id, nan)
+                - num_bad_partner: show(groupby(agegroup, gender, 
                                                  expr=grpsum(if(partner_id != -1, 
                                                                 id != ps.ps.id,
-                                                                nan))))"
-                - agediff: "show(groupby(agegroup, gender, 
-                                         expr=grpavg(age - if(ps.age == -1, nan, ps.age))))"
-#                                        expr=grpavg(abs(age - if(ps.age == -1, nan, ps.age)))))"
-#                                        expr=grpsum(countlink(mc)) / grpsum(not dead)))"
-#                                        expr=grpavg(nch)))"
-                - minmax_age: "show(groupby(id / 100, gender, expr=grpmax(age) - grpmin(age)))"
+                                                                nan))))
+                - agediff: show(groupby(agegroup, gender, 
+                                         expr=grpavg(age - if(ps.age == -1, nan, ps.age))))
+#                                        expr=grpavg(abs(age - if(ps.age == -1, nan, ps.age)))))
+#                                        expr=grpsum(countlink(mc)) / grpsum(not dead)))
+#                                        expr=grpavg(nch)))
+                - minmax_age: show(groupby(id / 100, gender, expr=grpmax(age) - grpmin(age)))
 
 simulation:
     init:
@@ -274,11 +276,11 @@ simulation:
         
 
     input:
-#        path: "data"
-        file: "small.h5"
+#        path: data
+        file: small.h5
     output:
-#        path: "output"
-        file: "simulation.h5"
+#        path: output
+        file: simulation.h5
 
 #    random_seed: 0
     start_period: 2002   # first simulated period

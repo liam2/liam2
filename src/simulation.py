@@ -9,7 +9,7 @@ import tables
 import yaml
 
 from data import H5Data, Void
-from entities import entity_registry, str_to_type
+from entities import entity_registry, str_to_type, EntityContext
 from utils import time2str, timed, gettime
 import console
 
@@ -108,6 +108,7 @@ class Simulation(object):
             self.data_source = Void(self.output_path)
         else:
             print method, type(method)
+        self.stepbystep = False
 
     def run(self):
         start_time = time.time()
@@ -167,9 +168,12 @@ class Simulation(object):
                    process.predictor != process.name:
                     print "(%s)" % process.predictor,
                 print "...",
-                elapsed, _ = gettime(process.run, const_dict)
+                
+                elapsed, _ = gettime(process.run_guarded, const_dict)
+                
                 process_time[process.name] += elapsed
                 print "done (%s elapsed)." % time2str(elapsed)
+                self.start_console(process.entity, period)
 
             print "- storing period data"
             for entity in entities:
@@ -188,10 +192,17 @@ class Simulation(object):
                                                            - period_start_time)) 
         print "simulation done (%s elapsed)." % time2str(time.time() 
                                                          - start_time)
-        show_top_processes(process_time, 50)
+        show_top_processes(process_time, 10)
 
         if self.console:
             c = console.Console()
             c.run()
         
         h5file.close()
+
+    def start_console(self, entity, period):
+        if self.stepbystep: 
+            c = console.Console(entity, period)
+            res = c.run(debugger=True)
+            self.stepbystep = res == "step"
+        

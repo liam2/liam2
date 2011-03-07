@@ -162,6 +162,8 @@ class Entity(object):
     def collect_predictors(self, items):
         predictors = []
         for k, v in items:
+            if k is None:
+                continue
             if isinstance(v, basestring):
                 predictors.append(k)
             elif isinstance(v, dict):
@@ -198,7 +200,7 @@ class Entity(object):
         return cond_context
         
     def parse_processes(self):
-        from properties import Process, ProcessGroup
+        from properties import Process, Assignment, ProcessGroup
 
         vars = dict((name, SubscriptableVariable(name, type_))
                     for name, type_ in self.simulation.globals)
@@ -209,18 +211,25 @@ class Entity(object):
         vars.update((k, parse(v, vars, cond_context))
                     for k, v in self.macro_strings.iteritems())
 
-        def parse_expression(s, vars):
-            expr = parse(s, vars, cond_context)
-            return Process(expr)
-
         def parse_expressions(items, vars):
             processes = []
             for k, v in items:
                 if isinstance(v, basestring):
-                    process = parse_expression(v, vars)
+                    expr = parse(v, vars, cond_context)
+                    if k is not None:
+                        process = Assignment(expr)
+                    else:
+                        process = expr
+#                    process = parse_expression(v, vars)
                 elif isinstance(v, list):
                     # v should be a list of dict
-                    group_expressions = [d.items()[0] for d in v]
+                    group_expressions = []
+                    for element in v:
+                        if isinstance(element, dict):
+                            group_expressions.append(element.items()[0])
+                        else:
+                            group_expressions.append((None, element))
+#                    group_expressions = [d.items()[0] for d in v]
                     group_predictors = \
                         self.collect_predictors(group_expressions)
                     group_context = vars.copy()
@@ -230,8 +239,10 @@ class Entity(object):
                                                       group_context)
                     process = ProcessGroup(k, sub_processes)
                 elif isinstance(v, dict):
-                    process = parse_expression(v['expr'], vars)
+                    expr = parse(v['expr'], vars, cond_context)
+                    process = Assignment(expr)
                     process.predictor = v['predictor']
+#                    process = parse_expression(v['expr'], vars)
                 else:
                     raise Exception("unknown expression type for %s: %s"
                                     % (k, type(v)))
@@ -241,24 +252,22 @@ class Entity(object):
         processes = dict(parse_expressions(self.process_strings.iteritems(),
                                            vars))
 
-        def attach_process(k, v):
-            predictor = v.predictor if v.predictor is not None else k
-            if predictor in fnames:
-                kind = 'period_individual'
-            elif predictor in period_fnames:
-                kind = 'period'
-            else:
-                kind = None
-            v.attach(k, self, kind)
-            
         fnames = set(self.period_individual_fnames)
         period_fnames = set(self.period_fnames)
         def attach_processes(items):
             for k, v in items:
                 if isinstance(v, ProcessGroup):
+                    v.entity = self
                     attach_processes(v.subprocesses)
-                elif isinstance(v, Process):
-                    attach_process(k, v)
+                elif isinstance(v, Assignment):
+                    predictor = v.predictor if v.predictor is not None else k
+                    if predictor in fnames:
+                        kind = 'period_individual'
+                    elif predictor in period_fnames:
+                        kind = 'period'
+                    else:
+                        kind = None
+                    v.attach(k, self, kind)
                 else:
                     v.attach(k, self)
         attach_processes(processes.iteritems())
