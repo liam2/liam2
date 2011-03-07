@@ -1,0 +1,22 @@
+To run a simulation, you need to install the following packages:
+
+- Python 2.6.x or 2.7.x (either 32 bits or 64 bits version): 
+  http://www.python.org/download/releases/
+
+- Numpy 1.4.1 or later (for your version of python): 
+  http://sourceforge.net/projects/numpy/files/NumPy/
+
+- PyTables 2.2.1 or later (for your version of python):
+  http://www.pytables.org/download/stable/
+  
+- Numexpr 1.4.2 or later (for your version of python):
+  http://code.google.com/p/numexpr/downloads/
+  
+- PyYAML 3.0.8 or later (for your version of python):
+  http://pyyaml.org/wiki/PyYAML
+
+Some of those libraries do not have official packages for windows 64 bits. 
+You can find unofficial ones at: 
+  http://www.lfd.uci.edu/~gohlke/pythonlibs/
+  
+To develop, you can use any text editor, or use an IDE like Eclipse with PyDev.

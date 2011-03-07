@@ -1,0 +1,292 @@
+ --------------------------------------
+ TODO
+ --------------------------------------
+ 
+ non feature tasks
+ -----------------
+
+ - add unit tests
+ 
+ missing features to run an automatically translated MIDAS simulation
+ --------------------------------------------------------------------
+
+ - implement many2many. Expressing the child (pc) relationship as a (simple)
+   one2many is inherently broken!
+   * transparently create extra array and table (eg p_p_children) with 3 fields:
+     - period
+     - p_id
+     - c_id
+   * store a "pointer" to the array into the Link instance
+   * store a "pointer" to the table in ???
+   * adapt countlink and sumlink, shouldn't be a problem
+   * how do we set them??? via an action:
+     add_child: append('pc', child_id)
+     remove_child: remove('pc', child_id)
+
+   * express it as a "complex" one2many:
+     children: {type: one2many, target: person, field: m_id}
+     children: {type: one2many, target: person, fields: (m_id, f_id)}
+     children: {type: one2many, target: person, fields: (m_id | f_id)}
+
+     select p2.id, sum(p1.age)
+     from person p1 join person p2
+     where p1.father_id=p2.id
+     group by p2.id
+
+     strictly speaking, this version is more correct but should yield the same
+     result:
+
+     where (p2.male and p1.father_id=p2.id) or (not p2.male and p1.mother_id=p2.id)
+     
+   * simply work around it
+     children_as_mother: {type: one2many, target: person, field: m_id}
+     children_as_father: {type: one2many, target: person, field: f_id}
+     nch_mother: countlink(children_as_mother)
+     nch_father: countlink(children_as_father)
+     nch: nch_mother + nch_father
+
+ - missing values for int columns
+
+   using floats everywhere should work (even for "id" and "link" columns (it
+   would only limit the number of individuals per entity to 2^24 = ~16 millions 
+   for float32 or 2^53 = ~9 * 10^15 for float64) 
+
+ - missing values for boolean columns (see test_missing.py)
+ 
+   if using floats:
+   ================
+   
+   a & b -> a * b
+   a | b -> (a + b) > 0 # Wrong: > 0 loose the NaNs and NaN > 0 is False, not NaN
+         -> where(a1 + a2 == 2, 1, a1 + a2)
+   ~a    -> 1 - a
+   where(a, b, c) -> a * b + (1 - a) * c -> Wrong: that leaks NaNs in "unused branches"
+                  -> where(a == NaN, NaN, where(a == 1.0, b, c)) -> Wrong: can't compare to Nan
+                  
+                  -> where(isnan(a), NaN, where(a == 1.0, b, c))
+                  -> where(a != a, a, where(a == 1.0, b, c))
+                  or
+                  -> where(a == 1.0, b, where(a == 0.0, c, a))
+                  or 
+                  -> add an new opcode nanwhere_dddd in numexpr
+                     np.where(a != a, float('nan'), np.where(a, b, c))
+                     a != a ? a : (a == 1.0 ? b : c)
+
+   if using int / -1:
+   ==================
+   
+   a & b          -> where((a == -1) | (b == -1), -1, a * b)
+   a & b & c      -> where((a == -1) | (b == -1) | (c == -1), -1, a * b * c)
+   a | b          -> where((a == -1) | (b == -1), -1, a + b > 0)
+   a | b | c      -> where((a == -1) | (b == -1) | (c == -1), -1, a + b + c > 0)
+   ~ a            -> where(a == -1, -1, 1 - a)
+   where(a, b, c) -> where(a == -1, -1, where(a == 1, b, c))
+   
+   bool_expr * float_expr -> where(bool_expr == -1, -1, float_expr)
+   where(bool_expr, float_expr1, float_expr2) 
+      -> where(bool_expr == -1, -1, where(bool_expr, float_expr1, float_expr2))   
+                   
+ - implement "kill" function
+ - implement "divorce" function
+ - implement "newbirth" function
+ - delete "empty" households (dead persons)
+   OR
+ - implement cascading deletes/death on links
+ - duration(varname, value)
+
+ other missing features
+ ----------------------
+
+ - numpy methods (min/max/...) on zero-length array
+ - reimplement SubscriptableVariable, possibly as a more generic concept:
+   generic "indexed table"
+ - implement "log" action = show in a file
+ - lastpresent(col[, condition]) -> returns the last value which is not missing
+   the problem is that if even a single individual never had any value for that
+   column, it will go back all the way to the first period 
+ - initialdata: s/false/value
+ - standalone interactive console
+ - allow setting/creating temporary variables in interactive console
+ - merge per_period_fields and globals
+ - simulate years where we already have data
+ - line numbers in error messages. It might be tricky because we loose the 
+   information after yaml parsed the file
+ - one filter, several actions.
+   eg, when someone dies, you want to change more than one field, and it
+   is a bit tedious to need to repeat the filter
+   same comment for divorce 
+ - support temporary variables in alignment
+ - move away from yaml for the user...
+ - filter in all aggregates, not only in grpavg
+ - move data generator to external script. It might be a good idea to just 
+   do a simulation with most processes using random generators.
+ - add a concept of "per individual" constant (ie not saved each period)
+   (eg errsal)
+ - expand variable definition: min, max values, default value, enum, ...
+ - new individuals should be able to:
+   * use variables' default values
+ - explicit function to check if a value is present:
+   where(ispresent(err), err, normal(0, 1))
+   we can't use != NaN because that wouldn't work for int and bool
+   or even floats because NaN != NaN! 
+ - infer expressions types systematically so that we can do more clever stuff: 
+   some type checking, correct type for missing values when using filter, and
+   missing values handling in general.
+ - alignment on n dimensions (so that I can do m/f alignment in one pass)
+ - store some metadata in .h5 (list of entities, start_period, links, ...)
+ - implement other historic functions (with missing values): 
+   * duration limited in time: eg: duration(xxx, 5): max 5 periods
+   * durationcurr(variable): duration of the current value of the variable
+   * tavg with a filter: only count when it satisfy a filter (eg > 0)
+   * currperiodstart(variable): returns the time period the current value
+                                of the variable started
+
+ bug fixes
+ ---------
+ 
+ - cleanup local variables when exiting a procedure
+ - nan -> 0 for sum in groupby (see numpy Ticket #1123)
+ 
+ optimisation
+ ------------
+
+ - try bottleneck
+ 
+ - try scipy.weave.blitz. It seems a bit limited in functionality but it uses 
+   blitz++ (http://www.oonumerics.org/blitz/) internally which seems to contain
+   all I need and more, so adding the missing functionality might not be too
+   hard. It seems to be really slow to compile though, so it'll probably be 
+   only worth it when using very large arrays.
+   
+ - improve numexpr caching algorithm (LRU), or increase its size or cache 
+   expressions ourselves. Some long expressions take a lot longer to compile 
+   than to compute. Eg minr & friends.
+ - store row indices in hdf file
+ - optimise memory allocation by building a dependency graph between variables
+   and:
+   * free temporary variables as soon as they are not needed anymore
+   * reorder variables computation (respecting dependencies) to minimize the
+     number of temporary variables needed at any one point. See what numexpr
+     does to not duplicate effort.
+     > that might make logging & debugging harder, so it should be an option
+
+ - optimise "normal" expressions by collecting variables, and replacing them 
+   with their definitions when they are temporary variables, unless that 
+   particular variable is used more than N times. (testing should help us
+   determine what value to use for N)
+   -> this can only be done for variable which do not change between the place
+      they are defined and the one they are used
+   -> watch out for random functions !
+ - optimise expressions by factoring out common sub expressions (which are used
+   more than N times) in temporary variables
+ ? make numexpr able to compute several expressions at the same time
+   eg ne.evalutate(["a + (a * b)", "(a * b) * 5", {'a': [1, 2], 'b': [3, 4]})
+   >> [3, 10], [15, 40]
+   >> this would be limited to expressions which do not "recompute" any of
+   >> the variable used
+   >> if it is the only factorization, it would limit some of it, because if 
+   >> some sub expression is common between one expression of the group and
+   >> one which is not in the group, there wouldn't be any factorization
+   Ideally, I could feed targets too, so that numexpr would be able to do
+   the whole thing by itself:
+   eg ne.evalutate([('c', 'a + (a * b)'), 
+                    ('d', '(a * b) * c'),
+                    ('a', 'd + 1'),
+                    ('c', 'a * 2')], {'a': [1, 2], 'b': [3, 4]})
+   >> {'a': ..., 'c': ..., 'd': ...}
+   
+ - optimise mean by storing partial sum in an hidden field, and compute
+   the mean like this: (sum_last_period + period_value) / num_periods
+ - optimise duration by using duration for last period if present
+ ? do not repartition data for each alignment and each period, but keep the
+   groups from period to period and update them when the linked variable
+   changes.
+ ? translate partition_nd to C
+ ? translate other performance-critical code to C 
+ ? try alternate algorithm for RemoveIndividuals: simply reindex, like I do it
+   elsewhere. It might cause a problem if the last ids (newly borns) die.
+   it seems to be a tad slower in fact. However, it might be a better starting
+   point to translate in C if that is ever necessary. 
+     
+ cleanup
+ -------
+
+ - constants handling is ugly
+ - __entity__ vs .entity
+ - change constructor arguments to Entity, so that 
+   1) it is shielded from YAML specifics
+   2) I can use the real thing in test_expr instead of FakeEntity
+ - factorize/simplify __str__ methods in some way: by using multi-inheritance? 
+ - merge src/expr with tools/expr
+
+ undecided
+ ---------
+
+ ? installer
+ ? m2o link in aggregate link
+   eg, hh_nch: countlink(househould.persons)
+ ? a: "where(b, c[, d])" -> d implicitly = a
+ ? specific choice method for boolean: boolchoice(0.3) 
+   instead of: choice([True, False], [0.3, 1-0.3])
+ ? use __filter__ in dump_csv
+   in fact the real need is to be able to disable logging easily
+   all logging or some of it?
+ ? explicit file pattern for "csv" function
+ ? add "limit" argument to dump()
+ ? prevent writing too many rows through show(dump())
+ ? somehow "merge" grpxxx and xxxlink functions (at least for the user, not 
+   necessarily technically):
+   grpcount()            -> count()
+   countlink(persons)    -> count(persons)
+   >>> this is problematic because count() returns a scalar while
+   >>> count(persons) return a vector
+   grpsum(age)           -> sum(age)
+   sumlink(persons, age) -> [sum(person.age for person in household.persons) 
+                             for each household]
+ ? at the start of each period, wipe out the array (set all to missing)
+   => need to use lag explicitly 
+ ? allow processes to be run only at specific periodicity: eg. some monthly,
+   some quarterly, and some annually
+ ? store alignment tables in hdf input & output files
+   * it seems like a good idea to store them in the output file, so that we can
+     know for sure what data was used to generate the output
+   * however requiring alignment data to be in the input hdf file, might be
+     less convenient for the modeller who might have his source data in csv
+     and would thus require an extra import step.
+   * on the other hand, having all input data in one file is convenient if they
+     want to pass their simulation around
+ ? implicit "dead" field. Not sure it is really necessary, as some simulations
+   might not involve the creation or death of individuals. And some people
+   might want to name it differently: alive, ...
+ ? implicit age
+ ? implement data generator using variable definitions + custom code where
+   it is absolutely needed
+ ? explicit "fill missing values" so that you can do operations between vectors
+   of a past period.
+ ? OR, we could "timestamp" each expression and convert only when using both
+   old and current ones in the same expression
+ ? automatically add dependencies to simulation? (eg add person.difficult_match
+   when person.partner_id is computed)
+ ? allow lag to use temporary variables, though it doesn't make much sense.
+   it's better to only allow macros
+ ? move expression optimisation/simplification to numexpr
+ ? "new" action is limited because it can only have one parent, it might be
+   interesting to have an arbitrary number of them. eg:
+    newbirth: "new('person', filters={'mother': to_give_birth & ~male, 
+                                      'father': to_give_birth & male},
+                   mother_id=mother.id,
+                   father_id=father.id,
+                   male=logit(0.0),
+                   partner_id=-1)"
+   however, this might be useless/impractical, as eg, the father filter above 
+   is wrong, and if an individual is created from several parents, they will 
+   usually (always?) need to be matched beforehand, so one or several fields
+   or links will be available to get to the other parents. Consequently, this
+   syntax might be more appropriate:
+    newbirth: "new('person', filter={'mother': to_give_birth}, 
+                             links={'father': mother.partner},
+                   mother_id=mother.id,
+                   father_id=father.id,
+                   male=logit(0.0),
+                   partner_id=-1)"
+   ... but in that case, the current syntax works as well.
