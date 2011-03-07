@@ -1,0 +1,85 @@
+entities:
+    household:
+        fields:
+            # period is implicit
+            # id is implicit
+            - dead:    bool
+            - income:  float
+
+    person:
+        fields:
+            # period is implicit
+            # id is implicit
+            - age:          int
+            - partner_id:   int
+            - earnings:     float
+            - errsal:       float            
+            - male:         bool
+            - work:         bool
+            - eduach:       int
+            - chronicill:   bool
+            - dead:         bool
+            - hh_id:        int
+
+        links:
+            ps: {type: many2one, target: person, field: partner_id}
+            
+        marriage_market:
+            work2:   "m.work & ~f.work"
+            work3:   "~m.work & f.work"
+            work4:   "m.work & f.work"
+            eduach2: "(m.eduach==3) & (f.eduach==4)"
+            eduach3: "(m.eduach==2) & (f.eduach==4)"
+            eduach4: "(m.eduach==4) & (f.eduach==3)"
+            eduach7: "(m.eduach==4) & (f.eduach==2)"
+            eduach9: "(m.eduach==2) & (f.eduach==2)"
+            agediff: "m.age - f.age"
+
+        match: "
+            - 0.4893 * age + 0.0131 * age ** 2 - 0.0001 * age ** 3
+            + 0.0467 * agediff - 0.0189 * agediff ** 2 + 0.0003 * agediff ** 3
+            - 0.9087 * work2 - 1.3286 * work3 - 0.6549 * work4
+            - 0.7939 * eduach2 - 1.4128 * eduach3 - 0.8984 * eduach4
+            - 1.5530 * eduach7 - 0.5451 * eduach9
+        "
+            
+        processes:
+            birth: "new('person', number=100000,
+                        age=randint(0, 98),
+                        partner_id=-1,
+                        earnings=40 + age,
+                        errsal=normal(0.0, 10.0),
+                        male=choice([False, True]),
+                        work=choice([False, True]),
+                        eduach=randint(1, 4),
+                        chronicill=False,
+                        dead=False,
+                        hh_id=-1)"
+
+            marriage:
+                - to_marry: "logit_regr(0.0, filter=(age >= 20))"
+                - partner_id: "matching(set1filter=to_marry & ~male,
+                                        set2filter=to_marry & male,
+                                        orderby=id)"
+                - just_married: "to_marry & (partner_id != -1)" 
+                - newhousehold: "new('household', filter=just_married & ~male,
+                                     income=0.0)"
+                
+                - hh_id: "where(just_married,
+                                where(male, ps.newhousehold, newhousehold),
+                                hh_id)"
+            
+simulation:
+    processes:
+        - person: [birth, marriage]
+
+    input:
+        method: void
+        path: "C:\\Users\\gdm\\workspace\\liam2\\test"
+        
+    output:
+        path: "C:\\Users\\gdm\\workspace\\liam2\\test\generate"
+        file: "generated.h5"
+
+    start_period: 2001   # first simulated period
+    periods: 1
