@@ -79,7 +79,7 @@ class Simulation(object):
         for entity in entity_registry.itervalues():
             entity.parse_processes()
         
-        init_def = [d.items()[0] for d in simulation_def['init']]
+        init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()
         for ent_name, proc_names in init_def:
             entity = entity_registry[ent_name]
