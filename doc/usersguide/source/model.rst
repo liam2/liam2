@@ -20,13 +20,13 @@ In a LIAM 2 model file, all text following a # is considered to be comments, and
 A LIAM 2 model has the following structure: ::
 
     globals:
-        ......
+        ...
 
     entities:
-        ......
+        ...
 
     simulation:
-        .....
+        ...
         
 globals
 =======
@@ -64,19 +64,19 @@ LIAM 2 declares the entities as follows: ::
     entities:
         entity-name1:
             fields:  
-                - field definition
+                fields definition
             
             links:   
-                - link definition
+                links definition
                 
             macros:
-                - macro definition
+                macros definition
                 
             processes:   
-                - process definition
+                processes definition
                 
         entity-name2:
-            .....
+            ...
             
 We use YAML as the description language. Indentation and the use of ":" are important. 
 
@@ -88,7 +88,7 @@ process defined in that entity can use and change the value.
 
 LIAM 2 handles three types of fields:
 
-- bool: Boolean (True or False)
+- bool: boolean (True or False)
 - int: integer
 - float: real number
 
@@ -102,13 +102,13 @@ There are two implicit fields that do not have to be defined:
     entities:
         person:
             fields:
-                # period is implicit
-                # id is implicit
+                # period and id are implicit
                 - age:          int
                 - dead:         bool
                 - gender:       bool
                 - partner_id:   int
-                - civilstate:   int  # 1=single, 2=married, 3=cohabitant, 4=divorced, 5=widowed
+                # 1=single, 2=married, 3=cohabitant, 4=divorced, 5=widowed
+                - civilstate:   int
 
 This example defines the entity person. Each person has an age, gender, is dead or not, has a civil_state, possibly a partner. We
 use the field civilstate to store the marital status as a switch of values.
@@ -126,13 +126,13 @@ observed values of the other variables in this example are not available and wil
     entities:
         person:
             fields:
-                # period is implicit
-                # id is implicit
+                # period and id are implicit
                 - age:          int
                 - dead:         bool
                 - gender:       bool
                 - partner_id:   int
-                - civilstate:   int  # 1=single, 2=married, 3=cohabitant, 4=divorced, 5=widowed
+                # 1=single, 2=married, 3=cohabitant, 4=divorced, 5=widowed
+                - civilstate:   int
                 - agegroup_work: {type: int, initialdata: false}
 
 
@@ -175,7 +175,6 @@ Macros are re-evaluated wherever they appear. Use *capital* letters to define ma
             fields:
                 - age: int
           
-
             macros:
                 ISCHILD: "age < 18"
 
@@ -204,7 +203,6 @@ The above example does
 
 It is clear that after1 != after2 since the age has been changed and *ischild* has not been updated since.
 
-It is clear 
 
 processes
 ---------
@@ -301,5 +299,3 @@ periods
 -------
 
 Defines the number of periods (integer) to be simulated.
-
-

@@ -70,6 +70,12 @@ def expr_eval(expr, context):
     else:
         return expr
 
+def postorderTraverse(expr):
+    if isinstance(expr, Expr):
+        return expr.postorderTraverse()
+    else:
+        return expr
+    
 
 class ExplainTypeError(type):
     def __call__(cls, *args, **kwargs):
@@ -89,6 +95,9 @@ class ExplainTypeError(type):
                 return "%d arguments (%d given)" % (needed - 1, given - 1) 
             msg = re.sub('(\d+) arguments \((\d+) given\)', repl, msg)
             raise TypeError(msg)
+
+
+expr_cache = {}
 
 
 class Expr(object):
@@ -183,6 +192,15 @@ class Expr(object):
         return Not('~', self)
 
     def eval(self, context):
+#        print "eval", self
+#        FIXME: this cannot work, because dict.__contains__(k) calls k.__eq__
+#        which has a non standard meaning
+#        if self in expr_cache:
+#            s = expr_cache[self]
+#        else:
+#            s = self.as_string(context)
+#            expr_cache[self] = s
+            
         s = self.as_string(context)
         r = context.get(s)
         if r is not None:
@@ -204,6 +222,12 @@ class Expr(object):
             msg = e.args[0] if e.args else ''
             cls = e.__class__
             raise cls("%s\n%s" % (s, msg))
+        
+    def __hash__(self):
+        raise NotImplementedError()
+
+    def postorderTraverse(self):
+        raise NotImplementedError()
 
 
 #class IsPresent(Expr):
@@ -247,6 +271,13 @@ class UnaryOp(Expr):
 
     def dtype(self, context):
         return dtype(self.expr, context)
+
+    def __hash__(self):
+        return hash((self.op, self.expr))
+
+    def postorderTraverse(self):
+        yield postorderTraverse(self.expr)
+        yield self
 
 
 class Not(UnaryOp):
@@ -321,6 +352,14 @@ class BinaryOp(Expr):
 #            return Where(ispresent(self.expr1) & ispresent(self.expr2),
 #                         self,
 #                         missingvalue[dtype])
+
+    def __hash__(self):
+        return hash((self.op, self.expr1, self.expr2))
+
+    def postorderTraverse(self):
+        yield postorderTraverse(self.expr1)
+        yield postorderTraverse(self.expr2)
+        yield self
 
 
 class ComparisonOp(BinaryOp):
@@ -409,6 +448,13 @@ class Variable(Expr):
         else:
             return self._dtype
 
+    def __hash__(self):
+        #XXX: this might cause problems for local variables in procedures
+        return hash((self.__class__, self.name))
+
+    def postorderTraverse(self):
+        yield self
+
     
 class SubscriptableVariable(Variable):
     def __getitem__(self, key):
@@ -482,6 +528,15 @@ class Where(Expr):
         iftruevars = collect_variables(self.iftrue, context)
         iffalsevars = collect_variables(self.iffalse, context)
         return condvars | iftruevars | iffalsevars
+
+    def __hash__(self):
+        return hash((self.__class__, self.conf, self.iftrue, self.iffalse))
+
+    def postorderTraverse(self):
+        yield postorderTraverse(self.cond)
+        yield postorderTraverse(self.ifture)
+        yield postorderTraverse(self.iffalse)
+        yield self
         
         
 functions = {'where': Where}    
