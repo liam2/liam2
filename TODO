@@ -5,6 +5,8 @@
  non feature tasks
  -----------------
 
+ - add breakpoint() to the documentation
+ - add version information: upon start up & in code
  - add unit tests
  
  missing features to run an automatically translated MIDAS simulation
@@ -101,7 +103,7 @@
  - allow using/access to local variables in step by step mode
  - watches in step by step mode (which are recomputed/displayed automatically
    after each step)
- - recursive macros
+ - macros using other macros
  - numpy methods (min/max/...) on zero-length array
  - reimplement SubscriptableVariable, possibly as a more generic concept:
    generic "indexed table"
