@@ -1,3 +1,12 @@
+0.2
+
+* Added breakpoint function, which brings the interactive console in the middle 
+  of a simulation. Two more commands are available in that mode: 
+  - "step" to execute the next process
+  - "resume" to resume normal execution
+  The breakpoint function takes an optional period argument so that it triggers
+  only for that specific period. 
+
 0.1 - 2011-02-24
 
 First semi-public release
