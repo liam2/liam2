@@ -18,16 +18,16 @@ with the header (processes:). A process changes the variable (predictor) using a
             predictor: variable_name
             expr: "expression"
 
-        ...
+        .....
         
 Or, shorter: ::         
 
     processes:
         variable_name: "expression"
 
-        ...
+        .....
         
-The variable_name will usually be one of the variables defined in the **fields** block of the entity.
+The variable_name has to be a variable defined in the **fields** block of the entity.
 
 A process starts at a new line with an indentation of four spaces, and can consist of sub-
 processes. These also start on a new line, again with an indentation of four spaces and a - . All definitions, be it of processes or sub-
@@ -51,9 +51,7 @@ the name of the process equals the name of the *endogenous variable*.
 To run the processes, they have to be specified on the simulation block of the file. This explains why the *process names* have 
 to be unique for each entity.
 
-FIXME
 *example* ::
-
 
    processes:
         age: "age + 1"
@@ -67,11 +65,11 @@ of the overarching process (process_name3) does not directly refer to a specific
     processes:
         age: "age + 1"               
         agegroup:
-            - agegroup5: "5 * round(age / 5)"
-            - agegroup10: "10 * round(age / 10)"
+            - agegroup_civilstate: "if(age<50, 5*round(age/5), 10*round(age/10))"            
+            - agegroup_work: "if(age<70, 5*round(age/5), 70)"
 
-The processes *agegroup5* and *agegroup10* are grouped in *agegroup*. In the simulation block you specify the
-*agegroup*-process if you want to update *agegroup5* and *agegroup10*. 
+The processes *agegroup_civilstate* and *agegroup_work* are grouped in *agegroup*. In the simulation block you specify the
+*agegroup*-process if you want to update *agegroup_civilstate* and *agegroup_work*. 
 
 By using processes and sub-processes, you can actually make *building blocks* or modules in the model. 
 
@@ -82,35 +80,33 @@ variables between modules you have to define them in the **fields** section.
 
     person:
         fields:
-            # period and id are implicit
+            # period is implicit
+            # id is implicit
             - age:          int
             - dead:         bool
             - gender:       bool
             - partner_id:   int
-            
-            # 1=single, 2=married, 3=cohab, 4=divorced, 5=widowed
-            - civilstate:          int  
-            - dur_in_couple:       int
-            - agegroup_work:       {type: int, initialdata: false}
-            - agegroup_civilstate: {type: int, initialdata: false}
-            
-            # 1: in work, employee, private sector,
-            # 2: in work, employee, public sector not civserv, 
-            # 3: in work*, public sector civserv,
-            # 4: in work, self employed,
-            # 5: in education,
-            # 6: unemployed including old-age unemployed,
-            # 7: CELS (brugpensioen),
-            # 6: disabled (including chronically ill),
-            # 9: retired,
-            # 10: other inactive            
-            - workstate:       int     
-            - inwork:          {type: bool, initialdata: false}                        
-            - education_level: {type: int, initialdata: false}
+            - civilstate:      int  # 1=single, 2=married, 3=cohab, 4=divorced, 5=widowed
+            - dur_in_couple:      int
+            - agegroup_work:     {type: int, initialdata: false}
+            - agegroup_civilstate:     {type: int, initialdata: false}            
+            - workstate:    int     # 1=in work, employee, private sector,2=in work, employee, public sector not civserv, 3=in work*, public sector civserv,4=in work, self employed,5=in education,6=unemployed including old-age unemployed,7=CELS (brugpensioen),6=disabled (including chronically ill),9=retired,10=other inactive
+            - inwork:         {type: bool, initialdata: false}                        
+            - education_level:       {type: int, initialdata: false}
 
-        processes:
-            ...
+        macros:
+            WIDOW: "(civilstate==5)"
+            MARRIED: "(civilstate == 2)"
+            COHAB: "(civilstate == 3)"
+            WORKING: "(workstate > 0) and (workstate < 5)"
+            CIVSERV: "workstate == 3"
+            PUBLIC: "((workstate ==2) or (workstate ==3))"
+            WAGE_EARNER: "(workstate > 0) and (workstate < 4)"
+            MALE: "gender"
+            FEMALE: "not gender"
             
+        processes:
+            ......
             divorce_procedure:
                 - agediff: "if(FEMALE and MARRIED , age - ps.age, 0)"
                 - inwork: "WORKING"
@@ -167,24 +163,24 @@ simple expressions
 
 *example* ::
 
-    agegroup_civilstate: "if(age < 50, 5 * round(age / 5), 10 * round(age / 10))"
-    agegroup_work: "if(age < 70, 5 * round(age / 5), 70)"
+    agegroup_civilstate: "if(age<50, 5*round(age/5), 10*round(age/10))"
+    agegroup_work: "if(age<70, 5*round(age/5), 70)"
     
     
 Note that an *if*-statement has always three arguments. If you want to leave a variable unchanged if a condition is not met,
 specify its value in the *expression_if_false* ::
 
-    # retire people (set workstate = 9) when age 65 and more
+    #retire people (workstate = 9) when age 65 and more
     workstate: "if(age > 64, 9, workstate)"
     
-You can nest if-statements. The example below retires men (gender = True) over 64. For women, this is the case when the age
+You can nest if-statements. The example below retires men (gender = true) over 64. For women, this is the case when the age
 equals at least the parameter WEMRA (a periodic global). ::
     
     workstate: "if(gender, 
-                   if(age >= 65, 9, workstate), 
-                   if(age >= WEMRA, 9, workstate))"
+                    if(age >= 65, 9, workstate), 
+                    if(age >= WEMRA, 9, workstate))"
     
-Note that you have to use parentheses when you use *Boolean operators*. ::
+Note that you have to use parenthesis when you use *Boolean operators*. ::
 
     inwork: "(workstate > 1) and (workstate < 5)"
 
@@ -194,12 +190,12 @@ Note that you have to use parentheses when you use *Boolean operators*. ::
 mathematical functions
 ~~~~~~~~~~~~~~~~~~~~~~
     
-- log(expr): natural logarithm (ln)
-- exp(expr): exponential 
-- abs(expr): absolute value
-- round(expr[, n]): returns the rounded value of expr to specified n (number of digits after the decimal point). If n is not specified, 0 is used.
-- clip(x, a, b): returns x if a < x < b, b if x > b, a if x < a.
-- min(x, a), max(x, a): the minimum or maximum of x and a.
+- log(expr) : natural logarithme (ln)
+- exp(expr) : exponential 
+- abs(expr) : absolute value
+- round(expr [, n]) : returns the rounded value of expr to specified n (number of digits after the decimal point). If n is not specified, 0 is used.
+- clip(x,a,b): returns x if a < x < b, b if x > b, a if x < a.
+- min(x,a), max(x,a): the minimum or maximum of x and a.
 
 
 .. index::
@@ -208,7 +204,7 @@ mathematical functions
 aggregate functions
 ~~~~~~~~~~~~~~~~~~~
 
-- grpcount([filter]): count the objects in the entity
+- grpcount(): count the objects in the entity
 - grpsum(expr): sum the expression
 - grpavg(expr): average
 - grpstd(expr): standard deviation
@@ -227,7 +223,7 @@ Note that, if the variable in grpsum is a Boolean, then grpsum and grpcount will
 *example* ::
 
     macros:
-        WIDOW: "civilstate == 5"
+        WIDOW: "civilstate==5"
     processes:
         cnt_widows: "show(grpsum(WIDOW))"
 
@@ -260,8 +256,8 @@ link functions
                 household_composition:
                     - nb_persons: "countlink(persons)"
                     - nb_students: "countlink(persons, workstate == 1)"
-                    - nch0_11: "countlink(persons, age < 12)"
-                    - nch12_15: "countlink(persons, (age > 11) and (age < 16))"
+                    - nch0_11: "countlink(persons, (age <12))"
+                    - nch12_15: "countlink(persons, (age>11) and (age <16))"
 
 .. index:: temporal functions, lag, value_for_period, duration, tavg
 
@@ -273,7 +269,7 @@ temporal functions
 - duration: number of consecutive period the expression was True
 - tavg: average of an expression since the individual was created
 
-If an item did not exist at that period, the returned value is -1 for a int-field, nan for a float or False for a boolean.
+If an item did not exist at that period, the returned value is -1 for a int-field, nan for a float or nan for a Boolean.
 You can overide this behaviour when you specify the *missing* parameter.
 
 *example* ::
@@ -289,7 +285,7 @@ You can overide this behaviour when you specify the *missing* parameter.
     
     tavg(income)
 
-.. index:: random, uniform, normal, randint
+.. index:: random, uniform, normal
 
 random functions
 ~~~~~~~~~~~~~~~~
@@ -303,10 +299,10 @@ random functions
     normal(loc=0.0, scale=grpstd(errsal)) # a random variable with the stdev derived from errsal
     randint(0, 10)
 
+.. index:: choice
+    
 Stochastic changes I: probabilistic simulation
 ----------------------------------------------
-
-.. index:: choice
 
 choice
 ~~~~~~
@@ -322,14 +318,14 @@ combine a choice with alignment.
 In LIAM 2, such a probabilistic simulation is called a **choice** process. Suppose i=1..n choice options, each with a probability
 prob_option_i. The choice process then has the following form: ::
 
-    choice([option_1, option_2, ..., option_n], [prob_option_1, prob_option_2, ..., prob_option_n])
+    choice([option_1, option_2,..., option_n], [prob_option_1, prob_option_2, ..., prob_option_n])
 
 Note that both lists of options and pertaining probabilities are between []’s. Also, the variable containing the options can be
 of any numeric type.
 
 A simple example of a choice process is the simulation of the gender of newborns (51% males and 49% females), as such: ::
 
-    gender=choice([True, False], [0.51, 0.49])
+    gender=choice([True, False], [0.51, 0.49]) )
 
 The code below illustrates a more complex example of a choice process (called *collar process*). Suppose we want to
 simulate the work status (collar=1 (blue collar worker), white collar worker) for all working individuals. We however have
@@ -341,29 +337,36 @@ The first sub-process defines a local variable filter-bw, which will be used to 
 to. These are all those that do not have a value for collar, and who are working, or who are in education or unemployed, which
 means that they potentially could work.
 
-The next three "collar" sub-processes simulate whether one is a white or blue collar worker, depending on the
+The next three sub-processes (collar_process_1 to 3) simulate whether one is a white or blue collar worker, depending on the
 level of education. If one meets the above filter_bw and has the lowest educational attainment level, then one has a
 probability of about 84% (men) and 69% (women) of being a blue collar worker. If one has ‘education_level’ equal to 3, the
 probability of being a blue collar worker is of course lower (64% for men and 31% for women), and the probability of becoming a
 blue collar worker is lowest (8 and 4%, respectively) for those having the highest educational attainment level. ::
 
     collar_process:  # working, in education, unemployed or other inactive 
-        - filter_bw: "(((workstate > 0) and (workstate < 7)) or (workstate == 10)) and (collar == 0)"
-        - collar: "if(filter_bw and (education_level == 2),
-                      if(gender,
-                         choice([1, 2], [0.83565, 0.16435]),
-                         choice([1, 2], [0.68684, 0.31316]) ),
-                      collar)"
-        - collar: "if(filter_bw and (education_level == 3),
-                      if(gender,
-                         choice([1, 2], [0.6427, 1 - 0.6427]),
-                         choice([1, 2], [0.31278, 1 - 0.31278]) ),
-                      collar)"
-        - collar: "if(filter_bw and (education_level == 4),
-                      if(gender,
-                         choice([1, 2], [0.0822, 1 - 0.0822]),
-                         choice([1, 2], [0.0386, 1 - 0.0386]) ),
-                      collar)"
+        - filter_bw: "(((workstate > 0) and (workstate <7)) or (workstate == 10)) and (collar==0)"
+        - collar_process_1:
+            predictor: collar
+            expr: "where(filter_bw and (education_level == 2),
+                    where(gender,
+                        choice([1, 2], [0.83565, 0.16435]),
+                        choice([1, 2], [0.68684, 0.31316]) ),
+                        collar)"
+
+        - collar_process_2:
+            predictor: collar
+            expr: "where(filter_bw and (education_level == 3),
+                    where(gender,
+                        choice([1, 2], [0.6427, 1-0.6427]),
+                        choice([1, 2], [0.31278, 1-0.31278]) ),
+                        collar)"
+        - collar_process_3:
+            predictor: collar
+            expr: "where(filter_bw and (education_level == 4),
+                    where(gender,
+                        choice([1, 2], [0.0822, 1-0.0822]),
+                        choice([1, 2], [0.0386, 1-0.0386]) ),
+                        collar)"
 
 .. index:: logit, alignment
 
@@ -372,8 +375,8 @@ Stochastic changes II: behavioural equations
 
 - Logit: logit_regr(expr, filter, align)
 - Alignment : 
-    * align(expr, [take=take_filter,] [leave=leave_filter,] percentage) 
-    * align(expr, [take=take_filter,] [leave=leave_filter,] fname='filename.csv')
+    * align(expr,[take=take_filter] [leave=leave_filter,] percentage) 
+    * align(expr,[take=take_filter] [leave=leave_filter,] fname='filename.csv')
 - Continuous (expr + normal(0, 1) * mult + error): cont_regr(expr, filter, align, mult, error_var)
 - Clipped continuous (always positive): clip_regr(expr, filter, align, mult, error_var)
 - Log continuous (exponential of continuous): log_regr(expr, filter, align, mult, error_var)
@@ -382,18 +385,19 @@ Stochastic changes II: behavioural equations
 *example* ::
 
     divorce: "logit_regr(0.6713593 * household.nch12_15 
-                         - 0.0785202 * dur_in_couple
-                         + 0.1429621 * agediff,
-                         filter=FEMALE and (civilstate == 2), 
-                         align='al_p_divorce.csv')"
+                        - 0.0785202 * dur_in_couple
+                        + 0.1429621 * agediff,
+                        filter=FEMALE and (civilstate == 2), 
+                        align='al_p_divorce.csv')"
 
-    wage_earner: "if((age > 15) and (age < 65) and inwork,
-                     if(MALE, 
+    wage_earner: "if((age>15) and (age<65) and (inwork),
+                    if(MALE, 
                         align(wage_earner_score, 
-                              fname='al_p_wage_earner_m.csv'),
+                            fname='al_p_wage_earner_m.csv'),
                         align(wage_earner_score, 
-                              fname='al_p_wage_earner_f.csv')),
-                     False)"
+                            fname='al_p_wage_earner_f.csv')),
+                    False
+                )"
 
 .. index:: logit_regr
 
@@ -423,8 +427,8 @@ returning a Boolean whether the event is simulated. In this case, the setup beco
 
     birth:
         - to_give_birth: "logit_regr(0.0,
-                                     filter=FEMALE and (age >= 15) and (age <= 50),
-                                     align='al_p_birth.csv')"   
+                    filter=FEMALE and (age >= 15) and (age <= 50),
+                    align='al_p_birth.csv')"   
 
 The above generic setup describes the situation where one logit pertains to one alignment process. 
 
@@ -433,38 +437,38 @@ The above generic setup describes the situation where one logit pertains to one 
 logit_score
 ~~~~~~~~~~~
 
-In many cases, however, it is convenient to use multiple logits with the same alignment process. In this case, using  a **logit_score** instead of
+In many cases, however,
+it is convenient to use multiple logits with the same alignment process. In this case, using  a **logit_score** instead of
 **logit_regr** will result in the logit returning intermediate scores that - for all conditions together- are the inputs of the
 alignment process. A typical behavioural equation with alignment has the following syntax: ::
 
         name_process: 
             # initialise the score to -1
-            - score_variable: "-1" 
-
+            - name_score: "-1" 
             # first condition
-            - score_variable: "if(condition_1,
-                                  logit_score(logit_expr_1),
-                                  score_variable)"
-            # second condition
-            - score_variable: "if(condition_2,
-                                  logit_score(logit_expr_2),
-                                  score_variable)"
-                                  
-            # ... other conditions ...
-                        
+            - name_score: "if(condition_1,
+                                logit_score(LOGIT),
+                                name_score )"
+            # second condition                                
+            - name_score: "if(condition_2,
+                                logit_score(LOGIT),
+                                name_score )"
+            # ....                    
+                            
             # do alignment based on the scores calculated above
-            - name_endogenous_variable: 
-                "if(condition,
-                    if(gender, 
-                       align(score_variable,
-                             [take=conditions,]
-                             [leave=conditions,]
-                             fname='filename_m.csv'),
-                       align(score_variable,  
-                             [take=conditions,]
-                             [leave=conditions,]
-                             fname='filename_f.csv')),
-                    False)"
+           - name_endogenous_variable: "if(condition,
+                        if(gender, 
+                            align(name_score,
+                            [   take=( conditions),
+                                leave=(conditions),]
+                                fname='filename_m.csv'),
+                            align(name_score,  
+                            [   take=( conditions),
+                                leave=(conditions),]
+                                fname='filename_f.csv')
+                             ),
+                         False
+                         )"
                                 
 The equation needs to simulate the variable *name_endogenous_variable*. It starts however by creating a score that reflects
 the event risk p*i. In a first sub-process, a variable *name_score* is set equal to -1, because this makes it highly
@@ -485,11 +489,11 @@ After this step, the score is known and this is the input for the alignment proc
 alignment data exists for men and women separately. Then the alignment process starts by a *if* to gender. Next comes the
 align command itself. This takes the form ::
 
-    align(score_variable,
-          filter=conditions,
-          [take=conditions,]
-          [leave=conditions,]
-          fname='name.csv')
+    align(name_score,
+        filter=(conditions)
+        [take=(conditions),
+        leave=(conditions),]
+        fname='name.csv')
         
 The file *name.csv* contains the alignment data. A standard setup is that the file starts with the prefix *al_* followed by
 the name of the endogenous variable and a suffix *_m* or *_f*, depending on gender.
@@ -519,54 +523,59 @@ conditions).
 Next come three sub processes setting a couple of common conditions, in the form of local (temporary) variables. These three sub-
 processes are followed by six subsequent *if* conditions, separating the various behavioural equations to the sub-sample
 they pertain to. The first three sub conditions pertain to women and describe the probability of being a wage-earner from in
-work and employee previous year (1) from in work but not employee previous year (2), and from not in work previous year
+work and employee previous year (1)  from in work but not employee previous year (2), and from not in work previous year
 (3). The conditions 4 to 6 describe the same transitions but for women. ::
 
     wage_earner_process: 
         - wage_earner_score: "-1"
-        - lag_public: "lag((workstate == 2) or (workstate == 3))" 
-        - inwork: "(workstate > 0) and (workstate < 5)"
-        - lag_inwork: "lag((workstate > 0) and (workstate < 5))"
-
-        # Probability of being employee from in work and employee previous year (men)
-        - wage_earner_score: 
-            "if(gender and (age > 15) and (age < 65) and inwork and ((lag(workstate) == 1) or (lag(workstate) == 2)),
-                logit_score(0.0346714 * age + 0.9037688 * (collar == 1) - 0.2366162 * (civilstate == 3) + 2.110479),
-                wage_earner_score)"
-        # Probability of becoming employee from in work but not employee previous year (men)
-        - wage_earner_score:
-            "if(gender and (age > 15) and (age < 65) and inwork and ((lag(workstate) != 1) and (lag(workstate) != 2)),
-                logit_score(-0.1846511 * age - 0.001445 * age **2 + 0.4045586 * (collar == 1) + 0.913027),
-                wage_earner_score)"
-        # Probability of becoming employee from not in work previous year (men)
-        - wage_earner_score:
-            "if(gender and(age > 15) and (age < 65) and inwork and (lag(workstate) > 4),
-                logit_score(-0.0485428 * age + 1.1236 * (collar == 1) + 2.761359),
-                wage_earner_score)"
-
-        # Probability of being employee from in work and employee previous year (women)
-        - wage_earner_score:
-            "if(not gender and(age > 15) and (age < 65) and inwork and ((lag(workstate) == 1) or (lag(workstate) == 2)),
-                logit_score(-1.179012 * age + 0.0305389 * age **2 - 0.0002454 * age **3 - 0.3585987 * (collar == 1) + 17.91888),
-                wage_earner_score)"
-        # Probability of becoming employee from in work but not employee previous year (women)
-        - wage_earner_score:
-            "if(not gender and(age > 15) and (age < 65) and inwork and ((lag(workstate) != 1) and (lag(workstate) != 2)),
-                logit_score(-0.8362935*age + 0.0189809 * age **2 -0.000152 ** age **3 -0.6167602*(collar==1) + 0.6092558 * (civilstate==3) +9.152145),
-                wage_earner_score)"
-        # Probability of becoming employee from not in work previous year (women)
-        - wage_earner_score:
-            "if(not gender and (age > 15) and (age < 65) and inwork and (lag(workstate) > 4),
-                logit_score(-0.6177936 * age + 0.0170716 * age **2 - 0.0001582 * age**3 + 9.388913),
-                wage_earner_score)"
+        - lag_public: "lag((workstate ==2) or (workstate ==3))" 
+        - inwork: " (workstate >0) and (workstate < 5)"
+        - lag_inwork: "lag((workstate >0) and (workstate < 5))"
+        - we_1_m: #Probability of being employee from in work and employee previous year (men)
+            predictor: wage_earner_score
+            expr: "if(gender and(age>15) and (age<65) and (inwork) and ((lag(workstate) == 1) or (lag(workstate) == 2)),
+                        logit_score(0.0346714*age + 0.9037688*(collar==1) -0.2366162*(civilstate==3) +2.110479),
+                        wage_earner_score
+                    )"
+        - we_2_m: #Probability of becoming employee from in work but not employee previous year (men)
+            predictor: wage_earner_score
+            expr: "if(gender and(age>15) and (age<65) and (inwork) and ((lag(workstate) != 1) and (lag(workstate) != 2)),
+                        logit_score(-0.1846511*age -0.001445 * age **2 + 0.4045586*(collar==1)+0.913027),
+                        wage_earner_score 
+                    )"
+        - we_3_m: #Probability of becoming employee from not in work previous year (men)
+            predictor: wage_earner_score
+            expr: "if(gender and(age>15) and (age<65) and (inwork) and (lag(workstate)>4),
+                        logit_score(-0.0485428*age + 1.1236*(collar==1)+2.761359),
+                        wage_earner_score 
+                    )"
+        - we_1_f: #Probability of being employee from in work and employee previous year (women)
+            predictor: wage_earner_score
+            expr: "if(not gender and(age>15) and (age<65) and (inwork) and ((lag(workstate) == 1) or (lag(workstate) == 2)),
+                        logit_score(-1.179012*age + 0.0305389 * age **2 -0.0002454 * age **3 + -0.3585987*(collar==1) + 17.91888),
+                        wage_earner_score 
+                    )"
+        - we_2_f: #Probability of becoming employee from in work but not employee previous year (women)
+            predictor: wage_earner_score
+            expr: "if(not gender and(age>15) and (age<65) and (inwork) and ((lag(workstate) != 1) and (lag(workstate) != 2)),
+                        logit_score(-0.8362935*age + 0.0189809 * age **2 -0.000152 ** age **3 -0.6167602*(collar==1) + 0.6092558 * (civilstate==3) +9.152145),
+                        wage_earner_score 
+                    )"
+        - we_3_f: #Probability of becoming employee from not in work previous year (women)
+            predictor: wage_earner_score
+            expr: "if(not gender and(age>15) and (age<65) and (inwork) and (lag(workstate)>4),
+                        logit_score(-0.6177936*age + 0.0170716 * age **2 -0.0001582 *age**3 +9.388913),
+                        wage_earner_score 
+                    )"
                                         
-        - wage_earner: "if((age > 15) and (age < 65) and inwork,
-                           if(gender, 
-                              align(wage_earner_score, 
+        - wage_earner: "if((age>15) and (age<65) and (inwork),
+                            if(gender, 
+                                align(wage_earner_score, 
                                     fname='al_p_wage_earner_m.csv'),
-                              align(wage_earner_score, 
+                                align(wage_earner_score, 
                                     fname='al_p_wage_earner_f.csv')),
-                           False)"
+                            False
+                        )"
 
 The last sub-procedure describes the alignment process. Alignment is applied to individuals between the age of 15 and 65 who
 are in work. The reason for this is that those who are not working obviously cannot be working as a wage-earner. The input-
@@ -601,8 +610,8 @@ fields of the new item.
 
     birth:
         - to_give_birth: "logit_regr(0.0,
-                                     filter=not gender and (age >= 15) and (age <= 50),
-                                     align='al_p_birth.csv')"   
+                    filter=not gender and (age >= 15) and (age <= 50),
+                    align='al_p_birth.csv')"   
         - newbirth: "new('person', filter=to_give_birth, 
                 m_id=__parent__.id
                 f_id = __parent__.partner_id, 
@@ -692,7 +701,7 @@ of the individual and the fields of its possible partners (**other**) are used.
                     - 0.6549 * (work and other.work)
                     - 1.3286 * (work and not other.work) 
                     - 0.9087 * (not work and other.work)',
-             orderby=difficult_match)
+            orderby=difficult_match)
 
 The generic setup of the marriage market is simple; one needs to have selected those individuals who are to be coupled
 (*to_couple*=true). Furthermore, one needs to have a variable (*difficult_match*) which can be used to rank individuals
@@ -707,35 +716,36 @@ person equals the identification number of the partner.
 
     marriage:
         - in_couple: "MARRIED or COHAB"
-        - to_couple: "if((age >= 18)  and (age <= 90) and not in_couple, 
-                         if(MALE,
+        - to_couple: "if((age >= 18)  and (age <= 90) and  not in_couple, 
+                        if(MALE,
                             logit_regr(0.0, align='al_p_mmkt_m.csv'),
                             logit_regr(0.0, align='al_p_mmkt_f.csv')), 
-                         False)"
+                        False
+                      )"
         - difficult_match: "if(to_couple and FEMALE,
-                               abs(age - grpavg(age, filter=to_couple and MALE)),
-                               nan)"
+                                  abs(age - grpavg(age, filter=to_couple and MALE)),
+                                  nan)"
         - inwork: "(workstate > 0) and (workstate <5)"                                         
         - partner_id: "if(to_couple, 
-                          matching(set1filter=FEMALE, set2filter=MALE,
-                                   score='- 0.4893 * other.age 
-                                          + 0.0131 * other.age ** 2 
-                                          - 0.0001 * other.age ** 3
-                                          + 0.0467 * (other.age - age) 
-                                          - 0.0189 * (other.age - age) ** 2 
-                                          + 0.0003 * (other.age - age) ** 3
-                                          - 0.9087 * (other.inwork and not inwork) 
-                                          - 1.3286 * (not other.inwork and inwork) 
-                                          - 0.6549 * (other.inwork and inwork)',
-                                   orderby=difficult_match),
-                          partner_id)"
+                        matching(set1filter= FEMALE, set2filter=MALE,
+                                score='- 0.4893 * other.age 
+                                   + 0.0131 * other.age ** 2 
+                                   - 0.0001 * other.age ** 3
+                                   + 0.0467 * (other.age - age) 
+                                   - 0.0189 * (other.age - age) ** 2 
+                                   + 0.0003 * (other.age - age) ** 3
+                                   - 0.9087 * ((other.inwork) and not (inwork)) 
+                                   - 1.3286 * (not (other.inwork) and (inwork)) 
+                                   - 0.6549 * ((other.inwork) and (inwork))',
+                                orderby=difficult_match),
+                            partner_id)"
         - coupled: "to_couple and (partner_id != -1)"   
         - newhousehold: "new('household', filter=coupled and FEMALE,
                              start_period=period,
                              region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4]) )"
         - hh_id: "if(coupled,
-                     if(MALE, ps.newhousehold, newhousehold),
-                     hh_id)"
+                        if(MALE, ps.newhousehold, newhousehold),
+                        hh_id)"
 
 
 The code above shows an application. First of all, individuals eligible for marriage are all those between 18 and 90 who are
@@ -771,7 +781,8 @@ show
 
 *show* prints a line with information to the console. ::
 
-    show(expr[, expr2, expr3])
+    show(expr [, expr2, expr3]))
+
 
 
 *example 1* ::
@@ -818,7 +829,7 @@ dump
 
 *general format*
 
-    dump(expr[, expr2, expr3, ..., filter=filterexpression])
+    dump(expr [expr2, expr3, ...] [filter=filterexpression])
 
 *example* ::
 
