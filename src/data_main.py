@@ -300,9 +300,6 @@ class ImportExportData(object):
                     for id, period, value in import_csv_3col(file_path, 
                                                              oldname, vtype,
                                                              delimiter):
-                        assert period < self.simulation.start_period, \
-                            "%s has observations for period %d beyond simulation start period %d"  %(vname, period, self.simulation.start_period)
-                            
                         k = (period, id)
                         if k in records:
                             records[k][vname] = value
@@ -438,17 +435,17 @@ if __name__ == '__main__':
 
     print 'Using Python %s' % sys.version
     args = sys.argv
+    valid_cmds = ('export_tsv', 'export_csv', 'import_tsv', 'import_csv')
     if len(args) < 4:
         print """
 Usage: %s action simulation_file import_export_file
-  action can be any of 'export_tsv', 'export_csv', 'import_tsv', 'import_csv'
-""" % args[0]
+  action can be any of %s
+""" % (args[0], ', '.join(repr(cmd) for cmd in valid_cmds))
         sys.exit()
     cmd = args[1]
     
     print "using simulation file: '%s' / '%s'" % (args[2], args[3])
     data = ImportExportData(args[2], args[3])
 
-    assert cmd in ('export_tsv', 'export_csv', 'import_tsv', 'import_csv'), \
-           "Unknown command '%s'" % cmd
+    assert cmd in valid_cmds, "Unknown command '%s'" % cmd
     timed(getattr(data, cmd))
