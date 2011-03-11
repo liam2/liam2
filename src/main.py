@@ -1,13 +1,18 @@
 from simulation import Simulation
 
-if __name__ == '__main__':
-    import sys
+__version__ = "0.2dev"
 
-    print 'Using Python %s' % sys.version
+if __name__ == '__main__':
+    import sys, platform
+
+    print "LIAM2 %s using Python %s (%s)\n" % (__version__, 
+                                               platform.python_version(),
+                                               platform.architecture()[0])
+                                  
     args = sys.argv
     fpath = args[1] if len(args) > 1 else 'simulation.yaml'
     console = len(args) > 2 and args[2] == "-i" 
-    print "using simulation file: '%s'" % fpath
+    print "Using simulation file: '%s'" % fpath
     simulation = Simulation(fpath, console)
     
     do_profile = False
