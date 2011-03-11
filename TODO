@@ -6,7 +6,6 @@
  -----------------
 
  - add breakpoint() to the documentation
- - add version information: upon start up & in code
  - add unit tests
  
  missing features to run an automatically translated MIDAS simulation
