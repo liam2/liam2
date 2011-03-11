@@ -5,7 +5,10 @@
   - "step" to execute the next process
   - "resume" to resume normal execution
   The breakpoint function takes an optional period argument so that it triggers
-  only for that specific period. 
+  only for that specific period.
+  
+* Processes which do not return any value (csv and show) do not need to be named
+  anymore when they are inside of a procedure.     
 
 0.1 - 2011-02-24
 
