@@ -58,9 +58,9 @@ FIXME
    processes:
         age: "age + 1"
 
-This is however not the case with a process that has sub processes: it is possible for subprocess_31 to simulate one
-variable of the same name, and subprocess_32 to simulate another, again of the same name as the process. In this case, the name
-of the overarching process (process_name3) does not directly refer to a specific endogenous variable.
+This is however not the case for (sub)processes inside other processes (we call them procedures): 
+it is possible for subprocess_31 and subprocess_32 to have the same name, and hence simulate the same variable. 
+Procedure names (process_name3) does not directly refer to a specific endogenous variable.
 
 *example* ::
 
@@ -75,8 +75,8 @@ The processes *agegroup5* and *agegroup10* are grouped in *agegroup*. In the sim
 
 By using processes and sub-processes, you can actually make *building blocks* or modules in the model. 
 
-You can use temporary variables in a module. They only exist during the execution of that module. If you want to pass 
-variables between modules you have to define them in the **fields** section.
+You can use temporary variables in a procedure. They only exist during the execution of that procedure. We thus call them local variables. If you want to pass 
+variables between procedures you have to define them in the **fields** section.
 
 *example* ::
 
@@ -112,16 +112,20 @@ variables between modules you have to define them in the **fields** section.
             ...
             
             divorce_procedure:
-                - agediff: "if(FEMALE and MARRIED , age - ps.age, 0)"
+                - agediff: "if(FEMALE and MARRIED, age - ps.age, 0)"
                 - inwork: "WORKING"
                 # select females to divorce
-                - divorce: "logit_regr(0.6713593 * ph.nch12_15 - 0.0785202 * dur_in_couple
-                                + 0.1429621 * agediff - 0.0088308 * agediff**2 
-                                - 0.814204 *((inwork) and (ps.inwork)) - 4.546278,
-                                filter = FEMALE and MARRIED, 
-                                align = 'al_p_divorce.csv')"
+                - divorce: "logit_regr(0.6713593 * ph.nch12_15 
+                                       - 0.0785202 * dur_in_couple
+                                       + 0.1429621 * agediff 
+                                       - 0.0088308 * agediff * *2 
+                                       - 0.814204 * (inwork and ps.inwork) 
+                                       - 4.546278,
+                                       filter = FEMALE and MARRIED, 
+                                       align = 'al_p_divorce.csv')"
                 # select persons to divorce
                 - to_divorce: "divorce or ps.divorce"
+                
                 - partner_id: "if(to_divorce, -1, partner_id)"
                 - civilstate: "if(to_divorce, 4, civilstate)"
                 - dur_in_couple: "if(to_divorce, 0, dur_in_couple)"
@@ -133,8 +137,8 @@ variables between modules you have to define them in the **fields** section.
                     ),
                     hh_id)"
 
-In the example *agediff*, *divorce*, *to_divorce* are temporary variables. They can only be used in the module
-"divorce_procedure".
+In the example *agediff*, *divorce*, *to_divorce* are local variables. They can only be used in the
+"divorce_procedure" procedure.
 
 .. index::
     single: expressions;
@@ -893,3 +897,63 @@ gives ::
       False | 30.94 | 28.01 |  58.95
        True | 19.21 | 21.84 |  41.05
       total | 50.15 | 49.85 | 100.00
+
+
+.. index::  interactive console
+
+Interactive console
+===================
+
+LIAM 2 features an interactive console which allows you to interactively explore
+the state of the memory either during or after a simulation completed. 
+
+You can reach it in two ways. You can either pass "-i" as the last argument when 
+running the executable, in which case the interactive console will launch after 
+the whole simulation is over. The alternative is to use breakpoints in your 
+simulation to interrupt the simulation at a specific point (see below).
+
+Type "help" in the console for the list of available commands. In addition to
+those commands, you can type any expression that is allowed in the simulation 
+file and have the result directly. Show is implicit for all operations.
+
+*examples* ::
+
+    >>> grpavg(age)
+    53.7131819615
+
+    >>> groupby(age / 20, gender, expr=grpcount(inwork))
+
+        gender | False | True |      
+    (age / 20) |       |      | total
+             0 |    14 |   18 |    32
+             1 |   317 |  496 |   813
+             2 |   318 |  258 |   576
+             3 |    40 |  102 |   142
+             4 |     0 |    0 |     0
+             5 |     0 |    0 |     0
+         total |   689 |  874 |  1563
+
+.. index::  breakpoint
+
+breakpoint
+----------
+
+**breakpoint**: temporarily stops execution of the simulation and launch the 
+interactive console. There are two additional commands available in the 
+interactive console when you reach it through a breakpoint: "step" to execute 
+(only) the next process and "resume" to resume normal execution.
+
+*general format*
+
+    breakpoint([period])
+
+    the "period" argument is optional and if given, will make the breakpoint
+    interrupt the simulation only for that period.
+
+*example* ::
+
+    marriage:
+        - in_couple: "MARRIED or COHAB"
+        - breakpoint(2002)
+        - ...
+
