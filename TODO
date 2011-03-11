@@ -93,6 +93,8 @@
  - delete "empty" households (dead persons)
    OR
  - implement cascading deletes/death on links
+   AND/OR
+ - some kind of integrity checks
  - duration(varname, value)
 
  other missing features
