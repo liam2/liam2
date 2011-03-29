@@ -1,5 +1,5 @@
 import numpy as np
-
+import re
 
 type_to_idx = {bool: 0, int: 1, float:2}
 idx_to_type = [bool, int, float]
@@ -346,7 +346,7 @@ class Addition(BinaryOp):
         if dtype(self.expr1) is bool and dtype(self.expr2) is bool:
             return simplify(self.expr1 | self.expr2)
         else:
-            return super(Addition, self)._simplify(self)
+            return super(Addition, self)._simplify()
 
 
 class Substraction(BinaryOp):
@@ -499,7 +499,7 @@ class Function(Expr):
     
         
 class Where(Function):
-    name = 'where'
+    name = 'if'
 
     def __str__(self):
         return self.as_string(',\n      ')
@@ -646,10 +646,22 @@ functions = {'lag': makefunc('lag', 'coerce'),
              'log_regr': LogRegr,
              'zeroclip': ZeroClip}
 
+
+and_re = re.compile('([ )])and([ (])')
+or_re = re.compile('([ )])or([ (])')
+not_re = re.compile(r'([ (=]|^)not(?=[ (])')
+
+
 def parse(s, globals=None, expression=True):
+    # this prevents any function named something ending in "if"
+    str_to_parse = s.replace('if(', 'where(')
+    str_to_parse = and_re.sub(r'\1&\2', str_to_parse)
+    str_to_parse = or_re.sub(r'\1|\2', str_to_parse)
+    str_to_parse = not_re.sub(r'\1~', str_to_parse)
+
     mode = 'eval' if expression else 'exec'
     try:
-        c = compile(s, '<expr>', mode)
+        c = compile(str_to_parse, '<expr>', mode)
     except SyntaxError:
         print "syntax error in: ", s
         raise

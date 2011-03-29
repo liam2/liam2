@@ -1,18 +1,16 @@
-import sys
 import csv
-from itertools import izip
-from os import path
-import os
-import re
 import itertools
-
+import os
+from os import path
+import re
+import sys
 
 import yaml
 
 from expr import *
 from align_txt2csv import convert_txt_align
 
-#regression are uterly borked... should use logit_regr(x, filter=xxx)
+#FIXME: regressions are utterly broken... should use logit_regr(x, filter=xxx)
 #instead of logit_regr(where(xxx, x, 0))
 
 #TODO manually:        
@@ -65,6 +63,8 @@ def load_txt_def(input_path, name_idx):
     current_obj = None
     data = {}
     for line in lines[1:]:
+        if not line:
+            continue
         name, line = line[name_idx], line[:name_idx] + line[name_idx+1:]
         if name.startswith('first_'):
             current_obj = name[6:]
@@ -89,7 +89,9 @@ def load_fields(input_path):
     }
     for obj_type, obj_fields in data.iteritems():
         for name, fdef in obj_fields.iteritems(): 
-            real_dtype = typemap[fdef['Type']]  
+            real_dtype = typemap.get(fdef['Type'], None)
+            if real_dtype is None:
+                print "Warning: unknown type", fdef['Type']  
             if int(fdef['nCategory']) == 2:
                 assert fdef['Categories'] == "[0,1]"
                 real_dtype = bool
@@ -270,7 +272,8 @@ class TextImporter(object):
         assert condition
         expr = self.andcond2expr(condition[0])
         for orcond in condition[1:]:
-            expr = expr | self.andcond2expr(orcond)
+            if orcond:
+                expr = expr | self.andcond2expr(orcond)
         return expr
 
     def import_file(self):
@@ -486,7 +489,7 @@ class TransitionImporter(TextImporter):
         #   it; so I guess it's not used anymore.
         s = line[1]
         
-        s = s.replace('if(', 'where(')
+#        s = s.replace('if(', 'where(')
         s = s.replace(' and ', ' & ')
         s = s.replace(' or ', ' | ')
         # add space around operators, if not present
@@ -494,8 +497,8 @@ class TransitionImporter(TextImporter):
         s = re.sub(r'([<>]=?)', r' \1 ', s)
         # = -> ==
         s = re.sub(r'([^<>])=', r'\1 == ', s)
-        # CONST[ddddYd] -> CONST[Y2005]
-        s = re.sub(r'([A-Z_][A-Z0-9_]*)\[(\d{4})Y1\]', r'\1[Y\2]', s)
+        # CONST[ddddYd] -> CONST[dddd]
+        s = re.sub(r'([A-Z_][A-Z0-9_]*)\[(\d{4})Y1\]', r'\1[\2]', s)
         self.conditions[self.current_condition]['action'] = s
         return pos + 1, None
     
@@ -569,7 +572,8 @@ def load_processes(input_path, input_fname, obj_type,
             continue
         if chunks[0] == 'al':
             continue
-        assert len(chunks[1]) == 1
+        if len(chunks[1]) != 1:
+            continue
         if chunks[1] != obj_type:
             continue
         
@@ -643,7 +647,7 @@ def vars2yaml(processes):
             vars_str.append(var_str)
         return '''
 
-        variables:
+        processes:
             %s''' % sep.join(vars_str)
     else:
         return ''
@@ -682,8 +686,8 @@ def simulation2yaml(constants, entities, process_list):
     constants_str = constants2yaml(constants)
     entities_str = entities2yaml(entities)
     process_list_str = process_list2yaml(process_list)                
-    return """constants:
-    per_period:
+    return """globals:
+    periodic:
         # period is implicit
         %s
 
@@ -694,9 +698,9 @@ simulation:
     processes:
 %s
     input: 
-        method: h5
-        file: "c:\\\\tmp\\\\midas.h5"
-    output: "c:\\\\tmp\\\\simulation.h5"
+        file: "base.h5"
+    output: 
+        file: "simulation.h5"
     start_period: 2003    # first simulated period
     periods: 20
 """ % (constants_str, entities_str, process_list_str)
