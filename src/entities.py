@@ -200,8 +200,7 @@ class Entity(object):
         return cond_context
         
     def parse_processes(self):
-        from properties import Process, Assignment, ProcessGroup
-
+        from properties import Assignment, ProcessGroup
         vars = dict((name, SubscriptableVariable(name, type_))
                     for name, type_ in self.simulation.globals)
         vars.update(self.variables)

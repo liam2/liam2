@@ -183,6 +183,14 @@ class Expr(object):
         return Not('~', self)
 
     def eval(self, context):
+#        print "eval", self
+#        FIXME: this cannot work, because dict.__contains__(k) calls k.__eq__
+#        which has a non standard meaning
+#        if self in expr_cache:
+#            s = expr_cache[self]
+#        else:
+#            s = self.as_string(context)
+#            expr_cache[self] = s
         s = self.as_string(context)
         r = context.get(s)
         if r is not None:
@@ -425,15 +433,13 @@ class SubscriptedVariable(Variable):
     __repr__ = __str__
 
     def eval(self, context):
-        raise NotImplementedError
-    
-#        globals = context['globals']
-#        period = expr_eval(self.key, context)
-#        base_period = globals['period'][0]
-#        period_idx = period - base_period
-#        if self.name not in globals.dtype.fields:
-#            raise Exception("Unknown global: %s" % self.name)
-#        return globals[self.name][period_idx]
+        period = expr_eval(self.key, context)
+        globals = context['__globals__']
+        base_period = globals['period'][0]
+        period_idx = period - base_period
+        if self.name not in globals.dtype.fields:
+            raise Exception("Unknown global: %s" % self.name)
+        return globals[self.name][period_idx]
 
 
 class VirtualArray(object):

@@ -70,8 +70,11 @@ entities:
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
 
-            test9: MINR[2005]
-            test10: MINR[period - 1]
+            test_globals:
+                - no_index: MINR
+                - const_index: MINR[2005]
+                - expr_index: MINR[period - 1]
+                - show("implicit current period:", no_index, "/ in 2005:", const_index, "/ previous period:", expr_index)
 
             test_macro:
                 - ischild: age < 18
@@ -253,7 +256,7 @@ simulation:
         
     processes:
         - person: [cleanup, 
-#                   test9, test10,
+                   test_globals,
                    test_macro, 
                    agegroup,
                    dead,
@@ -284,4 +287,4 @@ simulation:
 
 #    random_seed: 0
     start_period: 2002   # first simulated period
-    periods: 2
+    periods: 5

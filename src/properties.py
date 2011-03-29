@@ -8,7 +8,6 @@ from expr import Expr, Variable, Where, functions, as_string, dtype, \
                  collect_variables, missing_values
 from entities import entity_registry, EntityContext, context_length
 import utils
-import console
 
 num_tmp = 0
 
@@ -139,7 +138,8 @@ class ProcessGroup(Process):
         for k, v in self.subprocesses:
             print "    *",
             if k is None:
-                print v,
+#                print v,
+                print v.__class__.__name__,
             else:
                 print k,
             v.run_guarded(globals)

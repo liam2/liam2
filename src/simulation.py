@@ -46,6 +46,7 @@ class Simulation(object):
         with open(fpath) as f:
             content = yaml.load(f)
 
+        #TODO: raise exception when there are unknown keywords
         globals_def = content.get('globals', {})
         periodic_globals = globals_def.get('periodic', [])
         # list of one-item-dicts to list of tuples
@@ -156,6 +157,7 @@ class Simulation(object):
             const_dict = dict((k, period_globals[k])
                               for k in period_globals.dtype.names)
             const_dict['nan'] = float('nan')
+            const_dict['__globals__'] = periodic_globals
             
             for entity in entities:
                 entity.array['period'] = period
