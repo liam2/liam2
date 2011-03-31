@@ -81,6 +81,7 @@ Commands:
     help:            print this help
     s[tep]:          execute the next process 
     r[esume]:        resume normal execution
+    q[uit] or exit:  quit the program (abort the simulation)
     
     entity [name]:   set the current entity to another entity
     period [period]: set the current period
@@ -92,7 +93,7 @@ Commands:
             help = """
 Welcome to LIAM interactive console.        
     help:            print this help
-    q[uit] or exit:  quit the console
+    q[uit] or exit:  quit the program
     
     entity [name]:   set the current entity (this is required before any query)
     period [period]: set the current period (if not set, uses the last period 
@@ -124,10 +125,12 @@ Welcome to LIAM interactive console.
             elif debugger and s in ('s', 'step'):
                 sys.stdout = sys.stdout.f
                 return 'step'
-            elif debugger and s in ('r', 'resume') or \
-                 not debugger and s in ('q', 'quit', 'exit'):
+            elif debugger and s in ('r', 'resume'):
                 sys.stdout = sys.stdout.f
                 return
+            elif s in ('q', 'quit', 'exit'):
+                sys.stdout = sys.stdout.f
+                sys.exit()
             else:
                 try:
                     res = self.execute(s)

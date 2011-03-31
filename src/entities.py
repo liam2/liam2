@@ -200,7 +200,7 @@ class Entity(object):
         return cond_context
         
     def parse_processes(self):
-        from properties import Assignment, ProcessGroup
+        from properties import Assignment, Process, ProcessGroup
         vars = dict((name, SubscriptableVariable(name, type_))
                     for name, type_ in self.simulation.globals)
         vars.update(self.variables)
@@ -215,7 +215,7 @@ class Entity(object):
             for k, v in items:
                 if isinstance(v, basestring):
                     expr = parse(v, vars, cond_context)
-                    if k is not None:
+                    if not isinstance(expr, Process):
                         process = Assignment(expr)
                     else:
                         process = expr

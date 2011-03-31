@@ -182,29 +182,32 @@ class Simulation(object):
                 print "  *", entity.name,
                 timed(entity.store_period_data, period)
         
-        simulate_period(self.start_period - 1, self.init_processes,
-                        self.init_entities)
+        try: 
+            simulate_period(self.start_period - 1, self.init_processes,
+                            self.init_entities)
+    
+            for period in range(self.start_period, 
+                                self.start_period + self.periods):
+                period_start_time = time.time()
+                simulate_period(period, self.processes, self.entities)
+                print "period %d done (%s elapsed)." % (period, 
+                                                        time2str(time.time() 
+                                                               - period_start_time)) 
+            print "simulation done (%s elapsed)." % time2str(time.time() 
+                                                             - start_time)
+            show_top_processes(process_time, 10)
+    
+            if self.console:
+                c = console.Console()
+                c.run()
 
-        for period in range(self.start_period, 
-                            self.start_period + self.periods):
-            period_start_time = time.time()
-            simulate_period(period, self.processes, self.entities)
-            print "period %d done (%s elapsed)." % (period, 
-                                                    time2str(time.time() 
-                                                           - period_start_time)) 
-        print "simulation done (%s elapsed)." % time2str(time.time() 
-                                                         - start_time)
-        show_top_processes(process_time, 10)
-
-        if self.console:
-            c = console.Console()
-            c.run()
-        
-        h5file.close()
+        finally:
+            h5file.close()
 
     def start_console(self, entity, period):
-        if self.stepbystep: 
+        if self.stepbystep:
             c = console.Console(entity, period)
             res = c.run(debugger=True)
             self.stepbystep = res == "step"
+                
         
