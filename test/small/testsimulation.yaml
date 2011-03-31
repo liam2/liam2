@@ -67,6 +67,8 @@ entities:
         # possible transitions & regressions. The actual list used in the
         # simulation must be defined below
         processes:
+            bp: breakpoint(2002)
+            
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
 
@@ -253,17 +255,18 @@ entities:
 simulation:
     init:
         - person: [test_init]
-        
+
     processes:
-        - person: [cleanup, 
+        - person: [bp,
+                   cleanup, 
                    test_globals,
                    test_macro, 
                    agegroup,
                    dead,
                    show_95_notdead, show_0_dead,
                    test_logit,
-                   marriage,               
-                   to_give_birth, newbirth, 
+                   marriage,
+                   to_give_birth, newbirth,
                    test_lag,
                    
                    test_o2m,
@@ -276,7 +279,6 @@ simulation:
                       num_persons, nch, maxnch, 
                       dump_csv_h]
         - person: [test_link_get]
-        
 
     input:
 #        path: data
