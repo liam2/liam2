@@ -85,6 +85,76 @@ def copyTable(input_table, output_file, output_node, output_fields,
     return data if returndata else None
 
 
+def copyPeriodicTableAndRebuild(input_table, output_file, output_node, 
+                                output_fields, input_rows, input_index,
+                                max_id_per_period, target_period, 
+                                **kwargs):
+    complete_kwargs = {'title': input_table._v_title,
+                       'filters': input_table.filters}
+    complete_kwargs.update(kwargs)
+    if output_fields is None:
+        output_dtype = input_table.dtype
+    else:
+        output_dtype = np.dtype(output_fields)
+    output_table = output_file.createTable(output_node, input_table.name, 
+                                           output_dtype, **complete_kwargs)
+
+    periods_before = [p for p in input_rows.iterkeys() if p <= target_period]
+    periods_before.sort()
+
+    output_names = set(output_dtype.names)
+    input_names = set(input_table.dtype.names)
+    common_fields = output_names & input_names 
+    missing_fields = output_names - input_names 
+
+    print "computing is present..."
+    max_id = max_id_per_period[periods_before[-1]]
+    is_present = np.zeros(max_id + 1, dtype=bool)
+    for period in periods_before:
+        id_to_rownum = input_index[period]
+        present_in_period = id_to_rownum != -1
+        present_in_period.resize(max_id + 1)
+        is_present |= present_in_period
+        
+    print "indexing present ids..."
+    id_to_rownum = np.empty(max_id + 1, dtype=int)
+    id_to_rownum[:] = -1
+
+    rownum = 0
+    for id, present in enumerate(is_present):
+        if present:
+            id_to_rownum[id] = rownum
+            rownum += 1
+
+    output_array = np.empty(rownum, dtype=output_dtype)
+
+    for fname in missing_fields:
+        ftype = idx_to_type[type_to_idx[output_dtype.fields[fname][0].type]]
+        output_array[fname] = missing_values[ftype]
+
+    print "copying table & building array..."
+    output_rows = {}
+    for period in periods_before:
+        start, stop = input_rows[period]
+        #TODO: use chunk if there are too many rows in a year
+        input_array = input_table.read(start, stop)
+        if period < target_period:
+            period_ouput_array = add_and_drop_fields(input_array, output_fields)
+            startrow = output_table.nrows
+            output_table.append(period_ouput_array)
+            output_rows[period] = (startrow, output_table.nrows)
+            output_table.flush()
+        
+        for row in input_array:
+            target_rownum = id_to_rownum[row['id']]
+            if target_rownum != -1:
+                #TODO: test if chunking improves the speed  
+                output_row = output_array[target_rownum]
+                for fname in common_fields:
+                    output_row[fname] = row[fname]
+    return output_array, output_rows, id_to_rownum
+    
+
 class H5Data(object):
     def __init__(self, input_path, output_path):
         self.input_path = input_path
@@ -103,8 +173,6 @@ class H5Data(object):
         output_globals = output_file.createGroup("/", "globals", 
                                                    "Globals")
         # load globals in memory
-        # TODO: use the built-in Table.copy(), which should work fine starting
-        # from PyTables 2.2.1, or use copy entire nodes, see below.  
         periodic_globals = copyTable(input_root.globals.periodic,
                                      output_file, output_globals, None,
                                      chunksize=None)
@@ -112,11 +180,6 @@ class H5Data(object):
         input_entities = input_root.entities
         output_entities = output_file.createGroup("/", "entities", "Entities")
     
-        # copy nodes as a batch
-#        globals_node = input_file.copyNode("/globals", output_file.root)
-#        entities_node = input_file.copyNode("/entities", output_file.root)
-        
-        res = {}
         for ent_name, entity in entities.iteritems():
             print ent_name, "..."
             
@@ -125,44 +188,57 @@ class H5Data(object):
 
             assertValidFields(entity.fields, table, entity.missing_fields)
 
-            # build index
-            print "building table index...",
+            # build indexes
+            print "building period index...",
             table_index = {}
             current_period = None
             start_row = None
+            max_id_per_period = {}
+            max_id_so_far = 0
             for idx, row in enumerate(table):
-                period = row['period']
+                period, id = row['period'], row['id']
                 if period != current_period:
                     # 0 > None is True
                     assert period > current_period, "data is not time-ordered"
                     if start_row is not None:
                         table_index[current_period] = start_row, idx
+                        # assumes the data is sorted on period then id
+                        max_id_per_period[current_period] = max_id_so_far
                     start_row = idx
                     current_period = period
+                max_id_so_far = max(max_id_so_far, id) 
             table_index[current_period] = (start_row, len(table))
-            entity.period_rows = table_index
-            entity.base_period = min(table_index.iterkeys())
+            max_id_per_period[current_period] = max_id_so_far
+
+            periods = sorted(table_index.keys())
+            entity.input_rows = table_index
+            entity.base_period = periods[0]
             print "done."
 
-            # check that there is not too much data in input file
-#            max_period = max(table_index.iterkeys())
-#            assert max_period < start_period, \
-#                   "invalid period(s) found in input file: all data must be " \
-#                   "for past periods (period < start_period)"
-            
+            print "indexing input file...",
+            #TODO: make a function out of this and use it in datamain to
+            # build id_to_rownum
+            for period in periods:
+                max_id = max_id_per_period[period]
+                id_to_rownum = np.empty(max_id + 1, dtype=int)
+                id_to_rownum[:] = -1
+                start, stop = table_index[period]
+                for idx, row in enumerate(table.iterrows(start, stop)):
+                    id_to_rownum[row['id']] = idx
+                entity.input_index[period] = id_to_rownum
+            print "done."
+                    
             # copy stuff
             print "copying tables & loading last period...",
-            copyTable(table, output_file, output_entities, entity.fields)
+            array, output_rows, id_to_rownum = \
+                copyPeriodicTableAndRebuild(table, output_file, output_entities, 
+                                            entity.fields, entity.input_rows, 
+                                            entity.input_index, 
+                                            max_id_per_period, last_period)
+            entity.id_to_rownum = id_to_rownum
+            entity.output_rows = output_rows
+            entity.array = array
 
-            # load last period in memory
-            if last_period in table_index:
-                start, stop = table_index[last_period]
-                array = table.read(start=start, stop=stop)
-                array = add_and_drop_fields(array, entity.fields)
-            else:
-                dtype = np.dtype(entity.fields)
-                array = np.empty(0, dtype=dtype)
-            
             # per period
             per_period_table = getattr(input_entities, ent_name + "_per_period")
             assertValidFields(entity.per_period_fields,
@@ -178,13 +254,13 @@ class H5Data(object):
                 #TODO: use missing values instead
                 per_period_array = np.zeros(1, dtype=per_period_array.dtype)
                 per_period_array['period'] = last_period
-
-            res[ent_name] = array, per_period_array
+            
+            entity.per_period_array = per_period_array
             print "done."
             
         input_file.close()
         output_file.close()
-        return periodic_globals, res
+        return periodic_globals
 
     
 class Void(object):
@@ -201,21 +277,19 @@ class Void(object):
 
         output_entities = output_file.createGroup("/", "entities", "Entities")
 
-        res = {}
         for ent_name, entity in entities.iteritems():
             dtype = np.dtype(entity.fields)
-            array = np.empty(0, dtype=dtype)
+            entity.array = np.empty(0, dtype=dtype)
             output_file.createTable(output_entities, entity.name, dtype,
                                     title="%s table" % entity.name)
 
             dtype = np.dtype(entity.per_period_fields)
-            per_period_array = np.empty(0, dtype=dtype)
+            entity.per_period_array = np.empty(0, dtype=dtype)
             output_file.createTable(output_entities,
                                     entity.name + "_per_period",
                                     dtype,
                                     title="%s per period table" % entity.name)
-            res[ent_name] = array, per_period_array
         
         output_file.close()
-        return periodic_globals, res
+        return periodic_globals
 

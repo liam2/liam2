@@ -28,7 +28,7 @@ class EntityContext(object):
                     except ValueError:
                         raise KeyError(key)
             else:
-                bounds = self.entity.period_rows.get(period)
+                bounds = self.entity.output_rows.get(period)
                 if bounds is not None: 
                     startrow, stoprow = bounds
                 else:
@@ -145,8 +145,17 @@ class Entity(object):
 
         self.expectedrows = tables.parameters.EXPECTED_ROWS_TABLE
         self.table = None
-        self.period_rows = {}
-        self.period_index = {}
+        
+        self.input_rows = {}
+        #XXX: it might be unnecessary to keep it in memory after the initial
+        # load.
+        #TODO: it *is* unnecessary to keep periods which have already been
+        # simulated.
+        self.input_index = {}
+
+        self.output_rows = {}
+        self.output_index = {}
+        
         self.base_period = None
         self.array = None
 
@@ -290,24 +299,94 @@ class Entity(object):
         else:
             return self.temp_variables[name]
     
-    def locate_tables(self, h5file):
-        entities_node = h5file.root.entities
-        self.table = getattr(entities_node, self.name)
-        self.per_period_table = getattr(entities_node, 
+    def locate_tables(self, h5in, h5out):
+        input_entities = h5in.root.entities
+        self.input_table = getattr(input_entities, self.name)
+
+        output_entities = h5out.root.entities
+        self.table = getattr(output_entities, self.name)
+        self.per_period_table = getattr(output_entities, 
                                         self.name + "_per_period")
+        
+    def load_period_data(self, period):
+        input_table = self.input_table
+        output_dtype = self.array.dtype
+        output_names = set(output_dtype.names)
+        input_names = set(input_table.dtype.names)
+        common_fields = output_names & input_names
+        missing_fields = output_names - input_names
+         
+        rows = self.input_rows.get(period)
+        if rows is None:
+            # nothing needs to be done in that case
+            return
+        
+        start, stop = rows
+        input_array = input_table.read(start, stop)
+        
+        # compute union of ids present in last period and those loaded from 
+        # the input file
+        #XXX: try with union(list of ids) instead of working with
+        # booleans, that way we wouldn't need to keep the input_index
+        # in memory after the initial transfer from input to output
+        max_id = max(input_array['id'][-1], self.array['id'][-1])
+        present_last_period = self.id_to_rownum != -1
+        present_last_period.resize(max_id + 1)
+        present_in_input = self.input_index[period] != -1 
+        present_in_input.resize(max_id + 1)
+        is_present = present_in_input
+        is_present |= present_last_period
+
+        # compute new id_to_rownum
+        id_to_rownum = np.empty(max_id + 1, dtype=int)
+        id_to_rownum[:] = -1
+
+        rownum = 0
+        for id, present in enumerate(is_present):
+            if present:
+                id_to_rownum[id] = rownum
+                rownum += 1
+        
+        # allocate resulting array
+        output_array = np.empty(rownum, dtype=output_dtype)
+
+        # initialise array
+        
+        # 1) copy data from last period
+        for row in self.array:
+            target_rownum = id_to_rownum[row['id']]
+            if target_rownum != -1:
+                output_array[target_rownum] = row
+        
+        # 2) copy data from input file
+        missing_row = np.empty(1, dtype=output_dtype)
+        for fname in missing_fields:
+            ftype = idx_to_type[type_to_idx[output_dtype.fields[fname][0].type]]
+            missing_row[fname] = missing_values[ftype]
+
+        #TODO: chunking instead of reading the whole array in one pass 
+        # *might* be a good idea to preserve some memory
+        for row in input_array:
+            target_rownum = id_to_rownum[row['id']]
+            if target_rownum != -1:
+                output_array[target_rownum] = missing_row  
+                output_row = output_array[target_rownum]
+                for fname in common_fields:
+                    output_row[fname] = row[fname]
+        self.array = output_array
+        self.id_to_rownum = id_to_rownum
 
     def store_period_data(self, period):
         # erase all temporary variables which have been computed this period
         self.temp_variables = {}
 
-        if period in self.period_rows:
-            startrow, stoprow = self.period_rows[period]
-            self.table.modifyRows(startrow, stoprow, rows=self.array)
+        if period in self.output_rows:
+            raise Exception("trying to modify already simulated rows")
         else:
             startrow = self.table.nrows
             self.table.append(self.array)
-            self.period_rows[period] = (startrow, self.table.nrows)
-            self.period_index[period] = self.id_to_rownum
+            self.output_rows[period] = (startrow, self.table.nrows)
+            self.output_index[period] = self.id_to_rownum
         self.table.flush()
 
         self.per_period_table.append(self.per_period_array)              
@@ -351,8 +430,6 @@ class Entity(object):
         baseperiod = self.base_period
         period = context['period'] - 1
         
-        # int8 assumes we will only ever simulate up to 256 periods
-#        result = value.astype(np.int8)
         # using a full int so that the "store" type check works 
         result = value.astype(np.int)
         last_period_true = np.empty(len(self.array), dtype=np.int)
@@ -368,8 +445,6 @@ class Entity(object):
             missing[value_rows] = False
 
             period_value = np.zeros(len(self.array), dtype=bool)
-            #FIXME: astype required because bool->int
-#            period_value[value_rows] = values.astype(bool)
             period_value[value_rows] = values
             
             value = still_running & period_value

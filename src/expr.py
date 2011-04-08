@@ -25,6 +25,8 @@ except ImportError:
         complete_globals.update(eval_context)
         return eval(expr, complete_globals, {})
 
+num_tmp = 0
+
 type_to_idx = {bool: 0, np.bool_: 0, 
                int: 1, np.int32: 1, np.intc: 1, np.int64: 1,
                float:2, np.float64: 2}
@@ -206,7 +208,7 @@ class Expr(object):
 #
 #                usual_len = len(value)
         try:
-#            dt = self.dtype(context) 
+#            dt = self.dtype(context)
             return evaluate(s, context, {})
         except Exception, e:
             msg = e.args[0] if e.args else ''
@@ -432,14 +434,42 @@ class SubscriptedVariable(Variable):
         return '%s[%s]' % (self.name, self.key)
     __repr__ = __str__
 
+    def as_string(self, context):
+        global num_tmp
+        
+        result = self.eval(context)
+        if isinstance(self.key, int):
+            tmp_varname = '__%s_%s' % (self.name, self.key)
+            if tmp_varname in context:
+                assert context[tmp_varname] == result
+            else:
+                context[tmp_varname] = result
+        else: 
+            tmp_varname = "temp_%d" % num_tmp
+            num_tmp += 1
+            context[tmp_varname] = result
+        return tmp_varname
+
     def eval(self, context):
         period = expr_eval(self.key, context)
         globals = context['__globals__']
         base_period = globals['period'][0]
         period_idx = period - base_period
+        
         if self.name not in globals.dtype.fields:
             raise Exception("Unknown global: %s" % self.name)
-        return globals[self.name][period_idx]
+        column = globals[self.name]
+        num_periods = len(globals['period'])
+        ftype = idx_to_type[type_to_idx[column.dtype.type]]
+        missing_value = missing_values[ftype]
+        
+        if isinstance(period_idx, np.ndarray):
+            out_of_bounds = (period_idx < 0) | (period_idx >= num_periods)
+            period_idx[out_of_bounds] = -1
+            return np.where(out_of_bounds, missing_value, column[period_idx])
+        else:
+            out_of_bounds = (period_idx < 0) or (period_idx >= num_periods)
+            return column[period_idx] if not out_of_bounds else missing_value
 
 
 class VirtualArray(object):

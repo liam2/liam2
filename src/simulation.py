@@ -9,7 +9,7 @@ import tables
 import yaml
 
 from data import H5Data, Void
-from entities import entity_registry, str_to_type, EntityContext
+from entities import entity_registry, str_to_type
 from utils import time2str, timed, gettime
 import console
 
@@ -114,35 +114,16 @@ class Simulation(object):
     def run(self):
         start_time = time.time()
 
-        periodic_globals, entities_data = timed(self.data_source.run, 
-                                                entity_registry,
-                                                self.start_period)
-        
-        for ent_name, (array, per_period_array) in entities_data.items():
-            entity = entity_registry[ent_name] 
-            entity.array = array
-            entity.per_period_array = per_period_array
-            print "indexing", ent_name, "..."
-            #TODO: make a function out of this and use it in datamain
-            # build id_to_rownum
-            if len(array):
-                ids = array['id']
-                max_id = np.max(ids)
-                id_to_rownum = np.empty(max_id + 1, dtype=int)
-                id_to_rownum[:] = -1
-                for idx, id in enumerate(ids):
-                    id_to_rownum[id] = idx
-            else:
-                id_to_rownum = np.empty(0, dtype=int) 
-            entity.id_to_rownum = id_to_rownum
-            #TODO: index earlier periods too
-            entity.period_index[array['period'][0]] = id_to_rownum
-            
-        h5file = tables.openFile(self.output_path, mode="a",
-                                 title="Simulation history")
+        periodic_globals = timed(self.data_source.run, 
+                                 entity_registry,
+                                 self.start_period)
 
+        #FIXME: this breaks the datasource generalisation
+        h5in = tables.openFile(self.input_path, mode="r")
+        h5out = tables.openFile(self.output_path, mode="a",
+                                title="Simulation history")
         for entity in self.entities:
-            entity.locate_tables(h5file)
+            entity.locate_tables(h5in, h5out)
             
         globals_base_period = periodic_globals['period'][0]
         
@@ -150,15 +131,22 @@ class Simulation(object):
 
         def simulate_period(period, processes, entities):        
             print "\nperiod", period
+            
+            print "- loading input data"
+            for entity in entities:
+                print "  *", entity.name, "...",
+                timed(entity.load_period_data, period)
+
             # build context for this period:
             # update "globals" with their value for this period
             globals_row = period - globals_base_period
+            if globals_row < 0:
+                raise Exception('Missing globals data for period %d' % period)
             period_globals = periodic_globals[globals_row]
             const_dict = dict((k, period_globals[k])
                               for k in period_globals.dtype.names)
             const_dict['nan'] = float('nan')
             const_dict['__globals__'] = periodic_globals
-            
             for entity in entities:
                 entity.array['period'] = period
                 entity.per_period_array['period'] = period
@@ -179,12 +167,13 @@ class Simulation(object):
 
             print "- storing period data"
             for entity in entities:
-                print "  *", entity.name,
+                print "  *", entity.name, "...",
                 timed(entity.store_period_data, period)
         
-        try: 
-            simulate_period(self.start_period - 1, self.init_processes,
-                            self.init_entities)
+        try:
+            if self.init_processes: 
+                simulate_period(self.start_period - 1, self.init_processes,
+                                self.init_entities)
     
             for period in range(self.start_period, 
                                 self.start_period + self.periods):
@@ -202,7 +191,8 @@ class Simulation(object):
                 c.run()
 
         finally:
-            h5file.close()
+            h5in.close()
+            h5out.close()
 
     def start_console(self, entity, period):
         if self.stepbystep:

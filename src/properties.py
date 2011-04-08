@@ -5,11 +5,10 @@ import numpy as np
 
 from expr import Expr, Variable, Where, functions, as_string, dtype, \
                  coerce_types, type_to_idx, idx_to_type, expr_eval, \
-                 collect_variables, missing_values
+                 collect_variables, missing_values, num_tmp
 from entities import entity_registry, EntityContext, context_length
 import utils
 
-num_tmp = 0
 
 class BreakpointException(Exception):
     pass

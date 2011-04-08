@@ -77,6 +77,13 @@ entities:
                 - const_index: MINR[2005]
                 - expr_index: MINR[period - 1]
                 - show("implicit current period:", no_index, "/ in 2005:", const_index, "/ previous period:", expr_index)
+                - globals_in_expr: 1.0 + MINR
+                - idx_globals_in_expr: 1.0 + MINR[2002]
+                - expr_idx_globals_in_expr: 1.0 + MINR[period - 1]
+                - yob: randint(1900, period)
+                - yop: yob + 65
+                - vector_idx_globals_in_expr: 1.0 + MINR[yob + 65]
+                - show("yob", yob, "yop", yop, "v", vector_idx_globals_in_expr) 
 
             test_macro:
                 - ischild: age < 18
