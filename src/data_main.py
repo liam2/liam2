@@ -231,7 +231,7 @@ class ImportExportData(object):
         const_table.append(const_array)
         const_table.flush()
 
-    def import_tsv(self, delimiter="\t"):
+    def import_tsv(self, delimiter="\t", complib='zlib'):
         print "Importing in", self.h5
         globals = self.load_globals(self.globals_path)
         h5file = tables.openFile(self.h5, mode="w", title="CSV import")
@@ -429,11 +429,12 @@ class ImportExportData(object):
                 for field in toinvert:
                     array[field] = ~array[field]
 
-            print " * storing..."
-#            filters = tables.Filters(complevel=5, complib='blosc',
-#                                     fletcher32=True)
-            filters = tables.Filters(complevel=5, complib='zlib',
-                                     fletcher32=True)
+            if complib is not None:
+                print " * storing (using %s compression)..." % complib
+                filters = tables.Filters(complevel=5, complib=complib,
+                                         fletcher32=True)
+            else:
+                filters = None
             table = h5file.createTable(entities_node, entity.name, main_dtype,
                                        title="%s table" % entity.name,
                                        filters=filters)
