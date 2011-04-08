@@ -1,8 +1,10 @@
 import os
 import csv
-from itertools import izip
+from itertools import izip, islice
+
 
 import numpy as np
+import carray as ca
 import tables
 import yaml
 
@@ -12,7 +14,7 @@ from properties import missing_values
 
 from simulation import Simulation
         
-
+MB = 2.0 ** 20
 
 def dicttotuple(record, fields):
     return tuple([record.get(fname, default) for fname, default in fields])
@@ -35,26 +37,27 @@ def to_bool(v):
     return v.lower() in ('1', 'true')
 
 converters = {bool: to_bool,
-            int: to_int,
-            float: to_float}
+              int: to_int,
+              float: to_float}
 
 def import_csv_3col(fpath, vname, vtype, delimiter=","):
     '''imports one Xsv file which use a three columns format: 
        id, time, value (not necessarily in that order)
     ''' 
-    print "reading", fpath, "(%s)" % vname
-
-    func = converters[vtype]
-
     with open(fpath, "rb") as f:
         dataReader = csv.reader(f, delimiter=delimiter)
         
         header = dataReader.next()
         id_pos = index_first(header, ['id', 'idnum', 'oid'])
         time_pos = index_first(header, ['time', 'year', 'period'])
-        value_pos = index_first(header, ['value', 'did', vname])
-        for row in dataReader:
-            yield (int(row[id_pos]), int(row[time_pos]), func(row[value_pos]))
+        if vname is not None:
+            func = converters[vtype]
+            value_pos = index_first(header, ['value', 'did', vname])
+            for row in dataReader:
+                yield (int(row[id_pos]), int(row[time_pos]), func(row[value_pos]))
+        else:
+            for row in dataReader:
+                yield (int(row[time_pos]), int(row[id_pos]))
 
 
 def import_csv(fpath, fields, delimiter=","):
@@ -92,24 +95,15 @@ def export_csv(file_path, data, colnames, delimiter=","):
         dataWriter.writerow(colnames)
         dataWriter.writerows(data)
     
-def load_objtype(fpath):
-    with open(fpath, "rb") as f:
-        dataReader = csv.reader(f, delimiter='\t')
-        header = dataReader.next()
-        v = header[0]
-        try:
-            int(v)
-            raised = False
-        except ValueError:
-            raised = True
-        assert raised, "first line must be the column name"
-            
-        lines = list(dataReader)
-    return np.array([int(line[0]) for line in lines])
-
 def transpose_table(data):
     numrows = len(data)
     numcols = len(data[0])
+    
+    for rownum, row in enumerate(data, 1):
+        if len(row) != numcols:
+            raise Exception('line %d has %d columns instead of %d !'
+                            % (rownum, len(row), numcols))
+    
     return [[data[rownum][colnum] for rownum in range(numrows)]
             for colnum in range(numcols)]
 
@@ -222,7 +216,7 @@ class ImportExportData(object):
         elif input_path.endswith('.csv'):
             return self.load_csv_globals(input_path)
 
-    def create_tables(self, h5file, globals):
+    def create_globals_table(self, h5file, globals):
         const_names, const_data = globals
         #FIXME: use declared types instead
         coltypes = [(name, float) if name != 'period' else ('period', int)
@@ -237,39 +231,16 @@ class ImportExportData(object):
         const_table.append(const_array)
         const_table.flush()
 
-        ent_node = h5file.createGroup("/", "entities", "Entities")
-#        typemap = {bool: np.int8}
-        typemap = {}
-        for entity in entity_registry.itervalues():
-#            fields = [(name, typemap.get(type_, type_))
-#                      for name, type_ in entity.fields]
-            neededfields = [(name, type_) for name, type_ in entity.fields
-                            if name not in set(entity.missing_fields)]
-            dtype = np.dtype(neededfields)
-            table = h5file.createTable(ent_node, entity.name, dtype,
-                                       title="%s table" % entity.name)
-            table.append(entity.array)
-            table.flush()
-
-            dtype = np.dtype(entity.per_period_fields)
-            per_period_table = \
-                h5file.createTable(ent_node, entity.name + "_per_period", dtype,
-                                   title="%s per period table" % entity.name,
-                                   expectedrows=12*50)
-
-#            per_period_table.append(entity.per_period_array)              
-#            per_period_table.flush()
-
     def import_tsv(self, delimiter="\t"):
         print "Importing in", self.h5
         globals = self.load_globals(self.globals_path)
         h5file = tables.openFile(self.h5, mode="w", title="CSV import")
-        missing_files, loaded_files = [], []
-        for ent_name, entity in entity_registry.iteritems():
-            print "*** %s ***" % ent_name 
-            oldnames = self.oldnames.get(ent_name, {})
-            toinvert = self.toinvert.get(ent_name, [])
+        missing_files = []
 
+        print "building list of needed files..."
+        to_load = {}
+        for ent_name, entity in entity_registry.iteritems():
+            oldnames = self.oldnames.get(ent_name, {})
             neededfields = [(name, type_) for name, type_ in entity.fields
                             if name not in set(entity.missing_fields)]
 
@@ -278,155 +249,282 @@ class ImportExportData(object):
             fields_toskip = set([link._link_field for link in many2one_links])
             fields_toskip.update(["id", "period"])
             
-            toload = []
+            entity_toload = []
             # list "fields" to be loaded
             for vname, vtype in neededfields:
                 if vname not in fields_toskip:
                     oldname = oldnames.get(vname, vname)
                     filename = "%s_%s.txt" % (ent_name[0], oldname)
-                    toload.append((filename, vname, oldname, vtype))
+                    entity_toload.append((filename, vname, oldname, vtype))
             # list "links" to be loaded
             for link in many2one_links:
                 vname = link._link_field
                 oldname = oldnames.get(vname, vname)
                 filename = "link_%s.txt" % link._name
-                toload.append((filename, vname, oldname, int))
+                entity_toload.append((filename, vname, oldname, int))
 
-            # load them into memory
-            records = {}
-            for filename, vname, oldname, vtype in toload:
-                file_path = os.path.join(self.csv_path, filename)
-                if os.path.exists(file_path):
-                    for id, period, value in import_csv_3col(file_path, 
-                                                             oldname, vtype,
-                                                             delimiter):
-                        k = (period, id)
-                        if k in records:
-                            records[k][vname] = value
-                        else:
-                            records[k] = {'id': id, 'period': period,
-                                          vname: value}
-                    loaded_files.append(filename)
-                else:
+            to_load[ent_name] = entity_toload
+                
+            for filename, _, _, _ in entity_toload:
+                if not os.path.exists(os.path.join(self.csv_path, filename)):
                     missing_files.append(filename)
 
-            print "sorting..."
-            sorted_keys = sorted(records.iterkeys())
-            
-            # transform our dictionaries into arrays
-            print "indexing..."
-            periods_for_id = {}
-            for period, id in sorted_keys:
-                periods_for_id.setdefault(id, []).append(period)
-            print "to list..."
-            fdescs = [(fname, missing_values[ftype]) for fname, ftype in neededfields]
-            
-            needed_fnames = set(fname for fname, ftype in neededfields)
-            # by completing the data with previous periods, where available
-            l_items = []
-            for period, id in sorted_keys:
-                record = records[(period, id)]
-                missing_fields = needed_fnames - set(record.keys())
-                if missing_fields:
-                    id_periods = periods_for_id[id]
-                    period_idx = id_periods.index(period)
-                    if period_idx > 0:
-                        # go back as far as necessary to find values for all
-                        # the missing fields of that record
-                        previous_periods = id_periods[period_idx - 1::-1]
-                        for previous_period in previous_periods:
-                            previous_record = records[(previous_period, id)]
-                            for fname in tuple(missing_fields):
-                                value = previous_record.get(fname)
-                                if value is not None:
-                                    record[fname] = value
-                                    missing_fields.remove(fname)
-                            if not missing_fields:
-                                break
-                    # if there are still missing values, use the defaults
-                    if missing_fields:
-                        for fname, default in fdescs:
-                            if fname in missing_fields:
-                                record[fname] = default                     
-                l_items.append(tuple([record[fname] for fname, _ in neededfields]))
-
-            # version with only missing values    
-#            l_items = [dicttotuple(records[k], fdescs) for k in sorted_keys]
-
-            print "to array..."
-            array = np.array(l_items, dtype=np.dtype(neededfields))
-            for field in toinvert:
-                array[field] = ~array[field]
-            entity.array = array
-
-            filename = "objtype_%s.txt" % ent_name
-            loaded_files.append(filename)
-            print "generating id_to_rownum (loading %s)..." % filename
-            file_path = os.path.join(self.csv_path, filename)
-            ids = load_objtype(file_path)
-            max_id = np.max(ids)
-            id_to_rownum = np.empty(max_id + 1, dtype=int)
-            id_to_rownum[:] = -1
-            for idx, id in enumerate(ids):
-                id_to_rownum[id] = idx 
-            entity.id_to_rownum = id_to_rownum
-#            dtype = np.dtype(entity.per_period_fields)
-#            entity.per_period_array = np.zeros(1, dtype=dtype)
-
-        # this is done so that id_to_rownum arrays are smaller
-        print "shifting ids and links..."
-        for ent_name, entity in entity_registry.iteritems():
-            to_shift = [(l._link_field, l._target_entity) 
-                        for l in entity.links.values()
-                        if l._link_type == 'many2one']
-            to_shift.append(('id', ent_name))
-            print " * shifting %s fields:" % ent_name
-            for field, target_name in to_shift:
-                print "   -", field
-                target = entity_registry[target_name]
-                array = entity.array[field]
-                missing_int = missing_values[int]
-                id_to_rownum = target.id_to_rownum
-                entity.array[field] = np.where(array == missing_int,
-                                               missing_int, 
-                                               id_to_rownum[array])
-
-        print "storing..."
-        self.create_tables(h5file, globals)
-        h5file.close()
-        
         if missing_files:
             raise Exception("missing files:\n - %s" 
                             % "\n - ".join(missing_files))
 
-#        present_files = os.listdir(self.csv_path)
-#        extra_files = sorted(list(set(present_files) - set(loaded_files)))
-#        print "extra files", extra_files
+        self.create_globals_table(h5file, globals)
+
+        entities_node = h5file.createGroup("/", "entities", "Entities")
+
+        #TODO: I need to work in 3 passes:
+        # 1) compute global index
+        # 2) for each field, complete missing rows and save the result to a binary file
+        # 3) construct one large array out of it 
+
+        # =========================
+        # 1) read the files a first time to build the list of unique (period, id)
+        #    and unique ids (to replace objtype_XX) 
+        # 2) allocate the array (or a chunk of it) (if chunksize != lastchunk)
+        # 2bis) fill it with default values?
+        # 3) read each file and complete the array (or a chunk of it)
+        # 4) flush data to hdf
+        # 5) if using chunks goto 2
+        # ============================
         
-    def import_csv(self, delimiter=","):
+        # iterate over the the large index, and fill the large vector
+        # as we go
+        # keep current/last_value for the column in a vector the length = the number of unique id
+
+        # 1 min 42 - 355/376Mb with dict[period][id]
+        # 1 min 42 - 444/476Mb with dict[id][period]
+        # 1 min 45 - 450/485Mb with dict[id] = (dict[period], list)
+        # 1 min 51 - 320/340Mb nextrow_for_id
+        # 2 min 04 - ~230/250Mb nextrow_for_id - compressed dict[period] = array 
+        
+        # since I want the result to be sorted by period, I could dump to 
+        # disk the index of all periods except the current one  
+        for ent_name, entity in entity_registry.iteritems():
+            print "*** %s ***" % ent_name 
+            toinvert = self.toinvert.get(ent_name, [])
+
+            neededfields = [(name, type_) for name, type_ in entity.fields
+                            if name not in set(entity.missing_fields)]
+
+            toload_entity = to_load[ent_name]
+
+            
+            print " * computing number of rows..."
+            id_periods = None
+            id_periods_dtype = np.dtype([('period', int), ('id', int)])
+            for filename, _, _, _ in toload_entity:
+                print "   - reading", filename, "...",
+                file_path = os.path.join(self.csv_path, filename)
+                #TODO: check if it is faster in 2 passes (compute number of
+                # lines first)
+                with open(file_path) as f:
+                    numlines = sum(1 for line in f) - 1
+                id_period_stream = import_csv_3col(file_path, None, None,
+                                                   delimiter)
+                file_id_periods = np.fromiter(id_period_stream,
+                                              dtype=id_periods_dtype,
+                                              count=numlines)
+                if id_periods is None:
+                    id_periods = file_id_periods
+                else:
+                    print "computing union ...",
+                    id_periods = np.union1d(id_periods, file_id_periods)
+                print "done."
+                    
+            print "   - unique periods..."
+            periods = np.unique(id_periods['period'])
+            print "   - unique ids..."
+            ids = np.unique(id_periods['id'])
+            max_id = np.max(ids)
+            del ids
+                 
+            print " * indexing..."
+            row_for_id = {}
+            for period in periods:
+                # this might seem very wasteful but when compressed through
+                # carray it is much smaller than an (id, rownum) dict, while
+                # being only a bit slower  
+                row_for_id[period] = np.empty(max_id + 1, dtype=int)
+                row_for_id[period][:] = -1
+
+            numrows = len(id_periods)
+            lastrow_for_id = {}
+
+            # compressing this with carray yield interesting compression but
+            # is really too slow to use afterwards because access is
+            # not sequential at all.            
+            nextrow_for_id = np.empty(numrows, dtype=int)
+            nextrow_for_id[:] = -1
+            for rownum, (period, id) in enumerate(id_periods):
+                row_for_id[period][id] = rownum
+                
+                # this assumes id_periods are ordered by period, which
+                # is implicitly the case because of union1d
+                lastrow = lastrow_for_id.get(id)
+                if lastrow is not None:
+                    nextrow_for_id[lastrow] = rownum
+                lastrow_for_id[id] = rownum
+            del lastrow_for_id
+
+            size = sum(row_for_id[period].nbytes for period in periods)
+            print " * compressing index (%.2f Mb)..." % (size / MB),
+            for period in periods:
+                row_for_id[period] = ca.carray(row_for_id[period])
+            csize = sum(row_for_id[period].cbytes for period in periods)
+            print "done. (%.2f Mb)" % (csize / MB)
+
+            main_dtype = np.dtype(neededfields)
+            print " * allocating main array (%d rows * %d bytes = %.2f Mb)..." \
+                  % (numrows, main_dtype.itemsize, 
+                     main_dtype.itemsize * numrows / MB)
+            array = np.empty(numrows, dtype=main_dtype)
+
+            fdescs = [(fname, missing_values[ftype])
+                      for fname, ftype in neededfields]
+            print " * filling with default values..."
+            defaultrow = tuple(default for fname, default in fdescs)
+            array[:] = defaultrow
+            array['period'] = id_periods['period']
+            array['id'] = id_periods['id']
+            
+            del id_periods
+
+            print " * loading..."
+            for filename, vname, oldname, vtype in toload_entity:
+                file_path = os.path.join(self.csv_path, filename)
+                print "   - reading", filename, "(%s)" % vname, "...",
+
+                values_stream = import_csv_3col(file_path, oldname, vtype,
+                                                delimiter)
+                dt = np.dtype([('id', int), ('period', int), ('value', vtype)])
+                values = np.fromiter(values_stream, dtype=dt)
+                print "sorting...",
+                values.sort()
+                
+                print "transferring and completing...",
+                prev_id, prev_period, prev_value = values[0]
+                
+                rowtofill = row_for_id[prev_period][prev_id]
+                target = array[vname]
+                for id, period, value in values[1:]:
+                    rownum = row_for_id[period][id]
+                    while rowtofill != -1 and rowtofill != rownum:  
+                        target[rowtofill] = prev_value
+                        rowtofill = nextrow_for_id[rowtofill]
+                    rowtofill = rownum
+                    prev_value = value
+                    
+                while rowtofill != -1:  
+                    target[rowtofill] = prev_value
+                    rowtofill = nextrow_for_id[rowtofill]
+                print "done."
+
+            if toinvert:
+                print " * inverting..." 
+                for field in toinvert:
+                    array[field] = ~array[field]
+
+            print " * storing..."
+#            filters = tables.Filters(complevel=5, complib='blosc',
+#                                     fletcher32=True)
+            filters = tables.Filters(complevel=5, complib='zlib',
+                                     fletcher32=True)
+            table = h5file.createTable(entities_node, entity.name, main_dtype,
+                                       title="%s table" % entity.name,
+                                       filters=filters)
+            table.append(array)
+            table.flush()
+
+            dtype = np.dtype(entity.per_period_fields)
+            h5file.createTable(entities_node, entity.name + "_per_period",
+                               dtype,
+                               title="%s per period table" % entity.name,
+                               expectedrows=12*50)
+
+#            max_id = np.max(ids)
+#            id_to_rownum = np.empty(max_id + 1, dtype=int)
+#            id_to_rownum[:] = -1
+#            for rownum, id in enumerate(ids):
+#                id_to_rownum[id] = rownum 
+#            entity.id_to_rownum = id_to_rownum
+
+        # this is done so that id_to_rownum arrays are smaller
+#        print "shifting ids and links..."
+#        for ent_name, entity in entity_registry.iteritems():
+#            to_shift = [(l._link_field, l._target_entity) 
+#                        for l in entity.links.values()
+#                        if l._link_type == 'many2one']
+#            to_shift.append(('id', ent_name))
+#            print " * shifting %s fields:" % ent_name
+#            for field, target_name in to_shift:
+#                print "   -", field
+#                target = entity_registry[target_name]
+#                array = entity.array[field]
+#                missing_int = missing_values[int]
+#                id_to_rownum = target.id_to_rownum
+#                entity.array[field] = np.where(array == missing_int,
+#                                               missing_int, 
+#                                               id_to_rownum[array])
+
+        h5file.close()
+        
+    def import_csv(self, delimiter=",", buffersize=10 * 2 ** 20): # 10 Mb
         print "Importing in", self.h5
         globals = self.load_globals(self.globals_path)
         h5file = tables.openFile(self.h5, mode="w", title="CSV import")
+        self.create_globals_table(h5file, globals)
+        ent_node = h5file.createGroup("/", "entities", "Entities")
 
         for ent_name, entity in entity_registry.iteritems():
             print "*** %s ***" % ent_name
+            
+            # per period table
+            dtype = np.dtype(entity.per_period_fields)
+            h5file.createTable(ent_node, ent_name + "_per_period", dtype,
+                               title="%s per period table" % ent_name,
+                               expectedrows=12*50)
+            
+            # main table
             oldnames = self.oldnames.get(ent_name, {})
             toinvert = self.toinvert.get(ent_name, [])
             filename = ent_name + ".csv"
             filepath = os.path.join(self.csv_path, filename)
+            
             neededfields = [(name, type_) for name, type_ in entity.fields
                             if name not in set(entity.missing_fields)]
             neededfield_oldnames = [(oldnames.get(name, name), type_)
                                     for name, type_ in neededfields]
             
-            data = import_csv(filepath, neededfield_oldnames, delimiter)
-            array = np.array(list(data), dtype=np.dtype(neededfields))
-            for field in toinvert:
-                array[field] = ~array[field]
-            entity.array = array
+            dtype = np.dtype(neededfields)
+            table = h5file.createTable(ent_node, ent_name, dtype,
+                                       title="%s table" % ent_name)
             
-        print "storing..."
-        self.create_tables(h5file, globals)
+            # count number of lines
+            with open(filepath) as f:
+                numlines = sum(1 for line in f) - 1
+            
+            datastream = import_csv(filepath, neededfield_oldnames, delimiter)
+
+            # buffered load
+            max_buffer_rows = buffersize / dtype.itemsize
+            while numlines > 0:
+                buffer_rows = min(numlines, max_buffer_rows)
+                # ideally, we should preallocate an empty buffer and reuse it, 
+                # but that does not seem to be supported by numpy
+                buffer = np.fromiter(islice(datastream, max_buffer_rows),
+                                     dtype=dtype, count=buffer_rows)
+                for field in toinvert:
+                    buffer[field] = ~buffer[field]
+                table.append(buffer)
+                table.flush()
+                
+                numlines -= buffer_rows
+
         h5file.close()
         
 
