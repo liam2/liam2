@@ -1,18 +1,7 @@
 import sys
 
-import numpy as np
-
 from expr import expr_eval, parse
 import entities
-
-
-class AutoflushFile(object):
-    def __init__(self, f):
-        self.f = f
-
-    def write(self, s):
-        self.f.write(s)
-        self.f.flush()
 
 
 class Console(object):
@@ -74,7 +63,6 @@ class Console(object):
         return expr_eval(expr, ctx)
     
     def run(self, debugger=False):
-        sys.stdout = AutoflushFile(sys.stdout)
         if debugger:
             help = """
 Commands:
@@ -123,13 +111,10 @@ Welcome to LIAM interactive console.
                 else:
                     self.list_fields()
             elif debugger and s in ('s', 'step'):
-                sys.stdout = sys.stdout.f
                 return 'step'
             elif debugger and s in ('r', 'resume'):
-                sys.stdout = sys.stdout.f
                 return
             elif s in ('q', 'quit', 'exit'):
-                sys.stdout = sys.stdout.f
                 sys.exit()
             else:
                 try:

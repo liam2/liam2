@@ -2,9 +2,18 @@ from simulation import Simulation
 
 __version__ = "0.2dev"
 
+class AutoflushFile(object):
+    def __init__(self, f):
+        self.f = f
+
+    def write(self, s):
+        self.f.write(s)
+        self.f.flush()
+
 if __name__ == '__main__':
     import sys, platform
 
+    sys.stdout = AutoflushFile(sys.stdout)
     print "LIAM2 %s using Python %s (%s)\n" % (__version__, 
                                                platform.python_version(),
                                                platform.architecture()[0])
