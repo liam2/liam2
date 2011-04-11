@@ -124,6 +124,7 @@ class Expr(object):
 #        print res
 #        return res
 
+
     
 class UnaryOp(Expr):
     def __init__(self, op, expr):
@@ -162,6 +163,14 @@ class Not(UnaryOp):
         elif isinstance(expr, Not):
             return expr.expr
         return self
+
+    def __str__(self):
+        expr = self.expr
+        if not isinstance(expr, Expr) or isinstance(expr, Variable):
+            return "not %s" % expr
+        else:
+            return "not (%s)" % expr
+    __repr__ = __str__
 
 
 
@@ -304,6 +313,14 @@ class LogicalOp(BinaryOp):
         assert dtype(self.expr1) is bool
         assert dtype(self.expr2) is bool
         return bool
+
+    def __str__(self):
+        # for priorities, see: 
+        # http://docs.python.org/reference/expressions.html#summary
+        s1 = ("(%s)" if self.needparenthesis(self.expr1) else "%s") % self.expr1
+        s2 = ("(%s)" if self.needparenthesis(self.expr2) else "%s") % self.expr2
+        return "%s %s %s" % (s1, self.__class__.__name__.lower(), s2)
+    __repr__ = __str__
 
 class And(LogicalOp):
     priority = 7
@@ -525,6 +542,11 @@ class Where(Function):
         elif dtypeiffalse is bool and not isinstance(iftrue, Expr) and iftrue in (False, True):
 #            print "downcasting", iftrue
             iftrue = bool(iftrue)
+#            if iftrue:
+#                return cond | iffalse
+#            else:
+#                if(Cond, True, TrueBrol)
+#                Cond | TrueBrol
 #            print "to", iftrue
         elif not isinstance(iftrue, Expr) and not isinstance(iffalse, Expr) and \
              iftrue in (False, True) and iffalse in (False, True):
@@ -658,6 +680,7 @@ def parse(s, globals=None, expression=True):
     str_to_parse = and_re.sub(r'\1&\2', str_to_parse)
     str_to_parse = or_re.sub(r'\1|\2', str_to_parse)
     str_to_parse = not_re.sub(r'\1~', str_to_parse)
+    str_to_parse = str_to_parse.strip()
 
     mode = 'eval' if expression else 'exec'
     try:
