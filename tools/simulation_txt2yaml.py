@@ -14,10 +14,8 @@ from align_txt2csv import convert_txt_align
 
 #FIXME: regressions are utterly broken... should use logit_regr(x, filter=xxx)
 #instead of logit_regr(where(xxx, x, 0))
-
  
 #TODO
-# - place processes in the order of the agespine
 # - rename list
 # - optimize (comarst >= 2.0) and (comarst <= 2.0) 
 #         to (comarst == 2.0)
@@ -155,25 +153,8 @@ def load_agespine(input_path):
     # read process names until "end_spine"
     with open(input_path, "rb") as f:
         lines = [line for line in f.read().splitlines() if line]
-    return list(itertools.takewhile(lambda l: l != 'end_spine', lines))
     # lines are of the form "regr_p_xxx" or "tran_p_xxx"
-#    current_entity = None 
-#    processes = []
-#    proc_names_so_far = []
-#    for line in lines:
-#        chunks = line.split('_', 2)
-#        if len(chunks) < 3:
-#            # eg: ['mmkt', 'marst']            
-#            continue
-#            
-#        entity = chunks[1]
-#        if entity != current_entity and proc_names_so_far:
-#            processes.append((current_entity, proc_names_so_far))
-#            current_entity = entity
-#            proc_names_so_far = []
-#        proc_names_so_far.append(rename_var(chunks[2]))
-#    processes.append((current_entity, proc_names_so_far))
-#    return processes
+    return list(itertools.takewhile(lambda l: l != 'end_spine', lines))
 
 # ================================
 
@@ -183,7 +164,6 @@ class TextImporter(object):
     def __init__(self, input_path, fields):
         self.input_path = input_path
         self.fields = fields
-#        print "fields", fields
         self.current_condition = None
         self.conditions = None
 
@@ -229,12 +209,10 @@ class TextImporter(object):
             or_conds.append(and_conds)
             pos += 1
         self.conditions[self.current_condition] = {'condition': or_conds}
-#        if self.current_condition == len(self.conditions) - 1:
-#            print "stored"
-#            res = self.conditions
-#        else:
-#            print "not stored"
-#            res = None
+        
+        # We return self.conditions for each condition. It will be overwritten
+        # by later conditions if any, but this ensures they are stored even
+        # if there are actually less conditions than declared.
         return pos, self.conditions
 #        return pos, res
     
@@ -525,17 +503,7 @@ class TransitionImporter(TextImporter):
         #TODO:
         # - Handle uppercase variables correctly (they come from macro.av).
         #   They exist in two forms: MINR and MINR[2003Y1].
-
-        #TODO manually:        
-        # - if(p_yob=2003-60, MINR[2003], ...
-        #   ->
-        #   MINR[t2idx(p_yob + 60)]
-        #   note that p_yob does not seem to be computed anywhere: "yob" 
-        #   does not appear anywhere in the code, nor in a transition computing
-        #   it; so I guess it's not used anymore.
         s = line[1]
-        
-#        s = s.replace('if(', 'where(')
         s = s.replace(' and ', ' & ')
         s = s.replace(' or ', ' | ')
         # add space around operators, if not present
@@ -562,12 +530,6 @@ class TransitionImporter(TextImporter):
    
     def action2expr(self, data):
         const_sample, const_names = self.constants
-#        start, stop = const_sample
-#        time_constants = [('Y%d' % year, Constant('Y%d' % year, year - start))
-#                          for year in range(start, stop + 1)]
-#        globals = dict(time_constants)
-#        globals.update((name, SubscriptableVariable(name))
-#                       for name in const_names)
         globals = dict((name, SubscriptableVariable(name))
                        for name in const_names)
         
@@ -771,15 +733,12 @@ if __name__ == '__main__':
         for name, fdef in obj_fields.iteritems():
             fields['%s_%s' % (obj_type, name)] = fdef
 
-    processes_per_obj = dict()
-#    def grouped(fnames):
-#        itertools.grou
-        
     if fname is None:
         raw_names = os.listdir(input_path)
     else:
         raw_names = [fname] 
         filtered = False
+
     if filtered:
         base_names = process_list
     else:
