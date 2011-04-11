@@ -1,5 +1,7 @@
 import csv
 import itertools
+from itertools import izip, groupby
+import operator
 import os
 from os import path
 import re
@@ -13,14 +15,20 @@ from align_txt2csv import convert_txt_align
 #FIXME: regressions are utterly broken... should use logit_regr(x, filter=xxx)
 #instead of logit_regr(where(xxx, x, 0))
 
-#TODO manually:        
-# - if(p_yob=2003-60, MINR[2003], ...
-#   ->
-#   if((p_yob >= 1943) & (p_yob <= 2000), MINR[t2idx(p_yob + 60)], 0)
-
+ 
 #TODO
+# - place processes in the order of the agespine
+# - rename list
+# - optimize (comarst >= 2.0) and (comarst <= 2.0) 
+#         to (comarst == 2.0)
+# - optimize if((X == 3), True, (X == 8))
+#         to (X == 3) or (X == 8)
+# - filter fields: output only those which are actually used
 # - convert "leaf" expression literals to the type of the variable being 
 #   defined (only absolutely needed for bool)
+# - use another heuristic for the "predictor" syntax: only use it when
+#   there are several processes for the same variable
+# ? min/max as integer values where possible
 # - alignement
 # - remove useless bounds (eg age)
 # - better automatic indentation
@@ -38,12 +46,14 @@ from align_txt2csv import convert_txt_align
 #          c4, v4)
 # ? include original comments
 # ? extract common condition parts in a filter to the choose function?
-# ? min/max as integer values where possible
 # ? implement between
 
-#TODO manually
-# divorce function 
-# KillPerson: what is not handled by normal "kill" function
+#TODO manually:        
+# - if(p_yob=2003-60, MINR[2003], ...
+#   ->
+#   if((yob >= 1943) & (yob <= 2000), MINR[yob + 60], 0)
+# - divorce function 
+# - KillPerson: what is not handled by normal "kill" function
 
 def rename_var(name):
     return name
@@ -89,48 +99,81 @@ def load_fields(input_path):
     }
     for obj_type, obj_fields in data.iteritems():
         for name, fdef in obj_fields.iteritems(): 
-            real_dtype = typemap.get(fdef['Type'], None)
+            real_dtype = typemap.get(fdef['Type'])
             if real_dtype is None:
-                print "Warning: unknown type", fdef['Type']  
+                print "Warning: unknown type '%s', using int" % fdef['Type']
+                real_dtype = int  
             if int(fdef['nCategory']) == 2:
                 assert fdef['Categories'] == "[0,1]"
                 real_dtype = bool
             obj_fields[name] = {'type': real_dtype}
     return data
 
-def load_constants(input_path):
+def transpose_table(data):
+    numrows = len(data)
+    numcols = len(data[0])
+    
+    for rownum, row in enumerate(data, 1):
+        if len(row) != numcols:
+            raise Exception('line %d has %d columns instead of %d !'
+                            % (rownum, len(row), numcols))
+    
+    return [[data[rownum][colnum] for rownum in range(numrows)]
+            for colnum in range(numcols)]
+
+def transpose_and_convert(lines):
+    transposed = transpose_table(lines)
+    names = transposed.pop(0)
+    funcs = [float for _ in range(len(lines))]
+    funcs[0] = int
+    converted = [tuple([func(cell.replace('--', 'NaN'))
+                  for cell, func in izip(row, funcs)])
+                 for row in transposed]
+    return names, converted
+
+def load_av_globals(input_path):
     # macro.av is a csv with tabs OR spaces as separator and a header of 1 line
     with open(input_path, "rb") as f:
-        lines = [line.replace('--', 'NaN').split()
-                 for line in f.read().splitlines()]
-    # sample 1955Y1 2060Y1
-    firstline = lines[0]
+        lines = [line.split() for line in f.read().splitlines()]
+
+    # eg: "sample 1955Y1 2060Y1"
+    firstline = lines.pop(0)
     assert firstline[0] == "sample"
     def year_str2int(s):
         return int(s.replace('Y1', ''))
     start, stop = year_str2int(firstline[1]), year_str2int(firstline[2])
     num_periods = stop - start + 1
-    names = ['YEAR'] + sorted([line[0] 
-                               for line in lines[1:] 
-                               if line[0] != 'YEAR'])
-    data = dict((line[0], [float(cell) for cell in line[1:]])
-                for line in lines[1:])
-    assert len(data[names[0]]) == num_periods
-    data['YEAR'] = [int(cell) for cell in data['YEAR']]
-    transposed = [tuple([data[name][period] for name in names])
-                  for period in range(num_periods)]
-    return (start, stop), names, transposed
+
+    names, data = transpose_and_convert(lines)
+    assert names[0] == 'YEAR'
+    # rename YEAR to period
+    names[0] = 'period'
+    assert len(data) == num_periods
+    return (start, stop), names, data
 
 def load_agespine(input_path):
     # read process names until "end_spine"
     with open(input_path, "rb") as f:
         lines = [line for line in f.read().splitlines() if line]
-    lines = list(itertools.takewhile(lambda l: l != 'end_spine', lines))
-    #FIXME: this assumes a single obj_type for the whole list
-    proc_names = [line.split('_', 2)[2] if '_p_' in line else line
-                  for line in lines]
-    proc_names = [rename_var(name) for name in proc_names]
-    return [{'p': proc_names}]
+    return list(itertools.takewhile(lambda l: l != 'end_spine', lines))
+    # lines are of the form "regr_p_xxx" or "tran_p_xxx"
+#    current_entity = None 
+#    processes = []
+#    proc_names_so_far = []
+#    for line in lines:
+#        chunks = line.split('_', 2)
+#        if len(chunks) < 3:
+#            # eg: ['mmkt', 'marst']            
+#            continue
+#            
+#        entity = chunks[1]
+#        if entity != current_entity and proc_names_so_far:
+#            processes.append((current_entity, proc_names_so_far))
+#            current_entity = entity
+#            proc_names_so_far = []
+#        proc_names_so_far.append(rename_var(chunks[2]))
+#    processes.append((current_entity, proc_names_so_far))
+#    return processes
 
 # ================================
 
@@ -186,11 +229,14 @@ class TextImporter(object):
             or_conds.append(and_conds)
             pos += 1
         self.conditions[self.current_condition] = {'condition': or_conds}
-        if self.current_condition == len(self.conditions) - 1:
-            res = self.conditions
-        else:
-            res = None
-        return pos, res
+#        if self.current_condition == len(self.conditions) - 1:
+#            print "stored"
+#            res = self.conditions
+#        else:
+#            print "not stored"
+#            res = None
+        return pos, self.conditions
+#        return pos, res
     
     def condition(self, pos, line, lines):
         self.current_condition = int(line[1]) - 1
@@ -515,12 +561,14 @@ class TransitionImporter(TextImporter):
     # ------------------------
    
     def action2expr(self, data):
-        const_sample, const_names, const_data = self.constants
-        start, stop = const_sample
-        time_constants = [('Y%d' % year, Constant('Y%d' % year, year - start))
-                          for year in range(start, stop + 1)]
-        globals = dict(time_constants)
-        globals.update((name, SubscriptableVariable(name))
+        const_sample, const_names = self.constants
+#        start, stop = const_sample
+#        time_constants = [('Y%d' % year, Constant('Y%d' % year, year - start))
+#                          for year in range(start, stop + 1)]
+#        globals = dict(time_constants)
+#        globals.update((name, SubscriptableVariable(name))
+#                       for name in const_names)
+        globals = dict((name, SubscriptableVariable(name))
                        for name in const_names)
         
         globals.update((name, Variable(self.var_name(name), 
@@ -529,7 +577,6 @@ class TransitionImporter(TextImporter):
         links = [(name, Link(name, link_def['keyorig'], link_def['desttype']))
                  for name, link_def in self.links.iteritems()]
         globals.update(links)
-        
         return parse(data, globals)
 
     def data2expr(self, data):
@@ -542,6 +589,9 @@ class TransitionImporter(TextImporter):
         assert conditions
         
         lastcond = conditions[-1]
+        if lastcond is None:
+            raise Exception('Actual number of conditions do not match the '
+                            'number of conditions declared !')
         cond_expr = self.condition2expr(lastcond['condition'])
         v = Variable(local_name, self.var_type(predictor))
         expr = Where(cond_expr, self.action2expr(lastcond['action']), v)
@@ -551,42 +601,27 @@ class TransitionImporter(TextImporter):
         return local_name, expr 
 
 
+class TrapImporter(TextImporter):
+    pass
+        
 # =====================
 
-def load_processes(input_path, input_fname, obj_type, 
+def load_processes(input_path, fnames,
                    fields, constants, links):
-    #TODO: use glob instead
-    if input_fname is None:
-        fnames = os.listdir(input_path)
-    else:
-        fnames = [input_fname]
     
     data = {}    
     for fname in fnames:
-        basename, ext = path.splitext(fname)
-        if ext != '.txt':
-#            print "skipping '%s'" % fname
-            continue
-        chunks = basename.split('_')
-        if len(chunks) < 3: # tran_p_x
-            continue
-        if chunks[0] == 'al':
-            continue
-        if len(chunks[1]) != 1:
-            continue
-        if chunks[1] != obj_type:
-            continue
-        
         fpath = path.join(input_path, fname)
         if fname.startswith('regr_'):
             importer = RegressionImporter(fpath, fields)
         elif fname.startswith('tran_'):
             importer = TransitionImporter(fpath, fields, constants, links)
         elif fname.startswith('trap_'):
-            importer = TrapImporter(fpath, fields)
+            print "Warning: trap are unimplemented"
+#            importer = TrapImporter(fpath, fields)
         else:
             print "skipping '%s'" % fname
-            importer, exporter = None, None
+            importer = None
 
         if importer is not None:
             print "processing '%s'" % fname
@@ -600,7 +635,7 @@ def load_processes(input_path, input_fname, obj_type,
                 # print "%s (%s)" % (name, predictor)
                 res = {'predictor': predictor, 
                        'expr': str_expr}
-            if name in data:
+            while name in data:
                 name = name + "_duplicate"
             assert name not in data 
             data[name] = res
@@ -633,28 +668,28 @@ def links2yaml(links):
     else:
         return ''
     
-def vars2yaml(processes):
+def process2yaml(processes):
     if processes:
         sep = '\n            '
-        vars_str = []
+        processes_str = []
         for name, expr in sorted(processes.items()):
             if isinstance(expr, dict):
-                var_str = '''%s:
+                process_str = '''%s:
                 predictor: %s
                 expr: "%s"''' % (name, expr['predictor'], expr['expr'])
             else:
-                var_str = '%s: "%s"' % (name, expr) 
-            vars_str.append(var_str)
+                process_str = '%s: "%s"' % (name, expr) 
+            processes_str.append(process_str)
         return '''
 
         processes:
-            %s''' % sep.join(vars_str)
+            %s''' % sep.join(processes_str)
     else:
         return ''
 
 def constants2yaml(constants):
     constants = [(name, 'float') for name in constants[1]] 
-    return orderedmap2yaml(constants, 2)
+    return orderedmap2yaml(constants, indent=2)
 
 def entities2yaml(entities):
     entity_tmpl = "    %s:%s%s%s\n"
@@ -669,17 +704,17 @@ def entities2yaml(entities):
         else:
             fields_str = ''
         links_str = links2yaml(entity['links'])
-        vars_str = vars2yaml(entity['variables'])
-        e_strings.append(entity_tmpl % (name, fields_str, links_str, vars_str))
+        process_str = process2yaml(entity['processes'])
+        e_strings.append(entity_tmpl % (name, fields_str, links_str, process_str))
     return '\n'.join(e_strings)
 
 def process_list2yaml(processes):
-    #[{'p': []}]
     s = []
-    for d in processes:
-        for entity, processes in d.items():
-            p_str = ',\n              '.join(processes)
-            s.append('        - %s: [%s]' % (entity, p_str))  
+    for ent_name, ent_processes in itertools.groupby(processes, 
+                                                     operator.itemgetter(1)):
+        p_str = ',\n              '.join('%s_%s' % (type_, name) 
+                                         for type_, _, name in ent_processes)
+        s.append('        - %s: [%s]' % (ent_name, p_str))  
     return '\n'.join(s)
 
 def simulation2yaml(constants, entities, process_list):    
@@ -710,19 +745,24 @@ simulation:
 if __name__ == '__main__':
     args = sys.argv
     if len(args) < 3:
-        print "Usage: %s [input_path] [output_path]" % args[0]
+        print "Usage: %s input_path output_path [filtered]" % args[0]
         sys.exit()
     else:
         input_path = args[1]
         output_path = args[2]
+        if len(args) >= 4:
+            filtered = args[3] == "filtered"
+        else:
+            filtered = True 
 
     if not path.isdir(input_path):
         input_path, fname = path.split(input_path)
+        print "path, name", input_path, fname
     else:
         fname = None
 
     fields_per_obj = load_fields(path.join(input_path, 'dyvardesc.txt'))
-    constants = load_constants(path.join(input_path, 'macro.av'))
+    constants = load_av_globals(path.join(input_path, 'macro.av'))[:2]
     links = load_links(path.join(input_path, 'linkage.txt'))
     process_list = load_agespine(path.join(input_path, 'agespine.txt'))
     
@@ -730,22 +770,54 @@ if __name__ == '__main__':
     for obj_type, obj_fields in fields_per_obj.iteritems():
         for name, fdef in obj_fields.iteritems():
             fields['%s_%s' % (obj_type, name)] = fdef
+
+    processes_per_obj = dict()
+#    def grouped(fnames):
+#        itertools.grou
+        
+    if fname is None:
+        raw_names = os.listdir(input_path)
+    else:
+        raw_names = [fname] 
+        filtered = False
+    if filtered:
+        base_names = process_list
+    else:
+        base_names = []
+        for fname in raw_names: 
+            basename, ext = path.splitext(fname)
+            if ext == '.txt':
+                base_names.append(basename)
+            
+    processes = []
+    proc_per_obj = {}
+    for basename in base_names:        
+        chunks = basename.split('_', 2)
+        if len(chunks) < 3: # tran_p_x
+            continue
+        proc_type, obj_type, name = chunks
+        if proc_type == 'al':
+            continue
+        if len(obj_type) != 1:
+            continue
+        processes.append(chunks)
+        proc_per_obj.setdefault(obj_type, []).append(basename + '.txt')
             
     entities = {}
     for obj_type, obj_fields in fields_per_obj.iteritems():
         obj_links = [(k, v) for k, v in links.items() 
                      if v['origintype'] == obj_type]
         obj_fields.update([(v['keyorig'], {'type': int}) for k, v in obj_links])
-        
+        obj_processes = proc_per_obj.get(obj_type, [])
         entities[obj_type] = {
             'fields': obj_fields,
             'links': obj_links,
-            'variables': load_processes(input_path, fname, obj_type, 
+            'processes': load_processes(input_path, obj_processes,
                                         fields, constants, links)
         }
 
     # default YAML serialization is ugly, so we produce the string ourselves
-    yamlstr = simulation2yaml(constants, entities, process_list)
+    yamlstr = simulation2yaml(constants, entities, processes)
 
     print "exporting to '%s'" % output_path
     with open(output_path, 'w') as f_out:
@@ -753,5 +825,6 @@ if __name__ == '__main__':
 #        yaml.dump(yamldata, f_out, default_flow_style=False, 
 #                  default_style='"', indent=4)
     
-    if fname is None: 
+    if fname is None:
         convert_all_align(input_path)
+    print "done."
