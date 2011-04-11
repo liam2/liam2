@@ -262,7 +262,7 @@ class ComparisonOp(BinaryOp):
                 self.expr2 = bool(e2)
             elif dtype1 is int:
                 # down cast 5.0 to int
-                assert int(e2) == e2  
+                assert int(e2) == e2
                 self.expr2 = int(e2)
             
 
@@ -271,10 +271,11 @@ class LowerOrEqual(ComparisonOp):
         self.typecast()
         expr1 = simplify(self.expr1)
         expr2 = simplify(self.expr2)
+        #TODO: use generic bounds check instead
         if dtype(expr1) is bool:
             if expr2 is True:
                 return True
-            elif expr2 is False: #TODO: use generic bounds check instead
+            elif expr2 is False:
                 return simplify(expr1 == False)
         return LowerOrEqual(self.op, expr1, expr2)
 
@@ -283,10 +284,11 @@ class GreaterOrEqual(ComparisonOp):
         self.typecast()
         expr1 = simplify(self.expr1)
         expr2 = simplify(self.expr2)
+        #TODO: use generic bounds check instead
         if dtype(expr1) is bool:
             if expr2 is False:
                 return True
-            elif expr2 is True: #TODO: use generic bounds check instead
+            elif expr2 is True:
                 return simplify(expr1 == True)
         return GreaterOrEqual(self.op, expr1, expr2)
     
@@ -475,30 +477,6 @@ class SubscriptedVariable(Variable):
 #        else:
 ##            print "-> False"
 #            return False
-
-
-class Constant(Expr):
-    def __init__(self, name, value):
-        self.name = name
-        self.value = value
-
-    def __str__(self):
-        return self.name
-    __repr__ = __str__
-        
-    def _simplify(self):
-        return self.value
-    
-    def isequal(self, other):
-#        isconst = isinstance(other, Constant)
-#        namesequal = self.name == other.name
-#        return False
-        if isinstance(other, Constant) and self.name == other.name:
-            assert self.value == other.value
-            return True
-        else:
-            return False
-        
 
     
 class Function(Expr):
