@@ -17,10 +17,10 @@ from align_txt2csv import convert_txt_align
  
 #TODO
 # - rename list
-# - optimize (comarst >= 2.0) and (comarst <= 2.0) 
-#         to (comarst == 2.0)
 # - optimize if((X == 3), True, (X == 8))
 #         to (X == 3) or (X == 8)
+# - optimize if((X == 3), False, (X == 8))
+#         to not (X == 3) or (X == 8)
 # - filter fields: output only those which are actually used
 # - convert "leaf" expression literals to the type of the variable being 
 #   defined (only absolutely needed for bool)
@@ -91,7 +91,8 @@ def load_links(input_path):
 def load_fields(input_path):
     data = load_txt_def(input_path, 1)
     typemap = {
-        'char': float, #int, 
+        'char': float, # should be int but "char" is used all over the place for
+                       # anything
         'int': int,
         'int1000': float
     }
@@ -100,10 +101,14 @@ def load_fields(input_path):
             real_dtype = typemap.get(fdef['Type'])
             if real_dtype is None:
                 print "Warning: unknown type '%s', using int" % fdef['Type']
-                real_dtype = int  
-            if int(fdef['nCategory']) == 2:
+                real_dtype = int
+            ncateg = int(fdef['nCategory']) 
+            if ncateg == 2:  
                 assert fdef['Categories'] == "[0,1]"
                 real_dtype = bool
+            elif ncateg > 2:
+                #TODO: import the list of possible values
+                real_dtype = int
             obj_fields[name] = {'type': real_dtype}
     return data
 
@@ -203,8 +208,8 @@ class TextImporter(object):
             line = lines[pos]
             num_and = int(line[1]) if len(line) >= 1 else 0
             and_conds = [(line[2 + j * 3], 
-                                  float(line[3 + j * 3]), 
-                                  float(line[4 + j * 3]))
+                          float(line[3 + j * 3]), 
+                          float(line[4 + j * 3]))
                          for j in range(num_and)]
             or_conds.append(and_conds)
             pos += 1
@@ -571,7 +576,8 @@ class TrapImporter(TextImporter):
 def load_processes(input_path, fnames,
                    fields, constants, links):
     
-    data = {}    
+    data = []
+    names_seen = set()    
     for fname in fnames:
         fpath = path.join(input_path, fname)
         if fname.startswith('regr_'):
@@ -597,10 +603,11 @@ def load_processes(input_path, fnames,
                 # print "%s (%s)" % (name, predictor)
                 res = {'predictor': predictor, 
                        'expr': str_expr}
-            while name in data:
+            while name in names_seen:
                 name = name + "_duplicate"
-            assert name not in data 
-            data[name] = res
+            assert name not in names_seen
+            names_seen.add(name) 
+            data.append((name, res))
     return data
 
 def convert_all_align(input_path):
@@ -634,7 +641,7 @@ def process2yaml(processes):
     if processes:
         sep = '\n            '
         processes_str = []
-        for name, expr in sorted(processes.items()):
+        for name, expr in processes:
             if isinstance(expr, dict):
                 process_str = '''%s:
                 predictor: %s

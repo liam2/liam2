@@ -252,11 +252,19 @@ class ComparisonOp(BinaryOp):
         return bool
 
     def typecast(self):
-        dtype1 = dtype(self.expr1)
-        dtype2 = dtype(self.expr2)
-        if dtype1 is bool and self.expr2 in (False, True):
-            # down cast 0 and 1 to bool
-            self.expr2 = bool(self.expr2)
+        e1, e2 = self.expr1, self.expr2
+        if isinstance(e1, Expr) and not isinstance(e2, Expr):
+            # type cast constants
+            dtype1 = dtype(e1)
+            if dtype1 is bool:
+                # down cast 0.0 and 1.0 to bool
+                assert e2 in (0.0, 1.0), "%s is not in (0, 1)" % e2
+                self.expr2 = bool(e2)
+            elif dtype1 is int:
+                # down cast 5.0 to int
+                assert int(e2) == e2  
+                self.expr2 = int(e2)
+            
 
 class LowerOrEqual(ComparisonOp):
     def _simplify(self):
@@ -322,11 +330,24 @@ class LogicalOp(BinaryOp):
         return "%s %s %s" % (s1, self.__class__.__name__.lower(), s2)
     __repr__ = __str__
 
+
 class And(LogicalOp):
     priority = 7
     neutral_value = True
     overpowering_value = False
     accepted_types = (bool, np.bool_)
+
+    def _simplify(self):
+        simplified = super(And, self)._simplify()
+        # (v >= value) & (v <= value)   ->   (v == value)    
+        if isinstance(simplified, And):
+            e1 = simplified.expr1
+            e2 = simplified.expr2
+            if isinstance(e1, GreaterOrEqual) and isinstance(e2, LowerOrEqual):
+                if isequal(e1.expr1, e2.expr1) and isequal(e1.expr2, e2.expr2):
+                    return simplify(e1.expr1 == e1.expr2)
+        return simplified
+            
 
 class Or(LogicalOp):
     priority = 9
