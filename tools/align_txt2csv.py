@@ -75,8 +75,11 @@ def convert_txt_align(input_path, output_path=None, invert=False):
         assert basename.startswith('al_regr_')
         output_path = path.join(fpath, "al_%s.csv" % basename[8:])
     print "converting '%s' to '%s'" % (input_path, output_path)
-    variables, possible_values, data = load_txt_align(input_path, invert)
-    save_csv_align(output_path, variables, possible_values, data)
+    try:
+        variables, possible_values, data = load_txt_align(input_path, invert)
+        save_csv_align(output_path, variables, possible_values, data)
+    except:
+        print "FAILED"
     
 if __name__ == '__main__':
     args = sys.argv
