@@ -17,10 +17,14 @@ from align_txt2csv import convert_txt_align
  
 #TODO
 # - rename list
-# - optimize if((X == 3), True, (X == 8))
-#         to (X == 3) or (X == 8)
-# - optimize if((X == 3), False, (X == 8))
-#         to not (X == 3) or (X == 8)
+# - optimize if(A, True, B)
+#         to A or B (assert dtype(B) is bool)
+# - optimize if(A, False, B)
+#         to not A and B (assert dtype(B) is bool)
+# - optimize if(A, B, False)
+#         to A and B (assert dtype(B) is bool)
+# - optimize if(A, B, True)
+#         to not A or B (assert dtype(B) is bool)
 # - filter fields: output only those which are actually used
 # - convert "leaf" expression literals to the type of the variable being 
 #   defined (only absolutely needed for bool)
@@ -104,7 +108,9 @@ def load_fields(input_path):
                 real_dtype = int
             ncateg = int(fdef['nCategory']) 
             if ncateg == 2:  
-                assert fdef['Categories'] == "[0,1]"
+                assert fdef['Categories'] == "[0,1]", \
+                       "field %s has 2 categories that are != from [0, 1]" \
+                       % name
                 real_dtype = bool
             elif ncateg > 2:
                 #TODO: import the list of possible values
@@ -380,7 +386,8 @@ class RegressionImporter(TextImporter):
             return coef
         else:
             v = Variable(self.var_name(name), self.var_type(name))
-            return ZeroClip(v, minvalue, maxvalue) * coef
+            return v * coef
+#            return ZeroClip(v, minvalue, maxvalue) * coef
     
     def vars2expr(self, vars):
         assert vars
@@ -596,6 +603,7 @@ def load_processes(input_path, fnames,
 #            name = '_'.join(chunks[2:])
             name, predictor, expr = importer.import_file()
             name, predictor = rename_var(name), rename_var(predictor)
+#            print "%s:" % predictor, fields['p_' + predictor]['type'].__name__
             str_expr = str(simplify(expr))
             if name == predictor:
                 res = str_expr
@@ -643,11 +651,17 @@ def process2yaml(processes):
         processes_str = []
         for name, expr in processes:
             if isinstance(expr, dict):
+                expr_lines = expr['expr'].splitlines()
+                indent = '\n' + ' ' * (16 + 4 + 3)
+                expr_str = indent.join(expr_lines)
                 process_str = '''%s:
                 predictor: %s
-                expr: "%s"''' % (name, expr['predictor'], expr['expr'])
+                expr: "%s"''' % (name, expr['predictor'], expr_str)
             else:
-                process_str = '%s: "%s"' % (name, expr) 
+                expr_lines = expr.splitlines()
+                indent = '\n' + ' ' * (12 + len(name) + 3)
+                expr = indent.join(expr_lines)
+                process_str = '%s: "%s"' % (name, expr)
             processes_str.append(process_str)
         return '''
 
