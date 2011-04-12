@@ -12,31 +12,21 @@ import yaml
 from expr import *
 from align_txt2csv import convert_txt_align
 
-#FIXME: regressions are utterly broken... should use logit_regr(x, filter=xxx)
-#instead of logit_regr(where(xxx, x, 0))
+#FIXME: 
+# - regressions are broken... should use logit_regr(x, filter=xxx)
+#   instead of logit_regr(where(xxx, x, 0))
+# - process names are incoherent in "agespine" vs "definition" 
  
 #TODO
 # - rename list
-# - optimize if(A, True, B)
-#         to A or B (assert dtype(B) is bool)
-# - optimize if(A, False, B)
-#         to not A and B (assert dtype(B) is bool)
-# - optimize if(A, B, False)
-#         to A and B (assert dtype(B) is bool)
-# - optimize if(A, B, True)
-#         to not A or B (assert dtype(B) is bool)
-# - filter fields: output only those which are actually used
+# - filter fields: output only those which are actually used (comment out 
+#   the rest)
 # - convert "leaf" expression literals to the type of the variable being 
 #   defined (only absolutely needed for bool)
 # - use another heuristic for the "predictor" syntax: only use it when
 #   there are several processes for the same variable
-# ? min/max as integer values where possible
-# - alignement
-# - remove useless bounds (eg age)
-# - better automatic indentation
-# - implement choose for top-level filter
-# - comment out all fields unless they are actually used in one of the 
-#   expressions which are in the agespine
+# ? remove useless bounds (eg age)
+# ? implement choose for top-level filter
 # ? build variable dependency tree and enclose any field which is used before it
 #   is computed in a lag function
 # ? generic if -> choose transformation: 

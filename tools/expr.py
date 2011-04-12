@@ -1,6 +1,8 @@
 import numpy as np
 import re
 
+VERBOSE_SIMPLIFY = False
+
 type_to_idx = {bool: 0, int: 1, float:2}
 idx_to_type = [bool, int, float]
 
@@ -470,20 +472,10 @@ class SubscriptedVariable(Variable):
         return '%s[%s]' % (self.name, self.key)
 
     def isequal(self, other):
-#        print "isequal", self, other,
         isequ = super(SubscriptedVariable, self).isequal(other) and \
                isinstance(other, SubscriptedVariable) and \
                isequal(self.key, other.key)
         return isequ
-#        if isinstance(other, SubscriptedVariable) and self.name == other.name \
-#           and isequal(self.key, other.key):
-#            assert self._dtype == other._dtype
-#            assert self.value == other.value
-##            print "-> True"
-#            return True
-#        else:
-##            print "-> False"
-#            return False
 
     
 class Function(Expr):
@@ -541,9 +533,12 @@ class Where(Function):
         # variable) is boolean.
         if not isinstance(iftrue, Expr) and not isinstance(iffalse, Expr) and \
            iftrue in (False, True) and iffalse in (False, True):
-#            print "simplifying", iftrue, iffalse, "to", bool(iftrue), bool(iffalse)
+            
             iftrue = bool(iftrue)
             iffalse = bool(iffalse)
+            if VERBOSE_SIMPLIFY:
+                print "simplifying\n%s\nto\n%s" % (simplified, 
+                                                   Where(cond, iftrue, iffalse)) 
 
         # type cast        
         dtypeiftrue = dtype(iftrue)
@@ -556,12 +551,16 @@ class Where(Function):
 #                return simplify(~cond | iftrue)
             else:
                 # optimize "if(A, B, False)" to "A and B"
-#                print "simplifying\n%s\nto\n%s" % (simplified, cond & iftrue) 
+                if VERBOSE_SIMPLIFY:
+                    print "simplifying\n%s\nto\n%s" % (simplified,
+                                                       cond & iftrue) 
                 return simplify(cond & iftrue)
         elif dtypeiffalse is bool and not isinstance(iftrue, Expr) and iftrue in (False, True):
             if iftrue:
                 # optimize "if(A, True, B)" to "A or B"
-#                print "simplifying\n%s\nto\n%s" % (simplified, cond | iffalse) 
+                if VERBOSE_SIMPLIFY:
+                    print "simplifying\n%s\nto\n%s" % (simplified,
+                                                       cond | iffalse) 
                 return simplify(cond | iffalse)
             else:
                 iftrue = False
@@ -570,19 +569,24 @@ class Where(Function):
 #                return simplify(~cond & iffalse)
         
         if iftrue is True and iffalse is False:
-#            print "simplifying\n%s\nto\n%s" % (simplified, cond) 
+            if VERBOSE_SIMPLIFY:
+                print "simplifying\n%s\nto\n%s" % (simplified, cond) 
             return cond
         elif iftrue is False and iffalse is True:
-#            print "simplifying\n%s\nto\n%s" % (simplified, ~cond) 
+            if VERBOSE_SIMPLIFY:
+                print "simplifying\n%s\nto\n%s" % (simplified, ~cond) 
             return simplify(~cond)
         elif cond is True:
-#            print "simplifying\n%s\nto\n%s" % (simplified, iftrue) 
+            if VERBOSE_SIMPLIFY:
+                print "simplifying\n%s\nto\n%s" % (simplified, iftrue) 
             return iftrue
         elif cond is False:
-#            print "simplifying\n%s\nto\n%s" % (simplified, iffalse) 
+            if VERBOSE_SIMPLIFY:
+                print "simplifying\n%s\nto\n%s" % (simplified, iffalse) 
             return iffalse
         elif isequal(iftrue, iffalse):
-#            print "simplifying\n%s\nto\n%s" % (simplified, iftrue) 
+            if VERBOSE_SIMPLIFY:
+                print "simplifying\n%s\nto\n%s" % (simplified, iftrue) 
             return iftrue
 #        elif iffalse is 0: # this one decrease readability in some cases
 #            return simplify(cond * iftrue)
@@ -605,8 +609,10 @@ class Where(Function):
             # for some reason simplifying other stalls the interpreter
 #            return Where(simplify(folded_cond), iftrue, simplify(other))
 
-#            print "simplifying\n%s\nto\n%s" % (simplified, 
-#                                               Where(folded_cond, iftrue, other)) 
+            if VERBOSE_SIMPLIFY:
+                print "simplifying\n%s\nto\n%s" % (simplified, 
+                                                   Where(folded_cond, iftrue,
+                                                         other)) 
             return Where(simplify(folded_cond), iftrue, other)
         else:
             return Where(cond, iftrue, iffalse)
