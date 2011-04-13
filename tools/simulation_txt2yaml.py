@@ -16,6 +16,23 @@ from align_txt2csv import convert_txt_align
 # - regressions are broken... should use logit_regr(x, filter=xxx)
 #   instead of logit_regr(where(xxx, x, 0))
 # - process names are incoherent in "agespine" vs "definition" 
+
+#TODO:
+# not cond1 | not cond2 | not cond3
+# ->
+# not (cond1 & cond2 & cond3)
+
+# not cond1 & not cond2 & not cond3
+# ->
+# not (cond1 | cond2 | cond3)
+
+# if(not cond, value1, value2)
+# ->
+# if(cond, value2, value1)
+
+# A + -B
+# ->
+# A - B
  
 #TODO
 # - rename list

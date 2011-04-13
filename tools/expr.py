@@ -6,6 +6,14 @@ VERBOSE_SIMPLIFY = False
 type_to_idx = {bool: 0, int: 1, float:2}
 idx_to_type = [bool, int, float]
 
+def print_simplification(before, after):
+    if VERBOSE_SIMPLIFY:
+        print """simplifying
+%s
+to
+%s
+""" % (before, after) 
+
 def coerce_types(*args):
     dtype_indices = [type_to_idx[dtype(arg)] for arg in args]
     return idx_to_type[max(dtype_indices)]
@@ -519,6 +527,7 @@ class Where(Function):
         all_args = (',\n' + arg_indent).join(arg_strings)
         return "%s(%s)" % (self.name, all_args)
 
+
     def _simplify(self):
         assert len(self.args) == 3
         
@@ -526,7 +535,8 @@ class Where(Function):
         cond = simplify(cond)
         assert dtype(cond) is bool
         iftrue, iffalse = simplify(iftrue), simplify(iffalse)
-        simplified = Where(cond, iftrue, iffalse)
+        presimplified = Where(cond, iftrue, iffalse)
+
         # This is not really correct (it changes the type of the whole
         # expression) but it seems correct in most cases. Ideally, we should
         # only do this if the type for the enclosing expr (ie the target
@@ -536,86 +546,93 @@ class Where(Function):
             
             iftrue = bool(iftrue)
             iffalse = bool(iffalse)
-            if VERBOSE_SIMPLIFY:
-                print "simplifying\n%s\nto\n%s" % (simplified, 
-                                                   Where(cond, iftrue, iffalse)) 
+            print_simplification(presimplified, Where(cond, iftrue, iffalse))
 
-        # type cast        
+        # type cast
+        simplified = None        
         dtypeiftrue = dtype(iftrue)
         dtypeiffalse = dtype(iffalse)
         if dtypeiftrue is bool and not isinstance(iffalse, Expr) and iffalse in (False, True):
             if iffalse:
                 iffalse = True
                 # optimize if(A, B, True)" to "not A or B"
-#                print "simplifying\n%s\nto\n%s" % (simplified, ~cond | iftrue)
-#                return simplify(~cond | iftrue)
+#                simplified = ~cond | iftrue
             else:
                 # optimize "if(A, B, False)" to "A and B"
-                if VERBOSE_SIMPLIFY:
-                    print "simplifying\n%s\nto\n%s" % (simplified,
-                                                       cond & iftrue) 
-                return simplify(cond & iftrue)
+                simplified = cond & iftrue
         elif dtypeiffalse is bool and not isinstance(iftrue, Expr) and iftrue in (False, True):
             if iftrue:
                 # optimize "if(A, True, B)" to "A or B"
-                if VERBOSE_SIMPLIFY:
-                    print "simplifying\n%s\nto\n%s" % (simplified,
-                                                       cond | iffalse) 
-                return simplify(cond | iffalse)
+                simplified = cond | iffalse
             else:
                 iftrue = False
                 # optimize "if(A, False, B)" to "not A and B"
-#                print "simplifying\n%s\nto\n%s" % (simplified, ~cond & iffalse) 
-#                return simplify(~cond & iffalse)
+#                simplified = ~cond & iffalse
+
+        if simplified is not None:
+            print_simplification(presimplified, simplified)
+            return simplify(simplified)
         
         if iftrue is True and iffalse is False:
-            if VERBOSE_SIMPLIFY:
-                print "simplifying\n%s\nto\n%s" % (simplified, cond) 
-            return cond
+            simplified = cond
         elif iftrue is False and iffalse is True:
-            if VERBOSE_SIMPLIFY:
-                print "simplifying\n%s\nto\n%s" % (simplified, ~cond) 
-            return simplify(~cond)
+            simplified = simplify(~cond)
         elif cond is True:
-            if VERBOSE_SIMPLIFY:
-                print "simplifying\n%s\nto\n%s" % (simplified, iftrue) 
-            return iftrue
+            simplified = iftrue
         elif cond is False:
-            if VERBOSE_SIMPLIFY:
-                print "simplifying\n%s\nto\n%s" % (simplified, iffalse) 
-            return iffalse
+            simplified = iffalse
         elif isequal(iftrue, iffalse):
-            if VERBOSE_SIMPLIFY:
-                print "simplifying\n%s\nto\n%s" % (simplified, iftrue) 
-            return iftrue
+            simplified = iftrue
 #        elif iffalse is 0: # this one decrease readability in some cases
 #            return simplify(cond * iftrue)
         elif isinstance(iffalse, Where):
-            # where(cond1, 
+            # if(cond1, 
+            #    value1, 
+            #    if(cond2, 
             #       value1, 
-            #       where(cond2, 
-            #             value1, 
-            #             where(cond3, 
-            #                   value1, 
-            #                   value2)))
-            # -> 
-            # where(cond1 | cond2 | cond3, value1, value2)
-            folded_cond = cond 
+            #       if(cond3, 
+            #          value1, 
+            #          value2)))
+            # ->
+            # if(cond1 | cond2 | cond3, value1, value2)
+            folded_cond = cond
             other = iffalse
-            # iftrue == other.iftrue
-            while isinstance(other, Where) and isequal(iftrue, other.args[1]):
-                folded_cond |= other.args[0]
-                other = other.args[2] # other.iffalse
-            # for some reason simplifying other stalls the interpreter
-#            return Where(simplify(folded_cond), iftrue, simplify(other))
-
-            if VERBOSE_SIMPLIFY:
-                print "simplifying\n%s\nto\n%s" % (simplified, 
-                                                   Where(folded_cond, iftrue,
-                                                         other)) 
-            return Where(simplify(folded_cond), iftrue, other)
+            # while iftrue == other.iftrue
+            while isinstance(other, Where):
+                other_cond, other_iftrue, other_iffalse = other.args
+                if not isequal(other_iftrue, iftrue):
+                    break
+                folded_cond |= other_cond
+                other = other_iffalse
+            if folded_cond is not cond:
+                simplified = Where(simplify(folded_cond), iftrue, other)
+        elif isinstance(iftrue, Where):
+            # if(cond1,
+            #    if(cond2,
+            #       if(cond3,
+            #          value1,
+            #          value2),
+            #       value2),
+            #    value2)
+            # ->
+            # if(cond1 & cond2 & cond3, value1, value2)
+            folded_cond = cond
+            other = iftrue
+            # while iftrue == other.iftrue
+            while isinstance(other, Where):
+                other_cond, other_iftrue, other_iffalse = other.args
+                if not isequal(other_iffalse, iffalse):
+                    break
+                folded_cond &= other_cond
+                other = other_iftrue
+            if folded_cond is not cond:
+                simplified = Where(simplify(folded_cond), other, iffalse)
+        
+        if simplified is not None:
+            print_simplification(presimplified, simplified)
+            return simplified
         else:
-            return Where(cond, iftrue, iffalse)
+            return presimplified
 
     def dtype(self):
         assert dtype(self.args[0]) == bool
