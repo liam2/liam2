@@ -6,8 +6,8 @@ VERBOSE_SIMPLIFY = False
 type_to_idx = {bool: 0, int: 1, float:2}
 idx_to_type = [bool, int, float]
 
-def print_simplification(before, after):
-    if VERBOSE_SIMPLIFY:
+def print_simplification(before, after, always=False):
+    if VERBOSE_SIMPLIFY or always:
         print """simplifying
 %s
 to
@@ -543,10 +543,10 @@ class Where(Function):
         # variable) is boolean.
         if not isinstance(iftrue, Expr) and not isinstance(iffalse, Expr) and \
            iftrue in (False, True) and iffalse in (False, True):
-            
-            iftrue = bool(iftrue)
-            iffalse = bool(iffalse)
-            print_simplification(presimplified, Where(cond, iftrue, iffalse))
+            iftrue, iffalse = bool(iftrue), bool(iffalse)
+            new_presimplified = Where(cond, iftrue, iffalse)
+            print_simplification(presimplified, new_presimplified)
+            presimplified = new_presimplified
 
         # type cast
         simplified = None        
@@ -554,7 +554,8 @@ class Where(Function):
         dtypeiffalse = dtype(iffalse)
         if dtypeiftrue is bool and not isinstance(iffalse, Expr) and iffalse in (False, True):
             if iffalse:
-                iffalse = True
+                if not isinstance(iffalse, bool):
+                    simplified = Where(cond, iftrue, True)
                 # optimize if(A, B, True)" to "not A or B"
 #                simplified = ~cond | iftrue
             else:
@@ -565,12 +566,13 @@ class Where(Function):
                 # optimize "if(A, True, B)" to "A or B"
                 simplified = cond | iffalse
             else:
-                iftrue = False
+                if not isinstance(iftrue, bool):
+                    simplified = Where(cond, False, iffalse)
                 # optimize "if(A, False, B)" to "not A and B"
 #                simplified = ~cond & iffalse
 
         if simplified is not None:
-            print_simplification(presimplified, simplified)
+            print_simplification(presimplified, simplified, always=True)
             return simplify(simplified)
         
         if iftrue is True and iffalse is False:
@@ -627,6 +629,8 @@ class Where(Function):
                 other = other_iftrue
             if folded_cond is not cond:
                 simplified = Where(simplify(folded_cond), other, iffalse)
+        elif isinstance(cond, Not):
+            simplified = simplify(Where(cond.expr, iffalse, iftrue))
         
         if simplified is not None:
             print_simplification(presimplified, simplified)

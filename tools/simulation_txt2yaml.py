@@ -18,6 +18,8 @@ from align_txt2csv import convert_txt_align
 # - process names are incoherent in "agespine" vs "definition" 
 
 #TODO:
+# mean -> tavg
+
 # not cond1 | not cond2 | not cond3
 # ->
 # not (cond1 & cond2 & cond3)
@@ -25,10 +27,6 @@ from align_txt2csv import convert_txt_align
 # not cond1 & not cond2 & not cond3
 # ->
 # not (cond1 | cond2 | cond3)
-
-# if(not cond, value1, value2)
-# ->
-# if(cond, value2, value1)
 
 # A + -B
 # ->
@@ -407,17 +405,25 @@ class RegressionImporter(TextImporter):
         conditions = data['numorcond']
         assert conditions
         
-        lastcond = conditions[-1]
-        cond_expr = self.condition2expr(lastcond['condition'])
-        expr = Where(cond_expr, self.vars2expr(lastcond['vars']), 0)
-        for cond in conditions[-2::-1]:
-            cond_expr = self.condition2expr(cond['condition'])
-            expr = Where(cond_expr, self.vars2expr(cond['vars']), expr)
+        if len(conditions) == 1:
+            condition = conditions[0] 
+            expr = self.vars2expr(condition['vars'])
+            filter_expr = self.condition2expr(condition['condition'])
+        else:
+            lastcond = conditions[-1]
+            cond_expr = self.condition2expr(lastcond['condition'])
+            expr = Where(cond_expr, self.vars2expr(lastcond['vars']), 0)
+            filter_expr = cond_expr
+            for cond in conditions[-2::-1]:
+                cond_expr = self.condition2expr(cond['condition'])
+                expr = Where(cond_expr, self.vars2expr(cond['vars']), expr)
+                filter_expr |= cond_expr
+                
+        kwargs = {'filter': filter_expr}
         predictor, pred_type, _, _  = data['predictor']
         assert predictor[1] == "_"
         predictor = predictor[2:]
-        
-        kwargs = {}
+
         if data.get('u_varname'):
             # another option would be to do:
             #expr += Variable(self.var_name(data['u_varname']))"
