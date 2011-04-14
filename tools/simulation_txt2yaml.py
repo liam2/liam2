@@ -637,7 +637,7 @@ def load_processes(input_path, fnames,
                 res = {'predictor': predictor, 
                        'expr': expr_str}
             else:
-                print "renaming %s process to %s" % (name, predictor)
+#                print "renaming %s process to %s" % (name, predictor)
                 res = expr_str
                 name = predictor
         data.append((name, res))

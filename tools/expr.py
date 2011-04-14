@@ -460,10 +460,20 @@ class Addition(BinaryOp):
     accepted_types = (float,)
 
     def simplify(self):
+        simplified = super(Addition, self).simplify()
+        if simplified is not self:
+            return simplified
+        
         if dtype(self.expr1) is bool and dtype(self.expr2) is bool:
             return self.expr1 | self.expr2
-        else:
-            return super(Addition, self).simplify()
+        
+        # a + -b 
+        # -> 
+        # a - b
+        if not isinstance(self.expr2, Expr) and self.expr2 < 0:
+            return self.expr1 - -self.expr2
+        
+        return self
 
 class Substraction(BinaryOp):
     priority = 5
