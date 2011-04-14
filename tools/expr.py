@@ -1,18 +1,9 @@
-import numpy as np
 import re
 
 VERBOSE_SIMPLIFY = False
 
 type_to_idx = {bool: 0, int: 1, float:2}
 idx_to_type = [bool, int, float]
-
-def print_simplification(before, after, always=False):
-    if VERBOSE_SIMPLIFY or always:
-        print """simplifying
-%s
-to
-%s
-""" % (before, after) 
 
 def coerce_types(*args):
     dtype_indices = [type_to_idx[dtype(arg)] for arg in args]
@@ -28,10 +19,25 @@ def collect_variables(expr):
         return set()
 
 def simplify(expr):
-    return expr._simplify() if isinstance(expr, Expr) else expr
+    simplified = expr.simplify() if isinstance(expr, Expr) else expr
+    while simplified is not expr:
+        if VERBOSE_SIMPLIFY:
+            print """simplifying
+%s
+to
+%s
+""" % (expr, simplified) 
+        expr = simplified
+        simplified = expr.simplify() if isinstance(expr, Expr) else expr
+    return simplified
 
 def as_string(expr, indent):
-    return expr.as_string(indent) if isinstance(expr, Expr) else str(expr)
+    if isinstance(expr, Expr):
+         return expr.as_string(indent)
+    elif isinstance(expr, float):
+        return str(expr)
+    else:
+        return repr(expr)
 
 def isequal(expr, other):
     if isinstance(expr, Expr):
@@ -125,17 +131,8 @@ class Expr(object):
     def __invert__(self):
         return Not('~', self)
     
-    def _simplify(self):
-        return self
-
     def simplify(self):
-        return self._simplify()
-#        res = self._simplify()
-#        print "simplify"
-#        print self
-#        print "->"
-#        print res
-#        return res
+        return self
 
     def as_string(self, indent):
         raise NotImplementedError()
@@ -151,8 +148,8 @@ class UnaryOp(Expr):
         self.op = op
         self.expr = expr
         
-    def _simplify(self):
-        expr = self.expr.simplify()
+    def simplify(self):
+        expr = simplify(self.expr)
         if not isinstance(expr, Expr):
             return eval('%s%s' % (self.op, self.expr))
         return self
@@ -178,8 +175,8 @@ class UnaryOp(Expr):
                isequal(self.expr, other.expr)
 
 class Not(UnaryOp):
-    def _simplify(self):
-        expr = self.expr.simplify()
+    def simplify(self):
+        expr = simplify(self.expr)
         if not isinstance(expr, Expr):
             return not expr
         elif isinstance(expr, Not):
@@ -212,6 +209,8 @@ class BinaryOp(Expr):
     def needparenthesis(self, expr):
         if not isinstance(expr, BinaryOp):
             return False
+#        return True
+    
         # theoretically, the commutative part it is only necessary for expr2,
         # but it doesn't decrease readability anyway: 
         # "(a - b) - c" is as readable as "a - b - c"
@@ -232,9 +231,11 @@ class BinaryOp(Expr):
             s2 = "(%s)" % s2
         return "%s %s %s" % (s1, self.op_str(), s2)
 
-    def _simplify(self):
-        expr1 = simplify(self.expr1)
-        expr2 = simplify(self.expr2)
+    def simplify(self):
+        orig_expr1, orig_expr2 = self.expr1, self.expr2
+        expr1, expr2 = simplify(orig_expr1), simplify(orig_expr2)
+        if expr1 is not orig_expr1 or expr2 is not orig_expr2:
+            return self.__class__(self.op, expr1, expr2)
         
         if self.neutral_value is not None:
             if isinstance(expr1, self.accepted_types) and \
@@ -255,7 +256,7 @@ class BinaryOp(Expr):
         if not isinstance(expr1, Expr) and not isinstance(expr2, Expr):
             return eval('%s %s %s' % (expr1, self.op, expr2))
 
-        return self.__class__(self.op, expr1, expr2)
+        return self
     
     def collect_variables(self):
         expr1_vars = collect_variables(self.expr1) 
@@ -281,19 +282,27 @@ class ComparisonOp(BinaryOp):
             if dtype1 is bool:
                 # down cast 0.0 and 1.0 to bool
                 assert e2 in (0.0, 1.0), "%s is not in (0, 1)" % e2
-                self.expr2 = bool(e2)
+                if e2 is not bool(e2):
+                    return self.__class__(self.op, e1, bool(e2))
             elif dtype1 is int:
                 # down cast 5.0 to int
-                assert int(e2) == e2
-                self.expr2 = int(e2)
+                assert int(e2) == e2, "trying to compare %s which is an int " \
+                                      "to %f which has a fractional part" % \
+                                      (e1, e2)
+                if e2 is not int(e2):
+                    return self.__class__(self.op, e1, int(e2))
             elif dtype1 is float:
                 # up cast to float
-                self.expr2 = float(e2)
-            
+                if e2 is not float(e2):
+                    return self.__class__(self.op, e1, float(e2))
+        return self
 
 class LowerOrEqual(ComparisonOp):
-    def _simplify(self):
-        self.typecast()
+    def simplify(self):
+        simplified = self.typecast()
+        if simplified is not self:
+            return simplified
+        
         expr1 = simplify(self.expr1)
         expr2 = simplify(self.expr2)
         #TODO: use generic bounds check instead
@@ -301,12 +310,15 @@ class LowerOrEqual(ComparisonOp):
             if expr2 is True:
                 return True
             elif expr2 is False:
-                return simplify(expr1 == False)
-        return LowerOrEqual(self.op, expr1, expr2)
+                return expr1 == False
+        return self
 
 class GreaterOrEqual(ComparisonOp):
-    def _simplify(self):        
-        self.typecast()
+    def simplify(self):        
+        simplified = self.typecast()
+        if simplified is not self:
+            return simplified
+
         expr1 = simplify(self.expr1)
         expr2 = simplify(self.expr2)
         #TODO: use generic bounds check instead
@@ -314,32 +326,38 @@ class GreaterOrEqual(ComparisonOp):
             if expr2 is False:
                 return True
             elif expr2 is True:
-                return simplify(expr1 == True)
-        return GreaterOrEqual(self.op, expr1, expr2)
+                return expr1 == True
+        return self
     
 class Equality(ComparisonOp):
-    def _simplify(self):
-        self.typecast()
+    def simplify(self):
+        simplified = self.typecast()
+        if simplified is not self:
+            return simplified
+
         expr1 = simplify(self.expr1)
         expr2 = simplify(self.expr2)
         if dtype(expr1) is bool:
             if expr2 is True:
                 return expr1
             elif expr2 is False:
-                return simplify(~expr1)
-        return Equality(self.op, expr1, expr2)
+                return ~expr1
+        return self
 
 class Inequality(ComparisonOp):
-    def _simplify(self):
-        self.typecast()
+    def simplify(self):
+        simplified = self.typecast()
+        if simplified is not self:
+            return simplified
+
         expr1 = simplify(self.expr1)
         expr2 = simplify(self.expr2)
         if dtype(expr1) is bool:
             if expr2 is False:
                 return expr1
             elif expr2 is True:
-                return simplify(~expr1)
-        return Inequality(self.op, expr1, expr2)
+                return ~expr1
+        return self
 
 
 class LogicalOp(BinaryOp):
@@ -357,42 +375,82 @@ class And(LogicalOp):
     priority = 7
     neutral_value = True
     overpowering_value = False
-    accepted_types = (bool, np.bool_)
+    accepted_types = (bool,)
 
-    def _simplify(self):
-        simplified = super(And, self)._simplify()
+    def simplify(self):
+        presimplified = super(And, self).simplify()
+        if presimplified is not self:
+            return presimplified
+        
         # (v >= value) & (v <= value)   ->   (v == value)    
-        if isinstance(simplified, And):
-            e1 = simplified.expr1
-            e2 = simplified.expr2
+        if isinstance(presimplified, And):
+            e1 = presimplified.expr1
+            e2 = presimplified.expr2
             if isinstance(e1, GreaterOrEqual) and isinstance(e2, LowerOrEqual):
                 if isequal(e1.expr1, e2.expr1) and isequal(e1.expr2, e2.expr2):
-                    return simplify(e1.expr1 == e1.expr2)
-        return simplified
+                    return e1.expr1 == e1.expr2
+        return presimplified
+
+def flatten(expr):
+    '''
+    converts to a flat list of object that are comparable.
+    see numexpr.expressionToAST(ex) for inspiration
+    '''
+    pass
+
+def unflatten(expr_set, op):
+    pass
+            
+def extract_common_subset(e1, e2):
+#    op = e1.__class__
+#    if isinstance(e2, op):
+#        e1_flat = flatten(e1)
+#        e2_flat = flatten(e2)
+#        e1set = orderedset(e1_flat)
+#        e2set = orderedset(e2_flat)
+#        commonset = e1set & e2set
+#        common = unflatten(commonset, op)
+#        e1_rest = unflatten(e1set - commonset, op)
+#        e2_rest = unflatten(e2set - commonset, op)
+#        return common, e1_rest, e2_rest
+#    else:
+#        return None, e1, e2
+        
+    folded_cond = None
+    while isinstance(e1, And) and isinstance(e2, And) and \
+          isequal(e1.expr1, e2.expr1):
+        if folded_cond is None:
+            folded_cond = e1.expr1
+        else:
+            folded_cond &= e1.expr1
+        e1, e2 = e1.expr2, e2.expr2
+    return folded_cond, e1, e2
             
 class Or(LogicalOp):
     priority = 9
     neutral_value = False
     overpowering_value = True 
-    accepted_types = (bool, np.bool_)
+    accepted_types = (bool,)
 
-#    def _simplify(self):
-#        expr1 = self.expr1
-#        expr2 = self.expr2
-#        if isinstance(expr1, Equality) and isinstance(expr2, Or) \
-#           and isinstance(expr1.expr1, Variable) \
-#           and not isinstance(expr1.expr2, Expr):
-#            expr = expr2
-#            variable = expr1.expr1
-#            values = set([expr1.expr2])
-#            while isinstance(expr, Or) and isinstance(expr.expr1, Equality) \
-#                  and isinstance(expr.expr1.expr1, Variable) \
-#                  and isequal(expr.expr1.expr1, variable) \
-#                  and not isinstance(expr.expr1.expr2, Expr):
-#                values.add(expr.expr1.expr2)
-#                expr = expr.expr2
-#            # if values represent a continuous range... fold it.
-#        return self
+    def simplify(self):
+        presimplified = super(Or, self).simplify()
+        if presimplified is not self:
+            return presimplified
+        
+        if isinstance(presimplified, Or):
+            cs, e1, e2 = extract_common_subset(presimplified.expr1, 
+                                               presimplified.expr2)
+            if cs is not None:
+                return cs & (e1 | e2)
+            
+            # A or not A -> True                    
+            # not A or A -> True                    
+            if isinstance(e1, Not) and isequal(e1.expr, e2) or \
+               isinstance(e2, Not) and isequal(e2.expr, e1):
+                return True
+            
+        return presimplified
+
     
 class Addition(BinaryOp):
     priority = 5
@@ -401,12 +459,11 @@ class Addition(BinaryOp):
     overpowering_value = None 
     accepted_types = (float,)
 
-    def _simplify(self):
+    def simplify(self):
         if dtype(self.expr1) is bool and dtype(self.expr2) is bool:
-            return simplify(self.expr1 | self.expr2)
+            return self.expr1 | self.expr2
         else:
-            return super(Addition, self)._simplify()
-
+            return super(Addition, self).simplify()
 
 class Substraction(BinaryOp):
     priority = 5
@@ -442,7 +499,7 @@ class Variable(Expr):
         else:
             return str(self.value)
         
-    def _simplify(self):
+    def simplify(self):
         if self.value is None:
             return self
         else:
@@ -512,11 +569,17 @@ class Function(Expr):
                          for self_arg, other_arg in zip(self.args, other.args))  
         return self.name == other.name and args_equal and kwargs_equal
             
-    def _simplify(self):
-        args = [simplify(arg) for arg in self.args]
-        kwargs = dict((k, simplify(v)) for k, v in self.kwargs.items())
-        return self.__class__(*args, **kwargs)
+    def simplify(self):
+        sargs = [simplify(arg) for arg in self.args]
+        skwargs = dict((k, simplify(v)) for k, v in self.kwargs.items())
+        if all(sarg is arg for arg, sarg in zip(self.args, sargs)) and \
+           all(skwargs[k] is self.kwargs[k] for k in self.kwargs.iterkeys()):
+            return self
+        return self.__class__(*sargs, **skwargs)
     
+
+    
+
         
 class Where(Function):
     name = 'if'
@@ -528,66 +591,68 @@ class Where(Function):
         return "%s(%s)" % (self.name, all_args)
 
 
-    def _simplify(self):
+    def simplify(self):
         assert len(self.args) == 3
         
-        cond, iftrue, iffalse = self.args
-        cond = simplify(cond)
-        assert dtype(cond) is bool
-        iftrue, iffalse = simplify(iftrue), simplify(iffalse)
-        presimplified = Where(cond, iftrue, iffalse)
-
+        orig_cond, orig_iftrue, orig_iffalse = self.args
+        assert dtype(orig_cond) is bool
+        
+        cond = simplify(orig_cond)
+        iftrue, iffalse = simplify(orig_iftrue), simplify(orig_iffalse)
+        if cond is not orig_cond or \
+           iftrue is not orig_iftrue or \
+           iffalse is not orig_iffalse:
+            return Where(cond, iftrue, iffalse) 
+        
         # This is not really correct (it changes the type of the whole
         # expression) but it seems correct in most cases. Ideally, we should
         # only do this if the type for the enclosing expr (ie the target
         # variable) is boolean.
         if not isinstance(iftrue, Expr) and not isinstance(iffalse, Expr) and \
-           iftrue in (False, True) and iffalse in (False, True):
-            iftrue, iffalse = bool(iftrue), bool(iffalse)
-            new_presimplified = Where(cond, iftrue, iffalse)
-            print_simplification(presimplified, new_presimplified)
-            presimplified = new_presimplified
+           iftrue in (False, True) and iffalse in (False, True) and \
+           (iftrue is not bool(iftrue) or iffalse is not bool(iffalse)):
+            return Where(cond, bool(iftrue), bool(iffalse))
 
         # type cast
-        simplified = None        
         dtypeiftrue = dtype(iftrue)
         dtypeiffalse = dtype(iffalse)
         if dtypeiftrue is bool and not isinstance(iffalse, Expr) and iffalse in (False, True):
             if iffalse:
                 if not isinstance(iffalse, bool):
-                    simplified = Where(cond, iftrue, True)
+                    return Where(cond, iftrue, True)
                 # optimize if(A, B, True)" to "not A or B"
-#                simplified = ~cond | iftrue
+#                return ~cond | iftrue
             else:
                 # optimize "if(A, B, False)" to "A and B"
-                simplified = cond & iftrue
-        elif dtypeiffalse is bool and not isinstance(iftrue, Expr) and iftrue in (False, True):
+                return cond & iftrue
+            
+        if dtypeiffalse is bool and not isinstance(iftrue, Expr) and iftrue in (False, True):
             if iftrue:
                 # optimize "if(A, True, B)" to "A or B"
-                simplified = cond | iffalse
+                return cond | iffalse
             else:
                 if not isinstance(iftrue, bool):
-                    simplified = Where(cond, False, iffalse)
+                    return Where(cond, False, iffalse)
                 # optimize "if(A, False, B)" to "not A and B"
-#                simplified = ~cond & iffalse
+#                return ~cond & iffalse
 
-        if simplified is not None:
-            print_simplification(presimplified, simplified, always=True)
-            return simplify(simplified)
-        
         if iftrue is True and iffalse is False:
-            simplified = cond
-        elif iftrue is False and iffalse is True:
-            simplified = simplify(~cond)
-        elif cond is True:
-            simplified = iftrue
-        elif cond is False:
-            simplified = iffalse
-        elif isequal(iftrue, iffalse):
-            simplified = iftrue
-#        elif iffalse is 0: # this one decrease readability in some cases
-#            return simplify(cond * iftrue)
-        elif isinstance(iffalse, Where):
+            return cond
+        if iftrue is False and iffalse is True:
+            return ~cond
+        
+        if cond is True:
+            return iftrue
+        if cond is False:
+            return iffalse
+        
+        if isequal(iftrue, iffalse):
+            return iftrue
+
+#        if iffalse is 0: # this one decrease readability in some cases
+#            return cond * iftrue
+
+        if isinstance(iffalse, Where):
             # if(cond1, 
             #    value1, 
             #    if(cond2, 
@@ -606,9 +671,45 @@ class Where(Function):
                     break
                 folded_cond |= other_cond
                 other = other_iffalse
+
             if folded_cond is not cond:
-                simplified = Where(simplify(folded_cond), iftrue, other)
-        elif isinstance(iftrue, Where):
+                return Where(folded_cond, iftrue, other)
+
+            iffalse_cond, iffalse_iftrue, iffalse_iffalse = iffalse.args
+
+            # if(A, B, if(not A, C, D))
+            # ->
+            # if(A, B, C)
+            # if(not A, B, if(A, C, D))
+            # ->
+            # if(not A, B, C)
+            if (isinstance(iffalse_cond, Not) and
+                isequal(cond, iffalse_cond.expr)) or \
+               (isinstance(cond, Not) and
+                isequal(cond.expr, iffalse_cond)):
+                return Where(cond, iftrue, iffalse_iftrue)
+
+            # if(A, B, if(A, C, D))
+            # ->
+            # if(A, B, D)
+            if (isequal(cond, iffalse_cond)):
+                return Where(cond, iftrue, iffalse_iffalse)
+
+            # if(A & B, C, if(A & not B, E, F))
+            # ->
+            # if(A, if(B, C, if(D, E, F)), F)
+            if not isinstance(iffalse_iffalse, Expr):
+                cs, e1, e2 = extract_common_subset(cond, iffalse_cond)
+                if cs is not None:
+                    return Where(cs, 
+                                 Where(e1, 
+                                       iftrue, 
+                                       Where(e2, 
+                                             iffalse_iftrue, 
+                                             iffalse_iffalse)),
+                                 iffalse_iffalse)
+
+        if isinstance(iftrue, Where):
             # if(cond1,
             #    if(cond2,
             #       if(cond3,
@@ -628,15 +729,20 @@ class Where(Function):
                 folded_cond &= other_cond
                 other = other_iftrue
             if folded_cond is not cond:
-                simplified = Where(simplify(folded_cond), other, iffalse)
-        elif isinstance(cond, Not):
-            simplified = simplify(Where(cond.expr, iffalse, iftrue))
-        
-        if simplified is not None:
-            print_simplification(presimplified, simplified)
-            return simplified
-        else:
-            return presimplified
+                return Where(folded_cond, other, iffalse)
+
+            iftrue_cond, iftrue_iftrue, iftrue_iffalse = iftrue.args
+            
+            if (isequal(cond, iftrue_cond)):
+                # if(A, if(A, B, C), D)
+                # ->
+                # if(A, B, D)
+                return Where(cond, iftrue_iftrue, iffalse)
+                
+        if isinstance(cond, Not):
+            return Where(cond.expr, iffalse, iftrue)
+
+        return self        
 
     def dtype(self):
         assert dtype(self.args[0]) == bool
@@ -646,13 +752,13 @@ class Where(Function):
 class ZeroClip(Function):
     name = 'zeroclip'
 
-    def _simplify(self):
+    def simplify(self):
         assert len(self.args) == 3
         expr, minvalue, maxvalue = self.args
         expr = simplify(expr)
         minvalue, maxvalue = simplify(minvalue), simplify(maxvalue)
         if isequal(minvalue, maxvalue):
-            return simplify((expr == minvalue) * minvalue)
+            return (expr == minvalue) * minvalue
         else:
             return ZeroClip(expr, minvalue, maxvalue)
 

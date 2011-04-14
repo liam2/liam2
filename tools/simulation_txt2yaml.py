@@ -7,18 +7,21 @@ from os import path
 import re
 import sys
 
-import yaml
+#import yaml
 
 from expr import *
 from align_txt2csv import convert_txt_align
 
 #FIXME: 
-# - regressions are broken... should use logit_regr(x, filter=xxx)
-#   instead of logit_regr(where(xxx, x, 0))
 # - process names are incoherent in "agespine" vs "definition" 
 
 #TODO:
 # mean -> tavg
+
+# if(A & B, C, if(A & D, E, F))
+# ->
+# if(A, if(B, C, if(D, E, F)), F)
+
 
 # not cond1 | not cond2 | not cond3
 # ->
@@ -71,6 +74,12 @@ def rename_var(name):
 #            name = name[1:]
 #    return name
 
+def load_renames(fpath):
+    if fpath is not None:
+        with open(fpath) as f:
+            return yaml.load(f)
+    else:
+        return {}
 
 def load_txt_def(input_path, name_idx):
     with open(input_path, "rb") as f:
@@ -246,7 +255,9 @@ class TextImporter(object):
         basename, ext = path.splitext(fname)
         chunks = basename.split('_')
         assert len(chunks[1]) == 1
-        name = '_'.join(chunks[2:])
+        del chunks[1]
+#        name = '_'.join(chunks[2:])
+        name = '_'.join(chunks)
     
         with open(self.input_path, "rb") as f:
             lines = list(csv.reader(f, delimiter='\t'))
@@ -597,38 +608,39 @@ def load_processes(input_path, fnames,
                    fields, constants, links):
     
     data = []
-    names_seen = set()    
+    predictor_seen = {}
+    parsed = []
+    print "collecting process names..."    
     for fname in fnames:
         fpath = path.join(input_path, fname)
         if fname.startswith('regr_'):
             importer = RegressionImporter(fpath, fields)
         elif fname.startswith('tran_'):
             importer = TransitionImporter(fpath, fields, constants, links)
-        elif fname.startswith('trap_'):
-            print "Warning: trap are unimplemented"
-#            importer = TrapImporter(fpath, fields)
         else:
-            print "skipping '%s'" % fname
             importer = None
-
         if importer is not None:
-            print "processing '%s'" % fname
-#            name = '_'.join(chunks[2:])
             name, predictor, expr = importer.import_file()
-            name, predictor = rename_var(name), rename_var(predictor)
+            parsed.append((fname, name, predictor, expr))
+            predictor_seen.setdefault(predictor, []).append(name) 
+
+    for fname, name, predictor, expr in parsed:
+        print "processing '%s'" % fname
+#            name = '_'.join(chunks[2:])
+        name, predictor = rename_var(name), rename_var(predictor)
 #            print "%s:" % predictor, fields['p_' + predictor]['type'].__name__
-            str_expr = str(simplify(expr))
-            if name == predictor:
-                res = str_expr
-            else:
-                # print "%s (%s)" % (name, predictor)
+        expr_str = str(simplify(expr))
+        if name == predictor:
+            res = expr_str
+        else:
+            if len(predictor_seen[predictor]) > 1: 
                 res = {'predictor': predictor, 
-                       'expr': str_expr}
-            while name in names_seen:
-                name = name + "_duplicate"
-            assert name not in names_seen
-            names_seen.add(name) 
-            data.append((name, res))
+                       'expr': expr_str}
+            else:
+                print "renaming %s process to %s" % (name, predictor)
+                res = expr_str
+                name = predictor
+        data.append((name, res))
     return data
 
 def convert_all_align(input_path):
@@ -741,15 +753,13 @@ simulation:
 if __name__ == '__main__':
     args = sys.argv
     if len(args) < 3:
-        print "Usage: %s input_path output_path [filtered]" % args[0]
+        print "Usage: %s input_path output_path [rename_file] [filtered]" % args[0]
         sys.exit()
     else:
         input_path = args[1]
         output_path = args[2]
-        if len(args) >= 4:
-            filtered = args[3] == "filtered"
-        else:
-            filtered = True 
+        rename_path = None if len(args) < 4 else args[3]
+        filtered = True if len(args) < 5 else args[4] == "filtered"
 
     if not path.isdir(input_path):
         input_path, fname = path.split(input_path)
@@ -757,6 +767,7 @@ if __name__ == '__main__':
     else:
         fname = None
 
+    renames = load_renames(rename_path)
     fields_per_obj = load_fields(path.join(input_path, 'dyvardesc.txt'))
     constants = load_av_globals(path.join(input_path, 'macro.av'))[:2]
     links = load_links(path.join(input_path, 'linkage.txt'))
