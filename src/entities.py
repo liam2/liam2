@@ -432,7 +432,8 @@ class Entity(object):
         
         # using a full int so that the "store" type check works 
         result = value.astype(np.int)
-        last_period_true = np.empty(len(self.array), dtype=np.int)
+        res_size = len(self.array)
+        last_period_true = np.empty(res_size, dtype=np.int)
         last_period_true[:] = period + 1
 
         id_to_rownum = context.id_to_rownum        
@@ -441,11 +442,18 @@ class Entity(object):
             ids, values = self.value_for_period(bool_expr, period, context,
                                                 fill=None)
             value_rows = id_to_rownum[ids]
-            missing = np.ones(len(self.array), dtype=bool)
-            missing[value_rows] = False
 
-            period_value = np.zeros(len(self.array), dtype=bool)
+            #XXX: use fill missing?
+            missing = np.ones(res_size, dtype=bool)
+            missing[value_rows] = False
+            if value_rows[-1] != res_size - 1 and not missing[-1]:
+                missing[-1] = True
+
+            #XXX: use fill missing?
+            period_value = np.zeros(res_size, dtype=bool)
             period_value[value_rows] = values
+            if value_rows[-1] != res_size - 1 and period_value[-1]:
+                period_value[-1] = False
             
             value = still_running & period_value
             result += value * (last_period_true - period)
@@ -459,36 +467,86 @@ class Entity(object):
         baseperiod = self.base_period
         period = context['period'] - 1
         
-        num_values = np.zeros(len(self.array), dtype=np.int)
-        last_period_wh_value = np.empty(len(self.array), dtype=np.int)
-        last_period_wh_value[:] = period
+        res_size = len(self.array)
+        
+        num_values = np.zeros(res_size, dtype=np.int)
+        last_period_wh_value = np.empty(res_size, dtype=np.int)
+        last_period_wh_value[:] = context['period'] # current period
 
-        sum_values = np.zeros(len(self.array), dtype=np.float)        
+        sum_values = np.zeros(res_size, dtype=np.float)        
         id_to_rownum = context.id_to_rownum
         while period >= baseperiod:
             ids, values = self.value_for_period(expr, period, context,
                                                 fill=None)
+
             # filter out lines which are present because there was a value for
             # that individual at that period but not for that column
-            #FIXME: use the correct missing_value for the type of the values
-            # (and watch out for nan != nan)
-            acceptable_rows = values != -1
+            value_type = idx_to_type[type_to_idx[values.dtype.type]]
+            missing_value = missing_values[value_type]
+            if np.isnan(missing_value):
+                acceptable_rows = ~np.isnan(values)
+            else:
+                acceptable_rows = values != missing_value
+
             acceptable_ids = ids[acceptable_rows]
             if len(acceptable_ids):
                 acceptable_values = values[acceptable_rows]
                 
                 value_rows = id_to_rownum[acceptable_ids]
-                has_value = np.zeros(len(self.array), dtype=bool)
+
+                #XXX: use fill missing?
+                has_value = np.zeros(res_size, dtype=bool)
                 has_value[value_rows] = True
-    
-                period_value = np.zeros(len(self.array), dtype=np.float)
+                if value_rows[-1] != res_size - 1 and has_value[-1]:
+                    has_value[-1] = False
+
+                #XXX: use fill missing?
+                period_value = np.zeros(res_size, dtype=np.float)
                 period_value[value_rows] = acceptable_values
+                if value_rows[-1] != res_size - 1 and period_value[-1] != 0:
+                    period_value[-1] = 0
                 
                 num_values += has_value * (last_period_wh_value - period)
                 sum_values += period_value
                 last_period_wh_value[has_value] = period
             period -= 1
         return sum_values / num_values
+
+    def tsum(self, expr, context):
+        baseperiod = self.base_period
+        period = context['period'] - 1
+        
+        res_size = len(self.array)
+        sum_values = np.zeros(res_size, dtype=np.float)        
+        id_to_rownum = context.id_to_rownum
+        while period >= baseperiod:
+            ids, values = self.value_for_period(expr, period, context,
+                                                fill=None)
+            
+            # filter out lines which are present because there was a value for
+            # that individual at that period but not for that column
+            value_type = idx_to_type[type_to_idx[values.dtype.type]]
+            missing_value = missing_values[value_type]
+            if np.isnan(missing_value):
+                acceptable_rows = ~np.isnan(values)
+            else:
+                acceptable_rows = values != missing_value
+
+            acceptable_ids = ids[acceptable_rows]
+            if len(acceptable_ids):
+                acceptable_values = values[acceptable_rows]
+                
+                value_rows = id_to_rownum[acceptable_ids]
+                
+                #XXX: use fill missing?
+                period_value = np.zeros(res_size, dtype=np.float)
+                period_value[value_rows] = acceptable_values
+                if value_rows[-1] != res_size - 1 and period_value[-1] != 0:
+                    period_value[-1] = 0
+                
+                sum_values += period_value
+            period -= 1
+        return sum_values
     
     def __repr__(self):
         return "<Entity '%s'>" % self.name

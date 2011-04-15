@@ -621,6 +621,14 @@ class TimeAverage(FunctionExpression):
         return entity.tavg(self.expr, context)
 
 
+class TimeSum(FunctionExpression):
+    func_name = 'tsum'
+
+    def eval(self, context):
+        entity = context['__entity__']
+        return entity.tsum(self.expr, context)
+
+
 class NumpyProperty(EvaluableExpression):
     func_name = None # optional (for display)
     np_func = (None,)
@@ -1018,6 +1026,7 @@ functions.update({
     'lag': Lag,
     'duration': Duration,
     'tavg': TimeAverage,
+    'tsum': TimeSum,
     # aggregates
     'grpcount': GroupCount,
     'grpmin': GroupMin,
