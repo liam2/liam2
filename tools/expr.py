@@ -1,4 +1,6 @@
 import re
+from orderedset import OrderedSet
+import itertools
 
 VERBOSE_SIMPLIFY = False
 
@@ -17,6 +19,9 @@ def collect_variables(expr):
         return expr.collect_variables()
     else:
         return set()
+
+def flatten(expr):
+    return expr.flatten() if isinstance(expr, Expr) else ('const', (expr,))
 
 def simplify(expr):
     simplified = expr.simplify() if isinstance(expr, Expr) else expr
@@ -142,6 +147,13 @@ class Expr(object):
 
     __repr__ = __str__
 
+    def flatten(self):
+        '''
+        converts to a flat list of object that are comparable.
+        see numexpr.expressionToAST(ex) for inspiration
+        '''
+        raise NotImplementedError()
+
     
 class UnaryOp(Expr):
     def __init__(self, op, expr):
@@ -150,6 +162,9 @@ class UnaryOp(Expr):
         
     def simplify(self):
         expr = simplify(self.expr)
+        if expr is not self.expr:
+            return self.__class__(self.op, expr)
+        
         if not isinstance(expr, Expr):
             return eval('%s%s' % (self.op, self.expr))
         return self
@@ -174,9 +189,15 @@ class UnaryOp(Expr):
         return isinstance(other, UnaryOp) and self.op == other.op and \
                isequal(self.expr, other.expr)
 
+    def flatten(self):
+        return (self.op, (flatten(self.expr),))
+
 class Not(UnaryOp):
     def simplify(self):
         expr = simplify(self.expr)
+        if expr is not self.expr:
+            return self.__class__(self.op, expr)
+        
         if not isinstance(expr, Expr):
             return not expr
         elif isinstance(expr, Not):
@@ -267,6 +288,20 @@ class BinaryOp(Expr):
         return isinstance(other, BinaryOp) and self.op == other.op and \
                isequal(self.expr1, other.expr1) and \
                isequal(self.expr2, other.expr2)
+
+    def flatten(self):
+        l = []
+        f1op, f1list = flatten(self.expr1)
+        f2op, f2list = flatten(self.expr2)
+        if f1op == self.op:
+            l.extend(f1list)
+        else:
+            l.append((f1op, f1list))
+        if f2op == self.op:
+            l.extend(f2list)
+        else:
+            l.append((f2op, f2list))
+        return (self.op, tuple(l))
 
 class ComparisonOp(BinaryOp):
     priority = 10
@@ -364,12 +399,59 @@ class LogicalOp(BinaryOp):
     commutative = True
 
     def dtype(self):
-        assert dtype(self.expr1) is bool
+        assert dtype(self.expr1) is bool, \
+               "logical expression arg (%s) is %s instead of bool" % \
+               (self.expr1, dtype(self.expr1)) 
         assert dtype(self.expr2) is bool
         return bool
 
     def op_str(self):
         return self.__class__.__name__.lower()
+
+
+def unflatten(op, expr_set):
+    if op in ('var', 'const'):
+        return str(expr_set[0])
+    elif op == '~':
+        return '~%s' % unflatten(*expr_set[0])
+    elif op == 'func':
+        raise NotImplementedError()
+    else:
+        return '(' + op.join(unflatten(o, expr) for o, expr in expr_set) + ')'
+            
+def extract_common_subset(e1, e2, flattened=False):
+    r1 = f1op, f1list = flatten(e1)
+    r2 = f2op, f2list = flatten(e2)
+    
+    if len(f1list) == 1:
+        f1op, f1list = '&', (r1,)
+    
+    if len(f2list) == 1:
+        f2op, f2list = '&', (r2,)
+
+    if (f1op == f2op and f1op == '&'):
+        e1set = OrderedSet(f1list)
+        e2set = OrderedSet(f2list)
+        commonset = e1set & e2set
+        if commonset:
+            try:
+                common = unflatten(f1op, commonset)
+                e1_rest = unflatten(f1op, e1set - commonset)
+                e2_rest = unflatten(f1op, e2set - commonset)
+            except NotImplementedError:
+                return None, e1, e2
+            
+            vars = collect_variables(e1) | collect_variables(e2)
+            globals = dict((v, Variable(v, t)) for v, t in vars)
+            cs, e1, e2 = parse(common, globals), parse(e1_rest, globals), \
+                         parse(e2_rest, globals)
+            if e1 is ():
+                e1 = None
+            if e2 is ():
+                e2 = None
+            return cs, e1, e2
+    return None, e1, e2
+
 
 class And(LogicalOp):
     priority = 7
@@ -389,42 +471,8 @@ class And(LogicalOp):
             if isinstance(e1, GreaterOrEqual) and isinstance(e2, LowerOrEqual):
                 if isequal(e1.expr1, e2.expr1) and isequal(e1.expr2, e2.expr2):
                     return e1.expr1 == e1.expr2
+
         return presimplified
-
-def flatten(expr):
-    '''
-    converts to a flat list of object that are comparable.
-    see numexpr.expressionToAST(ex) for inspiration
-    '''
-    pass
-
-def unflatten(expr_set, op):
-    pass
-            
-def extract_common_subset(e1, e2):
-#    op = e1.__class__
-#    if isinstance(e2, op):
-#        e1_flat = flatten(e1)
-#        e2_flat = flatten(e2)
-#        e1set = orderedset(e1_flat)
-#        e2set = orderedset(e2_flat)
-#        commonset = e1set & e2set
-#        common = unflatten(commonset, op)
-#        e1_rest = unflatten(e1set - commonset, op)
-#        e2_rest = unflatten(e2set - commonset, op)
-#        return common, e1_rest, e2_rest
-#    else:
-#        return None, e1, e2
-        
-    folded_cond = None
-    while isinstance(e1, And) and isinstance(e2, And) and \
-          isequal(e1.expr1, e2.expr1):
-        if folded_cond is None:
-            folded_cond = e1.expr1
-        else:
-            folded_cond &= e1.expr1
-        e1, e2 = e1.expr2, e2.expr2
-    return folded_cond, e1, e2
             
 class Or(LogicalOp):
     priority = 9
@@ -436,18 +484,47 @@ class Or(LogicalOp):
         presimplified = super(Or, self).simplify()
         if presimplified is not self:
             return presimplified
-        
+
         if isinstance(presimplified, Or):
-            cs, e1, e2 = extract_common_subset(presimplified.expr1, 
-                                               presimplified.expr2)
-            if cs is not None:
-                return cs & (e1 | e2)
-            
-            # A or not A -> True                    
-            # not A or A -> True                    
-            if isinstance(e1, Not) and isequal(e1.expr, e2) or \
-               isinstance(e2, Not) and isequal(e2.expr, e1):
-                return True
+            op, l = flattened = flatten(presimplified)
+            assert op == '|'
+
+            if len(l) >= 2:
+                # we use combination on the indices, so that we
+                # can reconstruct what is not in the combinations
+                indices = range(len(l))
+                vars = self.collect_variables()
+                globals = dict((v, Variable(v, t)) for v, t in vars)
+                
+                for i1, i2 in itertools.combinations(indices, 2):
+                    try:
+                        e1 = parse(unflatten('&', [l[i1]]), globals)
+                        e2 = parse(unflatten('&', [l[i2]]), globals)
+                    except NotImplementedError:
+                        continue
+
+                    # A or not A -> True                    
+                    # not A or A -> True                    
+                    if isinstance(e1, Not) and isequal(e1.expr, e2) or \
+                       isinstance(e2, Not) and isequal(e2.expr, e1):
+                        return True
+                    
+                    # (A and B and C) or (A and B and D)
+                    # ->
+                    # A and B and (C or D)
+                    cs, e1, e2 = extract_common_subset(e1, e2)
+                    if cs is not None:
+                        notincomb = l[:i1] + l[i1+1:i2] + l[i2+1:]
+                        if notincomb:
+                            notincomb_expr = parse(unflatten('|', notincomb), 
+                                                   globals)
+                        else:
+                            notincomb_expr = False
+                            
+                        if e1 is not None and e2 is not None:
+                            return notincomb_expr | (cs & (e1 | e2))
+                        else:
+                            return notincomb_expr | cs
             
         return presimplified
 
@@ -516,7 +593,7 @@ class Variable(Expr):
             return self.value
 
     def collect_variables(self):
-        return set([self.name])
+        return set([(self.name, self._dtype)])
 
     def dtype(self):
         return self._dtype
@@ -528,6 +605,9 @@ class Variable(Expr):
             return True
         else:
             return False
+
+    def flatten(self):
+        return ('var', (self.name,))
 
 class SubscriptableVariable(Variable):
     def __init__(self, name):
@@ -586,9 +666,11 @@ class Function(Expr):
            all(skwargs[k] is self.kwargs[k] for k in self.kwargs.iterkeys()):
             return self
         return self.__class__(*sargs, **skwargs)
-    
 
-    
+    def flatten(self):
+        return ('func', (tuple(flatten(arg) for arg in self.args),
+                         tuple((k, flatten(v)) 
+                               for k, v in self.kwargs.iteritems())))
 
         
 class Where(Function):
@@ -605,7 +687,8 @@ class Where(Function):
         assert len(self.args) == 3
         
         orig_cond, orig_iftrue, orig_iffalse = self.args
-        assert dtype(orig_cond) is bool
+        cond_dtype = dtype(orig_cond) 
+        assert cond_dtype is bool, "cond dtype is %s" % cond_dtype 
         
         cond = simplify(orig_cond)
         iftrue, iffalse = simplify(orig_iftrue), simplify(orig_iffalse)
@@ -674,7 +757,6 @@ class Where(Function):
             # if(cond1 | cond2 | cond3, value1, value2)
             folded_cond = cond
             other = iffalse
-            # while iftrue == other.iftrue
             while isinstance(other, Where):
                 other_cond, other_iftrue, other_iffalse = other.args
                 if not isequal(other_iftrue, iftrue):
@@ -687,37 +769,46 @@ class Where(Function):
 
             iffalse_cond, iffalse_iftrue, iffalse_iffalse = iffalse.args
 
-            # if(A, B, if(not A, C, D))
-            # ->
-            # if(A, B, C)
-            # if(not A, B, if(A, C, D))
-            # ->
-            # if(not A, B, C)
-            if (isinstance(iffalse_cond, Not) and
-                isequal(cond, iffalse_cond.expr)) or \
-               (isinstance(cond, Not) and
-                isequal(cond.expr, iffalse_cond)):
-                return Where(cond, iftrue, iffalse_iftrue)
-
             # if(A, B, if(A, C, D))
             # ->
             # if(A, B, D)
             if (isequal(cond, iffalse_cond)):
                 return Where(cond, iftrue, iffalse_iffalse)
 
-            # if(A & B, C, if(A & not B, E, F))
+            # if(A & B, C, if(A & D, E, F))
             # ->
             # if(A, if(B, C, if(D, E, F)), F)
-            if not isinstance(iffalse_iffalse, Expr):
+            if not isinstance(iffalse_iffalse, Where):
                 cs, e1, e2 = extract_common_subset(cond, iffalse_cond)
                 if cs is not None:
-                    return Where(cs, 
-                                 Where(e1, 
-                                       iftrue, 
-                                       Where(e2, 
-                                             iffalse_iftrue, 
-                                             iffalse_iffalse)),
-                                 iffalse_iffalse)
+                    # the case where both e1 & e2 are None is already
+                    # taken care of above
+                    
+                    # if(A & B, C, if(A & D, E, F))
+                    # ->
+                    # if(A, if(B, C, if(D, E, F)), F)
+                    if e1 is not None and e2 is not None:
+                        return Where(cs, 
+                                     Where(e1, 
+                                           iftrue, 
+                                           Where(e2, 
+                                                 iffalse_iftrue, 
+                                                 iffalse_iffalse)),
+                                     iffalse_iffalse)
+
+                    # if(A & B, C, if(A & B & D, E, F))
+                    # ->
+                    # if(A & B, C, F)
+                    elif e1 is None:
+                        return Where(cs, iftrue, iffalse_iffalse)
+                    
+                    # if(A & B, C, if(A, D, E))
+                    # ->
+                    # if(A, if(B, C, D), E) 
+                    elif e2 is None:
+                        return Where(cs, 
+                                     Where(e1, iftrue, iffalse_iftrue),
+                                     iffalse_iffalse)
 
         if isinstance(iftrue, Where):
             # if(cond1,
@@ -731,7 +822,6 @@ class Where(Function):
             # if(cond1 & cond2 & cond3, value1, value2)
             folded_cond = cond
             other = iftrue
-            # while iftrue == other.iftrue
             while isinstance(other, Where):
                 other_cond, other_iftrue, other_iffalse = other.args
                 if not isequal(other_iffalse, iffalse):
@@ -743,11 +833,37 @@ class Where(Function):
 
             iftrue_cond, iftrue_iftrue, iftrue_iffalse = iftrue.args
             
+            # if(A, if(A, B, C), D)
+            # ->
+            # if(A, B, D)
             if (isequal(cond, iftrue_cond)):
-                # if(A, if(A, B, C), D)
-                # ->
-                # if(A, B, D)
                 return Where(cond, iftrue_iftrue, iffalse)
+            
+            cs, e1, e2 = extract_common_subset(cond, iftrue_cond)
+            if cs is not None:
+                # the case where both e1 & e2 are None is already
+                # taken care of above
+                
+                # if(A & B, if(A & C, D, E), F)
+                # ->
+                # if(A & B, if(C, D, E), F)
+                
+                # the result is the same whether e1 is None or not
+                
+                # if(A, if(A & B, C, D), E)
+                # ->
+                # if(A, if(B, C, D), E)
+                if e2 is not None:
+                    return Where(cond, 
+                                 Where(e2, iftrue_iftrue, iftrue_iffalse),
+                                 iffalse)
+
+                # if(A & B, if(A, C, D), E)
+                # ->
+                # if(A & B, C, E)
+                else:
+                    return Where(cs, iftrue_iftrue, iffalse)  
+            
                 
         if isinstance(cond, Not):
             return Where(cond.expr, iffalse, iftrue)
@@ -757,6 +873,10 @@ class Where(Function):
     def dtype(self):
         assert dtype(self.args[0]) == bool
         return coerce_types(*self.args[1:])
+
+    def collect_variables(self):
+        vars_per_arg = [collect_variables(arg) for arg in self.args] 
+        return set.union(*vars_per_arg)
         
 
 class ZeroClip(Function):
