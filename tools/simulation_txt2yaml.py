@@ -529,6 +529,7 @@ class TransitionImporter(TextImporter):
             assert var[1] == '_'
             var = var[2:]
             s = "%s.%s" % (link, var)
+        s = s.replace('mean(', 'tavg(')
         s = s.replace('prev(', 'lag(')
         # prevent name collision
         s = s.replace('divorce(', 'do_divorce(')
