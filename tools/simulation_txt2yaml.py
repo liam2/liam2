@@ -15,34 +15,14 @@ from align_txt2csv import convert_txt_align
 #FIXME: 
 # - process names are incoherent in "agespine" vs "definition" 
 
-#TODO:
-# mean -> tavg
-
-# if(A & B, C, if(A & D, E, F))
-# ->
-# if(A, if(B, C, if(D, E, F)), F)
-
-
-# not cond1 | not cond2 | not cond3
-# ->
-# not (cond1 & cond2 & cond3)
-
-# not cond1 & not cond2 & not cond3
-# ->
-# not (cond1 | cond2 | cond3)
-
-# A + -B
-# ->
-# A - B
- 
 #TODO
+# - use another heuristic for the "predictor" syntax: only use it when
+#   there are several processes for the same variable
 # - rename list
 # - filter fields: output only those which are actually used (comment out 
 #   the rest)
 # - convert "leaf" expression literals to the type of the variable being 
 #   defined (only absolutely needed for bool)
-# - use another heuristic for the "predictor" syntax: only use it when
-#   there are several processes for the same variable
 # ? remove useless bounds (eg age)
 # ? implement choose for top-level filter
 # ? build variable dependency tree and enclose any field which is used before it
