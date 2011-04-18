@@ -12,12 +12,7 @@ import sys
 from expr import *
 from align_txt2csv import convert_txt_align
 
-#FIXME: 
-# - process names are incoherent in "agespine" vs "definition" 
-
 #TODO
-# - use another heuristic for the "predictor" syntax: only use it when
-#   there are several processes for the same variable
 # - rename list
 # - filter fields: output only those which are actually used (comment out 
 #   the rest)
@@ -233,16 +228,16 @@ class TextImporter(object):
         # regr_p_alive_f.txt -> alive_f:
         fpath, fname = path.split(self.input_path)
         basename, ext = path.splitext(fname)
-        chunks = basename.split('_')
+        chunks = basename.split('_', 2)
         assert len(chunks[1]) == 1
         del chunks[1]
 #        name = '_'.join(chunks[2:])
-        name = '_'.join(chunks)
+#        name = '_'.join(chunks)
     
         with open(self.input_path, "rb") as f:
             lines = list(csv.reader(f, delimiter='\t'))
     
-        values = {'name': name}
+        values = {'name': chunks}
         pos = 0
         while pos < len(lines):
             line = lines[pos]
@@ -587,12 +582,13 @@ class TrapImporter(TextImporter):
 
 def load_processes(input_path, fnames,
                    fields, constants, links):
-    
+    print "=" * 40
     data = []
     predictor_seen = {}
     parsed = []
-    print "collecting process names..."    
+    print "pass 1: parsing files..."
     for fname in fnames:
+        print " - %s" % fname
         fpath = path.join(input_path, fname)
         if fname.startswith('regr_'):
             importer = RegressionImporter(fpath, fields)
@@ -603,26 +599,43 @@ def load_processes(input_path, fnames,
         if importer is not None:
             name, predictor, expr = importer.import_file()
             parsed.append((fname, name, predictor, expr))
-            predictor_seen.setdefault(predictor, []).append(name) 
+            predictor_seen.setdefault(predictor, []).append(tuple(name))
 
-    for fname, name, predictor, expr in parsed:
-        print "processing '%s'" % fname
+    print "-" * 40
+    print "pass 2: simplifying..."
+    other_types = {
+        'regr': ('tran', 'trap'),
+        'tran': ('regr', 'trap'),
+        'trap': ('tran', 'regr')
+    }
+    proc_name_per_file = {}
+    for fname, fullname, predictor, expr in parsed:
+        print " - %s" % fname, name, predictor
 #            name = '_'.join(chunks[2:])
+        type_, name = fullname
         name, predictor = rename_var(name), rename_var(predictor)
 #            print "%s:" % predictor, fields['p_' + predictor]['type'].__name__
         expr_str = str(simplify(expr))
         if name == predictor:
             res = expr_str
+        elif len(predictor_seen[predictor]) == 1:
+#            print "renaming %s process to %s" % (name, predictor)
+            res = expr_str
+            name = predictor
         else:
-            if len(predictor_seen[predictor]) > 1: 
-                res = {'predictor': predictor, 
-                       'expr': expr_str}
-            else:
-#                print "renaming %s process to %s" % (name, predictor)
-                res = expr_str
-                name = predictor
+            conflicting_names = predictor_seen[predictor] 
+            assert len(conflicting_names) > 1
+            types_to_check = other_types[type_]
+            if any((other_type, name) in conflicting_names
+                   for other_type in types_to_check):
+                name = '%s_%s' % (type_, name)
+            res = {'predictor': predictor,
+                   'expr': expr_str}
+            
         data.append((name, res))
-    return data
+        proc_name_per_file[fname] = name
+    print "=" * 40
+    return proc_name_per_file, data
 
 def convert_all_align(input_path):
     import glob
@@ -700,9 +713,9 @@ def entities2yaml(entities):
 def process_list2yaml(processes):
     s = []
     for ent_name, ent_processes in itertools.groupby(processes, 
-                                                     operator.itemgetter(1)):
-        p_str = ',\n              '.join('%s_%s' % (type_, name) 
-                                         for type_, _, name in ent_processes)
+                                                     operator.itemgetter(0)):
+        p_str = ',\n              '.join(pname
+                                         for ent_name, pname in ent_processes)
         s.append('        - %s: [%s]' % (ent_name, p_str))  
     return '\n'.join(s)
 
@@ -774,7 +787,7 @@ if __name__ == '__main__':
             if ext == '.txt':
                 base_names.append(basename)
             
-    processes = []
+    process_files = []
     proc_per_obj = {}
     for basename in base_names:        
         chunks = basename.split('_', 2)
@@ -785,28 +798,39 @@ if __name__ == '__main__':
             continue
         if len(obj_type) != 1:
             continue
-        processes.append(chunks)
-        proc_per_obj.setdefault(obj_type, []).append(basename + '.txt')
-            
+        fname = basename + '.txt'
+        process_files.append((obj_type, fname))
+        proc_per_obj.setdefault(obj_type, []).append(fname)
+
+    proc_name_per_file = {}        
     entities = {}
     for obj_type, obj_fields in fields_per_obj.iteritems():
         obj_links = [(k, v) for k, v in links.items() 
                      if v['origintype'] == obj_type]
         obj_fields.update([(v['keyorig'], {'type': int}) for k, v in obj_links])
-        obj_processes = proc_per_obj.get(obj_type, [])
+        obj_proc_files = proc_per_obj.get(obj_type, [])
+        print "loading processes for %s" % obj_type
+        obj_proc_names, obj_processes = load_processes(input_path, 
+                                                       obj_proc_files,
+                                                       fields, constants, links)
+        proc_name_per_file.update(obj_proc_names)
         entities[obj_type] = {
             'fields': obj_fields,
             'links': obj_links,
-            'processes': load_processes(input_path, obj_processes,
-                                        fields, constants, links)
+            'processes': obj_processes
         }
 
-    # default YAML serialization is ugly, so we produce the string ourselves
-    yamlstr = simulation2yaml(constants, entities, processes)
-
+    process_names = []
+    for obj, fname in process_files:
+        proc_name = proc_name_per_file.get(fname)
+        if proc_name is not None:
+            process_names.append((obj, proc_name))
+                     
+    print "processes", process_names
     print "exporting to '%s'" % output_path
     with open(output_path, 'w') as f_out:
-        f_out.write(yamlstr)
+        # default YAML serialization is ugly, so we produce the string ourselves
+        f_out.write(simulation2yaml(constants, entities, process_names))
 #        yaml.dump(yamldata, f_out, default_flow_style=False, 
 #                  default_style='"', indent=4)
     
