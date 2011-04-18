@@ -931,15 +931,17 @@ class LinkValue(Variable):
         Variable.__init__(self, '%s.%s' % (name, key), int)
 
 class Link(object):
-    def __init__(self, name, link_field, target_entity):
+    def __init__(self, name, link_field, target_entity, renames):
         # the leading underscores are necessary to not collide with user-defined
         # fields via __getattr__.
         self._name = name
         self._link_field = link_field
         self._target_entity = target_entity
+        self._renames = renames
 
     def get(self, key, missing_value=0.0):
-        return LinkValue(self._name, key, missing_value)
+        new_key = self._renames.get(key, key)
+        return LinkValue(self._name, new_key, missing_value)
 
     __getattr__ = get
 

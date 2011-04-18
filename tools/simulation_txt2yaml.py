@@ -7,13 +7,12 @@ from os import path
 import re
 import sys
 
-#import yaml
+import yaml
 
 from expr import *
 from align_txt2csv import convert_txt_align
 
 #TODO
-# - rename list
 # - filter fields: output only those which are actually used (comment out 
 #   the rest)
 # - convert "leaf" expression literals to the type of the variable being 
@@ -39,15 +38,6 @@ from align_txt2csv import convert_txt_align
 #   if((yob >= 1943) & (yob <= 2000), MINR[yob + 60], 0)
 # - divorce function 
 # - KillPerson: what is not handled by normal "kill" function
-
-def rename_var(name):
-    return name
-
-#    if name.startswith('co') and not name.startswith('coef'):
-#        name = name[2:]
-#        if name[0] == '_':
-#            name = name[1:]
-#    return name
 
 def load_renames(fpath):
     if fpath is not None:
@@ -161,9 +151,11 @@ def load_agespine(input_path):
 class TextImporter(object):
     keywords = None
     
-    def __init__(self, input_path, fields):
+    def __init__(self, input_path, fields, obj_type, renames):
         self.input_path = input_path
         self.fields = fields
+        self.obj_type = obj_type
+        self.renames = renames
         self.current_condition = None
         self.conditions = None
 
@@ -231,13 +223,12 @@ class TextImporter(object):
         chunks = basename.split('_', 2)
         assert len(chunks[1]) == 1
         del chunks[1]
-#        name = '_'.join(chunks[2:])
-#        name = '_'.join(chunks)
+        name = '_'.join(chunks)
     
         with open(self.input_path, "rb") as f:
             lines = list(csv.reader(f, delimiter='\t'))
     
-        values = {'name': chunks}
+        values = {'name': name}
         pos = 0
         while pos < len(lines):
             line = lines[pos]
@@ -280,7 +271,7 @@ class TextImporter(object):
     def var_name(self, name):
         assert name[1] == '_'
         name = name[2:]
-        return rename_var(name)
+        return self.renames.get(self.obj_type, {}).get(name, name)
 
     def simplecond2expr(self, cond):
         name, minvalue, maxvalue = cond
@@ -309,8 +300,8 @@ class TextImporter(object):
 
     
 class RegressionImporter(TextImporter):
-    def __init__(self, input_path, fields):
-        TextImporter.__init__(self, input_path, fields)
+    def __init__(self, input_path, fields, renames):
+        TextImporter.__init__(self, input_path, fields, obj_type, renames)
         
         # cfr readdyparam.cpp
         self.keywords = {
@@ -407,8 +398,7 @@ class RegressionImporter(TextImporter):
                 
         kwargs = {'filter': filter_expr}
         predictor, pred_type, _, _  = data['predictor']
-        assert predictor[1] == "_"
-        predictor = predictor[2:]
+        predictor = self.var_name(predictor)
 
         if data.get('u_varname'):
             # another option would be to do:
@@ -438,8 +428,8 @@ class RegressionImporter(TextImporter):
     
     
 class TransitionImporter(TextImporter):
-    def __init__(self, input_path, fields, constants, links):
-        TextImporter.__init__(self, input_path, fields)
+    def __init__(self, input_path, fields, constants, links, obj_type, renames):
+        TextImporter.__init__(self, input_path, fields, obj_type, renames)
         self.constants = constants
         self.links = links
         # cfr readdyparam.cpp
@@ -512,14 +502,10 @@ class TransitionImporter(TextImporter):
         return pos + 1, None
 
     def fpbcalc(self, pos, line, lines):
-        #TODO:
-        # - Handle uppercase variables correctly (they come from macro.av).
-        #   They exist in two forms: MINR and MINR[2003Y1].
         s = line[1]
-        s = s.replace(' and ', ' & ')
-        s = s.replace(' or ', ' | ')
-        # add space around operators, if not present
+        # add space around +, -, * and / operators, if not present
         s = re.sub(r'(\S)([+\-*/^])(\S)', r'\1 \2 \3', s)
+        # idem for < and >
         s = re.sub(r'([<>]=?)', r' \1 ', s)
         # = -> ==
         s = re.sub(r'([^<>])=', r'\1 == ', s)
@@ -548,7 +534,8 @@ class TransitionImporter(TextImporter):
         globals.update((name, Variable(self.var_name(name), 
                                        self.var_type(name)))
                        for name in self.fields.keys())
-        links = [(name, Link(name, link_def['keyorig'], link_def['desttype']))
+        links = [(name, Link(name, link_def['keyorig'], link_def['desttype'],
+                             self.renames.get(link_def['desttype'], {})))
                  for name, link_def in self.links.iteritems()]
         globals.update(links)
         return parse(data, globals)
@@ -556,8 +543,7 @@ class TransitionImporter(TextImporter):
     def data2expr(self, data):
         # pred_type seem to be ignored for transitions
         predictor, pred_type = data['predictor']
-        assert predictor[1] == "_"
-        local_name = predictor[2:]
+        local_name = self.var_name(predictor)
         
         conditions = data['numorcond']
         assert conditions
@@ -581,25 +567,30 @@ class TrapImporter(TextImporter):
 # =====================
 
 def load_processes(input_path, fnames,
-                   fields, constants, links):
+                   fields, constants, links, obj_type, renames):
     print "=" * 40
     data = []
     predictor_seen = {}
     parsed = []
+    obj_renames = renames.get(obj_type, {})
     print "pass 1: parsing files..."
     for fname in fnames:
         print " - %s" % fname
         fpath = path.join(input_path, fname)
         if fname.startswith('regr_'):
-            importer = RegressionImporter(fpath, fields)
+            importer = RegressionImporter(fpath, fields, renames)
         elif fname.startswith('tran_'):
-            importer = TransitionImporter(fpath, fields, constants, links)
+            importer = TransitionImporter(fpath, fields, constants, links,
+                                          obj_type, renames)
         else:
             importer = None
         if importer is not None:
-            name, predictor, expr = importer.import_file()
-            parsed.append((fname, name, predictor, expr))
-            predictor_seen.setdefault(predictor, []).append(tuple(name))
+            fullname, predictor, expr = importer.import_file()
+            type_, name = fullname.split('_', 1)
+            name = obj_renames.get(name, name)
+            fullname = '%s_%s' % (type_, name)
+            parsed.append((fname, fullname, predictor, expr))
+            predictor_seen.setdefault(predictor, []).append(fullname)
 
     print "-" * 40
     print "pass 2: simplifying..."
@@ -609,29 +600,34 @@ def load_processes(input_path, fnames,
         'trap': ('tran', 'regr')
     }
     proc_name_per_file = {}
+    proc_names = {}
     for fname, fullname, predictor, expr in parsed:
-        print " - %s" % fname, name, predictor
-#            name = '_'.join(chunks[2:])
-        type_, name = fullname
-        name, predictor = rename_var(name), rename_var(predictor)
-#            print "%s:" % predictor, fields['p_' + predictor]['type'].__name__
+        print " - %s (%s)" % (fname, predictor)
+        type_, name = fullname.split('_', 1)
+        
         expr_str = str(simplify(expr))
-        if name == predictor:
+        if len(predictor_seen[predictor]) == 1:
+            if name != predictor:
+                print "   renaming '%s' process to '%s'" % (name, predictor)
+                name = predictor
             res = expr_str
-        elif len(predictor_seen[predictor]) == 1:
-#            print "renaming %s process to %s" % (name, predictor)
-            res = expr_str
-            name = predictor
         else:
-            conflicting_names = predictor_seen[predictor] 
+            conflicting_names = predictor_seen[predictor]
+             
             assert len(conflicting_names) > 1
-            types_to_check = other_types[type_]
-            if any((other_type, name) in conflicting_names
-                   for other_type in types_to_check):
-                name = '%s_%s' % (type_, name)
+            names_to_check = ['%s_%s' % (other_type, name)
+                              for other_type in other_types[type_]]
+            if any(name in conflicting_names for name in names_to_check):
+                name = fullname
+                
+            while name in proc_names:
+                name += '_dupe'
+
+            print "   renaming process to '%s'" % name
+            
             res = {'predictor': predictor,
                    'expr': expr_str}
-            
+        proc_names[name] = True
         data.append((name, res))
         proc_name_per_file[fname] = name
     print "=" * 40
@@ -696,10 +692,10 @@ def constants2yaml(constants):
 def entities2yaml(entities):
     entity_tmpl = "    %s:%s%s%s\n"
     e_strings = []
-    for name, entity in entities.iteritems():
+    for ent_name, entity in entities.iteritems():
         fields = entity['fields']
         if fields:
-            fields = sorted([(rename_var(fname), f['type'].__name__)
+            fields = sorted([(fname, f['type'].__name__)
                              for fname, f in fields.iteritems()]) 
             fields_str = '\n        fields:\n            %s' \
                          % orderedmap2yaml(fields, 3)
@@ -707,7 +703,8 @@ def entities2yaml(entities):
             fields_str = ''
         links_str = links2yaml(entity['links'])
         process_str = process2yaml(entity['processes'])
-        e_strings.append(entity_tmpl % (name, fields_str, links_str, process_str))
+        e_strings.append(entity_tmpl % (ent_name, fields_str, links_str,
+                                        process_str))
     return '\n'.join(e_strings)
 
 def process_list2yaml(processes):
@@ -757,7 +754,6 @@ if __name__ == '__main__':
 
     if not path.isdir(input_path):
         input_path, fname = path.split(input_path)
-        print "path, name", input_path, fname
     else:
         fname = None
 
@@ -782,8 +778,8 @@ if __name__ == '__main__':
         base_names = process_list
     else:
         base_names = []
-        for fname in raw_names: 
-            basename, ext = path.splitext(fname)
+        for raw_name in raw_names: 
+            basename, ext = path.splitext(raw_name)
             if ext == '.txt':
                 base_names.append(basename)
             
@@ -798,9 +794,9 @@ if __name__ == '__main__':
             continue
         if len(obj_type) != 1:
             continue
-        fname = basename + '.txt'
-        process_files.append((obj_type, fname))
-        proc_per_obj.setdefault(obj_type, []).append(fname)
+        file_name = basename + '.txt'
+        process_files.append((obj_type, file_name))
+        proc_per_obj.setdefault(obj_type, []).append(file_name)
 
     proc_name_per_file = {}        
     entities = {}
@@ -812,8 +808,16 @@ if __name__ == '__main__':
         print "loading processes for %s" % obj_type
         obj_proc_names, obj_processes = load_processes(input_path, 
                                                        obj_proc_files,
-                                                       fields, constants, links)
+                                                       fields, constants, links,
+                                                       obj_type,
+                                                       renames)
         proc_name_per_file.update(obj_proc_names)
+        
+        obj_renames = renames.get(obj_type, {})
+        for old_name in obj_fields.keys():
+             new_name = obj_renames.get(old_name)
+             if new_name is not None:
+                 obj_fields[new_name] = obj_fields.pop(old_name)
         entities[obj_type] = {
             'fields': obj_fields,
             'links': obj_links,
@@ -821,12 +825,11 @@ if __name__ == '__main__':
         }
 
     process_names = []
-    for obj, fname in process_files:
-        proc_name = proc_name_per_file.get(fname)
+    for obj, file_name in process_files:
+        proc_name = proc_name_per_file.get(file_name)
         if proc_name is not None:
             process_names.append((obj, proc_name))
                      
-    print "processes", process_names
     print "exporting to '%s'" % output_path
     with open(output_path, 'w') as f_out:
         # default YAML serialization is ugly, so we produce the string ourselves
