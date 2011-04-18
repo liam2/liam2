@@ -517,6 +517,8 @@ class Entity(object):
         period = context['period'] - 1
         
         res_size = len(self.array)
+
+        #TODO: use int for bool & int, float for float
         sum_values = np.zeros(res_size, dtype=np.float)        
         id_to_rownum = context.id_to_rownum
         while period >= baseperiod:
