@@ -51,6 +51,50 @@ def isequal(expr, other):
         return other.isequal(expr)
     else:
         return expr == other
+
+def unflatten(op, expr_set):
+    if op in ('var', 'const'):
+        return str(expr_set[0])
+    elif op == '~':
+        return '~%s' % unflatten(*expr_set[0])
+    elif op == 'func':
+        raise NotImplementedError()
+    else:
+        return '(' + op.join(unflatten(o, expr) for o, expr in expr_set) + ')'
+            
+def extract_common_subset(e1, e2, flattened=False):
+    r1 = f1op, f1list = flatten(e1)
+    r2 = f2op, f2list = flatten(e2)
+    
+    if len(f1list) == 1:
+        f1op, f1list = '&', (r1,)
+    
+    if len(f2list) == 1:
+        f2op, f2list = '&', (r2,)
+
+    if (f1op == f2op and f1op == '&'):
+        e1set = OrderedSet(f1list)
+        e2set = OrderedSet(f2list)
+        commonset = e1set & e2set
+        if commonset:
+            try:
+                common = unflatten(f1op, commonset)
+                e1_rest = unflatten(f1op, e1set - commonset)
+                e2_rest = unflatten(f1op, e2set - commonset)
+            except NotImplementedError:
+                return None, e1, e2
+            
+            vars = collect_variables(e1) | collect_variables(e2)
+            globals = dict((v, Variable(v, t)) for v, t in vars)
+            cs, e1, e2 = parse(common, globals), parse(e1_rest, globals), \
+                         parse(e2_rest, globals)
+            if e1 is ():
+                e1 = None
+            if e2 is ():
+                e2 = None
+            return cs, e1, e2
+    return None, e1, e2
+
         
 class Expr(object):
     def __lt__(self, other):
@@ -408,51 +452,6 @@ class LogicalOp(BinaryOp):
     def op_str(self):
         return self.__class__.__name__.lower()
 
-
-def unflatten(op, expr_set):
-    if op in ('var', 'const'):
-        return str(expr_set[0])
-    elif op == '~':
-        return '~%s' % unflatten(*expr_set[0])
-    elif op == 'func':
-        raise NotImplementedError()
-    else:
-        return '(' + op.join(unflatten(o, expr) for o, expr in expr_set) + ')'
-            
-def extract_common_subset(e1, e2, flattened=False):
-    r1 = f1op, f1list = flatten(e1)
-    r2 = f2op, f2list = flatten(e2)
-    
-    if len(f1list) == 1:
-        f1op, f1list = '&', (r1,)
-    
-    if len(f2list) == 1:
-        f2op, f2list = '&', (r2,)
-
-    if (f1op == f2op and f1op == '&'):
-        e1set = OrderedSet(f1list)
-        e2set = OrderedSet(f2list)
-        commonset = e1set & e2set
-        if commonset:
-            try:
-                common = unflatten(f1op, commonset)
-                e1_rest = unflatten(f1op, e1set - commonset)
-                e2_rest = unflatten(f1op, e2set - commonset)
-            except NotImplementedError:
-                return None, e1, e2
-            
-            vars = collect_variables(e1) | collect_variables(e2)
-            globals = dict((v, Variable(v, t)) for v, t in vars)
-            cs, e1, e2 = parse(common, globals), parse(e1_rest, globals), \
-                         parse(e2_rest, globals)
-            if e1 is ():
-                e1 = None
-            if e2 is ():
-                e2 = None
-            return cs, e1, e2
-    return None, e1, e2
-
-
 class And(LogicalOp):
     priority = 7
     neutral_value = True
@@ -486,45 +485,53 @@ class Or(LogicalOp):
             return presimplified
 
         if isinstance(presimplified, Or):
-            op, l = flattened = flatten(presimplified)
-            assert op == '|'
-
-            if len(l) >= 2:
-                # we use combination on the indices, so that we
-                # can reconstruct what is not in the combinations
-                indices = range(len(l))
-                vars = self.collect_variables()
-                globals = dict((v, Variable(v, t)) for v, t in vars)
-                
-                for i1, i2 in itertools.combinations(indices, 2):
-                    try:
-                        e1 = parse(unflatten('&', [l[i1]]), globals)
-                        e2 = parse(unflatten('&', [l[i2]]), globals)
-                    except NotImplementedError:
-                        continue
-
-                    # A or not A -> True                    
-                    # not A or A -> True                    
-                    if isinstance(e1, Not) and isequal(e1.expr, e2) or \
-                       isinstance(e2, Not) and isequal(e2.expr, e1):
-                        return True
-                    
-                    # (A and B and C) or (A and B and D)
-                    # ->
-                    # A and B and (C or D)
-                    cs, e1, e2 = extract_common_subset(e1, e2)
-                    if cs is not None:
-                        notincomb = l[:i1] + l[i1+1:i2] + l[i2+1:]
-                        if notincomb:
-                            notincomb_expr = parse(unflatten('|', notincomb), 
-                                                   globals)
-                        else:
-                            notincomb_expr = False
-                            
-                        if e1 is not None and e2 is not None:
-                            return notincomb_expr | (cs & (e1 | e2))
-                        else:
-                            return notincomb_expr | cs
+            e1, e2 = presimplified.expr1, presimplified.expr2
+            
+            # A or not A -> True                    
+            # not A or A -> True                    
+            if isinstance(e1, Not) and isequal(e1.expr, e2) or \
+               isinstance(e2, Not) and isequal(e2.expr, e1):
+                return True
+            
+#            op, l = flattened = flatten(presimplified)
+#            assert op == '|'
+#
+#            if len(l) >= 2:
+#                # we use combination on the indices, so that we
+#                # can reconstruct what is not in the combinations
+#                indices = range(len(l))
+#                vars = self.collect_variables()
+#                globals = dict((v, Variable(v, t)) for v, t in vars)
+#                
+#                for i1, i2 in itertools.combinations(indices, 2):
+#                    try:
+#                        e1 = parse(unflatten('&', [l[i1]]), globals)
+#                        e2 = parse(unflatten('&', [l[i2]]), globals)
+#                    except NotImplementedError:
+#                        continue
+#
+#                    # A or not A -> True                    
+#                    # not A or A -> True                    
+#                    if isinstance(e1, Not) and isequal(e1.expr, e2) or \
+#                       isinstance(e2, Not) and isequal(e2.expr, e1):
+#                        return True
+#                    
+#                    # (A and B and C) or (A and B and D)
+#                    # ->
+#                    # A and B and (C or D)
+#                    cs, e1, e2 = extract_common_subset(e1, e2)
+#                    if cs is not None:
+#                        notincomb = l[:i1] + l[i1+1:i2] + l[i2+1:]
+#                        if notincomb:
+#                            notincomb_expr = parse(unflatten('|', notincomb), 
+#                                                   globals)
+#                        else:
+#                            notincomb_expr = False
+#                            
+#                        if e1 is not None and e2 is not None:
+#                            return notincomb_expr | (cs & (e1 | e2))
+#                        else:
+#                            return notincomb_expr | cs
             
         return presimplified
 
@@ -722,7 +729,10 @@ class Where(Function):
         if dtypeiffalse is bool and not isinstance(iftrue, Expr) and iftrue in (False, True):
             if iftrue:
                 # optimize "if(A, True, B)" to "A or B"
-                return cond | iffalse
+                if not isinstance(iffalse, Where):
+                    return cond | iffalse
+                elif not isinstance(iftrue, bool):
+                    return Where(cond, True, iffalse)
             else:
                 if not isinstance(iftrue, bool):
                     return Where(cond, False, iffalse)
