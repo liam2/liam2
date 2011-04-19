@@ -1,3 +1,5 @@
+from __future__ import division
+
 import re
 from orderedset import OrderedSet
 import itertools
@@ -319,7 +321,9 @@ class BinaryOp(Expr):
                 return self.overpowering_value
 
         if not isinstance(expr1, Expr) and not isinstance(expr2, Expr):
-            return eval('%s %s %s' % (expr1, self.op, expr2))
+            res = eval('%s %s %s' % (expr1, self.op, expr2))
+            print "Warning: converted %s to %s" % (self, res)
+            return res
 
         return self
     
@@ -579,6 +583,10 @@ class Division(BinaryOp):
     neutral_value = 1.0
     overpowering_value = None
     accepted_types = (float,)
+
+    def dtype(self):
+        # to be consistent with the division from the __future__ 
+        return float
 
 
 class Variable(Expr):
