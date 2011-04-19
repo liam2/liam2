@@ -15,10 +15,11 @@ if __name__ == '__main__':
 
     sys.stdout = AutoflushFile(sys.stdout)
     sys.stderr = AutoflushFile(sys.stderr)
-    print "LIAM2 %s using Python %s (%s)\n" % (__version__, 
-                                               platform.python_version(),
-                                               platform.architecture()[0])
-                                  
+    print "LIAM2 %s using Python %s (%s)" % (__version__, 
+                                             platform.python_version(),
+                                             platform.architecture()[0])
+    print
+
     args = sys.argv
     fpath = args[1] if len(args) > 1 else 'simulation.yaml'
     console = len(args) > 2 and args[2] == "-i" 

@@ -1,4 +1,5 @@
 import re
+import sys
 
 import numpy as np
 
@@ -71,6 +72,14 @@ def expr_eval(expr, context):
         return expr.eval(context)
     else:
         return expr
+
+def add_context(exception, s):
+    msg = exception.args[0] if exception.args else ''
+    encoding = sys.getdefaultencoding()
+    expr_str = s.encode(encoding, 'replace')
+    msg = "%s\n%s" % (expr_str, msg)
+    cls = exception.__class__
+    return cls(msg)
 
 
 class ExplainTypeError(type):
@@ -211,9 +220,7 @@ class Expr(object):
 #            dt = self.dtype(context)
             return evaluate(s, context, {})
         except Exception, e:
-            msg = e.args[0] if e.args else ''
-            cls = e.__class__
-            raise cls("%s\n%s" % (s, msg))
+            raise add_context(e, s)
 
 
 #class IsPresent(Expr):
@@ -537,14 +544,16 @@ def parse(s, globals=None, conditional_context=None, expression=True,
     mode = 'eval' if expression else 'exec'
     try:
         c = compile(str_to_parse, '<expr>', mode)
+    except SyntaxError:
+        # SyntaxError are clearer if left unmodified since they already contain
+        # the faulty string
+        
+        # Instances of this class have attributes filename, lineno, offset and text
+        # for easier access to the details. str() of the exception instance returns
+        # only the message.
+        raise
     except Exception, e:
-        msg = e.args[0] if e.args else ''
-        cls = e.__class__
-        raise cls("%s\n%s" % (s, msg))
-
-    # Instances of this class have attributes filename, lineno, offset and text
-    # for easier access to the details. str() of the exception instance returns
-    # only the message.    
+        raise add_context(e, s)
 
     context = {'False': False,
                'True': True,
@@ -571,9 +580,7 @@ def parse(s, globals=None, conditional_context=None, expression=True,
         except EnvironmentError:  
             raise
         except Exception, e:
-            msg = e.args[0] if e.args else ''
-            cls = e.__class__
-            raise cls("%s\n%s" % (s, msg))
+            raise add_context(e, s)
     else:
         exec c in context
     
