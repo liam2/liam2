@@ -14,6 +14,7 @@ if __name__ == '__main__':
     import sys, platform
 
     sys.stdout = AutoflushFile(sys.stdout)
+    sys.stderr = AutoflushFile(sys.stderr)
     print "LIAM2 %s using Python %s (%s)\n" % (__version__, 
                                                platform.python_version(),
                                                platform.architecture()[0])
@@ -29,7 +30,14 @@ if __name__ == '__main__':
         import cProfile as profile
         profile.run('simulation.run()', 'c:\\tmp\\simulation.profile')
     else:
+#        try:
         simulation.run()
+#        except Exception, e:
+#            print 
+#            print str(e)
+#            import traceback
+#            with file('error.log', 'w') as f:
+#                traceback.print_exc(file=f)
 
     # use profiling data:
     # p = pstats.Stats('c:\\tmp\\simulation.profile')
