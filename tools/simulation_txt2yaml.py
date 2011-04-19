@@ -279,11 +279,13 @@ class TextImporter(object):
         return (v >= minvalue) & (v <= maxvalue)
         
     def andcond2expr(self, andconditions):
-        assert andconditions
-        expr = self.simplecond2expr(andconditions[0])
-        for andcond in andconditions[1:]:
-            expr = expr & self.simplecond2expr(andcond) 
-        return expr
+        if andconditions: 
+            expr = self.simplecond2expr(andconditions[0])
+            for andcond in andconditions[1:]:
+                expr = expr & self.simplecond2expr(andcond) 
+            return expr
+        else:
+            return True
         
     def condition2expr(self, condition):
         assert condition
@@ -548,6 +550,13 @@ class TransitionImporter(TextImporter):
         conditions = data['numorcond']
         assert conditions
         
+        # this is a hack to work around useless conditions in liam 1
+        for cond in conditions:
+            for orcond in cond['condition']:
+                if ('p_co_alive', 1.0, 1.0) in orcond:
+                    print "   Warning: removed 'p_co_alive == 1' condition"
+                    orcond.remove(('p_co_alive', 1.0, 1.0))
+                    
         lastcond = conditions[-1]
         if lastcond is None:
             raise Exception('Actual number of conditions do not match the '
