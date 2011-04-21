@@ -1,0 +1,133 @@
+       
+entities:
+    household:
+        fields:
+            # period is implicit
+            # id is implicit
+            - dead:         bool
+            - start_period: {type: int, initialdata: false}
+            - nb_persons:   {type: int, initialdata: false} 
+            - nb_students:  {type: int, initialdata: false}            
+            - nch0_11:      {type: int, initialdata: false}
+            - nch12_15:     {type: int, initialdata: false}
+            - region_id:    {type: int, initialdata: false}
+
+        links:
+            persons: {type: one2many, target: person, field: hh_id}
+            
+        processes:
+            region_id: "if(region_id < 0, choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4]), region_id)"
+            household_composition:
+                - nb_persons: "countlink(persons)"
+                - nb_students: "countlink(persons, workstate == 3)"
+                - nch0_11: "countlink(persons, (age <12))"
+                - nch12_15: "countlink(persons, (age>11) and (age <16))"
+            clean_empty: "remove(nb_persons==0)"                
+            
+    person:
+        fields:
+            # period is implicit
+            # id is implicit
+            - age:          int
+            - dead:         bool
+            - gender:       bool
+            - m_id:         int
+            - m_age:        {type: int, initialdata: false}
+            - partner_id:   int
+            - civilstate:   int     # 1=single, 2=married, 3=divorced, 4=widowed
+            - dur_in_couple:      int
+            - workstate:    int     # 1=in work, 2=unemployed including old-age unemployed,3=in education, 4=retired,5=other inactive
+            - inwork:   {type: bool, initialdata: false}
+            - education_level:       {type: int, initialdata: false}
+            - agegroup_work:     {type: int, initialdata: false}
+            - agegroup_civilstate:     {type: int, initialdata: false}                        
+            - hh_id:        int
+        
+        links:
+            pm: {type: many2one, target: person, field: m_id}      
+            ps: {type: many2one, target: person, field: partner_id}
+            ph: {type: many2one, target: household, field: hh_id}
+            mp: {type: one2many, target: person, field: m_id}    
+
+        macros:
+            MALE: "True"
+            FEMALE: "False"
+            ISMALE: "gender"
+            ISFEMALE: "(not gender)"
+        
+            UNSET: "-1"
+            
+            SINGLE: "1"
+            MARRIED: "2"
+            DIVORCED: "3"
+            WIDOW: "4"
+            ISSINGLE: "(civilstate == 1)"
+            ISMARRIED: "(civilstate == 2)"        
+            ISDIVORCED: "(civilstate == 3)"
+            ISWIDOW: "(civilstate == 4)"
+
+            INWORK: "1"
+            UNEMPLOYED: "2"
+            STUDENT: "3"
+            RETIRED: "4"
+            ISINWORK: "(workstate == 1)"
+            ISUNEMPLOYED: "(workstate == 2)"            
+            ISSTUDENT: "(workstate == 3)"
+            ISRETIRED: "(workstate == 4)"
+            
+                   
+        # possible transitions and regressions. The actual list used in the
+        # simulation must be defined below
+        processes:
+            age: "age + 1"
+                
+            agegroup:
+                - agegroup_civilstate: "if(age<50, 5*round(age/5), 10*round(age/10))"            
+                - agegroup_work: "if(age<70, 5*round(age/5), 70)"
+                
+            dead_procedure:                
+                - dead: "if(ISMALE, 
+                    logit_regr(0.0, align='al_p_dead_m.csv'), 
+                    logit_regr(0.0, align='al_p_dead_f.csv'))"
+                - civilstate: "if(ps.dead, WIDOW, civilstate)"  
+                - partner_id: "if(ps.dead, UNSET, partner_id)"  
+                - show_avg_m: "show('Avg age of dead males', grpavg(age, filter=dead and ISMALE))"
+                - show_avg_f: "show(grpavg(age, filter=dead and ISFEMALE))"                
+                - cleanup: remove(dead)
+                
+            birth:
+                - to_give_birth: "logit_regr(0.0,
+                            filter=ISFEMALE and (age >= 15) and (age <= 50),
+                            align='al_p_birth.csv')"   
+                - newbirth: "new('person', filter=to_give_birth, 
+                     m_id = __parent__.id, 
+                     m_age = __parent__.age, 
+                     hh_id = __parent__.hh_id,
+                     partner_id = UNSET,
+                     civilstate = SINGLE,
+                     education_level = UNSET,
+                     workstate = STUDENT, 
+                     gender=choice([MALE, FEMALE], [0.51, 0.49]) )"  
+            
+                        
+            dump_household_info: "csv(dump(id, age, gender, ph.nb_persons, pm.age, ps.age, hh_id),suffix='hh_info')"
+            
+simulation:
+    init:
+        - household: [household_composition, region_id]
+        - person: [agegroup]
+
+    processes:
+        - household: [household_composition, clean_empty, region_id]
+        - person: [age, agegroup, dead_procedure, birth,
+            #dump_household_info
+            ]      
+        - household: [household_composition, clean_empty]            
+
+    input:
+        file: "simple2001.h5"
+    output:
+        file: "simulation.h5"
+
+    start_period: 2002   # first simulated period
+    periods: 1

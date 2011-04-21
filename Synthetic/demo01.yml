@@ -1,0 +1,45 @@
+       
+entities:
+    household:
+        fields:
+            # period, id is implicit
+            - dead:         bool
+            - region_id:    {type: int, initialdata: false}
+            
+        processes:
+            region_id: "if(region_id < 0, choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4]), region_id)"
+            
+    person:
+        fields:
+            # period, id is implicit
+            - age:          int
+            - dead:         bool
+            - gender:       bool
+            - agegroup_work:     {type: int, initialdata: false}
+            - agegroup_civilstate:     {type: int, initialdata: false}                        
+                   
+        # possible transitions and regressions. The actual list used in the
+        # simulation must be defined below
+        processes:
+            age: "age + 1"
+                
+            agegroup:
+                - agegroup_civilstate: "if(age<50, 5*round(age/5), 10*round(age/10))"            
+                - agegroup_work: "if(age<70, 5*round(age/5), 70)"
+            
+simulation:
+    init:
+        - household: [region_id]
+        - person: [agegroup]
+
+    processes:
+        - household: [region_id]
+        - person: [age, agegroup]      
+
+    input:
+        file: "simple2001.h5"
+    output:
+        file: "simulation.h5"
+
+    start_period: 2002   # first simulated period
+    periods: 10
