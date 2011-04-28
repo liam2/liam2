@@ -1,6 +1,6 @@
 import sys
 
-from expr import expr_eval, parse
+from expr import expr_eval, parse, Variable
 import entities
 
 
@@ -57,8 +57,13 @@ class Console(object):
             period = entity.array['period'][0]
             self.set_period(period)
         vars = entity.variables
+        # add all currently defined temp_variables because otherwise
+        # local variables (defined within a procedure) wouldn't be available
+        vars.update((name, Variable(name)) 
+                    for name in entity.temp_variables.keys())
         cond_context = entity.conditional_context
         expr = parse(s, vars, cond_context)
+        
         ctx = entities.EntityContext(entity, {'period': period})
         return expr_eval(expr, ctx)
     
