@@ -1,7 +1,7 @@
  --------------------------------------
  TODO
  --------------------------------------
- 
+
  non feature tasks
  -----------------
 
@@ -100,14 +100,23 @@
  other missing features
  ----------------------
 
+ - int / int should return float
+ - warning for unused fields
+ - better error message if unknown target entity in links (KeyError)
+ - better error message if unknown entity in simulation.processes (KeyError)
+ - better error message when a temporary variable is used before it is computed
+   (the error is not catched by the parser since the variable exists)
+   KeyError: '(~to_give_birth)\nto_give_birth'
+ - Error messages containing utf8 chars are not displayed on notepad++ or 
+   dos prompt consoles (py2exe is irrelevant, it just removes the intermediate
+   lines of code from the traceback but doesn't change the last lines).
+   Example: syntax error if there is a comment containing non-ascii chars inside
+   an expression.
  - includes
- - allow using/access to local variables in step by step mode
  - watches in step by step mode (which are recomputed/displayed automatically
    after each step)
  - macros using other macros
  - numpy methods (min/max/...) on zero-length array
- - reimplement SubscriptableVariable, possibly as a more generic concept:
-   generic "indexed table"
  - implement "log" action = show in a file
  - lastpresent(col[, condition]) -> returns the last value which is not missing
    the problem is that if even a single individual never had any value for that
@@ -158,7 +167,14 @@
  optimisation
  ------------
 
- - try bottleneck
+ - try bottleneck (http://pypi.python.org/pypi/Bottleneck)
+ 
+ - try making python bindings to ORC
+   http://code.entropywave.com/projects/orc/
+   or any of the other C JIT referenced in the external links at:
+   http://en.wikipedia.org/wiki/Just-in-time_compilation
+ 
+ - try using Theano (http://deeplearning.net/software/theano/) 
  
  - try scipy.weave.blitz. It seems a bit limited in functionality but it uses 
    blitz++ (http://www.oonumerics.org/blitz/) internally which seems to contain
@@ -230,9 +246,20 @@
  undecided
  ---------
 
+ ? temporaries which are carried from one period to another
+   ex: "progressive" tsum, or "progessive" duration:
+     #minr61_c: "duration(minr61_d)"
+     minr61_c: "if(minr61_d, minr61_c + 1, minr61_c)"
+   we do not (necessarily) need to store the value for each year (unless we
+   want to inspect it after-the fact)    
+    => problème de la première periode
+ ? generalize the concept of SubscriptableVariable to "indexed table"
  ? installer
  ? m2o link in aggregate link
    eg, hh_nch: countlink(househould.persons)
+   I am not sure it's a good idea after all, because that would introduce
+   two ways to do the same thing and the other way (should) already work(s):
+       hh_nch: household.get(countlink(persons))
  ? a: "where(b, c[, d])" -> d implicitly = a
  ? specific choice method for boolean: boolchoice(0.3) 
    instead of: choice([True, False], [0.3, 1-0.3])
