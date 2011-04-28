@@ -35,23 +35,12 @@ entities:
             - f_id:         int
             - m_id:         int
             - nch:          {type: int, initialdata: False}
-            - nch_012:      {type: int, initialdata: False}
-            - nch_012_sum:  {type: int, initialdata: False}
-            - nch_012_avg:  {type: float, initialdata: False}
             - work:         bool
             - eduach:       {type: int, initialdata: False}
             - m_age:        {type: int, initialdata: False}
-            - ps_age:       {type: int, initialdata: False}
             - agegroup:     {type: int, initialdata: False}
-            - test1:        {type: int, initialdata: False}
-            - test2:        {type: int, initialdata: False}
-            - test3:        {type: float, initialdata: False}
-            - test4:        {type: float, initialdata: False}
-            - test5:        {type: float, initialdata: False}
             - ch_minage:    {type: int, initialdata: False}
             - ch_maxage:    {type: int, initialdata: False}
-            - test9:        {type: float, initialdata: False}
-            - test10:       {type: float, initialdata: False}
             - young_mother: {type: bool, initialdata: False}
 
         links:
@@ -113,9 +102,10 @@ entities:
             test_logit: 
                 - simple: logit_regr(0.0)
             
+            test_uninitialized_var: not to_give_birth
             to_give_birth: if(not gender and (age >= 15) and (age <= 50),
-                               logit_regr(0.0, align='al_p_birth.csv'),
-                               False) 
+                              logit_regr(0.0, align='al_p_birth.csv'),
+                              False) 
             newbirth: if(to_give_birth,
                           if(age > 120,
                              new('person',
@@ -215,11 +205,7 @@ entities:
             test_link_get:
                 - simple_link: show(ph.num_persons)
                 - link_get: show(ph.get(countlink(persons)))
-                
-            diff_age: if(partner_id != -1, age - ps.age, -1)
-    
-            show_dead: show(grpsum(dead))
-            show_nch: show(grpavg(nch, filter=(not gender) and (age>20) and (age<60)))
+            
             test_dump: 
 #                - expr: csv(dump(gender, age, partner_id, ps.age),
 #                             suffix='test')
@@ -273,6 +259,9 @@ simulation:
                    show_95_notdead, show_0_dead,
                    test_logit,
                    marriage,
+                   
+                   test_uninitialized_var,
+                   
                    to_give_birth, newbirth,
                    test_lag,
                    
