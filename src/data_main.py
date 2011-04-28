@@ -2,7 +2,6 @@ import os
 import csv
 from itertools import izip, islice
 
-
 import numpy as np
 import carray as ca
 import tables
@@ -11,20 +10,9 @@ import yaml
 from entities import entity_registry
 from utils import timed
 from properties import missing_values
-
 from simulation import Simulation
         
 MB = 2.0 ** 20
-
-def dicttotuple(record, fields):
-    return tuple([record.get(fname, default) for fname, default in fields])
-
-def index_first(header, possible_values):
-    values_present = set(header) & set(possible_values)
-    assert len(values_present) == 1, "%s not found in header: %s" % (
-                                     possible_values, header)
-    colname = values_present.pop()
-    return header.index(colname)
 
 
 def to_int(v):
@@ -39,6 +27,14 @@ def to_bool(v):
 converters = {bool: to_bool,
               int: to_int,
               float: to_float}
+
+
+def index_first(header, possible_values):
+    values_present = set(header) & set(possible_values)
+    assert len(values_present) == 1, "%s not found in header: %s" % (
+                                     possible_values, header)
+    colname = values_present.pop()
+    return header.index(colname)
 
 def import_csv_3col(fpath, vname, vtype, delimiter=","):
     '''imports one Xsv file which use a three columns format: 
