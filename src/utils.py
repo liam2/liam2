@@ -42,11 +42,10 @@ def loop_wh_progress(func, sequence):
         to_display = percent_done - last_percent_done
         if to_display:
             chars_to_write = list("." * to_display)
-            decal = 9 - (last_percent_done % 10)
-            #FIXME: this breaks for very small numbers (ie if doing more than 
-            # 10% in one pass)
-            if decal < to_display:
-                chars_to_write[decal] = '|'
+            offset = 9 - (last_percent_done % 10)
+            while offset < to_display:
+                chars_to_write[offset] = '|'
+                offset += 10
             write(''.join(chars_to_write))
         last_percent_done = percent_done
 
