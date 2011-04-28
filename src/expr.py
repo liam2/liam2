@@ -548,9 +548,9 @@ def parse(s, globals=None, conditional_context=None, expression=True,
         # SyntaxError are clearer if left unmodified since they already contain
         # the faulty string
         
-        # Instances of this class have attributes filename, lineno, offset and text
-        # for easier access to the details. str() of the exception instance returns
-        # only the message.
+        # Instances of this class have attributes filename, lineno, offset and 
+        # text for easier access to the details. str() of the exception instance
+        # returns only the message.
         raise
     except Exception, e:
         raise add_context(e, s)
