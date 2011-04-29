@@ -3,6 +3,7 @@ import numpy as np
 
 from expr import type_to_idx, idx_to_type
 from properties import missing_values
+from utils import loop_wh_progress
 
 def assertValidFields(s_fields, table, allowed_missing=None):
     # extract types from field description and normalise to python types
@@ -49,8 +50,65 @@ def add_and_drop_fields(array, output_fields):
         output_array[fname] = missing_values[ftype]
     return output_array
 
-def copyTable(input_table, output_file, output_node, output_fields,
-              chunksize=10000, **kwargs):
+def normalize_type(type_):
+    return idx_to_type[type_to_idx[type_]]
+
+def get_table_fields(table):
+    dtype = table.dtype
+    field_types = dtype.fields
+    return [(name, normalize_type(field_types[name][0].type))
+            for name in dtype.names]
+    
+def appendTable(input_table, output_table, chunksize=10000, condition=None):
+    if input_table.dtype != output_table.dtype:
+        output_fields = get_table_fields(output_table)
+    else: 
+        output_fields = None
+    
+    rowsleft = len(input_table)
+    if not chunksize:
+        chunksize = rowsleft
+
+    start = 0
+    num_chunks, remainder = divmod(rowsleft, chunksize)
+    if remainder > 0:
+        num_chunks += 1
+
+    for _ in range(num_chunks):
+        stop = start + min(chunksize, rowsleft)
+        if condition is not None:
+            data = input_table.readWhere(condition, start=start, stop=stop)
+        else:
+            data = input_table.read(start, stop)
+        if output_fields is not None:
+            data = add_and_drop_fields(data, output_fields)
+        output_table.append(data)
+        output_table.flush()
+        rowsleft -= chunksize
+        start = stop
+
+#    status = {'start': start,
+#              'rowsleft': rowsleft}
+#
+#    def copyChunk(junk1, junk2):
+#        start = status['start']
+#        stop = start + min(chunksize, status['rowsleft'])
+#        if condition is not None:
+#            data = input_table.readWhere(condition, start=start, stop=stop)
+#        else:
+#            data = input_table.read(start, stop)
+#        if output_fields is not None:
+#            data = add_and_drop_fields(data, output_fields)
+#        output_table.append(data)
+#        output_table.flush()
+#        status['rowsleft'] -= chunksize
+#        status['start'] = stop
+#    loop_wh_progress(copyChunk, range(num_chunks))
+
+    return output_table
+
+def copyTable(input_table, output_file, output_node, output_fields=None,
+              chunksize=10000, condition=None, **kwargs):
     complete_kwargs = {'title': input_table._v_title,
                        'filters': input_table.filters}
     complete_kwargs.update(kwargs)
@@ -60,29 +118,7 @@ def copyTable(input_table, output_file, output_node, output_fields,
         output_dtype = np.dtype(output_fields)
     output_table = output_file.createTable(output_node, input_table.name, 
                                            output_dtype, **complete_kwargs)
-    rowsleft = len(input_table)
-    if chunksize is None:
-        chunksize = rowsleft
-        returndata = True
-    else:
-        returndata = False 
-
-    start = 0
-    num_chunks, remainder = divmod(rowsleft, chunksize)
-    if remainder > 0:
-        num_chunks += 1
-    
-    for _ in range(num_chunks):
-        stop = start + min(chunksize, rowsleft)
-        data = input_table.read(start, stop)
-        if output_fields is not None:
-            data = add_and_drop_fields(data, output_fields)
-        output_table.append(data)
-        output_table.flush()
-        rowsleft -= chunksize
-        start = stop
-
-    return data if returndata else None
+    return appendTable(input_table, output_table, chunksize, condition)
 
 
 def copyPeriodicTableAndRebuild(input_table, output_file, output_node, 
@@ -173,9 +209,8 @@ class H5Data(object):
         output_globals = output_file.createGroup("/", "globals", 
                                                    "Globals")
         # load globals in memory
-        periodic_globals = copyTable(input_root.globals.periodic,
-                                     output_file, output_globals, None,
-                                     chunksize=None)
+        copyTable(input_root.globals.periodic, output_file, output_globals)
+        periodic_globals = input_root.globals.periodic.read()
 
         input_entities = input_root.entities
         output_entities = output_file.createGroup("/", "entities", "Entities")
