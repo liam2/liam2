@@ -182,7 +182,7 @@ class CompoundExpression(EvaluableExpression):
         return expr_eval(expr, context)
 
     def build_context(self, context):
-        raise NotImplementedError
+        return context
 
     def build_expr(self):
         raise NotImplementedError

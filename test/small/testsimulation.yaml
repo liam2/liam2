@@ -192,6 +192,10 @@ entities:
                              if(gender, ps.newhousehold, newhousehold),
                              hh_id)
 
+            test_compound:
+                - show("min(age, 10):", min(age, 10)) 
+                - show("max(age, 20):", max(age, 20))
+                 
             test_lag:
                 - lagavg: show(lag(grpavg(age)))
                 - avglag: show(grpavg(lag(age)))
@@ -202,6 +206,10 @@ entities:
                 - num1yearold: show(grpcount(age == 1))
                 - shouldbenumbirthand1yearold: show(grpcount(lag(age, missing=0) == 0))
                 
+            test_duration:
+                - show("> 10", duration(age > 10))
+                - show("max(d, 2)", max(duration(age > 10), 2))
+
             test_link_get:
                 - simple_link: show(ph.num_persons)
                 - link_get: show(ph.get(countlink(persons)))
@@ -253,17 +261,19 @@ simulation:
         - person: [bp,
                    cleanup, 
                    test_globals,
-                   test_macro, 
+                   test_macro,
+                   test_compound, 
                    agegroup,
                    dead,
                    show_95_notdead, show_0_dead,
                    test_logit,
                    marriage,
                    
-                   test_uninitialized_var,
+#                   test_uninitialized_var,
                    
                    to_give_birth, newbirth,
                    test_lag,
+                   test_duration,
                    
                    test_o2m,
                    plop_compute, plop_compute2,
