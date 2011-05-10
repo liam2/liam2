@@ -97,10 +97,17 @@
  - some kind of integrity checks
  - duration(varname, value)
 
+ bug fixes
+ ---------
+ 
+ - globals should have the correct type, not always "float" (see data_main)
+ - cleanup local variables when exiting a procedure
+ - nan -> 0 for sum in groupby (see numpy Ticket #1123)
+
  other missing features
  ----------------------
 
- - int / int should return float
+ - round(X) should return int
  - warning for unused fields
  - better error message if unknown target entity in links (KeyError)
  - better error message if unknown entity in simulation.processes (KeyError)
@@ -116,6 +123,9 @@
  - watches in step by step mode (which are recomputed/displayed automatically
    after each step)
  - macros using other macros
+ - labeled enumerations (eg workstate: 1: "unemployed, 2: "employee", 3: "civserv", 4: ...}
+   it would be great if I could display the labels in show/groupby instead of 
+   the numeric values
  - numpy methods (min/max/...) on zero-length array
  - implement "log" action = show in a file
  - lastpresent(col[, condition]) -> returns the last value which is not missing
@@ -158,12 +168,6 @@
    * currperiodstart(variable): returns the time period the current value
                                 of the variable started
 
- bug fixes
- ---------
- 
- - cleanup local variables when exiting a procedure
- - nan -> 0 for sum in groupby (see numpy Ticket #1123)
- 
  optimisation
  ------------
 

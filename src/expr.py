@@ -1,3 +1,4 @@
+from __future__ import division
 import re
 import sys
 
@@ -218,7 +219,7 @@ class Expr(object):
 #                usual_len = len(value)
         try:
 #            dt = self.dtype(context)
-            return evaluate(s, context, {})
+            return evaluate(s, context, {}, truediv='auto')
         except Exception, e:
             raise add_context(e, s)
 
@@ -387,6 +388,9 @@ class Division(BinaryOp):
     neutral_value = 1.0
     overpowering_value = None
     accepted_types = (float,)
+
+    def dtype(self, context):
+        return float
 
 
 class Variable(Expr):

@@ -60,6 +60,12 @@ entities:
             
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
+                
+            test_expr:
+                - show("age + 1:", age + 1)
+                - show("age / 10:", age / 10)
+                - show("100 / age:", 100 / age)
+                - show("age * (1 / 2):", age * (1 / 2))
 
             test_globals:
                 - no_index: MINR
@@ -78,7 +84,7 @@ entities:
                 - ischild: age < 18
                 - test_nonmacro1: show(grpsum(ischild))
                 - test_macro1: show(grpsum(ISCHILD))
-                - breakpoint(2002)
+#                - breakpoint(2002)
             
                 - age: age + 1
             
@@ -86,15 +92,15 @@ entities:
                 - show("test grpsum:", grpsum(ischild))
                 - test_macro2: show(grpsum(ISCHILD))
             
-            agegroup: if(age < 50, 5 * (age / 5), 10 * (age / 10))
+            agegroup: if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))
 
             dead: if(gender, 
-                      align(logit_score(0.0), 
-                            take=age > 95, leave=ISCHILD,
-                            fname='al_p_dead_m.csv'),
-                      align(logit_score(0.0),
-                            take=age > 95, leave=ISCHILD,
-                            fname='al_p_dead_f.csv'))
+                     align(logit_score(0.0), 
+                           take=age > 95, leave=ISCHILD,
+                           fname='al_p_dead_m.csv'),
+                     align(logit_score(0.0),
+                           take=age > 95, leave=ISCHILD,
+                           fname='al_p_dead_f.csv'))
 
             show_95_notdead: show(grpsum(not dead and (age > 95)))
             show_0_dead: show(grpsum(dead and ISCHILD))
@@ -152,6 +158,11 @@ entities:
                     expr: if(age >= 50, 100, plop2)
                 - show_plop: show(plop2)
             
+            test_clone:
+                - clone(filter = age == 95,
+                        f_id = __parent__.id,
+                        m_id = __parent__.id)    
+            
             marriage:
                 - married: partner_id != -1
 
@@ -185,8 +196,10 @@ entities:
                               
                 - just_married: to_marry and (partner_id != -1)
 
+                - hh_num_persons: ph.num_persons
                 - newhousehold: new('household', filter=just_married and not gender,
-                                     start_period=period)
+                                    start_period=period,
+                                    num_persons=hh_num_persons)
                     
                 - hh_id: if(just_married,
                              if(gender, ps.newhousehold, newhousehold),
@@ -258,8 +271,9 @@ simulation:
         - person: [test_init]
 
     processes:
-        - person: [bp,
-                   cleanup, 
+        - person: [#bp,
+                   cleanup,
+                   test_expr, 
                    test_globals,
                    test_macro,
                    test_compound, 
@@ -268,6 +282,7 @@ simulation:
                    show_95_notdead, show_0_dead,
                    test_logit,
                    marriage,
+                   test_clone,
                    
 #                   test_uninitialized_var,
                    

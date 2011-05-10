@@ -566,6 +566,7 @@ class ZeroClip(CompoundExpression):
 class FunctionExpression(EvaluableExpression):
     func_name = None
 
+    #TODO: move filter to a subclass of FunctionExpression
     def __init__(self, expr, filter=None):
         self.expr = expr
         self.filter = filter
@@ -761,10 +762,21 @@ class Round(NumpyProperty):
     func_name = 'round' # np.round redirects to np.round_
     np_func = (np.round,)
     arg_names = ('a', 'decimals', 'out')
+    
     #TODO: assert dtype of a is float
-
     def dtype(self, context):
         return dtype(self.args[0], context)
+
+
+class Trunc(FunctionExpression):
+    func_name = 'trunc'
+
+    def eval(self, context):
+        return expr_eval(self.expr, context).astype(int)
+        
+    def dtype(self, context):
+        assert dtype(self.args[0], context) == float
+        return int
 
 
 class GroupMin(NumpyProperty):
@@ -864,7 +876,7 @@ class Exp(NumexprFunctionProperty):
 
 
 class CreateIndividual(EvaluableExpression):
-    def __init__(self, entity_name, filter=None, number=None, **kwargs):
+    def __init__(self, entity_name=None, filter=None, number=None, **kwargs):
         self.entity_name = entity_name
         self.filter = filter
         self.kwargs = kwargs
@@ -872,8 +884,15 @@ class CreateIndividual(EvaluableExpression):
 #        assert filter is not None and number is None or \
 #               number is not None and filter is None
 
+    def _initial_values(self, array, to_give_birth, num_birth):
+        #FIXME: use default values instead (or at least missing values)
+        return np.zeros(num_birth, dtype=array.dtype)
+
     def eval(self, context):
-        target_entity = entity_registry[self.entity_name]
+        if self.entity_name is None:
+            target_entity = context['__entity__']
+        else:
+            target_entity = entity_registry[self.entity_name]
         array = target_entity.array
         ctx_filter = context.get('__filter__')
 
@@ -901,8 +920,7 @@ class CreateIndividual(EvaluableExpression):
         num_rows = len(array)
         num_individuals = len(id_to_rownum)
 
-        #TODO: use default values instead (or at least missing values)
-        children = np.zeros(num_birth, dtype=array.dtype)
+        children = self._initial_values(array, to_give_birth, num_birth)
         children['id'] = np.arange(num_individuals, num_individuals + num_birth)
             
         if num_birth:
@@ -948,6 +966,7 @@ class CreateIndividual(EvaluableExpression):
         # entity
         if to_give_birth is not None: 
             source_entity = context['__entity__']
+            #FIXME: use -1 instead
             result = np.zeros(context_length(context), dtype=int)
             if source_entity is target_entity:
                 to_give_birth = np.concatenate((to_give_birth, 
@@ -956,6 +975,14 @@ class CreateIndividual(EvaluableExpression):
             return result
         else:
             return None
+
+
+class Clone(CreateIndividual):
+    def __init__(self, filter=None, **kwargs):
+        CreateIndividual.__init__(self, None, filter, None, **kwargs)
+
+    def _initial_values(self, array, to_give_birth, num_birth):
+        return array[to_give_birth]
 
 
 class Dump(EvaluableExpression):
@@ -1041,7 +1068,9 @@ functions.update({
     'clip': Clip,
     'zeroclip': ZeroClip,
     'round': Round,
+    'trunc': Trunc,
     # misc
     'new': CreateIndividual,
+    'clone': Clone,
     'dump': Dump,
 })
