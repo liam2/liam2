@@ -763,9 +763,11 @@ class Round(NumpyProperty):
     np_func = (np.round,)
     arg_names = ('a', 'decimals', 'out')
     
-    #TODO: assert dtype of a is float
     def dtype(self, context):
-        return dtype(self.args[0], context)
+        # result dtype is the same as the input dtype
+        res = dtype(self.args[0], context)
+        assert res == float
+        return res
 
 
 class Trunc(FunctionExpression):
@@ -885,7 +887,7 @@ class CreateIndividual(EvaluableExpression):
 #               number is not None and filter is None
 
     def _initial_values(self, array, to_give_birth, num_birth):
-        #TODO: use default values for field which have one
+        #TODO: use default values for fields which have one
         children = np.empty(num_birth, dtype=array.dtype)
         children.fill(get_missing_record(array))
         return children
