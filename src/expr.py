@@ -48,6 +48,10 @@ missing_values = {
     bool: False
 }
 
+def get_missing_value(column):
+    return missing_values[normalize_type(column.dtype.type)]
+    
+
 def coerce_types(context, *args):
     dtype_indices = [type_to_idx[dtype(arg, context)] for arg in args]
     return idx_to_type[max(dtype_indices)]
@@ -472,8 +476,7 @@ class SubscriptedVariable(Variable):
             raise Exception("Unknown global: %s" % self.name)
         column = globals[self.name]
         num_periods = len(globals['period'])
-        ftype = normalize_type(column.dtype.type)
-        missing_value = missing_values[ftype]
+        missing_value = get_missing_value(column)
         
         if isinstance(period_idx, np.ndarray):
             out_of_bounds = (period_idx < 0) | (period_idx >= num_periods)

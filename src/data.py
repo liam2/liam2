@@ -1,8 +1,7 @@
 import tables
 import numpy as np
 
-from expr import normalize_type
-from properties import missing_values
+from expr import normalize_type, get_missing_value
 from utils import loop_wh_progress
 
 
@@ -52,8 +51,7 @@ def add_and_drop_fields(array, output_fields):
     for fname in common_fields:
         output_array[fname] = array[fname]
     for fname in missing_fields:
-        ftype = normalize_type(output_dtype.fields[fname][0].type)
-        output_array[fname] = missing_values[ftype]
+        output_array[fname] = get_missing_value(output_array[fname])
     return output_array
 
     
@@ -152,7 +150,7 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
         
     print "indexing present ids..."
     id_to_rownum = np.empty(max_id + 1, dtype=int)
-    id_to_rownum[:] = -1
+    id_to_rownum.fill(-1)
 
     rownum = 0
     for id, present in enumerate(is_present):
@@ -161,10 +159,8 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
             rownum += 1
 
     output_array = np.empty(rownum, dtype=output_dtype)
-
     for fname in missing_fields:
-        ftype = normalize_type(output_dtype.fields[fname][0].type)
-        output_array[fname] = missing_values[ftype]
+        output_array[fname] = get_missing_value(output_array[fname])
 
     print "copying table & building array..."
     output_rows = {}
@@ -254,7 +250,7 @@ class H5Data(object):
             for period in periods:
                 max_id = max_id_per_period[period]
                 id_to_rownum = np.empty(max_id + 1, dtype=int)
-                id_to_rownum[:] = -1
+                id_to_rownum.fill(-1)
                 start, stop = table_index[period]
                 for idx, row in enumerate(table.iterrows(start, stop)):
                     id_to_rownum[row['id']] = idx

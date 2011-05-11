@@ -67,7 +67,7 @@ class MarriageMarket(EvaluableExpression):
 
 #        result = a[self.name]
         result = np.empty(len(a), dtype=int)
-        result[:] = -1
+        result.fill(-1)
 
         mm_dict = {}
         def match_woman(idx, sorted_idx):

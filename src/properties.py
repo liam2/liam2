@@ -5,7 +5,7 @@ import numpy as np
 
 from expr import Expr, Variable, Where, functions, as_string, dtype, \
                  coerce_types, type_to_idx, idx_to_type, expr_eval, \
-                 collect_variables, missing_values, num_tmp, normalize_type
+                 collect_variables, missing_values, num_tmp, get_missing_value
 from entities import entity_registry, EntityContext, context_length
 import utils
 
@@ -275,8 +275,7 @@ class LinkValue(EvaluableExpression):
         target_values = expr_eval(self.target_expression, target_context)
         missing_value = self.missing_value
         if missing_value is None:
-            ftype = normalize_type(target_values.dtype.type)
-            missing_value = missing_values[ftype]
+            missing_value = get_missing_value(target_values)
 
         valid_links = (target_ids != missing_int) & (target_rows != missing_int)
         return np.where(valid_links, target_values[target_rows], missing_value)
@@ -448,10 +447,8 @@ class MinLink(AggregateLink):
             value_column = value_column[target_filter]
         assert len(source_rows) == len(value_column)
 
-        ftype = normalize_type(value_column.dtype.type)
-        missing_value = missing_values[ftype]
-        result = np.empty(context_length(context), dtype=ftype)
-        result[:] = missing_value
+        result = np.empty(context_length(context), dtype=value_column.dtype)
+        result.fill(get_missing_value(value_column))
         
         id_sort_indices = np.argsort(source_rows)
         sorted_rownum = source_rows[id_sort_indices]
@@ -971,7 +968,7 @@ class CreateIndividual(EvaluableExpression):
         # entity
         if to_give_birth is not None: 
             result = np.empty(context_length(context), dtype=int)
-            result[:] = -1
+            result.fill(-1)
             if source_entity is target_entity:
                 to_give_birth = np.concatenate((to_give_birth, 
                                                 np.zeros(num_birth, dtype=bool)))
@@ -1034,7 +1031,7 @@ class Dump(EvaluableExpression):
                 dtype = col.dtype.type
             if dtype is not None:
                 newcol = np.empty(numrows, dtype=dtype)
-                newcol[:] = col
+                newcol.fill(col)
                 columns[idx] = newcol
  
         return utils.PrettyTable(chain([str_expressions], izip(*columns)))

@@ -346,7 +346,7 @@ class ImportExportData(object):
                 # carray it is much smaller than an (id, rownum) dict, while
                 # being only a bit slower  
                 row_for_id[period] = np.empty(max_id + 1, dtype=int)
-                row_for_id[period][:] = -1
+                row_for_id[period].fill(-1)
 
             numrows = len(id_periods)
             lastrow_for_id = {}
@@ -355,7 +355,7 @@ class ImportExportData(object):
             # is really too slow to use afterwards because access is
             # not sequential at all.            
             nextrow_for_id = np.empty(numrows, dtype=int)
-            nextrow_for_id[:] = -1
+            nextrow_for_id.fill(-1)
             for rownum, (period, id) in enumerate(id_periods):
                 row_for_id[period][id] = rownum
                 
@@ -383,8 +383,9 @@ class ImportExportData(object):
             fdescs = [(fname, missing_values[ftype])
                       for fname, ftype in neededfields]
             print " * filling with default values..."
-            defaultrow = tuple(default for fname, default in fdescs)
-            array[:] = defaultrow
+            defaultrow = np.array([tuple(default for fname, default in fdescs)],
+                                  dtype=main_dtype)
+            array.fill(defaultrow)
             array['period'] = id_periods['period']
             array['id'] = id_periods['id']
             
@@ -445,7 +446,7 @@ class ImportExportData(object):
 
 #            max_id = np.max(ids)
 #            id_to_rownum = np.empty(max_id + 1, dtype=int)
-#            id_to_rownum[:] = -1
+#            id_to_rownum.fill(-1)
 #            for rownum, id in enumerate(ids):
 #                id_to_rownum[id] = rownum 
 #            entity.id_to_rownum = id_to_rownum
