@@ -13,7 +13,7 @@ except ImportError:
                     for name in ('where', 'exp', 'log', 'abs')]
     eval_context.extend([('False', False), ('True', True)])
 
-    def evaluate(expr, globals, locals=None):
+    def evaluate(expr, globals, locals=None, **kwargs):
         complete_globals = {}
         complete_globals.update(globals)
         if hasattr(globals, 'extra'):
