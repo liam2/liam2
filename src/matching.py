@@ -5,7 +5,7 @@ from properties import EvaluableExpression
 from utils import loop_wh_progress
 
 
-class MarriageMarket(EvaluableExpression):
+class Matching(EvaluableExpression):
     def __init__(self, set1filter, set2filter, score, orderby):
         self.set1filter = set1filter
         self.set2filter = set2filter
@@ -27,6 +27,9 @@ class MarriageMarket(EvaluableExpression):
         # f1 = eval(ctx_filter & filter1); f2 = eval(ctx_filter & filter2)
         # OR        
         # cf = eval(ctx_filter); f1 = cf & eval(filter1); f2 = cf & eval(filter2)
+        # OR
+        # cf = eval(ctx_filter); f1 = eval(cf & filter1); f2 = eval(cf & filter2)
+        
         # it will probably depend if ctx_filter is long/contains costly 
         # operations
         if ctx_filter is not None:
@@ -53,6 +56,7 @@ class MarriageMarket(EvaluableExpression):
                          for name in field_names)
         variables.update(('__o_%s' % name, Variable(name))
                          for name in field_names)
+        # parse string
         symbolic_expr = eval(score_expr, variables)
         used_variables = [v[7:] for v in symbolic_expr.collect_variables(context)
                           if v.startswith('__self_')]
@@ -70,7 +74,7 @@ class MarriageMarket(EvaluableExpression):
         result.fill(-1)
 
         mm_dict = {}
-        def match_woman(idx, sorted_idx):
+        def match_one_set1_individual(idx, sorted_idx):
             global set2
             
             if not len(set2):
@@ -103,7 +107,7 @@ class MarriageMarket(EvaluableExpression):
             result[id_to_rownum[id1]] = id2
             result[id_to_rownum[id2]] = id1
             
-        loop_wh_progress(match_woman, sorted_set1_indices)
+        loop_wh_progress(match_one_set1_individual, sorted_set1_indices)
         return result
     
-functions['matching'] = MarriageMarket
+functions['matching'] = Matching
