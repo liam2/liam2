@@ -122,14 +122,25 @@
  - includes
  - watches in step by step mode (which are recomputed/displayed automatically
    after each step)
- - macros using other macros
+ - macros using other macros. This will need:
+   1) pre-parse macros to compute which macro depend on which other macro
+   2) do a topological sort on them
+   3) parse them in order 
  - labeled enumerations
    eg workstate: 1: "unemployed, 2: "employee", 3: "civserv", ...
-   two fold improvement:
-   - display the labels in show/groupby instead of the numeric values
-   ? use the labels in expressions (instead of using macros)
+   * display the labels in show/groupby instead of the numeric values
+   ? use the labels in "read" expressions (instead of using macros)
      macros contain the == and can contain < or >, which is more generic, 
      so I'm not sure it would be an improvement
+   * use labels when setting new values (this could be done with macros, but 
+     that's not how they use it now)
+     eg: workstate: "if(RETIREMENTAGE, 10, workstate)"
+         workstate: "if(RETIREMENTAGE, RETIRED, workstate)" 
+      
+            RETIREMENTAGE: "((gender) and (age >= 65)) or ((not gender) and (age >= WEMRA))"
+            RETIREMENTAGE: "age >= if(gender, 65, WEMRA)"
+     
+       
  - numpy methods (min/max/...) on zero-length array
  - implement "log" action = show in a file
  - lastpresent(col[, condition]) -> returns the last value which is not missing
@@ -139,14 +150,12 @@
  - standalone interactive console
  - allow setting/creating temporary variables in interactive console
  - merge per_period_fields and globals
- - simulate years where we already have data
  - line numbers in error messages. It might be tricky because we loose the 
    information after yaml parsed the file
  - one filter, several actions.
    eg, when someone dies, you want to change more than one field, and it
    is a bit tedious to need to repeat the filter
    same comment for divorce 
- - support temporary variables in alignment
  - move away from yaml for the user...
  - filter in all aggregates, not only in grpavg
  - move data generator to external script. It might be a good idea to just 

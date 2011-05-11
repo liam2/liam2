@@ -87,7 +87,7 @@ def extract_period(period, expressions, possible_values, probabilities):
 
     return expressions, possible_values, probabilities
     
-def align_get_indices_nd(context, filter, rank,
+def align_get_indices_nd(context, filter, score,
                          expressions, possible_values, probabilities,
                          take_filter=None, leave_filter=None):
     assert len(expressions) == len(possible_values)
@@ -166,10 +166,13 @@ def align_get_indices_nd(context, filter, rank,
                                                          assume_unique=True)
                 else:
                     group_maybe_indices = members_indices
-                maybe_members_rank_value = rank[group_maybe_indices]
-                sorted_local_indices = np.argsort(maybe_members_rank_value)
-                sorted_global_indices = \
-                    group_maybe_indices[sorted_local_indices]
+                if isinstance(score, np.ndarray):
+                    maybe_members_rank_value = score[group_maybe_indices]
+                    sorted_local_indices = np.argsort(maybe_members_rank_value)
+                    sorted_global_indices = \
+                        group_maybe_indices[sorted_local_indices]
+                else:
+                    sorted_global_indices = group_maybe_indices 
 
                 maybe_to_take = affected - num_always
 

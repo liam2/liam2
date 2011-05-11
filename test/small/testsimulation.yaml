@@ -52,6 +52,12 @@ entities:
         
         macros:
             ISCHILD: age < 18
+            
+#            BOY: ISCHILD and MALE
+#            GIRL: ISCHILD and FEMALE
+            
+            MALE: gender
+            FEMALE: not gender
 
         # possible transitions & regressions. The actual list used in the
         # simulation must be defined below
@@ -102,9 +108,20 @@ entities:
                            align(logit_score(0.0),
                                  take=age > 95, leave=ISCHILD,
                                  fname='al_p_dead_f.csv'))
-
+                                 
                 - show('95+ not dead:', grpsum(not dead and (age > 95)),
                        'ISCHILD dead:', grpsum(dead and ISCHILD))
+                       
+                # align using temporary variable
+                - temp: age + 1
+                # this is not exactly the same number because of the way we 
+                # correct for "fractional persons" with a probability of adding
+                # one person. However the difference should be < than the number
+                # of alignment categories.
+                - var_aligned: align(0.0, fname='al_p_dead_m.csv')
+                - temp_aligned: align(0.0, fname='al_p_temp.csv')
+                - show('has problems:',
+                       grpcount(temp_aligned != var_aligned) > 105)
 
             test_logit: 
                 - simple: logit_regr(0.0)
