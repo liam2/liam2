@@ -263,7 +263,9 @@ class LinkValue(EvaluableExpression):
         missing_int = missing_values[int]
         target_rows = id_to_rownum[target_ids]
         for column, id_to_rownum in izip(link_columns, id_to_rownums):
-            target_ids = np.where(target_ids != missing_int,
+            valid_links = ((target_ids != missing_int) & 
+                           (target_rows != missing_int))
+            target_ids = np.where(valid_links,
                                   column[target_rows], missing_int)
             target_rows = id_to_rownum[target_ids]
     
@@ -276,8 +278,8 @@ class LinkValue(EvaluableExpression):
             ftype = idx_to_type[type_to_idx[target_values.dtype.type]]
             missing_value = missing_values[ftype]
 
-        return np.where(target_ids != missing_int, target_values[target_rows],
-                        missing_value)
+        valid_links = (target_ids != missing_int) & (target_rows != missing_int)
+        return np.where(valid_links, target_values[target_rows], missing_value)
 
     def __str__(self):
         names = [l._name for l in self.links] + [str(self.target_expression)]
@@ -889,8 +891,9 @@ class CreateIndividual(EvaluableExpression):
         return np.zeros(num_birth, dtype=array.dtype)
 
     def eval(self, context):
+        source_entity = context['__entity__']
         if self.entity_name is None:
-            target_entity = context['__entity__']
+            target_entity = source_entity
         else:
             target_entity = entity_registry[self.entity_name]
         array = target_entity.array
@@ -934,7 +937,8 @@ class CreateIndividual(EvaluableExpression):
             # ideally we should be able to just say:    
             # child_context = context[to_give_birth]
             child_context = {'period': period, 
-                             '__len__': num_birth}
+                             '__len__': num_birth,
+                             '__entity__': source_entity}
             for varname in used_variables:
                 value = context[varname]
                 if isinstance(value, np.ndarray):
@@ -965,7 +969,6 @@ class CreateIndividual(EvaluableExpression):
         # result is the ids of the new individuals corresponding to the source
         # entity
         if to_give_birth is not None: 
-            source_entity = context['__entity__']
             #FIXME: use -1 instead
             result = np.zeros(context_length(context), dtype=int)
             if source_entity is target_entity:
