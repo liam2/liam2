@@ -9,4 +9,5 @@ import_export:
         household:
             dead: co_alive
     invert: 
-        person: [dead]    
+        person: [dead]
+        household: [dead]
