@@ -837,7 +837,7 @@ class GroupAverage(FunctionExpression):
         expr = self.expr
         if self.filter is not None:
             filter = expr_eval(self.filter, context)
-            #FIXME: use usual temporary variable method 
+            #FIXME: use usual temporary variable method
             context = context.copy()
             context['__tmpfilter__'] = filter
             expr = Where(Variable('__tmpfilter__'), expr, 0)
@@ -969,8 +969,8 @@ class CreateIndividual(EvaluableExpression):
         # result is the ids of the new individuals corresponding to the source
         # entity
         if to_give_birth is not None: 
-            #FIXME: use -1 instead
-            result = np.zeros(context_length(context), dtype=int)
+            result = np.empty(context_length(context), dtype=int)
+            result[:] = -1
             if source_entity is target_entity:
                 to_give_birth = np.concatenate((to_give_birth, 
                                                 np.zeros(num_birth, dtype=bool)))
