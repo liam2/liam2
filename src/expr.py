@@ -34,6 +34,9 @@ type_to_idx = {bool: 0, np.bool_: 0,
                float:2, np.float64: 2}
 idx_to_type = [bool, int, float]
 
+def normalize_type(type_):
+    return idx_to_type[type_to_idx[type_]]
+
 missing_values = {
 #    int: -2147483648,
     # for links, we need to have abs(missing_int) < len(a) !
@@ -59,8 +62,7 @@ def dtype(expr, context):
     if isinstance(expr, Expr):
         return expr.dtype(context)
     else:
-        # standardise type
-        return idx_to_type[type_to_idx[type(expr)]]
+        return normalize_type(type(expr))
 
 def collect_variables(expr, context):
     if isinstance(expr, Expr):
@@ -424,9 +426,8 @@ class Variable(Expr):
     
     def dtype(self, context):
         if self._dtype is None and self.name in context:
-            dt = context[self.name].dtype.type
-            # standardise type
-            return idx_to_type[type_to_idx[dt]]
+            type_ = context[self.name].dtype.type
+            return normalize_type(type_)
         else:
             return self._dtype
 
@@ -471,7 +472,7 @@ class SubscriptedVariable(Variable):
             raise Exception("Unknown global: %s" % self.name)
         column = globals[self.name]
         num_periods = len(globals['period'])
-        ftype = idx_to_type[type_to_idx[column.dtype.type]]
+        ftype = normalize_type(column.dtype.type)
         missing_value = missing_values[ftype]
         
         if isinstance(period_idx, np.ndarray):

@@ -5,7 +5,7 @@ import numpy as np
 
 from expr import Expr, Variable, Where, functions, as_string, dtype, \
                  coerce_types, type_to_idx, idx_to_type, expr_eval, \
-                 collect_variables, missing_values, num_tmp
+                 collect_variables, missing_values, num_tmp, normalize_type
 from entities import entity_registry, EntityContext, context_length
 import utils
 
@@ -275,7 +275,7 @@ class LinkValue(EvaluableExpression):
         target_values = expr_eval(self.target_expression, target_context)
         missing_value = self.missing_value
         if missing_value is None:
-            ftype = idx_to_type[type_to_idx[target_values.dtype.type]]
+            ftype = normalize_type(target_values.dtype.type)
             missing_value = missing_values[ftype]
 
         valid_links = (target_ids != missing_int) & (target_rows != missing_int)
@@ -448,7 +448,7 @@ class MinLink(AggregateLink):
             value_column = value_column[target_filter]
         assert len(source_rows) == len(value_column)
 
-        ftype = idx_to_type[type_to_idx[value_column.dtype.type]]
+        ftype = normalize_type(value_column.dtype.type)
         missing_value = missing_values[ftype]
         result = np.empty(context_length(context), dtype=ftype)
         result[:] = missing_value
@@ -887,7 +887,8 @@ class CreateIndividual(EvaluableExpression):
 #               number is not None and filter is None
 
     def _initial_values(self, array, to_give_birth, num_birth):
-        #FIXME: use default values instead (or at least missing values)
+        #TODO: use default values for field which have one
+        #FIXME: use missing values
         return np.zeros(num_birth, dtype=array.dtype)
 
     def eval(self, context):

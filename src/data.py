@@ -1,14 +1,20 @@
 import tables
 import numpy as np
 
-from expr import type_to_idx, idx_to_type
+from expr import normalize_type
 from properties import missing_values
 from utils import loop_wh_progress
 
+
+def get_table_fields(table):
+    dtype = table.dtype
+    field_types = dtype.fields
+    return [(name, normalize_type(field_types[name][0].type))
+            for name in dtype.names]
+
 def assertValidFields(s_fields, table, allowed_missing=None):
     # extract types from field description and normalise to python types
-    t_fields = [(k, idx_to_type[type_to_idx[v[0].type]])
-                for k, v in table.dtype.fields.iteritems()]
+    t_fields = get_table_fields(table)
 
     # check that all required fields are present
     s_names = set(name for name, _ in s_fields)
@@ -46,18 +52,10 @@ def add_and_drop_fields(array, output_fields):
     for fname in common_fields:
         output_array[fname] = array[fname]
     for fname in missing_fields:
-        ftype = idx_to_type[type_to_idx[output_dtype.fields[fname][0].type]]
+        ftype = normalize_type(output_dtype.fields[fname][0].type)
         output_array[fname] = missing_values[ftype]
     return output_array
 
-def normalize_type(type_):
-    return idx_to_type[type_to_idx[type_]]
-
-def get_table_fields(table):
-    dtype = table.dtype
-    field_types = dtype.fields
-    return [(name, normalize_type(field_types[name][0].type))
-            for name in dtype.names]
     
 def appendTable(input_table, output_table, chunksize=10000, condition=None):
     if input_table.dtype != output_table.dtype:
@@ -165,7 +163,7 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
     output_array = np.empty(rownum, dtype=output_dtype)
 
     for fname in missing_fields:
-        ftype = idx_to_type[type_to_idx[output_dtype.fields[fname][0].type]]
+        ftype = normalize_type(output_dtype.fields[fname][0].type)
         output_array[fname] = missing_values[ftype]
 
     print "copying table & building array..."

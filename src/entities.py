@@ -3,7 +3,7 @@ import tables
 
 from expr import parse, Variable, SubscriptableVariable, \
                  VirtualArray, expr_eval, missing_values, \
-                 type_to_idx, idx_to_type
+                 normalize_type 
 
 str_to_type = {'float': float, 'int': int, 'bool': bool}
 
@@ -287,6 +287,14 @@ class Entity(object):
             if fname == name:
                 return ftype
         return None
+
+    def missing_row(self):
+        dt = self.array.dtype
+        row = np.empty(1, dtype=dt)
+        for fname, fdesc in dt.fields.iteritems():
+            ftype = normalize_type(fdesc[0].type)
+            row[fname] = missing_values[ftype]
+        return row
             
     def getcolumn(self, name):
         if isinstance(name, Variable):
@@ -359,10 +367,7 @@ class Entity(object):
                 output_array[target_rownum] = row
         
         # 2) copy data from input file
-        missing_row = np.empty(1, dtype=output_dtype)
-        for fname in missing_fields:
-            ftype = idx_to_type[type_to_idx[output_dtype.fields[fname][0].type]]
-            missing_row[fname] = missing_values[ftype]
+        missing_row = self.missing_row()
 
         #TODO: chunking instead of reading the whole array in one pass 
         # *might* be a good idea to preserve some memory
@@ -394,7 +399,7 @@ class Entity(object):
 
     def fill_missing_values(self, ids, values, context, filler='auto'):
         if filler is 'auto':
-            filler = missing_values[idx_to_type[type_to_idx[values.dtype.type]]]
+            filler = missing_values[normalize_type(values.dtype.type)]
         result_len = context_length(context)
         result = np.empty(result_len, dtype=values.dtype)
         result[:] = filler
@@ -481,7 +486,7 @@ class Entity(object):
 
             # filter out lines which are present because there was a value for
             # that individual at that period but not for that column
-            value_type = idx_to_type[type_to_idx[values.dtype.type]]
+            value_type = normalize_type(values.dtype.type)
             missing_value = missing_values[value_type]
             if np.isnan(missing_value):
                 acceptable_rows = ~np.isnan(values)
@@ -527,7 +532,7 @@ class Entity(object):
             
             # filter out lines which are present because there was a value for
             # that individual at that period but not for that column
-            value_type = idx_to_type[type_to_idx[values.dtype.type]]
+            value_type = normalize_type(values.dtype.type)
             missing_value = missing_values[value_type]
             if np.isnan(missing_value):
                 acceptable_rows = ~np.isnan(values)
