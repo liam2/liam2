@@ -123,9 +123,13 @@
  - watches in step by step mode (which are recomputed/displayed automatically
    after each step)
  - macros using other macros
- - labeled enumerations (eg workstate: 1: "unemployed, 2: "employee", 3: "civserv", 4: ...}
-   it would be great if I could display the labels in show/groupby instead of 
-   the numeric values
+ - labeled enumerations
+   eg workstate: 1: "unemployed, 2: "employee", 3: "civserv", ...
+   two fold improvement:
+   - display the labels in show/groupby instead of the numeric values
+   ? use the labels in expressions (instead of using macros)
+     macros contain the == and can contain < or >, which is more generic, 
+     so I'm not sure it would be an improvement
  - numpy methods (min/max/...) on zero-length array
  - implement "log" action = show in a file
  - lastpresent(col[, condition]) -> returns the last value which is not missing
