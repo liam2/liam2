@@ -35,7 +35,54 @@ def show_top_processes(process_time, num_processes):
     print time2str(sum(p_time for name, p_time
                        in process_times[:num_processes]))
 
+
 class Simulation(object):
+    '''
+{
+    'globals': {
+        'periodic': [{
+            '*': str
+        }]
+    }, 
+    '#entities': {
+        '*': {
+            'fields': [{
+                '*': '*'
+            }],
+            'links': {
+                '*': {'*': '*'}
+            },
+            'macros': {
+                '*': str
+            },
+            'processes': {
+                '*': '*'
+            }
+        }
+    },
+    '#simulation': {
+        'init': [{
+            '*': [str]
+        }],
+        '#processes': [{
+            '*': [str]
+        }],
+        'random_seed': int,
+        '#periods': int,
+        '#start_period': int,
+        '#output': {
+            'path': str,
+            '#file': str
+        },
+        '#input': {
+            'path': str,
+            '#file': str,
+            'method': str
+        }
+    }
+}
+'''
+    
     def __init__(self, fpath, console=False):
         global output_directory
         global input_directory
@@ -47,6 +94,7 @@ class Simulation(object):
             content = yaml.load(f)
 
         #TODO: raise exception when there are unknown keywords
+        # use validictory? http://readthedocs.org/docs/validictory/
         globals_def = content.get('globals', {})
         periodic_globals = globals_def.get('periodic', [])
         # list of one-item-dicts to list of tuples
