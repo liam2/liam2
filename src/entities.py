@@ -2,8 +2,8 @@ import numpy as np
 import tables
 
 from expr import parse, Variable, SubscriptableVariable, \
-                 VirtualArray, expr_eval, missing_values, \
-                 get_missing_value, normalize_type 
+                 VirtualArray, expr_eval, \
+                 get_missing_value, get_missing_record 
 
 str_to_type = {'float': float, 'int': int, 'bool': bool}
 
@@ -288,14 +288,6 @@ class Entity(object):
                 return ftype
         return None
 
-    def missing_row(self):
-        dt = self.array.dtype
-        row = np.empty(1, dtype=dt)
-        for fname, fdesc in dt.fields.iteritems():
-            ftype = normalize_type(fdesc[0].type)
-            row[fname] = missing_values[ftype]
-        return row
-            
     def getcolumn(self, name):
         if isinstance(name, Variable):
             name = name.name
@@ -322,7 +314,6 @@ class Entity(object):
         output_names = set(output_dtype.names)
         input_names = set(input_table.dtype.names)
         common_fields = output_names & input_names
-        missing_fields = output_names - input_names
          
         rows = self.input_rows.get(period)
         if rows is None:
@@ -367,7 +358,7 @@ class Entity(object):
                 output_array[target_rownum] = row
         
         # 2) copy data from input file
-        missing_row = self.missing_row()
+        missing_row = get_missing_record(self.array)
 
         #TODO: chunking instead of reading the whole array in one pass 
         # *might* be a good idea to preserve some memory

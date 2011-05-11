@@ -51,6 +51,12 @@ missing_values = {
 def get_missing_value(column):
     return missing_values[normalize_type(column.dtype.type)]
     
+def get_missing_record(array):
+    row = np.empty(1, dtype=array.dtype)
+    for fname in array.dtype.names:
+        row[fname] = get_missing_value(row[fname])
+    return row
+
 
 def coerce_types(context, *args):
     dtype_indices = [type_to_idx[dtype(arg, context)] for arg in args]

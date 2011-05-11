@@ -5,7 +5,8 @@ import numpy as np
 
 from expr import Expr, Variable, Where, functions, as_string, dtype, \
                  coerce_types, type_to_idx, idx_to_type, expr_eval, \
-                 collect_variables, missing_values, num_tmp, get_missing_value
+                 collect_variables, num_tmp, \
+                 missing_values, get_missing_value, get_missing_record 
 from entities import entity_registry, EntityContext, context_length
 import utils
 
@@ -885,8 +886,9 @@ class CreateIndividual(EvaluableExpression):
 
     def _initial_values(self, array, to_give_birth, num_birth):
         #TODO: use default values for field which have one
-        #FIXME: use missing values
-        return np.zeros(num_birth, dtype=array.dtype)
+        children = np.empty(num_birth, dtype=array.dtype)
+        children.fill(get_missing_record(array))
+        return children
 
     def eval(self, context):
         source_entity = context['__entity__']
