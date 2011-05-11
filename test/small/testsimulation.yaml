@@ -94,16 +94,17 @@ entities:
             
             agegroup: if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))
 
-            dead: if(gender, 
-                     align(logit_score(0.0), 
-                           take=age > 95, leave=ISCHILD,
-                           fname='al_p_dead_m.csv'),
-                     align(logit_score(0.0),
-                           take=age > 95, leave=ISCHILD,
-                           fname='al_p_dead_f.csv'))
+            test_align:
+                - dead: if(gender, 
+                           align(logit_score(0.0), 
+                                 take=age > 95, leave=ISCHILD,
+                                 fname='al_p_dead_m.csv'),
+                           align(logit_score(0.0),
+                                 take=age > 95, leave=ISCHILD,
+                                 fname='al_p_dead_f.csv'))
 
-            show_95_notdead: show(grpsum(not dead and (age > 95)))
-            show_0_dead: show(grpsum(dead and ISCHILD))
+                - show('95+ not dead:', grpsum(not dead and (age > 95)),
+                       'ISCHILD dead:', grpsum(dead and ISCHILD))
 
             test_logit: 
                 - simple: logit_regr(0.0)
@@ -112,56 +113,65 @@ entities:
             to_give_birth: if(not gender and (age >= 15) and (age <= 50),
                               logit_regr(0.0, align='al_p_birth.csv'),
                               False) 
+#                                 f_id=__parent__.partner_id,
             newbirth: if(to_give_birth,
-                          if(age > 120,
-                             new('person',
-                                 partner_id=-1,
-                                 hh_id=__parent__.hh_id,
-                                 m_id=__parent__.id,
-                                 f_id=__parent__.partner_id,
-                                 m_age=__parent__.age, 
-                                 gender=choice([True, False], [0.51, 0.49])),  
-                             new('person',
-                                 partner_id=-1,
-                                 hh_id=__parent__.hh_id,
-                                 m_id=__parent__.id,
-                                 f_id=__parent__.partner_id,
-                                 m_age=__parent__.age,
-                                 young_mother=True, 
-                                 gender=logit_regr(0.0))),
-                          -1)
+                         if(age > 45,
+                            new('person',
+                                partner_id=-1,
+                                hh_id=__parent__.hh_id,
+                                m_id=__parent__.id,
+                                f_id=ps.id,
+                                m_age=__parent__.age, 
+                                gender=choice([True, False], [0.51, 0.49])),  
+                            new('person',
+                                partner_id=-1,
+                                hh_id=__parent__.hh_id,
+                                m_id=__parent__.id,
+                                f_id=ps.id,
+                                m_age=__parent__.age,
+                                young_mother=True, 
+                                gender=logit_regr(0.0))),
+                         -1)
             
             test_o2m:
                 - nch: countlink(mc)
                 - nch_012: countlink(mc, age <= 12)
-                - nch_012_sum: sumlink(mc, age, age <= 12)
-                - nch_012_sum2: sumlink(mc, age * 2, age <= 12)
-                - nch_012_avg: avglink(mc, age, age <= 12)
+                - ch_012_age_sum: sumlink(mc, age, age <= 12)
+                - ch_012_age2_sum: sumlink(mc, age * 2, age <= 12)
+                - ch_012_age_avg: avglink(mc, age, age <= 12)
                 - ch_minage: minlink(mc, age)
                 - ch_maxage: maxlink(mc, age)
-                - xx: show(dump(nch, nch_012, nch_012_sum, nch_012_sum2,
-                                 nch_012_avg, filter=(nch > 0) and (id < 200))) 
-
-            plop_compute:
+                - xx: show(dump(nch, nch_012, ch_012_age_sum, ch_012_age2_sum,
+                                ch_012_age_avg, filter=(nch > 0) and (id < 100)))
+            
+            test_mixed_links:
+                - show('hh.id:', ph.id,
+                       'hh.id+1:', ph.get(id + 1),
+                       'edu:', eduach,
+                       'num persons:', ph.get(countlink(persons)),
+                       'num high edu:', ph.get(countlink(persons, eduach == 4)))
+                 
+            test_predictor1:
                 predictor: plop
                 expr: if(age < 10, age ** 3, age ** 2)
-            plop_compute2:
+            test_predictor2:
                 predictor: plop
                 expr: if(age >= 10, 100, plop)
 
-            test_predictor:
-                - plop2_compute:
+            test_predictor3:
+                - a:
                     predictor: plop2
                     expr: if(age < 10, age ** 3, age ** 2)
-                - plop2_compute2:
+                - b:
                     predictor: plop2
                     expr: if(age >= 50, 100, plop2)
-                - show_plop: show(plop2)
+                - show(plop2)
             
             test_clone:
                 - clone(filter = age == 95,
-                        f_id = __parent__.id,
-                        m_id = __parent__.id)    
+                        f_id = id,
+                        m_id = id,
+                        nch = ph.get(countlink(persons)))    
             
             marriage:
                 - married: partner_id != -1
@@ -196,14 +206,11 @@ entities:
                               
                 - just_married: to_marry and (partner_id != -1)
 
-                - hh_num_persons: ph.num_persons
                 - newhousehold: new('household', filter=just_married and not gender,
-                                    start_period=period,
-                                    num_persons=hh_num_persons)
-                    
+                                    start_period=period)
                 - hh_id: if(just_married,
-                             if(gender, ps.newhousehold, newhousehold),
-                             hh_id)
+                            if(gender, ps.newhousehold, newhousehold),
+                            hh_id)
 
             test_compound:
                 - show("min(age, 10):", min(age, 10)) 
@@ -223,10 +230,6 @@ entities:
                 - show("> 10", duration(age > 10))
                 - show("max(d, 2)", max(duration(age > 10), 2))
 
-            test_link_get:
-                - simple_link: show(ph.num_persons)
-                - link_get: show(ph.get(countlink(persons)))
-            
             test_dump: 
 #                - expr: csv(dump(gender, age, partner_id, ps.age),
 #                             suffix='test')
@@ -278,11 +281,9 @@ simulation:
                    test_macro,
                    test_compound, 
                    agegroup,
-                   dead,
-                   show_95_notdead, show_0_dead,
+                   test_align,
                    test_logit,
                    marriage,
-                   test_clone,
                    
 #                   test_uninitialized_var,
                    
@@ -291,21 +292,23 @@ simulation:
                    test_duration,
                    
                    test_o2m,
-                   plop_compute, plop_compute2,
+                   test_mixed_links,
+                   test_clone,
+                   
+                   test_predictor1, test_predictor2, test_predictor3,
+
                    test_o2m_aggregate,
 #                   test_groupby,
 #                   test_dump,
         ]
         - household: [cleanup,
                       num_persons, nch, maxnch, 
-                      dump_csv_h]
-        - person: [test_link_get]
+#                      dump_csv_h
+                     ]
 
     input:
-#        path: data
         file: small.h5
     output:
-#        path: output
         file: simulation.h5
 
 #    random_seed: 0
