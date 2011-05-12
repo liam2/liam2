@@ -32,9 +32,6 @@ type_to_idx = {bool: 0, np.bool_: 0,
                float:2, np.float64: 2}
 idx_to_type = [bool, int, float]
 
-def normalize_type(type_):
-    return idx_to_type[type_to_idx[type_]]
-
 missing_values = {
 #    int: -2147483648,
     # for links, we need to have abs(missing_int) < len(a) !
@@ -46,6 +43,9 @@ missing_values = {
     bool: False
 }
 
+def normalize_type(type_):
+    return idx_to_type[type_to_idx[type_]]
+
 def get_missing_value(column):
     return missing_values[normalize_type(column.dtype.type)]
     
@@ -54,7 +54,6 @@ def get_missing_record(array):
     for fname in array.dtype.names:
         row[fname] = get_missing_value(row[fname])
     return row
-
 
 def coerce_types(context, *args):
     dtype_indices = [type_to_idx[dtype(arg, context)] for arg in args]
