@@ -633,6 +633,10 @@ class TimeSum(FunctionExpression):
 class NumpyProperty(EvaluableExpression):
     func_name = None # optional (for display)
     np_func = (None,)
+    # arg_names can be set automatically by using inspect.getargspec,
+    # but it only works for pure Python functions, so I decided to avoid it
+    # because when you add a function, it's hard to know whether it's 
+    # implemented in C or not.
     arg_names = None
     skip_missing = False
         
