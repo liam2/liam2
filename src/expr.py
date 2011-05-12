@@ -16,8 +16,6 @@ except ImportError:
     def evaluate(expr, globals, locals=None, **kwargs):
         complete_globals = {}
         complete_globals.update(globals)
-        if hasattr(globals, 'extra'):
-            complete_globals.update(globals.extra)
         if locals is not None:
             if isinstance(locals, np.ndarray):
                 for fname in locals.dtype.fields:
