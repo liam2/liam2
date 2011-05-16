@@ -1,8 +1,10 @@
+import time
+
 import tables
 import numpy as np
 
 from expr import normalize_type, get_missing_value
-from utils import loop_wh_progress
+from utils import loop_wh_progress, time2str
 
 
 def get_table_fields(table):
@@ -139,7 +141,8 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
     common_fields = output_names & input_names 
     missing_fields = output_names - input_names 
 
-    print "computing is present..."
+    print "computing is present...",
+    start_time = time.time()
     max_id = max_id_per_period[periods_before[-1]]
     is_present = np.zeros(max_id + 1, dtype=bool)
     for period in periods_before:
@@ -147,8 +150,10 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
         present_in_period = id_to_rownum != -1
         present_in_period.resize(max_id + 1)
         is_present |= present_in_period
+    print "done (%s elapsed)." % time2str(time.time() - start_time)
         
     print "indexing present ids..."
+    start_time = time.time()
     id_to_rownum = np.empty(max_id + 1, dtype=int)
     id_to_rownum.fill(-1)
 
@@ -157,16 +162,22 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
         if present:
             id_to_rownum[id] = rownum
             rownum += 1
+    print "done (%s elapsed)." % time2str(time.time() - start_time)
 
+    print "copying table & building array..."
+    start_time = time.time()
     output_array = np.empty(rownum, dtype=output_dtype)
     for fname in missing_fields:
         output_array[fname] = get_missing_value(output_array[fname])
 
-    print "copying table & building array..."
     output_rows = {}
+    common_fields = tuple(common_fields)
     for period in periods_before:
+        print period, "...",
         start, stop = input_rows[period]
         #TODO: use chunk if there are too many rows in a year
+#        print "copying...",
+#        inner_start_time = time.time()
         input_array = input_table.read(start, stop)
         if period < target_period:
             period_ouput_array = add_and_drop_fields(input_array, output_fields)
@@ -174,14 +185,23 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
             output_table.append(period_ouput_array)
             output_rows[period] = (startrow, output_table.nrows)
             output_table.flush()
-        
-        for row in input_array:
-            target_rownum = id_to_rownum[row['id']]
-            if target_rownum != -1:
-                #TODO: test if chunking improves the speed  
-                output_row = output_array[target_rownum]
-                for fname in common_fields:
-                    output_row[fname] = row[fname]
+#        print "%s elapsed." % time2str(time.time() - inner_start_time),
+#        print "build...",        
+#        inner_start_time = time.time()
+        # if we have the same rows, we can assign whole columns at a time, which
+        # is *much* faster
+        if np.array_equal(input_index[period], id_to_rownum):
+            for fname in common_fields:
+                output_array[fname] = input_array[fname]
+        else:
+            for row in input_array:
+                target_rownum = id_to_rownum[row['id']]
+                if target_rownum != -1:
+                    output_row = output_array[target_rownum]
+                    for fname in common_fields:
+                        output_row[fname] = row[fname]
+#        print "%s elapsed." % time2str(time.time() - inner_start_time)
+    print "done (%s elapsed)." % time2str(time.time() - start_time)
     return output_array, output_rows, id_to_rownum
     
 
@@ -219,6 +239,7 @@ class H5Data(object):
 
             # build indexes
             print "building period index...",
+            start_time = time.time()
             table_index = {}
             current_period = None
             start_row = None
@@ -242,9 +263,10 @@ class H5Data(object):
             periods = sorted(table_index.keys())
             entity.input_rows = table_index
             entity.base_period = periods[0]
-            print "done."
+            print "done (%s elapsed)." % time2str(time.time() - start_time)
 
             print "indexing input file...",
+            start_time = time.time()
             #TODO: make a function out of this and use it in datamain to
             # build id_to_rownum
             for period in periods:
@@ -255,7 +277,7 @@ class H5Data(object):
                 for idx, row in enumerate(table.iterrows(start, stop)):
                     id_to_rownum[row['id']] = idx
                 entity.input_index[period] = id_to_rownum
-            print "done."
+            print "done (%s elapsed)." % time2str(time.time() - start_time)
                     
             # copy stuff
             print "copying tables & loading last period...",
