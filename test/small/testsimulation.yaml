@@ -236,12 +236,16 @@ entities:
             test_lag:
                 - lagavg: show(lag(grpavg(age)))
                 - avglag: show(grpavg(lag(age)))
-                - lagage: show(lag(age))
+                - show("lag(age)", lag(age))
                 - lagage_fill_zero: show(lag(age, missing=0))
                 - shouldbenumbirth: show(grpcount(lag(age) == -1))
                 - shouldbezero: show(grpcount(lag(age, missing=0) == -1))
                 - num1yearold: show(grpcount(age == 1))
                 - shouldbenumbirthand1yearold: show(grpcount(lag(age, missing=0) == 0))
+                - show("age", age, 
+                       "lag(age)", lag(age), 
+                       "lag(age, 2)", lag(age, 2), 
+                       "lag(lag(age))", lag(lag(age)))
                 
             test_duration:
                 - show("> 10", duration(age > 10))
