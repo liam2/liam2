@@ -3,7 +3,7 @@ import tables
 
 from expr import parse, Variable, SubscriptableVariable, \
                  VirtualArray, expr_eval, \
-                 get_missing_value, get_missing_record 
+                 get_missing_value, get_missing_record, hasvalue 
 
 str_to_type = {'float': float, 'int': int, 'bool': bool}
 
@@ -477,12 +477,7 @@ class Entity(object):
 
             # filter out lines which are present because there was a value for
             # that individual at that period but not for that column
-            missing_value = get_missing_value(values)
-            if np.isnan(missing_value):
-                acceptable_rows = ~np.isnan(values)
-            else:
-                acceptable_rows = values != missing_value
-
+            acceptable_rows = hasvalue(values)
             acceptable_ids = ids[acceptable_rows]
             if len(acceptable_ids):
                 acceptable_values = values[acceptable_rows]
@@ -522,12 +517,7 @@ class Entity(object):
             
             # filter out lines which are present because there was a value for
             # that individual at that period but not for that column
-            missing_value = get_missing_value(values)
-            if np.isnan(missing_value):
-                acceptable_rows = ~np.isnan(values)
-            else:
-                acceptable_rows = values != missing_value
-
+            acceptable_rows = hasvalue(values)
             acceptable_ids = ids[acceptable_rows]
             if len(acceptable_ids):
                 acceptable_values = values[acceptable_rows]

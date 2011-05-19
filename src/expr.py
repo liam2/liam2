@@ -55,6 +55,13 @@ def get_missing_record(array):
         row[fname] = get_missing_value(row[fname])
     return row
 
+def hasvalue(column):
+    missing_value = get_missing_value(column)
+    if np.isnan(missing_value):
+        return ~np.isnan(column)
+    else:
+        return column != missing_value
+
 def coerce_types(context, *args):
     dtype_indices = [type_to_idx[dtype(arg, context)] for arg in args]
     return idx_to_type[max(dtype_indices)]
@@ -229,8 +236,10 @@ class Expr(object):
         try:
 #            dt = self.dtype(context)
             return evaluate(s, context, {}, truediv='auto')
-        except Exception, e:
+        except KeyError, e:
             raise add_context(e, s)
+        except Exception, e:
+            raise 
 
 
 #class IsPresent(Expr):
