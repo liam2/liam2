@@ -185,33 +185,35 @@ class Simulation(object):
                 print "  *", entity.name, "...",
                 timed(entity.load_period_data, period)
 
-            # build context for this period:
-            # update "globals" with their value for this period
-            globals_row = period - globals_base_period
-            if globals_row < 0:
-                raise Exception('Missing globals data for period %d' % period)
-            period_globals = periodic_globals[globals_row]
-            const_dict = dict((k, period_globals[k])
-                              for k in period_globals.dtype.names)
-            const_dict['nan'] = float('nan')
-            const_dict['__globals__'] = periodic_globals
             for entity in entities:
                 entity.array['period'] = period
                 entity.per_period_array['period'] = period
 
-            num_processes = len(processes)
-            for p_num, process in enumerate(processes, start=1):
-                print "- %d/%d" % (p_num, num_processes), process.name,
-                if hasattr(process, 'predictor') and process.predictor and \
-                   process.predictor != process.name:
-                    print "(%s)" % process.predictor,
-                print "...",
-                
-                elapsed, _ = gettime(process.run_guarded, const_dict)
-                
-                process_time[process.name] += elapsed
-                print "done (%s elapsed)." % time2str(elapsed)
-                self.start_console(process.entity, period)
+            if processes:
+                # build context for this period:
+                # update "globals" with their value for this period
+                globals_row = period - globals_base_period
+                if globals_row < 0:
+                    raise Exception('Missing globals data for period %d' % period)
+                period_globals = periodic_globals[globals_row]
+                const_dict = dict((k, period_globals[k])
+                                  for k in period_globals.dtype.names)
+                const_dict['nan'] = float('nan')
+                const_dict['__globals__'] = periodic_globals
+    
+                num_processes = len(processes)
+                for p_num, process in enumerate(processes, start=1):
+                    print "- %d/%d" % (p_num, num_processes), process.name,
+                    if hasattr(process, 'predictor') and process.predictor and \
+                       process.predictor != process.name:
+                        print "(%s)" % process.predictor,
+                    print "...",
+                    
+                    elapsed, _ = gettime(process.run_guarded, const_dict)
+                    
+                    process_time[process.name] += elapsed
+                    print "done (%s elapsed)." % time2str(elapsed)
+                    self.start_console(process.entity, period)
 
             print "- storing period data"
             for entity in entities:
@@ -219,9 +221,8 @@ class Simulation(object):
                 timed(entity.store_period_data, period)
         
         try:
-            if self.init_processes: 
-                simulate_period(self.start_period - 1, self.init_processes,
-                                self.init_entities)
+            simulate_period(self.start_period - 1, self.init_processes,
+                            self.entities)
     
             for period in range(self.start_period, 
                                 self.start_period + self.periods):
