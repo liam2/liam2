@@ -67,7 +67,7 @@ class EntityContext(object):
         if array_period == period:
             return len(self.entity.array)
         else:
-            bounds = self.entity.period_rows.get(period)
+            bounds = self.entity.output_rows.get(period)
             if bounds is not None: 
                 startrow, stoprow = bounds
                 return stoprow - startrow
@@ -80,8 +80,14 @@ class EntityContext(object):
         array_period = self.entity.array['period'][0]
         if array_period == period:
             return self.entity.id_to_rownum
+        elif period in self.entity.output_index:
+            return self.entity.output_index[period]
         else:
-            return self.entity.period_index[period]
+            #FIXME: yes, it's true, that if period is not in output_index, it 
+            # probably means that we are before start_period and in that case,
+            # input_index == output_index, but it would be cleaner to simply
+            # initialise output_index correctly
+            return self.entity.input_index[period]
 
 
 def context_length(ctx):
