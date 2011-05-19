@@ -67,8 +67,8 @@ Procedure names (process_name3) does not directly refer to a specific endogenous
     processes:
         age: "age + 1"               
         agegroup:
-            - agegroup5: "5 * round(age / 5)"
-            - agegroup10: "10 * round(age / 10)"
+            - agegroup5: "5 * trunc(age / 5)"
+            - agegroup10: "10 * trunc(age / 10)"
 
 The processes *agegroup5* and *agegroup10* are grouped in *agegroup*. In the simulation block you specify the
 *agegroup*-process if you want to update *agegroup5* and *agegroup10*. 
@@ -89,13 +89,13 @@ variables between procedures you have to define them in the **fields** section.
             - partner_id:   int
             
             # 1=single, 2=married, 3=cohab, 4=divorced, 5=widowed
-            - civilstate:          int  
+            - civilstate:          int
             - dur_in_couple:       int
             - agegroup_work:       {type: int, initialdata: false}
             - agegroup_civilstate: {type: int, initialdata: false}
-            
+
             # 1: in work, employee, private sector,
-            # 2: in work, employee, public sector not civserv, 
+            # 2: in work, employee, public sector not civserv,
             # 3: in work*, public sector civserv,
             # 4: in work, self employed,
             # 5: in education,
@@ -103,10 +103,21 @@ variables between procedures you have to define them in the **fields** section.
             # 7: CELS (brugpensioen),
             # 6: disabled (including chronically ill),
             # 9: retired,
-            # 10: other inactive            
-            - workstate:       int     
-            - inwork:          {type: bool, initialdata: false}                        
+            # 10: other inactive
+            - workstate:       int
+            - inwork:          {type: bool, initialdata: false}
             - education_level: {type: int, initialdata: false}
+
+        macros:
+            WIDOW: "(civilstate==5)"
+            MARRIED: "(civilstate == 2)"
+            COHAB: "(civilstate == 3)"
+            WORKING: "(workstate > 0) and (workstate < 5)"
+            CIVSERV: "workstate == 3"
+            PUBLIC: "((workstate ==2) or (workstate ==3))"
+            WAGE_EARNER: "(workstate > 0) and (workstate < 4)"
+            MALE: "gender"
+            FEMALE: "not gender"
 
         processes:
             ...
@@ -171,17 +182,17 @@ simple expressions
 
 *example* ::
 
-    agegroup_civilstate: "if(age < 50, 5 * round(age / 5), 10 * round(age / 10))"
-    agegroup_work: "if(age < 70, 5 * round(age / 5), 70)"
+    agegroup_civilstate: "if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))"
+    agegroup_work: "if(age < 70, 5 * trunc(age / 5), 70)"
     
     
 Note that an *if*-statement has always three arguments. If you want to leave a variable unchanged if a condition is not met,
 specify its value in the *expression_if_false* ::
 
-    # retire people (set workstate = 9) when age 65 and more
+    # retire people (set workstate = 9) when aged 65 or more
     workstate: "if(age > 64, 9, workstate)"
     
-You can nest if-statements. The example below retires men (gender = True) over 64. For women, this is the case when the age
+You can nest if-statements. The example below retires men (gender = True) over 64 and women whose age
 equals at least the parameter WEMRA (a periodic global). ::
     
     workstate: "if(gender, 
@@ -202,6 +213,7 @@ mathematical functions
 - exp(expr): exponential 
 - abs(expr): absolute value
 - round(expr[, n]): returns the rounded value of expr to specified n (number of digits after the decimal point). If n is not specified, 0 is used.
+- trunc(expr): returns the truncated value (by dropping the decimal part) of expr as an integer.
 - clip(x, a, b): returns x if a < x < b, b if x > b, a if x < a.
 - min(x, a), max(x, a): the minimum or maximum of x and a.
 
@@ -598,7 +610,7 @@ entity (eg. a marriage creates a new houshold).
     
 The first parameter defines the entity in which the item will be created. (eg person, household)
 
-Since an item is at origin of a creation, the fields of that origin (**__parent__**) can be used to initialise the
+Since an item is at the origin of a creation, the fields of that origin can be used to initialise the
 fields of the new item.
 
 *example 1* ::
@@ -608,15 +620,15 @@ fields of the new item.
                                      filter=not gender and (age >= 15) and (age <= 50),
                                      align='al_p_birth.csv')"   
         - newbirth: "new('person', filter=to_give_birth, 
-                m_id=__parent__.id
-                f_id = __parent__.partner_id, 
-                m_age = __parent__.age, 
-                hh_id = __parent__.hh_id,
+                m_id = id,
+                f_id = ps.id,
+                m_age = age,
+                hh_id = hh_id,
                 partner_id = -1,
                 civilstate = 1,
                 collar = 0,
                 education_level = -1,
-                workstate = 5, 
+                workstate = 5,
                 gender=choice([True, False], [0.51, 0.49]) )"  
 
 The first sub-process (*to_give_birth*) describes the probability that a women (not gender) between 15 and 50 gives birth.
@@ -626,7 +638,7 @@ the ‘fertility rank’ of women that meet the above condition, is only determi
 or not a women is scheduled to give birth is the result of a stochast and the alignment process to age.
 
 In the above case, a new person is created for each time a woman is scheduled to give birth. Secondly, a number of links are
-established: the id-number and age of the parent become the *mother id* and age of the mother of the child, and the child
+established: the id-number and age of the mother (referred to through the link 'pm') become the *mother id* and age of the mother of the child, and the child
 also receives the household number from the mother. Finally some initial variables are set for the child: the most important
 of these is its gender, which is the result of a simple choice process.
 
@@ -643,6 +655,16 @@ through a simple choice-process.
                     region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
                 ),
                 hh_id)"
+
+clone
+~~~~~
+
+**clone** is essentially the same as **new** but is intended for cases where most or all variables describing the item should remain the same. So where the
+fields of the newly created item explicitly mentioned as arguments in **new** are those that get the value from the fields of the origin, the fields of the newly
+created item explicitly mentioned as arguments in **clone** are those that do *not* get the value from the fields of the origin.
+
+Put differently, a **new** with no fields mentioned will result in a new item of which the initial values of the fields are all empty and have to be filled
+through simulation. On the contrary, a **clone* with no fields mentioned will result in a new item that is an exact copy of the origin.
 
 
 remove
@@ -711,7 +733,7 @@ person equals the identification number of the partner.
 
     marriage:
         - in_couple: "MARRIED or COHAB"
-        - to_couple: "if((age >= 18)  and (age <= 90) and not in_couple, 
+        - to_couple: "if((age >= 18) and (age <= 90) and not in_couple, 
                          if(MALE,
                             logit_regr(0.0, align='al_p_mmkt_m.csv'),
                             logit_regr(0.0, align='al_p_mmkt_f.csv')), 
