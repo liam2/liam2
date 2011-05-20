@@ -194,18 +194,48 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
             output_rows[period] = (startrow, output_table.nrows)
             output_table.flush()
 
-        # if we have the same rows, we can assign whole columns at a time, which
-        # is *much* faster
+        #FIXME: it is both unnecessary and wrong to work on a per field basis.
+        # - unnecessary because each record is already completed during import
+        # - wrong for booleans (until we have proper missing values for them)
+        #   because if a boolean column is True for a particular period,
+        #   it can never be False again because False is considered to be a
+        #   missing value and thus does not modify the previous value
+
+        # if the rows for this period are the same than for the target period, 
+        # we can work directly with the output array
         if np.array_equal(input_index[period], id_to_rownum):
-            for fname in common_fields:
-                output_array[fname] = input_array[fname]
+            period_output_array = output_array
+            subset = False
         else:
-            for row in input_array:
-                target_rownum = id_to_rownum[row['id']]
-                if target_rownum != -1:
-                    output_row = output_array[target_rownum]
-                    for fname in common_fields:
-                        output_row[fname] = row[fname]
+            rownums = id_to_rownum[input_array['id']]
+            period_output_array = output_array[rownums]
+            
+            # Note that all rows which correspond to rownums == -1 have wrong
+            # values (they have the value of the last row) but it is not 
+            # necessary to correct them since they will not be copied back
+            # into output_array.
+            # np.putmask(period_output_array, rownums == -1, missing_record)
+            subset = True
+
+        for fname in common_fields:
+            input_col = input_array[fname]
+
+            hasval = hasvalue(input_col)
+            if np.all(hasval):
+                period_output_array[fname] = input_col
+            elif not np.any(hasval):
+                continue
+            else:
+                np.putmask(period_output_array[fname], hasval, input_col) 
+
+        if subset:
+            # backup last row
+            last_row = output_array[-1]
+            output_array[rownums] = period_output_array
+            # restore last row if it was erroneously modified (because of a -1
+            # in rownums)
+            if rownums[-1] != len(output_array) - 1:
+                output_array[-1] = last_row
     print "done (%s elapsed)." % time2str(time.time() - start_time)
     return output_array, output_rows, id_to_rownum
     
