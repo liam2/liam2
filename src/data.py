@@ -169,26 +169,33 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
     output_array.fill(missing_record)
 
     output_rows = {}
-    period_output_array = None
+    status = {'period_output_array': None}
 
-    for period in periods_before:
+    def copyPeriod(period_idx, period):
+        if period >= target_period:
+            return
         start, stop = input_rows[period]
         #TODO: use chunk if there are too many rows in a year
         input_array = input_table.read(start, stop)
-        if period < target_period:
-            if period_output_array is not None and \
-               len(input_array) == len(period_output_array):
-                # reuse period_output_array
-                period_output_array = add_and_drop_fields(input_array, 
-                                                          output_fields,
-                                                          period_output_array)
-            else:
-                period_output_array = add_and_drop_fields(input_array, 
-                                                          output_fields)
-            startrow = output_table.nrows
-            output_table.append(period_output_array)
-            output_rows[period] = (startrow, output_table.nrows)
-            output_table.flush()
+        period_output_array = status['period_output_array']
+        if period_output_array is not None and \
+           len(input_array) == len(period_output_array):
+            # reuse period_output_array
+            period_output_array = add_and_drop_fields(input_array, 
+                                                      output_fields,
+                                                      period_output_array)
+        else:
+            period_output_array = add_and_drop_fields(input_array, 
+                                                      output_fields)
+        startrow = output_table.nrows
+        output_table.append(period_output_array)
+        output_rows[period] = (startrow, output_table.nrows)
+        output_table.flush()
+        status['period_output_array'] = period_output_array
+
+
+    loop_wh_progress(copyPeriod, periods_before)
+        
     print "done (%s elapsed)." % time2str(time.time() - start_time)
 
     print "building array for first simulated period...",
