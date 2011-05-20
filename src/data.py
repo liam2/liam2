@@ -139,22 +139,18 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
     periods_before = [p for p in input_rows.iterkeys() if p <= target_period]
     periods_before.sort()
 
-    output_names = set(output_dtype.names)
-    input_names = set(input_table.dtype.names)
-    common_fields = output_names & input_names 
-
     print "computing is present...",
     start_time = time.time()
     max_id = max_id_per_period[periods_before[-1]]
     is_present = np.zeros(max_id + 1, dtype=bool)
     for period in periods_before:
-        id_to_rownum = input_index[period]
-        present_in_period = id_to_rownum != -1
+        period_id_to_rownum = input_index[period]
+        present_in_period = period_id_to_rownum != -1
         present_in_period.resize(max_id + 1)
         is_present |= present_in_period
     print "done (%s elapsed)." % time2str(time.time() - start_time)
         
-    print "indexing present ids..."
+    print "indexing present ids...",
     start_time = time.time()
     id_to_rownum = np.empty(max_id + 1, dtype=int)
     id_to_rownum.fill(-1)
@@ -166,7 +162,7 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
             rownum += 1
     print "done (%s elapsed)." % time2str(time.time() - start_time)
 
-    print "copying table and building array..."
+    print "copying table..."
     start_time = time.time()
     output_array = np.empty(rownum, dtype=output_dtype)
     missing_record = get_missing_record(output_array)
@@ -193,50 +189,27 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
             output_table.append(period_output_array)
             output_rows[period] = (startrow, output_table.nrows)
             output_table.flush()
-
-        #FIXME: it is both unnecessary and wrong to work on a per field basis.
-        # - unnecessary because each record is already completed during import
-        # - wrong for booleans (until we have proper missing values for them)
-        #   because if a boolean column is True for a particular period,
-        #   it can never be False again because False is considered to be a
-        #   missing value and thus does not modify the previous value
-
-        # if the rows for this period are the same than for the target period, 
-        # we can work directly with the output array
-        if np.array_equal(input_index[period], id_to_rownum):
-            period_output_array = output_array
-            subset = False
-        else:
-            rownums = id_to_rownum[input_array['id']]
-            period_output_array = output_array[rownums]
-            
-            # Note that all rows which correspond to rownums == -1 have wrong
-            # values (they have the value of the last row) but it is not 
-            # necessary to correct them since they will not be copied back
-            # into output_array.
-            # np.putmask(period_output_array, rownums == -1, missing_record)
-            subset = True
-
-        for fname in common_fields:
-            input_col = input_array[fname]
-
-            hasval = hasvalue(input_col)
-            if np.all(hasval):
-                period_output_array[fname] = input_col
-            elif not np.any(hasval):
-                continue
-            else:
-                np.putmask(period_output_array[fname], hasval, input_col) 
-
-        if subset:
-            # backup last row
-            last_row = output_array[-1]
-            output_array[rownums] = period_output_array
-            # restore last row if it was erroneously modified (because of a -1
-            # in rownums)
-            if rownums[-1] != len(output_array) - 1:
-                output_array[-1] = last_row
     print "done (%s elapsed)." % time2str(time.time() - start_time)
+
+    print "building array for first simulated period...",
+    start_time = time.time()
+    output_array_source_rows = np.empty(rownum, dtype=int)
+    output_array_source_rows.fill(-1)
+    for period in periods_before[::-1]:
+        start, stop = input_rows[period]
+        for id, input_rownum in enumerate(input_index[period]):
+            if input_rownum != -1:
+                output_rownum = id_to_rownum[id]
+                if output_rownum != -1:
+                    if output_array_source_rows[output_rownum] == -1:
+                        output_array_source_rows[output_rownum] = \
+                            start + input_rownum
+        if np.all(output_array_source_rows != -1):
+            break
+    output_array = input_table.readCoordinates(output_array_source_rows)
+    output_array = add_and_drop_fields(output_array, output_fields)
+    print "done (%s elapsed)." % time2str(time.time() - start_time)
+
     return output_array, output_rows, id_to_rownum
     
 
@@ -315,7 +288,6 @@ class H5Data(object):
             print "done (%s elapsed)." % time2str(time.time() - start_time)
                     
             # copy stuff
-            print "copying tables & loading last period...",
             array, output_rows, id_to_rownum = \
                 copyPeriodicTableAndRebuild(table, output_file, output_entities, 
                                             entity.fields, entity.input_rows, 
@@ -342,7 +314,6 @@ class H5Data(object):
                 per_period_array['period'] = last_period
             
             entity.per_period_array = per_period_array
-            print "done."
             
         input_file.close()
         output_file.close()
