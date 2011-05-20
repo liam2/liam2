@@ -339,7 +339,7 @@ class Entity(object):
         present_last_period.resize(max_id + 1)
         present_in_input = self.input_index[period] != -1 
         present_in_input.resize(max_id + 1)
-        is_present = present_in_input
+        is_present = present_in_input 
         is_present |= present_last_period
 
         # compute new id_to_rownum
@@ -354,24 +354,23 @@ class Entity(object):
         
         # allocate resulting array
         output_array = np.empty(rownum, dtype=output_dtype)
-
-        # initialise array
         
-        # 1) copy data from last period
+        # 1) fill all with missing
+        missing_row = get_missing_record(self.array)
+        output_array.fill(missing_row)
+        
+        # 2) copy data from last period
         for row in self.array:
             target_rownum = id_to_rownum[row['id']]
             if target_rownum != -1:
                 output_array[target_rownum] = row
         
-        # 2) copy data from input file
-        missing_row = get_missing_record(self.array)
-
+        # 3) copy data from input file
         #TODO: chunking instead of reading the whole array in one pass 
         # *might* be a good idea to preserve some memory
         for row in input_array:
             target_rownum = id_to_rownum[row['id']]
             if target_rownum != -1:
-                output_array[target_rownum] = missing_row  
                 output_row = output_array[target_rownum]
                 for fname in common_fields:
                     output_row[fname] = row[fname]
