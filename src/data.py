@@ -3,7 +3,7 @@ import time
 import tables
 import numpy as np
 
-from expr import normalize_type, get_missing_value
+from expr import normalize_type, get_missing_value, get_missing_record, hasvalue
 from utils import loop_wh_progress, time2str
 
 
@@ -43,17 +43,20 @@ def assertValidFields(s_fields, table, allowed_missing=None):
         raise Exception("Field types in hdf5 input file differ from those "
                         "defined in the simulation:\n%s" % bad_fields_str)
 
-def add_and_drop_fields(array, output_fields):
+def add_and_drop_fields(array, output_fields, output_array=None):
     output_dtype = np.dtype(output_fields)
     output_names = set(output_dtype.names)
     input_names = set(array.dtype.names)
     common_fields = output_names & input_names 
-    missing_fields = output_names - input_names 
-    output_array = np.empty(len(array), dtype=output_dtype)
+    missing_fields = output_names - input_names
+    if output_array is None: 
+        output_array = np.empty(len(array), dtype=output_dtype)
+        for fname in missing_fields:
+            output_array[fname] = get_missing_value(output_array[fname])
+    else:
+        assert output_array.dtype == output_dtype
     for fname in common_fields:
         output_array[fname] = array[fname]
-    for fname in missing_fields:
-        output_array[fname] = get_missing_value(output_array[fname])
     return output_array
 
     
@@ -139,7 +142,6 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
     output_names = set(output_dtype.names)
     input_names = set(input_table.dtype.names)
     common_fields = output_names & input_names 
-    missing_fields = output_names - input_names 
 
     print "computing is present...",
     start_time = time.time()
@@ -164,30 +166,34 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
             rownum += 1
     print "done (%s elapsed)." % time2str(time.time() - start_time)
 
-    print "copying table & building array..."
+    print "copying table and building array..."
     start_time = time.time()
     output_array = np.empty(rownum, dtype=output_dtype)
-    for fname in missing_fields:
-        output_array[fname] = get_missing_value(output_array[fname])
+    missing_record = get_missing_record(output_array)
+    output_array.fill(missing_record)
 
     output_rows = {}
-    common_fields = tuple(common_fields)
+    period_output_array = None
+
     for period in periods_before:
-        print period, "...",
         start, stop = input_rows[period]
         #TODO: use chunk if there are too many rows in a year
-#        print "copying...",
-#        inner_start_time = time.time()
         input_array = input_table.read(start, stop)
         if period < target_period:
-            period_ouput_array = add_and_drop_fields(input_array, output_fields)
+            if period_output_array is not None and \
+               len(input_array) == len(period_output_array):
+                # reuse period_output_array
+                period_output_array = add_and_drop_fields(input_array, 
+                                                          output_fields,
+                                                          period_output_array)
+            else:
+                period_output_array = add_and_drop_fields(input_array, 
+                                                          output_fields)
             startrow = output_table.nrows
-            output_table.append(period_ouput_array)
+            output_table.append(period_output_array)
             output_rows[period] = (startrow, output_table.nrows)
             output_table.flush()
-#        print "%s elapsed." % time2str(time.time() - inner_start_time),
-#        print "build...",        
-#        inner_start_time = time.time()
+
         # if we have the same rows, we can assign whole columns at a time, which
         # is *much* faster
         if np.array_equal(input_index[period], id_to_rownum):
@@ -200,7 +206,6 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
                     output_row = output_array[target_rownum]
                     for fname in common_fields:
                         output_row[fname] = row[fname]
-#        print "%s elapsed." % time2str(time.time() - inner_start_time)
     print "done (%s elapsed)." % time2str(time.time() - start_time)
     return output_array, output_rows, id_to_rownum
     
