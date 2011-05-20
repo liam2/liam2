@@ -1,9 +1,9 @@
 0.2
 
-* Added breakpoint function, which brings the interactive console in the middle 
-  of a simulation. Two more commands are available in that mode: 
-  - "step" to execute the next process
-  - "resume" to resume normal execution
+* Added breakpoint function, which launches the interactive console during 
+  a simulation. Two more console commands are available in that mode: 
+  - "s(tep)" to execute the next process
+  - "r(esume)" to resume normal execution
   The breakpoint function takes an optional period argument so that it triggers
   only for that specific period.
   
