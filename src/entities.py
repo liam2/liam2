@@ -327,6 +327,8 @@ class Entity(object):
             return
         
         start, stop = rows
+        #TODO: chunking instead of reading the whole array in one pass 
+        # *might* be a good idea to preserve some memory
         input_array = input_table.read(start, stop)
         
         # compute union of ids present in last period and those loaded from 
@@ -337,9 +339,9 @@ class Entity(object):
         max_id = max(input_array['id'][-1], self.array['id'][-1])
         present_last_period = self.id_to_rownum != -1
         present_last_period.resize(max_id + 1)
-        present_in_input = self.input_index[period] != -1 
+        present_in_input = self.input_index[period] != -1
         present_in_input.resize(max_id + 1)
-        is_present = present_in_input 
+        is_present = present_in_input
         is_present |= present_last_period
 
         # compute new id_to_rownum
@@ -360,20 +362,33 @@ class Entity(object):
         output_array.fill(missing_row)
         
         # 2) copy data from last period
-        for row in self.array:
-            target_rownum = id_to_rownum[row['id']]
-            if target_rownum != -1:
-                output_array[target_rownum] = row
+        target_rownums = id_to_rownum[self.array['id']]
+#        #TODO: factorize a "safe_put" function
+        output_array[target_rownums] = self.array
+        if target_rownums[-1] != len(output_array) - 1:
+            output_array[-1] = missing_row
         
         # 3) copy data from input file
-        #TODO: chunking instead of reading the whole array in one pass 
-        # *might* be a good idea to preserve some memory
-        for row in input_array:
-            target_rownum = id_to_rownum[row['id']]
-            if target_rownum != -1:
-                output_row = output_array[target_rownum]
-                for fname in common_fields:
-                    output_row[fname] = row[fname]
+        rownums = id_to_rownum[input_array['id']]
+        output_array_to_modify = output_array[rownums]
+        
+        # Note that all rows which correspond to rownums == -1 have wrong
+        # values (they have the value of the last row) but it is not 
+        # necessary to correct them since they will not be copied back
+        # into output_array.
+        # np.putmask(output_array_to_modify, rownums == -1, missing_row)
+
+        for fname in common_fields:
+            output_array_to_modify[fname] = input_array[fname]
+
+        # backup last row
+        last_row = output_array[-1]
+        output_array[rownums] = output_array_to_modify
+        # restore last row if it was erroneously modified (because of a -1
+        # in rownums)
+        if rownums[-1] != len(output_array) - 1:
+            output_array[-1] = last_row
+
         self.array = output_array
         self.id_to_rownum = id_to_rownum
 
