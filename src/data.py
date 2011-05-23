@@ -193,7 +193,6 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
         output_table.flush()
         status['period_output_array'] = period_output_array
 
-
     loop_wh_progress(copyPeriod, periods_before)
         
     print "done (%s elapsed)." % time2str(time.time() - start_time)

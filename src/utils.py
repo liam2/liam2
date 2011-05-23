@@ -27,6 +27,16 @@ def timed(func, *args, **kwargs):
     print "done (%s elapsed)." % time2str(elapsed)
     return res
 
+def safe_put(a, ind, v):
+    # backup last value, in case it gets overwritten
+    last_value = a[-1]
+    np.put(a, ind, v)
+    # if the last value was erroneously modified (because of a -1 in ind)
+    # this assumes indices are sorted
+    if ind[-1] != len(a) - 1:
+        # restore its previous value
+        a[-1] = last_value
+
 def loop_wh_progress(func, sequence):
     len_todo = len(sequence)
     write = sys.stdout.write

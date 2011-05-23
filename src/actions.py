@@ -57,9 +57,10 @@ class RemoveIndividuals(Process):
     def run(self, context):
         filter = expr_eval(self.filter, context)
 
-        not_removed = ~filter
-        if np.all(not_removed):
+        if not np.any(filter):
             return
+        
+        not_removed = ~filter
 
         entity = context['__entity__']
         already_removed = entity.id_to_rownum == -1
@@ -70,6 +71,7 @@ class RemoveIndividuals(Process):
         # recreate id_to_rownum from scratch
         id_to_rownum = np.arange(len(entity.array))
         id_to_rownum -= filter.cumsum()
+        #XXX: use np.putmask(id_to_rownum, filter, -1)
         id_to_rownum[filter] = -1
         entity.id_to_rownum = np.insert(id_to_rownum,
                                         already_removed_indices_shifted,

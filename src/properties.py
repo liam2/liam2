@@ -327,6 +327,8 @@ class AggregateLink(EvaluableExpression):
             source_rows = id_to_rownum[source_ids]
             # filter out missing values: those where the value of the link
             # points to nowhere (-1)
+            #XXX: use np.putmask(source_rows, source_ids == missing_int,
+            #                    missing_int)
             source_rows[source_ids == missing_int] = missing_int
         else:
             assert np.all(source_ids == missing_int)
@@ -357,6 +359,8 @@ class CountLink(AggregateLink):
 
         # filter out missing values: those where the object pointed to does not
         # exist anymore (the id corresponds to -1 in id_to_rownum)
+        #XXX: use np.putmask(source_rows, source_ids == missing_int,
+        #                    missing_int)
         source_rows[source_rows == missing_int] = idx_for_missing 
    
         counts = self.count(source_rows, target_entity, target_filter, context)

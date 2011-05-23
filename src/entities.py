@@ -1,6 +1,7 @@
 import numpy as np
 import tables
 
+from utils import safe_put
 from expr import parse, Variable, SubscriptableVariable, \
                  VirtualArray, expr_eval, \
                  get_missing_value, get_missing_record, hasvalue 
@@ -362,11 +363,7 @@ class Entity(object):
         output_array.fill(missing_row)
         
         # 2) copy data from last period
-        target_rownums = id_to_rownum[self.array['id']]
-#        #TODO: factorize a "safe_put" function
-        output_array[target_rownums] = self.array
-        if target_rownums[-1] != len(output_array) - 1:
-            output_array[-1] = missing_row
+        safe_put(output_array, id_to_rownum[self.array['id']], self.array)
         
         # 3) copy data from input file
         rownums = id_to_rownum[input_array['id']]
@@ -377,17 +374,10 @@ class Entity(object):
         # necessary to correct them since they will not be copied back
         # into output_array.
         # np.putmask(output_array_to_modify, rownums == -1, missing_row)
-
         for fname in common_fields:
             output_array_to_modify[fname] = input_array[fname]
 
-        # backup last row
-        last_row = output_array[-1]
-        output_array[rownums] = output_array_to_modify
-        # restore last row if it was erroneously modified (because of a -1
-        # in rownums)
-        if rownums[-1] != len(output_array) - 1:
-            output_array[-1] = last_row
+        safe_put(output_array, rownums, output_array_to_modify)
 
         self.array = output_array
         self.id_to_rownum = id_to_rownum
@@ -411,19 +401,10 @@ class Entity(object):
     def fill_missing_values(self, ids, values, context, filler='auto'):
         if filler is 'auto':
             filler = get_missing_value(values)
-        result_len = context_length(context)
-        result = np.empty(result_len, dtype=values.dtype)
+        result = np.empty(context_length(context), dtype=values.dtype)
         result.fill(filler)
-        
         if len(ids):
-            rownums = context.id_to_rownum[ids]
-            np.put(result, rownums, values)
-
-            # Fix the value of the last individual because it was incorrectly
-            # set to the value of someone dead (ie his id correspond to -1 in
-            # id_to_rownum). This assumes "ids" are sorted
-            if rownums[-1] != result_len - 1 and result[-1] != filler:
-                result[-1] = filler
+            safe_put(result, context.id_to_rownum[ids], values)
         return result 
         
     def value_for_period(self, expr, period, context, fill='auto'):
@@ -459,17 +440,11 @@ class Entity(object):
                                                 fill=None)
             value_rows = id_to_rownum[ids]
 
-            #XXX: use fill missing?
             missing = np.ones(res_size, dtype=bool)
-            missing[value_rows] = False
-            if value_rows[-1] != res_size - 1 and not missing[-1]:
-                missing[-1] = True
+            safe_put(missing, value_rows, False)
 
-            #XXX: use fill missing?
             period_value = np.zeros(res_size, dtype=bool)
-            period_value[value_rows] = values
-            if value_rows[-1] != res_size - 1 and period_value[-1]:
-                period_value[-1] = False
+            safe_put(period_value, value_rows, values)
             
             value = still_running & period_value
             result += value * (last_period_true - period)
@@ -504,17 +479,11 @@ class Entity(object):
                 
                 value_rows = id_to_rownum[acceptable_ids]
 
-                #XXX: use fill missing?
                 has_value = np.zeros(res_size, dtype=bool)
-                has_value[value_rows] = True
-                if value_rows[-1] != res_size - 1 and has_value[-1]:
-                    has_value[-1] = False
+                safe_put(has_value, value_rows, True)
 
-                #XXX: use fill missing?
                 period_value = np.zeros(res_size, dtype=np.float)
-                period_value[value_rows] = acceptable_values
-                if value_rows[-1] != res_size - 1 and period_value[-1] != 0:
-                    period_value[-1] = 0
+                safe_put(period_value, value_rows, acceptable_values)
                 
                 num_values += has_value * (last_period_wh_value - period)
                 sum_values += period_value
@@ -541,15 +510,12 @@ class Entity(object):
             acceptable_ids = ids[acceptable_rows]
             if len(acceptable_ids):
                 acceptable_values = values[acceptable_rows]
-                
+
                 value_rows = id_to_rownum[acceptable_ids]
-                
-                #XXX: use fill missing?
+
                 period_value = np.zeros(res_size, dtype=np.float)
-                period_value[value_rows] = acceptable_values
-                if value_rows[-1] != res_size - 1 and period_value[-1] != 0:
-                    period_value[-1] = 0
-                
+                safe_put(period_value, value_rows, acceptable_values)
+
                 sum_values += period_value
             period -= 1
         return sum_values
