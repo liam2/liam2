@@ -48,7 +48,12 @@ def normalize_type(type_):
 
 def get_missing_value(column):
     return missing_values[normalize_type(column.dtype.type)]
-    
+
+def get_missing_vector(num, dtype):
+    res = np.empty(num, dtype=dtype)
+    res.fill(missing_values[normalize_type(dtype.type)])
+    return res
+
 def get_missing_record(array):
     row = np.empty(1, dtype=array.dtype)
     for fname in array.dtype.names:

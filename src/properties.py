@@ -6,7 +6,8 @@ import numpy as np
 from expr import Expr, Variable, Where, functions, as_string, dtype, \
                  coerce_types, type_to_idx, idx_to_type, expr_eval, \
                  collect_variables, num_tmp, \
-                 missing_values, get_missing_value, get_missing_record 
+                 missing_values, get_missing_value, get_missing_record, \
+                 get_missing_vector 
 from entities import entity_registry, EntityContext, context_length
 import utils
 
@@ -961,15 +962,13 @@ class CreateIndividual(EvaluableExpression):
             temp_variables = target_entity.temp_variables
             for name, temp_value in temp_variables.iteritems():
                 if isinstance(temp_value, np.ndarray) and temp_value.shape:
-                    #TODO: use default value instead (or at least missing value)
-                    extra = np.zeros(num_birth, dtype=temp_value.dtype)
+                    extra = get_missing_vector(num_birth, temp_value.dtype)
                     temp_variables[name] = np.concatenate((temp_value, extra))
     
             extra_variables = context.extra
             for name, temp_value in extra_variables.iteritems():
                 if isinstance(temp_value, np.ndarray) and temp_value.shape:
-                    #TODO: use default value instead (or at least missing value)
-                    extra = np.zeros(num_birth, dtype=temp_value.dtype)
+                    extra = get_missing_vector(num_birth, temp_value.dtype)
                     extra_variables[name] = np.concatenate((temp_value, extra))
     
             id_to_rownum_tail = np.arange(num_rows, num_rows + num_birth)
