@@ -110,4 +110,7 @@ class Matching(EvaluableExpression):
         loop_wh_progress(match_one_set1_individual, sorted_set1_indices)
         return result
     
+    def dtype(self, context):
+        return int
+    
 functions['matching'] = Matching

@@ -44,6 +44,8 @@ class Regression(CompoundExpression):
     def collect_variables(self, context):
         return collect_variables(self.expr, context)
 
+    def dtype(self, context):
+        return bool
 
 class LogitScore(CompoundExpression):
     func_name = 'logit_score'
@@ -76,6 +78,9 @@ class LogitScore(CompoundExpression):
 
     def __str__(self):
         return '%s(%s)' % (self.func_name, self.expr)
+    
+    def dtype(self, context):
+        return float
     
 
 class LogitRegr(Regression):

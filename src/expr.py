@@ -239,7 +239,6 @@ class Expr(object):
 #
 #                usual_len = len(value)
         try:
-#            dt = self.dtype(context)
             return evaluate(s, context, {}, truediv='auto')
         except KeyError, e:
             raise add_context(e, s)

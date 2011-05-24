@@ -207,7 +207,10 @@ class LinkValue(EvaluableExpression):
         self.missing_value = missing_value
     
     def dtype(self, context):
-        return self.target_entity(context).fieldtype(self.target_expression)
+        target_entity = self.target_entity(context)
+        target_context = EntityContext(target_entity, 
+                                       {'period': context['period']})
+        return dtype(self.target_expression, target_context)
 
     def collect_variables(self, context):
         source_entity = context.entity
@@ -220,7 +223,7 @@ class LinkValue(EvaluableExpression):
         return set(fields)
        
     def target_entity(self, context):
-        source_entity = context.entity
+        source_entity = context['__entity__']
         for link in self.links:
             if isinstance(link, basestring):
                 link = source_entity.links[link]
@@ -293,6 +296,16 @@ class AggregateLink(EvaluableExpression):
         EvaluableExpression.__init__(self)
         self.link = link
         self.target_filter = target_filter
+
+    #XXX: somehow merge this with LinkValue's equivalent function?
+    #XXX: somehow merge this with the code in eval
+    def target_entity(self, context):
+        source_entity = context['__entity__']
+        if isinstance(self.link, basestring):
+            link = source_entity.links[self.link]
+        else:
+            link = self.link
+        return entity_registry[link._target_entity]
 
     def eval(self, context):
         assert isinstance(context, EntityContext), \
@@ -406,9 +419,13 @@ class SumLink(CountLink):
         return res.astype(value_column.dtype)
 
     def dtype(self, context):
-        #FIXME: this will probably break when target_field is an expression
-        target_entity = entity_registry[self.link._target_entity] # eg person
-        return target_entity.fieldtype(self.target_expr)
+        target_entity = self.target_entity(context)
+        target_context = EntityContext(target_entity, 
+                                       {'period': context['period']})
+        expr_dype = dtype(self.target_expr, target_context)
+        #TODO: merge this typemap with tsum's
+        typemap = {bool: int, int: int, float: float}
+        return typemap[expr_dype]
 
     def __str__(self):
         if self.target_filter is not None:
@@ -443,6 +460,12 @@ class MinLink(AggregateLink):
     def __init__(self, link, target_expr, target_filter=None):
         AggregateLink.__init__(self, link, target_filter)
         self.target_expr = target_expr
+
+    def dtype(self, context):
+        target_entity = self.target_entity(context)
+        target_context = EntityContext(target_entity, 
+                                       {'period': context['period']})
+        return dtype(self.target_expr, target_context)
         
     def eval_rows(self, source_entity, source_rows, target_entity,
                   target_filter, context):
@@ -610,6 +633,9 @@ class Lag(FunctionExpression):
         period = context['period'] - self.num_periods
         return entity.value_for_period(self.expr, period, context, self.missing)
 
+    def dtype(self, context):
+        return dtype(self.expr, context)
+
 
 class Duration(FunctionExpression):
     func_name = 'duration'
@@ -617,6 +643,10 @@ class Duration(FunctionExpression):
     def eval(self, context):
         entity = context['__entity__']
         return entity.duration(self.expr, context)
+
+    def dtype(self, context):
+        assert dtype(self.expr, context) == bool
+        return int
 
 
 class TimeAverage(FunctionExpression):
@@ -766,6 +796,9 @@ class RandInt(NumpyProperty):
     np_func = (np.random.randint,)
     arg_names = ('low', 'high', 'size')
 
+    def dtype(self, context):
+        return int
+
 
 class Round(NumpyProperty):
     func_name = 'round' # np.round redirects to np.round_
@@ -778,7 +811,6 @@ class Round(NumpyProperty):
         assert res == float
         return res
 
-
 class Trunc(FunctionExpression):
     func_name = 'trunc'
 
@@ -786,7 +818,7 @@ class Trunc(FunctionExpression):
         return expr_eval(self.expr, context).astype(int)
         
     def dtype(self, context):
-        assert dtype(self.args[0], context) == float
+        assert dtype(self.expr, context) == float
         return int
 
 
@@ -795,11 +827,17 @@ class GroupMin(NumpyProperty):
     np_func = (np.amin,)
     arg_names = ('a', 'axis', 'out')
 
+    def dtype(self, context):
+        return dtype(self.args[0], context)
+
 
 class GroupMax(NumpyProperty):
     func_name = 'grpmax'
     np_func = (np.amax,)
     arg_names = ('a', 'axis', 'out')
+
+    def dtype(self, context):
+        return dtype(self.args[0], context)
 
 
 class GroupSum(NumpyProperty):
@@ -807,11 +845,19 @@ class GroupSum(NumpyProperty):
     np_func = (np.nansum,)
     arg_names = ('a', 'axis', 'dtype', 'out')
 
+    def dtype(self, context):
+        #TODO: merge this typemap with tsum's
+        typemap = {bool: int, int: int, float: float}
+        return typemap[dtype(self.args[0], context)]
+
 class GroupStd(NumpyProperty):
     func_name = 'grpstd'
     np_func = (np.std,)
     arg_names = ('a', 'axis', 'dtype', 'out', 'ddof')
     skip_missing = True
+
+    def dtype(self, context):
+        return float
 
 
 class GroupCount(EvaluableExpression):
@@ -872,6 +918,9 @@ class NumexprFunctionProperty(FunctionExpression):
 
 class Abs(NumexprFunctionProperty):
     func_name = 'abs'
+
+    def dtype(self, context):
+        return float
     
 class Log(NumexprFunctionProperty):
     func_name = 'log'
@@ -990,6 +1039,9 @@ class CreateIndividual(EvaluableExpression):
         else:
             return None
 
+    def dtype(self, context):
+        return int
+
 
 class Clone(CreateIndividual):
     def __init__(self, filter=None, **kwargs):
@@ -1048,6 +1100,9 @@ class Dump(EvaluableExpression):
                 columns[idx] = newcol
  
         return utils.PrettyTable(chain([str_expressions], izip(*columns)))
+
+    def dtype(self, context):
+        return None
 
 
 functions.update({
