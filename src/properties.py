@@ -967,6 +967,8 @@ class CreateIndividual(EvaluableExpression):
     
             extra_variables = context.extra
             for name, temp_value in extra_variables.iteritems():
+                if name == '__globals__':
+                    continue
                 if isinstance(temp_value, np.ndarray) and temp_value.shape:
                     extra = get_missing_vector(num_birth, temp_value.dtype)
                     extra_variables[name] = np.concatenate((temp_value, extra))
