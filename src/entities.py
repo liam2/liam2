@@ -3,7 +3,7 @@ import tables
 
 from utils import safe_put
 from expr import parse, Variable, SubscriptableVariable, \
-                 VirtualArray, expr_eval, \
+                 VirtualArray, expr_eval, dtype, \
                  get_missing_value, get_missing_record, hasvalue 
 
 str_to_type = {'float': float, 'int': int, 'bool': bool}
@@ -438,13 +438,12 @@ class Entity(object):
         while np.any(still_running) and period >= baseperiod:
             ids, values = self.value_for_period(bool_expr, period, context,
                                                 fill=None)
-            value_rows = id_to_rownum[ids]
-
             missing = np.ones(res_size, dtype=bool)
-            safe_put(missing, value_rows, False)
-
             period_value = np.zeros(res_size, dtype=bool)
-            safe_put(period_value, value_rows, values)
+            if len(ids):
+                value_rows = id_to_rownum[ids]
+                safe_put(missing, value_rows, False)
+                safe_put(period_value, value_rows, values)
             
             value = still_running & period_value
             result += value * (last_period_true - period)
@@ -495,10 +494,11 @@ class Entity(object):
         baseperiod = self.base_period
         period = context['period'] - 1
         
+        typemap = {bool: int, int: int, float: float}
+        res_type = typemap[dtype(expr, context)]
         res_size = len(self.array)
 
-        #TODO: use int for bool & int, float for float
-        sum_values = np.zeros(res_size, dtype=np.float)        
+        sum_values = np.zeros(res_size, dtype=res_type)
         id_to_rownum = context.id_to_rownum
         while period >= baseperiod:
             ids, values = self.value_for_period(expr, period, context,

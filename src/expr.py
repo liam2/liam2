@@ -29,7 +29,7 @@ num_tmp = 0
 
 type_to_idx = {bool: 0, np.bool_: 0, 
                int: 1, np.int32: 1, np.intc: 1, np.int64: 1,
-               float:2, np.float64: 2}
+               float: 2, np.float64: 2}
 idx_to_type = [bool, int, float]
 
 missing_values = {
