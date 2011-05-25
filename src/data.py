@@ -62,13 +62,18 @@ def add_and_drop_fields(array, output_fields, output_array=None):
     return output_array
 
     
-def appendTable(input_table, output_table, chunksize=10000, condition=None):
+def appendTable(input_table, output_table, chunksize=10000, condition=None,
+                stop=None, show_progress=False):
     if input_table.dtype != output_table.dtype:
         output_fields = get_table_fields(output_table)
     else: 
         output_fields = None
     
-    numrows = len(input_table)
+    if stop is None: 
+        numrows = len(input_table)
+    else:
+        numrows = stop
+
     if not chunksize:
         chunksize = numrows
 
@@ -76,27 +81,43 @@ def appendTable(input_table, output_table, chunksize=10000, condition=None):
     if remainder > 0:
         num_chunks += 1
 
+    if output_fields is not None:
+        expanded_data = np.empty(chunksize, dtype=np.dtype(output_fields))
+        expanded_data[:] = get_missing_record(expanded_data)
+            
     def copyChunk(chunk_idx, chunk_num):
         start = chunk_num * chunksize
         stop = min(start + chunksize, numrows)
         if condition is not None:
-            data = input_table.readWhere(condition, start=start, stop=stop)
+            input_data = input_table.readWhere(condition,
+                                               start=start, stop=stop)
         else:
-            data = input_table.read(start, stop)
+            input_data = input_table.read(start, stop)
+
         if output_fields is not None:
-            data = add_and_drop_fields(data, output_fields)
-        output_table.append(data)
+            # use our pre-allocated buffer (except for the last chunk)
+            if len(input_data) == len(expanded_data):
+                output_data = add_and_drop_fields(input_data, output_fields,
+                                                  expanded_data)
+            else:
+                output_data = add_and_drop_fields(input_data, output_fields)
+        else:
+            output_data = input_data
+                
+        output_table.append(output_data)
         output_table.flush()
 
-    for chunk in range(num_chunks):
-        copyChunk(chunk, chunk)
-
-#    loop_wh_progress(copyChunk, range(num_chunks))
+    if show_progress:
+        loop_wh_progress(copyChunk, range(num_chunks))
+    else:
+        for chunk in range(num_chunks):
+            copyChunk(chunk, chunk)
 
     return output_table
 
 def copyTable(input_table, output_file, output_node, output_fields=None,
-              chunksize=10000, condition=None, **kwargs):
+              chunksize=10000, condition=None, stop=None, show_progress=False, 
+              **kwargs):
     complete_kwargs = {'title': input_table._v_title,
                        'filters': input_table.filters}
     complete_kwargs.update(kwargs)
@@ -106,86 +127,34 @@ def copyTable(input_table, output_file, output_node, output_fields=None,
         output_dtype = np.dtype(output_fields)
     output_table = output_file.createTable(output_node, input_table.name, 
                                            output_dtype, **complete_kwargs)
-    return appendTable(input_table, output_table, chunksize, condition)
+    return appendTable(input_table, output_table, chunksize, condition, 
+                       stop=stop, show_progress=show_progress)
 
 
-def copyPeriodicTableAndRebuild(input_table, output_file, output_node, 
-                                output_fields, input_rows, input_index,
-                                max_id_per_period, target_period, 
-                                **kwargs):
-    complete_kwargs = {'title': input_table._v_title,
-                       'filters': input_table.filters}
-    complete_kwargs.update(kwargs)
-    if output_fields is None:
-        output_dtype = input_table.dtype
-    else:
-        output_dtype = np.dtype(output_fields)
-    output_table = output_file.createTable(output_node, input_table.name, 
-                                           output_dtype, **complete_kwargs)
-
+def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
+                        max_id_per_period, target_period):
     periods_before = [p for p in input_rows.iterkeys() if p <= target_period]
     periods_before.sort()
 
-    print " * computing is present...",
-    start_time = time.time()
-    max_id = max_id_per_period[periods_before[-1]]
+    # computing is present
+    max_id = max_id_per_period[target_period]
     is_present = np.zeros(max_id + 1, dtype=bool)
     for period in periods_before:
         period_id_to_rownum = input_index[period]
         present_in_period = period_id_to_rownum != -1
         present_in_period.resize(max_id + 1)
         is_present |= present_in_period
-    print "done (%s elapsed)." % time2str(time.time() - start_time)
-        
-    print " * indexing present ids...",
-    start_time = time.time()
+
+    # building id_to_rownum for the target period
     id_to_rownum = np.empty(max_id + 1, dtype=int)
     id_to_rownum.fill(-1)
-
     rownum = 0
     for id, present in enumerate(is_present):
         if present:
             id_to_rownum[id] = rownum
             rownum += 1
-    print "done (%s elapsed)." % time2str(time.time() - start_time)
 
-    print " * copying table..."
-    start_time = time.time()
-    output_array = np.empty(rownum, dtype=output_dtype)
-    missing_record = get_missing_record(output_array)
-    output_array.fill(missing_record)
-
-    output_rows = {}
-    status = {'period_output_array': None}
-
-    def copyPeriod(period_idx, period):
-        if period >= target_period:
-            return
-        start, stop = input_rows[period]
-        #TODO: use chunk if there are too many rows in a year
-        input_array = input_table.read(start, stop)
-        period_output_array = status['period_output_array']
-        if period_output_array is not None and \
-           len(input_array) == len(period_output_array):
-            # reuse period_output_array
-            period_output_array = add_and_drop_fields(input_array, 
-                                                      output_fields,
-                                                      period_output_array)
-        else:
-            period_output_array = add_and_drop_fields(input_array, 
-                                                      output_fields)
-        startrow = output_table.nrows
-        output_table.append(period_output_array)
-        output_rows[period] = (startrow, output_table.nrows)
-        output_table.flush()
-        status['period_output_array'] = period_output_array
-
-    loop_wh_progress(copyPeriod, periods_before)
-        
-    print "done (%s elapsed)." % time2str(time.time() - start_time)
-
-    print " * building array for first simulated period...",
-    start_time = time.time()
+    # computing source row (period) for each destination row    
     output_array_source_rows = np.empty(rownum, dtype=int)
     output_array_source_rows.fill(-1)
     for period in periods_before[::-1]:
@@ -199,11 +168,12 @@ def copyPeriodicTableAndRebuild(input_table, output_file, output_node,
                             start + input_rownum
         if np.all(output_array_source_rows != -1):
             break
+        
+    # reading data 
     output_array = input_table.readCoordinates(output_array_source_rows)
     output_array = add_and_drop_fields(output_array, output_fields)
-    print "done (%s elapsed)." % time2str(time.time() - start_time)
 
-    return output_array, output_rows, id_to_rownum
+    return output_array, id_to_rownum
     
 
 class H5Data(object):
@@ -213,8 +183,7 @@ class H5Data(object):
         
     def run(self, entities, start_period):
         last_period = start_period - 1
-        print "reading data from %s and storing period %d in memory..." % \
-              (self.input_path, last_period)
+        print "reading data from %s ..." % self.input_path
 
         input_file = tables.openFile(self.input_path, mode="r")
         output_file = tables.openFile(self.output_path, mode="w")
@@ -269,20 +238,36 @@ class H5Data(object):
             max_id_per_period[current_period] = max_id_so_far
             entity.input_index[current_period] = np.array(temp_id_to_rownum)
 
-#            periods = sorted(table_index.keys())
             entity.input_rows = table_index
             entity.base_period = min(table_index.keys())
             print "done (%s elapsed)." % time2str(time.time() - start_time)
 
-            # copy stuff
-            array, output_rows, id_to_rownum = \
-                copyPeriodicTableAndRebuild(table, output_file, output_entities, 
-                                            entity.fields, entity.input_rows, 
-                                            entity.input_index, 
-                                            max_id_per_period, last_period)
-            entity.id_to_rownum = id_to_rownum
+            print " * copying table..."
+            start_time = time.time()
+            input_rows = entity.input_rows
+            output_rows = dict((p, rows) for p, rows in input_rows.iteritems()
+                               if p < last_period)
+            if output_rows:
+                _, stoprow = input_rows[max(output_rows.iterkeys())]
+            else:
+                stoprow = 0
+            
+            copyTable(table, output_file, output_entities, 
+#                      entity.fields, stop=0, show_progress=True)
+                      entity.fields, stop=stoprow, show_progress=True)
             entity.output_rows = output_rows
+            print "done (%s elapsed)." % time2str(time.time() - start_time)
+            
+            print " * building array for first simulated period...",
+            start_time = time.time()
+            
+            array, id_to_rownum = \
+                buildArrayForPeriod(table, entity.fields, entity.input_rows, 
+                                    entity.input_index, max_id_per_period,
+                                    last_period)
+            entity.id_to_rownum = id_to_rownum
             entity.array = array
+            print "done (%s elapsed)." % time2str(time.time() - start_time)
 
             # per period
             per_period_table = getattr(input_entities, ent_name + "_per_period")

@@ -1,10 +1,10 @@
 import numpy as np
 import tables
 
-from data import copyTable, appendTable, get_table_fields
+from data import copyTable, appendTable, get_table_fields, table_size
 from utils import timed
 
-__version__ = "0.1"
+__version__ = "0.2"
 
 def get_fields(input_file):
     input_entities = input_file.root.entities
@@ -27,9 +27,6 @@ def merge_fields(fields1, fields2):
                      if name in names_notin1]
     return fields1 + fields_notin1
 
-def table_size(table):
-    return (len(table) * table.dtype.itemsize) / 1024.0 / 1024.0
-
 def merge_h5(input1_path, input2_path, output_path):        
     input1_file = tables.openFile(input1_path, mode="r")
     input2_file = tables.openFile(input2_path, mode="r")
@@ -51,7 +48,7 @@ def merge_h5(input1_path, input2_path, output_path):
                       for table in input1_file.iterNodes(input1_entities)
                       if not table._v_name.endswith("_per_period")])
     ent_names2 = set([table._v_name
-                      for table in input1_file.iterNodes(input2_entities)
+                      for table in input2_file.iterNodes(input2_entities)
                       if not table._v_name.endswith("_per_period")])
     ent_names = sorted(ent_names1 | ent_names2)
     

@@ -383,9 +383,7 @@ class ImportExportData(object):
             fdescs = [(fname, missing_values[ftype])
                       for fname, ftype in neededfields]
             print " * filling with default values..."
-            defaultrow = np.array([tuple(default for fname, default in fdescs)],
-                                  dtype=main_dtype)
-            array.fill(defaultrow)
+            array[:] = tuple(default for fname, default in fdescs)
             array['period'] = id_periods['period']
             array['id'] = id_periods['id']
             

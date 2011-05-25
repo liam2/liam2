@@ -359,8 +359,7 @@ class Entity(object):
         output_array = np.empty(rownum, dtype=output_dtype)
         
         # 1) fill all with missing
-        missing_row = get_missing_record(self.array)
-        output_array.fill(missing_row)
+        output_array[:] = get_missing_record(self.array)
         
         # 2) copy data from last period
         safe_put(output_array, id_to_rownum[self.array['id']], self.array)

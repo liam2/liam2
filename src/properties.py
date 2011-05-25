@@ -947,7 +947,7 @@ class CreateIndividual(EvaluableExpression):
     def _initial_values(self, array, to_give_birth, num_birth):
         #TODO: use default values for fields which have one
         children = np.empty(num_birth, dtype=array.dtype)
-        children.fill(get_missing_record(array))
+        children[:] = get_missing_record(array)
         return children
 
     def eval(self, context):
