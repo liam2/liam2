@@ -394,7 +394,7 @@ class Entity(object):
             self.output_index[period] = self.id_to_rownum
         self.table.flush()
 
-        self.per_period_table.append(self.per_period_array)              
+        self.per_period_table.append(self.per_period_array)
         self.per_period_table.flush()
 
     def fill_missing_values(self, ids, values, context, filler='auto'):
