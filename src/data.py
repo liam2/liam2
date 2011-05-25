@@ -3,9 +3,11 @@ import time
 import tables
 import numpy as np
 
-from expr import normalize_type, get_missing_value, get_missing_record, hasvalue
+from expr import normalize_type, get_missing_value, get_missing_record
 from utils import loop_wh_progress, time2str
 
+def table_size(table):
+    return (len(table) * table.dtype.itemsize) / 1024.0 / 1024.0
 
 def get_table_fields(table):
     dtype = table.dtype
@@ -66,17 +68,17 @@ def appendTable(input_table, output_table, chunksize=10000, condition=None):
     else: 
         output_fields = None
     
-    rowsleft = len(input_table)
+    numrows = len(input_table)
     if not chunksize:
-        chunksize = rowsleft
+        chunksize = numrows
 
-    start = 0
-    num_chunks, remainder = divmod(rowsleft, chunksize)
+    num_chunks, remainder = divmod(numrows, chunksize)
     if remainder > 0:
         num_chunks += 1
 
-    for _ in range(num_chunks):
-        stop = start + min(chunksize, rowsleft)
+    def copyChunk(chunk_idx, chunk_num):
+        start = chunk_num * chunksize
+        stop = min(start + chunksize, numrows)
         if condition is not None:
             data = input_table.readWhere(condition, start=start, stop=stop)
         else:
@@ -85,25 +87,10 @@ def appendTable(input_table, output_table, chunksize=10000, condition=None):
             data = add_and_drop_fields(data, output_fields)
         output_table.append(data)
         output_table.flush()
-        rowsleft -= chunksize
-        start = stop
 
-#    status = {'start': start,
-#              'rowsleft': rowsleft}
-#
-#    def copyChunk(junk1, junk2):
-#        start = status['start']
-#        stop = start + min(chunksize, status['rowsleft'])
-#        if condition is not None:
-#            data = input_table.readWhere(condition, start=start, stop=stop)
-#        else:
-#            data = input_table.read(start, stop)
-#        if output_fields is not None:
-#            data = add_and_drop_fields(data, output_fields)
-#        output_table.append(data)
-#        output_table.flush()
-#        status['rowsleft'] -= chunksize
-#        status['start'] = stop
+    for chunk in range(num_chunks):
+        copyChunk(chunk, chunk)
+
 #    loop_wh_progress(copyChunk, range(num_chunks))
 
     return output_table
