@@ -1,7 +1,7 @@
 import numpy as np
 import tables
 
-from data import copyTable, appendTable, get_table_fields, table_size
+from data import copyTable, appendTable, get_fields, table_size
 from utils import timed
 
 __version__ = "0.2"
@@ -10,7 +10,7 @@ def get_fields(input_file):
     input_entities = input_file.root.entities
     fields = {}
     for table in input_file.iterNodes(input_entities):
-        table_fields = get_table_fields(table)
+        table_fields = get_fields(table)
         table_name = table._v_name 
         if table_name.endswith("_per_period"):
             ent_name = table_name[:-11] 

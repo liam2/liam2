@@ -4,20 +4,20 @@ import tables
 import numpy as np
 
 from expr import normalize_type, get_missing_value, get_missing_record
-from utils import loop_wh_progress, time2str
+from utils import loop_wh_progress, time2str, safe_put
 
 def table_size(table):
     return (len(table) * table.dtype.itemsize) / 1024.0 / 1024.0
 
-def get_table_fields(table):
-    dtype = table.dtype
+def get_fields(array):
+    dtype = array.dtype
     field_types = dtype.fields
     return [(name, normalize_type(field_types[name][0].type))
             for name in dtype.names]
 
-def assertValidFields(s_fields, table, allowed_missing=None):
+def assertValidFields(s_fields, array, allowed_missing=None):
     # extract types from field description and normalise to python types
-    t_fields = get_table_fields(table)
+    t_fields = get_fields(array)
 
     # check that all required fields are present
     s_names = set(name for name, _ in s_fields)
@@ -61,11 +61,111 @@ def add_and_drop_fields(array, output_fields, output_array=None):
         output_array[fname] = array[fname]
     return output_array
 
+def mergeSubsetInArray(output, id_to_rownum, subset, first=False):
+    if subset.dtype == output.dtype and len(subset) == len(output):
+        return subset
+    elif subset.dtype == output.dtype:
+        safe_put(output, id_to_rownum[subset['id']], subset)
+        return output
     
+    output_names = output.dtype.names
+    subset_names = subset.dtype.names
+    names_to_copy = set(subset_names) & set(output_names)
+    if len(subset) == len(output):
+        for fname in names_to_copy:
+            output[fname] = subset[fname]
+        return output
+    else:
+        rownums = id_to_rownum[subset['id']]
+        #TODO: this is a gross approximation, more research is needed to get
+        # a better threshold. It might also depend on "first".
+        if len(names_to_copy) > len(output_names) / 2:
+            if first:
+                subset_all_cols = np.empty(len(subset), dtype=output.dtype)
+                for fname in set(output_names) - set(subset_names):
+                    subset_all_cols[fname] = \
+                        get_missing_value(subset_all_cols[fname])
+            else:
+                subset_all_cols = output[rownums]
+                # Note that all rows which correspond to rownums == -1 have wrong
+                # values (they have the value of the last row) but it is not 
+                # necessary to correct them since they will not be copied back
+                # into output_array.
+                # np.putmask(subset_all_cols, rownums == -1, missing_row)
+            for fname in names_to_copy:
+                subset_all_cols[fname] = subset[fname]
+            safe_put(output, rownums, subset_all_cols)
+        else:
+            for fname in names_to_copy:
+                safe_put(output[fname], rownums, subset[fname])
+        return output
+    
+def mergeArrays(array1, array2, result_fields='union'):
+    fields1 = get_fields(array1)
+    fields2 = get_fields(array2)
+    #TODO: check that common fields have the same type
+    if result_fields == 'union': 
+        names1 = set(array1.dtype.names)
+        fields_notin1 = [(name, type_) for name, type_ in fields2 
+                         if name not in names1]
+        output_fields = fields1 + fields_notin1
+    elif result_fields == 'array1':
+        output_fields = fields1
+    else:
+        raise ValueError('%s in not a valid value for result_fields argument' % 
+                         result_fields)
+    
+    output_dtype = np.dtype(output_fields)
+
+    ids1 = array1['id']
+    ids2 = array2['id']
+    all_ids = np.union1d(ids1, ids2)
+    max_id = all_ids[-1]
+
+    # compute new id_to_rownum
+    id_to_rownum = np.empty(max_id + 1, dtype=int)
+    id_to_rownum.fill(-1)
+    for rownum, id in enumerate(all_ids):
+        id_to_rownum[id] = rownum
+
+    # 1) create resulting array
+    ids1_complete = len(ids1) == len(all_ids)
+    ids2_complete = len(ids2) == len(all_ids)
+    output_is_arr1 = array1.dtype == output_dtype and ids1_complete
+    output_is_arr2 = array2.dtype == output_dtype and ids2_complete
+    arr1_complete = set(fields1) >= set(output_fields) and ids1_complete
+    arr2_complete = set(fields2) >= set(output_fields) and ids2_complete
+    if output_is_arr1 or output_is_arr2:
+        # In this case, output_array will be one of the input arrays, so
+        # we don't need to allocate/initialise it
+        pass
+    elif arr1_complete or arr2_complete:
+        output_array = np.empty(len(all_ids), dtype=output_dtype)
+    else:
+        output_array = np.empty(len(all_ids), dtype=output_dtype)
+        output_array[:] = get_missing_record(output_array)
+    
+    # 2) copy data from array1
+    if not arr2_complete:
+        if output_is_arr1:
+            output_array = array1
+        else:
+            output_array = mergeSubsetInArray(output_array, id_to_rownum, 
+                                              array1, first=True)
+
+    # 3) copy data from array2
+    if output_is_arr2:
+        output_array = array2
+    else:
+        output_array = mergeSubsetInArray(output_array, id_to_rownum, array2)
+    
+    return output_array, id_to_rownum
+
+
 def appendTable(input_table, output_table, chunksize=10000, condition=None,
                 stop=None, show_progress=False):
     if input_table.dtype != output_table.dtype:
-        output_fields = get_table_fields(output_table)
+        output_fields = get_fields(output_table)
     else: 
         output_fields = None
     
@@ -119,7 +219,7 @@ def copyTable(input_table, output_file, output_node, output_fields=None,
               chunksize=10000, condition=None, stop=None, show_progress=False, 
               **kwargs):
     complete_kwargs = {'title': input_table._v_title,
-                       'filters': input_table.filters}
+                      }# 'filters': input_table.filters}
     complete_kwargs.update(kwargs)
     if output_fields is None:
         output_dtype = input_table.dtype
@@ -130,7 +230,10 @@ def copyTable(input_table, output_file, output_node, output_fields=None,
     return appendTable(input_table, output_table, chunksize, condition, 
                        stop=stop, show_progress=show_progress)
 
-
+#XXX: should I make a generic n-way array merge out of this?
+# this is a special case though because: 
+# 1) all arrays have the same columns
+# 2) we have id_to_rownum already computed for each array 
 def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
                         max_id_per_period, target_period):
     periods_before = [p for p in input_rows.iterkeys() if p <= target_period]
@@ -145,6 +248,12 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
         present_in_period.resize(max_id + 1)
         is_present |= present_in_period
 
+    if np.array_equal(present_in_period, is_present):
+        start, stop = input_rows[target_period]
+        input_array = input_table.read(start=start, stop=stop)
+        return (add_and_drop_fields(input_array, output_fields), 
+                period_id_to_rownum)
+         
     # building id_to_rownum for the target period
     id_to_rownum = np.empty(max_id + 1, dtype=int)
     id_to_rownum.fill(-1)
@@ -153,21 +262,45 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
         if present:
             id_to_rownum[id] = rownum
             rownum += 1
+            
+#    all_ids = is_present.nonzero()[0] 
 
     # computing source row (period) for each destination row    
     output_array_source_rows = np.empty(rownum, dtype=int)
     output_array_source_rows.fill(-1)
     for period in periods_before[::-1]:
+#        missing_rows = output_array_source_rows == -1
+#        if not np.any(missing_rows):
+#            break
+#        start, stop = input_rows[period]
+#        missing_ids = all_ids[missing_rows]
+#        input_id_to_rownum = input_index[period]
+#        input_rownums_for_missing = input_id_to_rownum[missing_ids] + start  
+#        output_array_source_rows[missing_rows] = input_rownums_for_missing 
+        
         start, stop = input_rows[period]
-        for id, input_rownum in enumerate(input_index[period]):
-            if input_rownum != -1:
-                output_rownum = id_to_rownum[id]
-                if output_rownum != -1:
-                    if output_array_source_rows[output_rownum] == -1:
-                        output_array_source_rows[output_rownum] = \
-                            start + input_rownum
+        input_id_to_rownum = input_index[period]
+        input_ids = (input_id_to_rownum != -1).nonzero()[0]
+        input_rownums = np.arange(start, stop)
+        output_rownums = id_to_rownum[input_ids]
+        source_rows = output_array_source_rows[output_rownums]
+        np.putmask(source_rows, source_rows == -1, input_rownums)
+        safe_put(output_array_source_rows, output_rownums, source_rows)
+
         if np.all(output_array_source_rows != -1):
             break
+
+#        start, stop = input_rows[period]
+#        for id, input_rownum in enumerate(input_index[period]):
+#            if input_rownum != -1:
+#                output_rownum = id_to_rownum[id]
+#                if output_rownum != -1:
+#                    if output_array_source_rows[output_rownum] == -1:
+#                        output_array_source_rows[output_rownum] = \
+#                            start + input_rownum
+                            
+#        if np.all(output_array_source_rows != -1):
+#            break
         
     # reading data 
     output_array = input_table.readCoordinates(output_array_source_rows)

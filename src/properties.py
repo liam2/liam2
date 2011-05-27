@@ -143,8 +143,8 @@ class ProcessGroup(Process):
                 print v.__class__.__name__,
             else:
                 print k,
-            v.run_guarded(globals)
-            print "done."
+            utils.timed(v.run_guarded, globals)
+#            print "done."
             v.entity.simulation.start_console(v.entity, globals['period'])
 
 

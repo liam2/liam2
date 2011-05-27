@@ -2,9 +2,10 @@ import numpy as np
 import tables
 
 from utils import safe_put
+from data import mergeArrays
 from expr import parse, Variable, SubscriptableVariable, \
                  VirtualArray, expr_eval, dtype, \
-                 get_missing_value, get_missing_record, hasvalue 
+                 get_missing_value, hasvalue 
 
 str_to_type = {'float': float, 'int': int, 'bool': bool}
 
@@ -316,70 +317,16 @@ class Entity(object):
                                         self.name + "_per_period")
         
     def load_period_data(self, period):
-        input_table = self.input_table
-        output_dtype = self.array.dtype
-        output_names = set(output_dtype.names)
-        input_names = set(input_table.dtype.names)
-        common_fields = output_names & input_names
-         
         rows = self.input_rows.get(period)
         if rows is None:
             # nothing needs to be done in that case
             return
-        
+
         start, stop = rows
-        #TODO: chunking instead of reading the whole array in one pass 
-        # *might* be a good idea to preserve some memory
-        input_array = input_table.read(start, stop)
-        
-        # compute union of ids present in last period and those loaded from 
-        # the input file
-        #XXX: try with union(list of ids) instead of working with
-        # booleans, that way we wouldn't need to keep the input_index
-        # in memory after the initial transfer from input to output
-        max_id = max(input_array['id'][-1], self.array['id'][-1])
-        present_last_period = self.id_to_rownum != -1
-        present_last_period.resize(max_id + 1)
-        present_in_input = self.input_index[period] != -1
-        present_in_input.resize(max_id + 1)
-        is_present = present_in_input
-        is_present |= present_last_period
+        input_array = self.input_table.read(start, stop)
 
-        # compute new id_to_rownum
-        id_to_rownum = np.empty(max_id + 1, dtype=int)
-        id_to_rownum.fill(-1)
-
-        rownum = 0
-        for id, present in enumerate(is_present):
-            if present:
-                id_to_rownum[id] = rownum
-                rownum += 1
-        
-        # allocate resulting array
-        output_array = np.empty(rownum, dtype=output_dtype)
-        
-        # 1) fill all with missing
-        output_array[:] = get_missing_record(self.array)
-        
-        # 2) copy data from last period
-        safe_put(output_array, id_to_rownum[self.array['id']], self.array)
-        
-        # 3) copy data from input file
-        rownums = id_to_rownum[input_array['id']]
-        output_array_to_modify = output_array[rownums]
-        
-        # Note that all rows which correspond to rownums == -1 have wrong
-        # values (they have the value of the last row) but it is not 
-        # necessary to correct them since they will not be copied back
-        # into output_array.
-        # np.putmask(output_array_to_modify, rownums == -1, missing_row)
-        for fname in common_fields:
-            output_array_to_modify[fname] = input_array[fname]
-
-        safe_put(output_array, rownums, output_array_to_modify)
-
-        self.array = output_array
-        self.id_to_rownum = id_to_rownum
+        self.array, self.id_to_rownum = \
+            mergeArrays(self.array, input_array, result_fields='array1')
 
     def store_period_data(self, period):
         # erase all temporary variables which have been computed this period
