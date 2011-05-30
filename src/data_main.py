@@ -533,8 +533,11 @@ if __name__ == '__main__':
     valid_cmds = ('export_tsv', 'export_csv', 'import_tsv', 'import_csv')
     if len(args) < 4:
         print """
-Usage: %s action simulation_file import_export_file
+Usage: %s action simulation_file import_export_file [extra1] [extra2] ...
   action can be any of %s
+  for import_tsv, you can specify optional compression by two extra arguments:
+  extra1 can be any of zlib, lzo, bzip2 or blosc (defaults to none)
+  extra2 is the compression level: from 1 to 9 (defaults to 5)
 """ % (args[0], ', '.join(repr(cmd) for cmd in valid_cmds))
         sys.exit()
     cmd = args[1]
