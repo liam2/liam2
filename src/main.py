@@ -1,6 +1,6 @@
 from simulation import Simulation
 
-__version__ = "0.2dev"
+__version__ = "0.2rc1"
 
 class AutoflushFile(object):
     def __init__(self, f):
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     print
 
     args = sys.argv
-    fpath = args[1] if len(args) > 1 else 'simulation.yaml'
+    fpath = args[1] if len(args) > 1 else 'simulation.yml'
     console = len(args) > 2 and args[2] == "-i" 
     print "Using simulation file: '%s'" % fpath
     simulation = Simulation(fpath, console)
