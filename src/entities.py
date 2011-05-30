@@ -4,7 +4,7 @@ import tables
 from utils import safe_put
 from data import mergeArrays
 from expr import parse, Variable, SubscriptableVariable, \
-                 VirtualArray, expr_eval, dtype, \
+                 expr_eval, dtype, \
                  get_missing_value, hasvalue 
 
 str_to_type = {'float': float, 'int': int, 'bool': bool}
@@ -205,7 +205,6 @@ class Entity(object):
         vars = dict((name, SubscriptableVariable(name, type_))
                     for name, type_ in self.simulation.globals)
         vars.update(self.variables)
-        vars['__parent__'] = VirtualArray()
         
         cond_context = self.conditional_context
         vars.update((k, parse(v, vars, cond_context))

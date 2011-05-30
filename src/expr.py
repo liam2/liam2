@@ -503,11 +503,6 @@ class SubscriptedVariable(Variable):
             return column[period_idx] if not out_of_bounds else missing_value
 
 
-class VirtualArray(object):
-    def __getattr__(self, key):
-        return Variable(key)
-
-
 class Where(Expr):
     func_name = 'if'
 
