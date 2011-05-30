@@ -194,6 +194,7 @@ class Simulation(object):
                 # update "globals" with their value for this period
                 globals_row = period - globals_base_period
                 if globals_row < 0:
+                    #TODO: use missing values instead
                     raise Exception('Missing globals data for period %d' % period)
                 period_globals = periodic_globals[globals_row]
                 const_dict = dict((k, period_globals[k])
@@ -204,6 +205,8 @@ class Simulation(object):
                 num_processes = len(processes)
                 for p_num, process in enumerate(processes, start=1):
                     print "- %d/%d" % (p_num, num_processes), process.name,
+                    #TODO: provided a custom __str__ method for Process & 
+                    # Assignment instead 
                     if hasattr(process, 'predictor') and process.predictor and \
                        process.predictor != process.name:
                         print "(%s)" % process.predictor,
