@@ -227,7 +227,7 @@ class ImportExportData(object):
         const_table.append(const_array)
         const_table.flush()
 
-    def import_tsv(self, delimiter="\t", complib='zlib'):
+    def import_tsv(self, complib=None, complevel=5, delimiter="\t"):
         print "Importing in", self.h5
         globals = self.load_globals(self.globals_path)
         h5file = tables.openFile(self.h5, mode="w", title="CSV import")
@@ -425,10 +425,11 @@ class ImportExportData(object):
                     array[field] = ~array[field]
 
             if complib is not None:
-                print " * storing (using %s compression)..." % complib
-                filters = tables.Filters(complevel=5, complib=complib,
-                                         fletcher32=True)
+                print " * storing (using %s level %d compression)..." \
+                      % (complib, complevel)
+                filters = tables.Filters(complevel=complevel, complib=complib)
             else:
+                print " * storing uncompressed..."
                 filters = None
             table = h5file.createTable(entities_node, entity.name, main_dtype,
                                        title="%s table" % entity.name,
@@ -542,4 +543,4 @@ Usage: %s action simulation_file import_export_file
     data = ImportExportData(args[2], args[3])
 
     assert cmd in valid_cmds, "Unknown command '%s'" % cmd
-    timed(getattr(data, cmd))
+    timed(getattr(data, cmd), *args[4:])
