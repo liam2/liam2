@@ -219,7 +219,7 @@ def copyTable(input_table, output_file, output_node, output_fields=None,
               chunksize=10000, condition=None, stop=None, show_progress=False, 
               **kwargs):
     complete_kwargs = {'title': input_table._v_title,
-                      }# 'filters': input_table.filters}
+                       'filters': input_table.filters}
     complete_kwargs.update(kwargs)
     if output_fields is None:
         output_dtype = input_table.dtype
