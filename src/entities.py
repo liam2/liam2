@@ -129,16 +129,7 @@ class Entity(object):
                 strtype = fielddef
             self.fields.append((name, str_to_type[strtype]))
     
-        per_period_fields = [d.items()[0] 
-                             for d in entity_def.get('per_period_fields', [])]
-        per_period_fields = [(name, str_to_type[strtype])
-                             for name, strtype in per_period_fields]
-        self.per_period_fields = [('period', int)] + per_period_fields
-        #TODO: handle them correctly
-        self.pp_missing_fields = []
-         
         self.period_individual_fnames = [name for name, _ in self.fields]
-        self.period_fnames = [name for name, _ in self.per_period_fields]
 
         from properties import Link
 
@@ -167,10 +158,6 @@ class Entity(object):
         self.base_period = None
         self.array = None
 
-        self.per_period_table = None
-        # this will only ever be a one line array
-        self.per_period_array = None
-        
         self.num_tmp = 0
         self.temp_variables = {}
         self.id_to_rownum = None
@@ -193,14 +180,11 @@ class Entity(object):
             global_predictors = \
                 self.collect_predictors(self.process_strings.iteritems()) 
             all_fields = set(global_predictors)
-            stored_fields = set(self.period_individual_fnames) | \
-                            set(self.period_fnames)
+            stored_fields = set(self.period_individual_fnames)
             temporary_fields = all_fields - stored_fields
             
             vars = dict((name, Variable(name, type_))
                         for name, type_ in self.fields)
-            vars.update((name, Variable(name, type_))
-                        for name, type_ in self.per_period_fields)
             vars.update((name, Variable(name)) for name in temporary_fields)
             vars.update(self.links)
             self._variables = vars
@@ -269,7 +253,6 @@ class Entity(object):
                                            vars))
 
         fnames = set(self.period_individual_fnames)
-        period_fnames = set(self.period_fnames)
         def attach_processes(items):
             for k, v in items:
                 if isinstance(v, ProcessGroup):
@@ -279,8 +262,6 @@ class Entity(object):
                     predictor = v.predictor if v.predictor is not None else k
                     if predictor in fnames:
                         kind = 'period_individual'
-                    elif predictor in period_fnames:
-                        kind = 'period'
                     else:
                         kind = None
                     v.attach(k, self, kind)
@@ -302,19 +283,12 @@ class Entity(object):
 
         if name in self.period_individual_fnames:
             return self.array[name]
-        elif name in self.period_fnames:
-            return self.per_period_array[name]
         else:
             return self.temp_variables[name]
     
     def locate_tables(self, h5in, h5out):
-        input_entities = h5in.root.entities
-        self.input_table = getattr(input_entities, self.name)
-
-        output_entities = h5out.root.entities
-        self.table = getattr(output_entities, self.name)
-        self.per_period_table = getattr(output_entities, 
-                                        self.name + "_per_period")
+        self.input_table = getattr(h5in.root.entities, self.name)
+        self.table = getattr(h5out.root.entities, self.name)
         
     def load_period_data(self, period):
         rows = self.input_rows.get(period)
@@ -340,9 +314,6 @@ class Entity(object):
             self.output_rows[period] = (startrow, self.table.nrows)
             self.output_index[period] = self.id_to_rownum
         self.table.flush()
-
-        self.per_period_table.append(self.per_period_array)
-        self.per_period_table.flush()
 
     def fill_missing_values(self, ids, values, context, filler='auto'):
         if filler is 'auto':

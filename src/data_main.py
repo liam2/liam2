@@ -437,12 +437,6 @@ class ImportExportData(object):
             table.append(array)
             table.flush()
 
-            dtype = np.dtype(entity.per_period_fields)
-            h5file.createTable(entities_node, entity.name + "_per_period",
-                               dtype,
-                               title="%s per period table" % entity.name,
-                               expectedrows=12*50)
-
 #            max_id = np.max(ids)
 #            id_to_rownum = np.empty(max_id + 1, dtype=int)
 #            id_to_rownum.fill(-1)
@@ -479,12 +473,6 @@ class ImportExportData(object):
 
         for ent_name, entity in entity_registry.iteritems():
             print "*** %s ***" % ent_name
-            
-            # per period table
-            dtype = np.dtype(entity.per_period_fields)
-            h5file.createTable(ent_node, ent_name + "_per_period", dtype,
-                               title="%s per period table" % ent_name,
-                               expectedrows=12*50)
             
             # main table
             oldnames = self.oldnames.get(ent_name, {})

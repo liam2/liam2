@@ -98,8 +98,6 @@ class Assignment(Process):
             # we cannot store/cache self.entity.array[self.name] because the 
             # array object can change (eg when enlarging it due to births)
             target = self.entity.array
-        elif self.kind == 'period':
-            target = self.entity.per_period_array
         else:
             target = self.entity.temp_variables
 

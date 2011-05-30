@@ -177,17 +177,17 @@ class Simulation(object):
         
         process_time = defaultdict(float)
 
-        def simulate_period(period, processes, entities):        
+        def simulate_period(period, processes, entities, init=False):        
             print "\nperiod", period
             
-            print "- loading input data"
-            for entity in entities:
-                print "  *", entity.name, "...",
-                timed(entity.load_period_data, period)
+            if not init:
+                print "- loading input data"
+                for entity in entities:
+                    print "  *", entity.name, "...",
+                    timed(entity.load_period_data, period)
 
             for entity in entities:
                 entity.array['period'] = period
-                entity.per_period_array['period'] = period
 
             if processes:
                 # build context for this period:
@@ -215,14 +215,15 @@ class Simulation(object):
                     print "done (%s elapsed)." % time2str(elapsed)
                     self.start_console(process.entity, period)
 
-            print "- storing period data"
-            for entity in entities:
-                print "  *", entity.name, "...",
-                timed(entity.store_period_data, period)
+            if not init:
+                print "- storing period data"
+                for entity in entities:
+                    print "  *", entity.name, "...",
+                    timed(entity.store_period_data, period)
         
         try:
-            simulate_period(self.start_period - 1, self.init_processes,
-                            self.entities)
+            simulate_period(self.start_period, self.init_processes,
+                            self.entities, init=True)
     
             for period in range(self.start_period, 
                                 self.start_period + self.periods):

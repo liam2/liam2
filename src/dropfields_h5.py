@@ -17,19 +17,14 @@ def dropfields(input_path, output_path, todrop):
     print "done."
     
     output_entities = output_file.createGroup("/", "entities", "Entities")
-    filters = tables.Filters(complevel=5, complib='zlib',
-                             fletcher32=True)
     for table in input_file.iterNodes(input_root.entities):
         table_fields = get_fields(table)
-        table_name = table._v_name 
-        if not table_name.endswith("_per_period"):
-            table_fields = [(fname, ftype) for fname, ftype in table_fields
-                            if fname not in todrop] 
-        
-        print " * copying table %s (%.2f Mb) ..." % (table_name, 
+        table_fields = [(fname, ftype) for fname, ftype in table_fields
+                        if fname not in todrop] 
+        print " * copying table %s (%.2f Mb) ..." % (table._v_name, 
                                                      table_size(table)),
         copyTable(table, output_file, output_entities, 
-                  table_fields, filters=filters)
+                  table_fields)
         print "done."
 
     input_file.close()

@@ -18,20 +18,14 @@ def filter_h5(input_path, output_path, condition):
     input_entities = input_root.entities
     
     ent_names = [table._v_name
-                 for table in input_file.iterNodes(input_entities)
-                 if not table._v_name.endswith("_per_period")]
+                 for table in input_file.iterNodes(input_entities)]
     
     output_entities = output_file.createGroup("/", "entities", "Entities")
     for ent_name in ent_names:
         print ent_name, "..."
         
-        # main table
         table = getattr(input_entities, ent_name)
         copyTable(table, output_file, output_entities, condition=condition)
-        
-        per_period_table = getattr(input_entities, ent_name + "_per_period")
-        copyTable(per_period_table, output_file, output_entities,
-                  condition=condition)
 
     input_file.close()
     output_file.close()

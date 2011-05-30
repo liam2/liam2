@@ -236,9 +236,11 @@ def copyTable(input_table, output_file, output_node, output_fields=None,
 # 1) all arrays have the same columns
 # 2) we have id_to_rownum already computed for each array 
 def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
-                        max_id_per_period, target_period):
-    periods_before = [p for p in input_rows.iterkeys() if p <= target_period]
+                        max_id_per_period, start_period):
+    periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
     periods_before.sort()
+    # take the last period which we have data for
+    target_period = periods_before[-1]
 
     # computing is present
     max_id = max_id_per_period[target_period]
@@ -316,7 +318,6 @@ class H5Data(object):
         self.output_path = output_path
         
     def run(self, entities, start_period):
-        last_period = start_period - 1
         print "reading data from %s ..." % self.input_path
 
         input_file = tables.openFile(self.input_path, mode="r")
@@ -340,7 +341,6 @@ class H5Data(object):
 
             assertValidFields(entity.fields, table, entity.missing_fields)
 
-            # build indexes
             print " * indexing table...",
             start_time = time.time()
             table_index = {}
@@ -380,47 +380,25 @@ class H5Data(object):
             start_time = time.time()
             input_rows = entity.input_rows
             output_rows = dict((p, rows) for p, rows in input_rows.iteritems()
-                               if p < last_period)
+                               if p < start_period)
             if output_rows:
                 _, stoprow = input_rows[max(output_rows.iterkeys())]
             else:
                 stoprow = 0
             
             copyTable(table, output_file, output_entities, 
-#                      entity.fields, stop=0, show_progress=True)
                       entity.fields, stop=stoprow, show_progress=True)
             entity.output_rows = output_rows
             print "done (%s elapsed)." % time2str(time.time() - start_time)
             
             print " * building array for first simulated period...",
             start_time = time.time()
-            
-            array, id_to_rownum = \
+            entity.array, entity.id_to_rownum = \
                 buildArrayForPeriod(table, entity.fields, entity.input_rows, 
                                     entity.input_index, max_id_per_period,
-                                    last_period)
-            entity.id_to_rownum = id_to_rownum
-            entity.array = array
+                                    start_period)
             print "done (%s elapsed)." % time2str(time.time() - start_time)
 
-            # per period
-            per_period_table = getattr(input_entities, ent_name + "_per_period")
-            assertValidFields(entity.per_period_fields,
-                              per_period_table, entity.pp_missing_fields)
-            
-            copyTable(per_period_table, output_file, output_entities,
-                      entity.per_period_fields)
-            per_period_array = per_period_table.readWhere("period==%d" 
-                                                          % last_period)
-            per_period_array = add_and_drop_fields(per_period_array,
-                                                   entity.per_period_fields)
-            if not len(per_period_array):
-                #TODO: use missing values instead
-                per_period_array = np.zeros(1, dtype=per_period_array.dtype)
-                per_period_array['period'] = last_period
-            
-            entity.per_period_array = per_period_array
-            
         input_file.close()
         output_file.close()
         return periodic_globals
@@ -446,13 +424,6 @@ class Void(object):
             output_file.createTable(output_entities, entity.name, dtype,
                                     title="%s table" % entity.name)
 
-            dtype = np.dtype(entity.per_period_fields)
-            entity.per_period_array = np.empty(0, dtype=dtype)
-            output_file.createTable(output_entities,
-                                    entity.name + "_per_period",
-                                    dtype,
-                                    title="%s per period table" % entity.name)
-        
         output_file.close()
         return periodic_globals
 
