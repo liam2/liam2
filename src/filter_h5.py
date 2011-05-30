@@ -3,28 +3,19 @@ import tables
 from data import copyTable
 from utils import timed
 
-__version__ = "0.1"
+__version__ = "0.2"
 
 def filter_h5(input_path, output_path, condition):
     print "filtering for '%s'" % condition        
     input_file = tables.openFile(input_path, mode="r")
-    input_root = input_file.root
-    
     output_file = tables.openFile(output_path, mode="w")
+    
     output_globals = output_file.createGroup("/", "globals", "Globals")
-
-    copyTable(input_root.globals.periodic, output_file, output_globals)
-    
-    input_entities = input_root.entities
-    
-    ent_names = [table._v_name
-                 for table in input_file.iterNodes(input_entities)]
+    copyTable(input_file.root.globals.periodic, output_file, output_globals)
     
     output_entities = output_file.createGroup("/", "entities", "Entities")
-    for ent_name in ent_names:
-        print ent_name, "..."
-        
-        table = getattr(input_entities, ent_name)
+    for table in input_file.iterNodes(input_file.root.entities):
+        print table._v_name, "..."
         copyTable(table, output_file, output_entities, condition=condition)
 
     input_file.close()
