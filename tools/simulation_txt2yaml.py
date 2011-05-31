@@ -17,6 +17,7 @@ from align_txt2csv import convert_txt_align
 #   the rest)
 # - convert "leaf" expression literals to the type of the variable being 
 #   defined (only absolutely needed for bool)
+# - use "abfrage" to determine fields
 # ? remove useless bounds (eg age)
 # ? implement choose for top-level filter
 # ? build variable dependency tree and enclose any field which is used before it
