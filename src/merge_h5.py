@@ -1,8 +1,8 @@
 import numpy as np
 import tables
 
-from data import copyTable, appendTable, get_fields, table_size
-from utils import timed
+from data import copyTable, mergeArrays, get_fields, index_table_light 
+from utils import timed, loop_wh_progress
 
 __version__ = "0.2"
 
@@ -21,19 +21,16 @@ def merge_fields(fields1, fields2):
 def merge_h5(input1_path, input2_path, output_path):        
     input1_file = tables.openFile(input1_path, mode="r")
     input2_file = tables.openFile(input2_path, mode="r")
-    input1_root = input1_file.root
-    input2_root = input2_file.root
     
     output_file = tables.openFile(output_path, mode="w")
     output_globals = output_file.createGroup("/", "globals", "Globals")
 
-    print
-    print "copying globals from", input1_path
-    copyTable(input1_root.globals.periodic, output_file, output_globals)
-    print " done.\n"
+    print "copying globals from", input1_path,
+    copyTable(input1_file.root.globals.periodic, output_file, output_globals)
+    print "done."
     
-    input1_entities = input1_root.entities
-    input2_entities = input2_root.entities
+    input1_entities = input1_file.root.entities
+    input2_entities = input2_file.root.entities
     
     fields1 = get_h5_fields(input1_file)
     fields2 = get_h5_fields(input2_file)
@@ -43,28 +40,61 @@ def merge_h5(input1_path, input2_path, output_path):
     
     output_entities = output_file.createGroup("/", "entities", "Entities")
     for ent_name in sorted(ent_names1 | ent_names2):
+        print
         print ent_name
         ent_fields1 = fields1.get(ent_name, [])
         ent_fields2 = fields2.get(ent_name, [])
         output_fields = merge_fields(ent_fields1, ent_fields2)
+        output_table = output_file.createTable(output_entities, ent_name, 
+                                               np.dtype(output_fields))
         
         if ent_name in ent_names1:
-            table = getattr(input1_entities, ent_name)
-            print " * copying table from %s (%.2f Mb)" % (input1_path, 
-                                                          table_size(table))
-            output_table = copyTable(table, output_file, output_entities, 
-                                     output_fields)
-            print " done.\n"
+            table1 = getattr(input1_entities, ent_name)
+            print " * indexing table from %s ..." % input1_path,
+            input1_rows = index_table_light(table1)
+            print "done."
         else:
-            output_table = output_file.createTable(output_entities, ent_name, 
-                                                   np.dtype(output_fields))
-
+            table1 = None
+            input1_rows = {}
+            
         if ent_name in ent_names2:
-            table = getattr(input2_entities, ent_name)
-            print " * copying table from %s (%.2f Mb)" % (input2_path,
-                                                          table_size(table))
-            appendTable(table, output_table)
-            print " done.\n"
+            table2 = getattr(input2_entities, ent_name)
+            print " * indexing table from %s ..." % input2_path,
+            input2_rows = index_table_light(table2)
+            print "done."
+        else:
+            table2 = None
+            input2_rows = {}
+
+        print " * merging: ",        
+        input1_periods = input1_rows.keys()
+        input2_periods = input2_rows.keys()
+        output_periods = sorted(set(input1_periods) | set(input2_periods))
+        def merge_period(period_idx, period): 
+            if ent_name in ent_names1:
+                start, stop = input1_rows.get(period, (0, 0))
+                input1_array = table1.read(start, stop)
+            else:
+                input1_array = None
+
+            if ent_name in ent_names2:
+                start, stop = input2_rows.get(period, (0, 0))
+                input2_array = table2.read(start, stop)
+            else:
+                input2_array = None
+                
+            if ent_name in ent_names1 and ent_name in ent_names2:
+                output_array, _ = mergeArrays(input1_array, input2_array)
+            elif ent_name in ent_names1:
+                output_array = input1_array
+            elif ent_name in ent_names2:
+                output_array = input2_array
+            else:
+                raise Exception("this shouldn't have happened")
+            output_table.append(output_array)
+            output_table.flush()
+        loop_wh_progress(merge_period, output_periods)
+        print " done."       
 
     input1_file.close()
     input2_file.close()
