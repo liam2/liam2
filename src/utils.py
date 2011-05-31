@@ -33,7 +33,7 @@ def safe_put(a, ind, v):
     np.put(a, ind, v)
     # if the last value was erroneously modified (because of a -1 in ind)
     # this assumes indices are sorted
-    if ind[-1] != len(a) - 1:
+    if len(ind) and ind[-1] != len(a) - 1:
         # restore its previous value
         a[-1] = last_value
 
