@@ -7,7 +7,7 @@
 
  - fix long lines in doc
  - add unit tests
- 
+
  missing features to run an automatically translated MIDAS simulation
  --------------------------------------------------------------------
 
@@ -54,8 +54,8 @@
 
  - missing values for boolean columns (see test_missing.py)
  
-   if using floats:
-   ================
+   if using floats / NaN:
+   ======================
    
    a & b -> a * b
    a | b -> (a + b) > 0 # Wrong: > 0 loose the NaNs and NaN > 0 is False, not NaN
@@ -107,12 +107,68 @@
  other missing features
  ----------------------
 
+ - compression should be user-configurable
+ - allow input fields to not be in the output
+   * it might be a good idea to rework the way to declare fields:
+     input:
+         - earny: float
+         - wstatus: int
+         - wzas: int
+         - yob: int
+     output:
+         - cscar: int
+ 
+         - csw: float
+         - cswl1: float
+         - cswl2: float
+         - cswl3: float
+         - cswl4: float
+         - cswl5: float
+ 
+         - dunemp: int
+         - earny: float
+         - secar: int
+ 
+         - minr60_c: int
+         - minr61_c: int
+         - minr62_c: int
+         - minr63_c: int
+         - minr64_c: int
+         - minr65_c: int
+         - wecar: float
+         - workcs: bool
+         - workse: bool
+         - workwe: bool
+         - wstatus: int
+         - wzas: int
+         - yob: int
+         - werb_temp0_sum: float
+         - werb_wemin60_sum: float
+         - werb_wemin61_sum: float
+         - werb_wemin62_sum: float
+         - werb_wemin63_sum: float
+         - werb_wemin64_sum: float
+         - werb_wemin65_sum: float
+   
+ - two different values for missing links: 
+   * linked to none = -1
+   * missing value = -2
+   the problem is that in liam1, there wasn't such a difference 
+ - data_main:
+   * remove the need for objtype_...
+   * macro.av: YEAR is not always the 1st row
+   * link names
+   * allow data for periods after start_period
  - round(X) should return int
  - warning for unused fields
+ - better error message when a procedure's processes are missing ordering 
+   (it is a dict, instead of a list of dict)
+ - better error message when the simulation file has been encoded to something
+   different than utf8 (and it contains non-ascii chars) 
  - better error message if unknown target entity in links (KeyError)
  - better error message if unknown entity in simulation.processes (KeyError)
  - better error message when a temporary variable is used before it is computed
-   (the error is not catched by the parser since the variable exists)
+   (the error is not caught by the parser since the variable exists)
    KeyError: '(~to_give_birth)\nto_give_birth'
  - Error messages containing utf8 chars are not displayed on notepad++ or 
    dos prompt consoles (py2exe is irrelevant, it just removes the intermediate
@@ -140,7 +196,6 @@
             RETIREMENTAGE: "((gender) and (age >= 65)) or ((not gender) and (age >= WEMRA))"
             RETIREMENTAGE: "age >= if(gender, 65, WEMRA)"
      
-       
  - numpy methods (min/max/...) on zero-length array
  - implement "log" action = show in a file
  - lastpresent(col[, condition]) -> returns the last value which is not missing
@@ -184,14 +239,21 @@
  optimisation
  ------------
 
- - try bottleneck (http://pypi.python.org/pypi/Bottleneck)
+ - try raw sql (in C)
+
+ - use bottleneck (http://pypi.python.org/pypi/Bottleneck)
+   nansum, nanmin, nanmax, nanmean, nanstd
+   it will probably be integrated back into numpy/scipy at some point but it
+   will probably take a while, so let's use this in the mean time
  
  - try making python bindings to ORC
    http://code.entropywave.com/projects/orc/
    or any of the other C JIT referenced in the external links at:
    http://en.wikipedia.org/wiki/Just-in-time_compilation
  
- - try using Theano (http://deeplearning.net/software/theano/) 
+ - try using Theano (http://deeplearning.net/software/theano/)
+   it seems to be a PITA to install though (no pre-built packages, needs a
+   compiler, BLAS, etc...)
  
  - try scipy.weave.blitz. It seems a bit limited in functionality but it uses 
    blitz++ (http://www.oonumerics.org/blitz/) internally which seems to contain
@@ -199,9 +261,9 @@
    hard. It seems to be really slow to compile though, so it'll probably be 
    only worth it when using very large arrays.
    
- - improve numexpr caching algorithm (LRU), or increase its size or cache 
-   expressions ourselves. Some long expressions take a lot longer to compile 
-   than to compute. Eg minr & friends.
+ - improve numexpr caching algorithm (LRU), and/or increase its size and/or 
+   cache expressions ourselves. Some long expressions take a lot longer to 
+   "compile" than to compute. Eg minr & friends.
  - store row indices in hdf file
  - optimise memory allocation by building a dependency graph between variables
    and:
