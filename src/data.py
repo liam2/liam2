@@ -312,6 +312,57 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
     return output_array, id_to_rownum
     
 
+def index_table(table):
+    rows_per_period = {}
+    id_to_rownum_per_period = {}
+    temp_id_to_rownum = []
+    max_id_per_period = {}
+    max_id_so_far = -1
+    current_period = None
+    start_row = None
+    for idx, row in enumerate(table):
+        period, id = row['period'], row['id']
+        if period != current_period:
+            # 0 > None is True
+            assert period > current_period, "data is not time-ordered"
+            if start_row is not None:
+                rows_per_period[current_period] = start_row, idx
+                # assumes the data is sorted on period then id
+                max_id_per_period[current_period] = max_id_so_far
+                id_to_rownum = np.array(temp_id_to_rownum)
+                id_to_rownum_per_period[current_period] = id_to_rownum
+                temp_id_to_rownum = [-1] * (max_id_so_far + 1)
+            start_row = idx
+            current_period = period
+        if id > max_id_so_far:
+            extra = [-1] * (id - max_id_so_far)
+            temp_id_to_rownum.extend(extra)
+        temp_id_to_rownum[id] = idx - start_row
+        max_id_so_far = max(max_id_so_far, id)
+    if current_period is not None:
+        rows_per_period[current_period] = (start_row, len(table))
+        max_id_per_period[current_period] = max_id_so_far
+        id_to_rownum_per_period[current_period] = np.array(temp_id_to_rownum)
+    return rows_per_period, id_to_rownum_per_period, max_id_per_period
+
+def index_table_light(table):
+    rows_per_period = {}
+    current_period = None
+    start_row = None
+    for idx, row in enumerate(table):
+        period, id = row['period'], row['id']
+        if period != current_period:
+            # 0 > None is True
+            assert period > current_period, "data is not time-ordered"
+            if start_row is not None:
+                rows_per_period[current_period] = (start_row, idx)
+            start_row = idx
+            current_period = period
+    if current_period is not None:
+        rows_per_period[current_period] = (start_row, len(table))
+    return rows_per_period
+
+
 class H5Data(object):
     def __init__(self, input_path, output_path):
         self.input_path = input_path
@@ -343,37 +394,12 @@ class H5Data(object):
 
             print " * indexing table...",
             start_time = time.time()
-            table_index = {}
-            current_period = None
-            start_row = None
-            max_id_per_period = {}
-            max_id_so_far = -1
-            temp_id_to_rownum = []
-            for idx, row in enumerate(table):
-                period, id = row['period'], row['id']
-                if period != current_period:
-                    # 0 > None is True
-                    assert period > current_period, "data is not time-ordered"
-                    if start_row is not None:
-                        table_index[current_period] = start_row, idx
-                        # assumes the data is sorted on period then id
-                        max_id_per_period[current_period] = max_id_so_far
-                        id_to_rownum = np.array(temp_id_to_rownum)
-                        entity.input_index[current_period] = id_to_rownum
-                        temp_id_to_rownum = [-1] * (max_id_so_far + 1)
-                    start_row = idx
-                    current_period = period
-                if id > max_id_so_far:
-                    extra = [-1] * (id - max_id_so_far)
-                    temp_id_to_rownum.extend(extra)
-                temp_id_to_rownum[id] = idx - start_row
-                max_id_so_far = max(max_id_so_far, id)
-            table_index[current_period] = (start_row, len(table))
-            max_id_per_period[current_period] = max_id_so_far
-            entity.input_index[current_period] = np.array(temp_id_to_rownum)
-
-            entity.input_rows = table_index
-            entity.base_period = min(table_index.keys())
+            
+            rows_per_period, id_to_rownum_per_period, max_id_per_period = \
+                index_table(table)
+            entity.input_index = id_to_rownum_per_period
+            entity.input_rows = rows_per_period
+            entity.base_period = min(rows_per_period.keys())
             print "done (%s elapsed)." % time2str(time.time() - start_time)
 
             print " * copying table..."
