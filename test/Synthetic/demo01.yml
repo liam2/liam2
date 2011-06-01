@@ -24,8 +24,8 @@ entities:
             age: "age + 1"
                 
             agegroup:
-                - agegroup_civilstate: "if(age<50, 5*round(age/5), 10*round(age/10))"            
-                - agegroup_work: "if(age<70, 5*round(age/5), 70)"
+                - agegroup_civilstate: "if(age<50, 5*trunc(age/5), 10*trunc(age/10))"            
+                - agegroup_work: "if(age<70, 5*trunc(age/5), 70)"
             
 simulation:
     init:

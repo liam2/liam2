@@ -82,8 +82,8 @@ entities:
             age: "age + 1"
                 
             agegroup:
-                - agegroup_civilstate: "if(age<50, 5*round(age/5), 10*round(age/10))"            
-                - agegroup_work: "if(age<70, 5*round(age/5), 70)"
+                - agegroup_civilstate: "if(age<50, 5*trunc(age/5), 10*trunc(age/10))"            
+                - agegroup_work: "if(age<70, 5*trunc(age/5), 70)"
                 
             dead_procedure:                
                 - dead: "if(ISMALE, 
@@ -99,10 +99,11 @@ entities:
                 - to_give_birth: "logit_regr(0.0,
                             filter=ISFEMALE and (age >= 15) and (age <= 50),
                             align='al_p_birth.csv')"   
-                - newbirth: "new('person', filter=to_give_birth, 
-                     m_id = __parent__.id, 
-                     m_age = __parent__.age, 
-                     hh_id = __parent__.hh_id,
+                - newbirth: "new('person', filter=to_give_birth,
+                     age = 0, 
+                     m_id = id, 
+                     m_age = age, 
+                     hh_id = hh_id,
                      partner_id = UNSET,
                      civilstate = SINGLE,
                      education_level = UNSET,
