@@ -164,24 +164,18 @@ with the same name).
 links
 -----
 
-Entities can be linked with each other or with other entities, for example, individuals ‘belong’ to households, and mothers are
-linked to their children, while spouses are interlinked as well.
-
-.. index:: links, many2one, one2many
-
-Entities can be linked with each other or with other entities, for example, individuals *belong* to households, and mothers are
-linked to their children, while partners are interlinked as well.
+Entities can be linked with each other or with other entities, for example, 
+individuals belong to households, and mothers are linked to their children, 
+while partners are interlinked as well.
 
 A typical link has the following form: ::
 
     name: {type: <type>, target: <entity>, field: <name of link field>}
     
-LIAM 2 uses field values to establish the link between entities    
+LIAM 2 uses integer fields to establish the link between entities. Those
+integer fields contain the id-number of the linked individual.    
 
-LIAM 2 allows two types of links: 
-
-- many2one
-- one2many
+LIAM 2 allows two types of links: many2one and one2many.
 
 More detail, see :ref:`links_label`.
 

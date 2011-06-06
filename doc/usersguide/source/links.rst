@@ -1,32 +1,32 @@
 ﻿.. highlight:: yaml
 
+.. index:: links
+
 .. _links_label:
 
 Links
 =====
 
-.. index:: links, many2one, one2many
-
 Entities can be linked with each other or with other entities, for example, 
-individuals *belong* to households, and mothers are linked to their children, 
+individuals belong to households, and mothers are linked to their children, 
 while partners are interlinked as well.
 
 A typical link has the following form: ::
 
-    name: {type: <type>, target: <entity>, field: <integer field name>}
+    name: {type: <type>, target: <entity>, field: <name of link field>}
     
-LIAM 2 uses field values to establish the link between entities.    
+LIAM 2 uses integer fields to establish the link between entities. Those
+integer fields contain the id-number of the linked individual.    
 
-LIAM 2 allows for two types of links: 
+LIAM 2 allows two types of links: many2one and one2many.
 
-- many2one
-- one2many
+.. index:: many2one
 
 many2one
 --------
 
 A **many2one** link the item of the entity to *one* other item in the same 
-(eg. a person to its mother) or other entity(a person to its household).
+(eg. a person to its mother) or another entity (eg. a person to its household).
 
 This allows the modeller to use information stored in the linked entities. ::
 
@@ -56,6 +56,8 @@ The parent_income of that individual will be *nan*.
 
 You can use the *basic functions* (abs, log, exp, ...) in your formulas.
 
+
+.. index:: one2many
 
 one2many
 --------

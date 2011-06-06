@@ -87,6 +87,12 @@ discarded at the end of the period.
         age: "age + 1"
         agediv10: "trunc(age / 10)"
         agegroup: "agediv10 * 10"
+        agegroup2: "agediv10 * 5"
+        
+In this example, *agediv10* and *agegroup2* are temporary variables. In this
+particular case, we could have bypassed the temporary variable, but when a long
+expression occurs several times, it is often cleaner and more efficient to
+express it (and compute it) only once by using a temporary variable.
 
 Actions
 =======
@@ -140,7 +146,7 @@ variable.
 
     processes:
         ageing:
-            - age: "age * 2"
+            - age: "age * 2" # in our world, people age strangely
             - age: "age + 1"
             - agegroup: "trunc(age / 10) * 10"
 
@@ -219,9 +225,7 @@ simple expressions
 Note that an integer divided by an integer returns a float. For example "1 / 2" 
 will evaluate to 0.5 instead of 0. If you are only interested in the integer
 part of that result (for example, if you know the result has no decimal part),
-you can use the *trunc* function ::
-
-*example* ::
+you can use the *trunc* function: ::
 
     agegroup5: "5 * trunc(age / 5)"
 
@@ -269,9 +273,9 @@ mathematical functions
 - exp(expr): exponential 
 - abs(expr): absolute value
 - round(expr[, n]): returns the rounded value of expr to specified n (number of
-digits after the decimal point). If n is not specified, 0 is used.
+  digits after the decimal point). If n is not specified, 0 is used.
 - trunc(expr): returns the truncated value (by dropping the decimal part) of
-expr as an integer.
+  expr as an integer.
 - clip(x, a, b): returns x if a < x < b, b if x > b, a if x < a.
 - min(x, a), max(x, a): the minimum or maximum of x and a.
 
@@ -777,9 +781,9 @@ specify what kind of entity you want to create, as it is always the same as the
 origin item. However, similarly to **new**, **clone** also allows fields to be
 specified manually by any expression evaluated on the parent/origin.
 
-Put differently, a **new** with no fields mentioned will result in a new item
+Put differently, a **new** with no fields mentioned will result in a new item 
 of which the initial values of the fields are all set to missing and have to be
-filled through simulation; on the contrary, a **clone* with no fields mentioned
+filled through simulation; on the contrary, a **clone** with no fields mentioned
 will result in a new item that is an exact copy of the origin except for its
 id number which is always set automatically.
 
