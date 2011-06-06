@@ -5,7 +5,7 @@
  non feature tasks
  -----------------
 
- - fix long lines in doc
+ - reorder the doc to be more logical (like in my presentations) 
  - add unit tests
 
  missing features to run an automatically translated MIDAS simulation
@@ -150,7 +150,7 @@
          - werb_wemin64_sum: float
          - werb_wemin65_sum: float
    
- - two different values for missing links: 
+ ? two different values for missing links: 
    * linked to none = -1
    * missing value = -2
    the problem is that in liam1, there wasn't such a difference 
@@ -158,7 +158,6 @@
    * remove the need for objtype_...
    * macro.av: YEAR is not always the 1st row
    * link names
-   * allow data for periods after start_period
  - round(X) should return int
  - warning for unused fields
  - better error message when a procedure's processes are missing ordering 
