@@ -10,11 +10,17 @@ Welcome to LIAM 2 User Guide's documentation!
    model
    processes
    links
-   
-   
+
 Indices and tables
 ==================
 
 * :ref:`genindex`
 * :ref:`search`
 
+Change log
+==========
+
+.. toctree::
+   :maxdepth: 1
+
+   changes

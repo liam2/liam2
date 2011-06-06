@@ -5,9 +5,7 @@ Introduction
 
 Authors: Geert Bryon, Gijs Dekkers, Gaëtan de Menten (http://www.plan.be)
 
-Last update: 01/06/2011 
-
-The LIAM 2 package is developed at the Federal Planning Bureau of Belgium. 
+The LIAM 2 package is developed at the Federal Planning Bureau of Belgium.
 
 This research is part of the MiDaL project, supported by the European Community Programme for Employment and
 Social Solidarity - PROGRESS (2007-2013), under the Grant VS/2009/0569 Abstract - Project PROGRESS MiDaL

@@ -1,6 +1,15 @@
-0.2 - 2011-06-01
+﻿.. highlight:: yaml
+
+Change log
+##########
+
+Version 0.2
+===========
+
+Released on 2011-06-07.
 
 New features:
+-------------
 
 * added support for retrospective simulation (ie simulating periods for which we
   already have some data): at the start of each simulated period, if there is 
@@ -13,9 +22,11 @@ New features:
   manually.  
 
 * added breakpoint function, which launches the interactive console during 
-  a simulation. Two more console commands are available in that mode: 
+  a simulation. Two more console commands are available in that mode:
+   
   - "s(tep)" to execute the next process
   - "r(esume)" to resume normal execution
+
   The breakpoint function takes an optional period argument so that it triggers
   only for that specific period.
 
@@ -31,6 +42,7 @@ New features:
   (dropping everything after the decimal point) 
 
 Miscellaneous improvements:
+---------------------------
 
 * made integer division (int / int) return floats. eg 1/2 = 0.5 instead of 0.
 
@@ -38,23 +50,24 @@ Miscellaneous improvements:
   anymore when they are inside of a procedure.
 
 * the array used to run the first period is constructed by merging the
-  individuals present in all previous periods
+  individuals present in all previous periods.
 
 * print timing for sub-processes in procedures. This is quite verbose but makes
   debugging performance problems/regressions easier.
 
-* made error messages more understandable in some cases
+* made error messages more understandable in some cases.
 
 * manually flush the "console" output every time we write to it, not only within
   the interactive console, as some environments (namely when using the notepad++
-  bundle)
+  bundle).
 
 * disable compression of the output/simulation file, as it hurts performance
   quite a bit (the simulation time can be increased by more than 60%).
   Previously, it was using the same compression settings as the input file.
 
-* allowed align() to work on a constant.
-  eg: "align(0.0, fname='al_p_dead_m.csv')"
+* allowed align() to work on a constant. eg: ::
+
+    align(0.0, fname='al_p_dead_m.csv')
 
 * made the "tavg" function work with boolean and float expressions in addition
   to integer expressions
@@ -72,36 +85,41 @@ Miscellaneous improvements:
   0.1 even though more work is done.
 
 Fixes:  
+------
 
 * fixed "tavg" function:
-  - the result was wrong because the number of values (used in the division) was
-    one less than it should.
+
+  - the result was wrong because the number of values (used in the division)
+    was one less than it should.
   - it yielded "random" values when some individuals were present in a past
     period, but not in the current period.
 
 * fixed "duration" function:
-  - it crashed when a past period contained no individuals
+
+  - it crashed when a past period contained no individuals.
   - it yielded "random" values when some individuals were present in a past
     period, but not in the current period.
 
-* fixed "many2one" links returning "random" values instead of "missing" when
-  they were pointing to an individual which was not present anymore (probably
-  because the individual was dead).
+* fixed "many2one" links returning seemingly random values instead of "missing"
+  when they were pointing to an individual which was not present anymore
+  (usually because the individual was dead).
 
-* fixed min/max functions
+* fixed min/max functions.
 
 * fields which are not given an explicit value in new() are initialised to
-  missing, instead of 0
+  missing, instead of 0.
 
-* the result of new() function (which returns the id of the newly created
-  individuals) is now -1 (instead of 0) for parents which are not in the filter
+* the result of the new() function (which returns the id of the newly created
+  individuals) is now -1 (instead of 0) for parents which are not in the
+  filter.
 
-* fixed some expressions crashing when used within a lag
+* fixed some expressions crashing when used within a lag.
 
 * fixed the progress bar to display correctly even when there are only very few
-  iterations
+  iterations.
 
 
-0.1 - 2011-02-24
+Version 0.1
+===========
 
-First semi-public release
+First semi-public release, released on 2011-02-24.
