@@ -10,13 +10,19 @@ Processes
 General setup
 =============
 
-The processes are the core of the model. For each entity-level (in this case, household or person), the block of processes starts
-with the header (processes:). A process changes the variable (predictor) using a expression (expr). ::
+The processes are the core of the model. For each entity-level (for example, 
+"household" and "person"), the block of processes starts with the header 
+(processes:). A process changes the variable (predictor) using an expression 
+(expr). ::
 
     processes:
-        process_name: 
+        process1_name: 
             predictor: variable_name
-            expr: "expression"
+            expr: "expression for process 1"
+
+        process2_name: 
+            predictor: variable_name
+            expr: "expression for process 2"
 
         ...
         
@@ -27,11 +33,13 @@ Or, shorter: ::
 
         ...
         
-The variable_name will usually be one of the variables defined in the **fields** block of the entity.
+The variable_name will usually be one of the variables defined in the **fields**
+block of the entity.
 
-A process starts at a new line with an indentation of four spaces, and can consist of sub-
-processes. These also start on a new line, again with an indentation of four spaces and a - . All definitions, be it of processes or sub-
-processes, should be between double quotes. 
+A process starts at a new line with an indentation of four spaces, and can
+consist of sub-processes. These also start on a new line, again with an
+indentation of four spaces and a - . All definitions, be it of processes or 
+sub-processes, should be between double quotes.
 
 So the general setup is: ::
 
@@ -44,28 +52,30 @@ So the general setup is: ::
             - subprocess_31: "expression"
             - subprocess_32: "expression"
 
-In this example, there are three processes, of which the first two do not have sub-processes. The third process consists of two
-sub-processes. If there are no sub-processes, a process obviously describes the simulation of one variable only. In this case,
-the name of the process equals the name of the *endogenous variable*. 
+In this example, there are three processes, of which the first two do not have
+sub-processes. The third process consists of two sub-processes. If there are no
+sub-processes, a process obviously describes the simulation of one variable
+only. In this case, the name of the process equals the name of the *endogenous
+variable*.
 
-To run the processes, they have to be specified on the simulation block of the file. This explains why the *process names* have 
+To run the processes, they have to be specified in the "processes" section of 
+the simulation block of the file. This explains why the *process names* have 
 to be unique for each entity.
 
-FIXME
 *example* ::
-
 
    processes:
         age: "age + 1"
 
-This is however not the case for (sub)processes inside other processes (we call them procedures): 
-it is possible for subprocess_31 and subprocess_32 to have the same name, and hence simulate the same variable. 
-Procedure names (process_name3) does not directly refer to a specific endogenous variable.
+This is however not the case for (sub)processes inside other processes (we call
+them procedures): it is possible for subprocess_31 and subprocess_32 to have the
+same name, and hence simulate the same variable. Procedure names (process_name3)
+does not directly refer to a specific endogenous variable.
 
 *example* ::
 
     processes:
-        age: "age + 1"               
+        age: "age + 1"
         agegroup:
             - agegroup5: "5 * trunc(age / 5)"
             - agegroup10: "10 * trunc(age / 10)"
@@ -73,10 +83,13 @@ Procedure names (process_name3) does not directly refer to a specific endogenous
 The processes *agegroup5* and *agegroup10* are grouped in *agegroup*. In the simulation block you specify the
 *agegroup*-process if you want to update *agegroup5* and *agegroup10*. 
 
-By using processes and sub-processes, you can actually make *building blocks* or modules in the model. 
+By using processes and sub-processes, you can actually make *building blocks* or 
+modules in the model. 
 
-You can use temporary variables in a procedure. They only exist during the execution of that procedure. We thus call them local variables. If you want to pass 
-variables between procedures you have to define them in the **fields** section.
+You can use temporary variables in a procedure. They only exist during the 
+execution of that procedure. We thus call them local variables. If you want to
+pass variables between procedures you have to define them in the **fields**
+section.
 
 *example* ::
 
@@ -123,30 +136,30 @@ variables between procedures you have to define them in the **fields** section.
             ...
             
             divorce_procedure:
-                - agediff: "if(FEMALE and MARRIED, age - ps.age, 0)"
+                - agediff: "if(FEMALE and MARRIED, age - partner.age, 0)"
                 - inwork: "WORKING"
                 # select females to divorce
                 - divorce: "logit_regr(0.6713593 * ph.nch12_15 
                                        - 0.0785202 * dur_in_couple
                                        + 0.1429621 * agediff 
                                        - 0.0088308 * agediff * *2 
-                                       - 0.814204 * (inwork and ps.inwork) 
+                                       - 0.814204 * (inwork and partner.inwork) 
                                        - 4.546278,
                                        filter = FEMALE and MARRIED, 
                                        align = 'al_p_divorce.csv')"
                 # select persons to divorce
-                - to_divorce: "divorce or ps.divorce"
+                - to_divorce: "divorce or partner.divorce"
                 
                 - partner_id: "if(to_divorce, -1, partner_id)"
                 - civilstate: "if(to_divorce, 4, civilstate)"
                 - dur_in_couple: "if(to_divorce, 0, dur_in_couple)"
                 # move out males 
-                - hh_id: "if(MALE and to_divorce, 
+                - household_id: "if(MALE and to_divorce, 
                     new('household', 
                         start_period=period,
                         region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
                     ),
-                    hh_id)"
+                    household_id)"
 
 In the example *agediff*, *divorce*, *to_divorce* are local variables. They can only be used in the
 "divorce_procedure" procedure.
@@ -161,11 +174,13 @@ Expressions
 Deterministic changes
 ---------------------
 
-Let us start with a simple increment; the following process increases the value of a variable by one each simulation period. 
+Let us start with a simple increment; the following process increases the value
+of a variable by one each simulation period. 
 
     age: "age + 1"
 
-The name of the process is *age* and what it does is increasing the variable *age* of each individual by one, each period. 
+The name of the process is *age* and what it does is increasing the variable 
+*age* of each individual by one, each period.
 
 .. index::
     single: simple expressions;
@@ -175,33 +190,49 @@ simple expressions
 ~~~~~~~~~~~~~~~~~~
 
 - Arithmetic operators: +, -, *, /, **, %
-- Comparison  operators: <, <=, ==, !=, >=, >
+
+Note that an integer divided by an integer returns a float. For example "1 / 2" 
+will evaluate to 0.5 instead of 0. If you are only interested in the integer
+part of that result (for example, if you know the result has no decimal part),
+you can use the *trunc* function ::
+
+*example* ::
+
+    agegroup5: "5 * trunc(age / 5)"
+
+- Comparison operators: <, <=, ==, !=, >=, >
 - Boolean operators: and, or, not
+
+Note that you have to use parentheses when you mix *boolean operators* with 
+other operators. ::
+
+    inwork: "(workstate > 1) and (workstate < 5)"
+    to_give_birth: "not gender and (age >= 15) and (age <= 50)"
+
 - Conditional expressions: 
     if(condition, expression_if_true, expression_if_false)
 
 *example* ::
 
-    agegroup_civilstate: "if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))"
-    agegroup_work: "if(age < 70, 5 * trunc(age / 5), 70)"
+    agegroup_civilstate: "if(age < 50,
+                             5 * trunc(age / 5), 
+                             10 * trunc(age / 10))"
     
-    
-Note that an *if*-statement has always three arguments. If you want to leave a variable unchanged if a condition is not met,
-specify its value in the *expression_if_false* ::
+Note that an *if*-statement has always three arguments. If you want to leave a 
+variable unchanged if a condition is not met, specify its value in the 
+*expression_if_false* ::
 
     # retire people (set workstate = 9) when aged 65 or more
-    workstate: "if(age > 64, 9, workstate)"
-    
-You can nest if-statements. The example below retires men (gender = True) over 64 and women whose age
-equals at least the parameter WEMRA (a periodic global). ::
+    workstate: "if(age >= 65, 9, workstate)"
+
+You can nest if-statements. The example below retires men (gender = True) over 
+64 and women whose age equals at least the parameter/periodic global "WEMRA" 
+(Women Retirement Age). ::
     
     workstate: "if(gender, 
                    if(age >= 65, 9, workstate), 
                    if(age >= WEMRA, 9, workstate))"
     
-Note that you have to use parentheses when you use *Boolean operators*. ::
-
-    inwork: "(workstate > 1) and (workstate < 5)"
 
 .. index::
     single: mathematical functions;
@@ -212,8 +243,10 @@ mathematical functions
 - log(expr): natural logarithm (ln)
 - exp(expr): exponential 
 - abs(expr): absolute value
-- round(expr[, n]): returns the rounded value of expr to specified n (number of digits after the decimal point). If n is not specified, 0 is used.
-- trunc(expr): returns the truncated value (by dropping the decimal part) of expr as an integer.
+- round(expr[, n]): returns the rounded value of expr to specified n (number of
+digits after the decimal point). If n is not specified, 0 is used.
+- trunc(expr): returns the truncated value (by dropping the decimal part) of
+expr as an integer.
 - clip(x, a, b): returns x if a < x < b, b if x > b, a if x < a.
 - min(x, a), max(x, a): the minimum or maximum of x and a.
 
@@ -230,22 +263,26 @@ aggregate functions
 - grpstd(expr): standard deviation
 - grpmax(expr), grpmin(expr): max or min
 
-**grpsum** sums any variable over object types (persons, households, ...). For example *grpsum(earnings)* will
-produce a sum of the earnings in the sample. The procedure *grpsum(nch0_11)* will result in the total number of
-children 0 to 11 in the sample.
+**grpsum** sums any variable over all the individuals of the current entity 
+(persons, households, ...). For example *grpsum(earnings)* will produce a sum of
+the earnings of all persons in the sample. The expression *grpsum(nch0_11)* will
+result in the total number of children 0 to 11 in the sample.
 
-**grpcount** counts the number of objects (persons or households). For example, *grpcount(gender)* will produce the total number of
-males in the sample. Contrary to **grpsum**, the grpcount does not need an argument: *grpcount()* will return the total number of
-individuals or households in the sample.
+**grpcount** counts the number of individuals in the current entity, optionally 
+satisfying a (boolean) criterion. For example, *grpcount(gender)* will produce
+the total number of males in the sample. Contrary to **grpsum**, the grpcount
+does not require an argument: *grpcount()* will return the total number of
+individuals in the sample.
 
-Note that, if the variable in grpsum is a Boolean, then grpsum and grpcount will give the same results. 
+Note that, grpsum over a simple Boolean variable will give the same result as
+a grpcount over the same variable.  
 
 *example* ::
 
     macros:
         WIDOW: "civilstate == 5"
     processes:
-        cnt_widows: "show(grpsum(WIDOW))"
+        cnt_widows: "show(grpcount(WIDOW))"
 
 .. index:: countlink, sumlink, avglink, minlink, maxlink
 
@@ -270,7 +307,7 @@ link functions
                 - nch0_11:      {type: int, initialdata: false}
                 - nch12_15:     {type: int, initialdata: false}
             links:
-                persons: {type: one2many, target: person, field: hh_id}
+                persons: {type: one2many, target: person, field: household_id}
 
             processes:            
                 household_composition:
@@ -279,7 +316,7 @@ link functions
                     - nch0_11: "countlink(persons, age < 12)"
                     - nch12_15: "countlink(persons, (age > 11) and (age < 16))"
 
-.. index:: temporal functions, lag, value_for_period, duration, tavg
+.. index:: temporal functions, lag, value_for_period, duration, tavg, tsum
 
 temporal functions 
 ~~~~~~~~~~~~~~~~~~
@@ -288,13 +325,15 @@ temporal functions
 - value_for_period: value at specific period
 - duration: number of consecutive period the expression was True
 - tavg: average of an expression since the individual was created
+- tsum: sum of an expression since the individual was created
 
-If an item did not exist at that period, the returned value is -1 for a int-field, nan for a float or False for a boolean.
-You can overide this behaviour when you specify the *missing* parameter.
+If an item did not exist at that period, the returned value is -1 for a
+int-field, nan for a float or False for a boolean. You can overide this
+behaviour when you specify the *missing* parameter.
 
 *example* ::
 
-    lag(age, missing=0) # age of the population of last year, 0 if newborn
+    lag(age, missing=0) # the age each person had last year, 0 if newborn
     grpavg(lag(age))    # average age that the current population had last year
     lag(grpavg(age))    # average age of the population of last year
 
@@ -316,7 +355,8 @@ random functions
 
 *example* ::
 
-    normal(loc=0.0, scale=grpstd(errsal)) # a random variable with the stdev derived from errsal
+    # a random variable with the stdev derived from errsal
+    normal(loc=0.0, scale=grpstd(errsal))
     randint(0, 10)
 
 Stochastic changes I: probabilistic simulation
@@ -338,7 +378,8 @@ combine a choice with alignment.
 In LIAM 2, such a probabilistic simulation is called a **choice** process. Suppose i=1..n choice options, each with a probability
 prob_option_i. The choice process then has the following form: ::
 
-    choice([option_1, option_2, ..., option_n], [prob_option_1, prob_option_2, ..., prob_option_n])
+    choice([option_1, option_2, ..., option_n],
+           [prob_option_1, prob_option_2, ..., prob_option_n])
 
 Note that both lists of options and pertaining probabilities are between []’s. Also, the variable containing the options can be
 of any numeric type.
@@ -364,7 +405,11 @@ probability of being a blue collar worker is of course lower (64% for men and 31
 blue collar worker is lowest (8 and 4%, respectively) for those having the highest educational attainment level. ::
 
     collar_process:  # working, in education, unemployed or other inactive 
-        - filter_bw: "(((workstate > 0) and (workstate < 7)) or (workstate == 10)) and (collar == 0)"
+        - filter_bw: "(
+                       ((workstate > 0) and (workstate < 7)) 
+                       or
+                       (workstate == 10)
+                      ) and (collar == 0)"
         - collar: "if(filter_bw and (education_level == 2),
                       if(gender,
                          choice([1, 2], [0.83565, 0.16435]),
@@ -388,7 +433,7 @@ Stochastic changes II: behavioural equations
 
 - Logit: logit_regr(expr, filter, align)
 - Alignment : 
-    * align(expr, [take=take_filter,] [leave=leave_filter,] percentage) 
+    * align(expr, [take=take_filter,] [leave=leave_filter,] percentage)
     * align(expr, [take=take_filter,] [leave=leave_filter,] fname='filename.csv')
 - Continuous (expr + normal(0, 1) * mult + error): cont_regr(expr, filter, align, mult, error_var)
 - Clipped continuous (always positive): clip_regr(expr, filter, align, mult, error_var)
@@ -416,33 +461,37 @@ Stochastic changes II: behavioural equations
 logit_regr                
 ~~~~~~~~~~
 
-Suppose that we have a logit regression that relates the probability of some event to explanatory variables X. 
+Suppose that we have a logit regression that relates the probability of some
+event to explanatory variables X. 
     
     p*i=logit-1(ßX + EPSi) 
     
-This probability consists of a deterministic element (as before), completed by a stochastic element, EPSi, a log-normally
-distributed random variable. The condition for the event occurring is p*i > 0.5.
+This probability consists of a deterministic element (as before), completed by a
+stochastic element, EPSi, a log-normally distributed random variable. The 
+condition for the event occurring is p*i > 0.5.
 
 Instead, suppose that we want the proportional occurrences of the event to be equal to an overall proportion X. In that
 case, the variable p*i sets the rank of individual i according to the risk that the relevant event will happen. Then only
 the first X*N individuals in the ranking will experience the event. This process is known as ‘alignment’.
 
-In case of one logit with one alignment process -or a logit without alignment-, *logit_regr* will result in the logit
-returning a Boolean whether the event is simulated. In this case, the setup becomes: ::
+In case of one logit with one alignment process -or a logit without alignment-, 
+*logit_regr* will result in the logit returning a Boolean whether the event is
+simulated. In this case, the setup becomes: ::
 
     - single_align: "logit_regr(<logit arguments>,
-                [filter=<filter arguments>,
-                            align='name.csv'])"   
-                            
+                                [filter=<filter arguments>,
+                                align='name.csv'])"   
 
 *example* ::
 
     birth:
         - to_give_birth: "logit_regr(0.0,
-                                     filter=FEMALE and (age >= 15) and (age <= 50),
+                                     filter=FEMALE and 
+                                            (age >= 15) and (age <= 50),
                                      align='al_p_birth.csv')"   
 
-The above generic setup describes the situation where one logit pertains to one alignment process. 
+The above generic setup describes the situation where one logit pertains to one
+alignment process.
 
 .. index:: logit_score
 
@@ -495,7 +544,7 @@ sure that the score variable is not manipulated by a sub-process it does not per
 .. index:: align, take, leave
 
 align
-~~~~~~
+~~~~~
 
 After this step, the score is known and this is the input for the alignment process. Suppose -as is mostly the case- that
 alignment data exists for men and women separately. Then the alignment process starts by a *if* to gender. Next comes the
@@ -543,37 +592,51 @@ work and employee previous year (1) from in work but not employee previous year 
         - lag_public: "lag((workstate == 2) or (workstate == 3))" 
         - inwork: "(workstate > 0) and (workstate < 5)"
         - lag_inwork: "lag((workstate > 0) and (workstate < 5))"
+        - men_inwork: "gender and (age > 15) and (age < 65) and inwork"
 
-        # Probability of being employee from in work and employee previous year (men)
+        # === MEN ===
+        # Probability of being employee from in work and employee previous year
         - wage_earner_score: 
-            "if(gender and (age > 15) and (age < 65) and inwork and ((lag(workstate) == 1) or (lag(workstate) == 2)),
-                logit_score(0.0346714 * age + 0.9037688 * (collar == 1) - 0.2366162 * (civilstate == 3) + 2.110479),
+            "if(men_inwork and ((lag(workstate) == 1) or (lag(workstate) == 2)),
+                logit_score(0.0346714 * age + 0.9037688 * (collar == 1)
+                            - 0.2366162 * (civilstate == 3) + 2.110479),
                 wage_earner_score)"
-        # Probability of becoming employee from in work but not employee previous year (men)
+        # Probability of becoming employee from in work but not employee 
+        # previous year
         - wage_earner_score:
-            "if(gender and (age > 15) and (age < 65) and inwork and ((lag(workstate) != 1) and (lag(workstate) != 2)),
-                logit_score(-0.1846511 * age - 0.001445 * age **2 + 0.4045586 * (collar == 1) + 0.913027),
+            "if(men_inwork and ((lag(workstate) != 1) and (lag(workstate) != 2)),
+                logit_score(-0.1846511 * age - 0.001445 * age **2 
+                            + 0.4045586 * (collar == 1) + 0.913027),
                 wage_earner_score)"
-        # Probability of becoming employee from not in work previous year (men)
+        # Probability of becoming employee from not in work previous year
         - wage_earner_score:
-            "if(gender and(age > 15) and (age < 65) and inwork and (lag(workstate) > 4),
+            "if(men_inwork and (lag(workstate) > 4),
                 logit_score(-0.0485428 * age + 1.1236 * (collar == 1) + 2.761359),
                 wage_earner_score)"
 
-        # Probability of being employee from in work and employee previous year (women)
+        # === WOMEN ===
+        - women_inwork: "not gender and (age > 15) and (age < 65) and inwork"
+        
+        # Probability of being employee from in work and employee previous year
         - wage_earner_score:
-            "if(not gender and(age > 15) and (age < 65) and inwork and ((lag(workstate) == 1) or (lag(workstate) == 2)),
-                logit_score(-1.179012 * age + 0.0305389 * age **2 - 0.0002454 * age **3 - 0.3585987 * (collar == 1) + 17.91888),
+            "if(women_inwork and ((lag(workstate) == 1) or (lag(workstate) == 2)),
+                logit_score(-1.179012 * age + 0.0305389 * age **2
+                            - 0.0002454 * age **3 
+                            - 0.3585987 * (collar == 1) + 17.91888),
                 wage_earner_score)"
-        # Probability of becoming employee from in work but not employee previous year (women)
+        # Probability of becoming employee from in work but not employee
+        # previous year
         - wage_earner_score:
-            "if(not gender and(age > 15) and (age < 65) and inwork and ((lag(workstate) != 1) and (lag(workstate) != 2)),
-                logit_score(-0.8362935*age + 0.0189809 * age **2 -0.000152 ** age **3 -0.6167602*(collar==1) + 0.6092558 * (civilstate==3) +9.152145),
+            "if(women_inwork and ((lag(workstate) != 1) and (lag(workstate) != 2)),
+                logit_score(-0.8362935 * age + 0.0189809 * age **2
+                            - 0.000152 * age **3 - 0.6167602 * (collar == 1) 
+                            + 0.6092558 * (civilstate == 3) + 9.152145),
                 wage_earner_score)"
-        # Probability of becoming employee from not in work previous year (women)
+        # Probability of becoming employee from not in work previous year
         - wage_earner_score:
-            "if(not gender and (age > 15) and (age < 65) and inwork and (lag(workstate) > 4),
-                logit_score(-0.6177936 * age + 0.0170716 * age **2 - 0.0001582 * age**3 + 9.388913),
+            "if(women_inwork and (lag(workstate) > 4),
+                logit_score(-0.6177936 * age + 0.0170716 * age **2 
+                            - 0.0001582 * age**3 + 9.388913),
                 wage_earner_score)"
                                         
         - wage_earner: "if((age > 15) and (age < 65) and inwork,
@@ -593,136 +656,183 @@ files. No ‘take’ or ‘leave’ conditions are specified in this case.
 Note that the population to align is the population specified in the first condition, here *(age>15) and (age<65) and (inwork)* and not the
 whole population.
                 
-.. index:: new, remove                
+.. index:: lifecycle functions
                 
 Lifecycle functions
 -------------------
 
+.. index:: new
+
 new
 ~~~
 
-**new** creates items initiated from another item of the same entity (eg. a women gives birth) or another
-entity (eg. a marriage creates a new houshold).
+**new** creates items initiated from another item of the same entity (eg. a 
+women gives birth) or another entity (eg. a marriage creates a new houshold).
 
 *generic format* ::
 
-    new(entity, filter=expr, *set initial values of a selection of variables*)
+    new('entity_name', filter=expr,
+        *set initial values of a selection of variables*)
     
-The first parameter defines the entity in which the item will be created. (eg person, household)
+The first parameter defines the entity in which the item will be created (eg 
+person, household, ...).
 
-Since an item is at the origin of a creation, the fields of that origin can be used to initialise the
-fields of the new item.
+Then, the filter argument specifies which items of the current entity will serve
+as the origin for the new items (for persons, that would translate to who is
+giving birth, but the function can of course be used for any kind of entity).
+
+Any subsequent argument specifies values for fields of the new individuals. Any
+field which is not specified there will receive the missing value corresponding
+to the type of the field ('nan' for floats, -1 for integers and False for
+booleans). Those extra arguments can be given constants, but also any
+expression (possibly using links, random functions, ...). Those expressions are
+evaluated in the context of the origin individuals. For example, you could write
+"mother_age = age", which would set the field "mother_age" on the new item to
+the age of their mother. 
 
 *example 1* ::
 
     birth:
-        - to_give_birth: "logit_regr(0.0,
-                                     filter=not gender and (age >= 15) and (age <= 50),
+        - to_give_birth: "logit_regr(0.0, 
+                                     filter=not gender and 
+                                            (age >= 15) and (age <= 50),
                                      align='al_p_birth.csv')"   
-        - newbirth: "new('person', filter=to_give_birth, 
-                m_id = id,
-                f_id = ps.id,
-                m_age = age,
-                hh_id = hh_id,
-                partner_id = -1,
-                civilstate = 1,
-                collar = 0,
-                education_level = -1,
-                workstate = 5,
-                gender=choice([True, False], [0.51, 0.49]) )"  
+        - newbirth: "new('person', filter=to_give_birth,
+                         mother_id = id,
+                         father_id = partner.id,
+                         household_id = household_id,
+                         partner_id = -1,
+                         age = 0, 
+                         civilstate = 1,
+                         collar = 0,
+                         education_level = -1,
+                         workstate = 5,
+                         gender=choice([True, False], [0.51, 0.49]) )"
 
-The first sub-process (*to_give_birth*) describes the probability that a women (not gender) between 15 and 50 gives birth.
-This is a process that is also aligned, but results directly in a Boolean. For this reason, the procedure *logit_regr*  is
-used instead of *logit_score*. Also, note that the logit itself does not have a deterministic part (0.0), which means that
-the ‘fertility rank’ of women that meet the above condition, is only determined by a logistic stochastic variable). Whether
-or not a women is scheduled to give birth is the result of a stochast and the alignment process to age.
+The first sub-process (*to_give_birth*) is a logit regression over women (not
+gender) between 15 and 50 which returns a boolean value whether that person
+should give birth or not. The logit itself does not have a deterministic part
+(0.0), which means that the ‘fertility rank’ of women that meet the above
+condition, is only determined by a logistic stochastic variable). This process 
+is also aligned on the data in 'al_p_birth.csv'. 
 
-In the above case, a new person is created for each time a woman is scheduled to give birth. Secondly, a number of links are
-established: the id-number and age of the mother (referred to through the link 'pm') become the *mother id* and age of the mother of the child, and the child
-also receives the household number from the mother. Finally some initial variables are set for the child: the most important
-of these is its gender, which is the result of a simple choice process.
+In the above case, a new person is created for each time a woman is scheduled to
+give birth. Secondly, a number of links are established: the value for the 
+*mother_id* field of the child is set to the id-number of his/her mother, the
+child receives the household number of his/her mother, the child's father is set
+to the partner of the mother, ... Finally some variables of the child are set to
+specific initial values: the most important of these is its gender, which is the
+result of a simple choice process.
 
-**new** is not limited to items of the same entity; the below procedure *get a life* makes sure that all those that all
-singles of 24 years old, leave their parents’ household for their own household. The region of this household is created
-through a simple choice-process.
+**new** is not limited to items of the same entity; the below procedure
+*get a life* makes sure that all those who are single when they are 24 year old,
+leave their parents’ household for their own household. The region of this
+household is created through a simple choice-process.
 
 *example 2* ::
 
     get_a_life:
-        - hh_id: "if(not ((civilstate == 2) or (civilstate == 3)) and (age == 24), 
-                new('household', 
-                    start_period=period,
-                    region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
-                ),
-                hh_id)"
+        - household_id: "
+            if((age == 24) and (civilstate != 2) and (civilstate != 3), 
+               new('household', 
+                   start_period=period,
+                   region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
+               ),
+               household_id)"
+
+.. index:: clone
 
 clone
 ~~~~~
 
-**clone** is essentially the same as **new** but is intended for cases where most or all variables describing the item should remain the same. So where the
-fields of the newly created item explicitly mentioned as arguments in **new** are those that get the value from the fields of the origin, the fields of the newly
-created item explicitly mentioned as arguments in **clone** are those that do *not* get the value from the fields of the origin.
+**clone** is very similar to **new** but is intended for cases where
+most or all variables describing the new individual should be copied from 
+his/its parent/origin instead of being set to "missing". With clone, you cannot
+specify what kind of entity you want to create, as it is always the same as the
+origin item. However, similarly to **new**, **clone** also allows fields to be
+specified manually by any expression evaluated on the parent/origin.
 
-Put differently, a **new** with no fields mentioned will result in a new item of which the initial values of the fields are all empty and have to be filled
-through simulation. On the contrary, a **clone* with no fields mentioned will result in a new item that is an exact copy of the origin.
+Put differently, a **new** with no fields mentioned will result in a new item
+of which the initial values of the fields are all set to missing and have to be
+filled through simulation; on the contrary, a **clone* with no fields mentioned
+will result in a new item that is an exact copy of the origin except for its
+id number which is always set automatically.
 
+*example* ::
+
+    make_twins:
+        - new_twins: "clone(filter=new_born and is_twin,
+                            gender=choice([True, False], [0.51, 0.49]))"
+
+.. index:: remove
 
 remove
 ~~~~~~
 
-**remove** items from an entity dataset. With this command you can remove obsolete items (eg. dead persons, empty
-households) thereby saving memory and improving simulation speed.
+**remove** removes items from an entity dataset. With this command you can
+remove obsolete items (eg. dead persons, empty households) thereby ensuring they
+are not simulated anymore. This will also save some memory and, in some cases,
+improve simulation speed.
 
 
-The procedure below simulates whether an individual survives or not, and what happens in the latter case. ::
+The procedure below simulates whether an individual survives or not, and what
+happens in the latter case. ::
 
     dead_procedure:  
         # decide who dies
         - dead: "if(gender, 
-            logit_regr(0.0, align='al_p_dead_m.csv'), 
-            logit_regr(0.0, align='al_p_dead_f.csv'))"                 
+                    logit_regr(0.0, align='al_p_dead_m.csv'), 
+                    logit_regr(0.0, align='al_p_dead_f.csv'))"                 
         # change the civilstate of the suriving partner
-        - civilstate: "if(ps.dead, 5, civilstate)"  
-        # break the link to the the suriving partner
-        - partner_id: "if(ps.dead, -1, partner_id)"
+        - civilstate: "if(partner.dead, 5, civilstate)"  
+        # break the link to the dead partner
+        - partner_id: "if(partner.dead, -1, partner_id)"
         # remove the dead
-        - cleanup: remove(dead)
+        - cleanup: "remove(dead)"
 
-The first sub-procedure *dead* simulates whether an individual is ‘scheduled for death’, using again only a logistic
-stochastic variable and the age-gender-specific alignment process. Next some links are updated for the surviving partner.
-The sub-procedure *civilstate* puts the variable of that name equal to 5 (which means that one is a widow(er) for those
-individuals whose partner has been scheduled for death. Also, in that case, the partner identification code is erased. All
-other procedures describing the heritage process should be included here. Finally, the command *remove* is called in the
-sub-procedure *cleanup*. This command removes the *dead* from the simulation dataset.
+The first sub-procedure *dead* simulates whether an individual is ‘scheduled for
+death’, using again only a logistic stochastic variable and the 
+age-gender-specific alignment process. Next some links are updated for the 
+surviving partner.
+The sub-procedure *civilstate* puts the variable of that name equal to 5 (which 
+means that one is a widow(er) for those individuals whose partner has been
+scheduled for death. Also, in that case, the partner identification code is
+erased. All other procedures describing the heritage process should be included
+here. Finally, the command *remove* is called in the sub-procedure *cleanup*.
+This command removes the *dead* from the simulation dataset.
 
 .. index:: matching
 
 Matching functions
 ------------------
 
-**matching**: (aka Marriage market) matches individuals from set 1 with individuals from set 2 follow a particular order
-(given by an expression) for each individual in set 1, computes the score of all (unmatched) individuals in set 2 and take
-the best scoring one.
+**matching**: (aka Marriage market) matches individuals from set 1 with
+individuals from set 2. For each individual in set 1 following a particular
+order (given by the expression in the *orderby* argument), the function computes
+the score of all (unmatched) individuals in set 2 and take the best scoring one.
 
-You have to specify the sets to match (set1filter and set2filter), the score that will be used to do the matching. 
-and the criterion to decide what is a difficult match. Difficult matches are selected first. In the score the fields
-of the individual and the fields of its possible partners (**other**) are used.
+You have to specify the boolean filters which provide the two sets to match 
+(set1filter and set2filter), the criterion to decide in which order the
+individuals of the first set are matched and the expression that will be used 
+to assign a score to each individual of the second set (given a particular
+individual in set 1).
+
+In the score expression the fields of the set 1 individual can be used normally
+and the fields of its possible partners can be used by prefixing them by 
+"**other.**".
 
 *generic setup* ::
 
-    difficult_match: "abs(age - avg_age_men)"
-    matching(set1filter=to_marry and not male,
-             set2filter=to_marry and male,
-             score='- 0.4893 * other.age 
-                    + 0.0467 * (other.age - age)
-                    - 0.6549 * (work and other.work)
-                    - 1.3286 * (work and not other.work) 
-                    - 0.9087 * (not work and other.work)',
-             orderby=difficult_match)
+    matching(set1filter=boolean_expr,
+             set2filter=boolean_expr,
+             orderby=difficult_match,
+             score='coef1 * field1 + coef2 * other.field2 + ...') 
 
-The generic setup of the marriage market is simple; one needs to have selected those individuals who are to be coupled
-(*to_couple*=true). Furthermore, one needs to have a variable (*difficult_match*) which can be used to rank individuals
-according how easy they are to match. Finally, we need a function (*score*) matching potential partners.
+The generic setup of the marriage market is simple; one needs to have selected
+those individuals who are to be coupled (*to_couple*=true). Furthermore, one 
+needs to have a variable (*difficult_match*) which can be used to rank
+individuals according how easy they are to match. Finally, we need a function 
+(*score*) matching potential partners.
 
 In the first step, and for those persons that are selected to be coupled, potential partners are matched in the order set by
 *difficult_match* and each woman is matched with the potential partner with the highest matching score. Once this is done,
@@ -738,57 +848,63 @@ person equals the identification number of the partner.
                             logit_regr(0.0, align='al_p_mmkt_m.csv'),
                             logit_regr(0.0, align='al_p_mmkt_f.csv')), 
                          False)"
+        - avg_age_males_to_couple: "grpavg(age, filter=to_couple and MALE)"
         - difficult_match: "if(to_couple and FEMALE,
-                               abs(age - grpavg(age, filter=to_couple and MALE)),
+                               abs(age - avg_age_males_to_couple),
                                nan)"
-        - inwork: "(workstate > 0) and (workstate <5)"                                         
-        - partner_id: "if(to_couple, 
+        - work: "(workstate > 0) and (workstate <5)"                                         
+        - partner_id: "if(to_couple,
                           matching(set1filter=FEMALE, set2filter=MALE,
-                                   score='- 0.4893 * other.age 
-                                          + 0.0131 * other.age ** 2 
+                                   orderby=difficult_match,
+                                   score='- 0.4893 * other.age
+                                          + 0.0131 * other.age ** 2
                                           - 0.0001 * other.age ** 3
-                                          + 0.0467 * (other.age - age) 
-                                          - 0.0189 * (other.age - age) ** 2 
+                                          + 0.0467 * (other.age - age)
+                                          - 0.0189 * (other.age - age) ** 2
                                           + 0.0003 * (other.age - age) ** 3
-                                          - 0.9087 * (other.inwork and not inwork) 
-                                          - 1.3286 * (not other.inwork and inwork) 
-                                          - 0.6549 * (other.inwork and inwork)',
-                                   orderby=difficult_match),
+                                          - 0.9087 * (other.work and not work)
+                                          - 1.3286 * (not other.work and work)
+                                          - 0.6549 * (other.work and work)'),
                           partner_id)"
         - coupled: "to_couple and (partner_id != -1)"   
         - newhousehold: "new('household', filter=coupled and FEMALE,
                              start_period=period,
-                             region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4]) )"
-        - hh_id: "if(coupled,
-                     if(MALE, ps.newhousehold, newhousehold),
-                     hh_id)"
+                             region_id=choice([0, 1, 2, 3],
+                                              [0.1, 0.2, 0.3, 0.4]) )"
+        - household_id: "if(coupled,
+                            if(MALE, partner.newhousehold, newhousehold),
+                            household_id)"
 
 
-The code above shows an application. First of all, individuals eligible for marriage are all those between 18 and 90 who are
-not a part of a couple; the actual decision who is eligible is left to the alignment process. Next, for every women eligible
-to coupling, the variable *difficult_match* is the difference between her age and the average age of men eligible for
-coupling.
+The code above shows an application. First of all, individuals eligible for
+marriage are all those between 18 and 90 who are not a part of a couple; the
+actual decision who is eligible is left to the alignment process. Next, for
+every women eligible to coupling, the variable *difficult_match* is the
+difference between her age and the average age of men eligible for coupling.
 
-In a third step, a matching variable is simulated for each combination of man and woman eligible for coupling. This variable
-depends on the difference in age, the work status of the potential partners, and the difference in levels of education.
-Using this information, and following the order set by *difficult_match*, potential partners are coupled to become actual
+In a third step, for each eligible woman in turn (following the order set by 
+*difficult_match*), all eligited men are assigned a score and the man with the 
+best score is matched with that woman. This score depends on his age, his 
+difference in age with the woman and the the work status of the potential
 partners.
 
-In a next step, a new household is created for women who have just become a part of a couple. The household number of their
-new male partners then is set equal to their new household number.
-
+In a next step, a new household is created for women who have just become a part
+of a couple. Their household number, as well as their new partners is then
+updated to reflect their new household.
 
 
 Output
 ======
 
-LIAM 2 produces simulation output in three ways. First of all, by default, the simulated datasets are stored in hdf5
-format. These can be accessed at the end of the run. You can use several tools to inspect the data.
+LIAM 2 produces simulation output in three ways. First of all, by default, the 
+simulated datasets are stored in hdf5 format. These can be accessed at the end
+of the run. You can use several tools to inspect the data.
 
-You can display information during the simulation using *show* or *groupby*. You can *dump* data to csv-file for further
-study.
+You can display information during the simulation using *show* or *groupby*. You
+can *dump* data to csv-file for further study.
 
-If you run LIAM 2 in interactive mode, you can type in output functions in the console to inspect the data.
+If you run LIAM 2 in interactive mode, you can type in output functions in the
+console to inspect the data.
 
 .. index::  show
 
@@ -805,36 +921,57 @@ show
     show(grpcount(age >= 18))
     show(grpcount(not dead), grpavg(age, filter=not dead))
     
-The first process will print out the number of persons of age 18 and older. The second line displays the number of living
-people and their average age.
+The first process will print out the number of persons of age 18 and older. The 
+second line displays the number of living people and their average age.
 
 *example 2* ::
 
-    show("Count", grpcount(), "Age Average", grpavg(age), "Age Std dev", grpstd(age))
+    show("Count:", grpcount(),
+         "Average age:", grpavg(age),
+         "Age std dev:", grpstd(age))
     
     gives
     
-    Count 19944 Age Average 42.7496991576 Age Std dev 21.9815913417
+    Count: 19944 Average age: 42.7496991576 Age std dev: 21.9815913417
+
+Note that you can use the special character "\n" to display the rest of the
+result on the next line.
+
+*example 3* ::
+
+    show("Count:", grpcount(),
+         "\nAverage age:", grpavg(age),
+         "\nAge std dev:", grpstd(age))
+    
+    gives
+    
+    Count: 19944
+    Average age: 42.7496991576
+    Age std dev: 21.9815913417
     
 .. index::  csv
 
 csv
 ---
 
-You can write the contents of a *table* to csv-file. 
-The general format of the outputfile will be <entity_name>_<period>_<suffix_specifiction>.csv. 
+You can write the contents of a *table* to csv-file.  
 
 **csv** works with any expression producing a table (eg. dump, groupby).
 
     csv(table_expression, suffix='suffix_specification')
     
-*example*  ::
+The name of the output file will be 
+<entity_name>_<period>_<suffix_specifiction>.csv.
+    
+*example* ::
 
     csv(table_expr, suffix='income')
     
-creates a file called "person_2002_income.csv with info for the period 2002 from the entity person
-    
-    
+wille creates one file for each simulated period. Assuming, start_period is
+2002 and periods is 2, it will create two files: "person_2002_income.csv" and
+"person_2003_income.csv" with the data specified in *table_expr* from the person
+entity for the period 2002 and 2003 respectively.
+
 .. index::  dump
 
 dump    
@@ -869,12 +1006,13 @@ gives  ::
 groupby
 -------
 
-**groupby** (aka *pivot table*): group individuals by their value for the given expressions, and optionally compute an
-expression for each group
+**groupby** (aka *pivot table*): group individuals by their value for the given
+expressions, and optionally compute an expression for each group
 
 *general format* ::
 
-    groupby(col_expr[, col_expr2, col_expr3, ...] [, expr=expression] [, filter=filterexpression])
+    groupby(expr1[, expr2, expr3, ...] [, expr=expression] 
+            [, filter=filterexpression] [, percent=True])
 
 *example* ::
 

@@ -7,14 +7,15 @@ Links
 
 .. index:: links, many2one, one2many
 
-Entities can be linked with each other or with other entities, for example, individuals *belong* to households, and mothers are
-linked to their children, while partners are interlinked as well.
+Entities can be linked with each other or with other entities, for example, 
+individuals *belong* to households, and mothers are linked to their children, 
+while partners are interlinked as well.
 
 A typical link has the following form: ::
 
-    name: {type: <type>, target: <entity>, field: <name link>}
+    name: {type: <type>, target: <entity>, field: <integer field name>}
     
-LIAM 2 uses field values to establish the link between entities    
+LIAM 2 uses field values to establish the link between entities.    
 
 LIAM 2 allows for two types of links: 
 
@@ -24,19 +25,20 @@ LIAM 2 allows for two types of links:
 many2one
 --------
 
-A **many2one** link the item of the entity to *one* other item in the same (eg. a person to its mother) or other entity(a person to its household).
+A **many2one** link the item of the entity to *one* other item in the same 
+(eg. a person to its mother) or other entity(a person to its household).
 
-This allows the modeler to use information stored in the linked entities. ::
+This allows the modeller to use information stored in the linked entities. ::
 
     entities:
         person:
             fields:
                 - age: int
+                - income: float
                 - mother_id: int
-                - income : float
                 - father_id: int
                 - mother_age: int
-                - parent_icome: float
+                - parents_income: float
 
             links:
                 mother: {type: many2one, target: person, field: mother_id}
@@ -45,46 +47,46 @@ This allows the modeler to use information stored in the linked entities. ::
             processes:
                 age: "age + 1"
                 mother_age: "mother.age"
-                parent_income: "mother.income + father.income"
+                parents_income: "mother.income + father.income"
                 
 
 The process *mother_age* uses the link mother and assigns the age of the mother to the *mother_age*  field.
-If an person has no mother assigned to him (here mother_id == -1) then the mother_age will be -1 as well.
-The parent_icome of that individual will be *nan*.
+If a person has no mother assigned to him (here mother_id == -1) then the mother_age will be -1 as well.
+The parent_income of that individual will be *nan*.
 
-You can use the *basic functions*  (abs, log, exp, ...) in your formulas.
+You can use the *basic functions* (abs, log, exp, ...) in your formulas.
 
 
 one2many
 --------
 
-An **one2many** links an item in an entity to at least one other item in the same (eg. a person to its children) or other entity
-(a household to its members). ::
+A **one2many** links an item in an entity to at least one other item in the same 
+(eg. a person to its children) or other entity (a household to its members). ::
 
     entities:
         household:
             fields:
-               - nch0_15: int
+                - num_children: int
+
             links:
-                hp: {type: one2many, target: person, field: household_id}
+                persons: {type: one2many, target: person, field: household_id}
                 
-        
         person:
             fields:
                 - age: int
-                - household_id : int 
+                - household_id : int
             links:
-                ph: {type: many2one, target: household, field: household_id}
+                household: {type: many2one, target: household, field: household_id}
                 
-- *hp* is the link from the household to its members.
-- *ph* is the link form a person to the household.
+- *persons* is the link from the household to its members.
+- *household* is the link form a person to the household.
 
 To use information stored in the linked entities you have to use *aggregate functions*
 
-- countlink (eg.  countlink(hp) gives the numbers of persons in the household )
-- sumlink (eg. sumlink(hp, income) sums up all incomes from the members in a household)
-- avglink (eg. avglink(hp, age) gives the average age of the members in a household)
-- minlink, maxlink (eg. minlink(hp, age) gives the age of the youngest member of the household)
+- countlink (eg. countlink(persons) gives the numbers of persons in the household)
+- sumlink (eg. sumlink(persons, income) sums up all incomes from the members in a household)
+- avglink (eg. avglink(persons, age) gives the average age of the members in a household)
+- minlink, maxlink (eg. minlink(persons, age) gives the age of the youngest member of the household)
 
 
 *example* ::
@@ -92,54 +94,61 @@ To use information stored in the linked entities you have to use *aggregate func
     entities:
         household:
             fields:
-               - nch0_15: int
+                - num_children_0_15: int
+                - nch0_15: int
+
             links:
-                hp: {type: one2many, target: person, field: household_id}
+                # link from a household to its members
+                persons: {type: one2many, target: person, field: household_id}
                 
-        
         person:
             fields:
                 - age: int
+                - age: int
                 - dead: bool
-                - m_id; int
+                # 1: single, 2: married, 3: cohabitant, 4: divorced, 5: widowed 
+                - civilstate: int
+                
+                - mother_id: int
                 - partner_id: int
-                - household_id : int 
-                - civilstate: int  # 1=single, 2=married, 3=cohab, 4=divorced, 5=widowed
+                - household_id: int
             links:
-                pm: {type: many2one, target: person, field: m_id} # mother
-                ps: {type: many2one, target: person, field: partner_id} #  partner
-                ph: {type: many2one, target: household, field: household_id} # household
-                mp: {type: one2many, target: person, field: m_id}  # mother children              
+                mother: {type: many2one, target: person, field: mother_id}
+                # link form a person to his/her spouse 
+                partner: {type: many2one, target: person, field: partner_id}
+                household: {type: many2one, target: household,
+                            field: household_id}
+                # link from a mother to her children
+                mother_children: {type: one2many, target: person, 
+                                  field: mother_id}              
                 
-- *pm* is the link form a person to the mother
-- *ps* is the link form a person to the spouse 
-- *ph* is the link form a person to the household.
-- *mp* is the link to the children of a mother
-- *hp* is the link from the household to its members
+So for example, the command below sets the variable *civilstate*. It checks 
+whether the spouse is dead. If so, the variable *civilstate* is set to 5 
+(widowed), otherwise nothing happens (it is set to its previous value). ::
 
-So for example, the below command sets the variable *civilstate*. It checks whether the spouse is dead. If so, then the 
-variable *civilstate* is set equal to 5 (widowed). If not, then nothing happens. ::
+    - civilstate: "if(partner.dead, 5, civilstate)"
 
-    - civilstate: "if(ps.dead, 5, civilstate)"
+As another example, the process below sets a variable *to_separate* to *True* if
+the variable *separate* is True for the individual or for his or her partner. ::
 
-As another example, the below procedure sets a variable *to separate* to a  True if the variable *separate* is true for the
-individual or for his or her partner. ::
-
-    - to_separate: "separate or ps.separate"
+    - to_separate: "separate or partner.separate"
                 
-As a third and last example, we can use the following two procedures on the level of the household to count the number of
-children up to 16 ::
+As a third and last example, we can use the following two procedures on the
+level of the household to count the number of children up to 16 ::
 
-    - nch0_15: "countlink(hp, (age>=0) and (age <16))" 
+    - num_children_0_15: "countlink(persons, (age >= 0) and (age < 16))" 
 
-Then for each individual, a variable denoting the number of children up to 16 in his or her household can be found by ::
+Then for each individual, a variable denoting the number of children up to 16 in
+his or her household can be found by ::
 
-    - number_of_kids:  ph.nch0_15 
+    - number_of_kids: "household.num_children_0_15" 
 
-Note however that the procedure *nch0_15* is simulated on the level of the household, while the procedure *number_of_kids* pertains to
-the individual level.
+Note however that the process *num_children_0_15* is simulated on the level of
+the "household", while the process *number_of_kids* pertains to the "person"
+level.
 
-Note, finally, that the variable *number_of_kids* could also have been simulated by just one procedure, on the individual level, being: ::
+Note, finally, that the variable *number_of_kids* could also have been
+simulated by just one process, on the "person" level, by using: ::
 
-    - no_kids:  ph.get(countlink(persons, (age>=0) and (age <16)))"
+    - num_kids: "household.get(countlink(persons, (age >= 0) and (age < 16)))"
 

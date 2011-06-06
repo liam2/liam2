@@ -5,7 +5,7 @@ Introduction
 
 Authors: Geert Bryon, Gijs Dekkers, Gaëtan de Menten (http://www.plan.be)
 
-Last update: 03.02.2011 
+Last update: 01/06/2011 
 
 The LIAM 2 package is developed at the Federal Planning Bureau of Belgium. 
 
@@ -15,5 +15,5 @@ deliverable Work Package A. This paper presents and discusses a guide into devel
 models using LIAM 2. Both this manual and the software package LIAM 2 are very much work-in-progress, and are
 therefore subject to change.
 
-This paper describes the version of LIAM 2 of February 23th. Its functionality is however changing by the day, and
+This guide describes version 0.2 of LIAM 2. Its functionality is however changing by the day, and
 the syntax is also under constant revision and expansion.

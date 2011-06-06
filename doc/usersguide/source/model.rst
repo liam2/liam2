@@ -3,19 +3,24 @@
 Model Definition
 ################
 
-Microsimulation (acronym for microanalytic simulation) is a modelling technique that operates at the level of
-individual *entities* such as persons, households, vehicles or firms. Within the model each entity is represented by a
-record containing a unique identifier and a set of associated attributes (e.g. age, gender, work state, civil state, ...)
-characteristics. A set of *processes* are then applied to these entities leading to simulated
-changes in state and behaviour. These rules may be deterministic (probability = 1), such as changes in tax
-liability resulting from changes in tax regulations, or stochastic (probability <=1), such as chance of dying,
-marrying, giving birth or moving within a given time period. .
+Microsimulation (acronym for microanalytic simulation) is a modelling technique 
+that operates at the level of individual *entities* such as persons, households,
+vehicles or firms. Within the model each entity is represented by a record
+containing a unique identifier and a set of associated attributes (e.g. age,
+gender, work state, civil state, ...) characteristics. A set of *processes* are
+then applied to these entities leading to simulated changes in state and
+behaviour. These rules may be deterministic (probability = 1), such as changes
+in tax liability resulting from changes in tax regulations, or stochastic
+(probability <= 1), such as chance of dying, marrying, giving birth or moving
+within a given time period.
 
-To define the model, we have to describe the different *entities*, the way they interact (*links*) and how they
-behave (*processes*) over time. This is done in one file. We use the YAML-markup language. This format uses the level
-of indentation to specify objects and sub objects.
+To define the model, we have to describe the different *entities*, the way they
+interact (*links*) and how they behave (*processes*) over time. This is done in
+one file. We use the YAML-markup language. This format uses the level of
+indentation to specify objects and sub objects.
 
-In a LIAM 2 model file, all text following a # is considered to be comments, and therefore ignored. 
+In a LIAM 2 model file, all text following a # is considered to be comments, and
+is therefore ignored.
 
 A LIAM 2 model has the following structure: ::
 
@@ -31,32 +36,49 @@ A LIAM 2 model has the following structure: ::
 globals
 =======
 
-The *globals* are variables (aka. parameters) that do not relate to the *entities* defined in the model. They can be used in
-expressions across all entities.
+The *globals* are variables (aka. parameters) that do not relate to any 
+particular *entity* defined in the model. They can be used in expressions across
+all entities.
 
-A global is a (periodic = time-varying) number that is global (hence the name) to all *entities*. For example, the retirement age for women in Belgium has
-been gradually increasing from 61 in 1997 via 63 from 2003 onward, up to 65 in 2009. A global variable WEMRA has therefore
-been included.::
+Periodic globals can have a different value for each period. For example, the
+retirement age for women in Belgium has been gradually increasing from 61 in 
+1997 via 63 from 2003 onward, up to 65 in 2009. A global variable WEMRA has
+therefore been included.::
 
     globals:
         periodic:
             - WEMRA: float
 
-And it can then be used in the procedures, for example  ::
+Periodic globals can be used in any process. They can be used in two ways: like
+a normal variable, they will evaluate to their value for the period being
+simulated, for example ::
 
     workstate: "if(age >= WEMRA, 9, workstate)"
 
-This changes the workstate of the individual to retired (9) if the age is higher than the required retirement age in that year.        
+This changes the workstate of the individual to retired (9) if the age is higher
+than the required retirement age in that year.
+
+Another way to use them is to specify explicitly for which period you want them
+to be evaluated. This is done by using GLOBALNAME[period_expr]. periodexpr can
+be any expression yielding a valid period value. Here are a few artificial 
+examples: ::
+
+    workstate: "if(age >= WEMRA[2010], 9, workstate)"
+    workstate: "if(age >= WEMRA[period - 1], 9, workstate)"
+    workstate: "if(age >= WEMRA[year_of_birth + 60], 9, workstate)"
 
 entities
 ========
 
-Each entity has a unique identifier and a set of attributes (**fields**). You can use different entities in one model. You can
-define the interaction between members of the same entity (eg. between partners) or among different entities (eg. a person and its
-household) using the *links*. 
+Each entity has a unique identifier and a set of attributes (**fields**). You
+can use different entities in one model. You can define the interaction between
+members of the same entity (eg. between partners) or among different entities
+(eg. a person and its household) using *links*.
 
-The **processes** describe how the entities behave. The order is not important. In the **simulation** block you define if and
-when they have to be executed, this allows to simulate processes of different entities in the order you want.
+The **processes** section describe how the entities behave. The order in which
+they are declared is not important. In the **simulation** block you define if
+and when they have to be executed, this allows to simulate processes of
+different entities in the order you want.
 
 
 LIAM 2 declares the entities as follows: ::
@@ -78,13 +100,15 @@ LIAM 2 declares the entities as follows: ::
         entity-name2:
             ...
             
-We use YAML as the description language. Indentation and the use of ":" are important. 
+As we use YAML as the description language, indentation and the use of ":" are
+important.
 
 fields
 ------
 
-The fields hold the information of each member in the entity. That information is global in a run of the model. Every
-process defined in that entity can use and change the value. 
+The fields hold the information of each member in the entity. That information
+is global in a run of the model. Every process defined in that entity can use
+and change the value. 
 
 LIAM 2 handles three types of fields:
 
@@ -106,20 +130,20 @@ There are two implicit fields that do not have to be defined:
                 - age:          int
                 - dead:         bool
                 - gender:       bool
-                - partner_id:   int
-                # 1=single, 2=married, 3=cohabitant, 4=divorced, 5=widowed
+                # 1: single, 2: married, 3: cohabitant, 4: divorced, 5: widowed 
                 - civilstate:   int
+                - partner_id:   int
 
-This example defines the entity person. Each person has an age, gender, is dead or not, has a civil_state, possibly a partner. We
-use the field civilstate to store the marital status as a switch of values.
+This example defines the entity person. Each person has an age, gender, is dead
+or not, has a civil state, possibly a partner. We use the field civilstate to
+store the marital status as a switch of values.
 
-The data is stored in a hdf5-data set. Not all variables defined in fields have values in the starting period. Some variables are
-defined in the fields set but are calculated later by LIAM 2 (example below *agegroup_work*).
-
-Other variables are *observed* in that their value in the starting period can be found in the data set supplied. The
-observed values of the other variables in this example are not available and will therefore have to be produced by the model
-(eg. below *agegroup_work*).
-
+Some variables are *observed* in that their value in the starting period can be
+found in the data set supplied. Some other variables defined in the field set
+are not present in the input file. They will need to be calculated later by the
+model, and you need to tell LIAM2 that the field is missing, by using 
+"initialdata: false" in the definition for that field (see the *agegroup*
+variable in the example below).
 
 *example* ::
 
@@ -130,17 +154,18 @@ observed values of the other variables in this example are not available and wil
                 - age:          int
                 - dead:         bool
                 - gender:       bool
-                - partner_id:   int
-                # 1=single, 2=married, 3=cohabitant, 4=divorced, 5=widowed
+                # 1: single, 2: married, 3: cohabitant, 4: divorced, 5: widowed 
                 - civilstate:   int
-                - agegroup_work: {type: int, initialdata: false}
+                - agegroup:     {type: int, initialdata: false}
+                - partner_id:   int
 
-
-Note that a field name is not reserved to one entity. 
+Note that a field name is not reserved to one entity (i.e. several entities
+may have a field with the same name). 
 
 
 links
 -----
+
 Entities can be linked with each other or with other entities, for example, individuals ‘belong’ to households, and mothers are
 linked to their children, while spouses are interlinked as well.
 
@@ -151,22 +176,24 @@ linked to their children, while partners are interlinked as well.
 
 A typical link has the following form: ::
 
-    name: {type: <type>, target: <entity>, field: <name link>}
+    name: {type: <type>, target: <entity>, field: <name of link field>}
     
 LIAM 2 uses field values to establish the link between entities    
 
-LIAM 2 allows for two types of links: 
+LIAM 2 allows two types of links: 
 
 - many2one
 - one2many
 
 More detail, see :ref:`links_label`.
 
+
 macros
 ------
 
-Macros are a way to make the code easier to read and maintain. They are defined on the entity level.
-Macros are re-evaluated wherever they appear. Use *capital* letters to define macros.
+Macros are a way to make the code easier to read and maintain. They are defined
+on the entity level. Macros are re-evaluated wherever they appear. Use *capital*
+letters to define macros.
 
 *example* ::
 
@@ -216,8 +243,8 @@ simulation
 ==========
 
 The *simulation* block includes the location of the datasets (**input**, **output**), the number of periods and
-the start period. It sets what processes defined in the **entities** blook are simulated (since some can be
-ommitted), and the order in which this is done.
+the start period. It sets what processes defined in the **entities** block are simulated (since some can be
+omitted), and the order in which this is done.
 
 Suppose that we have a model that starts in 2002 and has to simulate for 10 periods. Furthermore, suppose that we have two
 object or entities: individuals and households. The model starts by some initial processes (grouped under the header *init*)
@@ -251,51 +278,68 @@ and composition is again used.
         output:
             path: "liam2"
             file: "simulation.h5"
-        start_period:   2002
-        periods:    10
+        start_period: 2002
+        periods: 10
+        random_seed: 5235       # optional
 
 
 
 processes
 ---------
 
-This block defines what processes are executed each period starting from *start_period* for *periods* times. 
-Since processes change values of items in an entity, you have to specify the entity. Note that you can 
-execute the same process more than once during a simulation and that you can switch between entities in the
-simulation of a period. 
+This block defines which processes are executed and in what order. They will be
+executed for each period starting from *start_period* for *periods* times. 
+Since processes are defined on a specific entities (they change the values of 
+items of that entity), you have to specify the entity before each list of 
+process. Note that you can execute the same process more than once during a
+simulation and that you can alternate between entities in the simulation of a
+period. 
 
-In the example you see that after birth and dead_procedure, the household_composition is re evaluated.
+In the example you see that after dead_procedure and birth, the
+household_composition procedure is re-executed.
 
 init
 ----
 
-Every process specified here is executed in the *start period*. You can use it to calculate (initialise) variables derived
-from observed data.
+Every process specified here is only executed in the *start period*. You can use
+it to calculate (initialise) variables derived from observed data. This section
+is optional (it can be entirely omitted).
 
 input
 -----
 
-The initial (observed) data is read from the *input* entry. 
+The initial (observed) data is read from the file specified in the *input* entry. 
 
-The *path* is not compulsory. If *path* is not specified, the path is defined by the models definition path.
+Specifying the *path* is optional. If it is omitted, it defaults to the
+directory where the simulation file is located.
 
-The hdf5-file format can be browsed with *vitables* (http://vitables.berlios.de/) or another hdf5-browser available
-on the internet.
+The hdf5-file format can be browsed with *vitables*
+(http://vitables.berlios.de/) or another hdf5-browser available on the net.
 
 output
 ------
 
-The simulation result is stored in the *output* entry. Only the variables defined at the *entity* level are stored.
-Temporary (local) variables are not saved. The output file contains values for each period and each field and each item.
+The simulation result is stored in the file specified in the *output* entry.
+Only the variables defined at the *entity* level are stored. Temporary (local)
+variables are not saved. The output file contains values for each period and
+each field and each item.
 
-The *path* is not compulsory. If *path* is not specified, the path is defined by the models definition path.
+Specifying the *path* is optional. If it is omitted, it defaults to the
+directory where the simulation file is located.
 
 start_period
 ------------
 
-Defines the first period (integer) of the simulation. 
+Defines the first period (integer) to be simulated. 
 
 periods
 -------
 
 Defines the number of periods (integer) to be simulated.
+
+random_seed
+-----------
+
+Defines the starting point (integer) of the pseudo-random generator. This
+section is optional. This can be useful if you want to have several runs of a
+simulation to use the same random numbers. 

@@ -47,7 +47,7 @@ This editor allows YAML syntax highlighting.
 LIAM 2
 ------
 
-We package LIAM 2 into an executable. Python is bundled with the executable and does not need to be installed seperately. The
+We package LIAM 2 into an executable. Python is bundled with the executable and does not need to be installed separately. The
 package bundles all the extra modules (NumPy, NumExpr, Pytables, ...) we use.
 
 In the future we plan a GUI-version of the program.
