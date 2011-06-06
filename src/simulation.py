@@ -68,17 +68,17 @@ class Simulation(object):
             '*': [str]
         }],
         'random_seed': int,
-        '#periods': int,
-        '#start_period': int,
-        '#output': {
-            'path': str,
-            '#file': str
-        },
         '#input': {
             'path': str,
             '#file': str,
             'method': str
+        },
+        '#output': {
+            'path': str,
+            '#file': str
         }
+        '#periods': int,
+        '#start_period': int,
     }
 }
 '''
