@@ -133,34 +133,32 @@ There are two implicit fields that do not have to be defined:
                 # 1: single, 2: married, 3: cohabitant, 4: divorced, 5: widowed 
                 - civilstate:   int
                 - partner_id:   int
+                - earnings:     float
 
 This example defines the entity person. Each person has an age, gender, is dead
 or not, has a civil state, possibly a partner. We use the field civilstate to
 store the marital status as a switch of values.
 
-Some variables are *observed* in that their value in the starting period can be
-found in the data set supplied. Some other variables defined in the field set
-are not present in the input file. They will need to be calculated later by the
-model, and you need to tell LIAM2 that the field is missing, by using 
-"initialdata: false" in the definition for that field (see the *agegroup*
-variable in the example below).
+By default, all declared fields are supposed to be present in the input file
+(because they are *observed* or computed elsewhere and their value can be
+found in the supplied data set). The value for all declared fields will also be
+stored for each period in the output file. 
+
+However, in practice, there are often some fields which are not present in the
+input file. They will need to be calculated later by the model, and you need to
+tell LIAM2 that the field is missing, by using "initialdata: false" in the
+definition for that field (see the *agegroup* variable in the example below).
 
 *example* ::
 
     entities:
         person:
             fields:
-                # period and id are implicit
                 - age:          int
-                - dead:         bool
-                - gender:       bool
-                # 1: single, 2: married, 3: cohabitant, 4: divorced, 5: widowed 
-                - civilstate:   int
                 - agegroup:     {type: int, initialdata: false}
-                - partner_id:   int
 
-Note that a field name is not reserved to one entity (i.e. several entities
-may have a field with the same name). 
+Field names must be unique per entity (i.e. several entities may have a field
+with the same name). 
 
 
 links

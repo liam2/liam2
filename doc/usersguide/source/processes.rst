@@ -7,13 +7,18 @@
 Processes
 #########
 
-General setup
-=============
+The processes are the core of a model. LIAM2 supports two kinds of processes: *assignments*, which change 
+the value of a variable (predictor) using an expression, and *actions* which
+don't (but have other effects).
 
-The processes are the core of the model. For each entity-level (for example, 
-"household" and "person"), the block of processes starts with the header 
-(processes:). A process changes the variable (predictor) using an expression 
-(expr). ::
+For each entity (for example, "household" and "person"), the block of processes
+starts with the header "processes:". Each process then starts at a new line with
+an indentation of four spaces.
+
+Assignments
+===========
+
+Assignments have the following general format: ::
 
     processes:
         process1_name: 
@@ -25,38 +30,22 @@ The processes are the core of the model. For each entity-level (for example,
             expr: "expression for process 2"
 
         ...
+
+The variable_name will usually be one of the variables defined in the **fields**
+block of the entity but, as we will see later, it is not always necessary. 
+All expressions should be between double quotes. 
         
-Or, shorter: ::         
+We will often use a shorter form though: ::         
 
     processes:
         variable_name: "expression"
 
         ...
-        
-The variable_name will usually be one of the variables defined in the **fields**
-block of the entity.
 
-A process starts at a new line with an indentation of four spaces, and can
-consist of sub-processes. These also start on a new line, again with an
-indentation of four spaces and a - . All definitions, be it of processes or 
-sub-processes, should be between double quotes.
-
-So the general setup is: ::
-
-    processes:
-        variable_name: "expression"
-        process_name2:
-            predictor: variable_name
-            expr: "expression"
-        process_name3:
-            - subprocess_31: "expression"
-            - subprocess_32: "expression"
-
-In this example, there are three processes, of which the first two do not have
-sub-processes. The third process consists of two sub-processes. If there are no
-sub-processes, a process obviously describes the simulation of one variable
-only. In this case, the name of the process equals the name of the *endogenous
-variable*.
+In this case, the name of the process equals the name of the *endogenous
+variable*. *Process names* have to be unique for each entity. This is why the
+longer form is necessary: you need to use it when you have several processes
+which modify the same variable.
 
 To run the processes, they have to be specified in the "processes" section of 
 the simulation block of the file. This explains why the *process names* have 
@@ -64,32 +53,27 @@ to be unique for each entity.
 
 *example* ::
 
-   processes:
-        age: "age + 1"
+    entities:
+        person:
+            fields:
+                - age: int
+            processes:
+                age: "age + 1"
+    simulation:
+        processes:
+            - person: [age]
+        ...
 
-This is however not the case for (sub)processes inside other processes (we call
-them procedures): it is possible for subprocess_31 and subprocess_32 to have the
-same name, and hence simulate the same variable. Procedure names (process_name3)
-does not directly refer to a specific endogenous variable.
+Temporary variables
+===================
 
-*example* ::
-
-    processes:
-        age: "age + 1"
-        agegroup:
-            - agegroup5: "5 * trunc(age / 5)"
-            - agegroup10: "10 * trunc(age / 10)"
-
-The processes *agegroup5* and *agegroup10* are grouped in *agegroup*. In the simulation block you specify the
-*agegroup*-process if you want to update *agegroup5* and *agegroup10*. 
-
-By using processes and sub-processes, you can actually make *building blocks* or 
-modules in the model. 
-
-You can use temporary variables in a procedure. They only exist during the 
-execution of that procedure. We thus call them local variables. If you want to
-pass variables between procedures you have to define them in the **fields**
-section.
+All fields declared in the "fields" section of the entity are stored in the
+output file. Often you need a variable only to store an intermediate result 
+during the computation of another variable.
+ 
+In LIAM2, you can create a temporary variable at any point in the simulation by
+simply having an assignment to an undeclared variable. Their value will be
+discarded at the end of the period.
 
 *example* ::
 
@@ -97,76 +81,117 @@ section.
         fields:
             # period and id are implicit
             - age:          int
-            - dead:         bool
-            - gender:       bool
-            - partner_id:   int
-            
-            # 1=single, 2=married, 3=cohab, 4=divorced, 5=widowed
-            - civilstate:          int
-            - dur_in_couple:       int
-            - agegroup_work:       {type: int, initialdata: false}
-            - agegroup_civilstate: {type: int, initialdata: false}
+            - agegroup:     int
 
-            # 1: in work, employee, private sector,
-            # 2: in work, employee, public sector not civserv,
-            # 3: in work*, public sector civserv,
-            # 4: in work, self employed,
-            # 5: in education,
-            # 6: unemployed including old-age unemployed,
-            # 7: CELS (brugpensioen),
-            # 6: disabled (including chronically ill),
-            # 9: retired,
-            # 10: other inactive
-            - workstate:       int
-            - inwork:          {type: bool, initialdata: false}
-            - education_level: {type: int, initialdata: false}
+    processes:
+        age: "age + 1"
+        agediv10: "trunc(age / 10)"
+        agegroup: "agediv10 * 10"
 
-        macros:
-            WIDOW: "(civilstate==5)"
-            MARRIED: "(civilstate == 2)"
-            COHAB: "(civilstate == 3)"
-            WORKING: "(workstate > 0) and (workstate < 5)"
-            CIVSERV: "workstate == 3"
-            PUBLIC: "((workstate ==2) or (workstate ==3))"
-            WAGE_EARNER: "(workstate > 0) and (workstate < 4)"
-            MALE: "gender"
-            FEMALE: "not gender"
+Actions
+=======
+
+Since actions don't return any value, they do not need a variable to store that
+result, and they only ever need the condensed form: ::
+
+    processes:
+        process_name: "action expression"
+        ...
+
+*example* ::
+
+    processes:
+        remove_deads: "remove(dead)"
+        
+Procedures
+==========
+
+A process can consist of sub-processes, in that case we call it a *procedure*. 
+Processes within a procedure are executed in the order they are declared.
+
+Sub-processes each start on a new line, again with an indentation of four spaces
+and a -. As for normal processes, sub-process expressions should be between
+double quotes.
+
+So the general setup is: ::
+
+    processes:
+        variable_name: "expression"
+        process_name2: "action expression"
+        process_name3:
+            predictor: variable_name
+            expr: "expression"
+        process_name4:
+            - subprocess_31: "expression"
+            - subprocess_32: "expression"
+
+In this example, there are four processes, of which the first three do not have
+sub-processes. The fourth process is a procedure which consists of two
+sub-processes. If it is executed, subprocess_31 will be executed and then
+subprocess_32.
+
+Contrary to normal processes, sub-processes (processes inside procedures) names
+do not need to be unique. In the above example, it is possible for subprocess_31
+and subprocess_32 to have the same name, and hence simulate the same variable. 
+Procedure names (process_name3) does not directly refer to a specific endogenous
+variable.
+
+*example* ::
+
+    processes:
+        ageing:
+            - age: "age * 2"
+            - age: "age + 1"
+            - agegroup: "trunc(age / 10) * 10"
+
+The processes on *age* and *agegroup* are grouped in *ageing*. In the simulation
+block you specify the *ageing*-process if you want to update *age* and
+*agegroup*. 
+
+By using procedures, you can actually make *building blocks* or modules in the
+model. 
+
+Temporary variables
+-------------------
+
+Temporary variables defined/computed within a procedure are local to that
+procedure: they are only valid within that procedure. If you want to pass
+variables between procedures you have to define them in the **fields** section.
+
+*(bad) example* ::
+
+    person:
+        fields:
+            - age: int
 
         processes:
-            ...
-            
-            divorce_procedure:
-                - agediff: "if(FEMALE and MARRIED, age - partner.age, 0)"
-                - inwork: "WORKING"
-                # select females to divorce
-                - divorce: "logit_regr(0.6713593 * ph.nch12_15 
-                                       - 0.0785202 * dur_in_couple
-                                       + 0.1429621 * agediff 
-                                       - 0.0088308 * agediff * *2 
-                                       - 0.814204 * (inwork and partner.inwork) 
-                                       - 4.546278,
-                                       filter = FEMALE and MARRIED, 
-                                       align = 'al_p_divorce.csv')"
-                # select persons to divorce
-                - to_divorce: "divorce or partner.divorce"
+            ageing: 
+                - age: "age + 1"
+                - isold: "age >= 150"   # isold is a local variable
                 
-                - partner_id: "if(to_divorce, -1, partner_id)"
-                - civilstate: "if(to_divorce, 4, civilstate)"
-                - dur_in_couple: "if(to_divorce, 0, dur_in_couple)"
-                # move out males 
-                - household_id: "if(MALE and to_divorce, 
-                    new('household', 
-                        start_period=period,
-                        region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
-                    ),
-                    household_id)"
+            rejuvenation:
+                - age: "age – 1"
+                - backfromoldage: "isold and age < 150"  # WRONG !
 
-In the example *agediff*, *divorce*, *to_divorce* are local variables. They can only be used in the
-"divorce_procedure" procedure.
+In this example, *isold* and *backfromoldage* are local variables. They can only
+be used in the procedure where they are defined. Because we are trying
+to use the local variable *isold* in another procedure in this example, LIAM 2
+will refuse to run, complaining that *isold* is not defined. 
+
+Actions
+-------
+
+Actions inside procedures don't even need a process name.
+
+*example* ::
+
+    processes:
+        death_procedure:
+            - dead: "age > 150"  
+            - "remove(dead)"
 
 .. index::
     single: expressions;
-
 
 Expressions
 ===========
@@ -788,7 +813,7 @@ happens in the latter case. ::
         # break the link to the dead partner
         - partner_id: "if(partner.dead, -1, partner_id)"
         # remove the dead
-        - cleanup: "remove(dead)"
+        - remove(dead)
 
 The first sub-procedure *dead* simulates whether an individual is ‘scheduled for
 death’, using again only a logistic stochastic variable and the 
