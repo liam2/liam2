@@ -15,3 +15,5 @@ therefore subject to change.
 
 This guide describes version 0.2 of LIAM 2. Its functionality is however changing by the day, and
 the syntax is also under constant revision and expansion.
+
+You can find the latest version of the package and its documentation on the liam2 website: http://liam2.plan.be
