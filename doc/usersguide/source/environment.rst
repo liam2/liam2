@@ -52,3 +52,17 @@ package bundles all the extra modules (NumPy, NumExpr, Pytables, ...) we use.
 
 In the future we plan a GUI-version of the program.
 
+Getting Started
+---------------
+
+- Copy the contents of the bundle in a directory on your disk.
+
+- Run the "Notepad++Portable.exe" from the *\\localpath\\Liam2Suite* directory.
+
+- Open the model (ex. \\localpath\\Liam2Suite\\Synthetic\\demo_model.yml)
+
+- Enter F6 to run the model. An interactive console window with the output opens within the editor.
+
+- Use this console to explore the results.
+
+
