@@ -179,7 +179,6 @@ class CompoundExpression(EvaluableExpression):
         self._complete_expr = None
     
     def eval(self, context): 
-#        expr = self.build_expr()
         context = self.build_context(context)
         return expr_eval(self.complete_expr, context)
 
