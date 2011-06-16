@@ -187,7 +187,8 @@ def align_get_indices_nd(context, filter, score,
 #                print "affecting %d extra persons due to take filter" \
 #                      % (num_always - affected)
     if (take_filter is not None) or (leave_filter is not None):
-        print "%d/%d [take %d, leave %d]" % (len(total_indices), num_aligned, take, leave),
+        print "%d/%d [take %d, leave %d]" % (len(total_indices), num_aligned,
+                                             take, leave),
     else:
         print "%d/%d" % (len(total_indices), num_aligned),        
     return total_indices
