@@ -3,6 +3,26 @@
 Change log
 ##########
 
+Version 0.2.1
+=============
+
+Released on 2011-06-16.
+
+Miscellaneous improvements:
+---------------------------
+
+* simplified and cleaned up the demonstration models.
+
+* improved the error message when a link points to an unknown entity. 
+
+Fixes:  
+------
+
+* fixed "new" function, which created individuals correctly but returned values
+  which did not correspond to the ids of the newly created individuals, due to
+  a bug in numpy.
+
+
 Version 0.2
 ===========
 

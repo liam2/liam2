@@ -1,6 +1,6 @@
 from simulation import Simulation
 
-__version__ = "0.2"
+__version__ = "0.2.1"
 
 class AutoflushFile(object):
     def __init__(self, f):
