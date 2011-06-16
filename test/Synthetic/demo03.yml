@@ -1,104 +1,101 @@
-       
 entities:
     household:
         fields:
-            # period is implicit
-            # id is implicit
-            - dead:         bool
-            - start_period: {type: int, initialdata: false}
-            - nb_persons:   {type: int, initialdata: false} 
-            - nb_students:  {type: int, initialdata: false}            
+            # period and id are implicit
+            - nb_persons:   {type: int, initialdata: false}
             - nch0_11:      {type: int, initialdata: false}
             - nch12_15:     {type: int, initialdata: false}
             - region_id:    {type: int, initialdata: false}
 
         links:
             persons: {type: one2many, target: person, field: hh_id}
-            
+
         processes:
-            region_id: "if(region_id < 0, choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4]), region_id)"
+            init_region_id: 
+                - region_id: "choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])"
+
             household_composition:
                 - nb_persons: "countlink(persons)"
-                - nb_students: "countlink(persons, workstate == 3)"
-                - nch0_11: "countlink(persons, (age <12))"
-                - nch12_15: "countlink(persons, (age>11) and (age <16))"
-            clean_empty: "remove(nb_persons==0)"                
-            
+                - nch0_11: "countlink(persons, age < 12)"
+                - nch12_15: "countlink(persons, (age > 11) and (age < 16))"
+
+            clean_empty: "remove(nb_persons == 0)"
+
     person:
         fields:
-            # period is implicit
-            # id is implicit
+            # period and id are implicit
             - age:          int
-            - dead:         bool
             - gender:       bool
+            # 1: single, 2: married, 3: divorced, 4: widowed
+            - civilstate:   int     
+
+            # link fields
             - m_id:         int
-            - m_age:        {type: int, initialdata: false}
             - partner_id:   int
-            - civilstate:   int     # 1=single, 2=married, 3=divorced, 4=widowed
-            - dur_in_couple:      int
-            - workstate:    int     # 1=in work, 2=unemployed including old-age unemployed,3=in education, 4=retired,5=other inactive
-            - inwork:   {type: bool, initialdata: false}
-            - education_level:       {type: int, initialdata: false}
-            - agegroup_work:     {type: int, initialdata: false}
-            - agegroup_civilstate:     {type: int, initialdata: false}                        
             - hh_id:        int
-        
+
+            # fields not present in input
+            - agegroup_work: {type: int, initialdata: false}
+            - agegroup_civilstate: {type: int, initialdata: false}
+
         links:
-            pm: {type: many2one, target: person, field: m_id}      
-            ps: {type: many2one, target: person, field: partner_id}
-            ph: {type: many2one, target: household, field: hh_id}
-            mp: {type: one2many, target: person, field: m_id}    
+            mother: {type: many2one, target: person, field: m_id}
+            partner: {type: many2one, target: person, field: partner_id}
+            household: {type: many2one, target: household, field: hh_id}
+            children: {type: one2many, target: person, field: m_id}
 
         macros:
             MALE: "True"
             FEMALE: "False"
             ISMALE: "gender"
             ISFEMALE: "(not gender)"
-            
+
             SINGLE: "1"
             MARRIED: "2"
             DIVORCED: "3"
             WIDOW: "4"
             ISSINGLE: "(civilstate == 1)"
-            ISMARRIED: "(civilstate == 2)"        
+            ISMARRIED: "(civilstate == 2)"
             ISDIVORCED: "(civilstate == 3)"
             ISWIDOW: "(civilstate == 4)"
-            
-        
+
             UNSET: "-1"
-            
-                   
+
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
         processes:
             age: "age + 1"
-                
+
             agegroup:
-                - agegroup_civilstate: "if(age<50, 5*trunc(age/5), 10*trunc(age/10))"            
-                - agegroup_work: "if(age<70, 5*trunc(age/5), 70)"
-                
-            dead_procedure:                
-                - dead: "if(ISMALE, 
-                    logit_regr(0.0, align='al_p_dead_m.csv'), 
-                    logit_regr(0.0, align='al_p_dead_f.csv'))"
-                - civilstate: "if(ps.dead, WIDOW, civilstate)"  
-                - partner_id: "if(ps.dead, UNSET, partner_id)"  
-                - show_avg_m: "show('Avg age of dead males', grpavg(age, filter=dead and ISMALE))"
-                - show_avg_f: "show(grpavg(age, filter=dead and ISFEMALE))"                
-                - cleanup: remove(dead)
-                        
-            dump_household_info: "csv(dump(id, age, gender, ph.nb_persons, pm.age, ps.age, hh_id),suffix='hh_info')"
-            
+                - agegroup_civilstate: "if(age < 50,
+                                           5 * trunc(age / 5),
+                                           10 * trunc(age / 10))"
+                - agegroup_work: "if(age < 70, 5 * trunc(age / 5), 70)"
+
+            death:
+                - dead: "if(ISMALE,
+                            logit_regr(0.0, align='al_p_dead_m.csv'),
+                            logit_regr(0.0, align='al_p_dead_f.csv'))"
+                - civilstate: "if(partner.dead, WIDOW, civilstate)"
+                - partner_id: "if(partner.dead, UNSET, partner_id)"
+                - show_avg_m: "show('Avg age of dead men',
+                                    grpavg(age, filter=dead and ISMALE))"
+                - show_avg_f: "show(grpavg(age, filter=dead and ISFEMALE))"
+                - show_widows: "show(grpsum(ISWIDOW))"
+                - cleanup: "remove(dead)"
+
+            dump_info: "csv(dump(id, age, gender, hh_id, household.nb_persons,
+                                 mother.age, partner.age), suffix='info')"
+
 simulation:
     init:
-        - household: [household_composition, region_id]
-        - person: [agegroup]
+        - household: [init_region_id]
 
     processes:
-        - household: [household_composition, clean_empty, region_id]
-        - person: [age, agegroup, dead_procedure, 
-            #dump_household_info
-            ]      
+        - person: [age, agegroup, death,
+            #dump_info
+            ]
+        - household: [household_composition, clean_empty]
 
     input:
         file: "simple2001.h5"
@@ -106,4 +103,4 @@ simulation:
         file: "simulation.h5"
 
     start_period: 2002   # first simulated period
-    periods: 1
+    periods: 2
