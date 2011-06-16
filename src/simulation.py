@@ -126,11 +126,15 @@ class Simulation(object):
         
         entity_registry.add_all(self, content['entities'])
         for entity in entity_registry.itervalues():
+            entity.check_links()
             entity.parse_processes()
         
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()
         for ent_name, proc_names in init_def:
+            if ent_name not in entity_registry:
+                raise Exception("Entity '%s' not found" % ent_name)
+
             entity = entity_registry[ent_name]
             init_entities.add(entity)
             init_processes.extend([entity.processes[proc_name]

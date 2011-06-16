@@ -227,7 +227,14 @@ class Expr(object):
         s = self.as_string(context)
         r = context.get(s)
         if r is not None:
+#            print "using %s from context" % s
             return r
+
+#        for var_name in self.collect_variables(context):
+#            assert var_name in context, \
+#                   "%s variable in unknown (it is either not defined " \
+#                   "or not computed yet)" % var_name
+
 #        usual_len = None
 #        for k in context.keys():
 #            value = context[k]
@@ -598,8 +605,8 @@ def parse(s, globals=None, conditional_context=None, expression=True,
         #IOError and such. Those are clearer when left unmodified.
         except EnvironmentError:  
             raise
-        except Exception, e:
-            raise add_context(e, s)
+#        except Exception, e:
+#            raise add_context(e, s)
     else:
         exec c in context
     

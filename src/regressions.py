@@ -51,6 +51,7 @@ class LogitScore(CompoundExpression):
     func_name = 'logit_score'
 
     def __init__(self, expr):
+        CompoundExpression.__init__(self)
         self.expr = expr
         self.u_varname = "temp_%d" % properties.num_tmp
         properties.num_tmp += 1

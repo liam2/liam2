@@ -12,6 +12,10 @@ class Matching(EvaluableExpression):
         self.score_expr = score
         self.orderby = orderby
     
+    def collect_variables(self, context):
+        #FIXME: do something more sensible here 
+        return set()
+    
     def eval(self, context):
         global set2
 

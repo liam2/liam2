@@ -175,17 +175,29 @@ class EvaluableExpression(Expr):
 
 class CompoundExpression(EvaluableExpression):
     '''expression written in terms of other expressions'''
+    def __init__(self):
+        self._complete_expr = None
     
     def eval(self, context): 
-        expr = self.build_expr()
+#        expr = self.build_expr()
         context = self.build_context(context)
-        return expr_eval(expr, context)
+        return expr_eval(self.complete_expr, context)
 
     def build_context(self, context):
         return context
 
     def build_expr(self):
-        raise NotImplementedError
+        raise NotImplementedError
+    
+    def collect_variables(self, context):
+        return collect_variables(self.complete_expr, context)
+    
+    @property
+    def complete_expr(self):
+        if self._complete_expr is None:
+            self._complete_expr = self.build_expr()
+        return self._complete_expr
+
 
 class LinkValue(EvaluableExpression):
     def __init__(self, links, target_expression, missing_value=None):
@@ -948,6 +960,12 @@ class CreateIndividual(EvaluableExpression):
         children[:] = get_missing_record(array)
         return children
 
+    def collect_variables(self, context):
+        used_variables = set()
+        for v in self.kwargs.itervalues():
+            used_variables.update(collect_variables(v, context))
+        return used_variables
+
     def eval(self, context):
         source_entity = context['__entity__']
         if self.entity_name is None:
@@ -988,9 +1006,7 @@ class CreateIndividual(EvaluableExpression):
             period = context['period']
             children['period'] = period
     
-            used_variables = set()
-            for v in self.kwargs.itervalues():
-                used_variables.update(collect_variables(v, context))
+            used_variables = self.collect_variables(context)
             
             # ideally we should be able to just say:    
             # child_context = context[to_give_birth]
@@ -1032,7 +1048,10 @@ class CreateIndividual(EvaluableExpression):
             if source_entity is target_entity:
                 to_give_birth = np.concatenate((to_give_birth, 
                                                 np.zeros(num_birth, dtype=bool)))
-            np.place(result, to_give_birth, children['id'])
+            # Note that np.place is a tad faster, but is currently buggy when
+            # working with columns of structured arrays.
+            # See http://projects.scipy.org/numpy/ticket/1869
+            result[to_give_birth] = children['id']
             return result
         else:
             return None

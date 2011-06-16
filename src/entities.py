@@ -190,6 +190,13 @@ class Entity(object):
             self._variables = vars
         return self._variables
     
+    def check_links(self):
+        for name, link in self.links.iteritems():
+            target_name = link._target_entity
+            if target_name not in entity_registry:
+                raise Exception("Target of '%s' link in '%s' is unknown (%s)"
+                                % (name, self.name, target_name)) 
+        
     @property
     def conditional_context(self):
         cond_context = {}
