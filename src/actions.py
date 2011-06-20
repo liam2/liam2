@@ -61,15 +61,16 @@ class RemoveIndividuals(Process):
             return
         
         not_removed = ~filter
-
+        
         entity = context['__entity__']
+        len_before = len(entity.array)
         already_removed = entity.id_to_rownum == -1
         already_removed_indices = already_removed.nonzero()[0]
         already_removed_indices_shifted = already_removed_indices - \
                                   np.arange(len(already_removed_indices))
 
         # recreate id_to_rownum from scratch
-        id_to_rownum = np.arange(len(entity.array))
+        id_to_rownum = np.arange(len_before)
         id_to_rownum -= filter.cumsum()
         #XXX: use np.putmask(id_to_rownum, filter, -1)
         id_to_rownum[filter] = -1
@@ -82,8 +83,9 @@ class RemoveIndividuals(Process):
             if isinstance(temp_value, np.ndarray) and temp_value.shape:
                 temp_variables[name] = temp_value[not_removed]
 
-        print "%d %s(s) removed" % (filter.sum(), entity.name),
-
+        print "%d %s(s) removed (%d -> %d)" % (filter.sum(), entity.name,
+                                               len_before, len(entity.array)),
+        
 
 class Breakpoint(Process):
     def __init__(self, period=None):

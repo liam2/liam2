@@ -16,36 +16,23 @@ def logistic(expr):
 
 
 class Regression(CompoundExpression):
-    def __init__(self, expr, filter=None, align=False):
+    def __init__(self, expr, filter=None):
         CompoundExpression.__init__(self)
         self.expr = expr
         self.filter = filter
-        if isinstance(align, float):
-            align_kwargs = {'variables': [],
-                            'possible_values': [],
-                            'probabilities': [align]}
-        elif isinstance(align, basestring):
-            align_kwargs = {'fname': align}
-        else:
-            assert not align, "invalid value for align argument"
-            align_kwargs = None
-        self.align_kwargs = align_kwargs
 
     def build_context(self, context):
         return context
 
     def build_expr(self):
-        if self.align_kwargs is not None:
-            return Alignment(self.build_score_expr(), self.filter,
-                             **self.align_kwargs)
-        else:
-            return self.build_score_expr() > 0.5
+        raise NotImplementedError()
 
     def collect_variables(self, context):
         return collect_variables(self.expr, context)
 
     def dtype(self, context):
-        return bool
+        return float
+
 
 class LogitScore(CompoundExpression):
     func_name = 'logit_score'
@@ -87,20 +74,43 @@ class LogitScore(CompoundExpression):
 class LogitRegr(Regression):
     func_name = 'logit_regr'
 
-    def build_score_expr(self):
-        return LogitScore(self.expr)
+    def __init__(self, expr, filter=None, align=False):
+        Regression.__init__(self, expr, filter)
+        if isinstance(align, float):
+            align_kwargs = {'variables': [],
+                            'possible_values': [],
+                            'probabilities': [align]}
+        elif isinstance(align, basestring):
+            align_kwargs = {'fname': align}
+        else:
+            assert not align, "invalid value for align argument"
+            align_kwargs = None
+        self.align_kwargs = align_kwargs
+
+    def build_context(self, context):
+        return context
+
+    def build_expr(self):
+        score_expr = LogitScore(self.expr)
+        if self.align_kwargs is not None:
+            return Alignment(score_expr, self.filter,
+                             **self.align_kwargs)
+        else:
+            return score_expr > 0.5
+
+    def dtype(self, context):
+        return bool
 
 
 class ContRegr(Regression):
     func_name = 'cont_regr'
 
-    def __init__(self, expr, filter=None, align=False, mult=0.0,
-                 error_var=None):
-        Regression.__init__(self, expr, filter, align)
+    def __init__(self, expr, filter=None, mult=0.0, error_var=None):
+        Regression.__init__(self, expr, filter)
         self.mult = mult
         self.error_var = error_var
         
-    def build_score_expr(self):
+    def build_expr(self):
         expr = self.expr
         if self.error_var:
             expr += Variable(self.error_var)
@@ -112,17 +122,17 @@ class ContRegr(Regression):
 class ClipRegr(ContRegr):
     func_name = 'clip_regr'
     
-    def build_score_expr(self):
-        return Max(ContRegr.build_score_expr(self), 0)
+    def build_expr(self):
+        return Max(ContRegr.build_expr(self), 0)
 
 
 class LogRegr(ContRegr):
     func_name = 'log_regr'
     
-    def build_score_expr(self):
+    def build_expr(self):
         # exp(x) overflows for x > 709 but that is handled gracefully by numpy
         # and numexpr
-        return Exp(ContRegr.build_score_expr(self))
+        return Exp(ContRegr.build_expr(self))
 
 
 functions.update({

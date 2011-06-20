@@ -173,14 +173,18 @@ class EvaluableExpression(Expr):
         return tmp_varname
 
 
-class CompoundExpression(EvaluableExpression):
+class CompoundExpression(Expr):
     '''expression written in terms of other expressions'''
     def __init__(self):
         self._complete_expr = None
     
     def eval(self, context): 
         context = self.build_context(context)
-        return expr_eval(self.complete_expr, context)
+        return self.complete_expr.eval(context)
+
+    def as_string(self, context):
+        context = self.build_context(context)
+        return self.complete_expr.as_string(context)
 
     def build_context(self, context):
         return context
@@ -197,7 +201,6 @@ class CompoundExpression(EvaluableExpression):
             self._complete_expr = self.build_expr()
         return self._complete_expr
 
-
 class LinkValue(EvaluableExpression):
     def __init__(self, links, target_expression, missing_value=None):
         '''
@@ -365,7 +368,6 @@ class AggregateLink(EvaluableExpression):
     def eval_rows(self, source_entity, source_rows, target_entity,
                         target_filter, context):
         raise NotImplementedError
-
 
 
 class CountLink(AggregateLink):
@@ -893,7 +895,7 @@ class GroupCount(EvaluableExpression):
         return "grpcount(%s)" % filter
 
 
-#TODO: transform this into a CompoundExpressionn
+#TODO: transform this into a CompoundExpression
 class GroupAverage(FunctionExpression):
     func_name = 'grpavg'
     
@@ -919,11 +921,20 @@ class GroupAverage(FunctionExpression):
         return float
 
 
-
-class NumexprFunctionProperty(FunctionExpression):
+class NumexprFunctionProperty(Expr):
     '''For functions which are present as-is in numexpr'''
+    
+    def __init__(self, expr):
+        self.expr = expr
+
+    def collect_variables(self, context):
+        return collect_variables(self.expr, context)
+
     def as_string(self, context):
         return '%s(%s)' % (self.func_name, as_string(self.expr, context))
+
+    def __str__(self):
+        return '%s(%s)' % (self.func_name, self.expr)
 
 class Abs(NumexprFunctionProperty):
     func_name = 'abs'
@@ -1154,6 +1165,9 @@ functions.update({
     'zeroclip': ZeroClip,
     'round': Round,
     'trunc': Trunc,
+    'exp': Exp,
+    'log': Log,
+
     # misc
     'new': CreateIndividual,
     'clone': Clone,
