@@ -68,6 +68,8 @@ entities:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
                 
             test_expr:
+                - show("count:", grpcount())
+                - show("age:", age)
                 - show("age + 1:", age + 1)
                 - show("age / 10:", age / 10)
                 - show("100 / age:", 100 / age)
@@ -125,6 +127,17 @@ entities:
 
             test_logit: 
                 - simple: logit_regr(0.0)
+                
+            test_log_regr:
+                - hours1: "if(MALE and work,
+                              log_regr(2.484557 + 0.2283921 * age - 0.0026106 * age **2),
+                              0)"
+                - hours2: "if(MALE and work, 
+                              exp(2.484557 + 0.2283921 * age - 0.0026106 * age **2),
+                              0)"
+                - show('hours1', hours1, '\n',
+                       'num values:', grpcount(hours1 > 0), '\n',
+                       'has problems:', grpcount(hours1 != hours2) > 0)
             
             test_uninitialized_var: not to_give_birth
             to_give_birth: if(not gender and (age >= 15) and (age <= 50),
@@ -291,6 +304,7 @@ entities:
 #                                        expr=grpavg(nch)))
                 - minmax_age: show(groupby(id / 100, gender, expr=grpmax(age) - grpmin(age)))
 
+
 simulation:
     init:
         - person: [test_init]
@@ -305,6 +319,8 @@ simulation:
                    agegroup,
                    test_align,
                    test_logit,
+                   test_log_regr,
+
                    marriage,
                    
 #                   test_uninitialized_var,
