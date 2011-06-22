@@ -6,14 +6,10 @@ entities:
     household:
         fields:
             # period and id are implicit
-            - dead:         bool
             - num_persons:  {type: int, initialdata: False}
             - nch:          {type: int, initialdata: False}
             - start_period: {type: int, initialdata: False}
            
-        per_period_fields:
-            - maxnch: int
-
         links:
             persons: {type: one2many, target: person, field: hh_id}
 
@@ -22,7 +18,6 @@ entities:
             nch: countlink(persons, age <= 18)
             maxnch: grpmax(nch)
             dump_csv_h: csv(dump())
-            cleanup: remove(lag(dead))
 
     person:
         fields:
@@ -30,12 +25,14 @@ entities:
             - age:          int
             - dead:         bool
             - gender:       bool
+            - work:         bool
+            
             - partner_id:   int            
             - hh_id:        int
             - f_id:         int
             - m_id:         int
+            
             - nch:          {type: int, initialdata: False}
-            - work:         bool
             - eduach:       {type: int, initialdata: False}
             - m_age:        {type: int, initialdata: False}
             - agegroup:     {type: int, initialdata: False}
@@ -44,12 +41,12 @@ entities:
             - young_mother: {type: bool, initialdata: False}
 
         links:
-            ps: {type: many2one, target: person, field: partner_id}
-            ph: {type: many2one, target: household, field: hh_id}
-            pf: {type: many2one, target: person, field: f_id}
-            pm: {type: many2one, target: person, field: m_id}
-            mc: {type: one2many, target: person, field: m_id}
-        
+            partner: {type: many2one, target: person, field: partner_id}
+            household: {type: many2one, target: household, field: hh_id}
+            father: {type: many2one, target: person, field: f_id}
+            mother: {type: many2one, target: person, field: m_id}
+            children: {type: one2many, target: person, field: m_id}
+
         macros:
             ISCHILD: age < 18
             
@@ -150,7 +147,7 @@ entities:
                                 partner_id=-1,
                                 hh_id=hh_id,
                                 m_id=id,
-                                f_id=ps.id,
+                                f_id=partner.id,
                                 m_age=age, 
                                 gender=choice([True, False], [0.51, 0.49])),  
                             new('person',
@@ -158,29 +155,29 @@ entities:
                                 partner_id=-1,
                                 hh_id=hh_id,
                                 m_id=id,
-                                f_id=ps.id,
+                                f_id=partner.id,
                                 m_age=age,
                                 young_mother=True, 
                                 gender=logit_regr(0.0))),
                          -1)
             
             test_o2m:
-                - nch: countlink(mc)
-                - nch_012: countlink(mc, age <= 12)
-                - ch_012_age_sum: sumlink(mc, age, age <= 12)
-                - ch_012_age2_sum: sumlink(mc, age * 2, age <= 12)
-                - ch_012_age_avg: avglink(mc, age, age <= 12)
-                - ch_minage: minlink(mc, age)
-                - ch_maxage: maxlink(mc, age)
+                - nch: countlink(children)
+                - nch_012: countlink(children, age <= 12)
+                - ch_012_age_sum: sumlink(children, age, age <= 12)
+                - ch_012_age2_sum: sumlink(children, age * 2, age <= 12)
+                - ch_012_age_avg: avglink(children, age, age <= 12)
+                - ch_minage: minlink(children, age)
+                - ch_maxage: maxlink(children, age)
                 - xx: show(dump(nch, nch_012, ch_012_age_sum, ch_012_age2_sum,
                                 ch_012_age_avg, filter=(nch > 0) and (id < 100)))
             
             test_mixed_links:
-                - show('hh.id:', ph.id,
-                       'hh.id+1:', ph.get(id + 1),
+                - show('hh.id:', household.id,
+                       'hh.id+1:', household.get(id + 1),
                        'edu:', eduach,
-                       'num persons:', ph.get(countlink(persons)),
-                       'num high edu:', ph.get(countlink(persons, eduach == 4)))
+                       'num persons:', household.get(countlink(persons)),
+                       'num high edu:', household.get(countlink(persons, eduach == 4)))
                  
             test_predictor1:
                 predictor: plop
@@ -202,7 +199,7 @@ entities:
                 - clone(filter = age == 95,
                         f_id = id,
                         m_id = id,
-                        nch = ph.get(countlink(persons)))    
+                        nch = household.get(countlink(persons)))    
             
             marriage:
                 - married: partner_id != -1
@@ -240,7 +237,7 @@ entities:
                 - newhousehold: new('household', filter=just_married and not gender,
                                     start_period=period)
                 - hh_id: if(just_married,
-                            if(gender, ps.newhousehold, newhousehold),
+                            if(gender, partner.newhousehold, newhousehold),
                             hh_id)
 
             test_compound:
@@ -266,14 +263,14 @@ entities:
                 - show("max(d, 2)", max(duration(age > 10), 2))
 
             test_dump: 
-#                - expr: csv(dump(gender, age, partner_id, ps.age),
+#                - expr: csv(dump(gender, age, partner_id, partner.age),
 #                             suffix='test')
 #                - full: csv(dump())
                 - test_show: show(dump(gender, age, filter=id < 10))
 
             cleanup: remove(lag(dead))
             
-            test_o2m_aggregate: show(grpavg(countlink(mc)))
+            test_o2m_aggregate: show(grpavg(countlink(children)))
 
             test_groupby:
                 - test_logit: show(groupby(round(logit_score(0.0), 1)))
@@ -291,16 +288,16 @@ entities:
                 - num_married: show(groupby(agegroup, gender,
                                              expr=grpcount(ismarried)))
                 - num_widows: show(groupby(agegroup, gender, 
-                                            expr=grpcount(ps.dead)))
-                - bad_partners: if(partner_id != -1, id != ps.ps.id, nan)
+                                            expr=grpcount(partner.dead)))
+                - bad_partners: if(partner_id != -1, id != partner.partner.id, nan)
                 - num_bad_partner: show(groupby(agegroup, gender, 
                                                  expr=grpsum(if(partner_id != -1, 
-                                                                id != ps.ps.id,
+                                                                id != partner.partner.id,
                                                                 nan))))
                 - agediff: show(groupby(agegroup, gender, 
-                                         expr=grpavg(age - if(ps.age == -1, nan, ps.age))))
-#                                        expr=grpavg(abs(age - if(ps.age == -1, nan, ps.age)))))
-#                                        expr=grpsum(countlink(mc)) / grpsum(not dead)))
+                                         expr=grpavg(age - if(partner.age == -1, nan, partner.age))))
+#                                        expr=grpavg(abs(age - if(partner.age == -1, nan, partner.age)))))
+#                                        expr=grpsum(countlink(children)) / grpsum(not dead)))
 #                                        expr=grpavg(nch)))
                 - minmax_age: show(groupby(id / 100, gender, expr=grpmax(age) - grpmin(age)))
 
@@ -339,8 +336,7 @@ simulation:
 #                   test_groupby,
 #                   test_dump,
         ]
-        - household: [cleanup,
-                      num_persons, nch, maxnch, 
+        - household: [num_persons, nch, maxnch, 
 #                      dump_csv_h
                      ]
 
