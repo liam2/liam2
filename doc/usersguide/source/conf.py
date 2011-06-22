@@ -166,7 +166,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'LIAM2UserGuidedoc'
+htmlhelp_basename = 'LIAM2UserGuide'
 
 
 # -- Options for LaTeX output --------------------------------------------------
