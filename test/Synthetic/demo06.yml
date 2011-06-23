@@ -86,8 +86,10 @@ entities:
             age: "age + 1"
 
             agegroup:
-                - agegroup_civilstate: "if(age<50, 5*trunc(age/5), 10*trunc(age/10))"
-                - agegroup_work: "if(age<70, 5*trunc(age/5), 70)"
+                - agegroup_civilstate: "if(age < 50,
+                                           5 * trunc(age / 5),
+                                           10 * trunc(age / 10))"
+                - agegroup_work: "if(age < 70, 5 * trunc(age / 5), 70)"
 
             death:
                 - dead: "if(ISMALE,
@@ -114,8 +116,7 @@ entities:
                                  civilstate = SINGLE,
                                  education_level = UNSET,
                                  workstate = STUDENT,
-                                 gender=choice([MALE, FEMALE], [0.51, 0.49]) )"
-                - nch: "countlink(children)"
+                                 gender = choice([MALE, FEMALE], [0.51, 0.49]) )"
 
             marriage:
                 - in_couple: "ISMARRIED"
@@ -160,7 +161,7 @@ entities:
                                      0,
                                      if(in_couple, dur_in_couple + 1, 0))"
 #                - dump_couples: "csv(dump(id, age, gender,
-#                                          partner.id, partner.age, partner.gender, 
+#                                          partner.id, partner.age, partner.gender,
 #                                          hh_id, filter=justcoupled),
 #                                          suffix='new_couples')"
 
@@ -202,7 +203,7 @@ simulation:
 
     processes:
         - household: [household_composition, clean_empty]
-        - person: [age, agegroup, death, birth, marriage, divorce]
+        - person: [age, agegroup, death, birth, marriage, get_a_life, divorce]
         - household: [household_composition, clean_empty]
 
     input:

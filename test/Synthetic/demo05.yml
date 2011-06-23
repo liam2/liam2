@@ -86,8 +86,10 @@ entities:
             age: "age + 1"
 
             agegroup:
-                - agegroup_civilstate: "if(age<50, 5*trunc(age/5), 10*trunc(age/10))"
-                - agegroup_work: "if(age<70, 5*trunc(age/5), 70)"
+                - agegroup_civilstate: "if(age < 50,
+                                           5 * trunc(age / 5),
+                                           10 * trunc(age / 10))"
+                - agegroup_work: "if(age < 70, 5 * trunc(age / 5), 70)"
 
             death:
                 - dead: "if(ISMALE,
@@ -103,18 +105,18 @@ entities:
 
             birth:
                 - to_give_birth: "logit_regr(0.0,
-                            filter=ISFEMALE and (age >= 15) and (age <= 50),
-                            align='al_p_birth.csv')"
+                                             filter=ISFEMALE and (age >= 15) and (age <= 50),
+                                             align='al_p_birth.csv')"
                 - newbirth: "new('person', filter=to_give_birth,
-                     age = 0,
-                     m_id = id,
-                     m_age = age,
-                     hh_id = hh_id,
-                     partner_id = UNSET,
-                     civilstate = SINGLE,
-                     education_level = UNSET,
-                     workstate = STUDENT,
-                     gender=choice([MALE, FEMALE], [0.51, 0.49]) )"
+                                 m_id = id,
+                                 m_age = age,
+                                 hh_id = hh_id,
+                                 age = 0,
+                                 partner_id = UNSET,
+                                 civilstate = SINGLE,
+                                 education_level = UNSET,
+                                 workstate = STUDENT,
+                                 gender = choice([MALE, FEMALE], [0.51, 0.49]) )"
 
             marriage:
                 - in_couple: "ISMARRIED"
@@ -158,7 +160,7 @@ entities:
                 - dur_in_couple: "if(justcoupled,
                                      0,
                                      if(in_couple, dur_in_couple + 1, 0))"
-                - dump_couples: "csv(dump(id, age, gender, 
+                - dump_couples: "csv(dump(id, age, gender,
                                           partner.id, partner.age, partner.gender,
                                           hh_id, filter=justcoupled),
                                           suffix='new_couples')"
