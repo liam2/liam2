@@ -1,6 +1,7 @@
 from simulation import Simulation
+from data_main import do_import
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 class AutoflushFile(object):
     def __init__(self, f):
@@ -9,6 +10,14 @@ class AutoflushFile(object):
     def write(self, s):
         self.f.write(s)
         self.f.flush()
+
+def usage(args):
+    print """
+Usage: %s action file [-i]
+  action: can be either 'import' or 'run'
+  file: the file to run or import
+  -i: show the interactive console after the simulation 
+""" % args[0]
 
 if __name__ == '__main__':
     import sys, platform
@@ -21,26 +30,35 @@ if __name__ == '__main__':
     print
 
     args = sys.argv
-    fpath = args[1] if len(args) > 1 else 'simulation.yml'
-    console = len(args) > 2 and args[2] == "-i" 
-    print "Using simulation file: '%s'" % fpath
-    simulation = Simulation(fpath, console)
+    if len(args) < 3:
+        usage(args)
     
-    do_profile = False
-    if do_profile:
-        import cProfile as profile
-        profile.run('simulation.run()', 'c:\\tmp\\simulation.profile')
-    else:
-#        try:
-        simulation.run()
-#        except Exception, e:
-#            print 
-#            print str(e)
-#            import traceback
-#            with file('error.log', 'w') as f:
-#                traceback.print_exc(file=f)
+    action = args[1]
+    fpath = args[2]
+    console = len(args) > 3 and args[3] == "-i"
+    
+    if action == 'run':
+        print "Using simulation file: '%s'" % fpath
+        simulation = Simulation(fpath, console)
+    
+        do_profile = False
+        if do_profile:
+            import cProfile as profile
+            profile.run('simulation.run()', 'c:\\tmp\\simulation.profile')
+            # to use profiling data:
+            # p = pstats.Stats('c:\\tmp\\simulation.profile')
+            # p.strip_dirs().sort_stats('cum').print_stats(30)
+        else:
+#            try:
+            simulation.run()
+#            except Exception, e:
+#                print 
+#                print str(e)
+#                import traceback
+#                with file('error.log', 'w') as f:
+#                    traceback.print_exc(file=f)
 
-    # use profiling data:
-    # p = pstats.Stats('c:\\tmp\\simulation.profile')
-    # p.strip_dirs().sort_stats('cum').print_stats(30)
-    
+    elif action == "import":
+        do_import(fpath)
+    else:
+        usage(args)

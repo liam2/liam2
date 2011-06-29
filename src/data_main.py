@@ -1,6 +1,6 @@
 import os
 import csv
-from itertools import izip, islice
+from itertools import islice
 
 import numpy as np
 import carray as ca
@@ -13,17 +13,42 @@ from properties import missing_values
 from simulation import Simulation
         
 MB = 2.0 ** 20
+str_to_type = {'float': float, 'int': int, 'bool': bool}
 
 
 def to_int(v):
-    return int(float(v)) if v else 0
+    if not v or v == '--':
+        return -1
+    else:
+        return int(v)
+    
+NaN = np.NaN
 
 def to_float(v):
-    return float(v) if v else 0.0
+    if not v or v == '--':
+        return NaN
+    else:
+        return float(v)
 
 def to_bool(v):
     return v.lower() in ('1', 'true')
 
+def guess_type(v):
+    if not v or v == '--':
+        return None
+
+    v = v.lower()
+    if v in ('0', '1', 'false', 'true'):
+        return bool
+    elif v.isdigit():
+        return int
+    else:
+        try:
+            float(v)
+            return float
+        except ValueError:
+            raise ValueError("cannot determine type for '%s'" % v)
+    
 converters = {bool: to_bool,
               int: to_int,
               float: to_float}
@@ -55,8 +80,51 @@ def import_csv_3col(fpath, vname, vtype, delimiter=","):
             for row in dataReader:
                 yield (int(row[time_pos]), int(row[id_pos]))
 
+def detect_column_types(iterable):
+    iterator = iter(iterable)
+    header = iterator.next()
+    numcolumns = len(header)
+    coltypes = [0] * numcolumns
+    type2code = {None: 0, bool: 1, int: 2, float: 3}        
+    for row in iterator:
+        assert len(row) == numcolumns, \
+               "all rows do not have the same number of columns"
+        for column, value in enumerate(row):
+            coltypes[column] = max(coltypes[column],
+                                   type2code[guess_type(value)])
+    for colname, coltype in zip(header, coltypes):
+        assert coltype != 0, "column %s is all empty" % colname
+    num2type = [None, bool, int, float]
+    return [(name, num2type[coltypes[column]])
+            for column, name in enumerate(header)]
 
-def import_csv(fpath, fields, delimiter=","):
+def detect_csv_column_types(fpath, delimiter=","):
+    with open(fpath, "rb") as f:
+        return detect_column_types(csv.reader(f, delimiter=delimiter))
+        
+def convert(iterable, fields, positions=None):
+    funcs = [converters[type_] for name, type_ in fields]
+    if positions is None:
+        for row in iterable:
+            yield tuple(func(value) for func, value in zip(funcs, row))
+    else:
+        assert len(positions) <= len(fields) 
+        for row in iterable:
+            yield tuple(func(row[pos])
+                        for func, pos in zip(funcs, positions))
+
+# we need an explicit function for this, even if the code is also present in
+# import_csv because np.fromiter with a count argument swallows all exceptions
+# from the iterator
+def check_csv_fields(fpath, fields, delimiter=","):
+    with open(fpath, "rb") as f:
+        dataReader = csv.reader(f, delimiter=delimiter)
+        header = dataReader.next()
+        missing_columns = set(name for name, _ in fields) - set(header)
+        if missing_columns: 
+            raise Exception("missing field(s): %s" % ", ".join(missing_columns))
+    
+def import_csv(fpath, fields=None, delimiter=","):
     '''imports one Xsv file with all columns 
        time, id, value1, value2, value3 (not necessarily in that order)
     '''
@@ -67,17 +135,21 @@ def import_csv(fpath, fields, delimiter=","):
         
         header = dataReader.next()
         
-        fieldnames = [name for name, type_ in fields]
-        missing_columns = set(fieldnames) - set(header)
-        assert not missing_columns, "Missing fields: %s" % \
-               ", ".join(missing_columns)
+        if fields is None:
+            fields = [(name, float) for name in header]
+            positions = None
+        else:
+            fieldnames = [name for name, _ in fields]
+            missing_columns = set(fieldnames) - set(header)
+            assert not missing_columns, "missing field(s): %s" % \
+                   ", ".join(missing_columns)
         
-        positions = [header.index(fieldname) for fieldname in fieldnames]
-        funcs = [converters[type_] for name, type_ in fields]
-        for row in dataReader:
-            yield tuple(func(row[pos]) for func, pos in zip(funcs, positions))
+            positions = [header.index(fieldname) for fieldname in fieldnames]
 
-
+        #XXX: is there no way to avoid this? yield from?
+        for row in convert(dataReader, fields, positions):
+            yield row
+            
 def export_csv_3col(file_path, data, colname, delimiter=","):
     with open(file_path, "wb") as f:
         dataWriter = csv.writer(f, delimiter=delimiter)
@@ -103,15 +175,168 @@ def transpose_table(data):
     return [[data[rownum][colnum] for rownum in range(numrows)]
             for colnum in range(numcols)]
 
-def transpose_and_convert(lines):
+# initially copied from simulation_txt2yaml
+def load_av_globals(input_path):
+    # macro.av is a csv with tabs OR spaces as separator and a header of 1
+    # line
+    with open(input_path, "rb") as f:
+        lines = [line.split() for line in f.read().splitlines()]
+
+    # eg: "sample 1955Y1 2060Y1"
+    firstline = lines.pop(0)
+    assert firstline[0] == "sample"
+    def year_str2int(s):
+        return int(s.replace('Y1', ''))
+    start, stop = year_str2int(firstline[1]), year_str2int(firstline[2])
+    num_periods = stop - start + 1
+
     transposed = transpose_table(lines)
-    names = transposed.pop(0)
-    funcs = [float for _ in range(len(lines))]
-    funcs[0] = int
-    converted = [tuple([func(cell.replace('--', 'NaN'))
-                  for cell, func in izip(row, funcs)])
-                 for row in transposed]
-    return names, converted
+    fields = detect_column_types(transposed)
+    data = list(convert(transposed[1:], fields))
+    
+    assert fields[0] == ('YEAR', int)
+
+    # rename YEAR to period
+    fields[0] = ('period', int)
+    assert len(data) == num_periods
+    return fields, data
+
+#TODO: move the transpose functionality to import_csv
+def load_csv_globals(input_path, fields=None, transpose=False):
+    if transpose:
+        with open(input_path, "rb") as f:
+            lines = list(csv.reader(f))
+        transposed = transpose_table(lines)
+        if fields is None:
+            fields = detect_column_types(transposed)
+        data = convert(transposed[1:], fields)
+    else:
+        if fields is None:
+            fields = detect_csv_column_types(input_path)
+        data = import_csv(input_path, fields)
+    
+    assert ('period', int) in fields or ('PERIOD', int) in fields
+    try:
+        pos = fields.index(('PERIOD', int))
+        # make a copy so that we don't modify the list instance we passed to the
+        # import_csv generator (which will be executed only when the data is
+        # actually used)
+        fields = fields[:]
+        fields[pos] = ('period', int)
+    except ValueError:
+        pass 
+    return fields, data
+
+def load_globals(input_path):
+    print "*** globals ***"
+    print "reading", input_path
+    if input_path.endswith('.av'):
+        return load_av_globals(input_path)
+    elif input_path.endswith('.csv'):
+        return load_csv_globals(input_path, transpose=True)
+
+def create_globals_table(h5file, globals):
+    global_fields, global_data = globals
+    dtype = np.dtype(global_fields)
+    const_array = np.array(list(global_data), dtype=dtype)
+    const_node = h5file.createGroup("/", "globals", "Globals")
+    const_table = h5file.createTable(const_node, "periodic", dtype,
+                                     title="Global time series")
+    const_table.append(const_array)
+    const_table.flush()
+
+
+def countlines(filepath):
+    with open(filepath) as f:
+        return sum(1 for _ in f)
+
+def complete_path(prefix, directory):
+    if os.path.isabs(directory):
+        return directory
+    else:
+        return os.path.join(prefix, directory) 
+
+def do_import(fpath, buffersize=10 * 2 ** 20):
+    with open(fpath) as f:
+        content = yaml.load(f)
+                    
+    localdir = os.path.dirname(os.path.abspath(fpath))
+     
+    h5_filename = content['output']
+    h5_filepath = complete_path(localdir, h5_filename)
+    print "Importing in", h5_filepath
+    h5file = tables.openFile(h5_filepath, mode="w", title="CSV import")
+    
+    periodic_def = content.get('globals', {}).get('periodic') 
+    if periodic_def is not None:
+        print "*** globals ***"
+        csv_filename = periodic_def.get('path', 'periodic.csv')
+        csv_filepath = complete_path(localdir, csv_filename)
+        transpose = periodic_def.get('transposed', False)
+        #TODO: use the same code as for entities, so that it handle fields,
+        # renames and inverts
+        globals = load_csv_globals(csv_filepath, transpose=transpose)
+        create_globals_table(h5file, globals)
+        
+    ent_node = h5file.createGroup("/", "entities", "Entities")
+    
+    for ent_name, entity_def in content['entities'].iteritems():
+        print "*** %s ***" % ent_name
+        csv_filename = entity_def.get('path', ent_name + ".csv")
+        csv_filepath = complete_path(localdir, csv_filename)
+        
+        toinvert = entity_def.get('invert', [])
+        oldnames = entity_def.get('oldnames')
+        fields_def = entity_def.get('fields')
+        if fields_def is not None:
+            # handle YAML ordered dict structure
+            field_list = [d.items()[0] for d in fields_def]
+            # convert string type to real types
+            fields = [(name, str_to_type[type_]) for name, type_ in field_list]
+            fields[0:0] = [('period', int), ('id', int)]
+            if oldnames is None:
+                fields_oldnames = fields
+            else:
+                fields_oldnames = [(oldnames.get(name, name), type_)
+                                   for name, type_ in fields]
+        else:
+            fields_oldnames = detect_csv_column_types(csv_filepath)
+            if oldnames is None:
+                fields = fields_oldnames
+            else:
+                newnames = [(v, k) for k, v in oldnames.iteritems()]
+                fields = [(newnames.get(name, name), type_)
+                          for name, type_ in fields_oldnames]
+            for field in ('period', 'id'):
+                assert (field, int) in fields, \
+                       "%s does not contain an integer '%s' field. You " \
+                       "should either rename the corresponding field or use " \
+                       "'oldnames'." % (csv_filename, field)  
+            
+        dtype = np.dtype(fields)
+        table = h5file.createTable(ent_node, ent_name, dtype,
+                                   title="%s table" % ent_name)
+        
+        numlines = countlines(csv_filepath) - 1
+        check_csv_fields(csv_filepath, fields_oldnames)
+        datastream = import_csv(csv_filepath, fields_oldnames)
+
+        # buffered load
+        max_buffer_rows = buffersize / dtype.itemsize
+        while numlines > 0:
+            buffer_rows = min(numlines, max_buffer_rows)
+            # ideally, we should preallocate an empty buffer and reuse it, 
+            # but that does not seem to be supported by numpy
+            buffer = np.fromiter(islice(datastream, max_buffer_rows),
+                                 dtype=dtype, count=buffer_rows)
+            for field in toinvert:
+                buffer[field] = ~buffer[field]
+            table.append(buffer)
+            table.flush()
+            
+            numlines -= buffer_rows
+
+    h5file.close()
 
 
 class ImportExportData(object):
@@ -174,62 +399,9 @@ class ImportExportData(object):
             export_csv(file_path, array, fields, delimiter)
         h5file.close()
         
-    # copied from simulation_txt2yaml
-    def load_av_globals(self, input_path):
-        # macro.av is a csv with tabs OR spaces as separator and a header of 1
-        # line
-        with open(input_path, "rb") as f:
-            lines = [line.split() for line in f.read().splitlines()]
-
-        # eg: "sample 1955Y1 2060Y1"
-        firstline = lines.pop(0)
-        assert firstline[0] == "sample"
-        def year_str2int(s):
-            return int(s.replace('Y1', ''))
-        start, stop = year_str2int(firstline[1]), year_str2int(firstline[2])
-        num_periods = stop - start + 1
-
-        names, data = transpose_and_convert(lines)
-        assert names[0] == 'YEAR'
-        # rename YEAR to period
-        names[0] = 'period'
-        assert len(data) == num_periods
-        return names, data
-
-    def load_csv_globals(self, input_path):
-        with open(input_path, "rb") as f:
-            lines = list(csv.reader(f))
-        names, data = transpose_and_convert(lines)
-        assert names[0].lower() == 'period'
-        names[0] = 'period'
-        return names, data
-
-    def load_globals(self, input_path):
-        print "*** globals ***"
-        print "reading", input_path
-        if input_path.endswith('.av'):
-            return self.load_av_globals(input_path)
-        elif input_path.endswith('.csv'):
-            return self.load_csv_globals(input_path)
-
-    def create_globals_table(self, h5file, globals):
-        const_names, const_data = globals
-        #FIXME: use declared types instead
-        coltypes = [(name, float) if name != 'period' else ('period', int)
-                    for name in const_names]
-        dtype = np.dtype(coltypes)
-        const_array = np.array(const_data, dtype=dtype)
-        
-        const_node = h5file.createGroup("/", "globals", "Globals")
-
-        const_table = h5file.createTable(const_node, "periodic", dtype,
-                                         title="Global time series")
-        const_table.append(const_array)
-        const_table.flush()
-
     def import_tsv(self, complib=None, complevel=5, delimiter="\t"):
         print "Importing in", self.h5
-        globals = self.load_globals(self.globals_path)
+        globals = load_globals(self.globals_path)
         h5file = tables.openFile(self.h5, mode="w", title="CSV import")
         missing_files = []
 
@@ -269,7 +441,7 @@ class ImportExportData(object):
             raise Exception("missing files:\n - %s" 
                             % "\n - ".join(missing_files))
 
-        self.create_globals_table(h5file, globals)
+        create_globals_table(h5file, globals)
 
         entities_node = h5file.createGroup("/", "entities", "Entities")
 
@@ -309,7 +481,6 @@ class ImportExportData(object):
 
             toload_entity = to_load[ent_name]
 
-            
             print " * computing number of rows..."
             id_periods = None
             id_periods_dtype = np.dtype([('period', int), ('id', int)])
@@ -318,8 +489,7 @@ class ImportExportData(object):
                 file_path = os.path.join(self.csv_path, filename)
                 #TODO: check if it is faster in 2 passes (compute number of
                 # lines first)
-                with open(file_path) as f:
-                    numlines = sum(1 for line in f) - 1
+                numlines = countlines(file_path) - 1
                 id_period_stream = import_csv_3col(file_path, None, None,
                                                    delimiter)
                 file_id_periods = np.fromiter(id_period_stream,
@@ -420,7 +590,7 @@ class ImportExportData(object):
                 print "done."
 
             if toinvert:
-                print " * inverting..." 
+                print " * inverting..."
                 for field in toinvert:
                     array[field] = ~array[field]
 
@@ -466,9 +636,9 @@ class ImportExportData(object):
         
     def import_csv(self, delimiter=",", buffersize=10 * 2 ** 20): # 10 Mb
         print "Importing in", self.h5
-        globals = self.load_globals(self.globals_path)
+        globals = load_globals(self.globals_path)
         h5file = tables.openFile(self.h5, mode="w", title="CSV import")
-        self.create_globals_table(h5file, globals)
+        create_globals_table(h5file, globals)
         ent_node = h5file.createGroup("/", "entities", "Entities")
 
         for ent_name, entity in entity_registry.iteritems():
@@ -489,10 +659,7 @@ class ImportExportData(object):
             table = h5file.createTable(ent_node, ent_name, dtype,
                                        title="%s table" % ent_name)
             
-            # count number of lines
-            with open(filepath) as f:
-                numlines = sum(1 for line in f) - 1
-            
+            numlines = countlines(filepath) - 1
             datastream = import_csv(filepath, neededfield_oldnames, delimiter)
 
             # buffered load
@@ -518,6 +685,7 @@ if __name__ == '__main__':
 
     print 'Using Python %s' % sys.version
     args = sys.argv
+
     valid_cmds = ('export_tsv', 'export_csv', 'import_tsv', 'import_csv')
     if len(args) < 4:
         print """
