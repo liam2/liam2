@@ -220,12 +220,12 @@ The name of the process is *age* and what it does is increasing the variable
 simple expressions
 ~~~~~~~~~~~~~~~~~~
 
-- Arithmetic operators: +, -, *, /, **, %
+- Arithmetic operators: +, -, \*, /, \** (exponent), % (modulo)
 
 Note that an integer divided by an integer returns a float. For example "1 / 2" 
-will evaluate to 0.5 instead of 0. If you are only interested in the integer
-part of that result (for example, if you know the result has no decimal part),
-you can use the *trunc* function: ::
+will evaluate to 0.5 instead of 0 as in many programming languages. If you are
+only interested in the integer part of that result (for example, if you know the
+result has no decimal part), you can use the *trunc* function: ::
 
     agegroup5: "5 * trunc(age / 5)"
 
@@ -238,16 +238,16 @@ other operators. ::
     inwork: "(workstate > 1) and (workstate < 5)"
     to_give_birth: "not gender and (age >= 15) and (age <= 50)"
 
-- Conditional expressions: 
+- Conditional expressions:
     if(condition, expression_if_true, expression_if_false)
 
 *example* ::
 
     agegroup_civilstate: "if(age < 50,
-                             5 * trunc(age / 5), 
+                             5 * trunc(age / 5),
                              10 * trunc(age / 10))"
     
-Note that an *if*-statement has always three arguments. If you want to leave a 
+Note that an *if*-statement has always three arguments. If you want to leave a
 variable unchanged if a condition is not met, specify its value in the 
 *expression_if_false* ::
 
@@ -464,9 +464,9 @@ Stochastic changes II: behavioural equations
 - Alignment : 
     * align(expr, [take=take_filter,] [leave=leave_filter,] percentage)
     * align(expr, [take=take_filter,] [leave=leave_filter,] fname='filename.csv')
-- Continuous (expr + normal(0, 1) * mult + error): cont_regr(expr, filter, align, mult, error_var)
-- Clipped continuous (always positive): clip_regr(expr, filter, align, mult, error_var)
-- Log continuous (exponential of continuous): log_regr(expr, filter, align, mult, error_var)
+- Continuous (expr + normal(0, 1) * mult + error_var): cont_regr(expr, filter, mult, error_var)
+- Clipped continuous (always positive): clip_regr(expr, filter, mult, error_var)
+- Log continuous (exponential of continuous): log_regr(expr, filter, mult, error_var)
 
 
 *example* ::
@@ -985,18 +985,18 @@ csv
 
 You can write the contents of a *table* to csv-file.  
 
-**csv** works with any expression producing a table (eg. dump, groupby).
+**csv** works with any expression producing a table (dump and groupby).
 
     csv(table_expression, suffix='suffix_specification')
     
-The name of the output file will be 
-<entity_name>_<period>_<suffix_specifiction>.csv.
+The name of the output file will be "<entity_name>_<period>_<suffix>.csv",
+or simply "<entity_name>_<period>.csv" if there is no suffix.
     
 *example* ::
 
     csv(table_expr, suffix='income')
     
-wille creates one file for each simulated period. Assuming, start_period is
+will create one file for each simulated period. Assuming, start_period is
 2002 and periods is 2, it will create two files: "person_2002_income.csv" and
 "person_2003_income.csv" with the data specified in *table_expr* from the person
 entity for the period 2002 and 2003 respectively.
@@ -1006,11 +1006,15 @@ entity for the period 2002 and 2003 respectively.
 dump    
 ----
 
-**dump**: produces a table with the expressions given as argument
+**dump** produces a table with the expressions given as argument.
 
 *general format*
 
-    dump(expr[, expr2, expr3, ..., filter=filterexpression])
+    dump([expr1, expr2, expr3, ..., filter=filterexpression])
+    
+If no expression is given, *all* fields of the current entity will be dumped,
+otherwise, each expression will be evaluated on the objects which satisfy the
+filter and produce a table.
 
 *example* ::
 
@@ -1036,7 +1040,9 @@ groupby
 -------
 
 **groupby** (aka *pivot table*): group individuals by their value for the given
-expressions, and optionally compute an expression for each group
+expressions, and optionally compute an expression for each group. If no
+expression is given, it will compute the number of individuals in that
+group.
 
 *general format* ::
 
@@ -1065,7 +1071,7 @@ gives ::
 
 *example* ::
 
-    show(groupby(inwork,gender))
+    show(groupby(inwork, gender))
 
 gives ::            
 
