@@ -63,6 +63,13 @@ entities:
             
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
+            
+            temp_global: age + 10
+            temp_global_test1:
+                - temp_global: temp_global * 2
+            temp_global_test2:
+                - temp_global: temp_global - 10
+            show_temp_global: show(temp_global)
                 
             test_expr:
                 - show("count:", grpcount())
@@ -71,12 +78,15 @@ entities:
                 - show("age / 10:", age / 10)
                 - show("100 / age:", 100 / age)
                 - show("age * (1 / 2):", age * (1 / 2))
-
+                - show("clip(age, 10, 50)", clip(age, 10, 50)) 
+            
             test_globals:
                 - no_index: MINR
                 - const_index: MINR[2005]
                 - expr_index: MINR[period - 1]
-                - show("implicit current period:", no_index, "/ in 2005:", const_index, "/ previous period:", expr_index)
+                - show("implicit current period:", no_index, 
+                       "/ in 2005:", const_index, 
+                       "/ previous period:", expr_index)
                 - globals_in_expr: 1.0 + MINR
                 - idx_globals_in_expr: 1.0 + MINR[2002]
                 - expr_idx_globals_in_expr: 1.0 + MINR[period - 1]
@@ -126,15 +136,38 @@ entities:
                 - simple: logit_regr(0.0)
                 
             test_log_regr:
-                - hours1: "if(MALE and work,
-                              log_regr(2.484557 + 0.2283921 * age - 0.0026106 * age **2),
-                              0)"
-                - hours2: "if(MALE and work, 
-                              exp(2.484557 + 0.2283921 * age - 0.0026106 * age **2),
-                              0)"
-                - show('hours1', hours1, '\n',
-                       'num values:', grpcount(hours1 > 0), '\n',
-                       'has problems:', grpcount(hours1 != hours2) > 0)
+                - v1: if(MALE,
+                         log_regr(2.484557 + 0.2283921 * age - 0.0026106 * age **2),
+                         0)
+                - v2: if(MALE, 
+                         exp(2.484557 + 0.2283921 * age - 0.0026106 * age **2),
+                         0)
+                - show('v1', v1, '\n',
+                       'num values:', grpcount(v1 > 0), '\n',
+                       'num problems:', grpcount(v1 != v2))
+                
+                - err: normal()
+                       
+                - v3: "if(MALE,
+                          log_regr(2.484557 + 0.2283921 * age, error_var='err'),
+                          0)"
+                - v4: "if(MALE,
+                          exp(2.484557 + 0.2283921 * age + err),
+                          0)"
+                - show('v3', v3, '\n', 'v4', v4, '\n',
+                       'num values:', grpcount(v3 > 0), '\n',
+                       'num problems:', grpcount(v3 != v4))
+
+                - v5: "if(MALE,
+                          log_regr(2.484557 + 0.2283921 * age, mult=2),
+                          0)"
+                - v6: "if(MALE,
+                          exp(2.484557 + 0.2283921 * age + normal(0, 1) * 2),
+                          0)"
+                # max(normal) - min(normal) is commonly < 10
+                - show('log(v5)', log(v5), '\n', 'log(v6)', log(v6), '\n',
+                       'num values:', grpcount(v5 > 0), '\n',
+                       'num problems:', grpcount(log(v5) - log(v6) > 20))
             
             test_uninitialized_var: not to_give_birth
             to_give_birth: if(not gender and (age >= 15) and (age <= 50),
@@ -309,7 +342,15 @@ simulation:
     processes:
         - person: [#bp,
                    cleanup,
-                   test_expr, 
+                   
+                   temp_global,
+                   show_temp_global,
+                   temp_global_test1,
+                   show_temp_global,
+                   temp_global_test2,
+                   show_temp_global,
+                    
+                   test_expr,
                    test_globals,
                    test_macro,
                    test_compound, 
