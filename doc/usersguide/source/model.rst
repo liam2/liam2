@@ -3,21 +3,10 @@
 Model Definition
 ################
 
-Microsimulation (acronym for microanalytic simulation) is a modelling technique 
-that operates at the level of individual *entities* such as persons, households,
-vehicles or firms. Within the model each entity is represented by a record
-containing a unique identifier and a set of associated attributes (e.g. age,
-gender, work state, civil state, ...) characteristics. A set of *processes* are
-then applied to these entities leading to simulated changes in state and
-behaviour. These rules may be deterministic (probability = 1), such as changes
-in tax liability resulting from changes in tax regulations, or stochastic
-(probability <= 1), such as chance of dying, marrying, giving birth or moving
-within a given time period.
-
-To define the model, we have to describe the different *entities*, the way they
-interact (*links*) and how they behave (*processes*) over time. This is done in
-one file. We use the YAML-markup language. This format uses the level of
-indentation to specify objects and sub objects.
+To define the model, we have to describe the different *entities*, 
+their *fields*, the way they interact (*links*) and how they behave over time
+(*processes*). This is done in one file. We use the YAML-markup language.
+This format uses the level of indentation to specify objects and sub objects.
 
 In a LIAM 2 model file, all text following a # is considered to be comments, and
 is therefore ignored.

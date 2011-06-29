@@ -1,5 +1,5 @@
-Welcome to LIAM 2 User Guide's documentation!
-==============================================
+Welcome to LIAM 2 User Guide !
+==============================
 
 .. toctree::
    :maxdepth: 3
@@ -10,6 +10,7 @@ Welcome to LIAM 2 User Guide's documentation!
    model
    processes
    links
+   import
 
 Indices and tables
 ==================
@@ -17,10 +18,11 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`search`
 
-Change log
-==========
+Appendix
+========
 
 .. toctree::
    :maxdepth: 1
 
+   technicalchoices
    changes

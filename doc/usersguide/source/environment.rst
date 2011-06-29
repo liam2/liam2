@@ -1,68 +1,55 @@
-﻿.. index:: python, hdf5, yaml, notepad++
+﻿.. index:: bundle, notepad++
 
 Environment
 ###########
 
-Python
-------
+LIAM 2 bundle
+-------------
 
-We use the Python language (http://www.python.org/) for the development of LIAM 2. 
+The bundle includes:
 
-    Python runs on Windows, Linux/Unix, Mac OS X, and has been ported to the Java and .NET virtual machines.
+- The executable.
 
-    Python is free to use, even for commercial products, because of its OSI-approved open source license.
+- A text editor (Notepad++), pre-configured to work with LIAM2 models.
+
+  * Notepad++ is a free (and open source) text editor that is available
+    at http://sourceforge.net/projects/notepad-plus/.
     
-HDF5    
-----
+  * We pre-configured it so that you can import csv files and run your models
+    directly from within the editor by simply pressing F5 or F6 respectively.
+    See below for more information.
     
-We store the used data in an hdf5-format (http://www.hdfgroup.org).  
+- The documentation in html, pdf and chm (windows help) format.
 
-    HDF5 is a data model, library, and file format for storing and managing data. It supports an unlimited variety of
-    data types, and is designed for flexible and efficient I/O and for high volume and complex data. HDF5 is portable and is
-    extensible, allowing applications to evolve in their use of HDF5. The HDF5 Technology suite includes tools and
-    applications for managing, manipulating, viewing, and analyzing data in the HDF5 format.
-    
-    HDF is open-source and the software is distributed at no cost. Potential users can evaluate HDF without any financial
-    investment. Projects that adopt HDF are assured that the technology they rely on to manage their data is not dependent upon a
-    proprietary format and binary-only software that a company may dramatically increase the price of, or decide to stop
-    supporting altogether.
-    
-This allows us to handle important data sets.     
-
-YAML
-----
-
-The definition of the data and the model is done in the YAML-language (http://www.yaml.org).
-
-    YAML: YAML Ain't Markup Language
-
-    What It Is: YAML is a human friendly data serialization standard for all programming languages.
-    
-Notepad++
----------
-
-We bundle LIAM 2 with a portable version of the Notepad++-editor (http://sourceforge.net/projects/notepad-plus/). 
-This editor allows YAML syntax highlighting.
-
-LIAM 2
-------
-
-We package LIAM 2 into an executable. Python is bundled with the executable and does not need to be installed separately. The
-package bundles all the extra modules (NumPy, NumExpr, Pytables, ...) we use.
-
-In the future we plan a GUI-version of the program.
+- A demonstration model with a synthetic data set of 20,200 persons grouped in
+  14,700 households.
 
 Getting Started
 ---------------
 
-- Copy the contents of the bundle in a directory on your disk.
+- Copy the contents of the bundle in a directory on your disk (let's call it 
+  *\\localpath\\*).
 
 - Run the "Notepad++Portable.exe" from the *\\localpath\\Liam2Suite* directory.
 
-- Open the model (ex. \\localpath\\Liam2Suite\\Synthetic\\demo_model.yml)
+- Open a model (eg. \\localpath\\Liam2Suite\\Synthetic\\demo_model.yml)
 
-- Enter F6 to run the model. An interactive console window with the output opens within the editor.
+- Press F6 to run the model. A console window will open within the editor and
+  display the status of the simulation. After the simulation completes, the
+  console window becomes interactive.
 
 - Use this console to explore the results.
 
+Using your own data
+-------------------
 
+- Prepare your data as CSV files. The first row should contain the name of the
+  fields. You need at least two integer columns: "id" and "period" (though they
+  do not necesarrily need to be named like that in the csv file).
+
+- Create an import file, as described in the :ref:`import_data` section. You
+  can use \\localpath\\Liam2Suite\\Synthetic\\demo_import.yml as an example.
+
+- Press F5 to convert your CSV files to hdf5.
+
+- Use the newly created data file with your model.
