@@ -374,16 +374,18 @@ class H5Data(object):
         input_file = tables.openFile(self.input_path, mode="r")
         output_file = tables.openFile(self.output_path, mode="w")
 
+        periodic_globals = None
         input_root = input_file.root
-
-        output_globals = output_file.createGroup("/", "globals", "Globals")
-        # load globals in memory
-        copyTable(input_root.globals.periodic, output_file, output_globals)
-        periodic_globals = input_root.globals.periodic.read()
+        if 'globals' in input_root:
+            input_globals = input_root.globals
+            output_globals = output_file.createGroup("/", "globals", "Globals")
+            if 'periodic' in input_globals:
+                copyTable(input_globals.periodic, output_file, output_globals)
+                # load globals in memory
+                periodic_globals = input_globals.periodic.read()
 
         input_entities = input_root.entities
         output_entities = output_file.createGroup("/", "entities", "Entities")
-    
         for ent_name, entity in entities.iteritems():
             print ent_name, "..."
             

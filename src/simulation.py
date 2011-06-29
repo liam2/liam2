@@ -176,8 +176,9 @@ class Simulation(object):
                                 title="Simulation history")
         for entity in self.entities:
             entity.locate_tables(h5in, h5out)
-            
-        globals_base_period = periodic_globals['period'][0]
+
+        if periodic_globals is not None:            
+            globals_base_period = periodic_globals['period'][0]
         
         process_time = defaultdict(float)
 
@@ -195,16 +196,20 @@ class Simulation(object):
 
             if processes:
                 # build context for this period:
+                const_dict = {'period': period,
+                              'nan': float('nan')}
+                 
                 # update "globals" with their value for this period
-                globals_row = period - globals_base_period
-                if globals_row < 0:
-                    #TODO: use missing values instead
-                    raise Exception('Missing globals data for period %d' % period)
-                period_globals = periodic_globals[globals_row]
-                const_dict = dict((k, period_globals[k])
-                                  for k in period_globals.dtype.names)
-                const_dict['nan'] = float('nan')
-                const_dict['__globals__'] = periodic_globals
+                if periodic_globals is not None:
+                    globals_row = period - globals_base_period
+                    if globals_row < 0:
+                        #TODO: use missing values instead
+                        raise Exception('Missing globals data for period %d'
+                                        % period)
+                    period_globals = periodic_globals[globals_row]
+                    const_dict.update((k, period_globals[k])
+                                      for k in period_globals.dtype.names)
+                    const_dict['__globals__'] = periodic_globals
     
                 num_processes = len(processes)
                 for p_num, process in enumerate(processes, start=1):
