@@ -979,11 +979,10 @@ functions = {'lag': makefunc('lag', 'coerce'),
 and_re = re.compile('([ )])and([ (])')
 or_re = re.compile('([ )])or([ (])')
 not_re = re.compile(r'([ (=]|^)not(?=[ (])')
-
+if_re = re.compile('(^|\W)if\s*\(')
 
 def parse(s, globals=None, expression=True):
-    # this prevents any function named something ending in "if"
-    str_to_parse = s.replace('if(', 'where(')
+    str_to_parse = if_re.sub(r'\1where(', s)
     str_to_parse = and_re.sub(r'\1&\2', str_to_parse)
     str_to_parse = or_re.sub(r'\1|\2', str_to_parse)
     str_to_parse = not_re.sub(r'\1~', str_to_parse)
