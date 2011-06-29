@@ -2,6 +2,7 @@ import sys
 
 from expr import expr_eval, parse, Variable
 import entities
+from properties import Process
 
 
 class Console(object):
@@ -65,7 +66,11 @@ class Console(object):
         expr = parse(s, vars, cond_context)
         
         ctx = entities.EntityContext(entity, {'period': period})
-        return expr_eval(expr, ctx)
+        if isinstance(expr, Process):
+            expr.run(ctx)
+            print "done."
+        else:
+            return expr_eval(expr, ctx)
     
     def run(self, debugger=False):
         if debugger:
