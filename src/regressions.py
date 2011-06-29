@@ -112,7 +112,7 @@ class ContRegr(Regression):
         
     def build_expr(self):
         expr = self.expr
-        if self.error_var:
+        if self.error_var is not None:
             expr += Variable(self.error_var)
         if self.mult:
             expr += Normal(0, 1) * self.mult
