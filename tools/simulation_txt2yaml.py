@@ -351,7 +351,8 @@ class RegressionImporter(TextImporter):
         def floatorempty(s):
             return float(s) if s else 0.0
         
-        readvariable = self.readvalues(str, None, floatorempty, floatorempty, floatorempty)
+        readvariable = self.readvalues(str, None,
+                                       floatorempty, floatorempty, floatorempty)
         
         for i in range(num_vars):
             line = lines[pos]
