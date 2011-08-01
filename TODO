@@ -2,10 +2,43 @@
  TODO
  --------------------------------------
 
+ 0.3.1 - somewhere in August
+
+ - better document csv format: -- for missing
+ - cleanup import code:
+   * remove duplicated code (import_csv)
+   * use the same code path for globals and entities
+     -> transpose support for entities
+     -> fields, renames and inverts support for globals
+ - better error message when using a temp variable which is not computed yet
+ - the filter argument in all regressions without alignment is ignored. I should
+   either fix that or remove the argument.
+ - if you start in a period earlier than you have any data, it
+   crashes with an unclear exception. Eg data in 2007,
+   start_period in 2001
+ - keyError when used in 64b: numpy.int64 in type_to_idx (IIRC)
+
+ 0.4.0 - end of September
+ 
+ ? data import from within the console?
+ - allow input fields to not be in the output
+ - document what each regression function does
+ ? don't quote expressions anymore
+ ? use more python-like syntax: use = instead of :
+ - review field def: do input fields need to be declared at all?
+   I could collect variables from all expressions and check that they are
+   all present in the input file.
+   however, some information about input fields will need to be defined anyway: 
+   enumerations, ranges, default values, ... (unless I store all that in the
+   input file metadata)
+ - unit tests !!!!
+
  non feature tasks
  -----------------
 
- - reorder the doc to be more logical (like in my presentations) 
+ - add explanation of what you can do with the website both on the site and
+   in the doc
+ - reorder the doc to be more logical (like in my presentations)
  - add unit tests
 
  missing features to run an automatically translated MIDAS simulation
@@ -107,6 +140,26 @@
  other missing features
  ----------------------
 
+ ? use stata regressions directly
+   * would introduce some kind of dependency on Stata which is not a good thing
+     IMO -> convert them first? 
+ - data_main: import all columns, except a few
+ ? make specifying output field types optional (I can compute them): 
+   listing the fields is technically enough, though having the type make things
+   easier and we can have some type checks 
+ - allow using temporary variables in matching 
+   eg if "inwork" is not a global, demo_model.yml gives:
+   NameError: name '__o_inwork' is not defined
+ - the score expression of the matching function shouldn't need to be quoted  
+ - implement something like "by x, y, z" in stata (though I don't remember what
+   it does exactly): it is similar to groupby but can do more stuff.
+ - "compress" in stata tries to autodetect the type of each field by 
+   inspecting the data, and convert it to the smallest type which can handle
+   that data.
+ - integrate more stuff into the console:
+   * import
+   * merge
+   * drop
  - compression should be user-configurable
  - allow input fields to not be in the output
    * it might be a good idea to rework the way to declare fields:
@@ -149,7 +202,7 @@
          - werb_wemin63_sum: float
          - werb_wemin64_sum: float
          - werb_wemin65_sum: float
-   
+ 
  ? two different values for missing links: 
    * linked to none = -1
    * missing value = -2
@@ -160,12 +213,15 @@
    * link names
  - round(X) should return int
  - warning for unused fields
+ ? either allow setting temporary variables in new() (though I'm not sure it's a 
+   good idea) or produce a better error message when we try to set an
+   unkown field
  - better error message when a procedure's processes are missing ordering 
    (it is a dict, instead of a list of dict)
  - better error message when the simulation file has been encoded to something
    different than utf8 (and it contains non-ascii chars) 
- - better error message if unknown target entity in links (KeyError)
  - better error message if unknown entity in simulation.processes (KeyError)
+   >> almost done for "init"
  - better error message when a temporary variable is used before it is computed
    (the error is not caught by the parser since the variable exists)
    KeyError: '(~to_give_birth)\nto_give_birth'
@@ -238,13 +294,15 @@
  optimisation
  ------------
 
- - try raw sql (in C)
-
+ - try SymPy speed. They use mpmath and I wonder how fast it is.
+ 
  - use bottleneck (http://pypi.python.org/pypi/Bottleneck)
    nansum, nanmin, nanmax, nanmean, nanstd
    it will probably be integrated back into numpy/scipy at some point but it
    will probably take a while, so let's use this in the mean time
  
+ - try raw sql (in C)
+
  - try making python bindings to ORC
    http://code.entropywave.com/projects/orc/
    or any of the other C JIT referenced in the external links at:
@@ -252,7 +310,10 @@
  
  - try using Theano (http://deeplearning.net/software/theano/)
    it seems to be a PITA to install though (no pre-built packages, needs a
-   compiler, BLAS, etc...)
+   compiler, BLAS, etc...). It is only integrated with CUDA (ie NVidia)
+   
+ - try PyOpenCL: OpenCL seem pretty powerful and more standardised than CUDA
+   (also works on some CPUs, not only GPUs).
  
  - try scipy.weave.blitz. It seems a bit limited in functionality but it uses 
    blitz++ (http://www.oonumerics.org/blitz/) internally which seems to contain
@@ -262,8 +323,10 @@
    
  - improve numexpr caching algorithm (LRU), and/or increase its size and/or 
    cache expressions ourselves. Some long expressions take a lot longer to 
-   "compile" than to compute. Eg minr & friends.
+   "compile" than to compute on small arrays. Eg minr & friends.
+
  - store row indices in hdf file
+ 
  - optimise memory allocation by building a dependency graph between variables
    and:
    * free temporary variables as soon as they are not needed anymore
@@ -300,10 +363,14 @@
  - optimise mean by storing partial sum in an hidden field, and compute
    the mean like this: (sum_last_period + period_value) / num_periods
  - optimise duration by using duration for last period if present
+ ? if links are accessed more often than they are modified, it could make sense
+   to store row indices in memory, instead of ids. It would make both
+   end-of-period data storage (would have to translate back to ids) and
+   lifecycle functions (new and remove) slower.  
  ? do not repartition data for each alignment and each period, but keep the
    groups from period to period and update them when the linked variable
    changes.
- ? translate partition_nd to C
+ ? translate partition_nd to C/cython
  ? translate other performance-critical code to C 
  ? try alternate algorithm for RemoveIndividuals: simply reindex, like I do it
    elsewhere. It might cause a problem if the last ids (newly borns) die.
