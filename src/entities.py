@@ -19,9 +19,7 @@ class EntityContext(object):
         try:
             return self.extra[key]
         except KeyError:
-            period = self.extra['period']
-            array_period = self.entity.array['period'][0]
-            if array_period == period:
+            if self._iscurrentperiod:
                 try:
                     return self.entity.temp_variables[key]
                 except KeyError:
@@ -30,6 +28,7 @@ class EntityContext(object):
                     except ValueError:
                         raise KeyError(key)
             else:
+                period = self.extra['period']
                 bounds = self.entity.output_rows.get(period)
                 if bounds is not None: 
                     startrow, stoprow = bounds
@@ -38,6 +37,21 @@ class EntityContext(object):
         
                 return self.entity.table.read(start=startrow, stop=stoprow, 
                                               field=key)
+    
+    @property
+    def _iscurrentperiod(self):
+        current_array = self.entity.array
+
+        #FIXME: in the rare case where there is nothing in the current array
+        #       we cannot know whether the period in the context is the
+        #       "current" period or a past period. For now we assume it is
+        #       the current period because it is the most likely situation, but
+        #       it is not correct!
+        if not len(current_array):
+            return True
+        
+        # if the current period array is the same as the context period
+        return current_array['period'][0] == self.extra['period']
 
     def __setitem__(self, key, value):
         self.extra[key] = value
@@ -64,13 +78,12 @@ class EntityContext(object):
         return EntityContext(self.entity, self.extra.copy())
     
     def length(self):
-        period = self.extra['period']
-        array_period = self.entity.array['period'][0]
-        if array_period == period:
+        if self._iscurrentperiod:
             return len(self.entity.array)
         else:
+            period = self.extra['period']
             bounds = self.entity.output_rows.get(period)
-            if bounds is not None: 
+            if bounds is not None:
                 startrow, stoprow = bounds
                 return stoprow - startrow
             else:
@@ -79,8 +92,7 @@ class EntityContext(object):
     @property
     def id_to_rownum(self):
         period = self.extra['period']
-        array_period = self.entity.array['period'][0]
-        if array_period == period:
+        if self._iscurrentperiod:
             return self.entity.id_to_rownum
         elif period in self.entity.output_index:
             return self.entity.output_index[period]

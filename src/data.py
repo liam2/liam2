@@ -238,6 +238,11 @@ def copyTable(input_table, output_file, output_node, output_fields=None,
 def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
                         max_id_per_period, start_period):
     periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
+    if not periods_before:
+        id_to_rownum = np.empty(0, dtype=int)
+        output_array = np.empty(0, np.dtype(output_fields))
+        return output_array, id_to_rownum
+
     periods_before.sort()
     # take the last period which we have data for
     target_period = periods_before[-1]
@@ -376,6 +381,8 @@ class H5Data(object):
 
         periodic_globals = None
         input_root = input_file.root
+        #XXX: I should probably only set periodic_globals if it was declared in
+        # the simulation file (and exists in the data file). 
         if 'globals' in input_root:
             input_globals = input_root.globals
             output_globals = output_file.createGroup("/", "globals", "Globals")

@@ -1,7 +1,7 @@
 from simulation import Simulation
 from data_main import csv2h5
 
-__version__ = "0.3.0"
+__version__ = "0.3.1dev"
 
 class AutoflushFile(object):
     def __init__(self, f):
