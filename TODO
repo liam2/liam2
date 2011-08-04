@@ -5,18 +5,16 @@
  0.3.1 - somewhere in August
 
  - better document csv format: -- for missing
- - cleanup import code:
-   * remove duplicated code (import_csv)
-   * use the same code path for globals and entities
-     -> transpose support for entities
-     -> fields, renames and inverts support for globals
+ - document new "compression" import argument and extended "transpose", 
+   "oldnames" and "fields"
+     
  - better error message when using a temp variable which is not computed yet
  - the filter argument in all regressions without alignment is ignored. I should
    either fix that or remove the argument.
- - if you start in a period earlier than you have any data, it
-   crashes with an unclear exception. Eg data in 2007,
-   start_period in 2001
- - keyError when used in 64b: numpy.int64 in type_to_idx (IIRC)
+ - KeyError on mac 64b: numpy.int64 in type_to_idx (IIRC)
+   * it works fine under Windows though.
+   
+ - some unit test work  
 
  0.4.0 - end of September
  
@@ -25,6 +23,8 @@
  - document what each regression function does
  ? don't quote expressions anymore
  ? use more python-like syntax: use = instead of :
+ ? allow liam1 format (1 column per file) to be imported with the new import
+   mechanism
  - review field def: do input fields need to be declared at all?
    I could collect variables from all expressions and check that they are
    all present in the input file.
@@ -161,6 +161,8 @@
    * merge
    * drop
  - compression should be user-configurable
+   * for the input file (during import)
+   * for the simulation output file
  - allow input fields to not be in the output
    * it might be a good idea to rework the way to declare fields:
      input:
