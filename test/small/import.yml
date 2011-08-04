@@ -1,0 +1,32 @@
+output: small.h5
+#compression: zlib
+
+globals:
+    periodic:
+        path: param\globals.csv
+        transposed: true
+        fields:
+            # period is implicit
+            - MINR: float
+            - WEMRA: int
+
+entities:
+    household:
+        path: param\household.csv
+
+    person:
+        path: param\person.csv
+        fields:
+            # period and id are implicit
+            - dead:         bool
+            - age:          int
+            - gender:       bool
+            - work:         bool
+            - partner_id:   int
+            - hh_id:        int
+            - f_id:         int
+            - m_id:         int
+        
+        oldnames:
+            dead: co_alive
+        invert: [dead]

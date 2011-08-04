@@ -1,5 +1,5 @@
 from simulation import Simulation
-from data_main import do_import
+from data_main import csv2h5
 
 __version__ = "0.3.0"
 
@@ -59,6 +59,6 @@ if __name__ == '__main__':
 #                    traceback.print_exc(file=f)
 
     elif action == "import":
-        do_import(fpath)
+        csv2h5(fpath)
     else:
         usage(args)
