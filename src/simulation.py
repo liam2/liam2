@@ -177,8 +177,12 @@ class Simulation(object):
         for entity in self.entities:
             entity.locate_tables(h5in, h5out)
 
-        if periodic_globals is not None:            
-            globals_base_period = periodic_globals['period'][0]
+        if periodic_globals is not None:
+            try:
+                globals_periods = periodic_globals['PERIOD']
+            except ValueError:
+                globals_periods = periodic_globals['period']
+            globals_base_period = globals_periods[0]
         
         process_time = defaultdict(float)
 

@@ -492,13 +492,16 @@ class SubscriptedVariable(Variable):
     def eval(self, context):
         period = expr_eval(self.key, context)
         globals = context['__globals__']
-        base_period = globals['period'][0]
-        period_idx = period - base_period
+        try:
+            globals_periods = globals['PERIOD']
+        except ValueError:
+            globals_periods = globals['period']
+        period_idx = period - globals_periods[0]
         
         if self.name not in globals.dtype.fields:
             raise Exception("Unknown global: %s" % self.name)
         column = globals[self.name]
-        num_periods = len(globals['period'])
+        num_periods = len(globals_periods)
         missing_value = get_missing_value(column)
         
         if isinstance(period_idx, np.ndarray):
