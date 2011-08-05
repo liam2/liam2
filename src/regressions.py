@@ -4,7 +4,7 @@ from properties import Log, Exp, Normal, Max, \
                        CompoundExpression
 import properties
 from alignment import Alignment
-from expr import Expr, Variable, functions, collect_variables, expr_eval
+from expr import Expr, Variable, functions, collect_variables
 from entities import context_length
 
 #TODO: make those available
@@ -13,6 +13,7 @@ def logit(expr):
 
 def logistic(expr):
     return 1.0 / (1.0 + Exp(-expr))
+
 
 class Regression(CompoundExpression):
     def __init__(self, expr, filter=None):
@@ -25,15 +26,6 @@ class Regression(CompoundExpression):
 
     def build_expr(self):
         raise NotImplementedError()
-
-    def eval(self, context):
-        context = self.build_context(context)
-        result = self.complete_expr.eval(context)
-        if self.filter is not None: 
-            filter = expr_eval(self.filter, context)
-            return {'filter': filter, 'values': result} 
-        else:
-            return result
 
     def collect_variables(self, context):
         return collect_variables(self.expr, context)

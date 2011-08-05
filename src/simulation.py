@@ -124,10 +124,10 @@ class Simulation(object):
         if not os.path.isabs(input_directory):
             input_directory = os.path.join(simulation_dir, input_directory) 
         
-        entity_registry.add_all(content['entities'])
+        entity_registry.add_all(self, content['entities'])
         for entity in entity_registry.itervalues():
             entity.check_links()
-            entity.parse_processes(self.globals)
+            entity.parse_processes()
         
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()
@@ -225,7 +225,7 @@ class Simulation(object):
                         print "(%s)" % process.predictor,
                     print "...",
                     
-                    elapsed, _ = gettime(process.run_guarded, self, const_dict)
+                    elapsed, _ = gettime(process.run_guarded, const_dict)
                     
                     process_time[process.name] += elapsed
                     print "done (%s elapsed)." % time2str(elapsed)
