@@ -122,8 +122,7 @@ def context_length(ctx):
 
 
 class Entity(object):
-    def __init__(self, simulation, name, entity_def):
-        self.simulation = simulation
+    def __init__(self, name, entity_def):
         self.name = name
         
         # YAML "ordered dict" syntax returns a list of dict and we want a list
@@ -219,10 +218,10 @@ class Entity(object):
                 cond_context[name] = target_entity.variables
         return cond_context
         
-    def parse_processes(self):
+    def parse_processes(self, globals):
         from properties import Assignment, Process, ProcessGroup
         vars = dict((name, SubscriptableVariable(name, type_))
-                    for name, type_ in self.simulation.globals)
+                    for name, type_ in globals)
         vars.update(self.variables)
         
         cond_context = self.conditional_context
@@ -466,8 +465,8 @@ class EntityRegistry(dict):
     def add(self, entity):
         self[entity.name] = entity
 
-    def add_all(self, simulation, entities_def):
+    def add_all(self, entities_def):
         for k, v in entities_def.iteritems():
-            self.add(Entity(simulation, k, v))
+            self.add(Entity(k, v))
     
 entity_registry = EntityRegistry()

@@ -51,12 +51,12 @@ class Process(object):
         self.name = name
         self.entity = entity
 
-    def run_guarded(self, globals):
+    def run_guarded(self, simulation, globals):
         try:
             context = EntityContext(self.entity, globals.copy())
             self.run(context)
         except BreakpointException:
-            self.entity.simulation.stepbystep = True
+            simulation.stepbystep = True
         
     def run(self, context):
         raise NotImplementedError()
@@ -84,10 +84,13 @@ class Assignment(Process):
             return
         
         if isinstance(result, dict):
-            indices = result['indices']
+            indices = result.get('indices')
+            filter = result.get('filter')
+            assert filter is None or indices is None
             result = result['values']
         else:
             indices = None
+            filter = None
 
         if isinstance(result, np.ndarray):
             res_type = result.dtype.type
@@ -112,15 +115,27 @@ class Assignment(Process):
                                  self.predictor, 
                                  idx_to_type[target_type_idx].__name__))
 
-        if indices is None:
+        if indices is None and filter is None:
+            # the whole column is updated
             target[self.predictor] = result
         else:
-            if self.kind is None:
-                #TODO: this step should be delayed even further because it could
+            if isinstance(target, np.ndarray):
+                hasfield = self.predictor in target.dtype.fields
+            else:
+                hasfield = self.predictor in target
+                
+            if not hasfield:
+                assert self.kind is None, \
+                       "found a missing field which is not a temporary variable"
+                #XXX: I'm not sure we should do this at all and in any case
+                # this step should be delayed further because it could
                 # be unnecessary.
                 target[self.predictor] = np.zeros(len(self.entity.array),
                                                   dtype=res_type)
-            np.put(target[self.predictor], indices, result)
+            if indices is not None:
+                np.put(target[self.predictor], indices, result)
+            elif filter is not None:
+                np.putmask(target[self.predictor], filter, result)
 
     def dtype(self, context):
         return dtype(self.expr, context)
@@ -132,7 +147,7 @@ class ProcessGroup(Process):
         self.name = name
         self.subprocesses = subprocesses
     
-    def run_guarded(self, globals):
+    def run_guarded(self, simulation, globals):
         print
         for k, v in self.subprocesses:
             print "    *",
@@ -141,9 +156,9 @@ class ProcessGroup(Process):
                 print v.__class__.__name__,
             else:
                 print k,
-            utils.timed(v.run_guarded, globals)
+            utils.timed(v.run_guarded, simulation, globals)
 #            print "done."
-            v.entity.simulation.start_console(v.entity, globals['period'])
+            simulation.start_console(v.entity, globals['period'])
 
 
 class EvaluableExpression(Expr):
