@@ -4,7 +4,7 @@ from properties import Log, Exp, Normal, Max, \
                        CompoundExpression
 import properties
 from alignment import Alignment
-from expr import Expr, Variable, functions, collect_variables
+from expr import Expr, Variable, functions, collect_variables, expr_eval
 from entities import context_length
 
 #TODO: make those available
@@ -26,6 +26,24 @@ class Regression(CompoundExpression):
 
     def build_expr(self):
         raise NotImplementedError()
+
+#TODO: this fixes the filter problem for non-aligned regression, but breaks
+#      aligned ones (logit_regr): 
+#      * the score expr is Alignment(LogitScore(xxx), filter=filter)
+#      * Alignment.eval() returns {'values': True, 'indices': indices}
+#      * Regression.eval() returns {'filter': filter,
+#                                   'values': {'values': Trues, 
+#                                              'indices': indices}}
+#      * this is not supported by Assignment.store_result
+
+#    def eval(self, context):
+#        context = self.build_context(context)
+#        result = self.complete_expr.eval(context)
+#        if self.filter is not None: 
+#            filter = expr_eval(self.filter, context)
+#            return {'filter': filter, 'values': result} 
+#        else:
+#            return result
 
     def collect_variables(self, context):
         return collect_variables(self.expr, context)

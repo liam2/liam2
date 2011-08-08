@@ -124,10 +124,10 @@ class Simulation(object):
         if not os.path.isabs(input_directory):
             input_directory = os.path.join(simulation_dir, input_directory) 
         
-        entity_registry.add_all(self, content['entities'])
+        entity_registry.add_all(content['entities'])
         for entity in entity_registry.itervalues():
             entity.check_links()
-            entity.parse_processes()
+            entity.parse_processes(self.globals)
         
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()
@@ -189,11 +189,15 @@ class Simulation(object):
         def simulate_period(period, processes, entities, init=False):        
             print "\nperiod", period
             
-            if not init:
+            if init:
+                for entity in entities:
+                    print "  * %s: %d individuals" % (entity.name, len(entity.array))
+            else:
                 print "- loading input data"
                 for entity in entities:
                     print "  *", entity.name, "...",
                     timed(entity.load_period_data, period)
+                    print "    -> %d individuals" % len(entity.array)
 
             for entity in entities:
                 entity.array['period'] = period
@@ -225,7 +229,7 @@ class Simulation(object):
                         print "(%s)" % process.predictor,
                     print "...",
                     
-                    elapsed, _ = gettime(process.run_guarded, const_dict)
+                    elapsed, _ = gettime(process.run_guarded, self, const_dict)
                     
                     process_time[process.name] += elapsed
                     print "done (%s elapsed)." % time2str(elapsed)
