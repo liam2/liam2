@@ -197,7 +197,8 @@ class Entity(object):
                       entity_def.get('processes', {}))
         
 
-    def collect_predictors(self, items):
+    @staticmethod
+    def collect_predictors(items):
         predictors = []
         for k, v in items:
             if k is None:
@@ -318,15 +319,6 @@ class Entity(object):
                 return ftype
         return None
 
-    def getcolumn(self, name):
-        if isinstance(name, Variable):
-            name = name.name
-
-        if name in self.period_individual_fnames:
-            return self.array[name]
-        else:
-            return self.temp_variables[name]
-    
     def locate_tables(self, h5in, h5out):
         self.input_table = getattr(h5in.root.entities, self.name)
         self.table = getattr(h5out.root.entities, self.name)
@@ -480,9 +472,6 @@ class Entity(object):
     
     def __repr__(self):
         return "<Entity '%s'>" % self.name
-
-    def __getitem__(self, key):
-        return self.getcolumn(key)
 
 
 class EntityRegistry(dict):
