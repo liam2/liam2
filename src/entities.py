@@ -312,13 +312,6 @@ class Entity(object):
         attach_processes(processes.iteritems())
         self.processes = processes
         
-    def fieldtype(self, name):
-        #TODO: store them as a map
-        for fname, ftype in self.fields:
-            if fname == name:
-                return ftype
-        return None
-
     def locate_tables(self, h5in, h5out):
         self.input_table = getattr(h5in.root.entities, self.name)
         self.table = getattr(h5out.root.entities, self.name)
