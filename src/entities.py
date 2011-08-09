@@ -122,36 +122,30 @@ def context_length(ctx):
 
 
 class Entity(object):
-    def __init__(self, name, entity_def):
+    def __init__(self, name, fields, missing_fields, links,
+                 macro_strings, process_strings):
         self.name = name
         
-        # YAML "ordered dict" syntax returns a list of dict and we want a list
-        # of tuples
-        fields = [d.items()[0] for d in entity_def.get('fields', [])]
-
-        self.fields = [('period', int), ('id', int)]
-        self.missing_fields = []
-        for name, fielddef in fields:
-            if isinstance(fielddef, dict):
-                strtype = fielddef['type']
-                if not fielddef.get('initialdata', True):
-                    self.missing_fields.append(name)
-            else:
-                strtype = fielddef
-            self.fields.append((name, str_to_type[strtype]))
-    
-        self.period_individual_fnames = [name for name, _ in self.fields]
-
-        from properties import Link
-
-        link_defs = entity_def.get('links', {})
-        self.links = dict((name, Link(name, link['type'], link['field'], 
-                                      link['target']))
-                          for name, link in link_defs.iteritems())
-
-        self.macro_strings = entity_def.get('macros', {})
+        self.fields = fields + [('period', int), ('id', int)]
         
-        self.process_strings = entity_def.get('processes', {})
+        # only used in data (to check that all "required" fields are present
+        # in the input file and data_main (where it will not survive its 
+        # modernisation)
+        
+        # one potential solution would be to split the fields argument and 
+        # attribute in input_fields and output_fields (regardless of whether
+        # it is split in the simulation/yaml file).
+        
+        # however that might be just a temporary solution as we will soon need
+        # more arguments to fields (default values, ranges, etc...)
+        
+        # another solution is to use a Field class
+        # seems like the better long term solution 
+        self.missing_fields = missing_fields
+        self.period_individual_fnames = [name for name, _ in fields]
+        self.links = links
+        self.macro_strings = macro_strings
+        self.process_strings = process_strings
 
         self.expectedrows = tables.parameters.EXPECTED_ROWS_TABLE
         self.table = None
@@ -160,7 +154,8 @@ class Entity(object):
         #XXX: it might be unnecessary to keep it in memory after the initial
         # load.
         #TODO: it *is* unnecessary to keep periods which have already been
-        # simulated.
+        # simulated, because (currently) when we go back in time, we always go
+        # back using the output table.
         self.input_index = {}
 
         self.output_rows = {}
@@ -173,6 +168,34 @@ class Entity(object):
         self.temp_variables = {}
         self.id_to_rownum = None
         self._variables = None
+
+    @classmethod
+    def from_yaml(cls, ent_name, entity_def):
+        from properties import Link
+        
+        # YAML "ordered dict" syntax returns a list of dict and we want a list
+        # of tuples
+        fields_def = [d.items()[0] for d in entity_def.get('fields', [])]
+
+        fields = []
+        missing_fields = []
+        for name, fielddef in fields_def:
+            if isinstance(fielddef, dict):
+                strtype = fielddef['type']
+                if not fielddef.get('initialdata', True):
+                    missing_fields.append(name) 
+            else:
+                strtype = fielddef
+            fields.append((name, str_to_type[strtype]))
+
+        link_defs = entity_def.get('links', {})
+        links = dict((name, Link(name, l['type'], l['field'], l['target']))
+                     for name, l in link_defs.iteritems())
+
+        return Entity(ent_name, fields, missing_fields, links,
+                      entity_def.get('macros', {}),
+                      entity_def.get('processes', {}))
+        
 
     def collect_predictors(self, items):
         predictors = []
@@ -205,8 +228,9 @@ class Entity(object):
         for name, link in self.links.iteritems():
             target_name = link._target_entity
             if target_name not in entity_registry:
-                raise Exception("Target of '%s' link in '%s' is unknown (%s)"
-                                % (name, self.name, target_name)) 
+                raise Exception("Target of '%s' link in entity '%s' is an "
+                                "unknown entity (%s)"  % (name, self.name,
+                                                          target_name)) 
         
     @property
     def conditional_context(self):
@@ -467,6 +491,7 @@ class EntityRegistry(dict):
 
     def add_all(self, entities_def):
         for k, v in entities_def.iteritems():
-            self.add(Entity(k, v))
+            self.add(Entity.from_yaml(k, v))
+        
     
 entity_registry = EntityRegistry()
