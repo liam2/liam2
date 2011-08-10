@@ -196,7 +196,6 @@ class Entity(object):
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}))
         
-
     @staticmethod
     def collect_predictors(items):
         predictors = []
@@ -232,7 +231,7 @@ class Entity(object):
                 raise Exception("Target of '%s' link in entity '%s' is an "
                                 "unknown entity (%s)"  % (name, self.name,
                                                           target_name)) 
-        
+
     @property
     def conditional_context(self):
         cond_context = {}
@@ -242,7 +241,7 @@ class Entity(object):
             if target_entity is not self:
                 cond_context[name] = target_entity.variables
         return cond_context
-        
+
     def parse_processes(self, globals):
         from properties import Assignment, Process, ProcessGroup
         vars = dict((name, SubscriptableVariable(name, type_))
@@ -311,11 +310,11 @@ class Entity(object):
                     v.attach(k, self)
         attach_processes(processes.iteritems())
         self.processes = processes
-        
+
     def locate_tables(self, h5in, h5out):
         self.input_table = getattr(h5in.root.entities, self.name)
         self.table = getattr(h5out.root.entities, self.name)
-        
+
     def load_period_data(self, period):
         rows = self.input_rows.get(period)
         if rows is None:
@@ -349,7 +348,7 @@ class Entity(object):
         if len(ids):
             safe_put(result, context.id_to_rownum[ids], values)
         return result 
-        
+
     def value_for_period(self, expr, period, context, fill='auto'):
         sub_context = EntityContext(self, {'period': period}) 
         result = expr_eval(expr, sub_context)
@@ -395,7 +394,7 @@ class Entity(object):
             last_period_true[period_value] = period
             period -= 1
         return result
-    
+
     def tavg(self, expr, context):
         baseperiod = self.base_period
         period = context['period'] - 1
