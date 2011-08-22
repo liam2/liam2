@@ -4,7 +4,8 @@ from properties import Log, Exp, Normal, Max, \
                        CompoundExpression
 import properties
 from alignment import Alignment
-from expr import Expr, Variable, functions, collect_variables, expr_eval
+from expr import Expr, Variable, ShortLivedVariable, functions, \
+                 collect_variables, expr_eval
 from entities import context_length
 
 #TODO: make those available
@@ -68,7 +69,7 @@ class LogitScore(CompoundExpression):
 
     def build_expr(self):
         expr = self.expr
-        u = Variable(self.u_varname, float)
+        u = ShortLivedVariable(self.u_varname, float)
         if not isinstance(expr, Expr) and not expr: # expr in (0, 0.0, False, '')
             expr = u
         else:

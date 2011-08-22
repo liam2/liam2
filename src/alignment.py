@@ -6,22 +6,17 @@ import os
 
 import numpy as np
 
-from expr import functions, Expr, Variable, expr_eval
-from entities import EntityContext, context_length
+from expr import functions, Expr, Variable, expr_eval, parse
+from entities import context_length
 from utils import skip_comment_cells, strip_rows, PrettyTable
 import simulation
-from properties import FunctionExpression, GroupCount
+from properties import FilteredExpression, GroupCount
 
 #XXX: it might be faster to partition using a formula giving the index of the
 # group instead of checking all possible value combination.
 # eg. idx = where(agegroup <= 50, agegroup / 5, 5 + agegroup / 10) + male * 15
 # however, in numpy I would still have to do (idx == 0).nonzero(),
 # (idx == 1).nonzero(), ... 
-
-#XXX: use a dictionary for a (instead of an array) populated with columns
-# I think that a[x] makes a view and as such is an almost "free" operation
-# I could also compute data_columns in align_get_indices_nd, or even further up
-# the chain, so that I wouldn't need to pass "a" nor "variables"  
 def partition_nd(columns, filter, possible_values):
     """
     * columns is a list of columns containing the data to be partitioned
@@ -197,10 +192,11 @@ def align_get_indices_nd(context, filter, score,
 def prod(values):
     return reduce(operator.mul, values, 1)
 
-class GroupBy(FunctionExpression):
+class GroupBy(FilteredExpression):
     func_name = 'groupby'
 
     def __init__(self, *args, **kwargs):
+        # On python 3, we could clean up this code (keyword only arguments).
         self.percent = kwargs.get('percent', False)
         expr = kwargs.get('expr')
         if expr is None:
@@ -324,14 +320,14 @@ class GroupBy(FunctionExpression):
         return PrettyTable(result)
 
 
-class Alignment(FunctionExpression):
+class Alignment(FilteredExpression):
     func_name = 'align'
 
-    def __init__(self, expr, filter=None, take=None, leave=None, fname=None,
-                 variables=None, possible_values=None, probabilities=None):
-        super(Alignment, self).__init__(expr, filter)
+    def __init__(self, score_expr, filter=None, take=None, leave=None, fname=None,
+                 expressions=None, possible_values=None, probabilities=None):
+        super(Alignment, self).__init__(score_expr, filter)
         
-        assert ((variables is not None and 
+        assert ((expressions is not None and 
                  possible_values is not None and 
                  probabilities is not None) or
                 (fname is not None))
@@ -339,8 +335,8 @@ class Alignment(FunctionExpression):
         if fname is not None:
             self.load(fname)
         else:
-            expressions = [Variable(v) for v in variables]
-            self.expressions = expressions
+            self.expressions = [Variable(e) if isinstance(e, basestring) else e
+                                for e in expressions]
             self.possible_values = possible_values
             self.probabilities = probabilities
 
@@ -351,8 +347,8 @@ class Alignment(FunctionExpression):
         with open(os.path.join(simulation.input_directory, fpath), "rb") as f:
             reader = csv.reader(f)
             lines = skip_comment_cells(strip_rows(reader))
-#            self.expressions = lines.next()
-            self.expressions = [Variable(v) for v in lines.next()]
+            header = lines.next()
+            self.expressions = [parse(s, autovariables=True) for s in header]
             table = []
             for line in lines:
                 assert all(value != '' for value in line), \

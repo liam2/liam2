@@ -83,6 +83,8 @@ def dtype(expr, context):
     else:
         return normalize_type(type(expr))
 
+# context is needed because in LinkValue we need to know what is the current
+# entity (so that we can resolve links)
 def collect_variables(expr, context):
     if isinstance(expr, Expr):
         return expr.collect_variables(context)
@@ -91,6 +93,10 @@ def collect_variables(expr, context):
 
 def expr_eval(expr, context):
     if isinstance(expr, Expr):
+        for var_name in expr.collect_variables(context):
+            if var_name not in context:
+                raise Exception("variable '%s' is unknown (it is either not "
+                                "defined or not computed yet)" % var_name)
         return expr.eval(context)
     else:
         return expr
@@ -227,13 +233,7 @@ class Expr(object):
         s = self.as_string(context)
         r = context.get(s)
         if r is not None:
-#            print "using %s from context" % s
             return r
-
-#        for var_name in self.collect_variables(context):
-#            assert var_name in context, \
-#                   "%s variable in unknown (it is either not defined " \
-#                   "or not computed yet)" % var_name
 
 #        usual_len = None
 #        for k in context.keys():
@@ -458,6 +458,9 @@ class Variable(Expr):
         else:
             return self._dtype
 
+class ShortLivedVariable(Variable):
+    def collect_variables(self, context):
+        return set()
     
 class SubscriptableVariable(Variable):
     def __getitem__(self, key):
@@ -473,6 +476,7 @@ class SubscriptedVariable(Variable):
         return '%s[%s]' % (self.name, self.key)
     __repr__ = __str__
 
+    #XXX: inherit from EvaluableExpression?
     def as_string(self, context):
         global num_tmp
         

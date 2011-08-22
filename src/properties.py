@@ -40,6 +40,8 @@ class Link(object):
 
     __getattr__ = get
 
+    def __str__(self):
+        return self._name
 
 
 class Process(object):
@@ -170,7 +172,7 @@ class EvaluableExpression(Expr):
         
         tmp_varname = "temp_%d" % num_tmp
         num_tmp += 1
-        result = self.eval(context)
+        result = expr_eval(self, context)
         if isinstance(result, dict):
             indices = result['indices']
             values = result['values']
@@ -195,7 +197,7 @@ class CompoundExpression(Expr):
     
     def eval(self, context): 
         context = self.build_context(context)
-        return self.complete_expr.eval(context)
+        return expr_eval(self.complete_expr, context)
 
     def as_string(self, context):
         context = self.build_context(context)
@@ -216,94 +218,73 @@ class CompoundExpression(Expr):
             self._complete_expr = self.build_expr()
         return self._complete_expr
 
-class LinkValue(EvaluableExpression):
-    def __init__(self, links, target_expression, missing_value=None):
+class LinkExpression(EvaluableExpression):
+    '''abstract base class for all function which handle links (both many2one
+       and one2many'''
+    def __init__(self, link):
+        self.link = link
+    
+    def get_link(self, context):
+        # use the context as the first entity, so that it works with subsets of
+        # the entity population
+        link = self.link
+        if isinstance(link, basestring):
+            link = context['__entity__'].links[link]
+        return link
+
+    def target_entity(self, context):
+        link = self.get_link(context)    
+        return entity_registry[link._target_entity]
+
+    def target_context(self, context):
+        target_entity = self.target_entity(context)
+        return EntityContext(target_entity, {'period': context['period']})
+
+
+class LinkValue(LinkExpression):
+    def __init__(self, link, target_expression, missing_value=None):
         '''
         links can be either a Link instance, a string, or a list of either
         target_expression can be any expression (it will be evaluated on the
                           target rows)
         '''
-        EvaluableExpression.__init__(self)
+        LinkExpression.__init__(self, link)
         
-        if not isinstance(links, (list, tuple)):
-            links = (links,)
-        self.links = links
         if isinstance(target_expression, basestring):
             target_expression = Variable(target_expression)
         self.target_expression = target_expression
         self.missing_value = missing_value
     
+    def collect_variables(self, context):
+        link = self.get_link(context)    
+        return set([link._link_field])
+       
     def dtype(self, context):
-        target_entity = self.target_entity(context)
-        target_context = EntityContext(target_entity, 
-                                       {'period': context['period']})
+        target_context = self.target_context(context)
         return dtype(self.target_expression, target_context)
 
-    def collect_variables(self, context):
-        source_entity = context.entity
-        fields = []
-        for link in self.links:
-            if isinstance(link, basestring):
-                link = source_entity.links[link]
-            fields.append(link._link_field)
-            source_entity = entity_registry[link._target_entity]
-        return set(fields)
-       
-    def target_entity(self, context):
-        source_entity = context['__entity__']
-        for link in self.links:
-            if isinstance(link, basestring):
-                link = source_entity.links[link]
-            # target entity becomes the next source entity
-            source_entity = entity_registry[link._target_entity]
-        return source_entity
-
     def get(self, key, missing_value=None):
-        # in this case, target_expression must have been a link name
+        # in this case, target_expression must have been a link name, however
+        # given that we have no context, we don't know the current entity and
+        # can't make a strong assertion here
+        # assert self.target_expression in entity.links
         assert isinstance(self.target_expression, Variable)
-        return LinkValue(self.links + (self.target_expression.name,),
-                         key,
-                         missing_value)
+        return LinkValue(self.link,
+                         LinkValue(self.target_expression.name, key,
+                                   missing_value))
 
     __getattr__ = get
-
+    
     def eval(self, context):
-        # build the list of link columns we will traverse
-        link_columns = []
-        id_to_rownums = []
-        
-        period = context['period']
-        
-        # use the context as the first entity, so that it works with subsets of
-        # the entity population
-        source_entity = context['__entity__']
-        local_ctx = context
-        for link in self.links:
-            if isinstance(link, basestring):
-                link = source_entity.links[link]
-            
-            column_name = link._link_field
-            link_columns.append(expr_eval(Variable(column_name), local_ctx))
-            # target entity becomes the next source entity
-            source_entity = entity_registry[link._target_entity]
-            local_ctx = EntityContext(source_entity, {'period': period})
-            id_to_rownums.append(local_ctx.id_to_rownum)
+        link = self.get_link(context)    
+        target_ids = expr_eval(Variable(link._link_field), context)
+        target_context = self.target_context(context)
 
-        target_ids = link_columns.pop(0)
-        id_to_rownum = id_to_rownums.pop(0)
+        id_to_rownum = target_context.id_to_rownum
         
         missing_int = missing_values[int]
         target_rows = id_to_rownum[target_ids]
-        for column, id_to_rownum in izip(link_columns, id_to_rownums):
-            valid_links = ((target_ids != missing_int) & 
-                           (target_rows != missing_int))
-            target_ids = np.where(valid_links,
-                                  column[target_rows], missing_int)
-            target_rows = id_to_rownum[target_ids]
     
-        # the last/final column is a special case since it is not a simple link
-        # column but can be a full-fledged expression
-        target_context = EntityContext(source_entity, {'period': period})
         target_values = expr_eval(self.target_expression, target_context)
         missing_value = self.missing_value
         if missing_value is None:
@@ -313,51 +294,32 @@ class LinkValue(EvaluableExpression):
         return np.where(valid_links, target_values[target_rows], missing_value)
 
     def __str__(self):
-        names = [l._name for l in self.links] + [str(self.target_expression)]
-        return '.'.join(names)
+        return '%s.%s' % (self.link, self.target_expression)
     __repr__ = __str__
         
         
-class AggregateLink(EvaluableExpression):
+class AggregateLink(LinkExpression):
     def __init__(self, link, target_filter=None):
-        EvaluableExpression.__init__(self)
-        self.link = link
+        LinkExpression.__init__(self, link)
         self.target_filter = target_filter
-
-    #XXX: somehow merge this with LinkValue's equivalent function?
-    #XXX: somehow merge this with the code in eval
-    def target_entity(self, context):
-        source_entity = context['__entity__']
-        if isinstance(self.link, basestring):
-            link = source_entity.links[self.link]
-        else:
-            link = self.link
-        return entity_registry[link._target_entity]
 
     def eval(self, context):
         assert isinstance(context, EntityContext), \
                "aggregates in groupby is currently not supported"
-        source_entity = context['__entity__']
-        if isinstance(self.link, basestring):
-            link = source_entity.links[self.link]
-        else:
-            link = self.link
+        link = self.get_link(context)    
         assert link._link_type == 'one2many'
         
         # eg (in household entity):
         # persons: {type: one2many, target: person, field: hh_id}
-        target_entity = entity_registry[link._target_entity] # eg person
-        
+        target_context = self.target_context(context)
+
         # this is a one2many, so the link column is on the target side
-        local_ctx = EntityContext(target_entity, {'period': context['period']})
-        link_column = expr_eval(Variable(link._link_field), local_ctx)
+        link_column = expr_eval(Variable(link._link_field), target_context)
         
         missing_int = missing_values[int]
         
         if self.target_filter is not None:
-            filter_context = EntityContext(target_entity, 
-                                           {'period': context['period']})
-            target_filter = expr_eval(self.target_filter, filter_context)
+            target_filter = expr_eval(self.target_filter, target_context)
             source_ids = link_column[target_filter]
         else:
             target_filter = None
@@ -377,19 +339,21 @@ class AggregateLink(EvaluableExpression):
             # in place
             source_rows = source_ids.copy()
 
-        return self.eval_rows(source_entity, source_rows, target_entity,
-                              target_filter, context)
+        return self.eval_rows(source_rows, target_filter, context)
     
-    def eval_rows(self, source_entity, source_rows, target_entity,
-                        target_filter, context):
+    def eval_rows(self, source_rows, target_filter, context):
         raise NotImplementedError
 
+    def collect_variables(self, context):
+        # no variable at all because collect_variable is only interested in
+        # the columns of the *current entity* and since we are only working with
+        # one2many relationships, the link column is always on the other side.
+        return set()
 
 class CountLink(AggregateLink):
     func_name = 'countlink'
     
-    def eval_rows(self, source_entity, source_rows, target_entity,
-                  target_filter, context):
+    def eval_rows(self, source_rows, target_filter, context):
         # We can't use a negative value because that is not allowed by bincount,
         # and using a value too high will uselessly increase the size of the
         # array returned by bincount
@@ -403,11 +367,11 @@ class CountLink(AggregateLink):
         #                    missing_int)
         source_rows[source_rows == missing_int] = idx_for_missing 
    
-        counts = self.count(source_rows, target_entity, target_filter, context)
+        counts = self.count(source_rows, target_filter, context)
         counts.resize(idx_for_missing)
         return counts
     
-    def count(self, source_rows, target_entity, target_filter, context):
+    def count(self, source_rows, target_filter, context):
         if len(source_rows):
             return np.bincount(source_rows)
         else:
@@ -431,9 +395,8 @@ class SumLink(CountLink):
         CountLink.__init__(self, link, target_filter)
         self.target_expr = target_expr
     
-    def count(self, source_rows, target_entity, target_filter, context):
-        target_context = EntityContext(target_entity, 
-                                       {'period': context['period']})
+    def count(self, source_rows, target_filter, context):
+        target_context = self.target_context(context)
         value_column = expr_eval(self.target_expr, target_context)
         if target_filter is not None:
             value_column = value_column[target_filter]
@@ -445,9 +408,7 @@ class SumLink(CountLink):
         return res.astype(value_column.dtype)
 
     def dtype(self, context):
-        target_entity = self.target_entity(context)
-        target_context = EntityContext(target_entity, 
-                                       {'period': context['period']})
+        target_context = self.target_context(context)
         expr_dype = dtype(self.target_expr, target_context)
         #TODO: merge this typemap with tsum's
         typemap = {bool: int, int: int, float: float}
@@ -464,9 +425,8 @@ class SumLink(CountLink):
 class AvgLink(SumLink):
     func_name = 'avglink'
     
-    def count(self, source_rows, target_entity, target_filter, context):
-        sums = super(AvgLink, self).count(source_rows, target_entity, 
-                                          target_filter, context)
+    def count(self, source_rows, target_filter, context):
+        sums = super(AvgLink, self).count(source_rows, target_filter, context)
         count = np.bincount(source_rows)
         # silence x/0 and 0/0
         np.seterr(invalid='ignore', divide='ignore')
@@ -488,15 +448,11 @@ class MinLink(AggregateLink):
         self.target_expr = target_expr
 
     def dtype(self, context):
-        target_entity = self.target_entity(context)
-        target_context = EntityContext(target_entity, 
-                                       {'period': context['period']})
+        target_context = self.target_context(context)
         return dtype(self.target_expr, target_context)
         
-    def eval_rows(self, source_entity, source_rows, target_entity,
-                  target_filter, context):
-        target_context = EntityContext(target_entity, 
-                                       {'period': context['period']})
+    def eval_rows(self, source_rows, target_filter, context):
+        target_context = self.target_context(context)
         value_column = expr_eval(self.target_expr, target_context)
         if target_filter is not None:
             value_column = value_column[target_filter]
@@ -617,19 +573,33 @@ class ZeroClip(CompoundExpression):
         return dtype(self.expr1, context)
         
 
+#XXX: generalize to a function with several arguments?
 class FunctionExpression(EvaluableExpression):
     func_name = None
 
-    #TODO: move filter to a subclass of FunctionExpression
-    def __init__(self, expr, filter=None):
+    def __init__(self, expr):
         self.expr = expr
-        self.filter = filter
 
     def __str__(self):
         return '%s(%s)' % (self.func_name, self.expr)
 
     def collect_variables(self, context):
         return collect_variables(self.expr, context)
+    
+class FilteredExpression(FunctionExpression):
+    def __init__(self, expr, filter=None):
+        super(FilteredExpression, self).__init__(expr)
+        self.filter = filter
+
+    def __str__(self):
+        filter_str = ', %s' % self.filter if self.filter is not None else ''
+        return '%s(%s%s)' % (self.func_name, self.expr, filter_str)
+
+    def collect_variables(self, context):
+        expr_vars = collect_variables(self.expr, context)
+        if self.filter is not None:
+            expr_vars |= collect_variables(self.filter, context)
+        return expr_vars
 
 
 class ValueForPeriod(FunctionExpression):
@@ -746,10 +716,10 @@ class NumpyProperty(EvaluableExpression):
         return '%s(%s)' % (func_name, str_args)
     
     def collect_variables(self, context):
-        sets = [collect_variables(arg, context) for arg in self.args]
-        sets.extend(collect_variables(v, context)
-                    for v in self.kwargs.itervalues())
-        return set.union(*sets)
+        args_vars = [collect_variables(arg, context) for arg in self.args]
+        args_vars.extend(collect_variables(v, context)
+                         for v in self.kwargs.itervalues())
+        return set.union(*args_vars) if args_vars else set()
     
 # >>> mi = 1
 # >>> ma = 10
@@ -911,7 +881,7 @@ class GroupCount(EvaluableExpression):
 
 
 #TODO: transform this into a CompoundExpression
-class GroupAverage(FunctionExpression):
+class GroupAverage(FilteredExpression):
     func_name = 'grpavg'
     
     def eval(self, context):
@@ -1142,6 +1112,16 @@ class Dump(EvaluableExpression):
                 columns[idx] = newcol
  
         return utils.PrettyTable(chain([str_expressions], izip(*columns)))
+
+    def collect_variables(self, context):
+        if self.expressions:
+            vars = set.union(*[collect_variables(expr, context)
+                               for expr in self.expressions])
+        else:
+            vars = set(context.keys())
+        if self.filter is not None:
+            vars |= collect_variables(self.filter, context)
+        return vars
 
     def dtype(self, context):
         return None

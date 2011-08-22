@@ -32,6 +32,7 @@ entities:
             - f_id:         int
             - m_id:         int
             
+            - v1:           {type: float, initialdata: False}
             - nch:          {type: int, initialdata: False}
             - eduach:       {type: int, initialdata: False}
             - m_age:        {type: int, initialdata: False}
@@ -129,45 +130,51 @@ entities:
                 # of alignment categories.
                 - var_aligned: align(0.0, fname='al_p_dead_m.csv')
                 - temp_aligned: align(0.0, fname='al_p_temp.csv')
-                - show('has problems:',
+                - expr_aligned: align(0.0, fname='al_p_expr.csv')
+                - show('temp != var:',
                        grpcount(temp_aligned != var_aligned) > 105)
+                - show('var != temp:',
+                       grpcount(expr_aligned != var_aligned) > 105)
 
             test_logit: 
                 - simple: logit_regr(0.0)
                 
             test_log_regr:
-                - v1: if(MALE,
+                - v1: "42"
+                - v1: log_regr(2.484557 + 0.2283921 * age - 0.0026106 * age **2,
+                               filter=MALE)
+                - v2: if(MALE,
                          log_regr(2.484557 + 0.2283921 * age - 0.0026106 * age **2),
-                         0)
-                - v2: if(MALE, 
+                         42)
+                - v3: if(MALE, 
                          exp(2.484557 + 0.2283921 * age - 0.0026106 * age **2),
-                         0)
+                         42)
                 - show('v1', v1, '\n',
-                       'num values:', grpcount(v1 > 0), '\n',
-                       'num problems:', grpcount(v1 != v2))
+                       'num values:', grpcount(v1 != 42), '\n',
+                       'num problems:', grpcount((v1 != v2) or (v2 != v3)))
                 
                 - err: normal()
                        
-                - v3: "if(MALE,
+                - v4: "if(MALE,
                           log_regr(2.484557 + 0.2283921 * age, error_var='err'),
                           0)"
-                - v4: "if(MALE,
+                - v5: "if(MALE,
                           exp(2.484557 + 0.2283921 * age + err),
                           0)"
-                - show('v3', v3, '\n', 'v4', v4, '\n',
-                       'num values:', grpcount(v3 > 0), '\n',
-                       'num problems:', grpcount(v3 != v4))
+                - show('v4', v4, '\n', 'v5', v5, '\n',
+                       'num values:', grpcount(v4 > 0), '\n',
+                       'num problems:', grpcount(v4 != v5))
 
-                - v5: "if(MALE,
+                - v6: "if(MALE,
                           log_regr(2.484557 + 0.2283921 * age, mult=2),
                           0)"
-                - v6: "if(MALE,
+                - v7: "if(MALE,
                           exp(2.484557 + 0.2283921 * age + normal(0, 1) * 2),
                           0)"
                 # max(normal) - min(normal) is commonly < 10
-                - show('log(v5)', log(v5), '\n', 'log(v6)', log(v6), '\n',
-                       'num values:', grpcount(v5 > 0), '\n',
-                       'num problems:', grpcount(log(v5) - log(v6) > 20))
+                - show('log(v6)', log(v6), '\n', 'log(v7)', log(v7), '\n',
+                       'num values:', grpcount(v6 > 0), '\n',
+                       'num problems:', grpcount(log(v6) - log(v7) > 20))
             
             test_uninitialized_var: not to_give_birth
             to_give_birth: if(not gender and (age >= 15) and (age <= 50),
@@ -206,11 +213,20 @@ entities:
                                 ch_012_age_avg, filter=(nch > 0) and (id < 100)))
             
             test_mixed_links:
+                - show('mother vs step-mother:', mother.age, partner.mother.age)
+                - show('other sex step-parent:',
+                        where(gender, partner.mother.age, partner.father.age))
+                - show('age vs age if married:', age, partner.partner.age)
+                - show('mother.partner.age:', mother.partner.age, 
+                       'father.age:', father.age)
                 - show('hh.id:', household.id,
                        'hh.id+1:', household.get(id + 1),
                        'edu:', eduach,
                        'num persons:', household.get(countlink(persons)),
                        'num high edu:', household.get(countlink(persons, eduach == 4)))
+
+            test_extra_comma:           
+                - show('test extra colon'),
                  
             test_predictor1:
                 predictor: plop
@@ -360,6 +376,8 @@ simulation:
                    test_log_regr,
 
                    marriage,
+                   
+                   test_extra_comma,
                    
 #                   test_uninitialized_var,
                    
