@@ -8,7 +8,6 @@
  - document new "compression" import argument and extended "transpose", 
    "oldnames" and "fields"
      
- - better error message when using a temp variable which is not computed yet
  - the filter argument in all regressions without alignment is ignored. I should
    either fix that or remove the argument.
  - KeyError on mac 64b: numpy.int64 in type_to_idx (IIRC)
@@ -22,6 +21,8 @@
  - allow input fields to not be in the output
  - document what each regression function does
  ? don't quote expressions anymore
+   -> number literals need to be quoted (that might be fixable, I didn't 
+      investigate yet)
  ? use more python-like syntax: use = instead of :
  ? allow liam1 format (1 column per file) to be imported with the new import
    mechanism
@@ -31,6 +32,16 @@
    however, some information about input fields will need to be defined anyway: 
    enumerations, ranges, default values, ... (unless I store all that in the
    input file metadata)
+ - review the whole filter concept. The missing "else" value is often a problem,
+   but can we avoid it? do we want to avoid it?  
+ - review align() function/alignment process (I don't want to code anything just 
+   yet, I just want to know if the current syntax will need to be modified).
+   * should it return false for all the persons which are not selected? instead
+     of the current weird situation: False if stored in a temp variable,
+     otherwise don't modify those which are not selected.
+   * what would the syntax be for multi-value alignment (when there are more
+     than two possible outcomes)
+     align([2, 3, 4]
  - unit tests !!!!
 
  non feature tasks
@@ -217,13 +228,16 @@
  - warning for unused fields
  ? either allow setting temporary variables in new() (though I'm not sure it's a 
    good idea) or produce a better error message when we try to set an
-   unkown field
+   unknown field
  - better error message when a procedure's processes are missing ordering 
    (it is a dict, instead of a list of dict)
+   >> we need to to remove the {'predictor': xxx, 'expr': yyy} syntax before
+   >> we can do that 
  - better error message when the simulation file has been encoded to something
    different than utf8 (and it contains non-ascii chars) 
  - better error message if unknown entity in simulation.processes (KeyError)
    >> almost done for "init"
+ - better error message when an extra comma is used (see test.test_extra_comma)   
  - better error message when a temporary variable is used before it is computed
    (the error is not caught by the parser since the variable exists)
    KeyError: '(~to_give_birth)\nto_give_birth'
@@ -389,6 +403,8 @@
    2) I can use the real thing in test_expr instead of FakeEntity
  - factorize/simplify __str__ methods in some way: by using multi-inheritance? 
  - merge src/expr with tools/expr
+ ? do not store the array/data into the entity. The entity would only be a 
+   descriptor.
 
  undecided
  ---------
