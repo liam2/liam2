@@ -10,7 +10,7 @@ from expr import functions, Expr, Variable, expr_eval, parse
 from entities import context_length
 from utils import skip_comment_cells, strip_rows, PrettyTable
 import simulation
-from properties import FilteredExpression, GroupCount
+from properties import FilteredExpression, GroupCount, add_individuals
 
 #XXX: it might be faster to partition using a formula giving the index of the
 # group instead of checking all possible value combination.
@@ -84,7 +84,7 @@ def extract_period(period, expressions, possible_values, probabilities):
     
 def align_get_indices_nd(context, filter, score,
                          expressions, possible_values, probabilities,
-                         take_filter=None, leave_filter=None):
+                         take_filter=None, leave_filter=None, weights=None):
     assert len(expressions) == len(possible_values)
 
     num_to_align = np.sum(filter)
@@ -117,7 +117,7 @@ def align_get_indices_nd(context, filter, score,
               % len(unaligned)
         print " | ".join(str(expr) for expr in ['id'] + expressions)
         for row in unaligned:
-            print " | ".join(str(col[row]) for col in [context['id']] + columns) 
+            print " | ".join(str(col[row]) for col in [context['id']] + columns)
 
     take = 0
     leave = 0
@@ -139,9 +139,16 @@ def align_get_indices_nd(context, filter, score,
         leave = np.sum(filter & leave_filter)
 
     total_indices = []
+    to_split_indices = []
+    to_split_overflow = []
     for members_indices, probability in izip(groups, probabilities):
         if len(members_indices):
-            expected = len(members_indices) * probability
+            if weights is None:
+                member_weights = None
+                expected = len(members_indices) * probability
+            else:
+                member_weights = weights[members_indices]
+                expected = np.sum(member_weights) * probability
             affected = int(expected)
             if random.random() < expected - affected:
                 affected += 1
@@ -149,7 +156,10 @@ def align_get_indices_nd(context, filter, score,
             if take_indices is not None:
                 group_always = np.intersect1d(members_indices, take_indices,
                                               assume_unique=True)
-                num_always = len(group_always)
+                if weights is None:
+                    num_always = len(group_always)
+                else:
+                    num_always = np.sum(weights[group_always])
                 total_indices.extend(group_always)
             else:
                 num_always = 0
@@ -169,10 +179,48 @@ def align_get_indices_nd(context, filter, score,
                 else:
                     sorted_global_indices = group_maybe_indices 
 
+                # maybe_to_take is always > 0
                 maybe_to_take = affected - num_always
 
-                # take the last X individuals (ie those with the highest score)
-                indices_to_take = sorted_global_indices[-maybe_to_take:]
+                if weights is None:
+                    # take the last X individuals (ie those with the highest
+                    # score)
+                    indices_to_take = sorted_global_indices[-maybe_to_take:]
+                else:
+                    # we need to invert the order because members are sorted
+                    # on score ascendingly and we need to take those with
+                    # highest score.
+                    inv_weight_sums = np.cumsum(member_weights[::-1])
+                    
+                    # for each weighted individual, compute how many more
+                    # we need (we usually start in negative, meaning we got too
+                    # many)
+                    inv_left_to_take = maybe_to_take - inv_weight_sums
+                    
+                    # compute the idx at which we accumulate as much (or more)
+                    # weight as we needed
+                    left_to_take = inv_left_to_take[::-1]
+                    threshold_idx = np.searchsorted(left_to_take, 0,
+                                                    side='right')
+                    if threshold_idx > 0:
+                        # if there is enough weight to satisfy the target
+                        threshold_idx -= 1
+                        overflow = -left_to_take[threshold_idx]
+                        if overflow > 0:
+                            # the next individual has too much weight, so we 
+                            # need to split it.
+                            id_to_split = sorted_global_indices[threshold_idx]
+                            to_split_indices.append(id_to_split)
+                            to_split_overflow.append(overflow)
+                        else:
+                            # we got exactly the number we wanted
+                            assert overflow == 0
+                    else:
+                        # we can't reach our target number of individuals,
+                        # probably because of a "leave" filter
+                        pass
+                    num_to_take = len(left_to_take) - threshold_idx
+                    indices_to_take = sorted_global_indices[-num_to_take:]
 
 #                if len(indices_to_take) < maybe_to_take: 
 #                    print "affecting %d too few persons" % (maybe_to_take
@@ -185,8 +233,12 @@ def align_get_indices_nd(context, filter, score,
         print "%d/%d [take %d, leave %d]" % (len(total_indices), num_aligned,
                                              take, leave),
     else:
-        print "%d/%d" % (len(total_indices), num_aligned),        
-    return total_indices
+        print "%d/%d" % (len(total_indices), num_aligned),
+        
+    if to_split_indices:
+        return total_indices, (to_split_indices, to_split_overflow)
+    else:
+        return total_indices, None
 
 
 def prod(values):
@@ -323,8 +375,13 @@ class GroupBy(FilteredExpression):
 class Alignment(FilteredExpression):
     func_name = 'align'
 
-    def __init__(self, score_expr, filter=None, take=None, leave=None, fname=None,
-                 expressions=None, possible_values=None, probabilities=None):
+    def __init__(self, score_expr, filter=None, take=None, leave=None,
+                 fname=None,
+                 expressions=None, possible_values=None, probabilities=None,
+                 #XXX: I think weight_col should be a property of the entity,
+                 # not one of the alignment, because if you have weights, 
+                 # you want to use them in all alignments
+                 weight_col=None):
         super(Alignment, self).__init__(score_expr, filter)
         
         assert ((expressions is not None and 
@@ -342,6 +399,7 @@ class Alignment(FilteredExpression):
 
         self.take_filter = take
         self.leave_filter = leave
+        self.weight_col = weight_col
 
     def load(self, fpath):
         with open(os.path.join(simulation.input_directory, fpath), "rb") as f:
@@ -380,6 +438,11 @@ class Alignment(FilteredExpression):
             else:
                 filter_expr = None
         
+        if self.weight_col is not None:
+            weights = expr_eval(Variable(self.weight_col), context)
+        else:
+            weights = None 
+        
         if filter_expr is not None:
             filter_value = expr_eval(filter_expr, context)
         else:
@@ -391,10 +454,27 @@ class Alignment(FilteredExpression):
                        if self.leave_filter is not None \
                        else None
 
-        indices = align_get_indices_nd(context, filter_value, scores,
-                                       self.expressions, self.possible_values,
-                                       self.probabilities,
-                                       take_filter, leave_filter)
+        indices, to_split = \
+            align_get_indices_nd(context, filter_value, scores,
+                                 self.expressions, self.possible_values,
+                                 self.probabilities,
+                                 take_filter, leave_filter, weights)
+
+        if to_split is not None:
+            to_split_indices, to_split_overflow = to_split
+            num_birth = len(to_split_indices)
+            source_entity = context['__entity__']
+            target_entity = source_entity
+            array = target_entity.array
+            clones = array[to_split_indices]
+            id_to_rownum = target_entity.id_to_rownum
+            num_individuals = len(id_to_rownum)
+            clones['id'] = np.arange(num_individuals,
+                                     num_individuals + num_birth)
+            clones[self.weight_col] = to_split_overflow
+            array[self.weight_col][to_split_indices] -= to_split_overflow
+            add_individuals(context, clones)
+
         return {'values': True, 'indices': indices}
 
     def dtype(self, context):

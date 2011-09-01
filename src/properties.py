@@ -940,6 +940,35 @@ class Exp(NumexprFunctionProperty):
         return float
 
 
+def add_individuals(target_context, children):
+    target_entity = target_context['__entity__']
+    id_to_rownum = target_entity.id_to_rownum
+    array = target_entity.array
+    num_rows = len(array)
+    num_birth = len(children)
+    print "%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name,
+                                       num_rows, num_rows + num_birth),
+
+    target_entity.array = np.concatenate((array, children))
+    temp_variables = target_entity.temp_variables
+    for name, temp_value in temp_variables.iteritems():
+        if isinstance(temp_value, np.ndarray) and temp_value.shape:
+            extra = get_missing_vector(num_birth, temp_value.dtype)
+            temp_variables[name] = np.concatenate((temp_value, extra))
+
+    extra_variables = target_context.extra
+    for name, temp_value in extra_variables.iteritems():
+        if name == '__globals__':
+            continue
+        if isinstance(temp_value, np.ndarray) and temp_value.shape:
+            extra = get_missing_vector(num_birth, temp_value.dtype)
+            extra_variables[name] = np.concatenate((temp_value, extra))
+
+    id_to_rownum_tail = np.arange(num_rows, num_rows + num_birth)
+    target_entity.id_to_rownum = np.concatenate((id_to_rownum,
+                                                 id_to_rownum_tail))
+
+
 class CreateIndividual(EvaluableExpression):
     def __init__(self, entity_name=None, filter=None, number=None, **kwargs):
         self.entity_name = entity_name
@@ -956,6 +985,9 @@ class CreateIndividual(EvaluableExpression):
         return children
 
     def collect_variables(self, context):
+        #FIXME: we need to add variables from self.filter (that's what is needed
+        # for the general case -- in expr_eval) but the current version is what
+        # is needed to build the child context in eval() function below
         used_variables = set()
         for v in self.kwargs.itervalues():
             used_variables.update(collect_variables(v, context))
@@ -967,7 +999,12 @@ class CreateIndividual(EvaluableExpression):
             target_entity = source_entity
         else:
             target_entity = entity_registry[self.entity_name]
-        array = target_entity.array
+            
+        if target_entity is source_entity:
+            target_context = context
+        else:
+            target_context = EntityContext(target_entity, 
+                                           {'period': context['period']})
         ctx_filter = context.get('__filter__')
 
         if self.filter is not None and ctx_filter is not None:
@@ -988,10 +1025,9 @@ class CreateIndividual(EvaluableExpression):
         else:
             raise Exception('no filter nor number in "new"')
 
-        print "%d new %s(s)" % (num_birth, target_entity.name),
+        array = target_entity.array
+        
         id_to_rownum = target_entity.id_to_rownum
-
-        num_rows = len(array)
         num_individuals = len(id_to_rownum)
 
         children = self._initial_values(array, to_give_birth, num_birth)
@@ -1015,26 +1051,9 @@ class CreateIndividual(EvaluableExpression):
                 child_context[varname] = value
             for k, v in self.kwargs.iteritems():
                 children[k] = expr_eval(v, child_context)
+                
+        add_individuals(target_context, children)
     
-            target_entity.array = np.concatenate((array, children))
-            temp_variables = target_entity.temp_variables
-            for name, temp_value in temp_variables.iteritems():
-                if isinstance(temp_value, np.ndarray) and temp_value.shape:
-                    extra = get_missing_vector(num_birth, temp_value.dtype)
-                    temp_variables[name] = np.concatenate((temp_value, extra))
-    
-            extra_variables = context.extra
-            for name, temp_value in extra_variables.iteritems():
-                if name == '__globals__':
-                    continue
-                if isinstance(temp_value, np.ndarray) and temp_value.shape:
-                    extra = get_missing_vector(num_birth, temp_value.dtype)
-                    extra_variables[name] = np.concatenate((temp_value, extra))
-    
-            id_to_rownum_tail = np.arange(num_rows, num_rows + num_birth)
-            target_entity.id_to_rownum = np.concatenate((id_to_rownum, 
-                                                         id_to_rownum_tail))
-        
         # result is the ids of the new individuals corresponding to the source
         # entity
         if to_give_birth is not None: 
@@ -1148,8 +1167,8 @@ functions.update({
     # aggregates
     'grpcount': GroupCount,
     'grpmin': GroupMin,
-    'grpmax': GroupMax,
-    'grpsum': GroupSum,
+    'grpmax': GroupMax, 
+    'grpsum': GroupSum, 
     'grpavg': GroupAverage,
     'grpstd': GroupStd,
     # per element
