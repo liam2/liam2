@@ -1,4 +1,4 @@
-from itertools import izip, chain, product
+from itertools import izip, chain, product, count
 import random
 import operator
 import csv
@@ -84,7 +84,8 @@ def extract_period(period, expressions, possible_values, probabilities):
     
 def align_get_indices_nd(context, filter, score,
                          expressions, possible_values, probabilities,
-                         take_filter=None, leave_filter=None, weights=None):
+                         take_filter=None, leave_filter=None, weights=None,
+                         past_error=None):
     assert len(expressions) == len(possible_values)
 
     num_to_align = np.sum(filter)
@@ -141,7 +142,9 @@ def align_get_indices_nd(context, filter, score,
     total_indices = []
     to_split_indices = []
     to_split_overflow = []
-    for members_indices, probability in izip(groups, probabilities):
+    for group_idx, members_indices, probability in izip(count(), groups,
+                                                        probabilities):
+        
         if len(members_indices):
             if weights is None:
                 member_weights = None
@@ -150,6 +153,12 @@ def align_get_indices_nd(context, filter, score,
                 member_weights = weights[members_indices]
                 expected = np.sum(member_weights) * probability
             affected = int(expected)
+            if past_error is not None:
+                group_overflow = past_error[group_idx]
+                if group_overflow != 0:
+                    affected -= group_overflow
+                past_error[group_idx] = 0
+                
             if random.random() < expected - affected:
                 affected += 1
 
@@ -181,45 +190,40 @@ def align_get_indices_nd(context, filter, score,
 
                 # maybe_to_take is always > 0
                 maybe_to_take = affected - num_always
-
                 if weights is None:
                     # take the last X individuals (ie those with the highest
                     # score)
                     indices_to_take = sorted_global_indices[-maybe_to_take:]
                 else:
+                    maybe_weights = weights[sorted_global_indices]
+                    
                     # we need to invert the order because members are sorted
                     # on score ascendingly and we need to take those with
                     # highest score.
-                    inv_weight_sums = np.cumsum(member_weights[::-1])
+                    weight_sums = np.cumsum(maybe_weights[::-1])
                     
-                    # for each weighted individual, compute how many more
-                    # we need (we usually start in negative, meaning we got too
-                    # many)
-                    inv_left_to_take = maybe_to_take - inv_weight_sums
-                    
-                    # compute the idx at which we accumulate as much (or more)
-                    # weight as we needed
-                    left_to_take = inv_left_to_take[::-1]
-                    threshold_idx = np.searchsorted(left_to_take, 0,
-                                                    side='right')
-                    if threshold_idx > 0:
-                        # if there is enough weight to satisfy the target
-                        threshold_idx -= 1
-                        overflow = -left_to_take[threshold_idx]
+                    threshold_idx = np.searchsorted(weight_sums, maybe_to_take)
+                    if threshold_idx < len(weight_sums):
+                        num_to_take = threshold_idx + 1
+                        # if there is enough weight to reach "maybe_to_take"
+                        overflow = weight_sums[threshold_idx] - maybe_to_take 
                         if overflow > 0:
                             # the next individual has too much weight, so we 
                             # need to split it.
                             id_to_split = sorted_global_indices[threshold_idx]
+                            past_error[group_idx] = overflow
                             to_split_indices.append(id_to_split)
                             to_split_overflow.append(overflow)
                         else:
                             # we got exactly the number we wanted
                             assert overflow == 0
                     else:
-                        # we can't reach our target number of individuals,
-                        # probably because of a "leave" filter
-                        pass
-                    num_to_take = len(left_to_take) - threshold_idx
+                        # we can't reach our target number of individuals
+                        # (probably because of a "leave" filter), so we
+                        # take all the ones we have
+                        #XXX: should we add *this* underflow to the past_error
+                        # too? It would probably accumulate!
+                        num_to_take = len(weight_sums)
                     indices_to_take = sorted_global_indices[-num_to_take:]
 
 #                if len(indices_to_take) < maybe_to_take: 
@@ -400,6 +404,11 @@ class Alignment(FilteredExpression):
         self.take_filter = take
         self.leave_filter = leave
         self.weight_col = weight_col
+        #FIXME: don't hardcode this
+        if self.weight_col is not None:
+            self.overflows = np.zeros(len(self.probabilities)) 
+        else:
+            self.overflows = None 
 
     def load(self, fpath):
         with open(os.path.join(simulation.input_directory, fpath), "rb") as f:
@@ -454,26 +463,31 @@ class Alignment(FilteredExpression):
                        if self.leave_filter is not None \
                        else None
 
-        indices, to_split = \
+        indices, overflows = \
             align_get_indices_nd(context, filter_value, scores,
                                  self.expressions, self.possible_values,
                                  self.probabilities,
-                                 take_filter, leave_filter, weights)
+                                 take_filter, leave_filter, weights,
+                                 self.overflows)
 
-        if to_split is not None:
-            to_split_indices, to_split_overflow = to_split
-            num_birth = len(to_split_indices)
-            source_entity = context['__entity__']
-            target_entity = source_entity
-            array = target_entity.array
-            clones = array[to_split_indices]
-            id_to_rownum = target_entity.id_to_rownum
-            num_individuals = len(id_to_rownum)
-            clones['id'] = np.arange(num_individuals,
-                                     num_individuals + num_birth)
-            clones[self.weight_col] = to_split_overflow
-            array[self.weight_col][to_split_indices] -= to_split_overflow
-            add_individuals(context, clones)
+        #FIXME: don't hardcode this
+        onoverflow = 'carry'
+        
+        if overflows is not None:
+            to_split_indices, to_split_overflow = overflows
+            if onoverflow == 'split':
+                num_birth = len(to_split_indices)
+                source_entity = context['__entity__']
+                target_entity = source_entity
+                array = target_entity.array
+                clones = array[to_split_indices]
+                id_to_rownum = target_entity.id_to_rownum
+                num_individuals = len(id_to_rownum)
+                clones['id'] = np.arange(num_individuals,
+                                         num_individuals + num_birth)
+                clones[self.weight_col] = to_split_overflow
+                array[self.weight_col][to_split_indices] -= to_split_overflow
+                add_individuals(context, clones)
 
         return {'values': True, 'indices': indices}
 
