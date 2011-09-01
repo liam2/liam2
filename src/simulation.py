@@ -240,6 +240,7 @@ class Simulation(object):
                 for entity in entities:
                     print "  *", entity.name, "...",
                     timed(entity.store_period_data, period)
+                    print "    -> %d individuals" % len(entity.array)
         
         try:
             simulate_period(self.start_period, self.init_processes,
