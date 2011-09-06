@@ -754,9 +754,20 @@ class Choice(EvaluableExpression):
         self.choices = np.array(choices)
         if weights is not None:
             self.bins = np.array([0.0] + list(np.cumsum(weights)))
-            # cumulative sum must be 1.0
-            assert self.bins[-1] == 1.0, \
-                   "the cumulative sum of choice weights must be 1"
+            error = abs(self.bins[-1] - 1.0)
+            if 0.0 < error <= 1e-6:
+                # overshooting a bit is the lesser evil here (the last choice
+                # will be picked a tad less than its probability) but we can't
+                # easily "correct" that one to 1.0 because in that case, we
+                # would have the last bin boundary smaller than the second last
+                if str(1.0 - self.bins[-2]) != str(weights[-1]) and \
+                   self.bins[-1] < 1.0:
+                    print "Warning: last choice probability adjusted to %s " \
+                          "instead of %s !" % (1.0 - self.bins[-2], weights[-1])
+                    self.bins[-1] = 1.0
+            elif error > 1e-6:
+                raise Exception(
+                    "the cumulative sum of choice weights must be ~1")
         else:
             self.bins = None
         
