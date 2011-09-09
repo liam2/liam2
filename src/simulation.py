@@ -170,8 +170,10 @@ class Simulation(object):
                                  entity_registry,
                                  self.start_period)
 
-        #FIXME: this breaks the datasource generalisation
-        h5in = tables.openFile(self.input_path, mode="r")
+        if self.input_path is not None:
+            h5in = tables.openFile(self.input_path, mode="r")
+        else:
+            h5in = None
         h5out = tables.openFile(self.output_path, mode="a",
                                 title="Simulation history")
         for entity in self.entities:
@@ -241,6 +243,12 @@ class Simulation(object):
                     print "  *", entity.name, "...",
                     timed(entity.store_period_data, period)
                     print "    -> %d individuals" % len(entity.array)
+#                print " - compressing period data"
+#                for entity in entities:
+#                    print "  *", entity.name, "...",
+#                    for level in range(1, 10, 2):
+#                        print "   %d:" % level,
+#                        timed(entity.compress_period_data, level)
         
         try:
             simulate_period(self.start_period, self.init_processes,
@@ -262,7 +270,8 @@ class Simulation(object):
                 c.run()
 
         finally:
-            h5in.close()
+            if h5in is not None:
+                h5in.close()
             h5out.close()
 
     def start_console(self, entity, period):
