@@ -37,7 +37,7 @@ def assertValidFields(s_fields, array, allowed_missing=None):
     bad_fields = []
     for (name1, t1), (name2, t2) in zip(sorted(common_s_fields),
                                         sorted(common_t_fields)):
-        assert name1 == name2
+        assert name1 == name2, "%s != %s" % (name1, name2)
         if t1 != t2:
             bad_fields.append((name1, t2.__name__, t1.__name__))
     if bad_fields:
@@ -135,10 +135,10 @@ def mergeArrays(array1, array2, result_fields='union'):
     output_is_arr2 = array2.dtype == output_dtype and ids2_complete
     arr1_complete = set(fields1) >= set(output_fields) and ids1_complete
     arr2_complete = set(fields2) >= set(output_fields) and ids2_complete
-    if output_is_arr1 or output_is_arr2:
-        # In this case, output_array will be one of the input arrays, so
-        # we don't need to allocate/initialise it
-        pass
+    if output_is_arr2:
+        output_array = array2
+    elif output_is_arr1:
+        output_array = array1
     elif arr1_complete or arr2_complete:
         output_array = np.empty(len(all_ids), dtype=output_dtype)
     else:
@@ -146,17 +146,12 @@ def mergeArrays(array1, array2, result_fields='union'):
         output_array[:] = get_missing_record(output_array)
     
     # 2) copy data from array1
-    if not arr2_complete:
-        if output_is_arr1:
-            output_array = array1
-        else:
-            output_array = mergeSubsetInArray(output_array, id_to_rownum, 
-                                              array1, first=True)
+    if not arr2_complete: 
+        output_array = mergeSubsetInArray(output_array, id_to_rownum, 
+                                          array1, first=True)
 
     # 3) copy data from array2
-    if output_is_arr2:
-        output_array = array2
-    else:
+    if not output_is_arr2:
         output_array = mergeSubsetInArray(output_array, id_to_rownum, array2)
     
     return output_array, id_to_rownum
@@ -445,20 +440,13 @@ class Void(object):
         
     def run(self, entities, start_period):
         output_file = tables.openFile(self.output_path, mode="w")
-
-        output_globals = output_file.createGroup("/", "globals", "Globals")
-        dtype = np.dtype([('period', int)])
-        periodic_globals = np.empty(0, dtype=dtype)
-        output_file.createTable(output_globals, 'periodic', dtype, title='')
-
         output_entities = output_file.createGroup("/", "entities", "Entities")
-
         for ent_name, entity in entities.iteritems():
             dtype = np.dtype(entity.fields)
             entity.array = np.empty(0, dtype=dtype)
+            entity.id_to_rownum = np.empty(0, dtype=int) 
             output_file.createTable(output_entities, entity.name, dtype,
                                     title="%s table" % entity.name)
 
         output_file.close()
-        return periodic_globals
-
+        return None
