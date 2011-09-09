@@ -382,10 +382,7 @@ class Alignment(FilteredExpression):
     def __init__(self, score_expr, filter=None, take=None, leave=None,
                  fname=None,
                  expressions=None, possible_values=None, probabilities=None,
-                 #XXX: I think weight_col should be a property of the entity,
-                 # not one of the alignment, because if you have weights, 
-                 # you want to use them in all alignments
-                 weight_col=None):
+                 on_overflow='default'):
         super(Alignment, self).__init__(score_expr, filter)
         
         assert ((expressions is not None and 
@@ -403,12 +400,8 @@ class Alignment(FilteredExpression):
 
         self.take_filter = take
         self.leave_filter = leave
-        self.weight_col = weight_col
-        #FIXME: don't hardcode this
-        if self.weight_col is not None:
-            self.overflows = np.zeros(len(self.probabilities)) 
-        else:
-            self.overflows = None 
+        self.on_overflow = on_overflow
+        self.overflows = None
 
     def load(self, fpath):
         with open(os.path.join(simulation.input_directory, fpath), "rb") as f:
@@ -434,6 +427,21 @@ class Alignment(FilteredExpression):
         
     def eval(self, context):
         scores = expr_eval(self.expr, context)
+
+        on_overflow = self.on_overflow
+        if on_overflow == 'default':
+            on_overflow = context.get('__on_align_overflow__', 'carry') 
+
+        #XXX: I should try to pre-parse weight_col in the entity, rather than
+        # here, possibly allowing expressions. Not sure it has any use, but it
+        # should not cost us much
+        weight_col = context.get('__weight_col__')
+        if weight_col is not None:
+            weights = expr_eval(Variable(weight_col), context)
+            if on_overflow == 'carry' and self.overflows is None:
+                self.overflows = np.zeros(len(self.probabilities))
+        else:
+            weights = None
         
         ctx_filter = context.get('__filter__')
         if self.filter is not None:
@@ -446,11 +454,6 @@ class Alignment(FilteredExpression):
                 filter_expr = ctx_filter
             else:
                 filter_expr = None
-        
-        if self.weight_col is not None:
-            weights = expr_eval(Variable(self.weight_col), context)
-        else:
-            weights = None 
         
         if filter_expr is not None:
             filter_value = expr_eval(filter_expr, context)
@@ -470,12 +473,9 @@ class Alignment(FilteredExpression):
                                  take_filter, leave_filter, weights,
                                  self.overflows)
 
-        #FIXME: don't hardcode this
-        onoverflow = 'carry'
-        
         if overflows is not None:
             to_split_indices, to_split_overflow = overflows
-            if onoverflow == 'split':
+            if on_overflow == 'split':
                 num_birth = len(to_split_indices)
                 source_entity = context['__entity__']
                 target_entity = source_entity

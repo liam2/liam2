@@ -1,7 +1,8 @@
+import carray as ca
 import numpy as np
 import tables
 
-from utils import safe_put
+from utils import safe_put, timed, count_occurences, size2str
 from data import mergeArrays
 from expr import parse, Variable, SubscriptableVariable, \
                  expr_eval, dtype, \
@@ -9,16 +10,29 @@ from expr import parse, Variable, SubscriptableVariable, \
 
 str_to_type = {'float': float, 'int': int, 'bool': bool}
 
+def compress_column(a, level):
+    arr = ca.carray(a, cparams=ca.cparams(level))
+    print "%d -> %d (%.2f)" % (arr.nbytes, arr.cbytes,
+                               float(arr.nbytes)/arr.cbytes),
+    return arr
+
+def decompress_column(a):
+    return a[:]
+    
 class EntityContext(object):
     def __init__(self, entity, extra):
         self.entity = entity
         self.extra = extra
         self['__entity__'] = entity
+        self['__weight_col__'] = entity.weight_col
+        self['__on_align_overflow__'] = entity.on_align_overflow 
 
     def __getitem__(self, key):
         try:
             return self.extra[key]
         except KeyError:
+            period = self.extra['period']
+#            current_period = self.entity.array['period'][0] 
             if self._iscurrentperiod:
                 try:
                     return self.entity.temp_variables[key]
@@ -27,14 +41,28 @@ class EntityContext(object):
                         return self.entity.array[key]
                     except ValueError:
                         raise KeyError(key)
+#            elif period == current_period - 1 and \
+#                 self.entity.array_lag is not None:
+#                try:
+#                    return self.entity.array_lag[key]
+#                except ValueError:
+#                    raise KeyError(key)
             else:
-                period = self.extra['period']
                 bounds = self.entity.output_rows.get(period)
                 if bounds is not None: 
                     startrow, stoprow = bounds
                 else:
                     startrow, stoprow = 0, 0
-        
+#                print "loading from disk...",
+#                res = timed(self.entity.table.read,
+#                             start=startrow, stop=stoprow, 
+#                             field=key)
+#                for level in range(1, 10, 2):
+#                    print "   %d - compress:" % level,
+#                    arr = timed(compress_column, res, level)
+#                    print "decompress:",
+#                    timed(decompress_column, arr)
+#                return res
                 return self.entity.table.read(start=startrow, stop=stoprow, 
                                               field=key)
     
@@ -123,10 +151,19 @@ def context_length(ctx):
 
 class Entity(object):
     def __init__(self, name, fields, missing_fields, links,
-                 macro_strings, process_strings):
+                 macro_strings, process_strings, weight_col=None,
+                 on_align_overflow='carry'):
         self.name = name
         
-        self.fields = fields + [('period', int), ('id', int)]
+        duplicate_names = [name
+                           for name, num
+                           in count_occurences(fname for fname, _ in fields)
+                           if num > 1]
+        if duplicate_names:
+            raise Exception("duplicate fields in entity '%s': %s"
+                            % (self.name, ', '.join(duplicate_names)))
+
+        self.fields = [('period', int), ('id', int)] + fields 
         
         # only used in data (to check that all "required" fields are present
         # in the input file and data_main (where it will not survive its 
@@ -144,6 +181,10 @@ class Entity(object):
         self.missing_fields = missing_fields
         self.period_individual_fnames = [name for name, _ in fields]
         self.links = links
+        
+        self.weight_col = weight_col
+        self.on_align_overflow = on_align_overflow
+
         self.macro_strings = macro_strings
         self.process_strings = process_strings
 
@@ -163,6 +204,7 @@ class Entity(object):
         
         self.base_period = None
         self.array = None
+        self.array_lag = None
 
         self.num_tmp = 0
         self.temp_variables = {}
@@ -175,6 +217,8 @@ class Entity(object):
         
         # YAML "ordered dict" syntax returns a list of dict and we want a list
         # of tuples
+        #FIXME: if "fields" key is present but no field is defined,
+        #entity_def.get('fields', []) returns None and this breaks 
         fields_def = [d.items()[0] for d in entity_def.get('fields', [])]
 
         fields = []
@@ -192,9 +236,11 @@ class Entity(object):
         links = dict((name, Link(name, l['type'], l['field'], l['target']))
                      for name, l in link_defs.iteritems())
 
+        #TODO: add option for on_align_overflow
         return Entity(ent_name, fields, missing_fields, links,
                       entity_def.get('macros', {}),
-                      entity_def.get('processes', {}))
+                      entity_def.get('processes', {}),
+                      entity_def.get('weight'))
         
     @staticmethod
     def collect_predictors(items):
@@ -312,7 +358,8 @@ class Entity(object):
         self.processes = processes
 
     def locate_tables(self, h5in, h5out):
-        self.input_table = getattr(h5in.root.entities, self.name)
+        self.input_table = \
+            getattr(h5in.root.entities, self.name) if h5in is not None else None
         self.table = getattr(h5out.root.entities, self.name)
 
     def load_period_data(self, period):
@@ -328,17 +375,34 @@ class Entity(object):
             mergeArrays(self.array, input_array, result_fields='array1')
 
     def store_period_data(self, period):
+#        temp_mem = 0
+#        for v in self.temp_variables.itervalues():
+#            if isinstance(v, np.ndarray) and v.shape:
+#                temp_mem += v.dtype.itemsize * len(v)
+
         # erase all temporary variables which have been computed this period
         self.temp_variables = {}
+
+#        main_mem = self.array.dtype.itemsize * len(self.array)
+#        print "mem used: %s (main: %s / temp: %s)" \
+#              % (size2str(temp_mem + main_mem),
+#                 size2str(main_mem),
+#                 size2str(temp_mem))
 
         if period in self.output_rows:
             raise Exception("trying to modify already simulated rows")
         else:
+            #TODO: only store variables which are effectively used in lag
+            # expressions
+#            self.array_lag = self.array.copy()
             startrow = self.table.nrows
             self.table.append(self.array)
             self.output_rows[period] = (startrow, self.table.nrows)
             self.output_index[period] = self.id_to_rownum
         self.table.flush()
+
+    def compress_period_data(self, level):
+        print "%d -> %d (%f)" % ca.ctable(self.array, cparams=ca.cparams(level))._get_stats()
 
     def fill_missing_values(self, ids, values, context, filler='auto'):
         if filler is 'auto':
