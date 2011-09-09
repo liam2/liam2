@@ -1,6 +1,7 @@
 import sys, time, itertools
 from itertools import izip
 from textwrap import wrap
+from collections import defaultdict
 
 import numpy as np
 
@@ -12,10 +13,25 @@ def time2str(seconds):
         seconds_plural = 's' if seconds < 0.005 or seconds > 1 else ''
         return "%d minute%s %.2f second%s" % (minutes, minutes_plural, 
                                               seconds, seconds_plural)
-    else:
-        seconds_plural = 's' if seconds < 0.005 or seconds > 1 else ''
+    elif seconds >= 0.005:
+#        seconds_plural = 's' if seconds < 0.005 or seconds > 1 else ''
+        seconds_plural = 's' if seconds > 1 else ''
         return "%.2f second%s" % (seconds, seconds_plural)
+    else:
+        return "%d ms" % (seconds * 1000)
 
+def size2str(value):
+    unit = "bytes"
+    if value > 1024.0:
+        value /= 1024.0
+        unit = "Kb"
+        if value > 1024.0:
+            value /= 1024.0
+            unit = "Mb"
+        return "%.2f %s" % (value, unit)
+    else:
+        return "%d %s" % (value, unit)
+        
 
 def gettime(func, *args, **kwargs):
     start = time.time()
@@ -60,6 +76,12 @@ def loop_wh_progress(func, sequence):
                 offset += 10
             write(''.join(chars_to_write))
         last_percent_done = percent_done
+
+def count_occurences(seq):
+    counter = defaultdict(int)
+    for e in seq:
+        counter[e] += 1
+    return counter.items()
 
 def skip_comment_cells(lines):
     notacomment = lambda v: not v.startswith('#')
