@@ -77,6 +77,9 @@ class RemoveIndividuals(Process):
         entity.id_to_rownum = np.insert(id_to_rownum,
                                         already_removed_indices_shifted,
                                         -1)
+        #FIXME: this allocates a new (slightly smaller) array then the old 
+        # array is discarded when the gc does its job, effectively doubling
+        # the peak memory usage for the main array 
         entity.array = entity.array[not_removed]
         temp_variables = entity.temp_variables
         for name, temp_value in temp_variables.iteritems():
