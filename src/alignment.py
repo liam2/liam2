@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from itertools import izip, chain, product, count
 import random
 import operator
@@ -114,11 +116,12 @@ def align_get_indices_nd(context, filter, score,
         for member_indices in groups:
             aligned |= set(member_indices)
         unaligned = to_align - aligned
-        print "Warning: %d individual(s) do not fit in any alignment category" \
-              % len(unaligned)
-        print " | ".join(str(expr) for expr in ['id'] + expressions)
+        print("Warning: %d individual(s) do not fit in any alignment category"
+              % len(unaligned))
+        print(" | ".join(str(expr) for expr in ['id'] + expressions))
         for row in unaligned:
-            print " | ".join(str(col[row]) for col in [context['id']] + columns)
+            print(" | ".join(str(col[row])
+                             for col in [context['id']] + columns))
 
     take = 0
     leave = 0
@@ -139,6 +142,9 @@ def align_get_indices_nd(context, filter, score,
     if leave_filter is not None:
         leave = np.sum(filter & leave_filter)
 
+    total_underflow = 0
+    total_overflow = 0
+    total_affected = 0
     total_indices = []
     to_split_indices = []
     to_split_overflow = []
@@ -161,6 +167,7 @@ def align_get_indices_nd(context, filter, score,
                 
             if random.random() < expected - affected:
                 affected += 1
+            total_affected += affected
 
             if take_indices is not None:
                 group_always = np.intersect1d(members_indices, take_indices,
@@ -226,18 +233,21 @@ def align_get_indices_nd(context, filter, score,
                         num_to_take = len(weight_sums)
                     indices_to_take = sorted_global_indices[-num_to_take:]
 
-#                if len(indices_to_take) < maybe_to_take: 
-#                    print "affecting %d too few persons" % (maybe_to_take
-#                                                            - len(indices_to_take))
+                underflow = maybe_to_take - len(indices_to_take)
+                if underflow > 0:
+                    total_underflow += underflow  
                 total_indices.extend(indices_to_take)
-#            elif affected < num_always:
-#                print "affecting %d extra persons due to take filter" \
-#                      % (num_always - affected)
+            elif affected < num_always:
+                total_overflow += num_always - affected
+    assert len(total_indices) == \
+           total_affected + total_overflow - total_underflow
+    print(" %d/%d" % (len(total_indices), num_aligned), end=" ")            
     if (take_filter is not None) or (leave_filter is not None):
-        print "%d/%d [take %d, leave %d]" % (len(total_indices), num_aligned,
-                                             take, leave),
-    else:
-        print "%d/%d" % (len(total_indices), num_aligned),
+        print("[take %d, leave %d]" % (take, leave), end=" ")
+    if total_underflow:
+        print("UNDERFLOW: %d" % total_underflow, end=" ")
+    if total_overflow:
+        print("OVERFLOW: %d" % total_overflow, end=" ")
         
     if to_split_indices:
         return total_indices, (to_split_indices, to_split_overflow)
