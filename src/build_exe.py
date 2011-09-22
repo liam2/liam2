@@ -12,10 +12,14 @@ script = args[1]
 args[1] = 'py2exe'
 
 setup(console=[script],
+      zipfile=None,      # uncomment to have all files within the executable 
       options=dict(
           py2exe=dict(
               excludes=["Tkconstants", "Tkinter", "tcl", "_ssl", "pdb", "pydoc",
                         "pydoc_topics", "difflib"],
+              bundle_files=1, # 1 = bundle everything, including the Python interpreter
+                              # 2 = bundle everything but the Python interpreter 
+                              # 3 = don't bundle (default)           
           )
       )
 )
