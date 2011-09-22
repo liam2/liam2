@@ -23,6 +23,7 @@ import regressions
 
 input_directory = "."
 output_directory = "."
+skip_shows = False
 
 def show_top_processes(process_time, num_processes):
     process_times = sorted(process_time.iteritems(),
@@ -86,6 +87,7 @@ class Simulation(object):
     def __init__(self, fpath, console=False):
         global output_directory
         global input_directory
+        global skip_shows
         
         self.console = console
         simulation_path = os.path.abspath(fpath)
@@ -112,6 +114,7 @@ class Simulation(object):
         
         self.periods = simulation_def['periods']
         self.start_period = simulation_def['start_period']
+        skip_shows = simulation_def.get('skip_shows', False)
         
         output_def = simulation_def['output']
         output_directory = output_def.get('path', '')

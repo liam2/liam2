@@ -14,8 +14,11 @@ class Show(Process):
         self.args = args
 
     def run(self, context):
-        values = [expr_eval(expr, context) for expr in self.args]
-        print ' '.join(str(v) for v in values),
+        if simulation.skip_shows:
+            print "skipped",
+        else:
+            values = [expr_eval(expr, context) for expr in self.args]
+            print ' '.join(str(v) for v in values),
 
     def __str__(self):
         #TODO: the differenciation shouldn't be needed. I guess I should
