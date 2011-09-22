@@ -168,7 +168,7 @@ class Simulation(object):
 
         periodic_globals = timed(self.data_source.run, 
                                  entity_registry,
-                                 self.start_period)
+                                 self.start_period - 1)
 
         if self.input_path is not None:
             h5in = tables.openFile(self.input_path, mode="r")
@@ -193,7 +193,8 @@ class Simulation(object):
             
             if init:
                 for entity in entities:
-                    print "  * %s: %d individuals" % (entity.name, len(entity.array))
+                    print "  * %s: %d individuals" % (entity.name, 
+                                                      len(entity.array))
             else:
                 print "- loading input data"
                 for entity in entities:
@@ -237,12 +238,11 @@ class Simulation(object):
                     print "done (%s elapsed)." % time2str(elapsed)
                     self.start_console(process.entity, period)
 
-            if not init:
-                print "- storing period data"
-                for entity in entities:
-                    print "  *", entity.name, "...",
-                    timed(entity.store_period_data, period)
-                    print "    -> %d individuals" % len(entity.array)
+            print "- storing period data"
+            for entity in entities:
+                print "  *", entity.name, "...",
+                timed(entity.store_period_data, period)
+                print "    -> %d individuals" % len(entity.array)
 #                print " - compressing period data"
 #                for entity in entities:
 #                    print "  *", entity.name, "...",
@@ -251,7 +251,7 @@ class Simulation(object):
 #                        timed(entity.compress_period_data, level)
         
         try:
-            simulate_period(self.start_period, self.init_processes,
+            simulate_period(self.start_period - 1, self.init_processes,
                             self.entities, init=True)
     
             for period in range(self.start_period, 
