@@ -239,8 +239,9 @@ def align_get_indices_nd(context, filter, score,
                 total_indices.extend(indices_to_take)
             elif affected < num_always:
                 total_overflow += num_always - affected
-    assert len(total_indices) == \
-           total_affected + total_overflow - total_underflow
+# this assertion is only valid in the non weighted case
+#    assert len(total_indices) == \
+#           total_affected + total_overflow - total_underflow
     print(" %d/%d" % (len(total_indices), num_aligned), end=" ")            
     if (take_filter is not None) or (leave_filter is not None):
         print("[take %d, leave %d]" % (take, leave), end=" ")
