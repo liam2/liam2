@@ -5,7 +5,7 @@ import numpy as np
 
 from expr import Expr, Variable, Where, functions, as_string, dtype, \
                  coerce_types, type_to_idx, idx_to_type, expr_eval, \
-                 collect_variables, num_tmp, \
+                 collect_variables, get_tmp_varname, \
                  missing_values, get_missing_value, get_missing_record, \
                  get_missing_vector 
 from entities import entity_registry, EntityContext, context_length
@@ -168,10 +168,7 @@ class EvaluableExpression(Expr):
         raise NotImplementedError
 
     def as_string(self, context):
-        global num_tmp
-        
-        tmp_varname = "temp_%d" % num_tmp
-        num_tmp += 1
+        tmp_varname = get_tmp_varname()
         result = expr_eval(self, context)
         if isinstance(result, dict):
             indices = result['indices']
@@ -847,15 +844,33 @@ class GroupMax(NumpyProperty):
         return dtype(self.args[0], context)
 
 
-class GroupSum(NumpyProperty):
+class GroupSum(FilteredExpression):
     func_name = 'grpsum'
-    np_func = (np.nansum,)
-    arg_names = ('a', 'axis', 'dtype', 'out')
+    
+    def eval(self, context):
+        expr = self.expr
+        
+        ctx_filter = context.get('__filter__')
+        if self.filter is not None and ctx_filter is not None:
+            filter_expr = ctx_filter & self.filter
+        elif self.filter is not None:
+            filter_expr = self.filter
+        elif ctx_filter is not None:
+            filter_expr = ctx_filter
+        else:
+            filter_expr = None
+        if filter_expr is not None:
+            if dtype(filter_expr, context) is not bool:
+                raise Exception("grpsum filter must be a boolean expression")
+            expr *= filter_expr
+
+        return np.nansum(expr_eval(expr, context))
 
     def dtype(self, context):
         #TODO: merge this typemap with tsum's
         typemap = {bool: int, int: int, float: float}
         return typemap[dtype(self.args[0], context)]
+
 
 class GroupStd(NumpyProperty):
     func_name = 'grpstd'
@@ -890,8 +905,8 @@ class GroupCount(EvaluableExpression):
         filter = str(self.filter) if self.filter is not None else '' 
         return "grpcount(%s)" % filter
 
-
-#TODO: transform this into a CompoundExpression
+# we could transform this into a CompoundExpression (grpsum(x)/grpcount(x)) but
+# that would be inefficient.
 class GroupAverage(FilteredExpression):
     func_name = 'grpavg'
     
@@ -899,10 +914,10 @@ class GroupAverage(FilteredExpression):
         expr = self.expr
         if self.filter is not None:
             filter = expr_eval(self.filter, context)
-            #FIXME: use usual temporary variable method
+            tmp_varname = get_tmp_varname()
             context = context.copy()
-            context['__tmpfilter__'] = filter
-            expr = Where(Variable('__tmpfilter__'), expr, 0)
+            context[tmp_varname] = filter
+            expr = Variable(tmp_varname) * expr
         else:
             filter = True
         values = expr_eval(expr, context)
@@ -1091,7 +1106,6 @@ class Clone(CreateIndividual):
 
     def _initial_values(self, array, to_give_birth, num_birth):
         return array[to_give_birth]
-
 
 class Dump(EvaluableExpression):
     def __init__(self, *args, **kwargs):

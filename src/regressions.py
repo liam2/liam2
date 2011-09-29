@@ -2,10 +2,9 @@ import numpy as np
 
 from properties import Log, Exp, Normal, Max, \
                        CompoundExpression
-import properties
 from alignment import Alignment
 from expr import Expr, Variable, ShortLivedVariable, functions, \
-                 collect_variables, expr_eval
+                 collect_variables, expr_eval, get_tmp_varname
 from entities import context_length
 
 #TODO: make those available
@@ -59,8 +58,7 @@ class LogitScore(CompoundExpression):
     def __init__(self, expr):
         CompoundExpression.__init__(self)
         self.expr = expr
-        self.u_varname = "temp_%d" % properties.num_tmp
-        properties.num_tmp += 1
+        self.u_varname = get_tmp_varname()
 
     def build_context(self, context):
         context[self.u_varname] = \

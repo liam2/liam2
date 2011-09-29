@@ -27,6 +27,13 @@ except ImportError:
 
 num_tmp = 0
 
+def get_tmp_varname():
+    global num_tmp
+    
+    tmp_varname = "temp_%d" % num_tmp
+    num_tmp += 1
+    return tmp_varname
+
 type_to_idx = {bool: 0, np.bool_: 0, 
                int: 1, np.int32: 1, np.intc: 1, np.int64: 1,
                float: 2, np.float64: 2}
@@ -478,8 +485,6 @@ class SubscriptedVariable(Variable):
 
     #XXX: inherit from EvaluableExpression?
     def as_string(self, context):
-        global num_tmp
-        
         result = self.eval(context)
         if isinstance(self.key, int):
             tmp_varname = '__%s_%s' % (self.name, self.key)
@@ -488,8 +493,7 @@ class SubscriptedVariable(Variable):
             else:
                 context[tmp_varname] = result
         else: 
-            tmp_varname = "temp_%d" % num_tmp
-            num_tmp += 1
+            tmp_varname = get_tmp_varname()
             context[tmp_varname] = result
         return tmp_varname
 
@@ -530,11 +534,11 @@ class Where(Expr):
         
         # filter is stored as an unevaluated expression
         filter = context.get('__filter__')
+
         if filter is None:
             context['__filter__'] = self.cond
         else:
             context['__filter__'] = filter & self.cond
-
         iftrue = as_string(self.iftrue, context)
         
         if filter is None:
@@ -542,6 +546,7 @@ class Where(Expr):
         else:
             context['__filter__'] = filter & ~self.cond
         iffalse = as_string(self.iffalse, context)
+
         context['__filter__'] = None
         return "where(%s, %s, %s)" % (cond, iftrue, iffalse)
         
@@ -612,8 +617,8 @@ def parse(s, globals=None, conditional_context=None, expression=True,
         #IOError and such. Those are clearer when left unmodified.
         except EnvironmentError:  
             raise
-        except Exception, e:
-            raise add_context(e, s)
+#        except Exception, e:
+#            raise add_context(e, s)
     else:
         exec c in context
     
