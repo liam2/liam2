@@ -384,7 +384,7 @@ class GroupBy(FilteredExpression):
         for y in range(height):
             result.append(list(categ_values[y]) + 
                           data[y * width:(y + 1) * width])
-        return PrettyTable(result)
+        return PrettyTable(result, None)
 
 
 class Alignment(FilteredExpression):

@@ -98,11 +98,11 @@ def strip_rows(lines):
         yield list(reversed(rev_line))
 
 
-def format_value(value):
+def format_value(value, missing):
     if isinstance(value, float):
         # nans print as "-1.#J", let's use something nicer
         if value != value:
-            return 'nan'
+            return missing
         else:
             return '%.2f' % value
     elif isinstance(value, np.ndarray) and value.shape:
@@ -120,8 +120,8 @@ def longest_word(s):
 def get_min_width(table, index):
     return max(longest_word(row[index]) for row in table)
 
-def table2str(table):
-    formatted = [[format_value(value) for value in row]
+def table2str(table, missing):
+    formatted = [[format_value(value, missing) for value in row]
                   for row in table] 
     colwidths = [get_col_width(formatted, i) for i in xrange(len(table[0]))]
 
@@ -149,12 +149,26 @@ def table2str(table):
 
 
 class PrettyTable(object):
-    def __init__(self, iterable):
+    def __init__(self, iterable, missing):
         self.data = list(iterable)
+        self.missing = missing
     
     def __iter__(self):
-        return iter(self.data)
-    
+        if self.missing is not None:
+            return iter(self.convert_nans())
+        else:
+            return iter(self.data)
+            
+    def convert_nans(self):
+        missing = self.missing
+        for row in self.data:
+            formatted = [str(value) if value == value else missing
+                         for value in row]
+            yield formatted
+
     def __str__(self):
-        return '\n' + table2str(self.data) + '\n'
+        missing = self.missing
+        if missing is None:
+            missing = 'nan'
+        return '\n' + table2str(self.data, missing) + '\n'
     __repr__ = __str__

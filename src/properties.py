@@ -1111,6 +1111,7 @@ class Dump(EvaluableExpression):
     def __init__(self, *args, **kwargs):
         self.expressions = args
         self.filter = kwargs.pop('filter', None)
+        self.missing = kwargs.pop('missing', None)
         if len(args):
             assert all(isinstance(e, Expr) for e in args), \
                    "dump arguments must be expressions, not a list of them, " \
@@ -1155,7 +1156,8 @@ class Dump(EvaluableExpression):
                 newcol.fill(col)
                 columns[idx] = newcol
  
-        return utils.PrettyTable(chain([str_expressions], izip(*columns)))
+        return utils.PrettyTable(chain([str_expressions], izip(*columns)),
+                                 self.missing)
 
     def collect_variables(self, context):
         if self.expressions:
