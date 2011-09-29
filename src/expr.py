@@ -617,8 +617,8 @@ def parse(s, globals=None, conditional_context=None, expression=True,
         #IOError and such. Those are clearer when left unmodified.
         except EnvironmentError:  
             raise
-#        except Exception, e:
-#            raise add_context(e, s)
+        except Exception, e:
+            raise add_context(e, s)
     else:
         exec c in context
     
