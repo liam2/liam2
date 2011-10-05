@@ -143,7 +143,10 @@ class Expr(object):
     # makes sure we dont use "normal" python logical operators
     # (and, or, not) 
     def __nonzero__(self):
-        raise NotImplementedError()
+        raise Exception("Improper use of boolean operators, you probably "
+                        "forgot parenthesis around operands of an 'and' or "
+                        "'or' expression. The complete expression cannot be "
+                        "displayed but it contains: '%s'." % str(self)) 
 
     def __lt__(self, other):
         return ComparisonOp('<', self, other)
@@ -388,9 +391,9 @@ class LogicalOp(BinaryOp):
     def dtype(self, context):
         def assertbool(expr):
             dt = dtype(expr, context)
-            assert dt is bool, \
-                   "operands to logical operators need to be boolean but " \
-                   "%s is %s" % (expr, dt)
+            if dt is not bool:
+                raise Exception("operands to logical operators need to be "
+                                "boolean but %s is %s" % (expr, dt))
         assertbool(self.expr1)
         assertbool(self.expr2)
         return bool
