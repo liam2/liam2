@@ -32,6 +32,7 @@ entities:
             - f_id:         int
             - m_id:         int
             
+            - weight:       {type: int, initialdata: False}
             - v1:           {type: float, initialdata: False}
             - nch:          {type: int, initialdata: False}
             - eduach:       {type: int, initialdata: False}
@@ -40,6 +41,8 @@ entities:
             - ch_minage:    {type: int, initialdata: False}
             - ch_maxage:    {type: int, initialdata: False}
             - young_mother: {type: bool, initialdata: False}
+            
+#        weight: weight
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -56,6 +59,10 @@ entities:
             
             MALE: gender
             FEMALE: not gender
+            
+            LOWER_SECONDARY_EDU: "eduach == 2"
+            UPPER_SECONDARY_EDU: "eduach == 3"
+            TERTIARY_EDU: "eduach == 4"
 
         # possible transitions & regressions. The actual list used in the
         # simulation must be defined below
@@ -64,7 +71,13 @@ entities:
             
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
-            
+                - weight: randint(1, 11)
+#                - new('person', number=10000000,
+#                      age=randint(102),
+#                      gender=choice([True, False], [0.5, 0.5]),
+#                      work=choice([True, False], [0.5, 0.5]),
+#                      partner_id=1)
+
             temp_global: age + 10
             temp_global_test1:
                 - temp_global: temp_global * 2
@@ -107,6 +120,14 @@ entities:
                 - test_nonmacro2: show(grpsum(ischild))
                 - show("test grpsum:", grpsum(ischild))
                 - test_macro2: show(grpsum(ISCHILD))
+                
+                - show('male students', grpcount(MALE and LOWER_SECONDARY_EDU))
+                
+#                - show('expr wh missing parenthesis', grpcount(age < 15 & eduach == 2))
+                # equivalent to grpcount(age < (15 & eduach) == 2)
+                # equivalent to grpcount((age < (15 & eduach)) *and* ((15 & eduach) == 2))
+                # calls __nonzero__ on the first part (age < (15 & eduach))
+                - show(groupby(eduach, gender))
             
             agegroup: if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))
 
@@ -135,6 +156,9 @@ entities:
                        grpcount(temp_aligned != var_aligned) > 105)
                 - show('var != temp:',
                        grpcount(expr_aligned != var_aligned) > 105)
+
+                - show('weight:', weight)
+                - weight_aligned: align(0.0, fname='al_p_dead_m.csv')
 
             test_logit: 
                 - simple: logit_regr(0.0)
@@ -320,8 +344,17 @@ entities:
             cleanup: remove(lag(dead))
             
             test_o2m_aggregate: show(grpavg(countlink(children)))
+            test_aggregate:
+                - unfiltered: grpsum(age)
+                - filtered: if(MALE, grpsum(age), grpsum(age))
+                - check: show(groupby(filtered, gender))
+                - males: grpsum(age, filter=MALE)
+                - females: grpsum(age, filter=FEMALE)
+                - check: show(males, '+', females, '=', unfiltered, 
+                              '(', males + females == unfiltered, ')')
 
             test_groupby:
+                - check_fweight_full_civserv: "show(groupby(agegroup, gender, expr=grpsum(weight)/1000))"
                 - test_logit: show(groupby(round(logit_score(0.0), 1)))
                 - explicit_count: show(groupby(round(logit_score(0.0), 1), 
                                                 expr=grpcount()))
@@ -349,6 +382,9 @@ entities:
 #                                        expr=grpsum(countlink(children)) / grpsum(not dead)))
 #                                        expr=grpavg(nch)))
                 - minmax_age: show(groupby(id / 100, gender, expr=grpmax(age) - grpmin(age)))
+                
+            show_weight: show("avg weight", grpavg(weight), 
+                              "total population", grpsum(weight))
 
 
 simulation:
@@ -356,7 +392,8 @@ simulation:
         - person: [test_init]
 
     processes:
-        - person: [#bp,
+        - person: [
+#                   bp,
                    cleanup,
                    
                    temp_global,
@@ -392,8 +429,12 @@ simulation:
                    test_predictor1, test_predictor2, test_predictor3,
 
                    test_o2m_aggregate,
+                   test_aggregate,
+                   
+                   show_weight,
 #                   test_groupby,
 #                   test_dump,
+
         ]
         - household: [num_persons, nch, maxnch, 
 #                      dump_csv_h
@@ -402,6 +443,7 @@ simulation:
     input:
         file: small.h5
     output:
+        path: c:\tmp
         file: simulation.h5
 
 #    random_seed: 0
