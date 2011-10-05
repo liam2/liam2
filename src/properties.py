@@ -598,6 +598,7 @@ class FilteredExpression(FunctionExpression):
             expr_vars |= collect_variables(self.filter, context)
         return expr_vars
 
+#------------------------------------
 
 class ValueForPeriod(FunctionExpression):
     func_name = 'value_for_period'
@@ -657,6 +658,7 @@ class TimeSum(FunctionExpression):
         entity = context['__entity__']
         return entity.tsum(self.expr, context)
 
+#------------------------------------
 
 class NumpyProperty(EvaluableExpression):
     func_name = None # optional (for display)
@@ -732,6 +734,7 @@ class Clip(NumpyProperty):
     np_func = (np.clip,)
     arg_names = ('a', 'a_min', 'a_max', 'out')
 
+#------------------------------------
 
 class Uniform(NumpyProperty):
     np_func = (np.random.uniform,)
@@ -803,6 +806,7 @@ class RandInt(NumpyProperty):
     def dtype(self, context):
         return int
 
+#------------------------------------
 
 class Round(NumpyProperty):
     func_name = 'round' # np.round redirects to np.round_
@@ -825,6 +829,7 @@ class Trunc(FunctionExpression):
         assert dtype(self.expr, context) == float
         return int
 
+#------------------------------------
 
 class GroupMin(NumpyProperty):
     func_name = 'grpmin'
@@ -890,6 +895,8 @@ class GroupCount(EvaluableExpression):
         if self.filter is None:
             return context_length(context)
         else:
+            if dtype(self.filter, context) is not bool:
+                raise Exception("grpcount filter must be a boolean expression")
             return np.sum(expr_eval(self.filter, context))
 
     def dtype(self, context):
