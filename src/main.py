@@ -32,6 +32,7 @@ if __name__ == '__main__':
     args = sys.argv
     if len(args) < 3:
         usage(args)
+        sys.exit()
     
     action = args[1]
     fpath = args[2]
