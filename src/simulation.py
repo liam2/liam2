@@ -190,21 +190,20 @@ class Simulation(object):
             globals_base_period = globals_periods[0]
         
         process_time = defaultdict(float)
+        period_objects = {}
 
         def simulate_period(period, processes, entities, init=False):        
             print "\nperiod", period
-            
             if init:
                 for entity in entities:
-                    print "  * %s: %d individuals" % (entity.name, 
-                                                      len(entity.array))
+                    print "  * %s: %d individuals" % (entity.name,
+                                                      len(entity.array)) 
             else:
                 print "- loading input data"
                 for entity in entities:
                     print "  *", entity.name, "...",
                     timed(entity.load_period_data, period)
                     print "    -> %d individuals" % len(entity.array)
-
             for entity in entities:
                 entity.array['period'] = period
 
@@ -252,20 +251,35 @@ class Simulation(object):
 #                    for level in range(1, 10, 2):
 #                        print "   %d:" % level,
 #                        timed(entity.compress_period_data, level)
+            period_objects[period] = sum(len(entity.array)
+                                         for entity in entities)
         
         try:
             simulate_period(self.start_period - 1, self.init_processes,
                             self.entities, init=True)
-    
-            for period in range(self.start_period, 
-                                self.start_period + self.periods):
+            main_start_time = time.time()
+            periods = range(self.start_period, self.start_period + self.periods)
+            for period in periods:
                 period_start_time = time.time()
                 simulate_period(period, self.processes, self.entities)
-                print "period %d done (%s elapsed)." % (period, 
-                                                        time2str(time.time() 
-                                                               - period_start_time)) 
-            print "simulation done (%s elapsed)." % time2str(time.time() 
-                                                             - start_time)
+                time_elapsed = time.time() - period_start_time
+                print "period %d done (%s elapsed)." % (period,
+                                                        time2str(time_elapsed))
+
+            total_objects = sum(period_objects[period] for period in periods)
+            total_time = time.time() - main_start_time 
+            print """
+==========================================
+ simulation done
+==========================================
+ * %s elapsed
+ * %d individuals on average
+ * %d individuals/s/period on average
+==========================================
+""" % (time2str(time.time() - start_time),
+       total_objects / self.periods,
+       total_objects / total_time)
+
             show_top_processes(process_time, 10)
     
             if self.console:
