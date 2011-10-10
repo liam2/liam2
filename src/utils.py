@@ -172,3 +172,15 @@ class PrettyTable(object):
             missing = 'nan'
         return '\n' + table2str(self.data, missing) + '\n'
     __repr__ = __str__
+
+# copied from itertools recipes    
+def unique(iterable):
+    "List unique elements, preserving order. Remember all elements ever seen."
+    # unique_everseen('AAAABBBCCDAABBB') --> A B C D
+    seen = set()
+    seen_add = seen.add
+    for element in iterable:
+        if element not in seen:
+            seen_add(element)
+            yield element
+

@@ -10,7 +10,7 @@ import numpy as np
 
 from expr import functions, Expr, Variable, expr_eval, parse
 from entities import context_length
-from utils import skip_comment_cells, strip_rows, PrettyTable
+from utils import skip_comment_cells, strip_rows, PrettyTable, unique
 import simulation
 from properties import FilteredExpression, GroupCount, add_individuals
 
@@ -70,14 +70,16 @@ def extract_period(period, expressions, possible_values, probabilities):
     #TODO: allow any temporal variable
     str_expressions = [str(e) for e in expressions]
     periodcol = str_expressions.index('period')
+    #TODO: allow period in any dimension
+    if periodcol != len(expressions) - 1:
+        raise NotImplementedError('period, if present, should be the last '
+                                  'expression')
     expressions = expressions[:periodcol] + expressions[periodcol+1:]
     possible_values = possible_values[:]
     period_values = possible_values.pop(periodcol)
     num_periods = len(period_values)
     try:
         period_idx = period_values.index(period)
-        #TODO: allow period in any dimension
-        assert periodcol == 1
         probabilities = probabilities[period_idx::num_periods]
     except ValueError:
         raise Exception('missing alignment data for period %d' % period)
@@ -118,6 +120,7 @@ def align_get_indices_nd(context, filter, score,
         unaligned = to_align - aligned
         print("Warning: %d individual(s) do not fit in any alignment category"
               % len(unaligned))
+        #TODO: use PrettyTable for this
         print(" | ".join(str(expr) for expr in ['id'] + expressions))
         for row in unaligned:
             print(" | ".join(str(col[row])
@@ -424,17 +427,24 @@ class Alignment(FilteredExpression):
             for line in lines:
                 assert all(value != '' for value in line), \
                        "empty cell found in %s" % fpath 
-                table.append([eval(value) for value in line]) 
-        #TODO: ndimensional
-        headers1 = table.pop(0)
-        headers2 = [line.pop(0) for line in table]
-        self.possible_values = [headers2, headers1]
+                table.append([eval(value) for value in line])
+        ndim = len(header)
+        headers_last_dim = table.pop(0)
+        # strip the ndim-1 first columns
+        headers = [[line.pop(0) for line in table]
+                   for _ in range(ndim - 1)]
+        possible_values = [list(unique(values)) for values in headers]
+        possible_values.append(headers_last_dim)
+        self.possible_values = possible_values
         self.probabilities = list(chain.from_iterable(table))
-        assert len(self.probabilities) == len(headers1) * len(headers2), \
+        num_possible_values = prod(len(values) for values in possible_values)
+        assert len(self.probabilities) == num_possible_values, \
                'incoherent alignment data: %d actual data\n' \
-               'but %d * %d = %d in headers' % (len(self.probabilities),
-                                                len(headers1), len(headers2),
-                                                len(headers1) * len(headers2))
+               'but %s = %d in headers' % (len(self.probabilities),
+                                           ' * '.join(str(len(values))
+                                                      for values
+                                                      in possible_values),
+                                           num_possible_values)
         
     def eval(self, context):
         scores = expr_eval(self.expr, context)

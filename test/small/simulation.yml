@@ -133,15 +133,22 @@ entities:
 
             test_align:
                 - dead: if(gender, 
-                           align(logit_score(0.0), 
+                           align(0.0, 
                                  take=age > 95, leave=ISCHILD,
                                  fname='al_p_dead_m.csv'),
-                           align(logit_score(0.0),
+                           align(0.0,
                                  take=age > 95, leave=ISCHILD,
                                  fname='al_p_dead_f.csv'))
                                  
                 - show('95+ not dead:', grpsum(not dead and (age > 95)),
                        'ISCHILD dead:', grpsum(dead and ISCHILD))
+
+                - dead2: align(0.0,
+                               take=age > 95, leave=ISCHILD,
+                               fname='al_p_dead.csv')
+
+                - show('dead != dead2:',
+                       grpcount(dead != dead2) > 105)
                        
                 # align using temporary variable
                 - temp: age + 1
@@ -154,11 +161,8 @@ entities:
                 - expr_aligned: align(0.0, fname='al_p_expr.csv')
                 - show('temp != var:',
                        grpcount(temp_aligned != var_aligned) > 105)
-                - show('var != temp:',
+                - show('expr != var:',
                        grpcount(expr_aligned != var_aligned) > 105)
-
-                - show('weight:', weight)
-                - weight_aligned: align(0.0, fname='al_p_dead_m.csv')
 
             test_logit: 
                 - simple: logit_regr(0.0)
@@ -448,4 +452,4 @@ simulation:
 
 #    random_seed: 0
     start_period: 2002   # first simulated period
-    periods: 5
+    periods: 2
