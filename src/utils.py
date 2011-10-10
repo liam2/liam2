@@ -149,7 +149,7 @@ def table2str(table, missing):
 
 
 class PrettyTable(object):
-    def __init__(self, iterable, missing):
+    def __init__(self, iterable, missing=None):
         self.data = list(iterable)
         self.missing = missing
     

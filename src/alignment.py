@@ -120,11 +120,9 @@ def align_get_indices_nd(context, filter, score,
         unaligned = to_align - aligned
         print("Warning: %d individual(s) do not fit in any alignment category"
               % len(unaligned))
-        #TODO: use PrettyTable for this
-        print(" | ".join(str(expr) for expr in ['id'] + expressions))
-        for row in unaligned:
-            print(" | ".join(str(col[row])
-                             for col in [context['id']] + columns))
+        print(PrettyTable([['id'] + expressions] +
+                          [[col[row] for col in [context['id']] + columns]
+                           for row in unaligned]))
 
     take = 0
     leave = 0
