@@ -886,6 +886,15 @@ class GroupStd(NumpyProperty):
     def dtype(self, context):
         return float
 
+class GroupMedian(NumpyProperty):
+    func_name = 'grpmedian'
+    np_func = (np.median,)
+    arg_names = ('a', 'axis', 'out', 'overwrite_input')
+    skip_missing = True
+
+    def dtype(self, context):
+        return float
+
 
 class GroupCount(EvaluableExpression):
     def __init__(self, filter=None):
@@ -1205,6 +1214,7 @@ functions.update({
     'grpsum': GroupSum, 
     'grpavg': GroupAverage,
     'grpstd': GroupStd,
+    'grpmedian': GroupMedian,
     # per element
     'min': Min,
     'max': Max,

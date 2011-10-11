@@ -348,7 +348,7 @@ entities:
             cleanup: remove(lag(dead))
             
             test_o2m_aggregate: show(grpavg(countlink(children)))
-            test_aggregate:
+            test_grpsum:
                 - unfiltered: grpsum(age)
                 - filtered: if(MALE, grpsum(age), grpsum(age))
                 - check: show(groupby(filtered, gender))
@@ -356,6 +356,22 @@ entities:
                 - females: grpsum(age, filter=FEMALE)
                 - check: show(males, '+', females, '=', unfiltered, 
                               '(', males + females == unfiltered, ')')
+
+            test_grpmedian:
+                - median_age: grpmedian(age)
+                - num_total: grpcount()
+                - num_young: grpcount(age < median_age)
+                - num_old: grpcount(age > median_age)
+                
+                - check_young: show('num_young <= num_total / 2:',
+                                    num_young, '<=', num_total / 2, 
+                                    '[', num_young <= num_total / 2, ']')
+                - check_old: show('num_old <= num_total / 2:',
+                                  num_old, '<=', num_total / 2, 
+                                  '[', num_old <= num_total / 2, ']')
+                - check_total: show('num_young + grpcount(age == median_age) + num_old == num_total:',
+                                    num_young, '+', grpcount(age == median_age), '+', num_old, '==', num_total,
+                                    '[', num_young + grpcount(age == median_age) + num_old == num_total, ']')
 
             test_groupby:
                 - check_fweight_full_civserv: "show(groupby(agegroup, gender, expr=grpsum(weight)/1000))"
@@ -433,7 +449,8 @@ simulation:
                    test_predictor1, test_predictor2, test_predictor3,
 
                    test_o2m_aggregate,
-                   test_aggregate,
+                   test_grpsum,
+                   test_grpmedian,
                    
                    show_weight,
 #                   test_groupby,
