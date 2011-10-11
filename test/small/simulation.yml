@@ -373,6 +373,11 @@ entities:
                                     num_young, '+', grpcount(age == median_age), '+', num_old, '==', num_total,
                                     '[', num_young + grpcount(age == median_age) + num_old == num_total, ']')
 
+            test_grpgini:
+                - show('grpgini(age)', grpgini(age))
+                - show('grpgini([1, 1, 1])', grpgini([1, 1, 1]), 'should be zero')
+                - show('grpgini([0, 0, 0, 1])', grpgini([0, 0, 0, 1]), 'should be 3/4')
+
             test_groupby:
                 - check_fweight_full_civserv: "show(groupby(agegroup, gender, expr=grpsum(weight)/1000))"
                 - test_logit: show(groupby(round(logit_score(0.0), 1)))
@@ -451,6 +456,7 @@ simulation:
                    test_o2m_aggregate,
                    test_grpsum,
                    test_grpmedian,
+                   test_grpgini,
                    
                    show_weight,
 #                   test_groupby,

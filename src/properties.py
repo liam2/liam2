@@ -848,7 +848,6 @@ class GroupMax(NumpyProperty):
     def dtype(self, context):
         return dtype(self.args[0], context)
 
-
 class GroupSum(FilteredExpression):
     func_name = 'grpsum'
     
@@ -895,6 +894,32 @@ class GroupMedian(NumpyProperty):
     def dtype(self, context):
         return float
 
+class GroupGini(FunctionExpression):
+    func_name = 'grpgini'
+
+    def eval(self, context):
+        # from Wikipedia:
+        # G = 1/n * (n + 1 - 2 * (sum((n + 1 - i) * a[i]) / sum(a[i])))
+        #                        i=1..n                    i=1..n
+        # but sum((n + 1 - i) * a[i])
+        #    i=1..n
+        #   = sum((n - i) * a[i] for i in range(n))
+        #   = sum(cumsum(a))
+    
+        a = expr_eval(self.expr, context)
+        # for some reason, it is faster to take a copy and sort in place
+        # than to simply use np.sort(a)
+        a_sorted = a[:]
+        a.sort()
+        n = len(a)
+
+        # force float to avoid overflows with integer input expressions
+        cumsum = np.cumsum(a_sorted, dtype=float)
+        sum = cumsum[-1]
+        return (n + 1 - 2 * np.sum(cumsum) / sum) / n
+
+    def dtype(self, context):
+        return float
 
 class GroupCount(EvaluableExpression):
     def __init__(self, filter=None):
@@ -920,7 +945,7 @@ class GroupCount(EvaluableExpression):
     def __str__(self):
         filter = str(self.filter) if self.filter is not None else '' 
         return "grpcount(%s)" % filter
-
+    
 # we could transform this into a CompoundExpression (grpsum(x)/grpcount(x)) but
 # that would be inefficient.
 class GroupAverage(FilteredExpression):
@@ -1215,6 +1240,7 @@ functions.update({
     'grpavg': GroupAverage,
     'grpstd': GroupStd,
     'grpmedian': GroupMedian,
+    'grpgini': GroupGini,
     # per element
     'min': Min,
     'max': Max,
