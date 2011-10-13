@@ -29,24 +29,35 @@ class Show(Process):
 
 
 class CSV(Process):
-    def __init__(self, expr, suffix=''):
+    def __init__(self, expr, suffix='', fname=None, mode='w'):
         self.expr = expr
         #TODO: make base class for Dump & GroupBy
 #        assert isinstance(expr, (Dump, GroupBy))
+        if fname is not None and suffix:
+            raise ValueError("csv() can't have both 'suffix' and 'fname' "
+                             "arguments")
         self.suffix = suffix
+        self.fname = fname
+        if mode not in ('w', 'a'):
+            raise ValueError("csv() mode argument should be either " 
+                             "'w' (overwrite) or 'a' (append)")
+        self.mode = mode
 
     def run(self, context):
         entity = context['__entity__']
         period = context['period']
-        if self.suffix:
-            fname = "%s_%d_%s.csv" % (entity.name, period,
-                                      self.suffix)
+        if self.fname is not None:
+            fname = self.fname.format(entity=entity.name, period=period)
+        elif self.suffix:
+            #XXX: in py2.7, we can use {} instead
+            fname = "{0}_{1}_{2}.csv".format(entity.name, period, self.suffix)
         else:
-            fname = "%s_%d.csv" % (entity.name, period)
+            #XXX: in py2.7, we can use {} instead
+            fname = "{0}_{1}.csv".format(entity.name, period)
 
         print "writing to", fname, "...",          
         file_path = os.path.join(simulation.output_directory, fname)
-        with open(file_path, "wb") as f:
+        with open(file_path, self.mode + 'b') as f:
             data = expr_eval(self.expr, context)
             dataWriter = csv.writer(f)
             dataWriter.writerows(data)
