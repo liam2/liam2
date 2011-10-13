@@ -84,6 +84,8 @@ class Assignment(Process):
     def store_result(self, result):
         if result is None:
             return
+        if self.name is None:
+            raise Exception('trying to store None key')
         
         if isinstance(result, dict):
             indices = result.get('indices')
@@ -906,15 +908,12 @@ class GroupGini(FunctionExpression):
         #   = sum((n - i) * a[i] for i in range(n))
         #   = sum(cumsum(a))
     
-        a = expr_eval(self.expr, context)
-        # for some reason, it is faster to take a copy and sort in place
-        # than to simply use np.sort(a)
-        a_sorted = a[:]
-        a.sort()
-        n = len(a)
+        values = expr_eval(self.expr, context)
+        sorted_values = np.sort(values)
+        n = len(values)
 
         # force float to avoid overflows with integer input expressions
-        cumsum = np.cumsum(a_sorted, dtype=float)
+        cumsum = np.cumsum(sorted_values, dtype=float)
         sum = cumsum[-1]
         return (n + 1 - 2 * np.sum(cumsum) / sum) / n
 
@@ -1153,6 +1152,8 @@ class Dump(EvaluableExpression):
         self.expressions = args
         self.filter = kwargs.pop('filter', None)
         self.missing = kwargs.pop('missing', None)
+        self.periods = kwargs.pop('periods', None)
+        self.header = kwargs.pop('header', True)
         if len(args):
             assert all(isinstance(e, Expr) for e in args), \
                    "dump arguments must be expressions, not a list of them, " \
@@ -1175,7 +1176,14 @@ class Dump(EvaluableExpression):
             expressions.insert(0, Variable('id'))
             id_pos = 0
         else:
-            id_pos = str_expressions.index('id') 
+            id_pos = str_expressions.index('id')
+
+        if (self.periods is not None and len(self.periods) and 
+            'period' not in str_expressions):
+            str_expressions.insert(0, 'period')
+            expressions.insert(0, Variable('period'))
+            id_pos += 1
+
         columns = []
         for expr in expressions:
             expr_value = expr_eval(expr, context)
@@ -1183,7 +1191,11 @@ class Dump(EvaluableExpression):
                 expr_value = expr_value[filter_value]
             columns.append(expr_value)
 
-        numrows = len(columns[id_pos])
+        ids = columns[id_pos]
+        if isinstance(ids, np.ndarray) and ids.shape:
+            numrows = len(ids)
+        else:
+            numrows = 1
             
         # expand scalar columns to full columns in memory
         for idx, col in enumerate(columns):
@@ -1197,8 +1209,9 @@ class Dump(EvaluableExpression):
                 newcol.fill(col)
                 columns[idx] = newcol
  
-        return utils.PrettyTable(chain([str_expressions], izip(*columns)),
-                                 self.missing)
+        data = izip(*columns)
+        table = chain([str_expressions], data) if self.header else data
+        return utils.PrettyTable(table, self.missing)
 
     def collect_variables(self, context):
         if self.expressions:

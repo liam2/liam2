@@ -273,10 +273,13 @@ entities:
                 - show(plop2)
             
             test_clone:
-                - clone(filter = age == 95,
-                        f_id = id,
-                        m_id = id,
-                        nch = household.get(countlink(persons)))    
+                #FIXME: if we don't specify a target variable it stores the
+                # result with the key None
+                - clones: clone(filter = age == 95,
+                                f_id = id,
+                                m_id = id,
+                                nch = household.get(countlink(persons)))
+                                    
             
             marriage:
                 - married: partner_id != -1
@@ -339,10 +342,17 @@ entities:
                 - show("> 10", duration(age > 10))
                 - show("max(d, 2)", max(duration(age > 10), 2))
 
+            test_dump_init:
+                - reset_file: csv([[period, id, age]], fname='person_ages.csv')
+
             test_dump: 
-#                - expr: csv(dump(gender, age, partner_id, partner.age),
-#                             suffix='test')
-#                - full: csv(dump())
+                - expr: csv(dump(gender, age, partner_id, partner.age),
+                            suffix='partner_ages')
+                - full: csv(dump(), suffix='full')
+                - nosuffix: csv(dump(age))
+                - fname: csv(dump(age), fname='person_ages_{period}.csv')
+                - append: csv(dump(period, id, age, filter=id < 10, header=False),
+                              fname='person_ages.csv', mode='a')
                 - test_show: show(dump(gender, age, filter=id < 10))
 
             cleanup: remove(lag(dead))
@@ -414,7 +424,10 @@ entities:
 
 simulation:
     init:
-        - person: [test_init]
+        - person: [
+            test_init,
+            test_dump_init
+        ]
 
     processes:
         - person: [
@@ -439,7 +452,7 @@ simulation:
 
                    marriage,
                    
-                   test_extra_comma,
+#                   test_extra_comma,
                    
 #                   test_uninitialized_var,
                    
@@ -460,7 +473,7 @@ simulation:
                    
                    show_weight,
 #                   test_groupby,
-#                   test_dump,
+                   test_dump,
 
         ]
         - household: [num_persons, nch, maxnch, 
