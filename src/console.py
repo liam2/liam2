@@ -1,5 +1,7 @@
 import sys
 
+import numpy as np
+
 from expr import expr_eval, parse, Variable
 import entities
 from properties import Process
@@ -65,7 +67,7 @@ class Console(object):
         cond_context = entity.conditional_context
         expr = parse(s, vars, cond_context)
         
-        ctx = entities.EntityContext(entity, {'period': period})
+        ctx = entities.EntityContext(entity, {'period': period, 'nan': np.nan})
         if isinstance(expr, Process):
             expr.run(ctx)
             print "done."
