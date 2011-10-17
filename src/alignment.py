@@ -329,6 +329,7 @@ class GroupBy(FilteredExpression):
         # evaluate the expression on each group
         expr = self.expr
         used_variables = expr.collect_variables(context)
+        used_variables.add('id')
 
         data = []
         for member_indices in groups_wh_totals:
@@ -342,8 +343,10 @@ class GroupBy(FilteredExpression):
             data.append(expr_eval(expr, local_context))
 
         if self.percent:
-            total_count = np.sum(filter_value)
-            data = [100.0 * count / total_count for count in data]
+            local_context = dict((v, context[v][filter_value])
+                                 for v in used_variables)
+            total_value = expr_eval(expr, local_context)
+            data = [100.0 * value / total_value for value in data]
             
         # gender | False | True | total
         #        |    20 |   15 |    xx
