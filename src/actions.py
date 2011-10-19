@@ -5,7 +5,7 @@ import numpy as np
 
 from expr import functions, Expr, expr_eval
 import simulation
-from properties import Process, BreakpointException
+from properties import Process, BreakpointException, TableExpression
 
 
 class Show(Process):
@@ -25,14 +25,21 @@ class Show(Process):
         # have __repr__ defined for all properties
         str_args = [str(arg) if isinstance(arg, Expr) else repr(arg)
                     for arg in self.args]
-        return 'show(%s)' % ', '.join(str_args) 
+        return 'show(%s)' % ', '.join(str_args)
 
 
 class CSV(Process):
-    def __init__(self, expr, suffix='', fname=None, mode='w'):
-        self.expr = expr
-        #TODO: make base class for Dump & GroupBy
-#        assert isinstance(expr, (Dump, GroupBy))
+    def __init__(self, *args, **kwargs):
+        Process.__init__(self)
+        if (len(args) > 1 and 
+            not any(isinstance(arg, (TableExpression, list, tuple))
+                    for arg in args)):
+            args = (args,)
+        self.args = args
+        suffix = kwargs.pop('suffix', '')
+        fname = kwargs.pop('fname', None)
+        mode = kwargs.pop('mode', 'w')
+        
         if fname is not None and suffix:
             raise ValueError("csv() can't have both 'suffix' and 'fname' "
                              "arguments")
@@ -51,10 +58,17 @@ class CSV(Process):
         fname = self.fname.format(entity=entity.name, period=period)
         print "writing to", fname, "...",          
         file_path = os.path.join(simulation.output_directory, fname)
+
         with open(file_path, self.mode + 'b') as f:
-            data = expr_eval(self.expr, context)
             dataWriter = csv.writer(f)
-            dataWriter.writerows(data)
+            for arg in self.args:
+                if isinstance(arg, TableExpression):
+                    data = expr_eval(arg, context)
+                elif isinstance(arg, (list, tuple)):
+                    data = [[expr_eval(expr, context) for expr in arg]]
+                else:
+                    data = [[expr_eval(arg, context)]]
+                dataWriter.writerows(data)
 
 
 class RemoveIndividuals(Process):

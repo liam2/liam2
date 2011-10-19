@@ -216,7 +216,8 @@ entities:
                                 hh_id=hh_id,
                                 m_id=id,
                                 f_id=partner.id,
-                                m_age=age, 
+                                m_age=age,
+                                weight=weight, 
                                 gender=choice([True, False], [0.51, 0.49])),  
                             new('person',
                                 age=0,
@@ -225,6 +226,7 @@ entities:
                                 m_id=id,
                                 f_id=partner.id,
                                 m_age=age,
+                                weight=weight, 
                                 young_mother=True, 
                                 gender=logit_regr(0.0))),
                          -1)
@@ -286,31 +288,31 @@ entities:
 
                 - to_marry: (age >= 18) and (age <= 90) and not married
 
-                - avg_age_men: grpavg(age, filter=to_marry and gender) 
+                - avg_age_men: grpavg(age, filter=to_marry and gender)
                 - difficult_match: if(to_marry and not gender,
-                                       abs(age - avg_age_men),
-                                       nan)
+                                      abs(age - avg_age_men),
+                                      nan)
 
-                - partner_id: 
-                     if(to_marry, 
-                         matching(set1filter=not gender,
-                                  set2filter=gender,
-                                  score='- 0.4893 * other.age 
-                                         + 0.0131 * other.age ** 2 
-                                         - 0.0001 * other.age ** 3
-                                         + 0.0467 * (other.age - age) 
-                                         - 0.0189 * (other.age - age) ** 2 
-                                         + 0.0003 * (other.age - age) ** 3
-                                         - 0.9087 * (other.work and not work) 
-                                         - 1.3286 * (not other.work and work) 
-                                         - 0.6549 * (other.work and work)
-                                         - 0.7939 * ((other.eduach == 3) and (eduach == 4)) 
-                                         - 1.4128 * ((other.eduach == 2) and (eduach == 4)) 
-                                         - 0.8984 * ((other.eduach == 4) and (eduach == 3))
-                                         - 1.5530 * ((other.eduach == 4) and (eduach == 2)) 
-                                         - 0.5451 * ((other.eduach == 2) and (eduach == 2))',
-                                  orderby=difficult_match),
-                         partner_id)
+                - partner_id:
+                    if(to_marry,
+                       matching(set1filter=not gender,
+                                set2filter=gender,
+                                score='- 0.4893 * other.age
+                                       + 0.0131 * other.age ** 2
+                                       - 0.0001 * other.age ** 3
+                                       + 0.0467 * (other.age - age)
+                                       - 0.0189 * (other.age - age) ** 2
+                                       + 0.0003 * (other.age - age) ** 3
+                                       - 0.9087 * (other.work and not work)
+                                       - 1.3286 * (not other.work and work)
+                                       - 0.6549 * (other.work and work)
+                                       - 0.7939 * ((other.eduach == 3) and (eduach == 4))
+                                       - 1.4128 * ((other.eduach == 2) and (eduach == 4))
+                                       - 0.8984 * ((other.eduach == 4) and (eduach == 3))
+                                       - 1.5530 * ((other.eduach == 4) and (eduach == 2))
+                                       - 0.5451 * ((other.eduach == 2) and (eduach == 2))',
+                                orderby=difficult_match),
+                       partner_id)
                               
                 - just_married: to_marry and (partner_id != -1)
 
@@ -343,17 +345,31 @@ entities:
                 - show("max(d, 2)", max(duration(age > 10), 2))
 
             test_dump_init:
-                - reset_file: csv([[period, id, age]], fname='person_ages.csv')
+                - empty_file: csv(fname='empty_file.csv')
+                - one_line_header: csv('period', 'id', 'age', fname='person_ages.csv')
+                - two_line_header: csv(['average', 'gini'],
+                                       ['-', 'inequality coefficient'], 
+                                       fname='person_age_aggregates.csv')
 
             test_dump: 
                 - expr: csv(dump(gender, age, partner_id, partner.age),
                             suffix='partner_ages')
                 - full: csv(dump(), suffix='full')
+                - twodumps: csv(dump(gender, age, filter=not gender),
+                                'and now something completely different', 
+                                dump(gender, age, filter=gender),
+                                suffix='split_ages')
                 - nosuffix: csv(dump(age))
                 - fname: csv(dump(age), fname='person_ages_{period}.csv')
                 - append: csv(dump(period, id, age, filter=id < 10, header=False),
                               fname='person_ages.csv', mode='a')
                 - test_show: show(dump(gender, age, filter=id < 10))
+                
+            test_csv:
+                - expr: csv(grpavg(age),
+                            fname='person_age_aggregates.csv', mode='a')
+                - exprs: csv(grpavg(age), grpgini(age),
+                             fname='person_age_aggregates.csv', mode='a')
 
             cleanup: remove(lag(dead))
             
@@ -389,34 +405,32 @@ entities:
                 - show('grpgini([0, 0, 0, 1])', grpgini([0, 0, 0, 1]), 'should be 3/4')
 
             test_groupby:
-                - check_fweight_full_civserv: "show(groupby(agegroup, gender, expr=grpsum(weight)/1000))"
+                - check_fweight_full_civserv: "show(groupby(agegroup, gender, expr=grpsum(weight)))"
                 - test_logit: show(groupby(round(logit_score(0.0), 1)))
                 - explicit_count: show(groupby(round(logit_score(0.0), 1), 
                                                 expr=grpcount()))
                 - num_persons2: show(groupby(agegroup, gender))
                 - num_persons2_percent: show(groupby(agegroup, gender, percent=True))
+                - num_persons_weight_percent: show(groupby(agegroup, gender, expr=grpsum(weight), percent=True))
                 - num_persons_csv: csv(groupby(agegroup, gender), suffix='groupby')
                 - num_persons3: show(groupby(agegroup, dead, gender))
                 
                 - ismarried: partner_id != -1
                 - num_persons3t: show(groupby(agegroup, gender, ismarried))
                 - num_alive: show(groupby(agegroup, gender,
-                                           expr=grpcount(not dead)))
+                                          expr=grpcount(not dead)))
                 - num_married: show(groupby(agegroup, gender,
-                                             expr=grpcount(ismarried)))
+                                            expr=grpcount(ismarried)))
                 - num_widows: show(groupby(agegroup, gender, 
-                                            expr=grpcount(partner.dead)))
-                - bad_partners: if(partner_id != -1, id != partner.partner.id, nan)
+                                           expr=grpcount(partner.dead)))
                 - num_bad_partner: show(groupby(agegroup, gender, 
-                                                 expr=grpsum(if(partner_id != -1, 
-                                                                id != partner.partner.id,
-                                                                nan))))
+                                                expr=grpcount((partner_id != -1) and (partner.partner.id != id))))
                 - agediff: show(groupby(agegroup, gender, 
-                                         expr=grpavg(age - if(partner.age == -1, nan, partner.age))))
+                                        expr=grpavg(age - if(partner.age == -1, nan, partner.age))))
 #                                        expr=grpavg(abs(age - if(partner.age == -1, nan, partner.age)))))
 #                                        expr=grpsum(countlink(children)) / grpsum(not dead)))
 #                                        expr=grpavg(nch)))
-                - minmax_age: show(groupby(id / 100, gender, expr=grpmax(age) - grpmin(age)))
+#                - minmax_age: show(groupby(id / 100, gender, expr=grpmax(age) - grpmin(age)))
                 
             show_weight: show("avg weight", grpavg(weight), 
                               "total population", grpsum(weight))
@@ -472,8 +486,9 @@ simulation:
                    test_grpgini,
                    
                    show_weight,
-#                   test_groupby,
+                   test_groupby,
                    test_dump,
+                   test_csv,
 
         ]
         - household: [num_persons, nch, maxnch, 

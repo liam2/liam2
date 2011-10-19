@@ -8,11 +8,12 @@ import os
 
 import numpy as np
 
-from expr import functions, Expr, Variable, expr_eval, parse
+from expr import functions, Expr, Variable, expr_eval, parse, collect_variables
 from entities import context_length
 from utils import skip_comment_cells, strip_rows, PrettyTable, unique
 import simulation
-from properties import FilteredExpression, GroupCount, add_individuals
+from properties import (FilteredExpression, TableExpression, GroupCount, 
+                        add_individuals)
 
 #XXX: it might be faster to partition using a formula giving the index of the
 # group instead of checking all possible value combination.
@@ -260,8 +261,8 @@ def align_get_indices_nd(context, filter, score,
 def prod(values):
     return reduce(operator.mul, values, 1)
 
-class GroupBy(FilteredExpression):
-    func_name = 'groupby'
+class GroupBy(TableExpression):
+#    func_name = 'groupby'
 
     def __init__(self, *args, **kwargs):
         # On python 3, we could clean up this code (keyword only arguments).
@@ -269,9 +270,9 @@ class GroupBy(FilteredExpression):
         expr = kwargs.get('expr')
         if expr is None:
             expr = GroupCount()
+        self.expr = expr
         
-        filter = kwargs.get('filter')
-        super(GroupBy, self).__init__(expr, filter)
+        self.filter = kwargs.get('filter')
         assert len(args), "groupby needs at least one expression"
         assert isinstance(args[0], Expr), "groupby takes expressions as " \
                                           "arguments, not a list of expressions"
@@ -390,6 +391,13 @@ class GroupBy(FilteredExpression):
                           data[y * width:(y + 1) * width])
         return PrettyTable(result, None)
 
+    def collect_variables(self, context):
+        vars = set.union(*[collect_variables(expr, context)
+                           for expr in self.expressions])
+        if self.filter is not None:
+            vars |= collect_variables(self.filter, context)
+        vars |= collect_variables(self.expr, context)
+        return vars
 
 class Alignment(FilteredExpression):
     func_name = 'align'

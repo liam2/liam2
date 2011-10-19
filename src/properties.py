@@ -572,7 +572,7 @@ class ZeroClip(CompoundExpression):
         return dtype(self.expr1, context)
         
 
-#XXX: generalize to a function with several arguments?
+#TODO: generalise to a function with several arguments?
 class FunctionExpression(EvaluableExpression):
     func_name = None
 
@@ -1147,7 +1147,10 @@ class Clone(CreateIndividual):
     def _initial_values(self, array, to_give_birth, num_birth):
         return array[to_give_birth]
 
-class Dump(EvaluableExpression):
+class TableExpression(EvaluableExpression):
+    pass
+
+class Dump(TableExpression):
     def __init__(self, *args, **kwargs):
         self.expressions = args
         self.filter = kwargs.pop('filter', None)
