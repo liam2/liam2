@@ -6,19 +6,20 @@ from collections import defaultdict
 import numpy as np
 
 def time2str(seconds):
-    if seconds > 60:
-        minutes = seconds / 60
-        seconds = seconds % 60
-        minutes_plural = 's' if minutes > 1 else ''
-        seconds_plural = 's' if seconds < 0.005 or seconds > 1 else ''
-        return "%d minute%s %.2f second%s" % (minutes, minutes_plural, 
-                                              seconds, seconds_plural)
-    elif seconds >= 0.005:
-#        seconds_plural = 's' if seconds < 0.005 or seconds > 1 else ''
-        seconds_plural = 's' if seconds > 1 else ''
-        return "%.2f second%s" % (seconds, seconds_plural)
-    else:
-        return "%d ms" % (seconds * 1000)
+    minutes = seconds // 60
+    seconds = seconds % 60
+    hours = minutes // 60
+    minutes = minutes % 60
+    s = ''
+    if hours > 0:
+        s = "%d hours%s" % (hours, 's' if hours > 1 else '')
+    if minutes > 0:
+        s += "%d minute%s" % (minutes, 's' if minutes > 1 else '')
+    if seconds >= 0.005:
+        s += "%.2f second%s" % (seconds, 's' if seconds > 1 else '')
+    if s == '':
+        s = "%d ms" % (seconds * 1000)
+    return s
 
 def size2str(value):
     unit = "bytes"
@@ -170,6 +171,8 @@ class PrettyTable(object):
         missing = self.missing
         if missing is None:
             missing = 'nan'
+        else:
+            missing = str(missing)
         return '\n' + table2str(self.data, missing) + '\n'
     __repr__ = __str__
 
