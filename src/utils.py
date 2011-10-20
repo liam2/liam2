@@ -10,16 +10,16 @@ def time2str(seconds):
     seconds = seconds % 60
     hours = minutes // 60
     minutes = minutes % 60
-    s = ''
+    l = []
     if hours > 0:
-        s = "%d hours%s" % (hours, 's' if hours > 1 else '')
+        l.append("%d hours%s" % (hours, 's' if hours > 1 else ''))
     if minutes > 0:
-        s += "%d minute%s" % (minutes, 's' if minutes > 1 else '')
+        l.append("%d minute%s" % (minutes, 's' if minutes > 1 else ''))
     if seconds >= 0.005:
-        s += "%.2f second%s" % (seconds, 's' if seconds > 1 else '')
-    if s == '':
-        s = "%d ms" % (seconds * 1000)
-    return s
+        l.append("%.2f second%s" % (seconds, 's' if seconds > 1 else ''))
+    if not l:
+        l = ["%d ms" % (seconds * 1000)]
+    return ' '.join(l)
 
 def size2str(value):
     unit = "bytes"
