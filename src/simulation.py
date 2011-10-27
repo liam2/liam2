@@ -111,7 +111,7 @@ class Simulation(object):
             print "using fixed random seed: %d" % seed
             random.seed(seed)
             np.random.seed(seed)
-        
+
         self.periods = simulation_def['periods']
         self.start_period = simulation_def['start_period']
         skip_shows = simulation_def.get('skip_shows', False)

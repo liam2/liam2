@@ -670,7 +670,6 @@ class NumpyProperty(EvaluableExpression):
     # because when you add a function, it's hard to know whether it's 
     # implemented in C or not.
     arg_names = None
-    skip_missing = False
         
     def __init__(self, *args, **kwargs):
         EvaluableExpression.__init__(self)
@@ -687,22 +686,18 @@ class NumpyProperty(EvaluableExpression):
         self.kwargs = kwargs
 
     def eval(self, context):
-        if self.skip_missing:
-            def local_expr_eval(expr, context):
-                values = expr_eval(expr, context)
-                return values[ispresent(values)]
-        else:
-            local_expr_eval = expr_eval
-        args = [local_expr_eval(arg, context) for arg in self.args]
-        kwargs = self.kwargs.copy()
-        for k, v in kwargs.items():
-            kwargs[k] = expr_eval(v, context)
-
+        eval_func = self.get_eval_func()
+        args = [eval_func(arg, context) for arg in self.args]
+        kwargs = dict((k, eval_func(v, context))
+                      for k, v in self.kwargs.iteritems())
         if 'size' in self.arg_names and 'size' not in kwargs:
             kwargs['size'] = context_length(context)
 
         func = self.np_func[0]
         return func(*args, **kwargs)
+
+    def get_eval_func(self):
+        return expr_eval
 
     def __str__(self):
         func_name = self.func_name 
@@ -721,6 +716,19 @@ class NumpyProperty(EvaluableExpression):
         args_vars.extend(collect_variables(v, context)
                          for v in self.kwargs.itervalues())
         return set.union(*args_vars) if args_vars else set()
+
+
+class NumpyAggregate(NumpyProperty):
+    skip_missing = False
+    
+    def get_eval_func(self):
+        if self.skip_missing:
+            def local_expr_eval(expr, context):
+                values = expr_eval(expr, context)
+                return values[ispresent(values)]
+            return local_expr_eval
+        else:
+            return expr_eval
     
 # >>> mi = 1
 # >>> ma = 10
@@ -878,7 +886,7 @@ class GroupSum(FilteredExpression):
         return typemap[dtype(self.args[0], context)]
 
 
-class GroupStd(NumpyProperty):
+class GroupStd(NumpyAggregate):
     func_name = 'grpstd'
     np_func = (np.std,)
     arg_names = ('a', 'axis', 'dtype', 'out', 'ddof')
@@ -887,7 +895,7 @@ class GroupStd(NumpyProperty):
     def dtype(self, context):
         return float
 
-class GroupMedian(NumpyProperty):
+class GroupMedian(NumpyAggregate):
     func_name = 'grpmedian'
     np_func = (np.median,)
     arg_names = ('a', 'axis', 'out', 'overwrite_input')
