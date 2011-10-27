@@ -66,7 +66,7 @@ class Console(object):
                     for name in entity.temp_variables.keys())
         cond_context = entity.conditional_context
         expr = parse(s, vars, cond_context)
-        
+        #FIXME: add globals
         ctx = entities.EntityContext(entity, {'period': period, 'nan': np.nan})
         if isinstance(expr, Process):
             expr.run(ctx)
