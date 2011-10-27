@@ -450,3 +450,11 @@ class Void(object):
 
         output_file.close()
         return None
+
+def populate_registry(fpath):
+    import entities
+    f = tables.openFile(fpath, mode="r")
+    for table in f.root.entities:
+        entities.entity_registry.add(entities.Entity.from_table(table))
+        
+    

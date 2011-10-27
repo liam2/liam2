@@ -3,7 +3,7 @@ import numpy as np
 import tables
 
 from utils import safe_put, timed, count_occurences, size2str
-from data import mergeArrays
+from data import mergeArrays, get_fields
 from expr import parse, Variable, SubscriptableVariable, \
                  expr_eval, dtype, \
                  get_missing_value, hasvalue 
@@ -241,6 +241,12 @@ class Entity(object):
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}),
                       entity_def.get('weight'))
+        
+    @classmethod
+    def from_table(cls, table):
+        return Entity(table.name, get_fields(table), missing_fields=[],
+                      links={}, macro_strings={}, process_strings={})
+        
         
     @staticmethod
     def collect_predictors(items):

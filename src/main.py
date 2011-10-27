@@ -1,5 +1,7 @@
 from simulation import Simulation
 from data_main import csv2h5
+from console import Console
+from data import populate_registry
 
 __version__ = "0.3.1dev"
 
@@ -36,10 +38,10 @@ if __name__ == '__main__':
     
     action = args[1]
     fpath = args[2]
-    console = len(args) > 3 and args[3] == "-i"
     
     if action == 'run':
         print "Using simulation file: '%s'" % fpath
+        console = len(args) > 3 and args[3] == "-i"
         simulation = Simulation(fpath, console)
     
         do_profile = False
@@ -61,5 +63,9 @@ if __name__ == '__main__':
 
     elif action == "import":
         csv2h5(fpath)
+    elif action == "explore":
+        populate_registry(fpath)
+        c = Console()
+        c.run()
     else:
         usage(args)
