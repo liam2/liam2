@@ -60,9 +60,9 @@ entities:
             MALE: gender
             FEMALE: not gender
             
-            LOWER_SECONDARY_EDU: "eduach == 2"
-            UPPER_SECONDARY_EDU: "eduach == 3"
-            TERTIARY_EDU: "eduach == 4"
+            LOWER_SECONDARY_EDU: eduach == 2
+            UPPER_SECONDARY_EDU: eduach == 3
+            TERTIARY_EDU: eduach == 4
 
         # possible transitions & regressions. The actual list used in the
         # simulation must be defined below
@@ -183,22 +183,22 @@ entities:
                 
                 - err: normal()
                        
-                - v4: "if(MALE,
-                          log_regr(2.484557 + 0.2283921 * age, error_var='err'),
-                          0)"
-                - v5: "if(MALE,
-                          exp(2.484557 + 0.2283921 * age + err),
-                          0)"
+                - v4: if(MALE,
+                         log_regr(2.484557 + 0.2283921 * age, error_var='err'),
+                         0)
+                - v5: if(MALE,
+                         exp(2.484557 + 0.2283921 * age + err),
+                         0)
                 - show('v4', v4, '\n', 'v5', v5, '\n',
                        'num values:', grpcount(v4 > 0), '\n',
                        'num problems:', grpcount(v4 != v5))
 
-                - v6: "if(MALE,
-                          log_regr(2.484557 + 0.2283921 * age, mult=2),
-                          0)"
-                - v7: "if(MALE,
-                          exp(2.484557 + 0.2283921 * age + normal(0, 1) * 2),
-                          0)"
+                - v6: if(MALE,
+                         log_regr(2.484557 + 0.2283921 * age, mult=2),
+                         0)
+                - v7: if(MALE,
+                         exp(2.484557 + 0.2283921 * age + normal(0, 1) * 2),
+                         0)
                 # max(normal) - min(normal) is commonly < 10
                 - show('log(v6)', log(v6), '\n', 'log(v7)', log(v7), '\n',
                        'num values:', grpcount(v6 > 0), '\n',
@@ -405,10 +405,12 @@ entities:
                 - show('grpgini([0, 0, 0, 1])', grpgini([0, 0, 0, 1]), 'should be 3/4')
 
             test_groupby:
-                - check_fweight_full_civserv: "show(groupby(agegroup, gender, expr=grpsum(weight)))"
-                - test_logit: show(groupby(round(logit_score(0.0), 1)))
-                - explicit_count: show(groupby(round(logit_score(0.0), 1), 
-                                                expr=grpcount()))
+                - show('grpsum(weight)', 
+                       groupby(agegroup, gender, expr=grpsum(weight)))
+                - show(groupby(round(logit_score(0.0), 1)))
+                - show('explicit count', groupby(round(logit_score(0.0), 1), 
+                                                 expr=grpcount()))
+                - show('grpmin', groupby(agegroup, expr=grpmin(age)))                                 
                 - num_persons2: show(groupby(agegroup, gender))
                 - num_persons2_percent: show(groupby(agegroup, gender, percent=True))
                 - num_persons_weight_percent: show(groupby(agegroup, gender, expr=grpsum(weight), percent=True))
