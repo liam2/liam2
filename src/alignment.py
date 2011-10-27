@@ -265,18 +265,22 @@ class GroupBy(TableExpression):
 #    func_name = 'groupby'
 
     def __init__(self, *args, **kwargs):
-        # On python 3, we could clean up this code (keyword only arguments).
-        self.percent = kwargs.get('percent', False)
-        expr = kwargs.get('expr')
-        if expr is None:
-            expr = GroupCount()
-        self.expr = expr
-        
-        self.filter = kwargs.get('filter')
         assert len(args), "groupby needs at least one expression"
         assert isinstance(args[0], Expr), "groupby takes expressions as " \
                                           "arguments, not a list of expressions"
         self.expressions = args
+
+        # On python 3, we could clean up this code (keyword only arguments).
+        expr = kwargs.get('expr')
+        if expr is None:
+            expr = GroupCount()
+        self.expr = expr
+        self.filter = kwargs.get('filter')
+        by = kwargs.get('by') 
+        if isinstance(by, Expr):
+            by = (by,) 
+        self.by = by
+        self.percent = kwargs.get('percent', False)
 
     def eval(self, context):
         if self.filter is not None:
@@ -344,19 +348,35 @@ class GroupBy(TableExpression):
             data.append(expr_eval(expr, local_context))
 
         if self.percent:
-            local_context = dict((v, context[v][filter_value])
-                                 for v in used_variables)
-            total_value = expr_eval(expr, local_context)
+            total_value = data[-1]
             data = [100.0 * value / total_value for value in data]
+
+#        if self.by or self.percent:
+#            if self.percent:
+#                total_value = data[-1]
+#                divisors = [total_value for _ in data]
+#            else:
+#                num_by = len(self.by) 
+#                inc = prod(len_pvalues[-num_by:])
+#                num_groups = len(groups)
+#                num_categories = prod(len_pvalues[:-num_by])
+#                
+#                categories_groups_idx = [range(cat_idx, num_groups, inc)
+#                                         for cat_idx in range(num_categories)]
+#                
+#                divisors = ...
+#                
+#            data = [100.0 * value / divisor
+#                    for value, divisor in izip(data, divisors)]
             
         # gender | False | True | total
-        #        |    20 |   15 |    xx
+        #        |    20 |   16 |    35
 
-        #   dead | False | True | 
-        # gender |       |      | total
-        #  False |    20 |   15 |    xx
-        #   True |     0 |    1 |    xx
-        #  total |    xx |   xx |    xx
+        # gender | False | True | 
+        #   dead |       |      | total
+        #  False |    20 |   15 |    35
+        #   True |     0 |    1 |     1
+        #  total |    20 |   16 |    36
 
         #          |   dead | False | True | 
         # agegroup | gender |       |      | total
