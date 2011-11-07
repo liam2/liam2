@@ -917,13 +917,14 @@ class GroupGini(FunctionExpression):
         #   = sum(cumsum(a))
     
         values = expr_eval(self.expr, context)
+        values = values[ispresent(values)]
         sorted_values = np.sort(values)
         n = len(values)
 
         # force float to avoid overflows with integer input expressions
         cumsum = np.cumsum(sorted_values, dtype=float)
-        sum = cumsum[-1]
-        return (n + 1 - 2 * np.sum(cumsum) / sum) / n
+        values_sum = cumsum[-1]
+        return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
 
     def dtype(self, context):
         return float
@@ -953,8 +954,8 @@ class GroupCount(EvaluableExpression):
         filter = str(self.filter) if self.filter is not None else '' 
         return "grpcount(%s)" % filter
     
-# we could transform this into a CompoundExpression (grpsum(x)/grpcount(x)) but
-# that would be inefficient.
+# we could transform this into a CompoundExpression:
+# grpsum(expr, filter=filter) / grpcount(filter) but that would be inefficient.
 class GroupAverage(FilteredExpression):
     func_name = 'grpavg'
     
