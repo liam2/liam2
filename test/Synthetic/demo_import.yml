@@ -1,0 +1,34 @@
+output: simple2001.h5
+
+globals:
+    periodic:
+        path: input\globals_transposed.csv
+        transposed: true
+
+entities:
+    household:
+        path: input\household.csv
+        # if fields are not specified, they are all imported
+
+    person:
+        path: input\person.csv
+        fields:
+            # period and id are implicit
+            - age:           int
+            - gender:        bool
+            - workstate:     int
+            - civilstate:    int     
+            - dur_in_couple: int
+            - m_id:          int
+            - partner_id:    int
+            - hh_id:         int
+
+        # if you want to keep your csv files intact but you use different names
+        # in your simulation that in the csv files, you can specify name changes
+        # here. The format is: "newname: oldname"
+        oldnames:
+            gender: male
+            
+        # if you want to invert the value of some boolean fields (True -> False
+        # and False -> True), add them to the "invert" list below.
+#        invert: [list, of, boolean, fields, to, invert]
