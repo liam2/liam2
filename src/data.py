@@ -441,7 +441,7 @@ class Void(object):
     def run(self, entities, start_period):
         output_file = tables.openFile(self.output_path, mode="w")
         output_entities = output_file.createGroup("/", "entities", "Entities")
-        for ent_name, entity in entities.iteritems():
+        for entity in entities.itervalues():
             dtype = np.dtype(entity.fields)
             entity.array = np.empty(0, dtype=dtype)
             entity.id_to_rownum = np.empty(0, dtype=int) 
