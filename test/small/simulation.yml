@@ -401,6 +401,7 @@ entities:
 
             test_grpgini:
                 - show('grpgini(age)', grpgini(age))
+                - show('grpgini(age) by sex:', grpgini(age, filter=MALE), '/', grpgini(age, filter=FEMALE))
                 - show('grpgini([1, 1, 1])', grpgini([1, 1, 1]), 'should be zero')
                 - show('grpgini([0, 0, 0, 1])', grpgini([0, 0, 0, 1]), 'should be 3/4')
 
