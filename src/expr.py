@@ -576,6 +576,9 @@ not_re = re.compile(r'([ (=]|^)not(?=[ (])')
 
 def parse(s, globals=None, conditional_context=None, expression=True,
           autovariables=False):
+    if not isinstance(s, basestring):
+        return s
+
     # this prevents any function named something ending in "if"
     str_to_parse = s.replace('if(', 'where(')
     str_to_parse = and_re.sub(r'\1&\2', str_to_parse)
