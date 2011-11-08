@@ -973,16 +973,20 @@ class GroupAverage(FilteredExpression):
     def eval(self, context):
         expr = self.expr
         if self.filter is not None:
-            filter = expr_eval(self.filter, context)
+            filter_values = expr_eval(self.filter, context)
             tmp_varname = get_tmp_varname()
             context = context.copy()
-            context[tmp_varname] = filter
-            expr = Variable(tmp_varname) * expr
+            context[tmp_varname] = filter_values
+            if dtype(expr, context) is bool:
+                # convert expr to int because mul_bbb is not implemented in
+                # numexpr
+                expr *= 1 
+            expr *= Variable(tmp_varname)
         else:
-            filter = True
+            filter_values = True
         values = expr_eval(expr, context)
-        filter &= np.isfinite(values)
-        numrows = np.sum(filter)
+        filter_values &= np.isfinite(values)
+        numrows = np.sum(filter_values)
         if numrows:
             return np.nansum(values) / float(numrows)
         else:
