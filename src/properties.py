@@ -590,6 +590,20 @@ class FilteredExpression(FunctionExpression):
         super(FilteredExpression, self).__init__(expr)
         self.filter = filter
 
+    def _getfilter(self, context):        
+        ctx_filter = context.get('__filter__')
+        if self.filter is not None and ctx_filter is not None:
+            filter_expr = ctx_filter & self.filter
+        elif self.filter is not None:
+            filter_expr = self.filter
+        elif ctx_filter is not None:
+            filter_expr = ctx_filter
+        else:
+            filter_expr = None
+        if filter_expr is not None and dtype(filter_expr, context) is not bool:
+            raise Exception("filter must be a boolean expression")
+        return filter_expr
+
     def __str__(self):
         filter_str = ', %s' % self.filter if self.filter is not None else ''
         return '%s(%s%s)' % (self.func_name, self.expr, filter_str)
@@ -863,19 +877,8 @@ class GroupSum(FilteredExpression):
     
     def eval(self, context):
         expr = self.expr
-        
-        ctx_filter = context.get('__filter__')
-        if self.filter is not None and ctx_filter is not None:
-            filter_expr = ctx_filter & self.filter
-        elif self.filter is not None:
-            filter_expr = self.filter
-        elif ctx_filter is not None:
-            filter_expr = ctx_filter
-        else:
-            filter_expr = None
+        filter_expr = self._getfilter(context)
         if filter_expr is not None:
-            if dtype(filter_expr, context) is not bool:
-                raise Exception("grpsum filter must be a boolean expression")
             expr *= filter_expr
 
         return np.nansum(expr_eval(expr, context))
@@ -904,7 +907,7 @@ class GroupMedian(NumpyAggregate):
     def dtype(self, context):
         return float
 
-class GroupGini(FunctionExpression):
+class GroupGini(FilteredExpression):
     func_name = 'grpgini'
 
     def eval(self, context):
@@ -915,9 +918,17 @@ class GroupGini(FunctionExpression):
         #    i=1..n
         #   = sum((n - i) * a[i] for i in range(n))
         #   = sum(cumsum(a))
-    
         values = expr_eval(self.expr, context)
-        values = values[ispresent(values)]
+        if isinstance(values, (list, tuple)):
+            values = np.array(values)
+
+        filter_expr = self._getfilter(context)
+        if filter_expr is not None:
+            filter_values = expr_eval(filter_expr, context)
+        else:
+            filter_values = True
+        filter_values &= ispresent(values)
+        values = values[filter_values]
         sorted_values = np.sort(values)
         n = len(values)
 
@@ -1043,7 +1054,7 @@ def add_individuals(target_context, children):
     target_entity.id_to_rownum = np.concatenate((id_to_rownum,
                                                  id_to_rownum_tail))
 
-
+#TODO: inherit from FilteredExpression
 class CreateIndividual(EvaluableExpression):
     def __init__(self, entity_name=None, filter=None, number=None, **kwargs):
         self.entity_name = entity_name
