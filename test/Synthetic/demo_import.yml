@@ -19,7 +19,7 @@ entities:
             - workstate:     int
             - civilstate:    int     
             - dur_in_couple: int
-            - m_id:          int
+            - mother_id:     int
             - partner_id:    int
             - hh_id:         int
 

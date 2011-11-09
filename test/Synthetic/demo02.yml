@@ -1,58 +1,50 @@
+# second entity, links, link methods, init, dump, choice
 entities:
     household:
         fields:
             # period and id are implicit
-            - nb_persons:   {type: int, initialdata: false}
-            - nch0_11:      {type: int, initialdata: false}
-            - nch12_15:     {type: int, initialdata: false}
-            - region_id:    {type: int, initialdata: false}
+            - nb_persons:  {type: int, initialdata: false}
+            - nb_children: {type: int, initialdata: false}
+            - region_id:   {type: int, initialdata: false}
 
         links:
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
-            init_region_id: 
-                - region_id: "choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])"
+            init_region_id:
+                - region_id: choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
 
             household_composition:
-                - nb_persons: "countlink(persons)"
-                - nch0_11: "countlink(persons, age < 12)"
-                - nch12_15: "countlink(persons, (age > 11) and (age < 16))"
+                - nb_persons: countlink(persons)
+                - nb_children: countlink(persons, age < 18)
 
     person:
         fields:
             # period and id are implicit
-            - age:          int
-            - gender:       bool
+            - age:    int
+            - gender: bool
 
             # link fields
-            - m_id:         int
-            - partner_id:   int
-            - hh_id:        int
+            - mother_id:  int
+            - partner_id: int
+            - hh_id:      int
 
             # fields not present in input
-            - agegroup_work: {type: int, initialdata: false}
-            - agegroup_civilstate: {type: int, initialdata: false}
+            - agegroup: {type: int, initialdata: false}
 
         links:
-            mother: {type: many2one, target: person, field: m_id}
+            mother: {type: many2one, target: person, field: mother_id}
             partner: {type: many2one, target: person, field: partner_id}
             household: {type: many2one, target: household, field: hh_id}
-            children: {type: one2many, target: person, field: m_id}
+            children: {type: one2many, target: person, field: mother_id}
 
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
         processes:
-            age: "age + 1"
-
-            agegroup:
-                - agegroup_civilstate: "if(age < 50,
-                                           5 * trunc(age / 5),
-                                           10 * trunc(age / 10))"
-                - agegroup_work: "if(age < 70, 5 * trunc(age / 5), 70)"
-
-            dump_info: "csv(dump(id, age, gender, hh_id, household.nb_persons,
-                                 mother.age, partner.age), suffix='info')"
+            age: age + 1
+            agegroup: 5 * trunc(age / 5)
+            dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
+                                mother.age, partner.age), suffix='info')
 
 simulation:
     init:
@@ -63,9 +55,10 @@ simulation:
         - person: [age, agegroup, dump_info]
 
     input:
-        file: "simple2001.h5"
+        file: simple2001.h5
     output:
-        file: "simulation.h5"
+        file: simulation.h5
 
-    start_period: 2002   # first simulated period
+    # first simulated period
+    start_period: 2002
     periods: 2

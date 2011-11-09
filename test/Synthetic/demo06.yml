@@ -1,201 +1,167 @@
+# get_a_life, divorce
 entities:
     household:
         fields:
             # period and id are implicit
-            - start_period: {type: int, initialdata: false}
-            - nb_persons:   {type: int, initialdata: false}
-            - nb_students:  {type: int, initialdata: false}
-            - nch0_11:      {type: int, initialdata: false}
-            - nch12_15:     {type: int, initialdata: false}
-            - region_id:    {type: int, initialdata: false}
+            - nb_persons:  {type: int, initialdata: false}
+            - nb_children: {type: int, initialdata: false}
+            - region_id:   {type: int, initialdata: false}
 
         links:
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
-            init_region_id: 
-                - region_id: "choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])"
+            init_region_id:
+                - region_id: choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
 
             household_composition:
-                - nb_persons: "countlink(persons)"
-                - nb_students: "countlink(persons, workstate == 3)"
-                - nch0_11: "countlink(persons, age < 12)"
-                - nch12_15: "countlink(persons, (age > 11) and (age < 16))"
+                - nb_persons: countlink(persons)
+                - nb_children: countlink(persons, age < 18)
 
-            clean_empty: "remove(nb_persons == 0)"
+            clean_empty: remove(nb_persons == 0)
 
     person:
         fields:
             # period and id are implicit
-            - age:          int
-            - gender:       bool
-            # 1: in work, 2: unemployed including old-age unemployed,
-            # 3: in education, 4: retired, 5: other inactive
-            - workstate:    int
+            - age:        int
+            - gender:     bool
             # 1: single, 2: married, 3: divorced, 4: widowed
-            - civilstate:   int     
+            - civilstate: int
             - dur_in_couple: int
 
             # link fields
-            - m_id:         int
-            - partner_id:   int
-            - hh_id:        int
+            - mother_id:  int
+            - partner_id: int
+            - hh_id:      int
 
             # fields not present in input
             - agegroup_work: {type: int, initialdata: false}
             - agegroup_civilstate: {type: int, initialdata: false}
-            - m_age: {type: int, initialdata: false}
-            - education_level: {type: int, initialdata: false}
             - inwork: {type: bool, initialdata: false}
 
         links:
-            mother: {type: many2one, target: person, field: m_id}
+            mother: {type: many2one, target: person, field: mother_id}
             partner: {type: many2one, target: person, field: partner_id}
             household: {type: many2one, target: household, field: hh_id}
-            children: {type: one2many, target: person, field: m_id}
+            children: {type: one2many, target: person, field: mother_id}
 
         macros:
-            MALE: "True"
-            FEMALE: "False"
-            ISMALE: "gender"
-            ISFEMALE: "(not gender)"
+            MALE: True
+            FEMALE: False
+            ISMALE: gender
+            ISFEMALE: not gender
 
-            UNSET: "-1"
+            UNSET: -1
 
-            SINGLE: "1"
-            MARRIED: "2"
-            DIVORCED: "3"
-            WIDOW: "4"
-            ISSINGLE: "(civilstate == 1)"
-            ISMARRIED: "(civilstate == 2)"
-            ISDIVORCED: "(civilstate == 3)"
-            ISWIDOW: "(civilstate == 4)"
-
-            INWORK: "1"
-            UNEMPLOYED: "2"
-            STUDENT: "3"
-            RETIRED: "4"
-            ISINWORK: "(workstate == 1)"
-            ISUNEMPLOYED: "(workstate == 2)"
-            ISSTUDENT: "(workstate == 3)"
-            ISRETIRED: "(workstate == 4)"
+            SINGLE: 1
+            MARRIED: 2
+            DIVORCED: 3
+            WIDOW: 4
+            ISSINGLE: civilstate == 1
+            ISMARRIED: civilstate == 2
+            ISDIVORCED: civilstate == 3
+            ISWIDOW: civilstate == 4
 
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
         processes:
-            age: "age + 1"
+            age: age + 1
 
             agegroup:
-                - agegroup_civilstate: "if(age < 50,
-                                           5 * trunc(age / 5),
-                                           10 * trunc(age / 10))"
-                - agegroup_work: "if(age < 70, 5 * trunc(age / 5), 70)"
+                - agegroup_civilstate: if(age < 50,
+                                          5 * trunc(age / 5),
+                                          10 * trunc(age / 10))
+                - agegroup_work: if(age < 70, 5 * trunc(age / 5), 70)
 
             death:
-                - dead: "if(ISMALE,
-                            logit_regr(0.0, align='al_p_dead_m.csv'),
-                            logit_regr(0.0, align='al_p_dead_f.csv'))"
-                - civilstate: "if(partner.dead, WIDOW, civilstate)"
-                - partner_id: "if(partner.dead, UNSET, partner_id)"
-                - show_avg_m: "show('Avg age of dead men',
-                                    grpavg(age, filter=dead and ISMALE))"
-                - show_avg_f: "show(grpavg(age, filter=dead and ISFEMALE))"
-                - show_widows: "show(grpsum(ISWIDOW))"
-                - cleanup: "remove(dead)"
+                - dead: if(ISMALE,
+                           logit_regr(0.0, align='al_p_dead_m.csv'),
+                           logit_regr(0.0, align='al_p_dead_f.csv'))
+                - civilstate: if(partner.dead, WIDOW, civilstate)
+                - partner_id: if(partner.dead, UNSET, partner_id)
+                - show('Avg age of dead men', grpavg(age, filter=dead and ISMALE))
+                - show('Avg age of dead women', grpavg(age, filter=dead and ISFEMALE))
+                - show('Widows', grpsum(ISWIDOW))
+                - remove(dead)
 
             birth:
-                - to_give_birth: "logit_regr(0.0,
-                                             filter=ISFEMALE and (age >= 15) and (age <= 50),
-                                             align='al_p_birth.csv')"
-                - newbirth: "new('person', filter=to_give_birth,
-                                 m_id = id,
-                                 m_age = age,
-                                 hh_id = hh_id,
-                                 age = 0,
-                                 partner_id = UNSET,
-                                 civilstate = SINGLE,
-                                 education_level = UNSET,
-                                 workstate = STUDENT,
-                                 gender = choice([MALE, FEMALE], [0.51, 0.49]) )"
+                - to_give_birth: logit_regr(0.0,
+                                            filter=ISFEMALE and (age >= 15) and (age <= 50),
+                                            align='al_p_birth.csv')
+                - newbirth: new('person', filter=to_give_birth,
+                                mother_id = id,
+                                hh_id = hh_id,
+                                age = 0,
+                                partner_id = UNSET,
+                                civilstate = SINGLE,
+                                gender = choice([MALE, FEMALE], [0.51, 0.49]))
 
             marriage:
-                - in_couple: "ISMARRIED"
-                - to_couple: "if((age >= 18) and (age <= 90) and not in_couple,
-                                 if(ISMALE,
-                                    logit_regr(0.0, align='al_p_mmkt_m.csv'),
-                                    logit_regr(0.0, align='al_p_mmkt_f.csv')),
-                                 False)"
-                - difficult_match: "if(to_couple and ISFEMALE,
-                                       abs(age - grpavg(age, filter=to_couple and ISMALE)),
-                                       nan)"
-                - inwork: "ISINWORK"
-                - partner_id: "if(to_couple,
-                                  matching(set1filter=ISFEMALE, set2filter=ISMALE,
-                                           score='- 0.4893 * other.age
-                                                  + 0.0131 * other.age ** 2
-                                                  - 0.0001 * other.age ** 3
-                                                  + 0.0467 * (other.age - age)
-                                                  - 0.0189 * (other.age - age) ** 2
-                                                  + 0.0003 * (other.age - age) ** 3
-                                                  - 0.9087 * (other.inwork and not inwork)
-                                                  - 1.3286 * (not other.inwork and inwork)
-                                                  - 0.6549 * (other.inwork and inwork)
-                                                  - 0.7939 * ((other.education_level == 3) and (education_level == 4))
-                                                  - 1.4128 * ((other.education_level == 2) and (education_level == 4))
-                                                  - 0.8984 * ((other.education_level == 4) and (education_level == 3))
-                                                  - 1.5530 * ((other.education_level == 4) and (education_level == 2))
-                                                  - 0.5451 * ((other.education_level == 2) and (education_level == 2))',
-                                           orderby=difficult_match),
-                                  partner_id)"
-                - justcoupled: "to_couple and (partner_id != UNSET)"
-                - newhousehold: "new('household', filter=justcoupled and ISFEMALE,
-                                     start_period=period,
-                                     region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4]) )"
+                - in_couple: ISMARRIED
+                - to_couple: if((age >= 18) and (age <= 90) and not in_couple,
+                                if(ISMALE,
+                                   logit_regr(0.0, align='al_p_mmkt_m.csv'),
+                                   logit_regr(0.0, align='al_p_mmkt_f.csv')),
+                                False)
+                - difficult_match: if(to_couple and ISFEMALE,
+                                      abs(age - grpavg(age, filter=to_couple and ISMALE)),
+                                      nan)
+                - partner_id: if(to_couple,
+                                 matching(set1filter=ISFEMALE, set2filter=ISMALE,
+                                          score='- 0.4893 * other.age
+                                                 + 0.0131 * other.age ** 2
+                                                 - 0.0001 * other.age ** 3
+                                                 + 0.0467 * (other.age - age)
+                                                 - 0.0189 * (other.age - age) ** 2
+                                                 + 0.0003 * (other.age - age) ** 3',
+                                          orderby=difficult_match),
+                                 partner_id)
+                - justcoupled: to_couple and (partner_id != UNSET)
+                - newhousehold: new('household', filter=justcoupled and ISFEMALE,
+                                    region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4]))
 
-                - hh_id: "if(justcoupled,
-                             if(ISMALE, partner.newhousehold, newhousehold),
-                             hh_id)"
+                - hh_id: if(justcoupled,
+                            if(ISMALE, partner.newhousehold, newhousehold),
+                            hh_id)
 
-                - civilstate: "if(justcoupled, MARRIED, civilstate)"
-                - dur_in_couple: "if(justcoupled,
-                                     0,
-                                     if(in_couple, dur_in_couple + 1, 0))"
-#                - dump_couples: "csv(dump(id, age, gender,
-#                                          partner.id, partner.age, partner.gender,
-#                                          hh_id, filter=justcoupled),
-#                                          suffix='new_couples')"
+                - civilstate: if(justcoupled, MARRIED, civilstate)
+                - dur_in_couple: if(justcoupled,
+                                    0,
+                                    if(in_couple, dur_in_couple + 1, 0))
+#                - dump_couples: csv(dump(id, age, gender,
+#                                         partner.id, partner.age, partner.gender,
+#                                         hh_id, filter=justcoupled),
+#                                         suffix='new_couples')
 
             get_a_life:
-                - alone: "household.nb_persons == 1"
-                - hh_id: "if(not(ISMARRIED) and not alone and (age >= 24),
-                             new('household',
-                                 start_period=period,
-                                 region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])),
-                             hh_id)"
+                - alone: household.nb_persons == 1
+                - hh_id: if(not(ISMARRIED) and not alone and (age >= 24),
+                            new('household',
+                                region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])),
+                            hh_id)
 
             divorce:
-                - agediff: "if(ISFEMALE and ISMARRIED, age - partner.age, 0)"
-                - inwork: "ISINWORK"
+                - agediff: if(ISFEMALE and ISMARRIED, age - partner.age, 0)
                 # select females to divorce
-                - divorce: "logit_regr(0.6713593 * household.nch12_15 - 0.0785202 * dur_in_couple
-                                       + 0.1429621 * agediff - 0.0088308 * agediff **2
-                                       - 0.814204 * (inwork and partner.inwork) - 4.546278,
-                                       filter = ISFEMALE and ISMARRIED and (dur_in_couple > 0),
-                                       align = 'al_p_divorce.csv')"
+                - divorce: logit_regr(0.6713593 * household.nb_children
+                                      - 0.0785202 * dur_in_couple
+                                      + 0.1429621 * agediff - 0.0088308 * agediff **2
+                                      - 4.546278,
+                                      filter = ISFEMALE and ISMARRIED and (dur_in_couple > 0),
+                                      align = 'al_p_divorce.csv')
                 # change partners
-                - to_divorce: "divorce or partner.divorce"
-                - partner_id: "if(to_divorce, UNSET, partner_id)"
-                - civilstate: "if(to_divorce, DIVORCED, civilstate)"
-                - dur_in_couple: "if(to_divorce, 0, dur_in_couple)"
+                - to_divorce: divorce or partner.divorce
+                - partner_id: if(to_divorce, UNSET, partner_id)
+                - civilstate: if(to_divorce, DIVORCED, civilstate)
+                - dur_in_couple: if(to_divorce, 0, dur_in_couple)
                 # move out males
-                - hh_id: "if(ISMALE and to_divorce,
-                             new('household',
-                                 start_period=period,
-                                 region_id=household.region_id),
-                             hh_id)"
+                - hh_id: if(ISMALE and to_divorce,
+                            new('household',
+                                region_id=household.region_id),
+                            hh_id)
 
-            dump_info: "csv(dump(id, age, gender, hh_id, household.nb_persons,
-                                 mother.age, partner.age), suffix='info')"
+            dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
+                                mother.age, partner.age), suffix='info')
 
 simulation:
     init:
@@ -207,9 +173,10 @@ simulation:
         - household: [household_composition, clean_empty]
 
     input:
-        file: "simple2001.h5"
+        file: simple2001.h5
     output:
-        file: "simulation.h5"
+        file: simulation.h5
 
-    start_period: 2002   # first simulated period
+    # first simulated period
+    start_period: 2002
     periods: 2
