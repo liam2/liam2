@@ -1,6 +1,6 @@
 import numpy as np
 
-from expr import evaluate, Variable, functions, expr_eval
+from expr import evaluate, Variable, functions, expr_eval, collect_variables
 from properties import EvaluableExpression
 from utils import loop_wh_progress
 
@@ -13,8 +13,11 @@ class Matching(EvaluableExpression):
         self.orderby = orderby
     
     def collect_variables(self, context):
-        #FIXME: do something more sensible here 
-        return set()
+        #FIXME: add score_expr 
+        expr_vars = collect_variables(self.set1filter, context)
+        expr_vars |= collect_variables(self.set2filter, context)
+        expr_vars |= collect_variables(self.orderby, context)
+        return expr_vars
     
     def eval(self, context):
         global set2
@@ -27,15 +30,8 @@ class Matching(EvaluableExpression):
         # fancy-indexing (array of bools)
         a = context.entity.array
         
-        #XXX: is it faster to do:
-        # f1 = eval(ctx_filter & filter1); f2 = eval(ctx_filter & filter2)
-        # OR        
-        # cf = eval(ctx_filter); f1 = cf & eval(filter1); f2 = cf & eval(filter2)
-        # OR
-        # cf = eval(ctx_filter); f1 = eval(cf & filter1); f2 = eval(cf & filter2)
-        
-        # it will probably depend if ctx_filter is long/contains costly 
-        # operations
+        # at some point ctx_filter will be cached automatically, so we don't
+        # need to take care of it manually here 
         if ctx_filter is not None:
             set1filter = expr_eval(ctx_filter & self.set1filter, context)
             set2filter = expr_eval(ctx_filter & self.set2filter, context)
