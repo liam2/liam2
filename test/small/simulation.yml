@@ -292,7 +292,7 @@ entities:
                 - difficult_match: if(to_marry and not gender,
                                       abs(age - avg_age_men),
                                       nan)
-
+                - workless: not work
                 - partner_id:
                     if(to_marry,
                        matching(set1filter=not gender,
@@ -303,8 +303,8 @@ entities:
                                        + 0.0467 * (other.age - age)
                                        - 0.0189 * (other.age - age) ** 2
                                        + 0.0003 * (other.age - age) ** 3
-                                       - 0.9087 * (other.work and not work)
-                                       - 1.3286 * (not other.work and work)
+                                       - 0.9087 * (other.work and workless)
+                                       - 1.3286 * (other.workless and not workless)
                                        - 0.6549 * (other.work and work)
                                        - 0.7939 * ((other.eduach == 3) and (eduach == 4))
                                        - 1.4128 * ((other.eduach == 2) and (eduach == 4))
@@ -411,7 +411,10 @@ entities:
                 - show(groupby(round(logit_score(0.0), 1)))
                 - show('explicit count', groupby(round(logit_score(0.0), 1), 
                                                  expr=grpcount()))
-                - show('grpmin', groupby(agegroup, expr=grpmin(age)))                                 
+                - show('grpmin', groupby(agegroup, expr=grpmin(age)))
+                - temp_scalar: grpavg(age)                                 
+                - show('wh scalar variable', groupby(agegroup, expr=temp_scalar * grpmin(age)))
+                                                 
                 - num_persons2: show(groupby(agegroup, gender))
                 - num_persons2_percent: show(groupby(agegroup, gender, percent=True))
                 - num_persons_weight_percent: show(groupby(agegroup, gender, expr=grpsum(weight), percent=True))

@@ -1,6 +1,7 @@
 import numpy as np
 
 from expr import evaluate, Variable, functions, expr_eval, collect_variables
+from entities import context_length, context_subset, context_delete
 from properties import EvaluableExpression
 from utils import loop_wh_progress
 
@@ -24,12 +25,21 @@ class Matching(EvaluableExpression):
 
         ctx_filter = context.get('__filter__')
         
-        entity = context.entity
         id_to_rownum = context.id_to_rownum
-        #TODO: somehow use the context directly but it needs to support
-        # fancy-indexing (array of bools)
-        a = context.entity.array
+
+        score_expr = self.score_expr.strip()
+        score_expr = score_expr.replace('other.', '__o_') 
         
+        field_names = [name for name in context.keys()
+                       if not name.startswith('__') and name != 'nan']
+        variables = dict((name, Variable('__self_%s' % name))
+                         for name in field_names)
+        variables.update(('__o_%s' % name, Variable(name))
+                         for name in field_names)
+        # parse string
+        symbolic_expr = eval(score_expr, variables)
+        score_expr = str(symbolic_expr)
+
         # at some point ctx_filter will be cached automatically, so we don't
         # need to take care of it manually here 
         if ctx_filter is not None:
@@ -38,9 +48,15 @@ class Matching(EvaluableExpression):
         else:
             set1filter = expr_eval(self.set1filter, context)
             set2filter = expr_eval(self.set2filter, context)
-            
-        set1 = a[set1filter]
-        set2 = a[set2filter]
+
+        used_variables = symbolic_expr.collect_variables(context)
+        used_variables1 = ['id'] + [v[7:] for v in used_variables
+                                    if v.startswith('__self_')]
+        used_variables2 = ['id'] + [v for v in used_variables
+                                    if not v.startswith('__self_')]
+
+        set1 = context_subset(context, set1filter, used_variables1)
+        set2 = context_subset(context, set2filter, used_variables2)
         
         orderby = expr_eval(self.orderby, context)
         sorted_set1_indices = orderby[set1filter].argsort()[::-1]
@@ -48,20 +64,6 @@ class Matching(EvaluableExpression):
         print "matching with %d/%d individuals" % (set1filter.sum(),
                                                    set2filter.sum())
 
-        score_expr = self.score_expr.strip()
-        score_expr = score_expr.replace('other.', '__o_') 
-        
-        field_names = [name for name, _ in entity.fields]
-        variables = dict((name, Variable('__self_%s' % name))
-                         for name in field_names)
-        variables.update(('__o_%s' % name, Variable(name))
-                         for name in field_names)
-        # parse string
-        symbolic_expr = eval(score_expr, variables)
-        used_variables = [v[7:] for v in symbolic_expr.collect_variables(context)
-                          if v.startswith('__self_')]
-        score_expr = str(symbolic_expr)
-        
 #        #TODO: compute pk_names automatically: variables which are either
 #        # boolean, or have very few possible values and which are used more
 #        # than once in the expression and/or which are used in boolean 
@@ -69,21 +71,18 @@ class Matching(EvaluableExpression):
 #        pk_names = ('eduach', 'work')        
 #        optimized_exprs = {}
 
-#        result = a[self.name]
-        result = np.empty(len(a), dtype=int)
+        result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
 
         mm_dict = {}
         def match_one_set1_individual(idx, sorted_idx):
             global set2
             
-            if not len(set2):
+            if not context_length(set2):
                 raise StopIteration                
 
-            individual1 = set1[sorted_idx]
-
-            mm_dict.update(('__self_%s' % name, individual1[name])
-                           for name in used_variables)
+            mm_dict.update(('__self_%s' % name, set1[name][sorted_idx])
+                           for name in used_variables1)
 
 #            pk = tuple(individual1[fname] for fname in pk_names)
 #            optimized_expr = optimized_exprs.get(pk)
@@ -98,11 +97,11 @@ class Matching(EvaluableExpression):
             set2_scores = evaluate(score_expr, mm_dict, set2)
             
             individual2_idx = np.argmax(set2_scores)       
-            individual2 = set2[individual2_idx]
-            set2 = np.delete(set2, individual2_idx) 
             
-            id1 = individual1['id']
-            id2 = individual2['id']
+            id1 = set1['id'][sorted_idx]
+            id2 = set2['id'][individual2_idx]
+            
+            set2 = context_delete(set2, individual2_idx)
             
             result[id_to_rownum[id1]] = id2
             result[id_to_rownum[id2]] = id1

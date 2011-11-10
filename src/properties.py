@@ -8,7 +8,8 @@ from expr import Expr, Variable, Where, functions, as_string, dtype, \
                  collect_variables, get_tmp_varname, \
                  missing_values, get_missing_value, get_missing_record, \
                  get_missing_vector 
-from entities import entity_registry, EntityContext, context_length
+from entities import entity_registry, EntityContext, \
+                     context_length, context_subset
 import utils
 
 
@@ -1076,13 +1077,16 @@ class CreateIndividual(EvaluableExpression):
 
     def collect_variables(self, context):
         #FIXME: we need to add variables from self.filter (that's what is needed
-        # for the general case -- in expr_eval) but the current version is what
-        # is needed to build the child context in eval() function below
+        # for the general case -- in expr_eval)
+        used_variables = self._collect_kwargs_variables(context)
+        return used_variables
+
+    def _collect_kwargs_variables(self, context):
         used_variables = set()
         for v in self.kwargs.itervalues():
             used_variables.update(collect_variables(v, context))
         return used_variables
-
+    
     def eval(self, context):
         source_entity = context['__entity__']
         if self.entity_name is None:
@@ -1121,24 +1125,13 @@ class CreateIndividual(EvaluableExpression):
         num_individuals = len(id_to_rownum)
 
         children = self._initial_values(array, to_give_birth, num_birth)
-        children['id'] = np.arange(num_individuals, num_individuals + num_birth)
-            
         if num_birth:
-            period = context['period']
-            children['period'] = period
+            children['id'] = np.arange(num_individuals, num_individuals + num_birth)
+            children['period'] = context['period']
     
-            used_variables = self.collect_variables(context)
-            
-            # ideally we should be able to just say:    
-            # child_context = context[to_give_birth]
-            child_context = {'period': period, 
-                             '__len__': num_birth,
-                             '__entity__': source_entity}
-            for varname in used_variables:
-                value = context[varname]
-                if isinstance(value, np.ndarray):
-                    value = value[to_give_birth]
-                child_context[varname] = value
+            used_variables = self._collect_kwargs_variables(context)
+            child_context = context_subset(context, to_give_birth,
+                                           used_variables)
             for k, v in self.kwargs.iteritems():
                 children[k] = expr_eval(v, child_context)
                 

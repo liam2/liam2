@@ -9,7 +9,7 @@ import os
 import numpy as np
 
 from expr import functions, Expr, Variable, expr_eval, parse, collect_variables
-from entities import context_length
+from entities import context_length, context_subset
 from utils import skip_comment_cells, strip_rows, PrettyTable, unique
 import simulation
 from properties import (FilteredExpression, TableExpression, GroupCount, 
@@ -338,13 +338,8 @@ class GroupBy(TableExpression):
 
         data = []
         for member_indices in groups_wh_totals:
-            local_context = dict((v, context[v][member_indices])
-                                 for v in used_variables)
-            local_context['__len__'] = len(member_indices)
-            local_context['period'] = context['period']
-            local_context['__entity__'] = context['__entity__']
-            #FIXME: this should come from somewhere else
-            local_context['nan'] = float('nan')
+            local_context = context_subset(context, member_indices,
+                                           used_variables)
             data.append(expr_eval(expr, local_context))
 
         if self.percent:

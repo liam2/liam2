@@ -130,7 +130,46 @@ class EntityContext(object):
             # input_index == output_index, but it would be cleaner to simply
             # initialise output_index correctly
             return self.entity.input_index[period]
+        
+def context_subset(context, index, keys=None):
+    if keys is None:
+        keys = context.keys()
+    # tuple are not valid numpy indexes (I don't know why)
+    if isinstance(index, list):
+        if not index:
+            index = np.array([], dtype=int)
+        else:
+            index = np.array(index)
+    if np.issubdtype(index.dtype, int):
+        length = len(index)
+    else:  
+        assert len(index) == context_length(context), \
+               "boolean index has length %d instead of %d" % \
+               (len(index), context_length(context))
+        length = np.sum(index)
+    #FIXME: nan should come from somewhere else
+    result = {'period': context['period'], 
+              '__len__': length,
+              '__entity__': context['__entity__'],
+              'nan': float('nan')}
+    for key in keys:
+        value = context[key]
+        if isinstance(value, np.ndarray):
+            value = value[index]
+        result[key] = value
+    return result
 
+def context_delete(context, rownum):
+    result = {}
+    # this copies everything including __len__, period, nan, ...
+    for key in context.keys():
+        value = context[key]
+        if isinstance(value, np.ndarray):
+            value = np.delete(value, rownum)
+        result[key] = value
+    result['__len__'] -= 1
+    return result
+    
 
 def context_length(ctx):
     if hasattr(ctx, 'length'):
