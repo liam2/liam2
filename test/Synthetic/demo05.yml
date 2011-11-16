@@ -1,5 +1,5 @@
 # tech: break links, logit_regr with real expr
-# get_a_life, divorce
+# model: get_a_life, divorce
 entities:
     household:
         fields:
@@ -128,10 +128,9 @@ entities:
                 - dur_in_couple: if(justcoupled,
                                     0,
                                     if(in_couple, dur_in_couple + 1, 0))
-#                - dump_couples: csv(dump(id, age, gender,
-#                                         partner.id, partner.age, partner.gender,
-#                                         hh_id, filter=justcoupled),
-#                                         suffix='new_couples')
+#                - csv(dump(id, age, gender, partner.id, partner.age,
+#                           partner.gender, hh_id, filter=justcoupled),
+#                      suffix='new_couples')
 
             get_a_life:
                 - alone: household.nb_persons == 1

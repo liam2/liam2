@@ -1,5 +1,5 @@
 # tech: macros, new, remove, logit_regr, grpsum, grpavg
-# birth, death
+# model: birth, death
 entities:
     household:
         fields:

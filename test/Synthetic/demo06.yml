@@ -1,5 +1,5 @@
 # tech: globals, logit_score, align(leave=), lag
-# education_level, ineducation, retire, inwork
+# model: education_level, ineducation, retire, inwork
 globals:
     periodic:
         - WEMRA: float
@@ -249,8 +249,8 @@ entities:
                 - show('have job', grpsum(work), 
                        '(kept:', grpsum(work and lag(ISINWORK)),
                        '/ new:', grpsum(work and not lag(ISINWORK)), ')')
-#                - dump_csv: csv(dump(id, agegroup_work, education_level,
-#                                      work_score, workstate, lag(workstate)))
+#                - csv(dump(id, agegroup_work, education_level,
+#                           work_score, workstate, lag(workstate)))
 
             dump_csv_p: csv(dump())
 

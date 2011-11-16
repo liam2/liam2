@@ -1,5 +1,5 @@
 # tech: matching, make new links, change existing links, abs, new('other entity', ...)
-# marriage
+# model: marriage
 entities:
     household:
         fields:
@@ -128,10 +128,9 @@ entities:
                 - dur_in_couple: if(justcoupled,
                                     0,
                                     if(in_couple, dur_in_couple + 1, 0))
-                - dump_couples: csv(dump(id, age, gender,
-                                         partner.id, partner.age, partner.gender,
-                                         hh_id, filter=justcoupled),
-                                         suffix='new_couples')
+                - csv(dump(id, age, gender, partner.id, partner.age,
+                           partner.gender, hh_id, filter=justcoupled),
+                      suffix='new_couples')
 
             dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
                                 mother.age, partner.age), suffix='info')
