@@ -1,5 +1,9 @@
-# tech: break links, logit_regr with real expr
-# get_a_life, divorce
+# tech: globals, logit_score, align(leave=), lag
+# education_level, ineducation, retire, inwork
+globals:
+    periodic:
+        - WEMRA: float
+
 entities:
     household:
         fields:
@@ -26,6 +30,9 @@ entities:
             # period and id are implicit
             - age:        int
             - gender:     bool
+            # 1: in work, 2: unemployed including old-age unemployed,
+            # 3: in education, 4: retired, 5: other inactive
+            - workstate:  int
             # 1: single, 2: married, 3: divorced, 4: widowed
             - civilstate: int
             - dur_in_couple: int
@@ -38,6 +45,7 @@ entities:
             # fields not present in input
             - agegroup_work: {type: int, initialdata: false}
             - agegroup_civilstate: {type: int, initialdata: false}
+            - education_level: {type: int, initialdata: false}
             - inwork: {type: bool, initialdata: false}
 
         links:
@@ -62,6 +70,15 @@ entities:
             ISMARRIED: civilstate == 2
             ISDIVORCED: civilstate == 3
             ISWIDOW: civilstate == 4
+
+            INWORK: 1
+            UNEMPLOYED: 2
+            STUDENT: 3
+            RETIRED: 4
+            ISINWORK: workstate == 1
+            ISUNEMPLOYED: workstate == 2
+            ISSTUDENT: workstate == 3
+            ISRETIRED: workstate == 4
 
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
@@ -94,6 +111,8 @@ entities:
                                 age = 0,
                                 partner_id = UNSET,
                                 civilstate = SINGLE,
+                                education_level = UNSET,
+                                workstate = STUDENT,
                                 gender = choice([MALE, FEMALE], [0.51, 0.49]))
 
             marriage:
@@ -106,6 +125,7 @@ entities:
                 - difficult_match: if(to_couple and ISFEMALE,
                                       abs(age - grpavg(age, filter=to_couple and ISMALE)),
                                       nan)
+                - inwork: ISINWORK
                 - partner_id: if(to_couple,
                                  matching(set1filter=ISFEMALE, set2filter=ISMALE,
                                           score='- 0.4893 * other.age
@@ -113,7 +133,15 @@ entities:
                                                  - 0.0001 * other.age ** 3
                                                  + 0.0467 * (other.age - age)
                                                  - 0.0189 * (other.age - age) ** 2
-                                                 + 0.0003 * (other.age - age) ** 3',
+                                                 + 0.0003 * (other.age - age) ** 3
+                                                 - 0.9087 * (other.inwork and not inwork)
+                                                 - 1.3286 * (not other.inwork and inwork)
+                                                 - 0.6549 * (other.inwork and inwork)
+                                                 - 0.7939 * ((other.education_level == 3) and (education_level == 4))
+                                                 - 1.4128 * ((other.education_level == 2) and (education_level == 4))
+                                                 - 0.8984 * ((other.education_level == 4) and (education_level == 3))
+                                                 - 1.5530 * ((other.education_level == 4) and (education_level == 2))
+                                                 - 0.5451 * ((other.education_level == 2) and (education_level == 2))',
                                           orderby=difficult_match),
                                  partner_id)
                 - justcoupled: to_couple and (partner_id != UNSET)
@@ -128,10 +156,6 @@ entities:
                 - dur_in_couple: if(justcoupled,
                                     0,
                                     if(in_couple, dur_in_couple + 1, 0))
-#                - dump_couples: csv(dump(id, age, gender,
-#                                         partner.id, partner.age, partner.gender,
-#                                         hh_id, filter=justcoupled),
-#                                         suffix='new_couples')
 
             get_a_life:
                 - alone: household.nb_persons == 1
@@ -142,10 +166,12 @@ entities:
 
             divorce:
                 - agediff: if(ISFEMALE and ISMARRIED, age - partner.age, 0)
+                - inwork: ISINWORK
                 # select females to divorce
                 - divorce: logit_regr(0.6713593 * household.nb_children
                                       - 0.0785202 * dur_in_couple
                                       + 0.1429621 * agediff - 0.0088308 * agediff **2
+                                      - 0.814204 * (ISINWORK and partner.get(ISINWORK))
                                       - 4.546278,
                                       filter = ISFEMALE and ISMARRIED and (dur_in_couple > 0),
                                       align = 'al_p_divorce.csv')
@@ -161,17 +187,99 @@ entities:
                                 region_id=household.region_id),
                             hh_id)
 
-            dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
-                                mother.age, partner.age), suffix='info')
+            education_level:
+                - education_level: if(education_level < 0,
+                                      choice([2, 3, 4], [0.25, 0.39, 0.36]),
+                                      education_level)
+
+            ineducation:
+                # unemployed if left education
+                - workstate: if(ISSTUDENT and
+                                   (((age == 16) and (education_level == 2)) or
+                                    ((age == 19) and (education_level == 3)) or
+                                    ((age == 24) and (education_level == 4))),
+                                UNEMPLOYED,
+                                workstate)
+                - show('num students', grpsum(ISSTUDENT))
+
+            workstate_changes: show(groupby(workstate, lag(workstate)))
+
+            retire:
+                - workstate: if(ISMALE,
+                                if((age >= 65), RETIRED, workstate),
+                                if((age >= WEMRA), RETIRED, workstate))
+
+            inwork:
+                - work_score: UNSET
+                # men
+                - work_score: if(ISMALE and (age > 14) and (age < 65) and ISINWORK,
+                                 logit_score(-0.196599 * age + 0.0086552 * age **2 - 0.000988 * age **3
+                                             + 0.1892796 * ISMARRIED + 3.554612),
+                                 work_score)
+                - work_score: if(ISMALE and (age > 14) and (age < 50) and ISUNEMPLOYED,
+                                 logit_score(0.9780908 * age - 0.0261765 * age **2 + 0.000199 * age **3
+                                             - 12.39108),
+                                 work_score)
+                # women
+                - work_score: if(ISFEMALE and (age > 14) and (age < 65) and ISINWORK,
+                                 logit_score(-0.2740483 * age + 0.0109883 * age **2 - 0.0001159 * age **3
+                                             - 0.0906834 * ISMARRIED + 3.648706),
+                                 work_score)
+                - work_score: if(ISFEMALE and (age > 14) and (age < 50) and ISUNEMPLOYED,
+                                 logit_score(0.8217638 * age - 0.0219761 * age **2 + 0.000166 * age **3
+                                             - 0.5590975 * ISMARRIED - 10.48043),
+                                 work_score)
+                - work: if((age > 15) and (age < 65),
+                           if(ISMALE,
+                              align(work_score,
+                                    leave=ISRETIRED,
+                                    fname='al_p_inwork_m.csv'),
+                              align(work_score,
+                                    leave=ISRETIRED,
+                                    fname='al_p_inwork_f.csv')),
+                           False)
+                - workstate: if(work, INWORK, workstate)
+                # if not selected to work and last period in work set workstate to unemployed
+                - workstate: if(not work and lag(ISINWORK), UNEMPLOYED, workstate)
+                # retire
+                - workstate: if(ISMALE,
+                                if((age >= 65), RETIRED, workstate),
+                                if((age >= WEMRA), RETIRED, workstate))
+
+                - show('have job', grpsum(work), 
+                       '(kept:', grpsum(work and lag(ISINWORK)),
+                       '/ new:', grpsum(work and not lag(ISINWORK)), ')')
+#                - dump_csv: csv(dump(id, agegroup_work, education_level,
+#                                      work_score, workstate, lag(workstate)))
+
+            dump_csv_p: csv(dump())
 
 simulation:
     init:
         - household: [init_region_id]
+        - person: [ineducation]
+        - household: [household_composition, clean_empty]
 
     processes:
         - household: [household_composition, clean_empty]
-        - person: [ageing, death, birth, marriage, get_a_life, divorce]
-        - household: [household_composition, clean_empty]
+        - person: [
+            ageing,
+            death,
+            birth,
+            retire,
+            education_level,
+            ineducation,
+            marriage,
+            get_a_life,
+        ]
+        - household: [household_composition]
+        - person: [divorce]
+        - household: [household_composition]
+        - person: [
+            inwork,
+            workstate_changes,
+#            dump_csv_p
+        ]
 
     input:
         file: simple2001.h5

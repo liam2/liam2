@@ -55,6 +55,7 @@ entities:
             # produces "person_20xx_info.csv"
             dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
                                 mother.age, partner.age), suffix='info')
+            show_demography: show(groupby(agegroup, gender))
 
 simulation:
     init:
