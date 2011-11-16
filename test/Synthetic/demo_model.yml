@@ -1,4 +1,5 @@
-# globals, groupby, education_level, ineducation, retire, inwork
+# tech: globals, logit_score, align(leave=), lag
+# education_level, ineducation, retire, inwork
 globals:
     periodic:
         - WEMRA: float
@@ -82,9 +83,8 @@ entities:
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
         processes:
-            age: age + 1
-
-            agegroup:
+            ageing:
+                - age: age + 1
                 - agegroup_civilstate: if(age < 50,
                                           5 * trunc(age / 5),
                                           10 * trunc(age / 10))
@@ -175,9 +175,10 @@ entities:
                                       - 4.546278,
                                       filter = ISFEMALE and ISMARRIED and (dur_in_couple > 0),
                                       align = 'al_p_divorce.csv')
-                # change partners
+                # break link to partner
                 - to_divorce: divorce or partner.divorce
                 - partner_id: if(to_divorce, UNSET, partner_id)
+
                 - civilstate: if(to_divorce, DIVORCED, civilstate)
                 - dur_in_couple: if(to_divorce, 0, dur_in_couple)
                 # move out males
@@ -201,8 +202,7 @@ entities:
                                 workstate)
                 - show('num students', grpsum(ISSTUDENT))
 
-            table_inwork:
-                - workstate_changes: show(groupby(workstate, lag(workstate)))
+            workstate_changes: show(groupby(workstate, lag(workstate)))
 
             retire:
                 - workstate: if(ISMALE,
@@ -246,9 +246,9 @@ entities:
                                 if((age >= 65), RETIRED, workstate),
                                 if((age >= WEMRA), RETIRED, workstate))
 
-                - kept_job: show(grpsum(work and lag(ISINWORK)))
-                - got_job: show(grpsum(work and not lag(ISINWORK)))
-                - job: show(grpsum(work))
+                - show('have job', grpsum(work), 
+                       '(kept:', grpsum(work and lag(ISINWORK)),
+                       '/ new:', grpsum(work and not lag(ISINWORK)), ')')
 #                - dump_csv: csv(dump(id, agegroup_work, education_level,
 #                                      work_score, workstate, lag(workstate)))
 
@@ -263,20 +263,21 @@ simulation:
     processes:
         - household: [household_composition, clean_empty]
         - person: [
-            age, agegroup,
+            ageing,
             death,
             birth,
             retire,
             education_level,
             ineducation,
-            marriage, get_a_life,
+            marriage,
+            get_a_life,
         ]
         - household: [household_composition]
         - person: [divorce]
         - household: [household_composition]
         - person: [
             inwork,
-            table_inwork,
+            workstate_changes,
 #            dump_csv_p
         ]
 

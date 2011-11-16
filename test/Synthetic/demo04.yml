@@ -1,4 +1,5 @@
-# new (birth)
+# tech: new
+# birth
 entities:
     household:
         fields:
@@ -62,8 +63,11 @@ entities:
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
         processes:
-            age: age + 1
-            agegroup: 5 * trunc(age / 5)
+            ageing:
+                - age: age + 1
+                - agegroup: if(age < 50,
+                               5 * trunc(age / 5),
+                               10 * trunc(age / 10))
 
             death:
                 - dead: if(ISMALE,
@@ -97,7 +101,7 @@ simulation:
 
     processes:
         - household: [household_composition, clean_empty]
-        - person: [age, agegroup, death, birth,
+        - person: [ageing, death, birth,
             #dump_info
             ]
         - household: [household_composition, clean_empty]

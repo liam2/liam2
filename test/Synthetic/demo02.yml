@@ -1,4 +1,5 @@
-# second entity, links, link methods, init, dump, choice
+# second entity, links, link methods, init, procedures, local variables,
+# dump's suffix argument, choice
 entities:
     household:
         fields:
@@ -41,8 +42,17 @@ entities:
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
         processes:
-            age: age + 1
-            agegroup: 5 * trunc(age / 5)
+            ageing:
+                - age: age + 1
+                - juniors: 5 * trunc(age / 5)
+                - plus50: 10 * trunc(age / 10)
+                - agegroup: if(age < 50, juniors, plus50)
+                # it could just as well be written as:
+#                - agegroup: if(age < 50,
+#                               5 * trunc(age / 5),
+#                               10 * trunc(age / 10))
+
+            # produces "person_20xx_info.csv"
             dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
                                 mother.age, partner.age), suffix='info')
 
@@ -52,7 +62,7 @@ simulation:
 
     processes:
         - household: [household_composition]
-        - person: [age, agegroup, dump_info]
+        - person: [ageing, dump_info]
 
     input:
         file: simple2001.h5

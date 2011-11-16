@@ -1,3 +1,4 @@
+# tech: break links, logit_regr with real expr
 # get_a_life, divorce
 entities:
     household:
@@ -65,9 +66,8 @@ entities:
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
         processes:
-            age: age + 1
-
-            agegroup:
+            ageing:
+                - age: age + 1
                 - agegroup_civilstate: if(age < 50,
                                           5 * trunc(age / 5),
                                           10 * trunc(age / 10))
@@ -149,9 +149,10 @@ entities:
                                       - 4.546278,
                                       filter = ISFEMALE and ISMARRIED and (dur_in_couple > 0),
                                       align = 'al_p_divorce.csv')
-                # change partners
+                # break link to partner
                 - to_divorce: divorce or partner.divorce
                 - partner_id: if(to_divorce, UNSET, partner_id)
+
                 - civilstate: if(to_divorce, DIVORCED, civilstate)
                 - dur_in_couple: if(to_divorce, 0, dur_in_couple)
                 # move out males
@@ -169,7 +170,7 @@ simulation:
 
     processes:
         - household: [household_composition, clean_empty]
-        - person: [age, agegroup, death, birth, marriage, get_a_life, divorce]
+        - person: [ageing, death, birth, marriage, get_a_life, divorce]
         - household: [household_composition, clean_empty]
 
     input:

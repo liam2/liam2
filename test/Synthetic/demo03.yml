@@ -1,4 +1,6 @@
-# remove, macros, if, logit_regr, grpsum, grpavg
+# tech: remove, macros, logit_regr, grpsum, grpavg
+# death
+#TODO: add new/birth
 entities:
     household:
         fields:
@@ -60,8 +62,11 @@ entities:
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
         processes:
-            age: age + 1
-            agegroup: 5 * trunc(age / 5)
+            ageing: 
+                - age: age + 1
+                - agegroup: if(age < 50,
+                               5 * trunc(age / 5),
+                               10 * trunc(age / 10))
 
             death:
                 - dead: if(ISMALE,
@@ -82,7 +87,7 @@ simulation:
         - household: [init_region_id]
 
     processes:
-        - person: [age, agegroup, death,
+        - person: [ageing, death,
             #dump_info
             ]
         - household: [household_composition, clean_empty]

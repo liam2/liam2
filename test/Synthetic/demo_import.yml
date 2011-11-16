@@ -1,3 +1,6 @@
+# this is an "import" file. To use it press F5 in liam2 environment, or run
+# the following command in a console: 
+# INSTALL PATH\liam2 import demo_import.yml
 output: simple2001.h5
 
 globals:

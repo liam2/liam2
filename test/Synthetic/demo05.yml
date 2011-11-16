@@ -1,4 +1,5 @@
-# matching (marriage), abs, new('household', ...)
+# tech: matching, make new links, change existing links, abs, new('other entity', ...)
+# marriage
 entities:
     household:
         fields:
@@ -65,9 +66,8 @@ entities:
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
         processes:
-            age: age + 1
-
-            agegroup:
+            ageing:
+                - age: age + 1
                 - agegroup_civilstate: if(age < 50,
                                           5 * trunc(age / 5),
                                           10 * trunc(age / 10))
@@ -142,7 +142,7 @@ simulation:
 
     processes:
         - household: [household_composition, clean_empty]
-        - person: [age, agegroup, death, birth, marriage]
+        - person: [ageing, death, birth, marriage]
         - household: [household_composition, clean_empty]
 
     input:
