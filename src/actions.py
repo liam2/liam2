@@ -15,13 +15,13 @@ class Show(Process):
 
     def run(self, context):
         if simulation.skip_shows:
-            print "skipped",
+            print "show skipped",
         else:
             values = [expr_eval(expr, context) for expr in self.args]
             print ' '.join(str(v) for v in values),
 
     def __str__(self):
-        #TODO: the differenciation shouldn't be needed. I guess I should
+        #TODO: the differentiation shouldn't be needed. I guess I should
         # have __repr__ defined for all properties
         str_args = [str(arg) if isinstance(arg, Expr) else repr(arg)
                     for arg in self.args]
