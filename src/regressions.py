@@ -94,7 +94,7 @@ class LogitRegr(Regression):
     def __init__(self, expr, filter=None, align=False):
         Regression.__init__(self, expr, filter)
         if isinstance(align, float):
-            align_kwargs = {'variables': [],
+            align_kwargs = {'expressions': [],
                             'possible_values': [],
                             'probabilities': [align]}
         elif isinstance(align, basestring):
