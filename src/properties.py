@@ -44,6 +44,28 @@ class Link(object):
     def __str__(self):
         return self._name
 
+class PrefixingLink(object):
+    def __init__(self, macros, links, prefix):
+        self.macros = macros
+        self.links = links
+        self.prefix = prefix
+
+    def __getattr__(self, key):
+        if key in self.macros:
+            raise Exception("Using macros with the 'other' link is not "
+                            "supported yet")
+#            macro = self.macros[key]
+#            variables = macro.collect_variables(entity=entity)
+#            renames = dict((name, self.prefix + name) for name in variables)
+#            return macro.rename_variables(renames)
+        if key in self.links:
+            link = self.links[key]
+            return Link(link._name,
+                        link._link_type, 
+                        self.prefix + link._link_field,
+                        link._target_entity)
+        return Variable(self.prefix + key)
+
 
 class Process(object):
     def __init__(self):
@@ -65,6 +87,17 @@ class Process(object):
         raise NotImplementedError()
 
 
+class Compute(Process):
+    '''these processes only compute an expression and do not store their
+       result (but they have side-effects)'''
+    def __init__(self, expr):
+        super(Compute, self).__init__()
+        self.expr = expr
+
+    def run(self, context):
+        expr_eval(self.expr, context)
+        
+    
 class Assignment(Process):
     def __init__(self, expr):
         super(Assignment, self).__init__()
@@ -142,9 +175,6 @@ class Assignment(Process):
             elif filter is not None:
                 np.putmask(target[self.predictor], filter, result)
 
-    def dtype(self, context):
-        return dtype(self.expr, context)
-    
 
 class ProcessGroup(Process):
     def __init__(self, name, subprocesses):
@@ -156,14 +186,17 @@ class ProcessGroup(Process):
         print
         for k, v in self.subprocesses:
             print "    *",
-            if k is None:
-#                print v,
-                print v.__class__.__name__,
-            else:
+            if k is not None:
                 print k,
             utils.timed(v.run_guarded, simulation, globals)
 #            print "done."
             simulation.start_console(v.entity, globals['period'])
+        # purge all local variables
+        temp_vars = self.entity.temp_variables
+        all_vars = self.entity.variables
+        local_vars = set(temp_vars.keys()) - set(all_vars.keys())
+        for var in local_vars:
+            del temp_vars[var]
 
 
 class EvaluableExpression(Expr):
