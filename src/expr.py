@@ -245,16 +245,6 @@ class Expr(object):
         if r is not None:
             return r
 
-#        usual_len = None
-#        for k in context.keys():
-#            value = context[k]
-#            if isinstance(value, np.ndarray):
-#                if usual_len is not None and len(value) != usual_len: 
-#                    raise Exception('incoherent array lengths: %s''s is %d '
-#                                    'while the len of others is %d' %
-#                                    (k, len(value), usual_len))
-#
-#                usual_len = len(value)
         try:
             return evaluate(s, context, {}, truediv='auto')
         except KeyError, e:
