@@ -1,4 +1,4 @@
-# tech: break links, logit_regr with real expr
+# tech: break links, logit_regr with real expr, lag
 # model: get_a_life, divorce
 entities:
     household:
@@ -38,7 +38,6 @@ entities:
             # fields not present in input
             - agegroup_work: {type: int, initialdata: false}
             - agegroup_civilstate: {type: int, initialdata: false}
-            - inwork: {type: bool, initialdata: false}
 
         links:
             mother: {type: many2one, target: person, field: mother_id}
@@ -108,12 +107,12 @@ entities:
                                       nan)
                 - partner_id: if(to_couple,
                                  matching(set1filter=ISFEMALE, set2filter=ISMALE,
-                                          score='- 0.4893 * other.age
-                                                 + 0.0131 * other.age ** 2
-                                                 - 0.0001 * other.age ** 3
-                                                 + 0.0467 * (other.age - age)
-                                                 - 0.0189 * (other.age - age) ** 2
-                                                 + 0.0003 * (other.age - age) ** 3',
+                                          score=- 0.4893 * other.age
+                                                + 0.0131 * other.age ** 2
+                                                - 0.0001 * other.age ** 3
+                                                + 0.0467 * (other.age - age)
+                                                - 0.0189 * (other.age - age) ** 2
+                                                + 0.0003 * (other.age - age) ** 3,
                                           orderby=difficult_match),
                                  partner_id)
                 - justcoupled: to_couple and (partner_id != UNSET)
@@ -162,6 +161,8 @@ entities:
 
             dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
                                 mother.age, partner.age), suffix='info')
+            
+            civilstate_changes: show(groupby(civilstate, lag(civilstate)))
 
 simulation:
     init:
@@ -169,7 +170,8 @@ simulation:
 
     processes:
         - household: [household_composition, clean_empty]
-        - person: [ageing, death, birth, marriage, get_a_life, divorce]
+        - person: [ageing, death, birth, marriage, get_a_life, divorce,
+                   civilstate_changes]
         - household: [household_composition, clean_empty]
 
     input:
