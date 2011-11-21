@@ -117,7 +117,10 @@ entities:
                       age = 0,
                       partner_id = UNSET,
                       civilstate = SINGLE,
-                      education_level = choice([2, 3, 4], [0.25, 0.39, 0.36]),
+                      education_level = choice([LOWER_SECONDARY_EDU,
+                                                UPPER_SECONDARY_EDU,
+                                                TERTIARY_EDU],
+                                               [0.25, 0.39, 0.36]),
                       workstate = STUDENT,
                       gender = choice([MALE, FEMALE], [0.51, 0.49]))
 
