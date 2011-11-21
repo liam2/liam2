@@ -132,6 +132,7 @@ entities:
             agegroup: if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))
 
             test_align:
+                               
                 - dead: if(gender, 
                            align(0.0, 
                                  take=age > 95, leave=ISCHILD,
@@ -150,6 +151,18 @@ entities:
                 - show('dead != dead2:',
                        grpcount(dead != dead2) > 105)
                        
+                - period_only: align(0.0, fname='al_p_period_only.csv')
+                - show('% aligned', grpavg(period_only))
+                
+                - one_dim: align(0.0, fname='al_p_one_dim.csv')
+                - show('% aligned', grpavg(one_dim))
+                - show('% aligned (False)', grpavg(one_dim, filter=not gender))
+                - show('% aligned (True)', grpavg(one_dim, filter=gender))
+                - show('num aligned (False)', grpcount(one_dim and not gender))
+                - show('num aligned (True)', grpcount(one_dim and gender))
+                - show('num total (False)', grpcount(not gender))
+                - show('num total (True)', grpcount(gender))
+                
                 # align using temporary variable
                 - temp: age + 1
                 # this is not exactly the same number because of the way we 
@@ -166,6 +179,7 @@ entities:
 
             test_logit: 
                 - simple: logit_regr(0.0)
+                - fixed_percent: logit_regr(0.0, align=0.5)
                 
             test_log_regr:
                 - v1: "42"
