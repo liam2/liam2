@@ -3,6 +3,97 @@
 Change log
 ##########
 
+Version 0.4.0
+=============
+
+Released on 2011-11-2x.
+
+New features:
+-------------
+
+* added grpgini function.
+
+* added grpmedian function.
+
+* implemented filter argument in grpsum.
+
+* implemented N-dimensional alignment (alignment can be done on more than two
+  variables/dimensions in the same file).
+
+* added 'header' argument to dump to determine whether column names should
+  be in the dump or not.
+
+* added keyword arguments to csv:
+
+  - 'fname' to allow defining the exact file names used. 
+  - 'mode' to allow appending to a csv file instead of overwriting it.
+
+* reworked csv() function to accept several arguments, like show.
+
+* added 'skip_shows' simulation option, to make all show() functions do nothing.
+
+* allowed expressions in addition to variable names in alignment files.
+
+* added optional argument 'missing' to dump() to convert nans into the given 
+  value.
+
+* improved import functionality:
+
+  - compression is now configurable.
+  - any csv file can be transposed, not just globals.
+  - globals fields can be selected, renamed and inverted like in normal
+    entities.
+
+Miscellaneous improvements:
+---------------------------
+
+* expressions do not need to be quoted anymore.
+
+* reverted init to old semantic: it happens in "start_period - 1", so that 
+  lag(variable_set_in_init) works even for the first period.
+
+* purge all local variables after each process to lower memory usage.
+
+* allowed the result of new() to not be stored in a variable.
+
+* allowed using temporary variables in matching() function.
+
+* added a tolerance of 1e-6 to the sum of choice's probabilities to be equal 1.0
+
+* added explicit message about alignment over and underflows.
+
+* nicer display for small (< 5ms) and large (>= 1 hour) timings.
+
+* improved error message on missing parenthesis around operands of boolean
+  operators.
+
+* improved error message on duplicate fields.
+
+* improved error message when a variable which is not computed yet is used.
+
+* added more information to the console log:
+
+  - number of individuals at the start and end of each period.
+  - more stats at the end of the simulation.
+
+* excluded unused components in the executable to make it smaller.
+
+Fixes:  
+------
+
+* fixed logit_regr(align=float).
+
+* fixed grpavg(bool, filter=cond).
+
+* fixed groupby(a, b, c, expr=grpsum(d), percent=True).
+
+* fixed having several grpavg with a filter argument in the same expression.
+
+* fixed calling the main executable without argument (simply display usage).
+
+* fixed void data source.
+
+
 Version 0.3.0
 =============
 
@@ -27,6 +118,7 @@ Fixes:
 
 * fixed error_var argument to cont_regr, clip_regr and log_regr.
 
+
 Version 0.2.1
 =============
 
@@ -50,7 +142,7 @@ Fixes:
 * fixed log_regr, cont_regr and clip_regr which were comparing their result with
   0.5 (like logit_regr when there is no alignment).
  
-* fixed "new" function, which created individuals correctly but in some cases
+* fixed new() function, which created individuals correctly but in some cases
   returned values which did not correspond to the ids of the newly created
   individuals, due to a bug in numpy.
 
@@ -111,7 +203,7 @@ Miscellaneous improvements:
 
 * manually flush the "console" output every time we write to it, not only within
   the interactive console, as some environments (namely when using the notepad++
-  bundle).
+  bundle) do not flush the buffer themselves.
 
 * disable compression of the output/simulation file, as it hurts performance
   quite a bit (the simulation time can be increased by more than 60%).
@@ -131,7 +223,7 @@ Miscellaneous improvements:
 
 * made the "init" section optional (it was never intended to be mandatory).
 
-* added progress bar for copying table
+* added progress bar for copying table.
 
 * optimised some parts for speed, making the whole simulation roughly as fast as
   0.1 even though more work is done.
