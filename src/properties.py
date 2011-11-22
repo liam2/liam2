@@ -1240,7 +1240,8 @@ class Dump(TableExpression):
         columns = []
         for expr in expressions:
             expr_value = expr_eval(expr, context)
-            if filter_value is not None and isinstance(expr_value, np.ndarray):
+            if (filter_value is not None and isinstance(expr_value, np.ndarray)
+                and expr_value.shape):
                 expr_value = expr_value[filter_value]
             columns.append(expr_value)
 

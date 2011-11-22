@@ -376,11 +376,20 @@ entities:
                                 'and now something completely different', 
                                 dump(gender, age, filter=gender),
                                 suffix='split_ages')
-                - nosuffix: csv(dump(age))
+                # no fname nor suffix                
+                - csv(dump(age))
                 - fname: csv(dump(age), fname='person_ages_{period}.csv')
-                - append: csv(dump(period, id, age, filter=id < 10, header=False),
-                              fname='person_ages.csv', mode='a')
-                - test_show: show(dump(gender, age, filter=id < 10))
+                # append
+                - csv(dump(period, id, age, filter=id < 10, header=False),
+                      fname='person_ages.csv', mode='a')
+                # test show
+                - show(dump(gender, age, filter=id < 10))
+                # aggregate and filter (0.6 * is important, otherwise we don't
+                # get a 0-d ndarray back, which was the cause of a bug)
+                - median_age: 0.6 * grpmedian(age)
+                - csv(dump(age, grpavg(age), age > grpavg(age), median_age, 
+                           filter=id < 10),
+                      suffix='aggregate_filter') 
                 
             test_csv:
                 - expr: csv(grpavg(age),
