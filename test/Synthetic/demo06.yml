@@ -255,8 +255,6 @@ entities:
                                     fname='al_p_inwork_f.csv')),
                            False)
                 - workstate: if(work, INWORK, workstate)
-                # if not selected to work and last period in work set workstate to unemployed
-                - workstate: if(not work and lag(ISINWORK), UNEMPLOYED, workstate)
                 # retire
                 - workstate: if(ISMALE,
                                 if((age >= 65), RETIRED, workstate),
@@ -268,6 +266,51 @@ entities:
                        '/ new:', grpsum(work and not lag(ISINWORK)), ')')
 #                - csv(dump(id, agegroup_work, education_level,
 #                           work_score, workstate, lag(workstate)))
+
+            unemp_process:
+               - unemp_score: "-1"
+               # Male
+               - unemp_condition_m: "ISMALE and (age > 15) and (age < 65) and not ISINWORK"
+               # Probability of being unemployed from being unemployed previously
+               - unemp_score: "if(unemp_condition_m and (age < 50) and lag(ISUNEMPLOYED),
+                                  logit_score(- 0.1988979 * age + 0.0026222 * age **2
+                                              - 0.4595076 * ISMARRIED
+                                              + 5.096262),
+                                  unemp_score)"
+               # Probability of being unemployed from being inwork previously
+               - unemp_score: "if(unemp_condition_m and lag(ISINWORK),
+                                  logit_score(0.1396404 * age - 0.0024024 * age **2
+                                              - 0.3957583 * ISMARRIED
+                                              - 3.069904),
+                                  unemp_score)"
+               # Female
+               - unemp_condition_f: "ISFEMALE and (age > 15) and (age < 65) and not ISINWORK"
+               # Probability of being unemployed from being unemployed previously
+               - unemp_score: "if(unemp_condition_f and (age < 50) and lag(ISUNEMPLOYED),
+                                  logit_score(- 0.1988979 * age + 0.0026222 * age **2
+                                              - 0.4595076 * ISMARRIED
+                                              + 5.096262),
+                                  unemp_score)"
+               # Probability of being unemployed from being inwork previously
+               - unemp_score: "if(unemp_condition_f and lag(ISINWORK),
+                                  logit_score(0.1122972 * age - 0.001672 * age **2
+                                              - 0.4429804 * ISMARRIED
+                                              - 2.585393),
+                                  unemp_score)"
+               # Alignment of unemployment based on those not selected by inwork
+               # Alignment files are constructed as follows:
+               # [Number of unemployed / (Population - Number of Workers)] by age class 
+               # The here below condition must correspond to the here above denumerator
+               - unemp: "if((age > 15) and (age < 65) and not ISINWORK,
+                            if(ISMALE,
+                               align(unemp_score,
+                                     leave=ISRETIRED,
+                                     fname='al_p_unemployed_m.csv'),
+                               align(unemp_score,
+                                     leave=ISRETIRED,
+                                     fname='al_p_unemployed_f.csv')),
+                            False)"
+               - workstate: "if(unemp, UNEMPLOYED, workstate)"  
 
             dump_all: csv(dump())
 
@@ -291,6 +334,7 @@ simulation:
         - person: [
             ineducation,
             inwork,
+            unemp_process
 #            dump_all
         ]
 
