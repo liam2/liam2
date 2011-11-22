@@ -3,7 +3,7 @@ from data_main import csv2h5
 from console import Console
 from data import populate_registry
 
-__version__ = "0.3.1dev"
+__version__ = "0.4.0dev"
 
 class AutoflushFile(object):
     def __init__(self, f):
