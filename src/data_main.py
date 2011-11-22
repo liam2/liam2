@@ -148,6 +148,13 @@ def complete_path(prefix, directory):
 def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
                     title=None, invert=(), buffersize=10 * 2 ** 20,
                     compression=None):
+    # make sure datastream is an iterator, not a list, otherwise it could
+    # loop indefinitely as it will never be consumed.
+    # Note that, contrary to what I thought, we shouldn't make a special case
+    # for that as np.fromiter(islice(iter(l), max_rows)) is faster than 
+    # np.array(l[:max_rows]) 
+    datastream = iter(datastream)
+    
     if compression is not None:
         if '-' in compression:
             complib, complevel = compression.split('-')
@@ -587,15 +594,30 @@ class ImportExportData(object):
                 dt = np.dtype([('id', int), ('period', int), ('value', vtype)])
                 values = np.fromiter(values_stream, dtype=dt)
                 print "sorting...",
+                # sort id then period
                 values.sort()
                 
+                # eg we get:
+                # 10, 2001, 5324.0
+                # 10, 2004, 6200.0
+                # 10, 2005, 7300.0
                 print "transferring and completing...",
                 prev_id, prev_period, prev_value = values[0]
                 
+                # compute row in target array
+                # 10, 2001, 5324.0 -> rowtofill = 154
+                # 10, 2004, 6200.0
+                # 10, 2005, 7300.0
                 rowtofill = row_for_id[prev_period][prev_id]
                 target = array[vname]
                 for id, period, value in values[1:]:
+                    # 10, 2001, 5324.0 -> rowtofill = 154
+                    # 10, 2004, 6200.0 -> rownum = 180
+                    # 10, 2005, 7300.0
                     rownum = row_for_id[period][id]
+                    # fill the row corresponding to the previous data point at
+                    # id, period (rowtofill) *and* all the rows (in the target 
+                    # array) in between that point and this one (rownum)
                     while rowtofill != -1 and rowtofill != rownum:  
                         target[rowtofill] = prev_value
                         rowtofill = nextrow_for_id[rowtofill]
