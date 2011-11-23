@@ -231,7 +231,7 @@ def copyTable(input_table, output_file, output_node, output_fields=None,
 # 1) all arrays have the same columns
 # 2) we have id_to_rownum already computed for each array 
 def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
-                        max_id_per_period, start_period):
+                        start_period):
     periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
     if not periods_before:
         id_to_rownum = np.empty(0, dtype=int)
@@ -243,7 +243,7 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
     target_period = periods_before[-1]
 
     # computing is present
-    max_id = max_id_per_period[target_period]
+    max_id = len(input_index[target_period]) - 1
     is_present = np.zeros(max_id + 1, dtype=bool)
     for period in periods_before:
         period_id_to_rownum = input_index[period]
@@ -316,7 +316,6 @@ def index_table(table):
     rows_per_period = {}
     id_to_rownum_per_period = {}
     temp_id_to_rownum = []
-    max_id_per_period = {}
     max_id_so_far = -1
     current_period = None
     start_row = None
@@ -328,7 +327,6 @@ def index_table(table):
             if start_row is not None:
                 rows_per_period[current_period] = start_row, idx
                 # assumes the data is sorted on period then id
-                max_id_per_period[current_period] = max_id_so_far
                 id_to_rownum = np.array(temp_id_to_rownum)
                 id_to_rownum_per_period[current_period] = id_to_rownum
                 temp_id_to_rownum = [-1] * (max_id_so_far + 1)
@@ -341,9 +339,8 @@ def index_table(table):
         max_id_so_far = max(max_id_so_far, id)
     if current_period is not None:
         rows_per_period[current_period] = (start_row, len(table))
-        max_id_per_period[current_period] = max_id_so_far
         id_to_rownum_per_period[current_period] = np.array(temp_id_to_rownum)
-    return rows_per_period, id_to_rownum_per_period, max_id_per_period
+    return rows_per_period, id_to_rownum_per_period
 
 def index_table_light(table):
     rows_per_period = {}
@@ -362,13 +359,110 @@ def index_table_light(table):
         rows_per_period[current_period] = (start_row, len(table))
     return rows_per_period
 
-
+class IndexedTable(object):
+    def __init__(self, table, period_index, id2rownum_per_period):
+        self.table = table
+        self.period_index = period_index
+        self.id2rownum_per_period = id2rownum_per_period
+        
+    @property 
+    def base_period(self):
+        return min(self.period_index.keys())
+        
 class H5Data(object):
     def __init__(self, input_path, output_path):
         self.input_path = input_path
         self.output_path = output_path
+
+    def index_tables(self, entities, fpath):
+        print "reading data from %s ..." % fpath
+
+        input_file = tables.openFile(fpath, mode="r")
+
+        periodic_globals = None
+        input_root = input_file.root
+
+        if 'globals' in input_root:
+            input_globals = input_root.globals
+            if 'periodic' in input_globals:
+                # load globals in memory
+                periodic_globals = input_globals.periodic.read()
+
+        input_entities = input_root.entities
         
+        entities_tables = {}
+        dataset = {'globals': periodic_globals,
+                   'entities': entities_tables}
+        
+        print " * indexing tables"
+        for ent_name, entity in entities.iteritems():
+            print "    -", ent_name, "...",
+            
+            table = getattr(input_entities, ent_name)
+            assertValidFields(entity.fields, table, entity.missing_fields)
+
+            start_time = time.time()
+            rows_per_period, id_to_rownum_per_period = index_table(table)
+            indexed_table = IndexedTable(table, rows_per_period,
+                                         id_to_rownum_per_period)
+            entities_tables[ent_name] = indexed_table
+            print "done (%s elapsed)." % time2str(time.time() - start_time)
+
+        return input_file, dataset
+        
+    def load(self, entities):
+        h5file, dataset = self.index_tables(entities, self.output_path)
+        entities_tables = dataset['entities']
+        for ent_name, entity in entities.iteritems():
+# this is what should happen            
+#            entity.indexed_input_table = entities_tables[ent_name]
+#            entity.indexed_output_table = entities_tables[ent_name]
+            table = entities_tables[ent_name]
+
+            entity.input_index = table.id2rownum_per_period
+            entity.input_rows = table.period_index
+            entity.input_table = table.table
+            
+            entity.output_index = table.id2rownum_per_period
+            entity.output_rows = table.period_index
+            entity.table = table.table
+            
+            entity.base_period = min(table.period_index.keys())
+
+        return h5file, None, dataset['globals']
+    
     def run(self, entities, start_period):
+        ################
+        # refactor WIP #
+        ################
+
+        #TODO: finish this refactor
+#        input_file, dataset = self.index_tables(entities, self.input_path)
+#        output_file = tables.openFile(self.output_path, mode="w")
+#
+#        if dataset['globals'] is not None:
+#            output_globals = output_file.createGroup("/", "globals", "Globals")
+#            copyTable(input_file.root.globals.periodic, output_file,
+#                      output_globals)
+#            
+#        input_entities = input_root.entities
+#        output_entities = output_file.createGroup("/", "entities", "Entities")
+#        print " * copying tables"
+#        for ent_name, entity in entities.iteritems():
+#            print ent_name, "..."
+#            
+#            # main table
+#            table = getattr(input_entities, ent_name)
+#
+#            assertValidFields(entity.fields, table, entity.missing_fields)
+#
+#            print " * indexing table...",
+#            rows_per_period, id_to_rownum_per_period, max_id_per_period = \
+#                index_table(table)
+#            entity.input_index = id_to_rownum_per_period
+#            entity.input_rows = rows_per_period
+#            entity.base_period = min(rows_per_period.keys())
+
         print "reading data from %s ..." % self.input_path
 
         input_file = tables.openFile(self.input_path, mode="r")
@@ -399,13 +493,14 @@ class H5Data(object):
             print " * indexing table...",
             start_time = time.time()
             
-            rows_per_period, id_to_rownum_per_period, max_id_per_period = \
-                index_table(table)
+            rows_per_period, id_to_rownum_per_period = index_table(table)
             entity.input_index = id_to_rownum_per_period
             entity.input_rows = rows_per_period
             entity.base_period = min(rows_per_period.keys())
             print "done (%s elapsed)." % time2str(time.time() - start_time)
 
+            #TODO: copying the table and generally preparing the output file
+            # should be a different method than indexing
             print " * copying table..."
             start_time = time.time()
             input_rows = entity.input_rows
@@ -416,8 +511,9 @@ class H5Data(object):
             else:
                 stoprow = 0
             
-            copyTable(table, output_file, output_entities, 
-                      entity.fields, stop=stoprow, show_progress=True)
+            output_table = copyTable(table, output_file, output_entities, 
+                                     entity.fields, stop=stoprow,
+                                     show_progress=True)
             entity.output_rows = output_rows
             print "done (%s elapsed)." % time2str(time.time() - start_time)
             
@@ -425,13 +521,12 @@ class H5Data(object):
             start_time = time.time()
             entity.array, entity.id_to_rownum = \
                 buildArrayForPeriod(table, entity.fields, entity.input_rows, 
-                                    entity.input_index, max_id_per_period,
-                                    start_period)
+                                    entity.input_index, start_period)
             print "done (%s elapsed)." % time2str(time.time() - start_time)
+            entity.input_table = table
+            entity.table = output_table
 
-        input_file.close()
-        output_file.close()
-        return periodic_globals
+        return input_file, output_file, periodic_globals
 
     
 class Void(object):
@@ -445,16 +540,19 @@ class Void(object):
             dtype = np.dtype(entity.fields)
             entity.array = np.empty(0, dtype=dtype)
             entity.id_to_rownum = np.empty(0, dtype=int) 
-            output_file.createTable(output_entities, entity.name, dtype,
-                                    title="%s table" % entity.name)
+            output_table = output_file.createTable(
+                output_entities, entity.name, dtype,
+                title="%s table" % entity.name)
 
-        output_file.close()
-        return None
+            entity.input_table = None
+            entity.table = output_table
+        return None, output_file, None
 
 def populate_registry(fpath):
     import entities
-    f = tables.openFile(fpath, mode="r")
-    for table in f.root.entities:
+    h5in = tables.openFile(fpath, mode="r")
+    for table in h5in.root.entities:
         entities.entity_registry.add(entities.Entity.from_table(table))
+    return h5in
         
     

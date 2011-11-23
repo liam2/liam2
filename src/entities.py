@@ -69,6 +69,9 @@ class EntityContext(object):
     @property
     def _iscurrentperiod(self):
         current_array = self.entity.array
+        
+        if current_array is None:
+            return False
 
         #FIXME: in the rare case where there is nothing in the current array
         #       we cannot know whether the period in the context is the
@@ -228,6 +231,10 @@ class Entity(object):
 
         self.expectedrows = tables.parameters.EXPECTED_ROWS_TABLE
         self.table = None
+        self.input_table = None
+        
+        self.indexed_input_table = None
+        self.indexed_output_table = None
         
         self.input_rows = {}
         #XXX: it might be unnecessary to keep it in memory after the initial
@@ -405,11 +412,6 @@ class Entity(object):
                     v.attach(k, self)
         attach_processes(processes.iteritems())
         self.processes = processes
-
-    def locate_tables(self, h5in, h5out):
-        self.input_table = \
-            getattr(h5in.root.entities, self.name) if h5in is not None else None
-        self.table = getattr(h5out.root.entities, self.name)
 
     def load_period_data(self, period):
         rows = self.input_rows.get(period)

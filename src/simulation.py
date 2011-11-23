@@ -84,12 +84,25 @@ class Simulation(object):
 }
 '''
     
-    def __init__(self, fpath, console=False):
+    def __init__(self, globals, periods, start_period,
+                 init_processes, init_entities, processes, entities,
+                 data_source):
+        self.globals = globals
+        self.periods = periods
+        self.start_period = start_period
+        self.init_processes = init_processes
+        self.init_entities = init_entities
+        self.processes = processes
+        self.entities = entities
+        self.data_source = data_source
+        self.stepbystep = False
+        
+    @classmethod
+    def from_yaml(cls, fpath):
         global output_directory
         global input_directory
         global skip_shows
         
-        self.console = console
         simulation_path = os.path.abspath(fpath)
         simulation_dir = os.path.dirname(simulation_path) 
         with open(fpath) as f:
@@ -101,8 +114,8 @@ class Simulation(object):
         periodic_globals = globals_def.get('periodic', [])
         # list of one-item-dicts to list of tuples
         periodic_globals = [d.items()[0] for d in periodic_globals]
-        self.globals = [(name, str_to_type[typestr])
-                        for name, typestr in periodic_globals]
+        globals = [(name, str_to_type[typestr])
+                   for name, typestr in periodic_globals]
 
         simulation_def = content['simulation']
         seed = simulation_def.get('random_seed')
@@ -112,15 +125,15 @@ class Simulation(object):
             random.seed(seed)
             np.random.seed(seed)
 
-        self.periods = simulation_def['periods']
-        self.start_period = simulation_def['start_period']
+        periods = simulation_def['periods']
+        start_period = simulation_def['start_period']
         skip_shows = simulation_def.get('skip_shows', False)
         
         output_def = simulation_def['output']
         output_directory = output_def.get('path', '')
         if not os.path.isabs(output_directory):
             output_directory = os.path.join(simulation_dir, output_directory) 
-        self.output_path = os.path.join(output_directory, output_def['file'])  
+        output_path = os.path.join(output_directory, output_def['file'])  
 
         input_def = simulation_def['input']
         input_directory = input_def.get('path', '')
@@ -130,7 +143,7 @@ class Simulation(object):
         entity_registry.add_all(content['entities'])
         for entity in entity_registry.itervalues():
             entity.check_links()
-            entity.parse_processes(self.globals)
+            entity.parse_processes(globals)
         
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()
@@ -142,46 +155,37 @@ class Simulation(object):
             init_entities.add(entity)
             init_processes.extend([entity.processes[proc_name]
                                    for proc_name in proc_names])
-        self.init_processes = init_processes
-        self.init_entities = init_entities
         
         agespine_def = [d.items()[0] for d in simulation_def['processes']]
         processes, entities = [], set()
         for ent_name, proc_names in agespine_def:
             entity = entity_registry[ent_name]
             entities.add(entity)
-            processes.extend([entity.processes[proc_name] for proc_name in proc_names])
-        self.processes = processes
-        self.entities = entities
+            processes.extend([entity.processes[proc_name]
+                              for proc_name in proc_names])
         
         method = input_def.get('method', 'h5')
         
         if method == 'h5':
-            self.input_path = os.path.join(input_directory, input_def['file'])
-            self.data_source = H5Data(self.input_path, self.output_path)
+            input_path = os.path.join(input_directory, input_def['file'])
+            data_source = H5Data(input_path, output_path)
         elif method == 'void':
-            self.input_path = None
-            self.data_source = Void(self.output_path)
+            input_path = None
+            data_source = Void(output_path)
         else:
             print method, type(method)
-        self.stepbystep = False
+        return Simulation(globals, periods, start_period,
+                          init_processes, init_entities, processes, entities,
+                          data_source)
 
-    def run(self):
+    def load(self):
+        return timed(self.data_source.load, entity_registry)
+    
+    def run(self, run_console=False):
         start_time = time.time()
-
-        periodic_globals = timed(self.data_source.run, 
-                                 entity_registry,
-                                 self.start_period - 1)
-
-        if self.input_path is not None:
-            h5in = tables.openFile(self.input_path, mode="r")
-        else:
-            h5in = None
-        h5out = tables.openFile(self.output_path, mode="a",
-                                title="Simulation history")
-        for entity in self.entities:
-            entity.locate_tables(h5in, h5out)
-
+        h5in, h5out, periodic_globals = timed(self.data_source.run, 
+                                              entity_registry,
+                                              self.start_period - 1)
         if periodic_globals is not None:
             try:
                 globals_periods = periodic_globals['PERIOD']
@@ -282,7 +286,7 @@ class Simulation(object):
 
             show_top_processes(process_time, 10)
     
-            if self.console:
+            if run_console:
                 c = console.Console()
                 c.run()
 

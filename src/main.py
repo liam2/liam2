@@ -1,3 +1,5 @@
+from os.path import splitext
+
 from simulation import Simulation
 from data_main import csv2h5
 from console import Console
@@ -42,7 +44,7 @@ if __name__ == '__main__':
     if action == 'run':
         print "Using simulation file: '%s'" % fpath
         console = len(args) > 3 and args[3] == "-i"
-        simulation = Simulation(fpath, console)
+        simulation = Simulation.from_yaml(fpath)
     
         do_profile = False
         if do_profile:
@@ -53,7 +55,7 @@ if __name__ == '__main__':
             # p.strip_dirs().sort_stats('cum').print_stats(30)
         else:
 #            try:
-            simulation.run()
+            simulation.run(console)
 #            except Exception, e:
 #                print 
 #                print str(e)
@@ -64,8 +66,22 @@ if __name__ == '__main__':
     elif action == "import":
         csv2h5(fpath)
     elif action == "explore":
-        populate_registry(fpath)
-        c = Console()
-        c.run()
+        _, ext = splitext(fpath)
+        if ext in ('.h5', '.hdf5'):
+            ftype = 'data'
+            h5in = populate_registry(fpath)
+            h5out = None
+        else:
+            ftype = 'simulation'
+            simulation = Simulation.from_yaml(fpath)
+            h5in, h5out, periodic_globals = simulation.load()
+        try:
+            print "Using %s file: '%s'" % (ftype, fpath)
+            c = Console()
+            c.run()
+        finally:
+            h5in.close()
+            if h5out is not None:
+                h5out.close()
     else:
         usage(args)

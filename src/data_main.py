@@ -357,7 +357,7 @@ def load_csv_globals(input_path, fields=None, transpose=False):
 
 class ImportExportData(object):
     def __init__(self, simulation_fpath, io_fpath):
-        self.simulation = Simulation(simulation_fpath)
+        self.simulation = Simulation.from_yaml(simulation_fpath)
 
         with open(io_fpath) as f:
             content = yaml.load(f)
