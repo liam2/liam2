@@ -132,7 +132,6 @@ entities:
             agegroup: if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))
 
             test_align:
-                               
                 - dead: if(gender, 
                            align(0.0, 
                                  take=age > 95, leave=ISCHILD,
@@ -289,12 +288,10 @@ entities:
                 - show(plop2)
             
             test_clone:
-                #FIXME: if we don't specify a target variable it stores the
-                # result with the key None
-                - clones: clone(filter = age == 95,
-                                f_id = id,
-                                m_id = id,
-                                nch = household.get(countlink(persons)))
+                - clone(filter = age == 95,
+                        f_id = id,
+                        m_id = id,
+                        nch = household.get(countlink(persons)))
                                     
             
             marriage:
