@@ -45,7 +45,7 @@ Using your own data
 
 - Prepare your data as CSV files. The first row should contain the name of the
   fields. You need at least two integer columns: "id" and "period" (though they
-  do not necesarrily need to be named like that in the csv file).
+  do not necessarily need to be named like that in the csv file).
 
 - Create an import file, as described in the :ref:`import_data` section. You
   can use \\localpath\\Liam2Suite\\Synthetic\\demo_import.yml as an example.
