@@ -7,9 +7,9 @@
 Processes
 #########
 
-The processes are the core of a model. LIAM2 supports two kinds of processes: *assignments*, which change
-the value of a variable (predictor) using an expression, and *actions* which
-don't (but have other effects).
+The processes are the core of a model. LIAM2 supports two kinds of processes: 
+*assignments*, which change the value of a variable (predictor) using an
+expression, and *actions* which don't (but have other effects).
 
 For each entity (for example, "household" and "person"), the block of processes
 starts with the header "processes:". Each process then starts at a new line with
@@ -21,31 +21,17 @@ Assignments
 Assignments have the following general format: ::
 
     processes:
-        process1_name:
-            predictor: variable_name
-            expr: expression_for_process_1
-
-        process2_name:
-            predictor: variable_name
-            expr: expression_for_process_2
-
+        variable1_name: expression1
+        variable2_name: expression2
         ...
 
 The variable_name will usually be one of the variables defined in the **fields**
 block of the entity but, as we will see later, it is not always necessary.
-All expressions should be between double quotes.
-
-We will often use a shorter form though: ::
-
-    processes:
-        variable_name: expression
-
-        ...
 
 In this case, the name of the process equals the name of the *endogenous
-variable*. *Process names* have to be unique for each entity. This is why the
-longer form is necessary: you need to use it when you have several processes
-which modify the same variable.
+variable*. *Process names* have to be **unique** for each entity. See the
+section about procedures if you need to have several processes which modify the
+same variable.
 
 To run the processes, they have to be specified in the "processes" section of
 the simulation block of the file. This explains why the *process names* have
@@ -116,8 +102,7 @@ A process can consist of sub-processes, in that case we call it a *procedure*.
 Processes within a procedure are executed in the order they are declared.
 
 Sub-processes each start on a new line, again with an indentation of four spaces
-and a -. As for normal processes, sub-process expressions should be between
-double quotes.
+and a -.
 
 So the general setup is: ::
 
@@ -125,14 +110,11 @@ So the general setup is: ::
         variable_name: expression
         process_name2: action_expression
         process_name3:
-            predictor: variable_name
-            expr: expression
-        process_name4:
             - subprocess_31: expression
             - subprocess_32: expression
 
-In this example, there are four processes, of which the first three do not have
-sub-processes. The fourth process is a procedure which consists of two
+In this example, there are three processes, of which the first two do not have
+sub-processes. The third process is a procedure which consists of two
 sub-processes. If it is executed, subprocess_31 will be executed and then
 subprocess_32.
 
