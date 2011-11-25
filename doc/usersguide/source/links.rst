@@ -37,25 +37,51 @@ This allows the modeller to use information stored in the linked entities. ::
                 - income: float
                 - mother_id: int
                 - father_id: int
-                - mother_age: int
-                - parents_income: float
+                - partner_id: int
 
             links:
                 mother: {type: many2one, target: person, field: mother_id}
                 father: {type: many2one, target: person, field: father_id}
+                partner: {type: many2one, target: person, field: partner_id}
 
             processes:
-                age: "age + 1"
-                mother_age: "mother.age"
-                parents_income: "mother.income + father.income"
+                age: age + 1
+                mother_age: mother.age
+                parents_income: mother.income + father.income
                 
 
-The process *mother_age* uses the link mother and assigns the age of the mother to the *mother_age*  field.
-If a person has no mother assigned to him (here mother_id == -1) then the mother_age will be -1 as well.
-The parent_income of that individual will be *nan*.
+To access a field of a linked individual (possibly of the same entity), you
+use: ::
 
-You can use the *basic functions* (abs, log, exp, ...) in your formulas.
+    link_name.field_name
+    
+For example, the *mother_age* process uses the 'mother' link to assign the age
+of the mother to the *mother_age* field. If an individual's link does not point
+to anything (eg. a person has no known mother), trying to use the link would
+yield the missing value (eg. for orphans, mother.age is -1 and
+parents_income is *nan*).
 
+As another example, the process below sets a variable *to_separate* to *True* if
+the variable *separate* is True for either the individual or his/her partner. ::
+
+    - to_separate: separate or partner.separate
+
+Note that it is perfectly valid to chain links as, for example, in: ::
+
+    grand_parents_income: mother.mother.income + mother.father.income + 
+                          father.mother.income + father.father.income  
+        
+Another option to get values in the linked individual is to use the form: ::
+
+    link_name.get(expr)
+    
+this syntax is a bit more verbose in the simple case, but is much more powerful
+as it allows to evaluate (almost) any expression on the linked individual. 
+
+For example, if you want to get the average age of both parents of the mother of
+each individual, you can do it so:
+
+    mother.get((mother.age + father.age) / 2)
 
 .. index:: one2many
 
@@ -67,16 +93,15 @@ A **one2many** links an item in an entity to at least one other item in the same
 
     entities:
         household:
-            fields:
-                - num_children: int
-
             links:
                 persons: {type: one2many, target: person, field: household_id}
                 
         person:
             fields:
                 - age: int
+                - income: float
                 - household_id : int
+
             links:
                 household: {type: many2one, target: household, field: household_id}
                 
@@ -96,61 +121,38 @@ To use information stored in the linked entities you have to use *aggregate func
     entities:
         household:
             fields:
-                - num_children_0_15: int
-                - nch0_15: int
+                - num_children: int
 
             links:
                 # link from a household to its members
                 persons: {type: one2many, target: person, field: household_id}
-                
+
+            processes:
+                num_children: countlink(persons, age < 18)
+            
         person:
             fields:
                 - age: int
-                - age: int
-                - dead: bool
-                # 1: single, 2: married, 3: cohabitant, 4: divorced, 5: widowed 
-                - civilstate: int
-                
-                - mother_id: int
-                - partner_id: int
                 - household_id: int
+
             links:
-                mother: {type: many2one, target: person, field: mother_id}
-                # link form a person to his/her spouse 
-                partner: {type: many2one, target: person, field: partner_id}
+                # link form a person to his/her household 
                 household: {type: many2one, target: household,
                             field: household_id}
-                # link from a mother to her children
-                mother_children: {type: one2many, target: person, 
-                                  field: mother_id}              
+
+            processes:
+                num_kids_in_hh: household.num_children 
                 
-So for example, the command below sets the variable *civilstate*. It checks 
-whether the spouse is dead. If so, the variable *civilstate* is set to 5 
-(widowed), otherwise nothing happens (it is set to its previous value). ::
-
-    - civilstate: "if(partner.dead, 5, civilstate)"
-
-As another example, the process below sets a variable *to_separate* to *True* if
-the variable *separate* is True for the individual or for his or her partner. ::
-
-    - to_separate: "separate or partner.separate"
                 
-As a third and last example, we can use the following two procedures on the
-level of the household to count the number of children up to 16 ::
+The num_children process, once called will compute the number of persons aged 17
+or less in each household and store the result in the *num_children* field (of
+the **household**).
+Afterwards, that variable can be used like any other variable, for example
+through a many2one link, like in the *num_kids_in_hh* process. This process
+computes for each **person**, the number of children in the household of that
+person. 
 
-    - num_children_0_15: "countlink(persons, (age >= 0) and (age < 16))" 
-
-Then for each individual, a variable denoting the number of children up to 16 in
-his or her household can be found by ::
-
-    - number_of_kids: "household.num_children_0_15" 
-
-Note however that the process *num_children_0_15* is simulated on the level of
-the "household", while the process *number_of_kids* pertains to the "person"
-level.
-
-Note, finally, that the variable *number_of_kids* could also have been
+Note that the variable *num_kids_in_hh* could also have been
 simulated by just one process, on the "person" level, by using: ::
 
-    - num_kids: "household.get(countlink(persons, (age >= 0) and (age < 16)))"
-
+    - num_kids_in_hh: household.get(countlink(persons, age < 18))
