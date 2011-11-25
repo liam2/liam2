@@ -10,7 +10,7 @@ data files
 
 As of now, you can only import CSV files, one file for each entity.
 Their first row should contain the name of the fields. You need at least two
-integer columns: "id" and "period" (though they do not necesarrily need to be
+integer columns: "id" and "period" (though they do not necessarily need to be
 named like that in the csv file).
 
 description file
@@ -20,6 +20,13 @@ To import CSV files, you need to create a description file. Those description
 files have the following general format: ::
 
     output: <path_of_hdf5_file>.csv
+    
+    # compression is optional. compression type can be 'zlib', 'bzip2' or 'lzo'
+    # level is a digit from 1 to 9 and is optional (defaults to 5).
+    # Examples of valid compression strings are: zlib, lzo-1, bzip2-9.
+    # You should experiment to see which compression scheme (if any) offers the
+    # best trade-off for your dataset.
+    compression: <type>-<level>
 
     globals:
         periodic:
@@ -33,21 +40,28 @@ files have the following general format: ::
     entities:
         <entity1_name>:
             path: <path_to_entity1_data>.csv
+
+            # if you want to manually select the fields to be used, and/or 
+            # specify their types, you can do so in the following section.
+            # If you want to use all the fields present in the csv file, you
+            # can simply omit this section. The field types will be
+            # automatically detected.
             fields:
                 # period and id are implicit
                 - <field1_name>: <field1_type>
                 - <field2_name>: <field2_type>
                 - ...
 
-            # if you want to keep your csv files intact but you use different
-            # names in your simulation that in the csv files, you can specify
+            # if you want to keep your csv files intact but use different
+            # names in your simulation than in the csv files, you can specify
             # name changes here.
             oldnames:
                 <fieldX_newname>: <fieldX_oldname>
                 <fieldY_newname>: <fieldY_oldname>
             
-            # if you want to invert the value of some boolean fields (True -> False
-            # and False -> True), add them to the "invert" list below.
+            # if you want to invert the value of some boolean fields
+            # (True -> False and False -> True), add them to the "invert" list
+            # below.
             invert: [list, of, boolean, fields, to, invert]
                 
         <entity2_name>:
@@ -61,6 +75,7 @@ following default value:
   directory than the description file (ie *local_path\\name_of_the_entity.csv*).
 - if the *fields* section is omitted, all columns of the csv file will be
   imported and their type will be detected automatically.
+- if *compression* is omitted, the output will not be compressed.
   
 Note that if an "entity section" is entirely empty, you need to use the special
 code: "{}".
