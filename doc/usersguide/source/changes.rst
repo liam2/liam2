@@ -6,7 +6,7 @@ Change log
 Version 0.4.0
 =============
 
-Released on 2011-11-2x.
+Released on 2011-11-25.
 
 New features:
 -------------
@@ -15,27 +15,27 @@ New features:
 
 * added grpmedian function.
 
-* implemented filter argument in grpsum.
+* implemented filter argument in grpsum().
 
 * implemented N-dimensional alignment (alignment can be done on more than two
   variables/dimensions in the same file).
 
-* added 'header' argument to dump to determine whether column names should
-  be in the dump or not.
+* added keyword arguments to csv():
 
-* added keyword arguments to csv:
-
-  - 'fname' to allow defining the exact file names used. 
+  - 'fname' to allow defining the exact name of the csv file. 
   - 'mode' to allow appending to a csv file instead of overwriting it.
 
-* reworked csv() function to accept several arguments, like show.
+* reworked csv() function to support several arguments, like show. It also 
+  supports non-table arguments.
 
 * added 'skip_shows' simulation option, to make all show() functions do nothing.
 
 * allowed expressions in addition to variable names in alignment files.
 
-* added optional argument 'missing' to dump() to convert nans into the given 
-  value.
+* added keyword arguments to dump():
+
+  - 'missing' to convert nans into the given value.
+  - 'header' to determine whether column names should be in the dump or not.
 
 * improved import functionality:
 
@@ -43,6 +43,9 @@ New features:
   - any csv file can be transposed, not just globals.
   - globals fields can be selected, renamed and inverted like in normal
     entities.
+    
+* added "explore" command to the main executable, to launch the interactive
+  console on a completed simulation without re-simulating it.     
 
 Miscellaneous improvements:
 ---------------------------
@@ -90,6 +93,8 @@ Fixes:
 * fixed having several grpavg with a filter argument in the same expression.
 
 * fixed calling the main executable without argument (simply display usage).
+
+* fixed dump with (some kind of) aggregate values in combination with a filter.
 
 * fixed void data source.
 
