@@ -42,7 +42,7 @@ Periodic globals can be used in any process. They can be used in two ways: like
 a normal variable, they will evaluate to their value for the period being
 simulated, for example ::
 
-    workstate: "if(age >= WEMRA, 9, workstate)"
+    workstate: if(age >= WEMRA, 9, workstate)
 
 This changes the workstate of the individual to retired (9) if the age is higher
 than the required retirement age in that year.
@@ -52,9 +52,9 @@ to be evaluated. This is done by using GLOBALNAME[period_expr]. periodexpr can
 be any expression yielding a valid period value. Here are a few artificial 
 examples: ::
 
-    workstate: "if(age >= WEMRA[2010], 9, workstate)"
-    workstate: "if(age >= WEMRA[period - 1], 9, workstate)"
-    workstate: "if(age >= WEMRA[year_of_birth + 60], 9, workstate)"
+    workstate: if(age >= WEMRA[2010], 9, workstate)
+    workstate: if(age >= WEMRA[period - 1], 9, workstate)
+    workstate: if(age >= WEMRA[year_of_birth + 60], 9, workstate)
 
 entities
 ========
@@ -116,13 +116,13 @@ There are two implicit fields that do not have to be defined:
         person:
             fields:
                 # period and id are implicit
-                - age:          int
-                - dead:         bool
-                - gender:       bool
+                - age:        int
+                - dead:       bool
+                - gender:     bool
                 # 1: single, 2: married, 3: cohabitant, 4: divorced, 5: widowed 
-                - civilstate:   int
-                - partner_id:   int
-                - earnings:     float
+                - civilstate: int
+                - partner_id: int
+                - earnings:   float
 
 This example defines the entity person. Each person has an age, gender, is dead
 or not, has a civil state, possibly a partner. We use the field civilstate to
@@ -143,8 +143,8 @@ definition for that field (see the *agegroup* variable in the example below).
     entities:
         person:
             fields:
-                - age:          int
-                - agegroup:     {type: int, initialdata: false}
+                - age:      int
+                - agegroup: {type: int, initialdata: false}
 
 Field names must be unique per entity (i.e. several entities may have a field
 with the same name). 
@@ -161,7 +161,7 @@ A typical link has the following form: ::
 
     name: {type: <type>, target: <entity>, field: <name of link field>}
     
-LIAM 2 uses integer fields to establish the link between entities. Those
+LIAM 2 uses integer fields to establish links between entities. Those
 integer fields contain the id-number of the linked individual.    
 
 LIAM 2 allows two types of links: many2one and one2many.
@@ -184,16 +184,16 @@ letters to define macros.
                 - age: int
           
             macros:
-                ISCHILD: "age < 18"
+                ISCHILD: age < 18
 
             processes:
                 test_macros: 
-                    - ischild: "age < 18"
-                    - before1: "if(ischild, 1, 2)"
-                    - before2: "if(ISCHILD, 1, 2)"  # before1 == before2
-                    - age: "age + 1"
-                    - after1: "if(ischild, 1, 2)"
-                    - after2: "if(ISCHILD, 1, 2)"   # after1 != after2 
+                    - ischild: age < 18
+                    - before1: if(ischild, 1, 2)
+                    - before2: if(ISCHILD, 1, 2)  # before1 == before2
+                    - age: age + 1
+                    - after1: if(ischild, 1, 2)
+                    - after2: if(ISCHILD, 1, 2)   # after1 != after2 
                     
     simulation:
         processes:
@@ -254,11 +254,11 @@ and composition is again used.
             - household: [household_composition]
 
         input:      
-            path: "liam2"
-            file: "base.h5"
+            path: liam2
+            file: base.h5
         output:
-            path: "liam2"
-            file: "simulation.h5"
+            path: liam2
+            file: simulation.h5
         start_period: 2002
         periods: 10
         random_seed: 5235       # optional
@@ -282,9 +282,10 @@ household_composition procedure is re-executed.
 init
 ----
 
-Every process specified here is only executed in the *start period*. You can use
-it to calculate (initialise) variables derived from observed data. This section
-is optional (it can be entirely omitted).
+Every process specified here is only executed in the last period before
+*start period* (start_period - 1). You can use it to calculate (initialise)
+variables derived from observed data. This section is optional (it can be
+entirely omitted).
 
 input
 -----
@@ -323,4 +324,10 @@ random_seed
 
 Defines the starting point (integer) of the pseudo-random generator. This
 section is optional. This can be useful if you want to have several runs of a
-simulation to use the same random numbers. 
+simulation use the same random numbers.
+
+skip_shows
+----------
+
+If set to True, makes all show() functions do nothing. This can speed up
+simulations which include many shows (usually for debugging).
