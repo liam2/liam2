@@ -315,11 +315,7 @@ link functions
         household:
             fields:
                 # period and id are implicit
-                - dead:         bool
-                - nb_persons:   {type: int, initialdata: false}
-                - nb_students:  {type: int, initialdata: false}
-                - nch0_11:      {type: int, initialdata: false}
-                - nch12_15:     {type: int, initialdata: false}
+                - nb_persons: {type: int, initialdata: false}
             links:
                 persons: {type: one2many, target: person, field: household_id}
 
