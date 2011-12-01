@@ -334,6 +334,7 @@ class Entity(object):
     def conditional_context(self):
         cond_context = {}
         for name, link in self.links.iteritems():
+            # we need both one2many and many2one links (for .get)
             target_name = link._target_entity
             target_entity = entity_registry[target_name]
             if target_entity is not self:
