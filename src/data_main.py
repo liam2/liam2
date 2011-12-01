@@ -210,7 +210,6 @@ def load_def(localdir, ent_name, section_def, required_fields):
             if isinstance(fdef, basestring):
                 raise SyntaxError("invalid field declaration: '%s', you are "
                                   "probably missing a ':'" % fdef)
-#            print "-%s-" % d, type(d)
         field_list = [d.items()[0] for d in fields_def]
         # convert string type to real types
         types = [(k, v) if isinstance(v, basestring) else (k, v['type'])
