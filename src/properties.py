@@ -37,6 +37,10 @@ class Link(object):
         self._target_entity = target_entity
 
     def get(self, key, missing_value=None):
+        if self._link_type == 'one2many':
+            raise SyntaxError("To use the '%s' link (which is a one2many link),"
+                              " you have to use link functions (e.g. countlink)"
+                              % self._name)
         return LinkValue(self, key, missing_value)
 
     __getattr__ = get
