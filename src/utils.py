@@ -187,16 +187,63 @@ def unique(iterable):
             seen_add(element)
             yield element
 
-def validate_keys(d, required=(), optional=()):
+def validate_keys(d, required=(), optional=(), context=''):
     required_keys = set(required)
     optional_keys = set(optional)
     valid_keys = required_keys | optional_keys
     used_keys = set(d.keys())
     invalid_keys = used_keys - valid_keys
-    if invalid_keys:
-        raise SyntaxError("invalid keyword(s): '%s'"
-                          % "', '".join(invalid_keys))
     missing_keys = required_keys - used_keys
-    if missing_keys:
-        raise SyntaxError("missing keyword(s): '%s'"
-                          % "', '".join(missing_keys))
+    if invalid_keys:
+        kind, keys = 'invalid', invalid_keys
+    elif missing_keys:
+        kind, keys = 'missing', missing_keys
+    else:
+        kind, keys = '', []    
+    
+    if keys:
+        if context:
+            template = "%%s keyword(s) in %s: '%%s'" % context
+        else:
+            template = "%s keyword(s): '%s'"
+        raise SyntaxError(template % (kind, "', '".join(keys)))
+
+def validate_list(l, target, context):
+    assert len(target) == 1
+    target_element = target[0]
+    for v in l:
+        validate_value(v, target_element, context)
+    
+def validate_dict(d, target, context=''):
+    targets = target.keys()
+    required = [k[1:] for k in targets if k.startswith('#')]
+    optional = [k for k in targets if not k.startswith('#')]
+    anykey = required == [] and optional == ['*'] 
+    if not anykey:
+        validate_keys(d, required, optional, context)
+    for k, v in d.iteritems():
+        if anykey:
+            section_def = target['*']
+        elif k in required:
+            section_def = target['#' + k]
+        else:
+            section_def = target[k]
+        if section_def is None or isinstance(section_def, type):
+            target_type = section_def
+        else:
+            target_type = type(section_def)
+
+        if target_type is not None:
+            subcontext = context + ' -> ' + k if context else k 
+            if isinstance(v, target_type):
+                validate_value(v, section_def, subcontext)
+            else:
+                raise Exception("invalid structure for '%s'" % subcontext)
+
+def validate_value(v, target, context):
+    if isinstance(v, dict):
+        validate_dict(v, target, context)
+    elif isinstance(v, list):
+        validate_list(v, target, context)
+    # otherwise that type (int, str) is not validated further
+    

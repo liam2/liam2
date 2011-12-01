@@ -10,7 +10,7 @@ import yaml
 
 from data import H5Data, Void
 from entities import entity_registry, str_to_type
-from utils import time2str, timed, gettime
+from utils import time2str, timed, gettime, validate_keys, validate_dict
 import console
 
 # imports needed for the simulation file eval
@@ -38,51 +38,54 @@ def show_top_processes(process_time, num_processes):
 
 
 class Simulation(object):
-    '''
-{
-    'globals': {
-        'periodic': [{
-            '*': str
-        }]
-    }, 
-    '#entities': {
-        '*': {
-            'fields': [{
-                '*': '*'
-            }],
-            'links': {
-                '*': {'*': '*'}
-            },
-            'macros': {
+    yaml_layout = {
+        'globals': {
+            'periodic': [{
                 '*': str
-            },
-            'processes': {
-                '*': '*'
+            }]
+        }, 
+        '#entities': {
+            '*': {
+                'fields': [{
+                    '*': None
+                }],
+                'links': {
+                    '*': {
+                        '#type': str,
+                        '#target': str,
+                        '#field': str
+                    }
+                },
+                'macros': {
+                    '*': None
+                },
+                'processes': {
+                    '*': None
+                }
             }
-        }
-    },
-    '#simulation': {
-        'init': [{
-            '*': [str]
-        }],
-        '#processes': [{
-            '*': [str]
-        }],
-        'random_seed': int,
-        '#input': {
-            'path': str,
-            '#file': str,
-            'method': str
         },
-        '#output': {
-            'path': str,
-            '#file': str
+        '#simulation': {
+            'init': [{
+                '*': [str]
+            }],
+            '#processes': [{
+                '*': [str]
+            }],
+            'random_seed': int,
+            '#input': {
+                'path': str,
+                '#file': str,
+                'method': str
+            },
+            '#output': {
+                'path': str,
+                '#file': str
+            },
+            '#periods': int,
+            '#start_period': int,
+            'skip_shows': bool,
         }
-        '#periods': int,
-        '#start_period': int,
     }
-}
-'''
     
     def __init__(self, globals, periods, start_period,
                  init_processes, init_entities, processes, entities,
@@ -107,6 +110,7 @@ class Simulation(object):
         simulation_dir = os.path.dirname(simulation_path) 
         with open(fpath) as f:
             content = yaml.load(f)
+        validate_dict(content, cls.yaml_layout)    
 
         #TODO: raise exception when there are unknown keywords
         # use validictory? http://readthedocs.org/docs/validictory/
