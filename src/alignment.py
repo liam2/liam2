@@ -290,8 +290,11 @@ class GroupBy(TableExpression):
 
         expressions = self.expressions
         columns = [expr_eval(e, context) for e in expressions]
-        possible_values = [np.unique(column[filter_value])
-                           for column in columns]
+        
+        possible_values = [np.unique(col[filter_value]) 
+                               if isinstance(col, np.ndarray) and col.shape
+                               else [col]
+                           for col in columns]
         groups = partition_nd(columns, filter_value, possible_values)
         
         # groups is a (flat) list of list.
