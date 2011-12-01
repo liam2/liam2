@@ -8,7 +8,7 @@ import tables
 import yaml
 
 from entities import entity_registry
-from utils import timed, validate_keys
+from utils import timed, validate_dict
 from properties import missing_values
 from simulation import Simulation
         
@@ -197,8 +197,6 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
     return table
 
 def load_def(localdir, ent_name, section_def, required_fields):
-    validate_keys(section_def, optional=('path', 'fields', 'oldnames', 'invert',
-                                         'transposed'))
     csv_filename = section_def.get('path', ent_name + ".csv")
     csv_filepath = complete_path(localdir, csv_filename)
     oldnames = section_def.get('oldnames')
@@ -255,8 +253,38 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
     with open(fpath) as f:
         content = yaml.load(f)
 
-    validate_keys(content, required=('output', 'entities'),
-                           optional=('compression', 'globals'))
+    yaml_layout = {
+        '#output': str,
+        'compression': str,
+        'globals': {
+            'periodic': { 
+                'path': str,
+                'fields': [{
+                    '*': str
+                }],
+                'oldnames': {
+                    '*': str
+                },
+                'invert': [str],
+                'transposed': bool
+            }
+        },
+        '#entities': {
+            '*': {
+                'path': str,
+                'fields': [{
+                    '*': str
+                }],
+                'oldnames': {
+                    '*': str
+                },
+                'invert': [str],
+                'transposed': bool
+            }
+        }
+    }
+
+    validate_dict(content, yaml_layout)
     localdir = os.path.dirname(os.path.abspath(fpath))
 
     h5_filename = content['output']
@@ -267,7 +295,6 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
         h5file = tables.openFile(h5_filepath, mode="w", title="CSV import")
         
         globals_def = content.get('globals', {})
-        validate_keys(globals_def, optional=['periodic'])
         periodic_def = globals_def.get('periodic')
         if periodic_def is not None:
             print "* globals"
