@@ -449,8 +449,8 @@ class Alignment(FilteredExpression):
             self.expressions = [parse(s, autovariables=True) for s in header]
             table = []
             for line in lines:
-                assert all(value != '' for value in line), \
-                       "empty cell found in %s" % fpath 
+                if any(value == '' for value in line):
+                    raise Exception("empty cell found in %s" % fpath) 
                 table.append([eval(value) for value in line])
         ndim = len(header)
         headers_last_dim = table.pop(0)
@@ -462,13 +462,15 @@ class Alignment(FilteredExpression):
         self.possible_values = possible_values
         self.probabilities = list(chain.from_iterable(table))
         num_possible_values = prod(len(values) for values in possible_values)
-        assert len(self.probabilities) == num_possible_values, \
-               'incoherent alignment data: %d actual data\n' \
-               'but %s = %d in headers' % (len(self.probabilities),
-                                           ' * '.join(str(len(values))
-                                                      for values
-                                                      in possible_values),
-                                           num_possible_values)
+        if len(self.probabilities) != num_possible_values:
+            raise Exception("incoherent alignment data in '%s': %d data cells "
+                            "found while it should be %d based on the number "
+                            "of possible values in headers (%s)"
+                            % (fpath, 
+                               len(self.probabilities),
+                               num_possible_values,
+                               ' * '.join(str(len(values))
+                                          for values in possible_values)))
         
     def eval(self, context):
         scores = expr_eval(self.expr, context)
