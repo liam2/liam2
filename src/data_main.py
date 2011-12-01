@@ -8,7 +8,7 @@ import tables
 import yaml
 
 from entities import entity_registry
-from utils import timed
+from utils import timed, validate_keys
 from properties import missing_values
 from simulation import Simulation
         
@@ -104,7 +104,7 @@ def import_csv(fpath, fields=None, delimiter=",", transpose=False):
     '''imports one Xsv file with all columns 
        time, id, value1, value2, value3 (not necessarily in that order)
     '''
-    print " * reading", fpath
+    print "  - reading", fpath
 
     f = open(fpath, "rb")
     data_stream = csv.reader(f, delimiter=delimiter)
@@ -128,8 +128,9 @@ def import_csv(fpath, fields=None, delimiter=",", transpose=False):
         header = data_stream.next()
         fieldnames = [name for name, _ in fields]
         missing_columns = set(fieldnames) - set(header)
-        assert not missing_columns, "missing field(s): %s" % \
-               ", ".join(missing_columns)
+        if missing_columns:
+            raise Exception("missing field(s): %s"
+                            % ", ".join(missing_columns))
     
         positions = [header.index(fieldname) for fieldname in fieldnames]
     return fields, convert_stream_and_close_file(f, data_stream, fields,
@@ -162,11 +163,11 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
         else:
             complib, complevel = compression, 5
     
-        print " * storing (using %s level %d compression)..." \
+        print "  - storing (using %s level %d compression)..." \
               % (complib, complevel)
         filters = tables.Filters(complevel=complevel, complib=complib)
     else:
-        print " * storing uncompressed..."
+        print "  - storing uncompressed..."
         filters = None
     dtype = np.dtype(fields)
     table = h5file.createTable(node, name, dtype, title=title, filters=filters)
@@ -196,6 +197,8 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
     return table
 
 def load_def(localdir, ent_name, section_def, required_fields):
+    validate_keys(section_def, optional=('path', 'fields', 'oldnames', 'invert',
+                                         'transposed'))
     csv_filename = section_def.get('path', ent_name + ".csv")
     csv_filepath = complete_path(localdir, csv_filename)
     oldnames = section_def.get('oldnames')
@@ -203,9 +206,21 @@ def load_def(localdir, ent_name, section_def, required_fields):
     fields_def = section_def.get('fields')
     if fields_def is not None:
         # handle YAML ordered dict structure
+        for fdef in fields_def:
+            if isinstance(fdef, basestring):
+                raise SyntaxError("invalid field declaration: '%s', you are "
+                                  "probably missing a ':'" % fdef)
+#            print "-%s-" % d, type(d)
         field_list = [d.items()[0] for d in fields_def]
         # convert string type to real types
-        fields = [(name, str_to_type[type_]) for name, type_ in field_list]
+        types = [(k, v) if isinstance(v, basestring) else (k, v['type'])
+                 for (k, v) in field_list]
+        for name, type_ in types:
+            if type_ not in str_to_type:
+                raise SyntaxError("'%s' is not a valid field type for field "
+                                  "'%s'." % (type_, name))
+                
+        fields = [(name, str_to_type[type_]) for name, type_ in types]
         fields[0:0] = required_fields
         if oldnames is None:
             fields_oldnames = fields
@@ -218,6 +233,8 @@ def load_def(localdir, ent_name, section_def, required_fields):
     numlines = countlines(csv_filepath) - 1
     fields_oldnames, datastream = import_csv(csv_filepath, fields_oldnames,
                                              transpose=transpose)
+    #TODO: if paths is specified, merge all sources
+    # see lines 511
     
     if fields_def is None:
         if oldnames is None:
@@ -238,36 +255,41 @@ def load_def(localdir, ent_name, section_def, required_fields):
 def csv2h5(fpath, buffersize=10 * 2 ** 20):
     with open(fpath) as f:
         content = yaml.load(f)
-                    
+
+    validate_keys(content, required=('output', 'entities'),
+                           optional=('compression', 'globals'))
     localdir = os.path.dirname(os.path.abspath(fpath))
 
     h5_filename = content['output']
     compression = content.get('compression')
     h5_filepath = complete_path(localdir, h5_filename)
     print "Importing in", h5_filepath
-    h5file = tables.openFile(h5_filepath, mode="w", title="CSV import")
-    
-    periodic_def = content.get('globals', {}).get('periodic')
-    if periodic_def is not None:
-        print "*** globals ***"
-        fields, numlines, datastream = load_def(localdir, "periodic",
-                                                periodic_def, [('PERIOD', int)])
-        const_node = h5file.createGroup("/", "globals", "Globals")
-        stream_to_table(h5file, const_node, "periodic", fields, datastream,
-                        title="Global time series",
-                        compression=compression)
+    try:
+        h5file = tables.openFile(h5_filepath, mode="w", title="CSV import")
         
-    ent_node = h5file.createGroup("/", "entities", "Entities")
-    for ent_name, entity_def in content['entities'].iteritems():
-        print "*** %s ***" % ent_name
-        fields, numlines, datastream = load_def(localdir, ent_name, entity_def,
-                                                [('period', int), ('id', int)])
-        stream_to_table(h5file, ent_node, ent_name, fields, datastream,
-                        numlines, title="%s table" % ent_name,
-                        invert=entity_def.get('invert', []),
-                        compression=compression)
-
-    h5file.close()
+        globals_def = content.get('globals', {})
+        validate_keys(globals_def, optional=['periodic'])
+        periodic_def = globals_def.get('periodic')
+        if periodic_def is not None:
+            print "* globals"
+            fields, numlines, datastream = load_def(localdir, "periodic",
+                                                    periodic_def, [('PERIOD', int)])
+            const_node = h5file.createGroup("/", "globals", "Globals")
+            stream_to_table(h5file, const_node, "periodic", fields, datastream,
+                            title="Global time series",
+                            compression=compression)
+            
+        ent_node = h5file.createGroup("/", "entities", "Entities")
+        for ent_name, entity_def in content['entities'].iteritems():
+            print "* %s" % ent_name
+            fields, numlines, datastream = load_def(localdir, ent_name, entity_def,
+                                                    [('period', int), ('id', int)])
+            stream_to_table(h5file, ent_node, ent_name, fields, datastream,
+                            numlines, title="%s table" % ent_name,
+                            invert=entity_def.get('invert', []),
+                            compression=compression)
+    finally:
+        h5file.close()
     print "done."
 
 

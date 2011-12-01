@@ -1,11 +1,13 @@
 from os.path import splitext
 
+import yaml
+
 from simulation import Simulation
 from data_main import csv2h5
 from console import Console
 from data import populate_registry
 
-__version__ = "0.4.0"
+__version__ = "0.4.1dev"
 
 class AutoflushFile(object):
     def __init__(self, f):
@@ -64,7 +66,24 @@ if __name__ == '__main__':
 #                    traceback.print_exc(file=f)
 
     elif action == "import":
-        csv2h5(fpath)
+        try:
+            csv2h5(fpath)
+        except yaml.parser.ParserError, e:
+#            e.context      # while parsing a block mapping
+#            e.context_mark # in "import.yml", line 18, column 9
+#            e.problem     # expected <block end>, 
+                                        # but found '<block sequence start>'
+#            e.problem_mark # in "import.yml", line 29, column 12
+#            m = e.problem_mark
+            print "SYNTAX ERROR %s" % str(e.problem_mark).strip() 
+        except yaml.scanner.ScannerError, e:
+            print "SYNTAX ERROR %s %s" % (str(e.problem),
+                                          str(e.context_mark).strip()) 
+        except SyntaxError, e:
+            print "SYNTAX ERROR:", str(e)
+        except Exception, e:
+            print "ERROR:", str(e)
+            raise
     elif action == "explore":
         _, ext = splitext(fpath)
         if ext in ('.h5', '.hdf5'):

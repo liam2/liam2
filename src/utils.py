@@ -187,3 +187,16 @@ def unique(iterable):
             seen_add(element)
             yield element
 
+def validate_keys(d, required=(), optional=()):
+    required_keys = set(required)
+    optional_keys = set(optional)
+    valid_keys = required_keys | optional_keys
+    used_keys = set(d.keys())
+    invalid_keys = used_keys - valid_keys
+    if invalid_keys:
+        raise SyntaxError("invalid keyword(s): '%s'"
+                          % "', '".join(invalid_keys))
+    missing_keys = required_keys - used_keys
+    if missing_keys:
+        raise SyntaxError("missing keyword(s): '%s'"
+                          % "', '".join(missing_keys))
