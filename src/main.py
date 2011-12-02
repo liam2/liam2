@@ -17,13 +17,13 @@ class AutoflushFile(object):
         self.f.write(s)
         self.f.flush()
 
-def usage(args):
+def usage(script):
     print """
 Usage: %s action file [-i]
   action: can be either 'import', 'run' or 'explore'
   file: the file to run, import or explore
   -i: show the interactive console after the simulation 
-""" % args[0]
+""" % script
 
 def eat_traceback(func, *args, **kwargs):
 # e.context      | while parsing a block mapping
@@ -82,31 +82,12 @@ def eat_traceback(func, *args, **kwargs):
     except Exception, e:
         print "\nERROR:", str(e)
 
-if __name__ == '__main__':
-    import sys, platform
-
-    sys.stdout = AutoflushFile(sys.stdout)
-    sys.stderr = AutoflushFile(sys.stderr)
-    print "LIAM2 %s using Python %s (%s)" % (__version__, 
-                                             platform.python_version(),
-                                             platform.architecture()[0])
-    print
-
-    args = sys.argv
-    if len(args) < 3:
-        usage(args)
-        sys.exit()
-    
-    action = args[1]
-    fpath = args[2]
-    
+def main(script, action, fpath, *args):
     if action == 'run':
         print "Using simulation file: '%s'" % fpath
-        console = len(args) > 3 and args[3] == "-i"
-        simulation = eat_traceback(Simulation.from_yaml, fpath)
-        # if an exception ate the simulation with the traceback ;-)
-        if simulation is not None:
-            eat_traceback(simulation.run, console)
+        console = len(args) > 0 and args[0] == "-i"
+        simulation = Simulation.from_yaml(fpath)
+        simulation.run(console)
     
 #        import cProfile as profile
 #        profile.run('simulation.run()', 'c:\\tmp\\simulation.profile')
@@ -114,7 +95,7 @@ if __name__ == '__main__':
         # p = pstats.Stats('c:\\tmp\\simulation.profile')
         # p.strip_dirs().sort_stats('cum').print_stats(30)
     elif action == "import":
-        eat_traceback(csv2h5, fpath)
+        csv2h5(fpath)
     elif action == "explore":
         _, ext = splitext(fpath)
         if ext in ('.h5', '.hdf5'):
@@ -134,4 +115,22 @@ if __name__ == '__main__':
             if h5out is not None:
                 h5out.close()
     else:
-        usage(args)
+        usage(script)
+    
+if __name__ == '__main__':
+    import sys, platform
+
+    sys.stdout = AutoflushFile(sys.stdout)
+    sys.stderr = AutoflushFile(sys.stderr)
+    print "LIAM2 %s using Python %s (%s)" % (__version__, 
+                                             platform.python_version(),
+                                             platform.architecture()[0])
+    print
+
+    args = sys.argv
+    if len(args) < 3:
+        usage(args[0])
+        sys.exit()
+
+    eat_traceback(main, *args)    
+    
