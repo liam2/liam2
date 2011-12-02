@@ -20,10 +20,62 @@ class AutoflushFile(object):
 def usage(args):
     print """
 Usage: %s action file [-i]
-  action: can be either 'import' or 'run'
-  file: the file to run or import
+  action: can be either 'import', 'run' or 'explore'
+  file: the file to run, import or explore
   -i: show the interactive console after the simulation 
 """ % args[0]
+
+def eat_traceback(func, *args, **kwargs):
+# e.context      | while parsing a block mapping
+# e.context_mark | in "import.yml", line 18, column 9
+# e.problem      | expected <block end>, but found '<block sequence start>'
+# e.problem_mark | in "import.yml", line 29, column 12
+    try:
+        try:
+            return func(*args, **kwargs)
+        except Exception, e:
+            import traceback
+            with file('error.log', 'w') as f:
+                traceback.print_exc(file=f)
+            raise
+    except yaml.parser.ParserError, e:
+        # eg, inconsistent spacing, no space after a - in a list, ...
+        print "SYNTAX ERROR %s" % str(e.problem_mark).strip() 
+    except yaml.scanner.ScannerError, e:
+        # eg, tabs, missing colon for mapping. The reported problem is different when
+        # it happens on the first line (no context_mark) and when it happens on
+        # a subsequent line.
+        if e.context_mark is not None:
+            if e.problem == "could not found expected ':'":
+                msg = "could not find expected ':'"
+            else:
+                msg = e.problem
+            mark = e.context_mark
+        else:
+            if e.problem == "found character '\\t' that cannot start any token":
+                msg = "found a TAB character instead of spaces"
+            else:
+                msg = ""
+            mark = e.problem_mark
+        if msg:
+            msg = ": " + msg
+        print "SYNTAX ERROR %s%s" % (str(mark).strip(), msg)
+    except yaml.reader.ReaderError, e:
+        if e.encoding == 'utf8':
+            print "\nERROR in '%s': invalid character found, this probably " \
+                  "means you have used non ASCII characters (accents and " \
+                  "other non-english characters) and did not save your file " \
+                  "using the UTF8 encoding" % e.name
+        else:
+            raise
+    except SyntaxError, e:
+        print "SYNTAX ERROR:", e.msg.replace('EOF', 'end of block')
+        if e.text is not None:
+            print e.text
+            offset_str = ' ' * (e.offset - 1) if e.offset > 0 else '' 
+            print offset_str + '^'
+    except Exception, e:
+        print "\nERROR:", str(e)
 
 if __name__ == '__main__':
     import sys, platform
@@ -46,44 +98,18 @@ if __name__ == '__main__':
     if action == 'run':
         print "Using simulation file: '%s'" % fpath
         console = len(args) > 3 and args[3] == "-i"
-        simulation = Simulation.from_yaml(fpath)
+        simulation = eat_traceback(Simulation.from_yaml, fpath)
+        # if an exception ate the simulation with the traceback ;-)
+        if simulation is not None:
+            eat_traceback(simulation.run, console)
     
-        do_profile = False
-        if do_profile:
-            import cProfile as profile
-            profile.run('simulation.run()', 'c:\\tmp\\simulation.profile')
-            # to use profiling data:
-            # p = pstats.Stats('c:\\tmp\\simulation.profile')
-            # p.strip_dirs().sort_stats('cum').print_stats(30)
-        else:
-#            try:
-            simulation.run(console)
-#            except Exception, e:
-#                print 
-#                print str(e)
-#                import traceback
-#                with file('error.log', 'w') as f:
-#                    traceback.print_exc(file=f)
-
+#        import cProfile as profile
+#        profile.run('simulation.run()', 'c:\\tmp\\simulation.profile')
+        # to use profiling data:
+        # p = pstats.Stats('c:\\tmp\\simulation.profile')
+        # p.strip_dirs().sort_stats('cum').print_stats(30)
     elif action == "import":
-        try:
-            csv2h5(fpath)
-        except yaml.parser.ParserError, e:
-#            e.context      # while parsing a block mapping
-#            e.context_mark # in "import.yml", line 18, column 9
-#            e.problem     # expected <block end>, 
-                                        # but found '<block sequence start>'
-#            e.problem_mark # in "import.yml", line 29, column 12
-#            m = e.problem_mark
-            print "SYNTAX ERROR %s" % str(e.problem_mark).strip() 
-        except yaml.scanner.ScannerError, e:
-            print "SYNTAX ERROR %s %s" % (str(e.problem),
-                                          str(e.context_mark).strip()) 
-        except SyntaxError, e:
-            print "SYNTAX ERROR:", str(e)
-        except Exception, e:
-            print "ERROR:", str(e)
-            raise
+        eat_traceback(csv2h5, fpath)
     elif action == "explore":
         _, ext = splitext(fpath)
         if ext in ('.h5', '.hdf5'):
