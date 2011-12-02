@@ -986,6 +986,9 @@ class GroupCount(EvaluableExpression):
         if self.filter is None:
             return context_length(context)
         else:
+            #TODO: check this at "compile" time (in __init__), though for
+            # that we need to know the type of all temporary variables
+            # first
             if dtype(self.filter, context) is not bool:
                 raise Exception("grpcount filter must be a boolean expression")
             return np.sum(expr_eval(self.filter, context))
