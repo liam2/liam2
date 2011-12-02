@@ -34,10 +34,15 @@ def eat_traceback(func, *args, **kwargs):
         try:
             return func(*args, **kwargs)
         except Exception, e:
-            import traceback
-            with file('error.log', 'w') as f:
-                traceback.print_exc(file=f)
-            raise
+            try:
+                import traceback
+                with file('error.log', 'w') as f:
+                    traceback.print_exc(file=f)
+            except IOError, log_ex:
+                print "WARNING: %s on '%s'" % (log_ex.strerror, log_ex.filename)
+            except Exception, log_ex:
+                print log_ex
+            raise e
     except yaml.parser.ParserError, e:
         # eg, inconsistent spacing, no space after a - in a list, ...
         print "SYNTAX ERROR %s" % str(e.problem_mark).strip() 
