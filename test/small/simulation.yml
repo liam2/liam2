@@ -59,9 +59,9 @@ entities:
             
             MALE: gender
             FEMALE: not gender
-            
+
             CONSTANT_MACRO: 3
-	    
+
             LOWER_SECONDARY_EDU: eduach == 2
             UPPER_SECONDARY_EDU: eduach == 3
             TERTIARY_EDU: eduach == 4
