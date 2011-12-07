@@ -254,7 +254,8 @@ class CompoundExpression(Expr):
         if self._complete_expr is None:
             self._complete_expr = self.build_expr()
         return self._complete_expr
-
+
+
 class LinkExpression(EvaluableExpression):
     '''abstract base class for all function which handle links (both many2one
        and one2many'''
@@ -1139,7 +1140,8 @@ class CreateIndividual(EvaluableExpression):
         else:
             target_context = EntityContext(target_entity, 
                                            {'period': context['period']})
-        ctx_filter = context.get('__filter__')
+
+        ctx_filter = context.get('__filter__')
 
         if self.filter is not None and ctx_filter is not None:
             filter_expr = ctx_filter & self.filter
