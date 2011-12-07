@@ -12,7 +12,7 @@ def time2str(seconds):
     minutes = minutes % 60
     l = []
     if hours > 0:
-        l.append("%d hours%s" % (hours, 's' if hours > 1 else ''))
+        l.append("%d hour%s" % (hours, 's' if hours > 1 else ''))
     if minutes > 0:
         l.append("%d minute%s" % (minutes, 's' if minutes > 1 else ''))
     if seconds >= 0.005:
@@ -179,13 +179,38 @@ class PrettyTable(object):
 # copied from itertools recipes    
 def unique(iterable):
     "List unique elements, preserving order. Remember all elements ever seen."
-    # unique_everseen('AAAABBBCCDAABBB') --> A B C D
+    # unique('AAAABBBCCDAABBB') --> A B C D
     seen = set()
     seen_add = seen.add
     for element in iterable:
         if element not in seen:
             seen_add(element)
             yield element
+            
+def duplicates(iterable):
+    """
+    List duplicated elements once, preserving order. Remember all elements ever seen.
+    """
+    # duplicates('AAAABBBCCDAABBB') --> A B C D
+    counts = defaultdict(int)
+    for element in iterable:
+        counts[element] += 1
+        if counts[element] == 2:
+            yield element
+
+def unique_duplicate(iterable):            
+    counts = {}
+    uniques = []
+    dupes = []
+    append_uniques = uniques.append
+    append_dupes = dupes.append
+    for element in iterable:
+        count = counts[element] = counts.get(element, 0) + 1 
+        if count == 2:
+            append_dupes(element)
+        elif count == 1:
+            append_uniques(element)
+    return uniques, dupes
 
 def validate_keys(d, required=(), optional=(), context=''):
     required_keys = set(required)
