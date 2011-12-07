@@ -10,7 +10,8 @@ import numpy as np
 
 from expr import functions, Expr, Variable, expr_eval, parse, collect_variables
 from entities import context_length, context_subset
-from utils import skip_comment_cells, strip_rows, PrettyTable, unique
+from utils import skip_comment_cells, strip_rows, PrettyTable, unique, \
+                  duplicates, unique_duplicate
 import simulation
 from properties import (FilteredExpression, TableExpression, GroupCount, 
                         add_individuals)
@@ -456,12 +457,32 @@ class Alignment(FilteredExpression):
                     raise Exception("empty cell found in %s" % fpath) 
                 table.append([eval(value) for value in line])
         ndim = len(header)
-        headers_last_dim = table.pop(0)
+        unique_last_d, dupe_last_d = unique_duplicate(table.pop(0))
+        if dupe_last_d:
+            print("Duplicate column header value(s) (for '%s') in '%s': %s"
+                  % (header[-1], fpath, ", ".join(str(v) for v in dupe_last_d)))
+            raise Exception("bad alignment data in '%s': found %d "
+                            "duplicate column header value(s)"
+                            % (fpath, len(dupe_last_d)))
+            
         # strip the ndim-1 first columns
         headers = [[line.pop(0) for line in table]
                    for _ in range(ndim - 1)]
+        
         possible_values = [list(unique(values)) for values in headers]
-        possible_values.append(headers_last_dim)
+        if ndim > 1:
+            # having duplicate values is normal when there are more than 2
+            # dimensions but we need to test whether there are duplicates of
+            # combinations. 
+            dupe_combos = list(duplicates(zip(*headers)))
+            if dupe_combos:
+                print("Duplicate row header value(s) in '%s':" % fpath)
+                print(PrettyTable(dupe_combos))
+                raise Exception("bad alignment data in '%s': found %d "
+                                "duplicate row header value(s)"
+                                % (fpath, len(dupe_combos)))
+        
+        possible_values.append(unique_last_d)
         self.possible_values = possible_values
         self.probabilities = list(chain.from_iterable(table))
         num_possible_values = prod(len(values) for values in possible_values)
