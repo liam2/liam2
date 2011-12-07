@@ -30,9 +30,10 @@ Getting Started
 - Copy the contents of the bundle in a directory on your disk (let's call it 
   *\\localpath\\*).
 
-- Run the "Notepad++Portable.exe" from the *\\localpath\\Liam2Suite* directory.
+- Run the "Notepad++Portable.exe" from the *\\localpath\\Liam2Suite\\editor* 
+  directory.
 
-- Open a model (eg. \\localpath\\Liam2Suite\\Synthetic\\demo_model.yml)
+- Open a model (eg. \\localpath\\Liam2Suite\\examples\\demo01.yml)
 
 - Press F6 to run the model. A console window will open within the editor and
   display the status of the simulation. After the simulation completes, the
@@ -48,7 +49,7 @@ Using your own data
   do not necessarily need to be named like that in the csv file).
 
 - Create an import file, as described in the :ref:`import_data` section. You
-  can use \\localpath\\Liam2Suite\\Synthetic\\demo_import.yml as an example.
+  can use \\localpath\\Liam2Suite\\examples\\demo_import.yml as an example.
 
 - Press F5 to convert your CSV files to hdf5.
 

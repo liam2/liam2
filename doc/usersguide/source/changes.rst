@@ -22,6 +22,14 @@ Miscellaneous improvements:
 * improved "incoherent alignment data" error message when loading an alignment
   file by changing the wording and adding the path of the file with the error.
 
+* reorganised bundle files so that there is no confusion between directories
+  for Notepad++ and those of liam2.
+   
+* tweaked Notepad++ configuration:
+
+  - added explore command as F7
+  - removed more unnecessary features.
+
 Fixes:  
 ------
 
