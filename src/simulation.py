@@ -5,12 +5,11 @@ from collections import defaultdict
 import random
 
 import numpy as np
-import tables
 import yaml
 
 from data import H5Data, Void
 from entities import entity_registry, str_to_type
-from utils import time2str, timed, gettime, validate_keys, validate_dict
+from utils import time2str, timed, gettime, validate_dict
 import console
 
 # imports needed for the simulation file eval
@@ -87,10 +86,11 @@ class Simulation(object):
         }
     }
     
-    def __init__(self, globals, periods, start_period,
+    def __init__(self, globals_fields, periods, start_period,
                  init_processes, init_entities, processes, entities,
                  data_source):
-        self.globals = globals
+        #TODO: the fields is unused for now. It should be used though.
+        self.globals_fields = globals_fields
         self.periods = periods
         self.start_period = start_period
         self.init_processes = init_processes
@@ -118,8 +118,8 @@ class Simulation(object):
         periodic_globals = globals_def.get('periodic', [])
         # list of one-item-dicts to list of tuples
         periodic_globals = [d.items()[0] for d in periodic_globals]
-        globals = [(name, str_to_type[typestr])
-                   for name, typestr in periodic_globals]
+        globals_fields = [(name, str_to_type[typestr])
+                          for name, typestr in periodic_globals]
 
         simulation_def = content['simulation']
         seed = simulation_def.get('random_seed')
@@ -147,7 +147,7 @@ class Simulation(object):
         entity_registry.add_all(content['entities'])
         for entity in entity_registry.itervalues():
             entity.check_links()
-            entity.parse_processes(globals)
+            entity.parse_processes(globals_fields)
         
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()
@@ -178,7 +178,7 @@ class Simulation(object):
             data_source = Void(output_path)
         else:
             print method, type(method)
-        return Simulation(globals, periods, start_period,
+        return Simulation(globals_fields, periods, start_period,
                           init_processes, init_entities, processes, entities,
                           data_source)
 
