@@ -41,7 +41,7 @@ Fixes:
 
 * re-enabled the code to show the expressions containing errors where possible
   (in addition to the error message). This was accidentally removed in a
-  previous version).
+  previous version.
 
 * fixed usage to include the 'explore' command.
 
