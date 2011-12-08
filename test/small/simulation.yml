@@ -536,3 +536,5 @@ simulation:
 #    random_seed: 0
     start_period: 2002   # first simulated period
     periods: 2
+    default_entity: person 
+    
