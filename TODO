@@ -2,30 +2,63 @@
  TODO
  --------------------------------------
 
- 0.3.1 - somewhere in August
+ - allow liam1 format (1 column per file) to be imported with the new import
+   mechanism
+
+ - somehow work around numexpr 2.0 limitation of 31 variables (create hidden
+   temporary variables?)
 
  - better document csv format: -- for missing
- - document new "compression" import argument and extended "transpose", 
-   "oldnames" and "fields"
      
  - the filter argument in all regressions without alignment is ignored. I should
    either fix that or remove the argument.
- - KeyError on mac 64b: numpy.int64 in type_to_idx (IIRC)
-   * it works fine under Windows though.
-   
- - some unit test work  
 
- 0.4.0 - end of September
+ - some unit test work
  
+ - launch external command during simulation (for example external model in
+   another program). That should be easy. However, to be useful, we need
+   to be able to load back the result in the middle of a simulation.
+ 
+ - test the speed difference of loading & writing each column individually,
+   instead of all together
+   * if is not too bad, it would enable us to load fields as late as possible
+     and write/flush them to disk (removing them from memory) as early as
+     possible.
+   * it would save some memory, possibly much of it in combination with
+     reordering of processes.
+ 
+ - compressing main "table" (ie the columns) with carray:
+   ac[indice_vector] is 1000x slower than a[indice_vector] !
+   ac[bool_vector] is 4.5x slower than a[bool_vector]
+   ac.sum() is 2.8x slower than np.sum(a) (np.sum(ac) doesn't work)
+   bincount(ac) is 100x slower than bincount(a)
+   ca.eval(expr, out_flavor='numpy') is 2x slower than ne.evaluate(expr)
+   ca.eval(expr) is 6x slower than ne.evaluate(expr)
+ 
+ - chunking to simulate any size of data:
+   x alignment will be hard to do right *when there is ranking involved*
+     because if we simply apply alignment to each chunk:
+     * the individual paths would potentially be much worse, because in each
+       chunk it would take the x% best scoring individuals *but* the best in
+       a chunk could very well be the worst of another chunk and thus wouldn't
+       be selected if the whole population was simulated at once.
+     * the total number would be a slightly less precise because we would round
+       to integers in each chunk instead of for the whole population. This can
+       be mitigated/corrected by storing the error in each chunk and adapt
+       the target in the next chunk
+     * if there is no deterministic ranking, it should be as good as a single
+       block simulation
+   x matching is problematic    
+   x new is problematic as it breaks the implicit sort by id of the table
+     > I have to "block" other processes during the new. The new itself can
+     > be done progressively as it doesn't modify any variable
+   x remove seem to be ok
+
  ? data import from within the console?
  - allow input fields to not be in the output
  - document what each regression function does
- ? don't quote expressions anymore
-   -> number literals need to be quoted (that might be fixable, I didn't 
-      investigate yet)
  ? use more python-like syntax: use = instead of :
- ? allow liam1 format (1 column per file) to be imported with the new import
-   mechanism
+ 
  - review field def: do input fields need to be declared at all?
    I could collect variables from all expressions and check that they are
    all present in the input file.
@@ -131,21 +164,17 @@
    where(bool_expr, float_expr1, float_expr2) 
       -> where(bool_expr == -1, -1, where(bool_expr, float_expr1, float_expr2))   
                    
- - implement "kill" function
- - implement "divorce" function
- - implement "newbirth" function
  - delete "empty" households (dead persons)
    OR
  - implement cascading deletes/death on links
    AND/OR
  - some kind of integrity checks
- - duration(varname, value)
 
  bug fixes
  ---------
  
  - globals should have the correct type, not always "float" (see data_main)
- - cleanup local variables when exiting a procedure
+   > is it still the case?
  - nan -> 0 for sum in groupby (see numpy Ticket #1123)
 
  other missing features
@@ -157,11 +186,7 @@
  - data_main: import all columns, except a few
  ? make specifying output field types optional (I can compute them): 
    listing the fields is technically enough, though having the type make things
-   easier and we can have some type checks 
- - allow using temporary variables in matching 
-   eg if "inwork" is not a global, demo_model.yml gives:
-   NameError: name '__o_inwork' is not defined
- - the score expression of the matching function shouldn't need to be quoted  
+   easier and we can have some type checks
  - implement something like "by x, y, z" in stata (though I don't remember what
    it does exactly): it is similar to groupby but can do more stuff.
  - "compress" in stata tries to autodetect the type of each field by 
@@ -171,9 +196,7 @@
    * import
    * merge
    * drop
- - compression should be user-configurable
-   * for the input file (during import)
-   * for the simulation output file
+ - compression should be user-configurable for the simulation output file
  - allow input fields to not be in the output
    * it might be a good idea to rework the way to declare fields:
      input:
@@ -232,9 +255,7 @@
  - better error message when a procedure's processes are missing ordering 
    (it is a dict, instead of a list of dict)
    >> we need to to remove the {'predictor': xxx, 'expr': yyy} syntax before
-   >> we can do that 
- - better error message when the simulation file has been encoded to something
-   different than utf8 (and it contains non-ascii chars) 
+   >> we can do that
  - better error message if unknown entity in simulation.processes (KeyError)
    >> almost done for "init"
  - better error message when an extra comma is used (see test.test_extra_comma)   
@@ -273,7 +294,6 @@
    the problem is that if even a single individual never had any value for that
    column, it will go back all the way to the first period 
  - initialdata: s/false/value
- - standalone interactive console
  - allow setting/creating temporary variables in interactive console
  - merge per_period_fields and globals
  - line numbers in error messages. It might be tricky because we loose the 
@@ -283,9 +303,7 @@
    is a bit tedious to need to repeat the filter
    same comment for divorce 
  - move away from yaml for the user...
- - filter in all aggregates, not only in grpavg
- - move data generator to external script. It might be a good idea to just 
-   do a simulation with most processes using random generators.
+ - filter in all aggregates, not only in grpavg, grpsum & grpgini
  - add a concept of "per individual" constant (ie not saved each period)
    (eg errsal)
  - expand variable definition: min, max values, default value, enum, ...
@@ -298,7 +316,6 @@
  - infer expressions types systematically so that we can do more clever stuff: 
    some type checking, correct type for missing values when using filter, and
    missing values handling in general.
- - alignment on n dimensions (so that I can do m/f alignment in one pass)
  - store some metadata in .h5 (list of entities, start_period, links, ...)
  - implement other historic functions (with missing values): 
    * duration limited in time: eg: duration(xxx, 5): max 5 periods
@@ -319,6 +336,8 @@
  
  - try raw sql (in C)
 
+ - try using corepy 
+ 
  - try making python bindings to ORC
    http://code.entropywave.com/projects/orc/
    or any of the other C JIT referenced in the external links at:
