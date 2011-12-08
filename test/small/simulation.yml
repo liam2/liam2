@@ -343,6 +343,7 @@ entities:
                 - show("max(age, 20):", max(age, 20))
                  
             test_lag:
+#                - lagglobal: show(lag(MINR))
                 - lagavg: show(lag(grpavg(age)))
                 - avglag: show(grpavg(lag(age)))
                 - show("lag(age)", lag(age))
