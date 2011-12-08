@@ -6,6 +6,7 @@ from simulation import Simulation
 from data_main import csv2h5
 from console import Console
 from data import populate_registry
+import entities
 
 __version__ = "0.4.1"
 
@@ -102,13 +103,17 @@ def main(script, action, fpath, *args):
             ftype = 'data'
             h5in = populate_registry(fpath)
             h5out = None
+            entity, period = None, None
         else:
             ftype = 'simulation'
             simulation = Simulation.from_yaml(fpath)
             h5in, h5out, periodic_globals = simulation.load()
+            ent_name = simulation.default_entity
+            entity = entities.entity_registry[ent_name] 
+            period = simulation.start_period + simulation.periods - 1
         try:
             print "Using %s file: '%s'" % (ftype, fpath)
-            c = Console()
+            c = Console(entity, period)
             c.run()
         finally:
             h5in.close()

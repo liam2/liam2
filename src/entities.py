@@ -119,6 +119,9 @@ class EntityContext(object):
                 return stoprow - startrow
             else:
                 return 0
+    
+    def list_periods(self):
+        return self.entity.output_index.keys()
 
     @property
     def id_to_rownum(self):

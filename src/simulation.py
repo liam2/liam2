@@ -83,12 +83,13 @@ class Simulation(object):
             '#periods': int,
             '#start_period': int,
             'skip_shows': bool,
+            'default_entity': str
         }
     }
     
     def __init__(self, globals_fields, periods, start_period,
                  init_processes, init_entities, processes, entities,
-                 data_source):
+                 data_source, default_entity=None):
         #TODO: the fields is unused for now. It should be used though.
         self.globals_fields = globals_fields
         self.periods = periods
@@ -99,6 +100,7 @@ class Simulation(object):
         self.entities = entities
         self.data_source = data_source
         self.stepbystep = False
+        self.default_entity = default_entity
         
     @classmethod
     def from_yaml(cls, fpath):
@@ -178,9 +180,11 @@ class Simulation(object):
             data_source = Void(output_path)
         else:
             print method, type(method)
+            
+        default_entity = simulation_def.get('default_entity')
         return Simulation(globals_fields, periods, start_period,
                           init_processes, init_entities, processes, entities,
-                          data_source)
+                          data_source, default_entity)
 
     def load(self):
         return timed(self.data_source.load, entity_registry)
@@ -291,7 +295,11 @@ class Simulation(object):
             show_top_processes(process_time, 10)
     
             if run_console:
-                c = console.Console()
+                if self.default_entity is not None:
+                    entity = entity_registry[self.default_entity]
+                else:
+                    entity = None
+                c = console.Console(entity, periods[-1])
                 c.run()
 
         finally:
