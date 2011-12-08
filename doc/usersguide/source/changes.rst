@@ -33,7 +33,7 @@ Miscellaneous improvements:
 Fixes:  
 ------
 
-* disallowed using one2many links like many2one (it was never intended this was
+* disallowed using one2many links like many2one (it was never intended this way
   and produced wrong results).
 
 * fixed groupby with a scalar expression (it does not make much sense, but it is
