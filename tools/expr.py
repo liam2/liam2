@@ -964,11 +964,18 @@ functions = {'lag': makefunc('lag', 'coerce'),
              'do_divorce': makefunc('do_divorce', int), 
              'KillPerson': makefunc('kill', int),
              'new': makefunc('new', int),
+
              'max': makefunc('max', 'coerce'),
              'min': makefunc('min', 'coerce'),
              'round': makefunc('round', float),
              'tavg': makefunc('tavg', float),
              'where': Where,
+             
+             'log': makefunc('log', float),
+             'exp': makefunc('exp', float),
+             
+             'normal': makefunc('normal', float),
+
              'cont_regr': ContRegr,
              'clip_regr': ClipRegr,
              'logit_regr': LogitRegr,
@@ -980,13 +987,18 @@ and_re = re.compile('([ )])and([ (])')
 or_re = re.compile('([ )])or([ (])')
 not_re = re.compile(r'([ (=]|^)not(?=[ (])')
 if_re = re.compile('(^|\W)if\s*\(')
+and_bug_re = re.compile('\w\s+and\s+\w')
+or_bug_re = re.compile('\w\s+or\s+\w')
 
 def parse(s, globals=None, expression=True):
-    str_to_parse = if_re.sub(r'\1where(', s)
+    str_to_parse = s.strip()
+    if and_bug_re.findall(str_to_parse) or or_bug_re.findall(str_to_parse):
+        raise Exception("boolean operators 'and' and 'or' without parentheses "
+                        "are buggy: %s" % str_to_parse)
+    str_to_parse = if_re.sub(r'\1where(', str_to_parse)
     str_to_parse = and_re.sub(r'\1&\2', str_to_parse)
     str_to_parse = or_re.sub(r'\1|\2', str_to_parse)
     str_to_parse = not_re.sub(r'\1~', str_to_parse)
-    str_to_parse = str_to_parse.strip()
 
     mode = 'eval' if expression else 'exec'
     try:

@@ -57,6 +57,8 @@ def load_txt_def(input_path, name_idx):
     for line in lines[1:]:
         if not line:
             continue
+        if all(not cell for cell in line):
+            continue
         name, line = line[name_idx], line[:name_idx] + line[name_idx+1:]
         if name.startswith('first_'):
             current_obj = name[6:]
@@ -80,7 +82,9 @@ def load_fields(input_path):
         'int': int,
         'int1000': float
     }
+    print "determining field types..."
     for obj_type, obj_fields in data.iteritems():
+        print " *", obj_type
         for name, fdef in obj_fields.iteritems(): 
             real_dtype = typemap.get(fdef['Type'])
             if real_dtype is None:
@@ -96,6 +100,7 @@ def load_fields(input_path):
                 #TODO: import the list of possible values
                 real_dtype = int
             obj_fields[name] = {'type': real_dtype}
+        print "   done"
     return data
 
 def transpose_table(data):
@@ -143,7 +148,7 @@ def load_av_globals(input_path):
 def load_agespine(input_path):
     # read process names until "end_spine"
     with open(input_path, "rb") as f:
-        lines = [line for line in f.read().splitlines() if line]
+        lines = [line.strip() for line in f.read().splitlines() if line]
     # lines are of the form "regr_p_xxx" or "tran_p_xxx"
     return list(itertools.takewhile(lambda l: l != 'end_spine', lines))
 
@@ -512,6 +517,7 @@ class TransitionImporter(TextImporter):
 
     def fpbcalc(self, pos, line, lines):
         s = line[1]
+        s = s.replace('grandom(', 'normal(')
         # add space around +, -, * and / operators, if not present
         s = re.sub(r'(\S)([+\-*/^])(\S)', r'\1 \2 \3', s)
         # idem for < and >
@@ -620,7 +626,6 @@ def load_processes(input_path, fnames,
     for fname, fullname, predictor, expr in parsed:
         print " - %s (%s)" % (fname, predictor)
         type_, name = fullname.split('_', 1)
-        
         expr_str = str(simplify(expr))
         if len(predictor_seen[predictor]) == 1:
             if name != predictor:
@@ -683,16 +688,16 @@ def process2yaml(processes):
         for name, expr in processes:
             if isinstance(expr, dict):
                 expr_lines = expr['expr'].splitlines()
-                indent = '\n' + ' ' * (16 + 4 + 3)
+                # + 2 is for ": "
+                indent = '\n' + ' ' * (16 + len(expr['predictor']) + 2)
                 expr_str = indent.join(expr_lines)
                 process_str = '''%s:
-                predictor: %s
-                expr: "%s"''' % (name, expr['predictor'], expr_str)
+                %s: %s''' % (name, expr['predictor'], expr_str)
             else:
                 expr_lines = expr.splitlines()
-                indent = '\n' + ' ' * (12 + len(name) + 3)
+                indent = '\n' + ' ' * (12 + len(name) + 2) # + 2 is for ": "
                 expr = indent.join(expr_lines)
-                process_str = '%s: "%s"' % (name, expr)
+                process_str = '%s: %s' % (name, expr)
             processes_str.append(process_str)
         return '''
 
@@ -748,9 +753,9 @@ simulation:
     processes:
 %s
     input: 
-        file: "base.h5"
+        file: base.h5
     output: 
-        file: "simulation.h5"
+        file: simulation.h5
     start_period: 2003    # first simulated period
     periods: 20
 """ % (constants_str, entities_str, process_list_str)
