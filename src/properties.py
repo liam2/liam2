@@ -1004,8 +1004,8 @@ class GroupCount(EvaluableExpression):
             return collect_variables(self.filter, context)
 
     def __str__(self):
-        filter = str(self.filter) if self.filter is not None else '' 
-        return "grpcount(%s)" % filter
+        filter_str = str(self.filter) if self.filter is not None else '' 
+        return "grpcount(%s)" % filter_str
     
 # we could transform this into a CompoundExpression:
 # grpsum(expr, filter=filter) / grpcount(filter) but that would be inefficient.
@@ -1014,6 +1014,8 @@ class GroupAverage(FilteredExpression):
     
     def eval(self, context):
         expr = self.expr
+        #FIXME: either take "contextual filter" into account here (by using 
+        # self._getfilter), or don't do it in grpsum (& grpgini?)
         if self.filter is not None:
             filter_values = expr_eval(self.filter, context)
             tmp_varname = get_tmp_varname()
