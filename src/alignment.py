@@ -51,6 +51,7 @@ def partition_nd(columns, filter, possible_values):
     # especially given that the possible_values are usually sorted (we could
     # sort them too), so we could use some bisect algorithm to find which
     # category it belongs to. 
+    
 #    fill_with_empty_list = np.frompyfunc(lambda _: [], 1, 1)
 #    fill_with_empty_list(result, result)
     
@@ -287,11 +288,13 @@ class GroupBy(TableExpression):
         if self.filter is not None:
             filter_value = expr_eval(self.filter, context)
         else:
+            #XXX: use True instead of a vector of True?
             filter_value = np.ones(context_length(context), dtype=bool)
 
         expressions = self.expressions
         columns = [expr_eval(e, context) for e in expressions]
         
+        #XXX: why not work all the way with filtered
         possible_values = [np.unique(col[filter_value]) 
                                if isinstance(col, np.ndarray) and col.shape
                                else [col]
