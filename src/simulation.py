@@ -24,6 +24,7 @@ input_directory = "."
 output_directory = "."
 skip_shows = False
 
+
 def show_top_processes(process_time, num_processes):
     process_times = sorted(process_time.iteritems(),
                            key=operator.itemgetter(1),
@@ -31,7 +32,7 @@ def show_top_processes(process_time, num_processes):
     print "top %d processes:" % num_processes
     for name, p_time in process_times[:num_processes]:
         print " - %s: %s" % (name, time2str(p_time))
-    print "total for top %d processes:" % num_processes, 
+    print "total for top %d processes:" % num_processes,
     print time2str(sum(p_time for name, p_time
                        in process_times[:num_processes]))
 
@@ -42,7 +43,7 @@ class Simulation(object):
             'periodic': [{
                 '*': str
             }]
-        }, 
+        },
         '#entities': {
             '*': {
                 'fields': [{
@@ -86,7 +87,7 @@ class Simulation(object):
             'default_entity': str
         }
     }
-    
+
     def __init__(self, globals_fields, periods, start_period,
                  init_processes, init_entities, processes, entities,
                  data_source, default_entity=None):
@@ -101,18 +102,18 @@ class Simulation(object):
         self.data_source = data_source
         self.stepbystep = False
         self.default_entity = default_entity
-        
+
     @classmethod
     def from_yaml(cls, fpath):
         global output_directory
         global input_directory
         global skip_shows
-        
+
         simulation_path = os.path.abspath(fpath)
-        simulation_dir = os.path.dirname(simulation_path) 
+        simulation_dir = os.path.dirname(simulation_path)
         with open(fpath) as f:
             content = yaml.load(f)
-        validate_dict(content, cls.yaml_layout)    
+        validate_dict(content, cls.yaml_layout)
 
         #TODO: raise exception when there are unknown keywords
         # use validictory? http://readthedocs.org/docs/validictory/
@@ -134,23 +135,23 @@ class Simulation(object):
         periods = simulation_def['periods']
         start_period = simulation_def['start_period']
         skip_shows = simulation_def.get('skip_shows', False)
-        
+
         output_def = simulation_def['output']
         output_directory = output_def.get('path', '')
         if not os.path.isabs(output_directory):
-            output_directory = os.path.join(simulation_dir, output_directory) 
-        output_path = os.path.join(output_directory, output_def['file'])  
+            output_directory = os.path.join(simulation_dir, output_directory)
+        output_path = os.path.join(output_directory, output_def['file'])
 
         input_def = simulation_def['input']
         input_directory = input_def.get('path', '')
         if not os.path.isabs(input_directory):
-            input_directory = os.path.join(simulation_dir, input_directory) 
-        
+            input_directory = os.path.join(simulation_dir, input_directory)
+
         entity_registry.add_all(content['entities'])
         for entity in entity_registry.itervalues():
             entity.check_links()
             entity.parse_processes(globals_fields)
-        
+
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()
         for ent_name, proc_names in init_def:
@@ -161,7 +162,7 @@ class Simulation(object):
             init_entities.add(entity)
             init_processes.extend([entity.processes[proc_name]
                                    for proc_name in proc_names])
-        
+
         agespine_def = [d.items()[0] for d in simulation_def['processes']]
         processes, entities = [], set()
         for ent_name, proc_names in agespine_def:
@@ -169,9 +170,9 @@ class Simulation(object):
             entities.add(entity)
             processes.extend([entity.processes[proc_name]
                               for proc_name in proc_names])
-        
+
         method = input_def.get('method', 'h5')
-        
+
         if method == 'h5':
             input_path = os.path.join(input_directory, input_def['file'])
             data_source = H5Data(input_path, output_path)
@@ -180,7 +181,7 @@ class Simulation(object):
             data_source = Void(output_path)
         else:
             print method, type(method)
-            
+
         default_entity = simulation_def.get('default_entity')
         return Simulation(globals_fields, periods, start_period,
                           init_processes, init_entities, processes, entities,
@@ -188,10 +189,10 @@ class Simulation(object):
 
     def load(self):
         return timed(self.data_source.load, entity_registry)
-    
+
     def run(self, run_console=False):
         start_time = time.time()
-        h5in, h5out, periodic_globals = timed(self.data_source.run, 
+        h5in, h5out, periodic_globals = timed(self.data_source.run,
                                               entity_registry,
                                               self.start_period - 1)
         if periodic_globals is not None:
@@ -200,16 +201,16 @@ class Simulation(object):
             except ValueError:
                 globals_periods = periodic_globals['period']
             globals_base_period = globals_periods[0]
-        
+
         process_time = defaultdict(float)
         period_objects = {}
 
-        def simulate_period(period, processes, entities, init=False):        
+        def simulate_period(period, processes, entities, init=False):
             print "\nperiod", period
             if init:
                 for entity in entities:
                     print "  * %s: %d individuals" % (entity.name,
-                                                      len(entity.array)) 
+                                                      len(entity.array))
             else:
                 print "- loading input data"
                 for entity in entities:
@@ -223,7 +224,7 @@ class Simulation(object):
                 # build context for this period:
                 const_dict = {'period': period,
                               'nan': float('nan')}
-                 
+
                 # update "globals" with their value for this period
                 if periodic_globals is not None:
                     globals_row = period - globals_base_period
@@ -235,19 +236,19 @@ class Simulation(object):
                     const_dict.update((k, period_globals[k])
                                       for k in period_globals.dtype.names)
                     const_dict['__globals__'] = periodic_globals
-    
+
                 num_processes = len(processes)
                 for p_num, process in enumerate(processes, start=1):
                     print "- %d/%d" % (p_num, num_processes), process.name,
-                    #TODO: provided a custom __str__ method for Process & 
-                    # Assignment instead 
-                    if hasattr(process, 'predictor') and process.predictor and \
-                       process.predictor != process.name:
+                    #TODO: provided a custom __str__ method for Process &
+                    # Assignment instead
+                    if hasattr(process, 'predictor') and process.predictor \
+                       and process.predictor != process.name:
                         print "(%s)" % process.predictor,
                     print "...",
-                    
+
                     elapsed, _ = gettime(process.run_guarded, self, const_dict)
-                    
+
                     process_time[process.name] += elapsed
                     print "done (%s elapsed)." % time2str(elapsed)
                     self.start_console(process.entity, period)
@@ -265,12 +266,13 @@ class Simulation(object):
 #                        timed(entity.compress_period_data, level)
             period_objects[period] = sum(len(entity.array)
                                          for entity in entities)
-        
+
         try:
             simulate_period(self.start_period - 1, self.init_processes,
                             self.entities, init=True)
             main_start_time = time.time()
-            periods = range(self.start_period, self.start_period + self.periods)
+            periods = range(self.start_period,
+                            self.start_period + self.periods)
             for period in periods:
                 period_start_time = time.time()
                 simulate_period(period, self.processes, self.entities)
@@ -279,7 +281,7 @@ class Simulation(object):
                                                         time2str(time_elapsed))
 
             total_objects = sum(period_objects[period] for period in periods)
-            total_time = time.time() - main_start_time 
+            total_time = time.time() - main_start_time
             print """
 ==========================================
  simulation done
@@ -293,7 +295,7 @@ class Simulation(object):
        total_objects / total_time)
 
             show_top_processes(process_time, 10)
-    
+
             if run_console:
                 if self.default_entity is not None:
                     entity = entity_registry[self.default_entity]
@@ -312,5 +314,3 @@ class Simulation(object):
             c = console.Console(entity, period)
             res = c.run(debugger=True)
             self.stepbystep = res == "step"
-                
-        

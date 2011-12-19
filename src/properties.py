@@ -7,7 +7,7 @@ from expr import Expr, Variable, Where, functions, as_string, dtype, \
                  coerce_types, type_to_idx, idx_to_type, expr_eval, \
                  collect_variables, get_tmp_varname, \
                  missing_values, get_missing_value, get_missing_record, \
-                 get_missing_vector 
+                 get_missing_vector
 from entities import entity_registry, EntityContext, \
                      context_length, context_subset
 import utils
@@ -29,8 +29,8 @@ def ispresent(values):
 
 class Link(object):
     def __init__(self, name, link_type, link_field, target_entity):
-        # the leading underscores are necessary to not collide with user-defined
-        # fields via __getattr__.
+        # the leading underscores are necessary to not collide with
+        # user-defined fields via __getattr__.
         self._name = name
         self._link_type = link_type
         self._link_field = link_field
@@ -38,15 +38,16 @@ class Link(object):
 
     def get(self, key, missing_value=None):
         if self._link_type == 'one2many':
-            raise SyntaxError("To use the '%s' link (which is a one2many link),"
-                              " you have to use link functions (e.g. countlink)"
-                              % self._name)
+            raise SyntaxError("To use the '%s' link (which is a one2many "
+                              "link), you have to use link functions (e.g. "
+                              "countlink)" % self._name)
         return LinkValue(self, key, missing_value)
 
     __getattr__ = get
 
     def __str__(self):
         return self._name
+
 
 class PrefixingLink(object):
     def __init__(self, macros, links, prefix):
@@ -65,7 +66,7 @@ class PrefixingLink(object):
         if key in self.links:
             link = self.links[key]
             return Link(link._name,
-                        link._link_type, 
+                        link._link_type,
                         self.prefix + link._link_field,
                         link._target_entity)
         return Variable(self.prefix + key)
@@ -86,7 +87,7 @@ class Process(object):
             self.run(context)
         except BreakpointException:
             simulation.stepbystep = True
-        
+
     def run(self, context):
         raise NotImplementedError()
 
@@ -100,13 +101,13 @@ class Compute(Process):
 
     def run(self, context):
         expr_eval(self.expr, context)
-        
-    
+
+
 class Assignment(Process):
     def __init__(self, expr):
         super(Assignment, self).__init__()
         self.predictor = None
-        self.kind = None # period_individual, period, individual, global
+        self.kind = None  # period_individual, period, individual, global
         self.expr = expr
 
     def attach(self, name, entity, kind=None):
@@ -118,13 +119,13 @@ class Assignment(Process):
     def run(self, context):
         value = expr_eval(self.expr, context)
         self.store_result(value)
-            
+
     def store_result(self, result):
         if result is None:
             return
         if self.name is None:
             raise Exception('trying to store None key')
-        
+
         if isinstance(result, dict):
             indices = result.get('indices')
             filter = result.get('filter')
@@ -140,21 +141,21 @@ class Assignment(Process):
             res_type = type(result)
 
         if self.kind == 'period_individual':
-            # we cannot store/cache self.entity.array[self.name] because the 
+            # we cannot store/cache self.entity.array[self.name] because the
             # array object can change (eg when enlarging it due to births)
             target = self.entity.array
         else:
             target = self.entity.temp_variables
 
         #TODO: assert type for temporary variables too
-        if self.kind is not None: 
+        if self.kind is not None:
             target_type_idx = type_to_idx[target[self.predictor].dtype.type]
             res_type_idx = type_to_idx[res_type]
             if res_type_idx > target_type_idx:
                 raise Exception(
                     "trying to store %s value into '%s' field which is of "
                     "type %s" % (idx_to_type[res_type_idx].__name__,
-                                 self.predictor, 
+                                 self.predictor,
                                  idx_to_type[target_type_idx].__name__))
 
         if indices is None and filter is None:
@@ -165,10 +166,11 @@ class Assignment(Process):
                 hasfield = self.predictor in target.dtype.fields
             else:
                 hasfield = self.predictor in target
-                
+
             if not hasfield:
                 assert self.kind is None, \
-                       "found a missing field which is not a temporary variable"
+                       "found a missing field which is not a temporary " \
+                       "variable"
                 #XXX: I'm not sure we should do this at all and in any case
                 # this step should be delayed further because it could
                 # be unnecessary.
@@ -185,7 +187,7 @@ class ProcessGroup(Process):
         super(ProcessGroup, self).__init__()
         self.name = name
         self.subprocesses = subprocesses
-    
+
     def run_guarded(self, simulation, globals):
         print
         for k, v in self.subprocesses:
@@ -231,8 +233,8 @@ class CompoundExpression(Expr):
     '''expression written in terms of other expressions'''
     def __init__(self):
         self._complete_expr = None
-    
-    def eval(self, context): 
+
+    def eval(self, context):
         context = self.build_context(context)
         return expr_eval(self.complete_expr, context)
 
@@ -245,10 +247,10 @@ class CompoundExpression(Expr):
 
     def build_expr(self):
         raise NotImplementedError
-    
+
     def collect_variables(self, context):
         return collect_variables(self.complete_expr, context)
-    
+
     @property
     def complete_expr(self):
         if self._complete_expr is None:
@@ -261,7 +263,7 @@ class LinkExpression(EvaluableExpression):
        and one2many'''
     def __init__(self, link):
         self.link = link
-    
+
     def get_link(self, context):
         # use the context as the first entity, so that it works with subsets of
         # the entity population
@@ -271,7 +273,7 @@ class LinkExpression(EvaluableExpression):
         return link
 
     def target_entity(self, context):
-        link = self.get_link(context)    
+        link = self.get_link(context)
         return entity_registry[link._target_entity]
 
     def target_context(self, context):
@@ -287,16 +289,16 @@ class LinkValue(LinkExpression):
                           target rows)
         '''
         LinkExpression.__init__(self, link)
-        
+
         if isinstance(target_expression, basestring):
             target_expression = Variable(target_expression)
         self.target_expression = target_expression
         self.missing_value = missing_value
-    
+
     def collect_variables(self, context):
-        link = self.get_link(context)    
+        link = self.get_link(context)
         return set([link._link_field])
-       
+
     def dtype(self, context):
         target_context = self.target_context(context)
         return dtype(self.target_expression, target_context)
@@ -312,30 +314,30 @@ class LinkValue(LinkExpression):
                                    missing_value))
 
     __getattr__ = get
-    
+
     def eval(self, context):
-        link = self.get_link(context)    
+        link = self.get_link(context)
         target_ids = expr_eval(Variable(link._link_field), context)
         target_context = self.target_context(context)
 
         id_to_rownum = target_context.id_to_rownum
-        
+
         missing_int = missing_values[int]
         target_rows = id_to_rownum[target_ids]
-    
+
         target_values = expr_eval(self.target_expression, target_context)
         missing_value = self.missing_value
         if missing_value is None:
             missing_value = get_missing_value(target_values)
 
-        valid_links = (target_ids != missing_int) & (target_rows != missing_int)
-        return np.where(valid_links, target_values[target_rows], missing_value)
+        valid_link = (target_ids != missing_int) & (target_rows != missing_int)
+        return np.where(valid_link, target_values[target_rows], missing_value)
 
     def __str__(self):
         return '%s.%s' % (self.link, self.target_expression)
     __repr__ = __str__
-        
-        
+
+
 class AggregateLink(LinkExpression):
     def __init__(self, link, target_filter=None):
         LinkExpression.__init__(self, link)
@@ -344,18 +346,18 @@ class AggregateLink(LinkExpression):
     def eval(self, context):
         assert isinstance(context, EntityContext), \
                "aggregates in groupby is currently not supported"
-        link = self.get_link(context)    
+        link = self.get_link(context)
         assert link._link_type == 'one2many'
-        
+
         # eg (in household entity):
         # persons: {type: one2many, target: person, field: hh_id}
         target_context = self.target_context(context)
 
         # this is a one2many, so the link column is on the target side
         link_column = expr_eval(Variable(link._link_field), target_context)
-        
+
         missing_int = missing_values[int]
-        
+
         if self.target_filter is not None:
             target_filter = expr_eval(self.target_filter, target_context)
             source_ids = link_column[target_filter]
@@ -363,7 +365,7 @@ class AggregateLink(LinkExpression):
             target_filter = None
             source_ids = link_column
 
-        id_to_rownum = context.id_to_rownum 
+        id_to_rownum = context.id_to_rownum
         if len(id_to_rownum):
             source_rows = id_to_rownum[source_ids]
             # filter out missing values: those where the value of the link
@@ -373,42 +375,44 @@ class AggregateLink(LinkExpression):
             source_rows[source_ids == missing_int] = missing_int
         else:
             assert np.all(source_ids == missing_int)
-            # we need to make a copy because eval_rows modifies the array 
+            # we need to make a copy because eval_rows modifies the array
             # in place
             source_rows = source_ids.copy()
 
         return self.eval_rows(source_rows, target_filter, context)
-    
+
     def eval_rows(self, source_rows, target_filter, context):
         raise NotImplementedError
 
     def collect_variables(self, context):
         # no variable at all because collect_variable is only interested in
-        # the columns of the *current entity* and since we are only working with
-        # one2many relationships, the link column is always on the other side.
+        # the columns of the *current entity* and since we are only working
+        # with one2many relationships, the link column is always on the other
+        # side.
         return set()
+
 
 class CountLink(AggregateLink):
     func_name = 'countlink'
-    
+
     def eval_rows(self, source_rows, target_filter, context):
-        # We can't use a negative value because that is not allowed by bincount,
-        # and using a value too high will uselessly increase the size of the
-        # array returned by bincount
+        # We can't use a negative value because that is not allowed by
+        # bincount, and using a value too high will uselessly increase the size
+        # of the array returned by bincount
         idx_for_missing = context_length(context)
-        
+
         missing_int = missing_values[int]
 
         # filter out missing values: those where the object pointed to does not
         # exist anymore (the id corresponds to -1 in id_to_rownum)
         #XXX: use np.putmask(source_rows, source_ids == missing_int,
         #                    missing_int)
-        source_rows[source_rows == missing_int] = idx_for_missing 
-   
+        source_rows[source_rows == missing_int] = idx_for_missing
+
         counts = self.count(source_rows, target_filter, context)
         counts.resize(idx_for_missing)
         return counts
-    
+
     def count(self, source_rows, target_filter, context):
         if len(source_rows):
             return np.bincount(source_rows)
@@ -428,11 +432,11 @@ class CountLink(AggregateLink):
 
 class SumLink(CountLink):
     func_name = 'sumlink'
-    
+
     def __init__(self, link, target_expr, target_filter=None):
         CountLink.__init__(self, link, target_filter)
         self.target_expr = target_expr
-    
+
     def count(self, source_rows, target_filter, context):
         target_context = self.target_context(context)
         value_column = expr_eval(self.target_expr, target_context)
@@ -460,16 +464,17 @@ class SumLink(CountLink):
         return '%s(%s, %s%s)' % (self.func_name, self.link._name,
                                  self.target_expr, target_filter)
 
+
 class AvgLink(SumLink):
     func_name = 'avglink'
-    
+
     def count(self, source_rows, target_filter, context):
         sums = super(AvgLink, self).count(source_rows, target_filter, context)
         count = np.bincount(source_rows)
         # silence x/0 and 0/0
         np.seterr(invalid='ignore', divide='ignore')
 
-        # this is slightly sub optimal if the value column contains integers 
+        # this is slightly sub optimal if the value column contains integers
         # as the data is converted from float to int then back to float
         return sums.astype(float) / count
 
@@ -488,7 +493,7 @@ class MinLink(AggregateLink):
     def dtype(self, context):
         target_context = self.target_context(context)
         return dtype(self.target_expr, target_context)
-        
+
     def eval_rows(self, source_rows, target_filter, context):
         target_context = self.target_context(context)
         value_column = expr_eval(self.target_expr, target_context)
@@ -498,12 +503,12 @@ class MinLink(AggregateLink):
 
         result = np.empty(context_length(context), dtype=value_column.dtype)
         result.fill(get_missing_value(value_column))
-        
+
         id_sort_indices = np.argsort(source_rows)
         sorted_rownum = source_rows[id_sort_indices]
         sorted_values = value_column[id_sort_indices]
         groups = groupby(izip(sorted_rownum, sorted_values), key=itemgetter(0))
-        aggregate_func = self.aggregate_func 
+        aggregate_func = self.aggregate_func
         for rownum, values in groups:
             if rownum == -1:
                 continue
@@ -518,7 +523,7 @@ class MinLink(AggregateLink):
         return '%s(%s, %s%s)' % (self.func_name, self.link._name,
                                  self.target_expr, target_filter)
 
-        
+
 class MaxLink(MinLink):
     func_name = 'maxlink'
     aggregate_func = max
@@ -535,32 +540,32 @@ class Min(CompoundExpression):
         expr = Where(expr1 < expr2, expr1, expr2)
         for arg in self.args[2:]:
             expr = Where(expr < arg, expr, arg)
-            
-#        Where(Where(expr1 < expr2, expr1, expr2) < expr3, 
+
+#        Where(Where(expr1 < expr2, expr1, expr2) < expr3,
 #              Where(expr1 < expr2, expr1, expr2),
 #              expr3)
 #        3 where, 3 comparisons = 6 op (or 4 if optimized)
 #
-#        Where(Where(Where(expr1 < expr2, expr1, expr2) < expr3, 
+#        Where(Where(Where(expr1 < expr2, expr1, expr2) < expr3,
 #                    Where(expr1 < expr2, expr1, expr2),
 #                    expr3) < expr4,
-#              Where(Where(expr1 < expr2, expr1, expr2) < expr3, 
+#              Where(Where(expr1 < expr2, expr1, expr2) < expr3,
 #                    Where(expr1 < expr2, expr1, expr2),
 #                    expr3),
-#              expr4) 
-#        7 where, 7 comp = 14 op (or 6 if optimized) 
+#              expr4)
+#        7 where, 7 comp = 14 op (or 6 if optimized)
 
         # this version scales better in theory (but in practice, it will depend
         # if numexpr factorize the common subexpression in the above version
         # or not)
-#        Where(expr1 < expr2 & expr1 < expr3, 
+#        Where(expr1 < expr2 & expr1 < expr3,
 #              expr1,
 #              Where(expr2 < expr3, expr2, expr3))
-#        2 where, 3 comparisons, 1 and = 6 op      
-#        
-#        Where(expr1 < expr2 & expr1 < expr3 & expr1 < expr4, 
+#        2 where, 3 comparisons, 1 and = 6 op
+#
+#        Where(expr1 < expr2 & expr1 < expr3 & expr1 < expr4,
 #              expr1,
-#              Where(expr2 < expr3 & expr2 < expr4, 
+#              Where(expr2 < expr3 & expr2 < expr4,
 #                    expr2
 #                    Where(expr3 < expr4,
 #                          expr3,
@@ -570,7 +575,7 @@ class Min(CompoundExpression):
 
     def dtype(self, context):
         return coerce_types(context, *self.args)
-    
+
     def __str__(self):
         return 'min(%s)' % ', '.join(str(arg) for arg in self.args)
 
@@ -587,7 +592,7 @@ class Max(CompoundExpression):
         for arg in self.args[2:]:
             expr = Where(expr > arg, expr, arg)
         return expr
-    
+
     def dtype(self, context):
         return coerce_types(context, *self.args)
 
@@ -603,13 +608,13 @@ class ZeroClip(CompoundExpression):
         self.expr3 = expr3
 
     def build_expr(self):
-        return Where((self.expr1 >= self.expr2) & (self.expr1 <= self.expr3), 
+        return Where((self.expr1 >= self.expr2) & (self.expr1 <= self.expr3),
                      self.expr1,
                      0)
 
     def dtype(self, context):
         return dtype(self.expr1, context)
-        
+
 
 #TODO: generalise to a function with several arguments?
 class FunctionExpression(EvaluableExpression):
@@ -623,13 +628,14 @@ class FunctionExpression(EvaluableExpression):
 
     def collect_variables(self, context):
         return collect_variables(self.expr, context)
-    
+
+
 class FilteredExpression(FunctionExpression):
     def __init__(self, expr, filter=None):
         super(FilteredExpression, self).__init__(expr)
         self.filter = filter
 
-    def _getfilter(self, context):        
+    def _getfilter(self, context):
         ctx_filter = context.get('__filter__')
         if self.filter is not None and ctx_filter is not None:
             filter_expr = ctx_filter & self.filter
@@ -655,6 +661,7 @@ class FilteredExpression(FunctionExpression):
 
 #------------------------------------
 
+
 class ValueForPeriod(FunctionExpression):
     func_name = 'value_for_period'
 
@@ -662,7 +669,7 @@ class ValueForPeriod(FunctionExpression):
         FunctionExpression.__init__(self, expr)
         self.period = period
         self.missing = missing
-        
+
     def eval(self, context):
         entity = context['__entity__']
         return entity.value_for_period(self.expr, self.period, context,
@@ -676,11 +683,12 @@ class Lag(FunctionExpression):
         FunctionExpression.__init__(self, expr)
         self.num_periods = num_periods
         self.missing = missing
-        
+
     def eval(self, context):
         entity = context['__entity__']
         period = context['period'] - self.num_periods
-        return entity.value_for_period(self.expr, period, context, self.missing)
+        return entity.value_for_period(self.expr, period, context,
+                                       self.missing)
 
     def dtype(self, context):
         return dtype(self.expr, context)
@@ -715,20 +723,21 @@ class TimeSum(FunctionExpression):
 
 #------------------------------------
 
+
 class NumpyProperty(EvaluableExpression):
-    func_name = None # optional (for display)
+    func_name = None  # optional (for display)
     np_func = (None,)
     # arg_names can be set automatically by using inspect.getargspec,
     # but it only works for pure Python functions, so I decided to avoid it
-    # because when you add a function, it's hard to know whether it's 
+    # because when you add a function, it's hard to know whether it's
     # implemented in C or not.
     arg_names = None
-        
+
     def __init__(self, *args, **kwargs):
         EvaluableExpression.__init__(self)
         if len(args) > len(self.arg_names):
-            # + 1 to be concistent with Python (to account for self)
-            raise TypeError("takes at most %d arguments (%d given)" % 
+            # + 1 to be consistent with Python (to account for self)
+            raise TypeError("takes at most %d arguments (%d given)" %
                             (len(self.arg_names) + 1, len(args) + 1))
         extra_kwargs = set(kwargs.keys()) - set(self.arg_names)
         if extra_kwargs:
@@ -753,7 +762,7 @@ class NumpyProperty(EvaluableExpression):
         return expr_eval
 
     def __str__(self):
-        func_name = self.func_name 
+        func_name = self.func_name
         if func_name is None:
             func_name = self.np_func[0].__name__
         kwargs = self.kwargs
@@ -761,9 +770,9 @@ class NumpyProperty(EvaluableExpression):
         for name in self.arg_names[len(self.args):]:
             if name in kwargs:
                 values.append((name, kwargs[name]))
-        str_args = ', '.join('%s=%s' % (name, value) for name, value in values) 
+        str_args = ', '.join('%s=%s' % (name, value) for name, value in values)
         return '%s(%s)' % (func_name, str_args)
-    
+
     def collect_variables(self, context):
         args_vars = [collect_variables(arg, context) for arg in self.args]
         args_vars.extend(collect_variables(v, context)
@@ -773,7 +782,7 @@ class NumpyProperty(EvaluableExpression):
 
 class NumpyAggregate(NumpyProperty):
     skip_missing = False
-    
+
     def get_eval_func(self):
         if self.skip_missing:
             def local_expr_eval(expr, context):
@@ -782,11 +791,12 @@ class NumpyAggregate(NumpyProperty):
             return local_expr_eval
         else:
             return expr_eval
-    
+
+
 # >>> mi = 1
 # >>> ma = 10
 # >>> a = np.arange(1e7)
-# 
+#
 # >>> timeit np.clip(a, mi, ma)
 # 10 loops, best of 3: 127 ms per loop
 # >>> timeit np.clip(a, mi, ma, a)
@@ -798,6 +808,7 @@ class Clip(NumpyProperty):
     arg_names = ('a', 'a_min', 'a_max', 'out')
 
 #------------------------------------
+
 
 class Uniform(NumpyProperty):
     np_func = (np.random.uniform,)
@@ -811,7 +822,7 @@ class Normal(NumpyProperty):
 
 class Choice(EvaluableExpression):
     func_name = 'choice'
-    
+
     def __init__(self, choices, weights=None):
         EvaluableExpression.__init__(self)
         self.choices = np.array(choices)
@@ -826,17 +837,18 @@ class Choice(EvaluableExpression):
                 if str(1.0 - self.bins[-2]) != str(weights[-1]) and \
                    self.bins[-1] < 1.0:
                     print "Warning: last choice probability adjusted to %s " \
-                          "instead of %s !" % (1.0 - self.bins[-2], weights[-1])
+                          "instead of %s !" % (1.0 - self.bins[-2],
+                                               weights[-1])
                     self.bins[-1] = 1.0
             elif error > 1e-6:
                 raise Exception(
                     "the cumulative sum of choice weights must be ~1")
         else:
             self.bins = None
-        
+
     def eval(self, context):
         num = context_length(context)
-        
+
         if num:
             if self.bins is None:
                 # all values have the same probability
@@ -850,7 +862,7 @@ class Choice(EvaluableExpression):
 
     def dtype(self, context):
         return self.choices.dtype
-    
+
     def collect_variables(self, context):
         return set()
 
@@ -871,28 +883,31 @@ class RandInt(NumpyProperty):
 
 #------------------------------------
 
+
 class Round(NumpyProperty):
-    func_name = 'round' # np.round redirects to np.round_
+    func_name = 'round'  # np.round redirects to np.round_
     np_func = (np.round,)
     arg_names = ('a', 'decimals', 'out')
-    
+
     def dtype(self, context):
         # result dtype is the same as the input dtype
         res = dtype(self.args[0], context)
         assert res == float
         return res
 
+
 class Trunc(FunctionExpression):
     func_name = 'trunc'
 
     def eval(self, context):
         return expr_eval(self.expr, context).astype(int)
-        
+
     def dtype(self, context):
         assert dtype(self.expr, context) == float
         return int
 
 #------------------------------------
+
 
 class GroupMin(NumpyProperty):
     func_name = 'grpmin'
@@ -911,9 +926,10 @@ class GroupMax(NumpyProperty):
     def dtype(self, context):
         return dtype(self.args[0], context)
 
+
 class GroupSum(FilteredExpression):
     func_name = 'grpsum'
-    
+
     def eval(self, context):
         expr = self.expr
         filter_expr = self._getfilter(context)
@@ -937,6 +953,7 @@ class GroupStd(NumpyAggregate):
     def dtype(self, context):
         return float
 
+
 class GroupMedian(NumpyAggregate):
     func_name = 'grpmedian'
     np_func = (np.median,)
@@ -945,6 +962,7 @@ class GroupMedian(NumpyAggregate):
 
     def dtype(self, context):
         return float
+
 
 class GroupGini(FilteredExpression):
     func_name = 'grpgini'
@@ -979,6 +997,7 @@ class GroupGini(FilteredExpression):
     def dtype(self, context):
         return float
 
+
 class GroupCount(EvaluableExpression):
     def __init__(self, filter=None):
         self.filter = filter
@@ -1004,17 +1023,18 @@ class GroupCount(EvaluableExpression):
             return collect_variables(self.filter, context)
 
     def __str__(self):
-        filter_str = str(self.filter) if self.filter is not None else '' 
+        filter_str = str(self.filter) if self.filter is not None else ''
         return "grpcount(%s)" % filter_str
-    
+
+
 # we could transform this into a CompoundExpression:
 # grpsum(expr, filter=filter) / grpcount(filter) but that would be inefficient.
 class GroupAverage(FilteredExpression):
     func_name = 'grpavg'
-    
+
     def eval(self, context):
         expr = self.expr
-        #FIXME: either take "contextual filter" into account here (by using 
+        #FIXME: either take "contextual filter" into account here (by using
         # self._getfilter), or don't do it in grpsum (& grpgini?)
         if self.filter is not None:
             filter_values = expr_eval(self.filter, context)
@@ -1024,7 +1044,7 @@ class GroupAverage(FilteredExpression):
             if dtype(expr, context) is bool:
                 # convert expr to int because mul_bbb is not implemented in
                 # numexpr
-                expr *= 1 
+                expr *= 1
             expr *= Variable(tmp_varname)
         else:
             filter_values = True
@@ -1042,7 +1062,7 @@ class GroupAverage(FilteredExpression):
 
 class NumexprFunctionProperty(Expr):
     '''For functions which are present as-is in numexpr'''
-    
+
     def __init__(self, expr):
         self.expr = expr
 
@@ -1055,18 +1075,21 @@ class NumexprFunctionProperty(Expr):
     def __str__(self):
         return '%s(%s)' % (self.func_name, self.expr)
 
+
 class Abs(NumexprFunctionProperty):
     func_name = 'abs'
 
     def dtype(self, context):
         return float
-    
+
+
 class Log(NumexprFunctionProperty):
     func_name = 'log'
 
     def dtype(self, context):
         return float
-            
+
+
 class Exp(NumexprFunctionProperty):
     func_name = 'exp'
 
@@ -1102,6 +1125,7 @@ def add_individuals(target_context, children):
     target_entity.id_to_rownum = np.concatenate((id_to_rownum,
                                                  id_to_rownum_tail))
 
+
 #TODO: inherit from FilteredExpression
 class CreateIndividual(EvaluableExpression):
     def __init__(self, entity_name=None, filter=None, number=None, **kwargs):
@@ -1119,8 +1143,8 @@ class CreateIndividual(EvaluableExpression):
         return children
 
     def collect_variables(self, context):
-        #FIXME: we need to add variables from self.filter (that's what is needed
-        # for the general case -- in expr_eval)
+        #FIXME: we need to add variables from self.filter (that's what is
+        # needed for the general case -- in expr_eval)
         used_variables = self._collect_kwargs_variables(context)
         return used_variables
 
@@ -1129,18 +1153,18 @@ class CreateIndividual(EvaluableExpression):
         for v in self.kwargs.itervalues():
             used_variables.update(collect_variables(v, context))
         return used_variables
-    
+
     def eval(self, context):
         source_entity = context['__entity__']
         if self.entity_name is None:
             target_entity = source_entity
         else:
             target_entity = entity_registry[self.entity_name]
-            
+
         if target_entity is source_entity:
             target_context = context
         else:
-            target_context = EntityContext(target_entity, 
+            target_context = EntityContext(target_entity,
                                            {'period': context['period']})
 
         ctx_filter = context.get('__filter__')
@@ -1153,7 +1177,7 @@ class CreateIndividual(EvaluableExpression):
             filter_expr = ctx_filter
         else:
             filter_expr = None
-            
+
         if filter_expr is not None:
             to_give_birth = expr_eval(filter_expr, context)
             num_birth = to_give_birth.sum()
@@ -1164,31 +1188,32 @@ class CreateIndividual(EvaluableExpression):
             raise Exception('no filter nor number in "new"')
 
         array = target_entity.array
-        
+
         id_to_rownum = target_entity.id_to_rownum
         num_individuals = len(id_to_rownum)
 
         children = self._initial_values(array, to_give_birth, num_birth)
         if num_birth:
-            children['id'] = np.arange(num_individuals, num_individuals + num_birth)
+            children['id'] = np.arange(num_individuals,
+                                       num_individuals + num_birth)
             children['period'] = context['period']
-    
+
             used_variables = self._collect_kwargs_variables(context)
             child_context = context_subset(context, to_give_birth,
                                            used_variables)
             for k, v in self.kwargs.iteritems():
                 children[k] = expr_eval(v, child_context)
-                
+
         add_individuals(target_context, children)
-    
+
         # result is the ids of the new individuals corresponding to the source
         # entity
-        if to_give_birth is not None: 
+        if to_give_birth is not None:
             result = np.empty(context_length(context), dtype=int)
             result.fill(-1)
             if source_entity is target_entity:
-                to_give_birth = np.concatenate((to_give_birth, 
-                                                np.zeros(num_birth, dtype=bool)))
+                extra_bools = np.zeros(num_birth, dtype=bool)
+                to_give_birth = np.concatenate((to_give_birth, extra_bools))
             # Note that np.place is a tad faster, but is currently buggy when
             # working with columns of structured arrays.
             # See http://projects.scipy.org/numpy/ticket/1869
@@ -1208,8 +1233,10 @@ class Clone(CreateIndividual):
     def _initial_values(self, array, to_give_birth, num_birth):
         return array[to_give_birth]
 
+
 class TableExpression(EvaluableExpression):
     pass
+
 
 class Dump(TableExpression):
     def __init__(self, *args, **kwargs):
@@ -1221,7 +1248,7 @@ class Dump(TableExpression):
         if len(args):
             assert all(isinstance(e, Expr) for e in args), \
                    "dump arguments must be expressions, not a list of them, " \
-                   "or strings" 
+                   "or strings"
 
     def eval(self, context):
         if self.filter is not None:
@@ -1233,7 +1260,7 @@ class Dump(TableExpression):
             expressions = list(self.expressions)
         else:
             expressions = [Variable(name) for name in context.keys()]
-        
+
         str_expressions = [str(e) for e in expressions]
         if 'id' not in str_expressions:
             str_expressions.insert(0, 'id')
@@ -1242,7 +1269,7 @@ class Dump(TableExpression):
         else:
             id_pos = str_expressions.index('id')
 
-        if (self.periods is not None and len(self.periods) and 
+        if (self.periods is not None and len(self.periods) and
             'period' not in str_expressions):
             str_expressions.insert(0, 'period')
             expressions.insert(0, Variable('period'))
@@ -1261,32 +1288,32 @@ class Dump(TableExpression):
             numrows = len(ids)
         else:
             numrows = 1
-            
+
         # expand scalar columns to full columns in memory
         for idx, col in enumerate(columns):
             dtype = None
             if not isinstance(col, np.ndarray):
-                dtype = type(col) 
+                dtype = type(col)
             elif not col.shape:
                 dtype = col.dtype.type
             if dtype is not None:
                 newcol = np.empty(numrows, dtype=dtype)
                 newcol.fill(col)
                 columns[idx] = newcol
- 
+
         data = izip(*columns)
         table = chain([str_expressions], data) if self.header else data
         return utils.PrettyTable(table, self.missing)
 
     def collect_variables(self, context):
         if self.expressions:
-            vars = set.union(*[collect_variables(expr, context)
-                               for expr in self.expressions])
+            variables = set.union(*[collect_variables(expr, context)
+                                    for expr in self.expressions])
         else:
-            vars = set(context.keys())
+            variables = set(context.keys())
         if self.filter is not None:
-            vars |= collect_variables(self.filter, context)
-        return vars
+            variables |= collect_variables(self.filter, context)
+        return variables
 
     def dtype(self, context):
         return None
@@ -1313,8 +1340,8 @@ functions.update({
     # aggregates
     'grpcount': GroupCount,
     'grpmin': GroupMin,
-    'grpmax': GroupMax, 
-    'grpsum': GroupSum, 
+    'grpmax': GroupMax,
+    'grpsum': GroupSum,
     'grpavg': GroupAverage,
     'grpstd': GroupStd,
     'grpmedian': GroupMedian,

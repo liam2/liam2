@@ -13,31 +13,32 @@ from entities import context_length, context_subset
 from utils import skip_comment_cells, strip_rows, PrettyTable, unique, \
                   duplicates, unique_duplicate
 import simulation
-from properties import (FilteredExpression, TableExpression, GroupCount, 
+from properties import (FilteredExpression, TableExpression, GroupCount,
                         add_individuals)
+
 
 #XXX: it might be faster to partition using a formula giving the index of the
 # group instead of checking all possible value combination.
 # eg. idx = where(agegroup <= 50, agegroup / 5, 5 + agegroup / 10) + male * 15
 # however, in numpy I would still have to do (idx == 0).nonzero(),
-# (idx == 1).nonzero(), ... 
+# (idx == 1).nonzero(), ...
 def partition_nd(columns, filter, possible_values):
     """
     * columns is a list of columns containing the data to be partitioned
-    * filter is a vector of booleans which selects individuals to be counted  
+    * filter is a vector of booleans which selects individuals to be counted
     * values is an matrix with N vectors containing the possible values for
       each column
-    * returns a 1d array of lists of indices 
+    * returns a 1d array of lists of indices
     """
     size = tuple([len(colvalues) for colvalues in possible_values])
-    
+
     # initialise result with empty lists
-    result = np.empty(size, dtype=list)    
+    result = np.empty(size, dtype=list)
 
     # for each combination of i, j, k:
     for idx in np.ndindex(*size):
         #TODO: use numexpr instead
-        # for the usual case (2 dimensions), it is faster as soon as we have 
+        # for the usual case (2 dimensions), it is faster as soon as we have
         # more than ~20000 rows, which will probably be the usual case.
 
         # local_filter = filter & (data0 == values0[i]) & (data1 == values1[j])
@@ -47,27 +48,28 @@ def partition_nd(columns, filter, possible_values):
         result[idx] = local_filter.nonzero()[0]
 
     # pure-python version. It is 10x slower than the NumPy version above
-    # but it might be a better starting point to translate to C, 
+    # but it might be a better starting point to translate to C,
     # especially given that the possible_values are usually sorted (we could
     # sort them too), so we could use some bisect algorithm to find which
-    # category it belongs to. 
-    
+    # category it belongs to.
+
 #    fill_with_empty_list = np.frompyfunc(lambda _: [], 1, 1)
 #    fill_with_empty_list(result, result)
-    
+
 #    for idx, row in enumerate(izip(*data_columns)):
 #        # returns a tuple with the position of the group this row belongs to
 #        # eg. (0, 1, 5)
-#        #XXX: this uses strict equality, partitioning using 
+#        #XXX: this uses strict equality, partitioning using
 #        # inequalities might be useful in some cases
 #        try:
-#            pos = tuple([values_i.index(vi) for vi, values_i 
+#            pos = tuple([values_i.index(vi) for vi, values_i
 #                                            in izip(row, possible_values)])
 #            result[pos].append(idx)
 #        except ValueError:
 #            #XXX: issue a warning?
 #            pass
     return np.ravel(result)
+
 
 def extract_period(period, expressions, possible_values, probabilities):
     #TODO: allow any temporal variable
@@ -77,7 +79,7 @@ def extract_period(period, expressions, possible_values, probabilities):
     if periodcol != len(expressions) - 1:
         raise NotImplementedError('period, if present, should be the last '
                                   'expression')
-    expressions = expressions[:periodcol] + expressions[periodcol+1:]
+    expressions = expressions[:periodcol] + expressions[periodcol + 1:]
     possible_values = possible_values[:]
     period_values = possible_values.pop(periodcol)
     num_periods = len(period_values)
@@ -88,7 +90,8 @@ def extract_period(period, expressions, possible_values, probabilities):
         raise Exception('missing alignment data for period %d' % period)
 
     return expressions, possible_values, probabilities
-    
+
+
 def align_get_indices_nd(context, filter, score,
                          expressions, possible_values, probabilities,
                          take_filter=None, leave_filter=None, weights=None,
@@ -114,7 +117,7 @@ def align_get_indices_nd(context, filter, score,
 
     # the sum is not necessarily equal to len(a), because some individuals
     # might not fit in any group (eg if some alignment data is missing)
-    num_aligned = sum(len(g) for g in groups) 
+    num_aligned = sum(len(g) for g in groups)
     if num_aligned < num_to_align:
         to_align = set(filter.nonzero()[0])
         aligned = set()
@@ -130,9 +133,9 @@ def align_get_indices_nd(context, filter, score,
     take = 0
     leave = 0
     if take_filter is not None:
-        take = np.sum(filter & take_filter) 
+        take = np.sum(filter & take_filter)
         take_indices = take_filter.nonzero()[0]
-        if leave_filter is not None: 
+        if leave_filter is not None:
             maybe_indices = ((~take_filter) & (~leave_filter)).nonzero()[0]
         else:
             maybe_indices = (~take_filter).nonzero()[0]
@@ -154,21 +157,18 @@ def align_get_indices_nd(context, filter, score,
     to_split_overflow = []
     for group_idx, members_indices, probability in izip(count(), groups,
                                                         probabilities):
-        
         if len(members_indices):
             if weights is None:
-                member_weights = None
                 expected = len(members_indices) * probability
             else:
-                member_weights = weights[members_indices]
-                expected = np.sum(member_weights) * probability
+                expected = np.sum(weights[members_indices]) * probability
             affected = int(expected)
             if past_error is not None:
                 group_overflow = past_error[group_idx]
                 if group_overflow != 0:
                     affected -= group_overflow
                 past_error[group_idx] = 0
-                
+
             if random.random() < expected - affected:
                 affected += 1
             total_affected += affected
@@ -197,7 +197,7 @@ def align_get_indices_nd(context, filter, score,
                     sorted_global_indices = \
                         group_maybe_indices[sorted_local_indices]
                 else:
-                    sorted_global_indices = group_maybe_indices 
+                    sorted_global_indices = group_maybe_indices
 
                 # maybe_to_take is always > 0
                 maybe_to_take = affected - num_always
@@ -207,19 +207,19 @@ def align_get_indices_nd(context, filter, score,
                     indices_to_take = sorted_global_indices[-maybe_to_take:]
                 else:
                     maybe_weights = weights[sorted_global_indices]
-                    
+
                     # we need to invert the order because members are sorted
                     # on score ascendingly and we need to take those with
                     # highest score.
                     weight_sums = np.cumsum(maybe_weights[::-1])
-                    
+
                     threshold_idx = np.searchsorted(weight_sums, maybe_to_take)
                     if threshold_idx < len(weight_sums):
                         num_to_take = threshold_idx + 1
                         # if there is enough weight to reach "maybe_to_take"
-                        overflow = weight_sums[threshold_idx] - maybe_to_take 
+                        overflow = weight_sums[threshold_idx] - maybe_to_take
                         if overflow > 0:
-                            # the next individual has too much weight, so we 
+                            # the next individual has too much weight, so we
                             # need to split it.
                             id_to_split = sorted_global_indices[threshold_idx]
                             past_error[group_idx] = overflow
@@ -239,21 +239,21 @@ def align_get_indices_nd(context, filter, score,
 
                 underflow = maybe_to_take - len(indices_to_take)
                 if underflow > 0:
-                    total_underflow += underflow  
+                    total_underflow += underflow
                 total_indices.extend(indices_to_take)
             elif affected < num_always:
                 total_overflow += num_always - affected
 # this assertion is only valid in the non weighted case
 #    assert len(total_indices) == \
 #           total_affected + total_overflow - total_underflow
-    print(" %d/%d" % (len(total_indices), num_aligned), end=" ")            
+    print(" %d/%d" % (len(total_indices), num_aligned), end=" ")
     if (take_filter is not None) or (leave_filter is not None):
         print("[take %d, leave %d]" % (take, leave), end=" ")
     if total_underflow:
         print("UNDERFLOW: %d" % total_underflow, end=" ")
     if total_overflow:
         print("OVERFLOW: %d" % total_overflow, end=" ")
-        
+
     if to_split_indices:
         return total_indices, (to_split_indices, to_split_overflow)
     else:
@@ -263,13 +263,15 @@ def align_get_indices_nd(context, filter, score,
 def prod(values):
     return reduce(operator.mul, values, 1)
 
+
 class GroupBy(TableExpression):
 #    func_name = 'groupby'
 
     def __init__(self, *args, **kwargs):
         assert len(args), "groupby needs at least one expression"
         assert isinstance(args[0], Expr), "groupby takes expressions as " \
-                                          "arguments, not a list of expressions"
+                                          "arguments, not a list of " \
+                                          "expressions"
         self.expressions = args
 
         # On python 3, we could clean up this code (keyword only arguments).
@@ -278,9 +280,9 @@ class GroupBy(TableExpression):
             expr = GroupCount()
         self.expr = expr
         self.filter = kwargs.get('filter')
-        by = kwargs.get('by') 
+        by = kwargs.get('by')
         if isinstance(by, Expr):
-            by = (by,) 
+            by = (by,)
         self.by = by
         self.percent = kwargs.get('percent', False)
 
@@ -293,44 +295,45 @@ class GroupBy(TableExpression):
 
         expressions = self.expressions
         columns = [expr_eval(e, context) for e in expressions]
-        
+
         #XXX: why not work all the way with filtered
-        possible_values = [np.unique(col[filter_value]) 
+        possible_values = [np.unique(col[filter_value])
                                if isinstance(col, np.ndarray) and col.shape
                                else [col]
                            for col in columns]
         groups = partition_nd(columns, filter_value, possible_values)
-        
+
         # groups is a (flat) list of list.
-        # the first variable is the outer-most "loop", 
+        # the first variable is the outer-most "loop",
         # the last one the inner most.
-        
-        # add total for each row        
-        folded_vars = len(expressions) - 1
+
+        # add total for each row
+        folded_exprs = len(expressions) - 1
         len_pvalues = [len(vals) for vals in possible_values]
         width = len_pvalues[-1]
         height = prod(len_pvalues[:-1])
 
         def xy_to_idx(x, y):
-            # divide by the prod of possible values of expressions to its right, 
-            # mod by its own number of possible values
-            vars = [(y / prod(len_pvalues[v + 1:folded_vars])) % len_pvalues[v]
-                    for v in range(folded_vars)]
+            # divide by the prod of possible values of expressions to its
+            # right, mod by its own number of possible values
+            offsets = [(y / prod(len_pvalues[v + 1:folded_exprs]))
+                       % len_pvalues[v]
+                       for v in range(folded_exprs)]
             return sum(v * prod(len_pvalues[i + 1:])
-                       for i, v in enumerate(vars)) + x
-        
+                       for i, v in enumerate(offsets)) + x
+
         groups_wh_totals = []
         for y in range(height):
             line_indices = []
             for x in range(width):
                 member_indices = groups[xy_to_idx(x, y)]
-                groups_wh_totals.append(member_indices) 
+                groups_wh_totals.append(member_indices)
                 line_indices.extend(member_indices)
             groups_wh_totals.append(line_indices)
 
         # width just increased because of totals
         width += 1
-        
+
         # add total for each column (including the "total per row" one)
         for x in range(width):
             column_indices = []
@@ -358,29 +361,29 @@ class GroupBy(TableExpression):
 #                total_value = data[-1]
 #                divisors = [total_value for _ in data]
 #            else:
-#                num_by = len(self.by) 
+#                num_by = len(self.by)
 #                inc = prod(len_pvalues[-num_by:])
 #                num_groups = len(groups)
 #                num_categories = prod(len_pvalues[:-num_by])
-#                
+#
 #                categories_groups_idx = [range(cat_idx, num_groups, inc)
 #                                         for cat_idx in range(num_categories)]
-#                
+#
 #                divisors = ...
-#                
+#
 #            data = [100.0 * value / divisor
 #                    for value, divisor in izip(data, divisors)]
-            
+
         # gender | False | True | total
         #        |    20 |   16 |    35
 
-        # gender | False | True | 
+        # gender | False | True |
         #   dead |       |      | total
         #  False |    20 |   15 |    35
         #   True |     0 |    1 |     1
         #  total |    20 |   16 |    36
 
-        #          |   dead | False | True | 
+        #          |   dead | False | True |
         # agegroup | gender |       |      | total
         #        5 |  False |    20 |   15 |    xx
         #        5 |   True |     0 |    1 |    xx
@@ -390,9 +393,9 @@ class GroupBy(TableExpression):
 
         # add headers
         labels = [str(e) for e in expressions]
-        if folded_vars:
-            result = [[''] * (folded_vars - 1) +
-                      [labels[-1]] + 
+        if folded_exprs:
+            result = [[''] * (folded_exprs - 1) +
+                      [labels[-1]] +
                       list(possible_values[-1]) +
                       [''],
                       # 2nd line
@@ -400,7 +403,7 @@ class GroupBy(TableExpression):
                       [''] * len(possible_values[-1]) +
                       ['total']]
             categ_values = list(product(*possible_values[:-1]))
-            last_line = [''] * (folded_vars - 1) + ['total']
+            last_line = [''] * (folded_exprs - 1) + ['total']
             categ_values.append(last_line)
             height += 1
         else:
@@ -409,17 +412,18 @@ class GroupBy(TableExpression):
             categ_values = [['']]
 
         for y in range(height):
-            result.append(list(categ_values[y]) + 
+            result.append(list(categ_values[y]) +
                           data[y * width:(y + 1) * width])
-        return PrettyTable(result, None)
+        return PrettyTable(result)
 
     def collect_variables(self, context):
-        vars = set.union(*[collect_variables(expr, context)
-                           for expr in self.expressions])
+        variables = set.union(*[collect_variables(expr, context)
+                                for expr in self.expressions])
         if self.filter is not None:
-            vars |= collect_variables(self.filter, context)
-        vars |= collect_variables(self.expr, context)
-        return vars
+            variables |= collect_variables(self.filter, context)
+        variables |= collect_variables(self.expr, context)
+        return variables
+
 
 class Alignment(FilteredExpression):
     func_name = 'align'
@@ -429,12 +433,12 @@ class Alignment(FilteredExpression):
                  expressions=None, possible_values=None, probabilities=None,
                  on_overflow='default'):
         super(Alignment, self).__init__(score_expr, filter)
-        
-        assert ((expressions is not None and 
-                 possible_values is not None and 
+
+        assert ((expressions is not None and
+                 possible_values is not None and
                  probabilities is not None) or
                 (fname is not None))
-        
+
         if fname is not None:
             self.load(fname)
         else:
@@ -457,26 +461,27 @@ class Alignment(FilteredExpression):
             table = []
             for line in lines:
                 if any(value == '' for value in line):
-                    raise Exception("empty cell found in %s" % fpath) 
+                    raise Exception("empty cell found in %s" % fpath)
                 table.append([eval(value) for value in line])
         ndim = len(header)
         unique_last_d, dupe_last_d = unique_duplicate(table.pop(0))
         if dupe_last_d:
             print("Duplicate column header value(s) (for '%s') in '%s': %s"
-                  % (header[-1], fpath, ", ".join(str(v) for v in dupe_last_d)))
+                  % (header[-1], fpath,
+                     ", ".join(str(v) for v in dupe_last_d)))
             raise Exception("bad alignment data in '%s': found %d "
                             "duplicate column header value(s)"
                             % (fpath, len(dupe_last_d)))
-            
+
         # strip the ndim-1 first columns
         headers = [[line.pop(0) for line in table]
                    for _ in range(ndim - 1)]
-        
+
         possible_values = [list(unique(values)) for values in headers]
         if ndim > 1:
             # having duplicate values is normal when there are more than 2
             # dimensions but we need to test whether there are duplicates of
-            # combinations. 
+            # combinations.
             dupe_combos = list(duplicates(zip(*headers)))
             if dupe_combos:
                 print("Duplicate row header value(s) in '%s':" % fpath)
@@ -484,7 +489,7 @@ class Alignment(FilteredExpression):
                 raise Exception("bad alignment data in '%s': found %d "
                                 "duplicate row header value(s)"
                                 % (fpath, len(dupe_combos)))
-        
+
         possible_values.append(unique_last_d)
         self.possible_values = possible_values
         self.probabilities = list(chain.from_iterable(table))
@@ -493,18 +498,18 @@ class Alignment(FilteredExpression):
             raise Exception("incoherent alignment data in '%s': %d data cells "
                             "found while it should be %d based on the number "
                             "of possible values in headers (%s)"
-                            % (fpath, 
+                            % (fpath,
                                len(self.probabilities),
                                num_possible_values,
                                ' * '.join(str(len(values))
                                           for values in possible_values)))
-        
+
     def eval(self, context):
         scores = expr_eval(self.expr, context)
 
         on_overflow = self.on_overflow
         if on_overflow == 'default':
-            on_overflow = context.get('__on_align_overflow__', 'carry') 
+            on_overflow = context.get('__on_align_overflow__', 'carry')
 
         #XXX: I should try to pre-parse weight_col in the entity, rather than
         # here, possibly allowing expressions. Not sure it has any use, but it
@@ -516,7 +521,7 @@ class Alignment(FilteredExpression):
                 self.overflows = np.zeros(len(self.probabilities))
         else:
             weights = None
-        
+
         ctx_filter = context.get('__filter__')
         if self.filter is not None:
             if ctx_filter is not None:
@@ -528,7 +533,7 @@ class Alignment(FilteredExpression):
                 filter_expr = ctx_filter
             else:
                 filter_expr = None
-        
+
         if filter_expr is not None:
             filter_value = expr_eval(filter_expr, context)
         else:
@@ -559,6 +564,7 @@ class Alignment(FilteredExpression):
                 num_individuals = len(id_to_rownum)
                 clones['id'] = np.arange(num_individuals,
                                          num_individuals + num_birth)
+                #FIXME: self.weight_col is not defined
                 clones[self.weight_col] = to_split_overflow
                 array[self.weight_col][to_split_indices] -= to_split_overflow
                 add_individuals(context, clones)

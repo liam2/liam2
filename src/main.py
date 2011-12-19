@@ -10,6 +10,7 @@ import entities
 
 __version__ = "0.4.1"
 
+
 class AutoflushFile(object):
     def __init__(self, f):
         self.f = f
@@ -18,13 +19,15 @@ class AutoflushFile(object):
         self.f.write(s)
         self.f.flush()
 
+
 def usage(script):
     print """
 Usage: %s action file [-i]
   action: can be either 'import', 'run' or 'explore'
   file: the file to run, import or explore
-  -i: show the interactive console after the simulation 
+  -i: show the interactive console after the simulation
 """ % script
+
 
 def eat_traceback(func, *args, **kwargs):
 # e.context      | while parsing a block mapping
@@ -40,17 +43,18 @@ def eat_traceback(func, *args, **kwargs):
                 with file('error.log', 'w') as f:
                     traceback.print_exc(file=f)
             except IOError, log_ex:
-                print "WARNING: %s on '%s'" % (log_ex.strerror, log_ex.filename)
+                print "WARNING: %s on '%s'" % (log_ex.strerror,
+                                               log_ex.filename)
             except Exception, log_ex:
                 print log_ex
             raise e
     except yaml.parser.ParserError, e:
         # eg, inconsistent spacing, no space after a - in a list, ...
-        print "SYNTAX ERROR %s" % str(e.problem_mark).strip() 
+        print "SYNTAX ERROR %s" % str(e.problem_mark).strip()
     except yaml.scanner.ScannerError, e:
-        # eg, tabs, missing colon for mapping. The reported problem is different when
-        # it happens on the first line (no context_mark) and when it happens on
-        # a subsequent line.
+        # eg, tabs, missing colon for mapping. The reported problem is
+        # different when it happens on the first line (no context_mark) and
+        # when it happens on a subsequent line.
         if e.context_mark is not None:
             if e.problem == "could not found expected ':'":
                 msg = "could not find expected ':'"
@@ -58,7 +62,8 @@ def eat_traceback(func, *args, **kwargs):
                 msg = e.problem
             mark = e.context_mark
         else:
-            if e.problem == "found character '\\t' that cannot start any token":
+            if (e.problem ==
+                "found character '\\t' that cannot start any token"):
                 msg = "found a TAB character instead of spaces"
             else:
                 msg = ""
@@ -78,10 +83,11 @@ def eat_traceback(func, *args, **kwargs):
         print "SYNTAX ERROR:", e.msg.replace('EOF', 'end of block')
         if e.text is not None:
             print e.text
-            offset_str = ' ' * (e.offset - 1) if e.offset > 0 else '' 
+            offset_str = ' ' * (e.offset - 1) if e.offset > 0 else ''
             print offset_str + '^'
     except Exception, e:
         print "\nERROR:", str(e)
+
 
 def main(script, action, fpath, *args):
     if action == 'run':
@@ -89,7 +95,7 @@ def main(script, action, fpath, *args):
         console = len(args) > 0 and args[0] == "-i"
         simulation = Simulation.from_yaml(fpath)
         simulation.run(console)
-    
+
 #        import cProfile as profile
 #        profile.run('simulation.run()', 'c:\\tmp\\simulation.profile')
         # to use profiling data:
@@ -109,7 +115,7 @@ def main(script, action, fpath, *args):
             simulation = Simulation.from_yaml(fpath)
             h5in, h5out, periodic_globals = simulation.load()
             ent_name = simulation.default_entity
-            entity = entities.entity_registry[ent_name] 
+            entity = entities.entity_registry[ent_name]
             period = simulation.start_period + simulation.periods - 1
         try:
             print "Using %s file: '%s'" % (ftype, fpath)
@@ -121,13 +127,14 @@ def main(script, action, fpath, *args):
                 h5out.close()
     else:
         usage(script)
-    
+
 if __name__ == '__main__':
-    import sys, platform
+    import sys
+    import platform
 
     sys.stdout = AutoflushFile(sys.stdout)
     sys.stderr = AutoflushFile(sys.stderr)
-    print "LIAM2 %s using Python %s (%s)" % (__version__, 
+    print "LIAM2 %s using Python %s (%s)" % (__version__,
                                              platform.python_version(),
                                              platform.architecture()[0])
     print
@@ -137,5 +144,5 @@ if __name__ == '__main__':
         usage(args[0])
         sys.exit()
 
-    eat_traceback(main, *args)    
-    
+    eat_traceback(main, *args)
+#    main(*args)

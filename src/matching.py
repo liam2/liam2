@@ -1,6 +1,6 @@
 import numpy as np
 
-from expr import parse, Variable, functions, expr_eval, collect_variables
+from expr import parse, functions, expr_eval, collect_variables
 from entities import context_length, context_subset, context_delete
 from properties import EvaluableExpression, PrefixingLink
 
@@ -13,23 +13,23 @@ class Matching(EvaluableExpression):
         self.set2filter = set2filter
         self.score_expr = score
         self.orderby = orderby
-    
+
     def collect_variables(self, context):
-        #FIXME: add score_expr 
+        #FIXME: add score_expr
         expr_vars = collect_variables(self.set1filter, context)
         expr_vars |= collect_variables(self.set2filter, context)
         expr_vars |= collect_variables(self.orderby, context)
         return expr_vars
-    
+
     def eval(self, context):
         global local_ctx
 
         ctx_filter = context.get('__filter__')
-        
+
         id_to_rownum = context.id_to_rownum
 
         # at some point ctx_filter will be cached automatically, so we don't
-        # need to take care of it manually here 
+        # need to take care of it manually here
         if ctx_filter is not None:
             set1filter = expr_eval(ctx_filter & self.set1filter, context)
             set2filter = expr_eval(ctx_filter & self.set2filter, context)
@@ -45,7 +45,7 @@ class Matching(EvaluableExpression):
             variables = {'other': PrefixingLink({}, {}, '__other_')}
             variables.update(context.entity.variables)
             score_expr = parse(score_expr, variables)
-            
+
         used_variables = score_expr.collect_variables(context)
         used_variables1 = ['id'] + [v for v in used_variables
                                     if not v.startswith('__other_')]
@@ -56,15 +56,15 @@ class Matching(EvaluableExpression):
         set2 = context_subset(context, set2filter, used_variables2)
         orderby = expr_eval(self.orderby, context)
         sorted_set1_indices = orderby[set1filter].argsort()[::-1]
-        
+
         print "matching with %d/%d individuals" % (set1filter.sum(),
                                                    set2filter.sum())
 
 #        #TODO: compute pk_names automatically: variables which are either
 #        # boolean, or have very few possible values and which are used more
-#        # than once in the expression and/or which are used in boolean 
+#        # than once in the expression and/or which are used in boolean
 #        # expressions
-#        pk_names = ('eduach', 'work')        
+#        pk_names = ('eduach', 'work')
 #        optimized_exprs = {}
 
         result = np.empty(context_length(context), dtype=int)
@@ -75,9 +75,9 @@ class Matching(EvaluableExpression):
 
         def match_one_set1_individual(idx, sorted_idx):
             global local_ctx
-            
+
             if not context_length(local_ctx):
-                raise StopIteration                
+                raise StopIteration
 
             local_ctx.update((k, set1[k][sorted_idx]) for k in used_variables1)
 
@@ -85,27 +85,27 @@ class Matching(EvaluableExpression):
 #            optimized_expr = optimized_exprs.get(pk)
 #            if optimized_expr is None:
 #                for name in pk_names:
-#                    fake_set1['__f_%s' % name].value = individual1[name] 
+#                    fake_set1['__f_%s' % name].value = individual1[name]
 #                optimized_expr = str(symbolic_expr.simplify())
 #                optimized_exprs[pk] = optimized_expr
 #            set2_scores = evaluate(optimized_expr, mm_dict, set2)
 
             set2_scores = expr_eval(score_expr, local_ctx)
-            
-            individual2_idx = np.argmax(set2_scores)       
-            
+
+            individual2_idx = np.argmax(set2_scores)
+
             id1 = local_ctx['id']
             id2 = local_ctx['__other_id'][individual2_idx]
-            
+
             local_ctx = context_delete(local_ctx, individual2_idx)
-            
+
             result[id_to_rownum[id1]] = id2
             result[id_to_rownum[id2]] = id1
-            
+
         loop_wh_progress(match_one_set1_individual, sorted_set1_indices)
         return result
-    
+
     def dtype(self, context):
         return int
-    
+
 functions['matching'] = Matching

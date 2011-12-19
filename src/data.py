@@ -6,14 +6,17 @@ import numpy as np
 from expr import normalize_type, get_missing_value, get_missing_record
 from utils import loop_wh_progress, time2str, safe_put
 
+
 def table_size(table):
     return (len(table) * table.dtype.itemsize) / 1024.0 / 1024.0
+
 
 def get_fields(array):
     dtype = array.dtype
     field_types = dtype.fields
     return [(name, normalize_type(field_types[name][0].type))
             for name in dtype.names]
+
 
 def assertValidFields(s_fields, array, allowed_missing=None):
     # extract types from field description and normalise to python types
@@ -23,8 +26,8 @@ def assertValidFields(s_fields, array, allowed_missing=None):
     s_names = set(name for name, _ in s_fields)
     t_names = set(name for name, _ in t_fields)
     allowed_missing = set(allowed_missing) if allowed_missing is not None \
-                                           else set() 
-    missing = s_names - t_names - allowed_missing 
+                                           else set()
+    missing = s_names - t_names - allowed_missing
     if missing:
         raise Exception("Missing field(s) in hdf5 input file: %s"
                         % ', '.join(missing))
@@ -33,7 +36,7 @@ def assertValidFields(s_fields, array, allowed_missing=None):
     common_t_fields = [(name, type_)
                        for name, type_ in t_fields if name in s_names]
     common_s_fields = [(name, type_)
-                       for name, type_ in s_fields if name in t_names] 
+                       for name, type_ in s_fields if name in t_names]
     bad_fields = []
     for (name1, t1), (name2, t2) in zip(sorted(common_s_fields),
                                         sorted(common_t_fields)):
@@ -41,17 +44,19 @@ def assertValidFields(s_fields, array, allowed_missing=None):
         if t1 != t2:
             bad_fields.append((name1, t2.__name__, t1.__name__))
     if bad_fields:
-        bad_fields_str = "\n".join(" - %s: %s instead of %s" % f for f in bad_fields)
+        bad_fields_str = "\n".join(" - %s: %s instead of %s" % f
+                                   for f in bad_fields)
         raise Exception("Field types in hdf5 input file differ from those "
                         "defined in the simulation:\n%s" % bad_fields_str)
+
 
 def add_and_drop_fields(array, output_fields, output_array=None):
     output_dtype = np.dtype(output_fields)
     output_names = set(output_dtype.names)
     input_names = set(array.dtype.names)
-    common_fields = output_names & input_names 
+    common_fields = output_names & input_names
     missing_fields = output_names - input_names
-    if output_array is None: 
+    if output_array is None:
         output_array = np.empty(len(array), dtype=output_dtype)
         for fname in missing_fields:
             output_array[fname] = get_missing_value(output_array[fname])
@@ -61,13 +66,14 @@ def add_and_drop_fields(array, output_fields, output_array=None):
         output_array[fname] = array[fname]
     return output_array
 
+
 def mergeSubsetInArray(output, id_to_rownum, subset, first=False):
     if subset.dtype == output.dtype and len(subset) == len(output):
         return subset
     elif subset.dtype == output.dtype:
         safe_put(output, id_to_rownum[subset['id']], subset)
         return output
-    
+
     output_names = output.dtype.names
     subset_names = subset.dtype.names
     names_to_copy = set(subset_names) & set(output_names)
@@ -87,10 +93,10 @@ def mergeSubsetInArray(output, id_to_rownum, subset, first=False):
                         get_missing_value(subset_all_cols[fname])
             else:
                 subset_all_cols = output[rownums]
-                # Note that all rows which correspond to rownums == -1 have wrong
-                # values (they have the value of the last row) but it is not 
-                # necessary to correct them since they will not be copied back
-                # into output_array.
+                # Note that all rows which correspond to rownums == -1 have
+                # wrong values (they have the value of the last row) but it is
+                # not necessary to correct them since they will not be copied
+                # back into output_array.
                 # np.putmask(subset_all_cols, rownums == -1, missing_row)
             for fname in names_to_copy:
                 subset_all_cols[fname] = subset[fname]
@@ -99,22 +105,23 @@ def mergeSubsetInArray(output, id_to_rownum, subset, first=False):
             for fname in names_to_copy:
                 safe_put(output[fname], rownums, subset[fname])
         return output
-    
+
+
 def mergeArrays(array1, array2, result_fields='union'):
     fields1 = get_fields(array1)
     fields2 = get_fields(array2)
     #TODO: check that common fields have the same type
-    if result_fields == 'union': 
+    if result_fields == 'union':
         names1 = set(array1.dtype.names)
-        fields_notin1 = [(name, type_) for name, type_ in fields2 
+        fields_notin1 = [(name, type_) for name, type_ in fields2
                          if name not in names1]
         output_fields = fields1 + fields_notin1
     elif result_fields == 'array1':
         output_fields = fields1
     else:
-        raise ValueError('%s in not a valid value for result_fields argument' % 
+        raise ValueError('%s in not a valid value for result_fields argument' %
                          result_fields)
-    
+
     output_dtype = np.dtype(output_fields)
 
     ids1 = array1['id']
@@ -125,8 +132,8 @@ def mergeArrays(array1, array2, result_fields='union'):
     # compute new id_to_rownum
     id_to_rownum = np.empty(max_id + 1, dtype=int)
     id_to_rownum.fill(-1)
-    for rownum, id in enumerate(all_ids):
-        id_to_rownum[id] = rownum
+    for rownum, rowid in enumerate(all_ids):
+        id_to_rownum[rowid] = rownum
 
     # 1) create resulting array
     ids1_complete = len(ids1) == len(all_ids)
@@ -144,16 +151,16 @@ def mergeArrays(array1, array2, result_fields='union'):
     else:
         output_array = np.empty(len(all_ids), dtype=output_dtype)
         output_array[:] = get_missing_record(output_array)
-    
+
     # 2) copy data from array1
-    if not arr2_complete: 
-        output_array = mergeSubsetInArray(output_array, id_to_rownum, 
+    if not arr2_complete:
+        output_array = mergeSubsetInArray(output_array, id_to_rownum,
                                           array1, first=True)
 
     # 3) copy data from array2
     if not output_is_arr2:
         output_array = mergeSubsetInArray(output_array, id_to_rownum, array2)
-    
+
     return output_array, id_to_rownum
 
 
@@ -161,10 +168,10 @@ def appendTable(input_table, output_table, chunksize=10000, condition=None,
                 stop=None, show_progress=False):
     if input_table.dtype != output_table.dtype:
         output_fields = get_fields(output_table)
-    else: 
+    else:
         output_fields = None
-    
-    if stop is None: 
+
+    if stop is None:
         numrows = len(input_table)
     else:
         numrows = stop
@@ -179,7 +186,7 @@ def appendTable(input_table, output_table, chunksize=10000, condition=None,
     if output_fields is not None:
         expanded_data = np.empty(chunksize, dtype=np.dtype(output_fields))
         expanded_data[:] = get_missing_record(expanded_data)
-            
+
     def copyChunk(chunk_idx, chunk_num):
         start = chunk_num * chunksize
         stop = min(start + chunksize, numrows)
@@ -198,7 +205,7 @@ def appendTable(input_table, output_table, chunksize=10000, condition=None,
                 output_data = add_and_drop_fields(input_data, output_fields)
         else:
             output_data = input_data
-                
+
         output_table.append(output_data)
         output_table.flush()
 
@@ -210,26 +217,28 @@ def appendTable(input_table, output_table, chunksize=10000, condition=None,
 
     return output_table
 
+
 def copyTable(input_table, output_file, output_node, output_fields=None,
-              chunksize=10000, condition=None, stop=None, show_progress=False, 
+              chunksize=10000, condition=None, stop=None, show_progress=False,
               **kwargs):
     complete_kwargs = {'title': input_table._v_title,
-                      } 
+                      }
 #                       'filters': input_table.filters}
     complete_kwargs.update(kwargs)
     if output_fields is None:
         output_dtype = input_table.dtype
     else:
         output_dtype = np.dtype(output_fields)
-    output_table = output_file.createTable(output_node, input_table.name, 
+    output_table = output_file.createTable(output_node, input_table.name,
                                            output_dtype, **complete_kwargs)
-    return appendTable(input_table, output_table, chunksize, condition, 
+    return appendTable(input_table, output_table, chunksize, condition,
                        stop=stop, show_progress=show_progress)
 
+
 #XXX: should I make a generic n-way array merge out of this?
-# this is a special case though because: 
+# this is a special case though because:
 # 1) all arrays have the same columns
-# 2) we have id_to_rownum already computed for each array 
+# 2) we have id_to_rownum already computed for each array
 def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
                         start_period):
     periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
@@ -254,21 +263,21 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
     if np.array_equal(present_in_period, is_present):
         start, stop = input_rows[target_period]
         input_array = input_table.read(start=start, stop=stop)
-        return (add_and_drop_fields(input_array, output_fields), 
+        return (add_and_drop_fields(input_array, output_fields),
                 period_id_to_rownum)
-         
+
     # building id_to_rownum for the target period
     id_to_rownum = np.empty(max_id + 1, dtype=int)
     id_to_rownum.fill(-1)
     rownum = 0
-    for id, present in enumerate(is_present):
+    for row_id, present in enumerate(is_present):
         if present:
-            id_to_rownum[id] = rownum
+            id_to_rownum[row_id] = rownum
             rownum += 1
-            
-#    all_ids = is_present.nonzero()[0] 
 
-    # computing source row (period) for each destination row    
+#    all_ids = is_present.nonzero()[0]
+
+    # computing source row (period) for each destination row
     output_array_source_rows = np.empty(rownum, dtype=int)
     output_array_source_rows.fill(-1)
     for period in periods_before[::-1]:
@@ -278,9 +287,9 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
 #        start, stop = input_rows[period]
 #        missing_ids = all_ids[missing_rows]
 #        input_id_to_rownum = input_index[period]
-#        input_rownums_for_missing = input_id_to_rownum[missing_ids] + start  
-#        output_array_source_rows[missing_rows] = input_rownums_for_missing 
-        
+#        input_rownums_for_missing = input_id_to_rownum[missing_ids] + start
+#        output_array_source_rows[missing_rows] = input_rownums_for_missing
+
         start, stop = input_rows[period]
         input_id_to_rownum = input_index[period]
         input_ids = (input_id_to_rownum != -1).nonzero()[0]
@@ -301,16 +310,16 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
 #                    if output_array_source_rows[output_rownum] == -1:
 #                        output_array_source_rows[output_rownum] = \
 #                            start + input_rownum
-                            
+
 #        if np.all(output_array_source_rows != -1):
 #            break
-        
-    # reading data 
+
+    # reading data
     output_array = input_table.readCoordinates(output_array_source_rows)
     output_array = add_and_drop_fields(output_array, output_fields)
 
     return output_array, id_to_rownum
-    
+
 
 def index_table(table):
     rows_per_period = {}
@@ -320,7 +329,7 @@ def index_table(table):
     current_period = None
     start_row = None
     for idx, row in enumerate(table):
-        period, id = row['period'], row['id']
+        period, row_id = row['period'], row['id']
         if period != current_period:
             # 0 > None is True
             assert period > current_period, "data is not time-ordered"
@@ -332,25 +341,27 @@ def index_table(table):
                 temp_id_to_rownum = [-1] * (max_id_so_far + 1)
             start_row = idx
             current_period = period
-        if id > max_id_so_far:
-            extra = [-1] * (id - max_id_so_far)
+        if row_id > max_id_so_far:
+            extra = [-1] * (row_id - max_id_so_far)
             temp_id_to_rownum.extend(extra)
-        temp_id_to_rownum[id] = idx - start_row
-        max_id_so_far = max(max_id_so_far, id)
+        temp_id_to_rownum[row_id] = idx - start_row
+        max_id_so_far = max(max_id_so_far, row_id)
     if current_period is not None:
         rows_per_period[current_period] = (start_row, len(table))
         id_to_rownum_per_period[current_period] = np.array(temp_id_to_rownum)
     return rows_per_period, id_to_rownum_per_period
+
 
 def index_table_light(table):
     rows_per_period = {}
     current_period = None
     start_row = None
     for idx, row in enumerate(table):
-        period, id = row['period'], row['id']
+        period = row['period']
         if period != current_period:
             # 0 > None is True
-            assert period > current_period, "data is not time-ordered"
+            if period < current_period:
+                raise Exception("data is not time-ordered")
             if start_row is not None:
                 rows_per_period[current_period] = (start_row, idx)
             start_row = idx
@@ -359,16 +370,18 @@ def index_table_light(table):
         rows_per_period[current_period] = (start_row, len(table))
     return rows_per_period
 
+
 class IndexedTable(object):
     def __init__(self, table, period_index, id2rownum_per_period):
         self.table = table
         self.period_index = period_index
         self.id2rownum_per_period = id2rownum_per_period
-        
-    @property 
+
+    @property
     def base_period(self):
         return min(self.period_index.keys())
-        
+
+
 class H5Data(object):
     def __init__(self, input_path, output_path):
         self.input_path = input_path
@@ -389,15 +402,15 @@ class H5Data(object):
                 periodic_globals = input_globals.periodic.read()
 
         input_entities = input_root.entities
-        
+
         entities_tables = {}
         dataset = {'globals': periodic_globals,
                    'entities': entities_tables}
-        
+
         print " * indexing tables"
         for ent_name, entity in entities.iteritems():
             print "    -", ent_name, "...",
-            
+
             table = getattr(input_entities, ent_name)
             assertValidFields(entity.fields, table, entity.missing_fields)
 
@@ -409,12 +422,12 @@ class H5Data(object):
             print "done (%s elapsed)." % time2str(time.time() - start_time)
 
         return input_file, dataset
-        
+
     def load(self, entities):
         h5file, dataset = self.index_tables(entities, self.output_path)
         entities_tables = dataset['entities']
         for ent_name, entity in entities.iteritems():
-# this is what should happen            
+# this is what should happen
 #            entity.indexed_input_table = entities_tables[ent_name]
 #            entity.indexed_output_table = entities_tables[ent_name]
             table = entities_tables[ent_name]
@@ -422,15 +435,15 @@ class H5Data(object):
             entity.input_index = table.id2rownum_per_period
             entity.input_rows = table.period_index
             entity.input_table = table.table
-            
+
             entity.output_index = table.id2rownum_per_period
             entity.output_rows = table.period_index
             entity.table = table.table
-            
+
             entity.base_period = min(table.period_index.keys())
 
         return h5file, None, dataset['globals']
-    
+
     def run(self, entities, start_period):
         ################
         # refactor WIP #
@@ -441,16 +454,17 @@ class H5Data(object):
 #        output_file = tables.openFile(self.output_path, mode="w")
 #
 #        if dataset['globals'] is not None:
-#            output_globals = output_file.createGroup("/", "globals", "Globals")
+#            output_globals = output_file.createGroup("/", "globals",
+#                                                     "Globals")
 #            copyTable(input_file.root.globals.periodic, output_file,
 #                      output_globals)
-#            
+#
 #        input_entities = input_root.entities
 #        output_entities = output_file.createGroup("/", "entities", "Entities")
 #        print " * copying tables"
 #        for ent_name, entity in entities.iteritems():
 #            print ent_name, "..."
-#            
+#
 #            # main table
 #            table = getattr(input_entities, ent_name)
 #
@@ -471,7 +485,7 @@ class H5Data(object):
         periodic_globals = None
         input_root = input_file.root
         #XXX: I should probably only set periodic_globals if it was declared in
-        # the simulation file (and exists in the data file). 
+        # the simulation file (and exists in the data file).
         if 'globals' in input_root:
             input_globals = input_root.globals
             output_globals = output_file.createGroup("/", "globals", "Globals")
@@ -484,7 +498,7 @@ class H5Data(object):
         output_entities = output_file.createGroup("/", "entities", "Entities")
         for ent_name, entity in entities.iteritems():
             print ent_name, "..."
-            
+
             # main table
             table = getattr(input_entities, ent_name)
 
@@ -492,7 +506,7 @@ class H5Data(object):
 
             print " * indexing table...",
             start_time = time.time()
-            
+
             rows_per_period, id_to_rownum_per_period = index_table(table)
             entity.input_index = id_to_rownum_per_period
             entity.input_rows = rows_per_period
@@ -510,17 +524,17 @@ class H5Data(object):
                 _, stoprow = input_rows[max(output_rows.iterkeys())]
             else:
                 stoprow = 0
-            
-            output_table = copyTable(table, output_file, output_entities, 
+
+            output_table = copyTable(table, output_file, output_entities,
                                      entity.fields, stop=stoprow,
                                      show_progress=True)
             entity.output_rows = output_rows
             print "done (%s elapsed)." % time2str(time.time() - start_time)
-            
+
             print " * building array for first simulated period...",
             start_time = time.time()
             entity.array, entity.id_to_rownum = \
-                buildArrayForPeriod(table, entity.fields, entity.input_rows, 
+                buildArrayForPeriod(table, entity.fields, entity.input_rows,
                                     entity.input_index, start_period)
             print "done (%s elapsed)." % time2str(time.time() - start_time)
             entity.input_table = table
@@ -528,18 +542,18 @@ class H5Data(object):
 
         return input_file, output_file, periodic_globals
 
-    
+
 class Void(object):
     def __init__(self, output_path):
         self.output_path = output_path
-        
+
     def run(self, entities, start_period):
         output_file = tables.openFile(self.output_path, mode="w")
         output_entities = output_file.createGroup("/", "entities", "Entities")
         for entity in entities.itervalues():
             dtype = np.dtype(entity.fields)
             entity.array = np.empty(0, dtype=dtype)
-            entity.id_to_rownum = np.empty(0, dtype=int) 
+            entity.id_to_rownum = np.empty(0, dtype=int)
             output_table = output_file.createTable(
                 output_entities, entity.name, dtype,
                 title="%s table" % entity.name)
@@ -548,11 +562,10 @@ class Void(object):
             entity.table = output_table
         return None, output_file, None
 
+
 def populate_registry(fpath):
     import entities
     h5in = tables.openFile(fpath, mode="r")
     for table in h5in.root.entities:
         entities.entity_registry.add(entities.Entity.from_table(table))
     return h5in
-        
-    

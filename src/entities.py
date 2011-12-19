@@ -2,37 +2,40 @@ import carray as ca
 import numpy as np
 import tables
 
-from utils import safe_put, timed, count_occurences, size2str
+from utils import safe_put, count_occurences
 from data import mergeArrays, get_fields
 from expr import parse, Variable, SubscriptableVariable, \
                  expr_eval, dtype, \
-                 get_missing_value, hasvalue 
+                 get_missing_value, hasvalue
 
 str_to_type = {'float': float, 'int': int, 'bool': bool}
+
 
 def compress_column(a, level):
     arr = ca.carray(a, cparams=ca.cparams(level))
     print "%d -> %d (%.2f)" % (arr.nbytes, arr.cbytes,
-                               float(arr.nbytes)/arr.cbytes),
+                               float(arr.nbytes) / arr.cbytes),
     return arr
+
 
 def decompress_column(a):
     return a[:]
-    
+
+
 class EntityContext(object):
     def __init__(self, entity, extra):
         self.entity = entity
         self.extra = extra
         self['__entity__'] = entity
         self['__weight_col__'] = entity.weight_col
-        self['__on_align_overflow__'] = entity.on_align_overflow 
+        self['__on_align_overflow__'] = entity.on_align_overflow
 
     def __getitem__(self, key):
         try:
             return self.extra[key]
         except KeyError:
             period = self.extra['period']
-#            current_period = self.entity.array['period'][0] 
+#            current_period = self.entity.array['period'][0]
             if self._iscurrentperiod:
                 try:
                     return self.entity.temp_variables[key]
@@ -49,13 +52,13 @@ class EntityContext(object):
 #                    raise KeyError(key)
             else:
                 bounds = self.entity.output_rows.get(period)
-                if bounds is not None: 
+                if bounds is not None:
                     startrow, stoprow = bounds
                 else:
                     startrow, stoprow = 0, 0
 #                print "loading from disk...",
 #                res = timed(self.entity.table.read,
-#                             start=startrow, stop=stoprow, 
+#                             start=startrow, stop=stoprow,
 #                             field=key)
 #                for level in range(1, 10, 2):
 #                    print "   %d - compress:" % level,
@@ -63,13 +66,13 @@ class EntityContext(object):
 #                    print "decompress:",
 #                    timed(decompress_column, arr)
 #                return res
-                return self.entity.table.read(start=startrow, stop=stoprow, 
+                return self.entity.table.read(start=startrow, stop=stoprow,
                                               field=key)
-    
+
     @property
     def _iscurrentperiod(self):
         current_array = self.entity.array
-        
+
         if current_array is None:
             return False
 
@@ -80,7 +83,7 @@ class EntityContext(object):
         #       it is not correct!
         if not len(current_array):
             return True
-        
+
         # if the current period array is the same as the context period
         return current_array['period'][0] == self.extra['period']
 
@@ -93,21 +96,21 @@ class EntityContext(object):
             return True
         except KeyError:
             return False
-    
+
     def keys(self):
         res = list(self.entity.array.dtype.names)
         res.extend(sorted(self.entity.temp_variables.keys()))
         return res
-    
+
     def get(self, key, elsevalue=None):
         try:
             return self[key]
         except KeyError:
             return elsevalue
-        
+
     def copy(self):
         return EntityContext(self.entity, self.extra.copy())
-    
+
     def length(self):
         if self._iscurrentperiod:
             return len(self.entity.array)
@@ -119,7 +122,7 @@ class EntityContext(object):
                 return stoprow - startrow
             else:
                 return 0
-    
+
     def list_periods(self):
         return self.entity.output_index.keys()
 
@@ -131,12 +134,13 @@ class EntityContext(object):
         elif period in self.entity.output_index:
             return self.entity.output_index[period]
         else:
-            #FIXME: yes, it's true, that if period is not in output_index, it 
+            #FIXME: yes, it's true, that if period is not in output_index, it
             # probably means that we are before start_period and in that case,
             # input_index == output_index, but it would be cleaner to simply
             # initialise output_index correctly
             return self.entity.input_index[period]
-        
+
+
 def context_subset(context, index, keys=None):
     if keys is None:
         keys = context.keys()
@@ -148,13 +152,13 @@ def context_subset(context, index, keys=None):
             index = np.array(index)
     if np.issubdtype(index.dtype, int):
         length = len(index)
-    else:  
+    else:
         assert len(index) == context_length(context), \
                "boolean index has length %d instead of %d" % \
                (len(index), context_length(context))
         length = np.sum(index)
     #FIXME: nan should come from somewhere else
-    result = {'period': context['period'], 
+    result = {'period': context['period'],
               '__len__': length,
               '__entity__': context['__entity__'],
               'nan': float('nan')}
@@ -164,6 +168,7 @@ def context_subset(context, index, keys=None):
             value = value[index]
         result[key] = value
     return result
+
 
 def context_delete(context, rownum):
     result = {}
@@ -175,7 +180,8 @@ def context_delete(context, rownum):
         result[key] = value
     result['__len__'] -= 1
     return result
-    
+
+
 def context_length(ctx):
     if hasattr(ctx, 'length'):
         return ctx.length()
@@ -185,7 +191,7 @@ def context_length(ctx):
         usual_len = None
         for k, value in ctx.iteritems():
             if isinstance(value, np.ndarray):
-                if usual_len is not None and len(value) != usual_len: 
+                if usual_len is not None and len(value) != usual_len:
                     raise Exception('incoherent array lengths: %s''s is %d '
                                     'while the len of others is %d' %
                                     (k, len(value), usual_len))
@@ -198,7 +204,7 @@ class Entity(object):
                  macro_strings, process_strings, weight_col=None,
                  on_align_overflow='carry'):
         self.name = name
-        
+
         duplicate_names = [name
                            for name, num
                            in count_occurences(fname for fname, _ in fields)
@@ -207,25 +213,25 @@ class Entity(object):
             raise Exception("duplicate fields in entity '%s': %s"
                             % (self.name, ', '.join(duplicate_names)))
 
-        self.fields = [('period', int), ('id', int)] + fields 
-        
+        self.fields = [('period', int), ('id', int)] + fields
+
         # only used in data (to check that all "required" fields are present
-        # in the input file and data_main (where it will not survive its 
+        # in the input file and data_main (where it will not survive its
         # modernisation)
-        
-        # one potential solution would be to split the fields argument and 
+
+        # one potential solution would be to split the fields argument and
         # attribute in input_fields and output_fields (regardless of whether
         # it is split in the simulation/yaml file).
-        
+
         # however that might be just a temporary solution as we will soon need
         # more arguments to fields (default values, ranges, etc...)
-        
+
         # another solution is to use a Field class
-        # seems like the better long term solution 
+        # seems like the better long term solution
         self.missing_fields = missing_fields
         self.period_individual_fnames = [name for name, _ in fields]
         self.links = links
-        
+
         self.weight_col = weight_col
         self.on_align_overflow = on_align_overflow
 
@@ -235,10 +241,10 @@ class Entity(object):
         self.expectedrows = tables.parameters.EXPECTED_ROWS_TABLE
         self.table = None
         self.input_table = None
-        
+
         self.indexed_input_table = None
         self.indexed_output_table = None
-        
+
         self.input_rows = {}
         #XXX: it might be unnecessary to keep it in memory after the initial
         # load.
@@ -249,7 +255,7 @@ class Entity(object):
 
         self.output_rows = {}
         self.output_index = {}
-        
+
         self.base_period = None
         self.array = None
         self.array_lag = None
@@ -262,11 +268,11 @@ class Entity(object):
     @classmethod
     def from_yaml(cls, ent_name, entity_def):
         from properties import Link
-        
+
         # YAML "ordered dict" syntax returns a list of dict and we want a list
         # of tuples
         #FIXME: if "fields" key is present but no field is defined,
-        #entity_def.get('fields', []) returns None and this breaks 
+        #entity_def.get('fields', []) returns None and this breaks
         fields_def = [d.items()[0] for d in entity_def.get('fields', [])]
 
         fields = []
@@ -275,7 +281,7 @@ class Entity(object):
             if isinstance(fielddef, dict):
                 strtype = fielddef['type']
                 if not fielddef.get('initialdata', True):
-                    missing_fields.append(name) 
+                    missing_fields.append(name)
             else:
                 strtype = fielddef
             fields.append((name, str_to_type[strtype]))
@@ -289,13 +295,12 @@ class Entity(object):
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}),
                       entity_def.get('weight'))
-        
+
     @classmethod
     def from_table(cls, table):
         return Entity(table.name, get_fields(table), missing_fields=[],
                       links={}, macro_strings={}, process_strings={})
-        
-        
+
     @staticmethod
     def collect_predictors(items):
         predictors = []
@@ -308,30 +313,31 @@ class Entity(object):
             elif isinstance(v, dict):
                 predictors.append(v['predictor'])
         return predictors
-        
-    @property        
+
+    @property
     def variables(self):
         if self._variables is None:
             global_predictors = \
-                self.collect_predictors(self.process_strings.iteritems()) 
+                self.collect_predictors(self.process_strings.iteritems())
             all_fields = set(global_predictors)
             stored_fields = set(self.period_individual_fnames)
             temporary_fields = all_fields - stored_fields
-            
+
             variables = dict((name, Variable(name, type_))
                              for name, type_ in self.fields)
-            variables.update((name, Variable(name)) for name in temporary_fields)
+            variables.update((name, Variable(name))
+                             for name in temporary_fields)
             variables.update(self.links)
             self._variables = variables
         return self._variables
-    
+
     def check_links(self):
         for name, link in self.links.iteritems():
             target_name = link._target_entity
             if target_name not in entity_registry:
                 raise Exception("Target of '%s' link in entity '%s' is an "
-                                "unknown entity (%s)"  % (name, self.name,
-                                                          target_name)) 
+                                "unknown entity (%s)" % (name, self.name,
+                                                         target_name))
 
     @property
     def conditional_context(self):
@@ -345,7 +351,8 @@ class Entity(object):
         return cond_context
 
     def parse_processes(self, globals):
-        from properties import Assignment, Compute, Process, ProcessGroup, PrefixingLink
+        from properties import Assignment, Compute, Process, ProcessGroup, \
+                               PrefixingLink
         variables = dict((name, SubscriptableVariable(name, type_))
                          for name, type_ in globals)
         variables.update(self.variables)
@@ -353,7 +360,7 @@ class Entity(object):
         macros = dict((k, parse(v, variables, cond_context))
                       for k, v in self.macro_strings.iteritems())
         variables['other'] = PrefixingLink(macros, self.links, '__other_')
-        
+
         variables.update(macros)
 
         def parse_expressions(items, variables):
@@ -395,11 +402,12 @@ class Entity(object):
                                     % (k, type(v)))
                 processes.append((k, process))
             return processes
-            
+
         processes = dict(parse_expressions(self.process_strings.iteritems(),
                                            variables))
 
         fnames = set(self.period_individual_fnames)
+
         def attach_processes(items):
             for k, v in items:
                 if isinstance(v, ProcessGroup):
@@ -457,7 +465,8 @@ class Entity(object):
         self.table.flush()
 
     def compress_period_data(self, level):
-        print "%d -> %d (%f)" % ca.ctable(self.array, cparams=ca.cparams(level))._get_stats()
+        compressed = ca.ctable(self.array, cparams=ca.cparams(level))
+        print "%d -> %d (%f)" % compressed._get_stats()
 
     def fill_missing_values(self, ids, values, context, filler='auto'):
         if filler is 'auto':
@@ -466,12 +475,12 @@ class Entity(object):
         result.fill(filler)
         if len(ids):
             safe_put(result, context.id_to_rownum[ids], values)
-        return result 
+        return result
 
     def value_for_period(self, expr, period, context, fill='auto'):
-        sub_context = EntityContext(self, {'period': period}) 
+        sub_context = EntityContext(self, {'period': period})
         result = expr_eval(expr, sub_context)
-         
+
         if isinstance(result, np.ndarray) and result.shape:
             ids = expr_eval(Variable('id'), sub_context)
             if fill is None:
@@ -487,14 +496,14 @@ class Entity(object):
 
         baseperiod = self.base_period
         period = context['period'] - 1
-        
-        # using a full int so that the "store" type check works 
+
+        # using a full int so that the "store" type check works
         result = value.astype(np.int)
         res_size = len(self.array)
         last_period_true = np.empty(res_size, dtype=np.int)
         last_period_true.fill(period + 1)
 
-        id_to_rownum = context.id_to_rownum        
+        id_to_rownum = context.id_to_rownum
         still_running = value
         while np.any(still_running) and period >= baseperiod:
             ids, values = self.value_for_period(bool_expr, period, context,
@@ -505,10 +514,10 @@ class Entity(object):
                 value_rows = id_to_rownum[ids]
                 safe_put(missing, value_rows, False)
                 safe_put(period_value, value_rows, values)
-            
+
             value = still_running & period_value
             result += value * (last_period_true - period)
-            
+
             still_running &= period_value | missing
             last_period_true[period_value] = period
             period -= 1
@@ -517,14 +526,14 @@ class Entity(object):
     def tavg(self, expr, context):
         baseperiod = self.base_period
         period = context['period'] - 1
-        
+
         res_size = len(self.array)
-        
+
         num_values = np.zeros(res_size, dtype=np.int)
         last_period_wh_value = np.empty(res_size, dtype=np.int)
-        last_period_wh_value.fill(context['period']) # current period
+        last_period_wh_value.fill(context['period'])  # current period
 
-        sum_values = np.zeros(res_size, dtype=np.float)        
+        sum_values = np.zeros(res_size, dtype=np.float)
         id_to_rownum = context.id_to_rownum
         while period >= baseperiod:
             ids, values = self.value_for_period(expr, period, context,
@@ -536,7 +545,7 @@ class Entity(object):
             acceptable_ids = ids[acceptable_rows]
             if len(acceptable_ids):
                 acceptable_values = values[acceptable_rows]
-                
+
                 value_rows = id_to_rownum[acceptable_ids]
 
                 has_value = np.zeros(res_size, dtype=bool)
@@ -544,7 +553,7 @@ class Entity(object):
 
                 period_value = np.zeros(res_size, dtype=np.float)
                 safe_put(period_value, value_rows, acceptable_values)
-                
+
                 num_values += has_value * (last_period_wh_value - period)
                 sum_values += period_value
                 last_period_wh_value[has_value] = period
@@ -554,7 +563,7 @@ class Entity(object):
     def tsum(self, expr, context):
         baseperiod = self.base_period
         period = context['period'] - 1
-        
+
         typemap = {bool: int, int: int, float: float}
         res_type = typemap[dtype(expr, context)]
         res_size = len(self.array)
@@ -564,7 +573,7 @@ class Entity(object):
         while period >= baseperiod:
             ids, values = self.value_for_period(expr, period, context,
                                                 fill=None)
-            
+
             # filter out lines which are present because there was a value for
             # that individual at that period but not for that column
             acceptable_rows = hasvalue(values)
@@ -580,7 +589,7 @@ class Entity(object):
                 sum_values += period_value
             period -= 1
         return sum_values
-    
+
     def __repr__(self):
         return "<Entity '%s'>" % self.name
 
@@ -592,6 +601,6 @@ class EntityRegistry(dict):
     def add_all(self, entities_def):
         for k, v in entities_def.iteritems():
             self.add(Entity.from_yaml(k, v))
-        
-    
+
+
 entity_registry = EntityRegistry()

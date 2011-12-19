@@ -31,7 +31,7 @@ class Show(Process):
 class CSV(Process):
     def __init__(self, *args, **kwargs):
         Process.__init__(self)
-        if (len(args) > 1 and 
+        if (len(args) > 1 and
             not any(isinstance(arg, (TableExpression, list, tuple))
                     for arg in args)):
             args = (args,)
@@ -39,7 +39,7 @@ class CSV(Process):
         suffix = kwargs.pop('suffix', '')
         fname = kwargs.pop('fname', None)
         mode = kwargs.pop('mode', 'w')
-        
+
         if fname is not None and suffix:
             raise ValueError("csv() can't have both 'suffix' and 'fname' "
                              "arguments")
@@ -48,7 +48,7 @@ class CSV(Process):
             fname = "{entity}_{period}" + suffix + ".csv"
         self.fname = fname
         if mode not in ('w', 'a'):
-            raise ValueError("csv() mode argument must be either " 
+            raise ValueError("csv() mode argument must be either "
                              "'w' (overwrite) or 'a' (append)")
         self.mode = mode
 
@@ -56,7 +56,7 @@ class CSV(Process):
         entity = context['__entity__']
         period = context['period']
         fname = self.fname.format(entity=entity.name, period=period)
-        print "writing to", fname, "...",          
+        print "writing to", fname, "...",
         file_path = os.path.join(simulation.output_directory, fname)
 
         with open(file_path, self.mode + 'b') as f:
@@ -77,13 +77,13 @@ class RemoveIndividuals(Process):
         self.filter = filter
 
     def run(self, context):
-        filter = expr_eval(self.filter, context)
+        filter_value = expr_eval(self.filter, context)
 
-        if not np.any(filter):
+        if not np.any(filter_value):
             return
-        
-        not_removed = ~filter
-        
+
+        not_removed = ~filter_value
+
         entity = context['__entity__']
         len_before = len(entity.array)
         already_removed = entity.id_to_rownum == -1
@@ -99,9 +99,9 @@ class RemoveIndividuals(Process):
         entity.id_to_rownum = np.insert(id_to_rownum,
                                         already_removed_indices_shifted,
                                         -1)
-        #FIXME: this allocates a new (slightly smaller) array then the old 
+        #FIXME: this allocates a new (slightly smaller) array then the old
         # array is discarded when the gc does its job, effectively doubling
-        # the peak memory usage for the main array 
+        # the peak memory usage for the main array
         entity.array = entity.array[not_removed]
         temp_variables = entity.temp_variables
         for name, temp_value in temp_variables.iteritems():
@@ -110,7 +110,7 @@ class RemoveIndividuals(Process):
 
         print "%d %s(s) removed (%d -> %d)" % (filter.sum(), entity.name,
                                                len_before, len(entity.array)),
-        
+
 
 class Breakpoint(Process):
     def __init__(self, period=None):
@@ -122,11 +122,14 @@ class Breakpoint(Process):
             raise BreakpointException()
 
     def __str__(self):
-        return 'breakpoint(%d)' % self.period if self.period is not None else '' 
+        if self.period is not None:
+            return 'breakpoint(%d)' % self.period
+        else:
+            return ''
 
 
 functions.update({
-    # can't use "print" in python 2.x because it's a keyword, not a function        
+    # can't use "print" in python 2.x because it's a keyword, not a function
 #    'print': Print,
     'csv': CSV,
     'show': Show,

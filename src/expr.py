@@ -27,14 +27,15 @@ except ImportError:
 
 num_tmp = 0
 
+
 def get_tmp_varname():
     global num_tmp
-    
+
     tmp_varname = "temp_%d" % num_tmp
     num_tmp += 1
     return tmp_varname
 
-type_to_idx = {bool: 0, np.bool_: 0, 
+type_to_idx = {bool: 0, np.bool_: 0,
                int: 1, np.int32: 1, np.intc: 1, np.int64: 1,
                float: 2, np.float64: 2}
 idx_to_type = [bool, int, float]
@@ -50,22 +51,27 @@ missing_values = {
     bool: False
 }
 
+
 def normalize_type(type_):
     return idx_to_type[type_to_idx[type_]]
 
+
 def get_missing_value(column):
     return missing_values[normalize_type(column.dtype.type)]
+
 
 def get_missing_vector(num, dtype):
     res = np.empty(num, dtype=dtype)
     res.fill(missing_values[normalize_type(dtype.type)])
     return res
 
+
 def get_missing_record(array):
     row = np.empty(1, dtype=array.dtype)
     for fname in array.dtype.names:
         row[fname] = get_missing_value(row[fname])
     return row
+
 
 def hasvalue(column):
     missing_value = get_missing_value(column)
@@ -74,9 +80,11 @@ def hasvalue(column):
     else:
         return column != missing_value
 
+
 def coerce_types(context, *args):
     dtype_indices = [type_to_idx[dtype(arg, context)] for arg in args]
     return idx_to_type[max(dtype_indices)]
+
 
 def as_string(expr, context):
     if isinstance(expr, Expr):
@@ -84,11 +92,13 @@ def as_string(expr, context):
     else:
         return expr
 
+
 def dtype(expr, context):
     if isinstance(expr, Expr):
         return expr.dtype(context)
     else:
         return normalize_type(type(expr))
+
 
 # context is needed because in LinkValue we need to know what is the current
 # entity (so that we can resolve links)
@@ -97,6 +107,7 @@ def collect_variables(expr, context):
         return expr.collect_variables(context)
     else:
         return set()
+
 
 def expr_eval(expr, context):
     if isinstance(expr, Expr):
@@ -107,6 +118,7 @@ def expr_eval(expr, context):
         return expr.eval(context)
     else:
         return expr
+
 
 def add_context(exception, s):
     msg = exception.args[0] if exception.args else ''
@@ -130,9 +142,10 @@ class ExplainTypeError(type):
                 msg = e.args[0].replace('__init__()', funcname)
             else:
                 msg = e.args[0]
+
             def repl(matchobj):
                 needed, given = int(matchobj.group(1)), int(matchobj.group(2))
-                return "%d arguments (%d given)" % (needed - 1, given - 1) 
+                return "%d arguments (%d given)" % (needed - 1, given - 1)
             msg = re.sub('(\d+) arguments \((\d+) given\)', repl, msg)
             raise TypeError(msg)
 
@@ -141,12 +154,12 @@ class Expr(object):
     __metaclass__ = ExplainTypeError
 
     # makes sure we dont use "normal" python logical operators
-    # (and, or, not) 
+    # (and, or, not)
     def __nonzero__(self):
         raise Exception("Improper use of boolean operators, you probably "
                         "forgot parenthesis around operands of an 'and' or "
                         "'or' expression. The complete expression cannot be "
-                        "displayed but it contains: '%s'." % str(self)) 
+                        "displayed but it contains: '%s'." % str(self))
 
     def __lt__(self, other):
         return ComparisonOp('<', self, other)
@@ -160,7 +173,7 @@ class Expr(object):
         return ComparisonOp('>', self, other)
     def __ge__(self, other):
         return ComparisonOp('>=', self, other)
-    
+
     def __add__(self, other):
         return Addition('+', self, other)
     def __sub__(self, other):
@@ -184,14 +197,14 @@ class Expr(object):
         return BinaryOp('<<', self, other)
     def __rshift__(self, other):
         return BinaryOp('>>', self, other)
-    
+
     def __and__(self, other):
         return And('&', self, other)
     def __xor__(self, other):
         return BinaryOp('^', self, other)
     def __or__(self, other):
         return Or('|', self, other)
-    
+
     def __radd__(self, other):
         return Addition('+', other, self)
     def __rsub__(self, other):
@@ -214,14 +227,14 @@ class Expr(object):
         return BinaryOp('<<', other, self)
     def __rrshift__(self, other):
         return BinaryOp('>>', other, self)
-    
+
     def __rand__(self, other):
         return And('&', other, self)
     def __rxor__(self, other):
         return BinaryOp('^', other, self)
     def __ror__(self, other):
         return Or('|', other, self)
-        
+
     def __neg__(self):
         return UnaryOp('-', self)
     def __pos__(self):
@@ -250,7 +263,7 @@ class Expr(object):
         except KeyError, e:
             raise add_context(e, s)
         except Exception, e:
-            raise 
+            raise
 
 
 #class IsPresent(Expr):
@@ -265,13 +278,13 @@ class Expr(object):
 #            return expr != missing_values[int]
 #        elif np.issubdtype(dtype, bool):
 #            return expr != missing_values[bool]
-    
+
 
 class UnaryOp(Expr):
     def __init__(self, op, expr):
         self.op = op
         self.expr = expr
-        
+
     def simplify(self):
         expr = self.expr.simplify()
         if not isinstance(expr, Expr):
@@ -280,8 +293,8 @@ class UnaryOp(Expr):
 
     def show(self, indent):
         print indent, self.op
-        self.expr.show(indent+'    ')
-        
+        self.expr.show(indent + '    ')
+
     def as_string(self, context):
         return "(%s%s)" % (self.op, self.expr.as_string(context))
 
@@ -331,7 +344,7 @@ class BinaryOp(Expr):
             expr2 = self.expr2.simplify()
         else:
             expr2 = self.expr2
-        
+
         if self.neutral_value is not None:
             if isinstance(expr2, self.accepted_types) and \
                expr2 == self.neutral_value:
@@ -342,19 +355,19 @@ class BinaryOp(Expr):
                expr2 == self.overpowering_value:
                 return self.overpowering_value
         if not isinstance(expr1, Expr) and not isinstance(expr2, Expr):
-            return eval('%s %s %s' % (expr1, self.op, expr2)) 
+            return eval('%s %s %s' % (expr1, self.op, expr2))
         return BinaryOp(self.op, expr1, expr2)
-    
+
     def show(self, indent=''):
         print indent, self.op
         if isinstance(self.expr1, Expr):
-            self.expr1.show(indent=indent+'    ')
+            self.expr1.show(indent=indent + '    ')
         else:
-            print indent+'    ', self.expr1
+            print indent + '    ', self.expr1
         if isinstance(self.expr2, Expr):
-            self.expr2.show(indent=indent+'    ')
+            self.expr2.show(indent=indent + '    ')
         else:
-            print indent+'    ', self.expr2
+            print indent + '    ', self.expr2
 
     def collect_variables(self, context):
         vars2 = collect_variables(self.expr2, context)
@@ -377,6 +390,7 @@ class ComparisonOp(BinaryOp):
                "types"
         return bool
 
+
 class LogicalOp(BinaryOp):
     def dtype(self, context):
         def assertbool(expr):
@@ -387,31 +401,37 @@ class LogicalOp(BinaryOp):
         assertbool(self.expr1)
         assertbool(self.expr2)
         return bool
-    
+
+
 class And(LogicalOp):
     neutral_value = True
     overpowering_value = False
     accepted_types = (bool, np.bool_)
 
+
 class Or(LogicalOp):
     neutral_value = False
-    overpowering_value = True 
+    overpowering_value = True
     accepted_types = (bool, np.bool_)
-    
+
+
 class Substraction(BinaryOp):
     neutral_value = 0.0
-    overpowering_value = None 
+    overpowering_value = None
     accepted_types = (float,)
-    
+
+
 class Addition(BinaryOp):
     neutral_value = 0.0
-    overpowering_value = None 
+    overpowering_value = None
     accepted_types = (float,)
+
 
 class Multiplication(BinaryOp):
     neutral_value = 1.0
-    overpowering_value = 0.0 
+    overpowering_value = 0.0
     accepted_types = (float,)
+
 
 class Division(BinaryOp):
     neutral_value = 1.0
@@ -434,7 +454,7 @@ class Variable(Expr):
         else:
             return str(self.value)
     __repr__ = __str__
-        
+
     def as_string(self, context):
         return self.__str__()
 
@@ -447,10 +467,10 @@ class Variable(Expr):
     def show(self, indent):
         value = "[%s]" % self.value if self.value is not None else ''
         print indent, self.name, value
-        
+
     def collect_variables(self, context):
         return set([self.name])
-    
+
     def dtype(self, context):
         if self._dtype is None and self.name in context:
             type_ = context[self.name].dtype.type
@@ -458,10 +478,12 @@ class Variable(Expr):
         else:
             return self._dtype
 
+
 class ShortLivedVariable(Variable):
     def collect_variables(self, context):
         return set()
-    
+
+
 class SubscriptableVariable(Variable):
     def __getitem__(self, key):
         return SubscriptedVariable(self.name, self._dtype, key)
@@ -471,7 +493,7 @@ class SubscriptedVariable(Variable):
     def __init__(self, name, dtype, key):
         Variable.__init__(self, name, dtype)
         self.key = key
-    
+
     def __str__(self):
         return '%s[%s]' % (self.name, self.key)
     __repr__ = __str__
@@ -485,7 +507,7 @@ class SubscriptedVariable(Variable):
                 assert context[tmp_varname] == result
             else:
                 context[tmp_varname] = result
-        else: 
+        else:
             tmp_varname = get_tmp_varname()
             context[tmp_varname] = result
         return tmp_varname
@@ -498,13 +520,13 @@ class SubscriptedVariable(Variable):
         except ValueError:
             globals_periods = globals['period']
         period_idx = period - globals_periods[0]
-        
+
         if self.name not in globals.dtype.fields:
             raise Exception("Unknown global: %s" % self.name)
         column = globals[self.name]
         num_periods = len(globals_periods)
         missing_value = get_missing_value(column)
-        
+
         if isinstance(period_idx, np.ndarray):
             out_of_bounds = (period_idx < 0) | (period_idx >= num_periods)
             period_idx[out_of_bounds] = -1
@@ -521,28 +543,28 @@ class Where(Expr):
         self.cond = cond
         self.iftrue = iftrue
         self.iffalse = iffalse
-        
+
     def as_string(self, context):
         cond = as_string(self.cond, context)
-        
-        # filter is stored as an unevaluated expression
-        filter = context.get('__filter__')
 
-        if filter is None:
+        # filter is stored as an unevaluated expression
+        filter_expr = context.get('__filter__')
+
+        if filter_expr is None:
             context['__filter__'] = self.cond
         else:
-            context['__filter__'] = filter & self.cond
+            context['__filter__'] = filter_expr & self.cond
         iftrue = as_string(self.iftrue, context)
-        
-        if filter is None:
+
+        if filter_expr is None:
             context['__filter__'] = ~self.cond
         else:
-            context['__filter__'] = filter & ~self.cond
+            context['__filter__'] = filter_expr & ~self.cond
         iffalse = as_string(self.iffalse, context)
 
         context['__filter__'] = None
         return "where(%s, %s, %s)" % (cond, iftrue, iffalse)
-        
+
     def __str__(self):
         return "if(%s, %s, %s)" % (self.cond, self.iftrue, self.iffalse)
     __repr__ = __str__
@@ -556,13 +578,14 @@ class Where(Expr):
         iftruevars = collect_variables(self.iftrue, context)
         iffalsevars = collect_variables(self.iffalse, context)
         return condvars | iftruevars | iffalsevars
-        
-        
-functions = {'where': Where}    
+
+
+functions = {'where': Where}
 
 and_re = re.compile('([ )])and([ (])')
 or_re = re.compile('([ )])or([ (])')
 not_re = re.compile(r'([ (=]|^)not(?=[ (])')
+
 
 def parse(s, globals=None, conditional_context=None, expression=True,
           autovariables=False):
@@ -574,17 +597,17 @@ def parse(s, globals=None, conditional_context=None, expression=True,
     str_to_parse = and_re.sub(r'\1&\2', str_to_parse)
     str_to_parse = or_re.sub(r'\1|\2', str_to_parse)
     str_to_parse = not_re.sub(r'\1~', str_to_parse)
-    
+
     mode = 'eval' if expression else 'exec'
     try:
         c = compile(str_to_parse, '<expr>', mode)
     except SyntaxError:
         # SyntaxError are clearer if left unmodified since they already contain
         # the faulty string
-        
-        # Instances of this class have attributes filename, lineno, offset and 
-        # text for easier access to the details. str() of the exception instance
-        # returns only the message.
+
+        # Instances of this class have attributes filename, lineno, offset and
+        # text for easier access to the details. str() of the exception
+        # instance returns only the message.
         raise
     except Exception, e:
         raise add_context(e, s)
@@ -611,20 +634,20 @@ def parse(s, globals=None, conditional_context=None, expression=True,
         try:
             return eval(c, context)
         #IOError and such. Those are clearer when left unmodified.
-        except EnvironmentError:  
+        except EnvironmentError:
             raise
         except Exception, e:
             raise add_context(e, s)
     else:
         exec c in context
-    
+
         # cleanup result
         del context['__builtins__']
         for funcname in functions.keys():
             del context[funcname]
         return context
-    
-        
+
+
 if __name__ == '__main__':
     expr = "0.4893 * a1" \
            "+ 0.0131 * a1 ** 2" \
@@ -644,4 +667,3 @@ if __name__ == '__main__':
 #    symbolic_expr.show()
     opt_expr = symbolic_expr.simplify()
     print opt_expr
-    

@@ -1,9 +1,12 @@
-import sys, time, itertools
+import sys
+import time
+import itertools
 from itertools import izip
 from textwrap import wrap
 from collections import defaultdict
 
 import numpy as np
+
 
 def time2str(seconds):
     minutes = seconds // 60
@@ -21,6 +24,7 @@ def time2str(seconds):
         l = ["%d ms" % (seconds * 1000)]
     return ' '.join(l)
 
+
 def size2str(value):
     unit = "bytes"
     if value > 1024.0:
@@ -32,17 +36,19 @@ def size2str(value):
         return "%.2f %s" % (value, unit)
     else:
         return "%d %s" % (value, unit)
-        
+
 
 def gettime(func, *args, **kwargs):
     start = time.time()
     res = func(*args, **kwargs)
     return time.time() - start, res
 
+
 def timed(func, *args, **kwargs):
     elapsed, res = gettime(func, *args, **kwargs)
     print "done (%s elapsed)." % time2str(elapsed)
     return res
+
 
 def safe_put(a, ind, v):
     if not len(a) or not len(ind):
@@ -55,6 +61,7 @@ def safe_put(a, ind, v):
     if ind[-1] != len(a) - 1:
         # restore its previous value
         a[-1] = last_value
+
 
 def loop_wh_progress(func, sequence):
     len_todo = len(sequence)
@@ -78,11 +85,13 @@ def loop_wh_progress(func, sequence):
             write(''.join(chars_to_write))
         last_percent_done = percent_done
 
+
 def count_occurences(seq):
     counter = defaultdict(int)
     for e in seq:
         counter[e] += 1
     return counter.items()
+
 
 def skip_comment_cells(lines):
     notacomment = lambda v: not v.startswith('#')
@@ -123,11 +132,11 @@ def get_min_width(table, index):
 
 def table2str(table, missing):
     formatted = [[format_value(value, missing) for value in row]
-                  for row in table] 
+                  for row in table]
     colwidths = [get_col_width(formatted, i) for i in xrange(len(table[0]))]
 
     total_width = sum(colwidths)
-    sep_width = (len(colwidths) - 1) * 3 
+    sep_width = (len(colwidths) - 1) * 3
     if total_width + sep_width > 80:
         minwidths = [get_min_width(formatted, i) for i in xrange(len(table[0]))]
         available_width = 80.0 - sep_width - sum(minwidths)
@@ -138,7 +147,7 @@ def table2str(table, missing):
     lines = []
     for row in formatted:
         wrapped_row = [wrap(value, width)
-                       for value, width in izip(row, colwidths)] 
+                       for value, width in izip(row, colwidths)]
         maxlines = max(len(value) for value in wrapped_row)
         newlines = [[] for _ in range(maxlines)]
         for value, width in izip(wrapped_row, colwidths):
@@ -153,13 +162,13 @@ class PrettyTable(object):
     def __init__(self, iterable, missing=None):
         self.data = list(iterable)
         self.missing = missing
-    
+
     def __iter__(self):
         if self.missing is not None:
             return iter(self.convert_nans())
         else:
             return iter(self.data)
-            
+
     def convert_nans(self):
         missing = self.missing
         for row in self.data:
@@ -176,7 +185,7 @@ class PrettyTable(object):
         return '\n' + table2str(self.data, missing) + '\n'
     __repr__ = __str__
 
-# copied from itertools recipes    
+# copied from itertools recipes
 def unique(iterable):
     "List unique elements, preserving order. Remember all elements ever seen."
     # unique('AAAABBBCCDAABBB') --> A B C D
@@ -186,7 +195,7 @@ def unique(iterable):
         if element not in seen:
             seen_add(element)
             yield element
-            
+
 def duplicates(iterable):
     """
     List duplicated elements once, preserving order. Remember all elements ever seen.
@@ -198,19 +207,44 @@ def duplicates(iterable):
         if counts[element] == 2:
             yield element
 
-def unique_duplicate(iterable):            
+def unique_duplicate(iterable):
     counts = {}
     uniques = []
     dupes = []
     append_uniques = uniques.append
     append_dupes = dupes.append
     for element in iterable:
-        count = counts[element] = counts.get(element, 0) + 1 
+        count = counts[element] = counts.get(element, 0) + 1
         if count == 2:
             append_dupes(element)
         elif count == 1:
             append_uniques(element)
     return uniques, dupes
+
+def merge_dicts(*args, **kwargs):
+    result = args[0].copy()
+    for arg in args[1:] + (kwargs,):
+        for k, v in arg.iteritems():
+            if isinstance(v, dict) and k in result:
+                v = merge_dicts(result[k], v)
+            result[k] = v
+    return result
+
+def merge_items(*args):
+    result = args[0][:]
+    keys_seen = set(k for k, _ in args[0])
+    for other_items in args[1:]:
+        new_items = [(k, v) for k, v in other_items if k not in keys_seen]
+        result.extend(new_items)
+        keys_seen |= set(k for k, _ in new_items)
+    return result
+
+def invert_dict(d):
+    return dict((v, k) for k, v in d.iteritems())
+
+def countlines(filepath):
+    with open(filepath) as f:
+        return sum(1 for _ in f)
 
 def validate_keys(d, required=(), optional=(), context=''):
     required_keys = set(required)
@@ -224,8 +258,8 @@ def validate_keys(d, required=(), optional=(), context=''):
     elif missing_keys:
         kind, keys = 'missing', missing_keys
     else:
-        kind, keys = '', []    
-    
+        kind, keys = '', []
+
     if keys:
         if context:
             template = "%%s keyword(s) in %s: '%%s'" % context
@@ -238,12 +272,12 @@ def validate_list(l, target, context):
     target_element = target[0]
     for v in l:
         validate_value(v, target_element, context)
-    
+
 def validate_dict(d, target, context=''):
     targets = target.keys()
     required = [k[1:] for k in targets if k.startswith('#')]
     optional = [k for k in targets if not k.startswith('#')]
-    anykey = required == [] and optional == ['*'] 
+    anykey = required == [] and optional == ['*']
     if not anykey:
         validate_keys(d, required, optional, context)
     for k, v in d.iteritems():
@@ -259,7 +293,7 @@ def validate_dict(d, target, context=''):
             target_type = type(section_def)
 
         if target_type is not None:
-            subcontext = context + ' -> ' + k if context else k 
+            subcontext = context + ' -> ' + k if context else k
             if isinstance(v, target_type):
                 validate_value(v, section_def, subcontext)
             else:
@@ -271,4 +305,3 @@ def validate_value(v, target, context):
     elif isinstance(v, list):
         validate_list(v, target, context)
     # otherwise that type (int, str) is not validated further
-    
