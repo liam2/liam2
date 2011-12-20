@@ -77,8 +77,8 @@ def detect_column_types(iterable):
     coltypes = [0] * numcolumns
     type2code = {None: 0, bool: 1, int: 2, float: 3}
     for row in iterator:
-        assert len(row) == numcolumns, \
-               "all rows do not have the same number of columns"
+        if len(row) != numcolumns:
+            raise Exception("all rows do not have the same number of columns")
         for column, value in enumerate(row):
             coltypes[column] = max(coltypes[column],
                                    type2code[guess_type(value)])
@@ -86,8 +86,8 @@ def detect_column_types(iterable):
         if coltype == 0:
             raise Exception("column %s is all empty" % colname)
     num2type = [None, bool, int, float]
-    return [(name, num2type[coltypes[column]])
-            for column, name in enumerate(header)]
+    return [(name, num2type[coltype])
+            for name, coltype in zip(header, coltypes)]
 
 
 def transpose_table(data):
