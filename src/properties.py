@@ -128,12 +128,12 @@ class Assignment(Process):
 
         if isinstance(result, dict):
             indices = result.get('indices')
-            filter = result.get('filter')
-            assert filter is None or indices is None
+            filter_values = result.get('filter')
+            assert filter_values is None or indices is None
             result = result['values']
         else:
             indices = None
-            filter = None
+            filter_values = None
 
         if isinstance(result, np.ndarray):
             res_type = result.dtype.type
@@ -158,7 +158,7 @@ class Assignment(Process):
                                  self.predictor,
                                  idx_to_type[target_type_idx].__name__))
 
-        if indices is None and filter is None:
+        if indices is None and filter_values is None:
             # the whole column is updated
             target[self.predictor] = result
         else:
@@ -178,8 +178,8 @@ class Assignment(Process):
                                                   dtype=res_type)
             if indices is not None:
                 np.put(target[self.predictor], indices, result)
-            elif filter is not None:
-                np.putmask(target[self.predictor], filter, result)
+            elif filter_values is not None:
+                np.putmask(target[self.predictor], filter_values, result)
 
 
 class ProcessGroup(Process):
