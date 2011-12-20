@@ -2,6 +2,28 @@
  TODO
  --------------------------------------
 
+ - override input/output (data) files defined in the simulation file through
+   command-line arguments
+ 
+ - check that all declared globals are in the dataset
+ 
+ ? check that all used globals are in the dataset
+ 
+ - rewrite the whole import process: load boolean fields as int8 (shouldn't
+   need more work/conversion),
+   then do a n-way merge, then do interpolation, then convert boolean fields
+   back to booleans. We'll have to copy the data using:
+   b = i8 == 1, otherwise "missing" (-1) evaluates as True, which is not what
+   we want in most case (and for backward compatibility)
+
+ - fix the "contextual filter" mess: it is taken into account for grpgini &
+   grpsum but not grpavg. The problem is that implementing it for grpavg would
+   break difficult_match for example.
+   I think the best way out of this is to ignore the contextual filter in all
+   aggregate functions.
+ 
+ - fix globals in a lag
+ 
  - allow liam1 format (1 column per file) to be imported with the new import
    mechanism
 
@@ -10,8 +32,8 @@
 
  - better document csv format: -- for missing
      
- - the filter argument in all regressions without alignment is ignored. I should
-   either fix that or remove the argument.
+ - the filter argument in all regressions without alignment is ignored. 
+   I should either fix that or remove the argument.
 
  - some unit test work
  
@@ -140,7 +162,6 @@
    ~a    -> 1 - a
    where(a, b, c) -> a * b + (1 - a) * c -> Wrong: that leaks NaNs in "unused branches"
                   -> where(a == NaN, NaN, where(a == 1.0, b, c)) -> Wrong: can't compare to Nan
-                  
                   -> where(isnan(a), NaN, where(a == 1.0, b, c))
                   -> where(a != a, a, where(a == 1.0, b, c))
                   or
@@ -154,15 +175,19 @@
    ==================
    
    a & b          -> where((a == -1) | (b == -1), -1, a * b)
-   a & b & c      -> where((a == -1) | (b == -1) | (c == -1), -1, a * b * c)
+   a & b & c      -> where((where((a == -1) | (b == -1), -1, a * b) == -1) | (c == -1),
+                           -1,
+                           where((a == -1) | (b == -1), -1, a * b) * c)
+                  -> where((a == -1) | (b == -1) | (c == -1), -1, a * b * c)
    a | b          -> where((a == -1) | (b == -1), -1, a + b > 0)
    a | b | c      -> where((a == -1) | (b == -1) | (c == -1), -1, a + b + c > 0)
    ~ a            -> where(a == -1, -1, 1 - a)
    where(a, b, c) -> where(a == -1, -1, where(a == 1, b, c))
    
-   bool_expr * float_expr -> where(bool_expr == -1, -1, float_expr)
-   where(bool_expr, float_expr1, float_expr2) 
-      -> where(bool_expr == -1, -1, where(bool_expr, float_expr1, float_expr2))   
+   bool_expr * float_expr -> where(bool_expr == -1, nan, bool_expr * float_expr)
+
+   where(bool_expr, float_expr1, float_expr2)
+      -> where(bool_expr == -1, -1, where(bool_expr, float_expr1, float_expr2))
                    
  - delete "empty" households (dead persons)
    OR
