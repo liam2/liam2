@@ -93,9 +93,9 @@ class RemoveIndividuals(Process):
 
         # recreate id_to_rownum from scratch
         id_to_rownum = np.arange(len_before)
-        id_to_rownum -= filter.cumsum()
-        #XXX: use np.putmask(id_to_rownum, filter, -1)
-        id_to_rownum[filter] = -1
+        id_to_rownum -= filter_value.cumsum()
+        #XXX: use np.putmask(id_to_rownum, filter_value, -1)
+        id_to_rownum[filter_value] = -1
         entity.id_to_rownum = np.insert(id_to_rownum,
                                         already_removed_indices_shifted,
                                         -1)
@@ -108,7 +108,7 @@ class RemoveIndividuals(Process):
             if isinstance(temp_value, np.ndarray) and temp_value.shape:
                 temp_variables[name] = temp_value[not_removed]
 
-        print "%d %s(s) removed (%d -> %d)" % (filter.sum(), entity.name,
+        print "%d %s(s) removed (%d -> %d)" % (filter_value.sum(), entity.name,
                                                len_before, len(entity.array)),
 
 
