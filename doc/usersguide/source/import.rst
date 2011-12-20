@@ -40,6 +40,9 @@ files have the following general format: ::
     entities:
         <entity1_name>:
             path: <path_to_entity1_data>.csv
+            
+            # defaults to false if not present
+            transposed: true
 
             # if you want to manually select the fields to be used, and/or 
             # specify their types, you can do so in the following section.
@@ -58,7 +61,42 @@ files have the following general format: ::
             oldnames:
                 <fieldX_newname>: <fieldX_oldname>
                 <fieldY_newname>: <fieldY_oldname>
-            
+                ...
+
+            # another option to specify name changes (takes precedence over
+            # oldnames in case of conflicts).
+            newnames:
+                <fieldX_oldname>: <fieldX_newname>
+                <fieldY_oldname>: <fieldY_newname>
+                ...
+
+            # if you want to merge several files, use this format:
+            files:
+                - <path>\<to>\<file1>.<ext>:
+                    # any option (renamings, ...) specified here will override
+                    # the corresponding options defined at the level of the
+                    # entity
+                    transposed: true|false
+                    newnames:
+                        <fieldX_oldname>: <fieldX_newname>
+                        <fieldY_oldname>: <fieldY_newname>
+
+                # if you don't have any specific option for a file, use "{}"
+                - <path>\<to>\<file2>.<ext>: {}
+                - ...
+                
+            # OR, if all the files use the global options (the options defined
+            # at the level of the entity):
+            files:
+                - <path>\<to>\<file1>.<ext>
+                - <path>\<to>\<file2>.<ext>
+                - ...
+    
+            # if you want to fill missing values for some fields (this only 
+            # works when "files" is used).
+            interpolate:
+                <fieldX_name>: previous_value
+
             # if you want to invert the value of some boolean fields
             # (True -> False and False -> True), add them to the "invert" list
             # below.
@@ -80,46 +118,6 @@ following default value:
 Note that if an "entity section" is entirely empty, you need to use the special
 code: "{}".
 
-*example* ::
-
-    output: normal.h5
-
-    globals:
-        periodic:
-            path: input\globals_transposed.csv
-            transposed: true
-    
-    entities:
-        household:
-            path: input\household.csv
-    
-        person:
-            path: input\person.csv
-            fields:
-                - age:           int
-                - gender:        bool
-                - workstate:     int
-                - civilstate:    int     
-                - partner_id:    int
-    
-            oldnames:
-                gender: male
-
-*simpler example* ::
-
-    output: simple.h5
-
-    globals:
-        periodic:
-            path: input\globals.csv
-
-    entities:
-        household:
-            path: input\household.csv
-    
-        person:
-            path: input\person.csv
-
 *simplest example* ::
 
     output: simplest.h5
@@ -131,6 +129,123 @@ code: "{}".
 This will try to load all the fields of the household and person entities in 
 "*household.csv*" and "person.csv" in the same directory than the description
 file.
+
+*simple example* ::
+
+    output: simple.h5
+
+    globals:
+        periodic:
+            path: input\globals.csv
+
+    entities:
+        household:
+            path: input\household.csv
+
+        person:
+            path: input\person.csv
+
+This will try to load all the fields of the household and person entities in 
+"*household.csv*" and "person.csv" in the "input" sub-directory of the
+directory where the description file is.
+
+*example 3* ::
+
+    output: example3.h5
+
+    globals:
+        periodic:
+            path: input\globals_transposed.csv
+            transposed: true
+
+    entities:
+        household:
+            path: input\household.csv
+    
+        person:
+            path: input\person.csv
+            fields:
+                - age:        int
+                - gender:     bool
+                - workstate:  int
+                - civilstate: int     
+                - partner_id: int
+    
+            oldnames:
+                gender: male
+
+This will load all the fields of the household entity in 
+"*household.csv*" and load from "person.csv" only the fields listed above. 
+The data will be converted (if necessary) to the type declared. In this case,
+person.csv should contain the following columns (not necessarily in this
+order): period, id, age, male, workstate, civilstate, partner_id.
+
+If the fields of an entity are scattered in several files, you can use the
+"files" key to list them, as in *example 4* ::
+
+    output: example4.h5
+
+    entities:
+        person:
+            fields:
+                - age:        int
+                - gender:     bool
+                - workstate:  int
+                - civilstate: int     
+     
+            # renamings applying to all files of this entity
+            newnames:
+                time: period
+
+            files:
+                - param\p_age.txt:
+                    # additional renamings for this file only
+                    newnames:
+                        value: age
+                - param\p_workstate.txt:
+                    newnames:
+                        value: workstate
+                # person.csv should have at least 4 columns:
+                # period, id, age and gender
+                - param\person.csv:
+                    newnames:
+                        # we override the "global" renaming
+                        period: period
+             
+            interpolate:
+                workstate: previous_value
+                civilstate: previous_value
+
+But this can become tedious if you have a lot of files to import and they all
+have the same column names. If the name of the field can be extracted from the
+name of the file, you can automate the process like this:
+ 
+*example 5* ::
+
+    output: example5.h5
+
+    entities:
+        person:
+            fields:
+                - age:  int
+                - work: bool
+    
+            newnames:
+                time: period
+                # {basename} evaluates to the name of the file without
+                # extension. In the examples below, that would be
+                # 'p_age' and 'p_work'. We then use the "replace" method
+                # on the string we got, to get rid of 'p_'.
+                value: eval('{basename}'.replace('p_', ''))
+
+            files:
+                - param\p_age.txt
+                - param\p_work.txt
+
+            interpolate:
+                work: previous_value
+            
+
 
 importing the data
 ------------------
