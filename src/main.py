@@ -8,7 +8,7 @@ from console import Console
 from data import populate_registry
 import entities
 
-__version__ = "0.4.1"
+__version__ = "0.5.0rc"
 
 
 class AutoflushFile(object):

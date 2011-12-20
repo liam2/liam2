@@ -3,6 +3,62 @@
 Change log
 ##########
 
+Version 0.5.0
+=============
+
+Released on 2012-01-??.
+
+New features:
+-------------
+
+* added an optional "default_entity" key to the "simulation" block of
+  simulation files, so that the interactive console starts directly in that
+  entity.
+
+* added commands to the console:
+
+  - entities: prints the list of available entities.
+  - periods: prints the list of available periods for the current entity.
+
+* added a way to import several files for the same entity. Each file can
+  have different data points. eg if you have historical data for some fields
+  data going back to 1950 for some individuals, and other fields going back to
+  only 2000, the import mechanism will merge those data sets.
+
+  It can also optionally fill missing data points. Currently it only
+  supports filling with the "previous_value" the individual had (if any) for
+  that field in a previous period. In the future, we will add more ways to
+  fill those by interpolating existing data.
+
+  Note that *currently* only data points which are entirely missing are
+  filled, not those which are set to the special value corresponding to
+  "missing" for the field type (i.e. False for booleans, -1 for integers and
+  "nan" for floats). This will change in the future.
+
+  As a consequence of this new feature, it is now possible to import liam1
+  files using the "normal" import file syntax.
+
+Miscellaneous improvements:
+---------------------------
+
+* improved the interactive console:
+
+  - made the interactive console start in the last simulated period by default.
+  - changed the behaviour of the "entity" command without argument to print the
+    current entity.
+  - the "period" command can now be called without argument to print the
+    current period.
+
+* added an explicit check for duplicate headers in alignment files
+
+* made the usual code clean-ups
+
+Fixes:
+------
+
+* fixed typo in the code outputting durations ("hourss" instead of "hours").
+
+
 Version 0.4.1
 =============
 
