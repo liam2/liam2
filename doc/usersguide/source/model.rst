@@ -254,14 +254,16 @@ and composition is again used.
             - household: [household_composition]
 
         input:      
-            path: liam2
+            path: liam2         # optional 
             file: base.h5
         output:
-            path: liam2
+            path: liam2         # optional  
             file: simulation.h5
         start_period: 2002
         periods: 10
+        skip_shows: True        # optional
         random_seed: 5235       # optional
+        default_entity: person  # optional
 
 
 
@@ -331,3 +333,9 @@ skip_shows
 
 If set to True, makes all show() functions do nothing. This can speed up
 simulations which include many shows (usually for debugging).
+
+default_entity
+--------------
+
+If set to the name of an entity, the interactive console will start in that
+entity.
