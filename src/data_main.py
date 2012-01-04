@@ -131,6 +131,7 @@ class CSV(object):
             transposed = None
         self.fpath = fpath
         if newnames is not None:
+            #TODO: move this junk out of the class
             basename = os.path.splitext(os.path.basename(fpath))[0]
             for k in newnames:
                 m = self.eval_re.match(newnames[k])
@@ -146,19 +147,15 @@ class CSV(object):
         self._field_names = None
         self._numlines = None
 
-        # performance hack
-        self.next = self.data_stream.next
-
     def __iter__(self):
         return iter(self.data_stream)
 
-#    def next(self):
-#        return self.data_stream.next()
+    def next(self):
+        return self.data_stream.next()
 
     def rewind(self):
         if self.transposed is not None:
             self.data_stream = iter(self.transposed)
-            self.next = self.data_stream.next
         else:
             self.f.seek(0)
 
@@ -212,9 +209,6 @@ class CSV(object):
         self.next()
         return convert_stream_and_close_file(self.f, self.data_stream,
                                              fields, positions)
-#        for row in convert(self.data_stream, fields, positions):
-#            yield row
-#        self.f.close()
 
     def check_has_fields(self, fields):
         missing_fields = set(name for name, _ in fields) - \
