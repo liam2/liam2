@@ -1,3 +1,4 @@
+import argparse
 from os.path import splitext
 
 import yaml
@@ -7,6 +8,7 @@ from data_main import csv2h5
 from console import Console
 from data import populate_registry
 import entities
+
 
 __version__ = "0.5.0rc"
 
@@ -18,15 +20,6 @@ class AutoflushFile(object):
     def write(self, s):
         self.f.write(s)
         self.f.flush()
-
-
-def usage(script):
-    print """
-Usage: %s action file [-i]
-  action: can be either 'import', 'run' or 'explore'
-  file: the file to run, import or explore
-  -i: show the interactive console after the simulation
-""" % script
 
 
 def eat_traceback(func, *args, **kwargs):
@@ -89,44 +82,84 @@ def eat_traceback(func, *args, **kwargs):
         print "\nERROR:", str(e)
 
 
-def main(script, action, fpath, *args):
-    if action == 'run':
-        print "Using simulation file: '%s'" % fpath
-        console = len(args) > 0 and args[0] == "-i"
-        simulation = Simulation.from_yaml(fpath)
-        simulation.run(console)
+def simulate(args):
+    print "Using simulation file: '%s'" % args.file
 
-#        import cProfile as profile
-#        profile.run('simulation.run()', 'c:\\tmp\\simulation.profile')
-        # to use profiling data:
-        # p = pstats.Stats('c:\\tmp\\simulation.profile')
-        # p.strip_dirs().sort_stats('cum').print_stats(30)
+    simulation = Simulation.from_yaml(args.file,
+                                      input_dir=args.input_path,
+                                      input_file=args.input_file,
+                                      output_dir=args.output_path,
+                                      output_file=args.output_file)
+    simulation.run(args.interactive)
+#    import cProfile as profile
+#    profile.run('simulation.run()', 'c:\\tmp\\simulation.profile')
+    # to use profiling data:
+    # p = pstats.Stats('c:\\tmp\\simulation.profile')
+    # p.strip_dirs().sort_stats('cum').print_stats(30)
+
+
+def explore(fpath):
+    _, ext = splitext(fpath)
+    ftype = 'data' if ext in ('.h5', '.hdf5') else 'simulation'
+    print "Using %s file: '%s'" % (ftype, fpath)
+    if ftype == 'data':
+        h5in = populate_registry(fpath)
+        h5out = None
+        entity, period = None, None
+    else:
+        simulation = Simulation.from_yaml(fpath)
+        h5in, h5out, periodic_globals = simulation.load()
+        ent_name = simulation.default_entity
+        entity = entities.entity_registry[ent_name] if ent_name is not None \
+                                                    else None
+        period = simulation.start_period + simulation.periods - 1
+    try:
+        c = Console(entity, period)
+        c.run()
+    finally:
+        h5in.close()
+        if h5out is not None:
+            h5out.close()
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input-path', dest='input_path',
+                        help='override the input path')
+    parser.add_argument('--input-file', dest='input_file',
+                        help='override the input file')
+    parser.add_argument('--output-path', dest='output_path',
+                        help='override the output path')
+    parser.add_argument('--output-file', dest='output_file',
+                        help='override the output file')
+
+    subparsers = parser.add_subparsers(dest='action')
+
+    # create the parser for the "run" command
+    parser_run = subparsers.add_parser('run', help='run a simulation')
+    parser_run.add_argument('file', help='simulation file')
+    parser_run.add_argument('-i', '--interactive', action='store_true',
+                            help='show the interactive console after the '
+                                 'simulation')
+
+    # create the parser for the "import" command
+    parser_import = subparsers.add_parser('import', help='import data')
+    parser_import.add_argument('file', help='import file')
+
+    # create the parser for the "import" command
+    parser_import = subparsers.add_parser('explore', help='explore data of a '
+                                          'past simulation')
+    parser_import.add_argument('file', help='explore file')
+
+    parsed_args = parser.parse_args()
+    action = parsed_args.action
+    fpath = parsed_args.file
+    if action == 'run':
+        simulate(parsed_args)
     elif action == "import":
         csv2h5(fpath)
     elif action == "explore":
-        _, ext = splitext(fpath)
-        if ext in ('.h5', '.hdf5'):
-            ftype = 'data'
-            h5in = populate_registry(fpath)
-            h5out = None
-            entity, period = None, None
-        else:
-            ftype = 'simulation'
-            simulation = Simulation.from_yaml(fpath)
-            h5in, h5out, periodic_globals = simulation.load()
-            ent_name = simulation.default_entity
-            entity = entities.entity_registry[ent_name]
-            period = simulation.start_period + simulation.periods - 1
-        try:
-            print "Using %s file: '%s'" % (ftype, fpath)
-            c = Console(entity, period)
-            c.run()
-        finally:
-            h5in.close()
-            if h5out is not None:
-                h5out.close()
-    else:
-        usage(script)
+        explore(fpath)
 
 if __name__ == '__main__':
     import sys
@@ -139,10 +172,5 @@ if __name__ == '__main__':
                                              platform.architecture()[0])
     print
 
-    args = sys.argv
-    if len(args) < 3:
-        usage(args[0])
-        sys.exit()
-
-    eat_traceback(main, *args)
-#    main(*args)
+    eat_traceback(main)
+#    main()

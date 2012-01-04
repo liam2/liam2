@@ -104,7 +104,9 @@ class Simulation(object):
         self.default_entity = default_entity
 
     @classmethod
-    def from_yaml(cls, fpath):
+    def from_yaml(cls, fpath,
+                  input_dir=None, input_file=None,
+                  output_dir=None, output_file=None):
         global output_directory
         global input_directory
         global skip_shows
@@ -136,16 +138,21 @@ class Simulation(object):
         start_period = simulation_def['start_period']
         skip_shows = simulation_def.get('skip_shows', False)
 
-        output_def = simulation_def['output']
-        output_directory = output_def.get('path', '')
-        if not os.path.isabs(output_directory):
-            output_directory = os.path.join(simulation_dir, output_directory)
-        output_path = os.path.join(output_directory, output_def['file'])
-
         input_def = simulation_def['input']
-        input_directory = input_def.get('path', '')
+        input_directory = input_dir if input_dir is not None \
+                                    else input_def.get('path', '')
         if not os.path.isabs(input_directory):
             input_directory = os.path.join(simulation_dir, input_directory)
+
+        output_def = simulation_def['output']
+        output_directory = output_dir if output_dir is not None \
+                                      else output_def.get('path', '')
+        if not os.path.isabs(output_directory):
+            output_directory = os.path.join(simulation_dir, output_directory)
+
+        if output_file is None:
+            output_file = output_def['file']
+        output_path = os.path.join(output_directory, output_file)
 
         entity_registry.add_all(content['entities'])
         for entity in entity_registry.itervalues():
@@ -174,7 +181,9 @@ class Simulation(object):
         method = input_def.get('method', 'h5')
 
         if method == 'h5':
-            input_path = os.path.join(input_directory, input_def['file'])
+            if input_file is None:
+                input_file = input_def['file']
+            input_path = os.path.join(input_directory, input_file)
             data_source = H5Data(input_path, output_path)
         elif method == 'void':
             input_path = None
