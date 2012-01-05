@@ -1,4 +1,4 @@
-﻿globals:
+globals:
     periodic:
         - MINR: float
 
@@ -306,6 +306,10 @@ entities:
                                       abs(age - avg_age_men),
                                       nan)
                 - workless: not work
+# commented to make the test faster                
+#                                      + 0.0015 * abs(household.num_persons - other.household.num_persons)
+#                                      - 0.0015 * abs(household.get(countlink(persons, age < 18)) 
+#                                                     - other.household.get(countlink(persons, age < 18)))
                 - partner_id:
                     if(to_marry,
                        matching(set1filter=not gender,
@@ -316,9 +320,6 @@ entities:
                                       + 0.0467 * (other.age - age)
                                       - 0.0189 * (other.age - age) ** 2
                                       + 0.0003 * (other.age - age) ** 3
-                                      + 0.0015 * abs(household.num_persons - other.household.num_persons)
-                                      - 0.0015 * abs(household.get(countlink(persons, age < 18)) 
-                                                     - other.household.get(countlink(persons, age < 18)))
                                       - 0.9087 * (other.work and workless)
                                       - 1.3286 * (other.workless and not workless)
                                       - 0.6549 * (other.work and work)
