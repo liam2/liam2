@@ -2,13 +2,6 @@
  TODO
  --------------------------------------
 
- - override input/output (data) files defined in the simulation file through
-   command-line arguments
- 
- - check that all declared globals are in the dataset
- 
- ? check that all used globals are in the dataset
- 
  - rewrite the whole import process: load boolean fields as int8 (shouldn't
    need more work/conversion),
    then do a n-way merge, then do interpolation, then convert boolean fields
@@ -24,9 +17,6 @@
  
  - fix globals in a lag
  
- - allow liam1 format (1 column per file) to be imported with the new import
-   mechanism
-
  - somehow work around numexpr 2.0 limitation of 31 variables (create hidden
    temporary variables?)
 
@@ -43,6 +33,7 @@
  
  - test the speed difference of loading & writing each column individually,
    instead of all together
+   * both using a table (as is done currently) and storing columns individually 
    * if is not too bad, it would enable us to load fields as late as possible
      and write/flush them to disk (removing them from memory) as early as
      possible.
