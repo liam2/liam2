@@ -387,44 +387,49 @@ class H5Data(object):
         self.input_path = input_path
         self.output_path = output_path
 
-    def index_tables(self, entities, fpath):
+    def index_tables(self, globals_fields, entities, fpath):
         print "reading data from %s ..." % fpath
 
         input_file = tables.openFile(fpath, mode="r")
+        try:
+            periodic_globals = None
+            input_root = input_file.root
 
-        periodic_globals = None
-        input_root = input_file.root
+            if 'globals' in input_root:
+                input_globals = input_root.globals
+                if 'periodic' in input_globals:
+                    # load globals in memory
+                    assertValidFields(globals_fields, input_globals.periodic)
+                    periodic_globals = input_globals.periodic.read()
 
-        if 'globals' in input_root:
-            input_globals = input_root.globals
-            if 'periodic' in input_globals:
-                # load globals in memory
-                periodic_globals = input_globals.periodic.read()
+            input_entities = input_root.entities
 
-        input_entities = input_root.entities
+            entities_tables = {}
+            dataset = {'globals': periodic_globals,
+                       'entities': entities_tables}
 
-        entities_tables = {}
-        dataset = {'globals': periodic_globals,
-                   'entities': entities_tables}
+            print " * indexing tables"
+            for ent_name, entity in entities.iteritems():
+                print "    -", ent_name, "...",
 
-        print " * indexing tables"
-        for ent_name, entity in entities.iteritems():
-            print "    -", ent_name, "...",
+                table = getattr(input_entities, ent_name)
+                assertValidFields(entity.fields, table, entity.missing_fields)
 
-            table = getattr(input_entities, ent_name)
-            assertValidFields(entity.fields, table, entity.missing_fields)
-
-            start_time = time.time()
-            rows_per_period, id_to_rownum_per_period = index_table(table)
-            indexed_table = IndexedTable(table, rows_per_period,
-                                         id_to_rownum_per_period)
-            entities_tables[ent_name] = indexed_table
-            print "done (%s elapsed)." % time2str(time.time() - start_time)
+                start_time = time.time()
+                rows_per_period, id_to_rownum_per_period = index_table(table)
+                indexed_table = IndexedTable(table, rows_per_period,
+                                             id_to_rownum_per_period)
+                entities_tables[ent_name] = indexed_table
+                print "done (%s elapsed)." % time2str(time.time() - start_time)
+        except:
+            input_file.close()
+            raise
 
         return input_file, dataset
 
-    def load(self, entities):
-        h5file, dataset = self.index_tables(entities, self.output_path)
+    def load(self, globals_fields, entities):
+        h5file, dataset = self.index_tables(globals_fields, entities,
+                                            self.output_path)
         entities_tables = dataset['entities']
         for ent_name, entity in entities.iteritems():
 # this is what should happen
@@ -444,13 +449,14 @@ class H5Data(object):
 
         return h5file, None, dataset['globals']
 
-    def run(self, entities, start_period):
+    def run(self, globals_fields, entities, start_period):
         ################
         # refactor WIP #
         ################
 
         #TODO: finish this refactor
-#        input_file, dataset = self.index_tables(entities, self.input_path)
+#        input_file, dataset = self.index_tables(globals_fields, entities,
+#                                                self.input_path)
 #        output_file = tables.openFile(self.output_path, mode="w")
 #
 #        if dataset['globals'] is not None:
@@ -481,64 +487,72 @@ class H5Data(object):
 
         input_file = tables.openFile(self.input_path, mode="r")
         output_file = tables.openFile(self.output_path, mode="w")
+        try:
+            periodic_globals = None
+            input_root = input_file.root
+            if 'globals' in input_root:
+                input_globals = input_root.globals
+                if 'periodic' in input_globals and globals_fields:
+                    output_globals = output_file.createGroup("/", "globals",
+                                                             "Globals")
+                    assertValidFields(globals_fields, input_globals.periodic)
+                    copyTable(input_globals.periodic, output_file,
+                              output_globals, globals_fields)
+                    # load globals in memory
+                    periodic_globals = input_globals.periodic.read()
 
-        periodic_globals = None
-        input_root = input_file.root
-        #XXX: I should probably only set periodic_globals if it was declared in
-        # the simulation file (and exists in the data file).
-        if 'globals' in input_root:
-            input_globals = input_root.globals
-            output_globals = output_file.createGroup("/", "globals", "Globals")
-            if 'periodic' in input_globals:
-                copyTable(input_globals.periodic, output_file, output_globals)
-                # load globals in memory
-                periodic_globals = input_globals.periodic.read()
+            input_entities = input_root.entities
+            output_entities = output_file.createGroup("/", "entities",
+                                                      "Entities")
+            for ent_name, entity in entities.iteritems():
+                print ent_name, "..."
 
-        input_entities = input_root.entities
-        output_entities = output_file.createGroup("/", "entities", "Entities")
-        for ent_name, entity in entities.iteritems():
-            print ent_name, "..."
+                # main table
+                table = getattr(input_entities, ent_name)
 
-            # main table
-            table = getattr(input_entities, ent_name)
+                assertValidFields(entity.fields, table, entity.missing_fields)
 
-            assertValidFields(entity.fields, table, entity.missing_fields)
+                print " * indexing table...",
+                start_time = time.time()
 
-            print " * indexing table...",
-            start_time = time.time()
+                rows_per_period, id_to_rownum_per_period = index_table(table)
+                entity.input_index = id_to_rownum_per_period
+                entity.input_rows = rows_per_period
+                entity.base_period = min(rows_per_period.keys())
+                print "done (%s elapsed)." % time2str(time.time() - start_time)
 
-            rows_per_period, id_to_rownum_per_period = index_table(table)
-            entity.input_index = id_to_rownum_per_period
-            entity.input_rows = rows_per_period
-            entity.base_period = min(rows_per_period.keys())
-            print "done (%s elapsed)." % time2str(time.time() - start_time)
+                #TODO: copying the table and generally preparing the output
+                # file should be a different method than indexing
+                print " * copying table..."
+                start_time = time.time()
+                input_rows = entity.input_rows
+                output_rows = dict((p, rows)
+                                   for p, rows in input_rows.iteritems()
+                                   if p < start_period)
+                if output_rows:
+                    _, stoprow = input_rows[max(output_rows.iterkeys())]
+                else:
+                    stoprow = 0
 
-            #TODO: copying the table and generally preparing the output file
-            # should be a different method than indexing
-            print " * copying table..."
-            start_time = time.time()
-            input_rows = entity.input_rows
-            output_rows = dict((p, rows) for p, rows in input_rows.iteritems()
-                               if p < start_period)
-            if output_rows:
-                _, stoprow = input_rows[max(output_rows.iterkeys())]
-            else:
-                stoprow = 0
+                output_table = copyTable(table, output_file, output_entities,
+                                         entity.fields, stop=stoprow,
+                                         show_progress=True)
+                entity.output_rows = output_rows
+                print "done (%s elapsed)." % time2str(time.time() - start_time)
 
-            output_table = copyTable(table, output_file, output_entities,
-                                     entity.fields, stop=stoprow,
-                                     show_progress=True)
-            entity.output_rows = output_rows
-            print "done (%s elapsed)." % time2str(time.time() - start_time)
-
-            print " * building array for first simulated period...",
-            start_time = time.time()
-            entity.array, entity.id_to_rownum = \
-                buildArrayForPeriod(table, entity.fields, entity.input_rows,
-                                    entity.input_index, start_period)
-            print "done (%s elapsed)." % time2str(time.time() - start_time)
-            entity.input_table = table
-            entity.table = output_table
+                print " * building array for first simulated period...",
+                start_time = time.time()
+                entity.array, entity.id_to_rownum = \
+                    buildArrayForPeriod(table, entity.fields,
+                                        entity.input_rows,
+                                        entity.input_index, start_period)
+                print "done (%s elapsed)." % time2str(time.time() - start_time)
+                entity.input_table = table
+                entity.table = output_table
+        except:
+            input_file.close()
+            output_file.close()
+            raise
 
         return input_file, output_file, periodic_globals
 

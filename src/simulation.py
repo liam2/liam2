@@ -91,8 +91,7 @@ class Simulation(object):
     def __init__(self, globals_fields, periods, start_period,
                  init_processes, init_entities, processes, entities,
                  data_source, default_entity=None):
-        #TODO: the fields is unused for now. It should be used though.
-        self.globals_fields = globals_fields
+        self.globals_fields = [('PERIOD', int)] + globals_fields
         self.periods = periods
         self.start_period = start_period
         self.init_processes = init_processes
@@ -115,10 +114,10 @@ class Simulation(object):
         simulation_dir = os.path.dirname(simulation_path)
         with open(fpath) as f:
             content = yaml.load(f)
+        #XXX: use validictory instead of my custom validator?
+        # http://readthedocs.org/docs/validictory/
         validate_dict(content, cls.yaml_layout)
 
-        #TODO: raise exception when there are unknown keywords
-        # use validictory? http://readthedocs.org/docs/validictory/
         globals_def = content.get('globals', {})
         periodic_globals = globals_def.get('periodic', [])
         # list of one-item-dicts to list of tuples
@@ -197,11 +196,13 @@ class Simulation(object):
                           data_source, default_entity)
 
     def load(self):
-        return timed(self.data_source.load, entity_registry)
+        return timed(self.data_source.load, self.globals_fields,
+                     entity_registry)
 
     def run(self, run_console=False):
         start_time = time.time()
         h5in, h5out, periodic_globals = timed(self.data_source.run,
+                                              self.globals_fields,
                                               entity_registry,
                                               self.start_period - 1)
         if periodic_globals is not None:
@@ -238,7 +239,7 @@ class Simulation(object):
                 if periodic_globals is not None:
                     globals_row = period - globals_base_period
                     if globals_row < 0:
-                        #TODO: use missing values instead
+                        #XXX: use missing values instead?
                         raise Exception('Missing globals data for period %d'
                                         % period)
                     period_globals = periodic_globals[globals_row]
