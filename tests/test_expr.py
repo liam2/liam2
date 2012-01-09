@@ -21,10 +21,10 @@ class Test(ArrayTestCase):
 
     def test_grpmin(self):        
         e = parse("grpmin(age)", autovariables=True)
-        assert e.eval(self.context) == 10
+        self.assertEqual(e.eval(self.context), 10)
 
         e = parse("grpmin(where(dead, age + 15, age))", autovariables=True)
-        assert e.eval(self.context) == 20
+        self.assertEqual(e.eval(self.context), 20)
 
 
 class FakeEntity(object):
@@ -89,8 +89,7 @@ class TestLink(ArrayTestCase):
                                data=households)
         entities.entity_registry.add(person)
         entities.entity_registry.add(household)
-    
-           
+
 #    def test_many2one_from_dict(self):
 #        person = entities.entity_registry['person']
 #        context = {'mother_id': array([-1, 0, 0, 2]),
