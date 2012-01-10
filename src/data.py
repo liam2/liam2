@@ -399,7 +399,9 @@ class H5Data(object):
                 input_globals = input_root.globals
                 if 'periodic' in input_globals:
                     # load globals in memory
-                    assertValidFields(globals_fields, input_globals.periodic)
+                    #FIXME: make sure either period or PERIOD is present
+                    assertValidFields(globals_fields, input_globals.periodic,
+                                      allowed_missing=('period', 'PERIOD'))
                     periodic_globals = input_globals.periodic.read()
 
             input_entities = input_root.entities
@@ -465,6 +467,7 @@ class H5Data(object):
 #            copyTable(input_file.root.globals.periodic, output_file,
 #                      output_globals)
 #
+#        entities_tables = dataset['entities']
 #        input_entities = input_root.entities
 #        output_entities = output_file.createGroup("/", "entities", "Entities")
 #        print " * copying tables"
@@ -472,16 +475,18 @@ class H5Data(object):
 #            print ent_name, "..."
 #
 #            # main table
-#            table = getattr(input_entities, ent_name)
 #
-#            assertValidFields(entity.fields, table, entity.missing_fields)
+#            table = entities_tables[ent_name]
 #
-#            print " * indexing table...",
-#            rows_per_period, id_to_rownum_per_period, max_id_per_period = \
-#                index_table(table)
-#            entity.input_index = id_to_rownum_per_period
-#            entity.input_rows = rows_per_period
-#            entity.base_period = min(rows_per_period.keys())
+#            entity.input_index = table.id2rownum_per_period
+#            entity.input_rows = table.period_index
+#            entity.input_table = table.table
+#            entity.base_period = min(table.period_index.keys())
+
+# this is what should happen
+#            entity.indexed_input_table = entities_tables[ent_name]
+#            entity.indexed_output_table = entities_tables[ent_name]
+
 
         print "reading data from %s ..." % self.input_path
 
@@ -495,7 +500,9 @@ class H5Data(object):
                 if 'periodic' in input_globals and globals_fields:
                     output_globals = output_file.createGroup("/", "globals",
                                                              "Globals")
-                    assertValidFields(globals_fields, input_globals.periodic)
+                    #FIXME: make sure either period or PERIOD is present
+                    assertValidFields(globals_fields, input_globals.periodic,
+                                      allowed_missing=('period', 'PERIOD'))
                     copyTable(input_globals.periodic, output_file,
                               output_globals, globals_fields)
                     # load globals in memory
@@ -506,6 +513,8 @@ class H5Data(object):
                                                       "Entities")
             for ent_name, entity in entities.iteritems():
                 print ent_name, "..."
+
+#               >>> START replace
 
                 # main table
                 table = getattr(input_entities, ent_name)
@@ -520,6 +529,8 @@ class H5Data(object):
                 entity.input_rows = rows_per_period
                 entity.base_period = min(rows_per_period.keys())
                 print "done (%s elapsed)." % time2str(time.time() - start_time)
+
+#               <<<<<< STOP replace
 
                 #TODO: copying the table and generally preparing the output
                 # file should be a different method than indexing
@@ -542,6 +553,14 @@ class H5Data(object):
 
                 print " * building array for first simulated period...",
                 start_time = time.time()
+
+                #TODO: this whole process of merging all periods is very
+                # opiniated and does not allow individuals to die/disappear
+                # before the simulation starts. We couldn't for example,
+                # take the output of one of our simulation and
+                # resimulate only some years in the middle, because the dead
+                # would be brought back to life. In conclusion, it should be
+                # optional.
                 entity.array, entity.id_to_rownum = \
                     buildArrayForPeriod(table, entity.fields,
                                         entity.input_rows,
