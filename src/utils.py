@@ -1,5 +1,6 @@
 import sys
 import time
+import operator
 import itertools
 from itertools import izip
 from textwrap import wrap
@@ -48,6 +49,10 @@ def timed(func, *args, **kwargs):
     elapsed, res = gettime(func, *args, **kwargs)
     print "done (%s elapsed)." % time2str(elapsed)
     return res
+
+
+def prod(values):
+    return reduce(operator.mul, values, 1)
 
 
 def safe_put(a, ind, v):

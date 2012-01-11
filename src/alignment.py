@@ -11,25 +11,32 @@ import numpy as np
 from expr import functions, Expr, Variable, expr_eval, parse, collect_variables
 from entities import context_length, context_subset
 from utils import skip_comment_cells, strip_rows, PrettyTable, unique, \
-                  duplicates, unique_duplicate
+                  duplicates, unique_duplicate, prod
 import simulation
 from properties import (FilteredExpression, TableExpression, GroupCount,
                         add_individuals)
 
 
-#XXX: it might be faster to partition using a formula giving the index of the
-# group instead of checking all possible value combination.
-# eg. idx = where(agegroup <= 50, agegroup / 5, 5 + agegroup / 10) + male * 15
-# however, in numpy I would still have to do (idx == 0).nonzero(),
-# (idx == 1).nonzero(), ...
-def partition_nd(columns, filter, possible_values):
+#TODO: make possible_values a list of combinations of value. In some cases,
+# (eg GroupBy), we are not interested in all possible combinations.
+def partition_nd(columns, filter_value, possible_values):
     """
     * columns is a list of columns containing the data to be partitioned
-    * filter is a vector of booleans which selects individuals to be counted
-    * values is an matrix with N vectors containing the possible values for
-      each column
+    * filter_value is a vector of booleans which selects individuals
+    * possible_values is an matrix with N vectors containing the possible
+      values for each column
     * returns a 1d array of lists of indices
     """
+    contiguous_columns = []
+    for col in columns:
+        if isinstance(col, np.ndarray) and col.shape:
+            if not col.flags.contiguous:
+                col = col.copy()
+        else:
+            col = [col]
+        contiguous_columns.append(col)
+    columns = contiguous_columns
+
     size = tuple([len(colvalues) for colvalues in possible_values])
 
     #TODO: build result as a flattened array directly instead of calling ravel
@@ -55,11 +62,17 @@ def partition_nd(columns, filter, possible_values):
             local_filter = first_coldata == first_colvalues[first_i]
             for i, colvalues, coldata in parts[1:]:
                 local_filter &= coldata == colvalues[i]
-            local_filter &= filter
+            local_filter &= filter_value
         else:
-            local_filter = np.copy(filter)
-
-        result[idx] = local_filter.nonzero()[0]
+            # filter_value can be a simple boolean, in that case, we
+            # get a 0-d array.
+            local_filter = np.copy(filter_value)
+        if local_filter.shape:
+            result[idx] = local_filter.nonzero()[0]
+        else:
+            # local_filter = True
+            assert local_filter
+            result[idx] = np.arange(len(columns[0]))
 
     # pure-python version. It is 10x slower than the NumPy version above
     # but it might be a better starting point to translate to C,
@@ -113,34 +126,47 @@ def extract_period(period, expressions, possible_values, probabilities):
     return expressions, possible_values, probabilities
 
 
-def align_get_indices_nd(context, filter, score,
+def align_get_indices_nd(context, filter_value, score,
                          expressions, possible_values, probabilities,
                          take_filter=None, leave_filter=None, weights=None,
                          past_error=None):
     assert len(expressions) == len(possible_values)
+    if filter_value is not None:
+        num_to_align = np.sum(filter_value)
+    else:
+        num_to_align = context_length(context)
 
-    num_to_align = np.sum(filter)
+    #TODO: allow any temporal variable
+    if 'period' in [str(e) for e in expressions]:
+        period = context['period']
+        expressions, possible_values, probabilities = \
+            extract_period(period, expressions, possible_values,
+                           probabilities)
+
     if expressions:
-        #TODO: allow any temporal variable
-        if 'period' in [str(e) for e in expressions]:
-            period = context['period']
-            expressions, possible_values, probabilities = \
-                extract_period(period, expressions, possible_values,
-                               probabilities)
-        assert len(probabilities) == \
-               reduce(operator.mul, [len(vals) for vals in possible_values], 1)
+        assert len(probabilities) == prod(len(pv) for pv in possible_values)
+
         # retrieve the columns we need to work with
         columns = [expr_eval(expr, context) for expr in expressions]
-        groups = partition_nd(columns, filter, possible_values)
+        if filter_value is not None:
+            groups = partition_nd(columns, filter_value, possible_values)
+        else:
+            groups = partition_nd(columns, True, possible_values)
     else:
-        groups = np.array([filter.nonzero()[0]])
+        if filter_value is not None:
+            groups = np.array([filter_value.nonzero()[0]])
+        else:
+            groups = np.arange(num_to_align).reshape((1, num_to_align))
         assert len(probabilities) == 1
 
     # the sum is not necessarily equal to len(a), because some individuals
     # might not fit in any group (eg if some alignment data is missing)
     num_aligned = sum(len(g) for g in groups)
     if num_aligned < num_to_align:
-        to_align = set(filter.nonzero()[0])
+        if filter_value is not None:
+            to_align = set(filter_value.nonzero()[0])
+        else:
+            to_align = set(xrange(num_to_align))
         aligned = set()
         for member_indices in groups:
             aligned |= set(member_indices)
@@ -154,7 +180,12 @@ def align_get_indices_nd(context, filter, score,
     take = 0
     leave = 0
     if take_filter is not None:
-        take = np.sum(filter & take_filter)
+        if filter_value is not None:
+            take = np.sum(filter_value & take_filter)
+        else:
+            take = np.sum(take_filter)
+        #XXX: wouldn't it be more efficient to take filter_value into account
+        # for computing take_indices and maybe_indices?
         take_indices = take_filter.nonzero()[0]
         if leave_filter is not None:
             maybe_indices = ((~take_filter) & (~leave_filter)).nonzero()[0]
@@ -168,7 +199,10 @@ def align_get_indices_nd(context, filter, score,
         maybe_indices = None
 
     if leave_filter is not None:
-        leave = np.sum(filter & leave_filter)
+        if filter_value is not None:
+            leave = np.sum(filter_value & leave_filter)
+        else:
+            leave = np.sum(leave_filter)
 
     total_underflow = 0
     total_overflow = 0
@@ -281,10 +315,6 @@ def align_get_indices_nd(context, filter, score,
         return total_indices, None
 
 
-def prod(values):
-    return reduce(operator.mul, values, 1)
-
-
 class GroupBy(TableExpression):
 #    func_name = 'groupby'
 
@@ -308,21 +338,23 @@ class GroupBy(TableExpression):
         self.percent = kwargs.get('percent', False)
 
     def eval(self, context):
-        if self.filter is not None:
-            filter_value = expr_eval(self.filter, context)
-        else:
-            #XXX: use True instead of a vector of True?
-            filter_value = np.ones(context_length(context), dtype=bool)
-
         expressions = self.expressions
         columns = [expr_eval(e, context) for e in expressions]
 
-        #XXX: why not work all the way with filtered
-        possible_values = [np.unique(col[filter_value])
-                               if isinstance(col, np.ndarray) and col.shape
-                               else [col]
-                           for col in columns]
-        groups = partition_nd(columns, filter_value, possible_values)
+        if self.filter is not None:
+            filter_value = expr_eval(self.filter, context)
+            #TODO: make a function out of this, I think we have this pattern
+            # in several places
+            filtered_columns = [col[filter_value]
+                                   if isinstance(col, np.ndarray) and col.shape
+                                   else [col]
+                                for col in columns]
+        else:
+            filtered_columns = columns
+
+        possible_values = [np.unique(col) for col in filtered_columns]
+
+        groups = partition_nd(filtered_columns, True, possible_values)
 
         # groups is a (flat) list of list.
         # the first variable is the outer-most "loop",
@@ -435,6 +467,7 @@ class GroupBy(TableExpression):
         for y in range(height):
             result.append(list(categ_values[y]) +
                           data[y * width:(y + 1) * width])
+
         return PrettyTable(result)
 
     def collect_variables(self, context):
@@ -558,7 +591,7 @@ class Alignment(FilteredExpression):
         if filter_expr is not None:
             filter_value = expr_eval(filter_expr, context)
         else:
-            filter_value = np.ones(context_length(context), dtype=bool)
+            filter_value = None
 
         take_filter = expr_eval(self.take_filter, context) \
                       if self.take_filter is not None else None
