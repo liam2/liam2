@@ -26,6 +26,16 @@ def partition_nd(columns, filter_value, possible_values):
       values for each column
     * returns a 1d array of lists of indices
     """
+    # make a copy of non contiguous columns. It is only worth it when the
+    # number of possible values for that column is large enough to compensate
+    # for the cost of the copy, and it is usually the case.
+    #XXX: we might want to be more precise about this.
+    # 1e5 arrays
+    # * not aligned (nor contiguous): always worth it
+    # * aligned but not contiguous: never worth it
+    # 1e6 arrays
+    # * not aligned (nor contiguous): worth it from 6 values
+    # * aligned but not contiguous: worth it from 12 values
     contiguous_columns = []
     for col in columns:
         if isinstance(col, np.ndarray) and col.shape:
