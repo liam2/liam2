@@ -2,7 +2,6 @@ from __future__ import print_function
 
 from itertools import izip, chain, product, count
 import random
-import operator
 import csv
 import os
 
