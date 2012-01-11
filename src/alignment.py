@@ -186,32 +186,33 @@ def align_get_indices_nd(context, filter_value, score,
                           [[col[row] for col in [context['id']] + columns]
                            for row in unaligned]))
 
-    take = 0
-    leave = 0
-    if take_filter is not None:
-        if filter_value is not None:
-            take = np.sum(filter_value & take_filter)
-        else:
-            take = np.sum(take_filter)
-        #XXX: wouldn't it be more efficient to take filter_value into account
-        # for computing take_indices and maybe_indices?
-        take_indices = take_filter.nonzero()[0]
-        if leave_filter is not None:
-            maybe_indices = ((~take_filter) & (~leave_filter)).nonzero()[0]
-        else:
-            maybe_indices = (~take_filter).nonzero()[0]
-    elif leave_filter is not None:
-        take_indices = None
-        maybe_indices = (~leave_filter).nonzero()[0]
+    if filter_value is not None:
+        bool_filter_value = filter_value.copy()
     else:
+        bool_filter_value = True
+
+    maybe_filter = bool_filter_value
+    if take_filter is not None:
+        #XXX: I wonder if users would prefer if filter_value was taken into
+        # account or not. This only impacts what it displayed on the console,
+        # but still...
+        take = np.sum(take_filter)
+        take_indices = (take_filter & bool_filter_value).nonzero()[0]
+        maybe_filter &= ~take_filter
+    else:
+        take = 0
         take_indices = None
-        maybe_indices = None
 
     if leave_filter is not None:
-        if filter_value is not None:
-            leave = np.sum(filter_value & leave_filter)
-        else:
-            leave = np.sum(leave_filter)
+        leave = np.sum(leave_filter)
+        maybe_filter &= ~leave_filter
+    else:
+        leave = 0
+
+    if take_filter is not None or leave_filter is not None:
+        maybe_indices = maybe_filter.nonzero()[0]
+    else:
+        maybe_indices = None
 
     total_underflow = 0
     total_overflow = 0
