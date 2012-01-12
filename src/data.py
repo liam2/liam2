@@ -275,21 +275,10 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
             id_to_rownum[row_id] = rownum
             rownum += 1
 
-#    all_ids = is_present.nonzero()[0]
-
     # computing source row (period) for each destination row
     output_array_source_rows = np.empty(rownum, dtype=int)
     output_array_source_rows.fill(-1)
     for period in periods_before[::-1]:
-#        missing_rows = output_array_source_rows == -1
-#        if not np.any(missing_rows):
-#            break
-#        start, stop = input_rows[period]
-#        missing_ids = all_ids[missing_rows]
-#        input_id_to_rownum = input_index[period]
-#        input_rownums_for_missing = input_id_to_rownum[missing_ids] + start
-#        output_array_source_rows[missing_rows] = input_rownums_for_missing
-
         start, stop = input_rows[period]
         input_id_to_rownum = input_index[period]
         input_ids = (input_id_to_rownum != -1).nonzero()[0]
@@ -302,18 +291,6 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
         if np.all(output_array_source_rows != -1):
             break
 
-#        start, stop = input_rows[period]
-#        for id, input_rownum in enumerate(input_index[period]):
-#            if input_rownum != -1:
-#                output_rownum = id_to_rownum[id]
-#                if output_rownum != -1:
-#                    if output_array_source_rows[output_rownum] == -1:
-#                        output_array_source_rows[output_rownum] = \
-#                            start + input_rownum
-
-#        if np.all(output_array_source_rows != -1):
-#            break
-
     # reading data
     output_array = input_table.readCoordinates(output_array_source_rows)
     output_array = add_and_drop_fields(output_array, output_fields)
@@ -322,6 +299,8 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
 
 
 def index_table(table):
+    '''table is an iterable of rows, each row is a mapping (name -> value)'''
+
     rows_per_period = {}
     id_to_rownum_per_period = {}
     temp_id_to_rownum = []
@@ -353,6 +332,8 @@ def index_table(table):
 
 
 def index_table_light(table):
+    '''table is an iterable of rows, each row is a mapping (name -> value)'''
+
     rows_per_period = {}
     current_period = None
     start_row = None
@@ -377,9 +358,26 @@ class IndexedTable(object):
         self.period_index = period_index
         self.id2rownum_per_period = id2rownum_per_period
 
+    # In the future, we will probably want a more flexible interface, but
+    # it will need a lot more machinery (query language and so on) so let's
+    # stick with something simple for now.
+    def read(self, period, ids=None, field=None):
+        if period not in self.period_index:
+            raise Exception('no data for period %d' % period)
+        if ids is None:
+            start, stop = self.period_index[period]
+            return self.table.read(start=start, stop=stop, field=field)
+        else:
+            raise NotImplementedError('reading only some ids is not '
+                                      'implemented yet')
+
     @property
     def base_period(self):
         return min(self.period_index.keys())
+
+
+class DataSet(object):
+    pass
 
 
 def index_tables(globals_fields, entities, fpath):
@@ -425,7 +423,14 @@ def index_tables(globals_fields, entities, fpath):
     return input_file, dataset
 
 
-class H5Data(object):
+class DataSource(object):
+    pass
+
+
+# A data source is not necessarily read-only, but should be connected to
+# only one file, so in our case we should have one instance for input and the
+# other (used both for read and write) for the output.
+class H5Data(DataSource):
     def __init__(self, input_path, output_path):
         self.input_path = input_path
         self.output_path = output_path
@@ -448,7 +453,7 @@ class H5Data(object):
             entity.output_rows = table.period_index
             entity.table = table.table
 
-            entity.base_period = min(table.period_index.keys())
+            entity.base_period = table.base_period
 
         return h5file, None, dataset['globals']
 
@@ -478,7 +483,7 @@ class H5Data(object):
                 entity.input_index = table.id2rownum_per_period
                 entity.input_rows = table.period_index
                 entity.input_table = table.table
-                entity.base_period = min(table.period_index.keys())
+                entity.base_period = table.base_period
 
 # this is what should happen
 #                entity.indexed_input_table = entities_tables[ent_name]
@@ -512,7 +517,7 @@ class H5Data(object):
                 # opiniated and does not allow individuals to die/disappear
                 # before the simulation starts. We couldn't for example,
                 # take the output of one of our simulation and
-                # resimulate only some years in the middle, because the dead
+                # re-simulate only some years in the middle, because the dead
                 # would be brought back to life. In conclusion, it should be
                 # optional.
                 entity.array, entity.id_to_rownum = \
@@ -529,11 +534,11 @@ class H5Data(object):
         return input_file, output_file, dataset['globals']
 
 
-class Void(object):
+class Void(DataSource):
     def __init__(self, output_path):
         self.output_path = output_path
 
-    def run(self, entities, start_period):
+    def run(self, globals_fields, entities, start_period):
         output_file = tables.openFile(self.output_path, mode="w")
         output_entities = output_file.createGroup("/", "entities", "Entities")
         for entity in entities.itervalues():
