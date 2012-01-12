@@ -4,7 +4,7 @@ from os.path import splitext
 import yaml
 
 from simulation import Simulation
-from data_main import csv2h5
+from importer import csv2h5
 from console import Console
 from data import populate_registry
 import entities
