@@ -216,8 +216,7 @@ class Entity(object):
         self.fields = [('period', int), ('id', int)] + fields
 
         # only used in data (to check that all "required" fields are present
-        # in the input file and data_main (where it will not survive its
-        # modernisation)
+        # in the input file)
 
         # one potential solution would be to split the fields argument and
         # attribute in input_fields and output_fields (regardless of whether
@@ -267,7 +266,7 @@ class Entity(object):
 
     @classmethod
     def from_yaml(cls, ent_name, entity_def):
-        from properties import Link
+        from links import Link
 
         # YAML "ordered dict" syntax returns a list of dict and we want a list
         # of tuples
@@ -351,8 +350,8 @@ class Entity(object):
         return cond_context
 
     def parse_processes(self, globals):
-        from properties import Assignment, Compute, Process, ProcessGroup, \
-                               PrefixingLink
+        from properties import Assignment, Compute, Process, ProcessGroup
+        from links import PrefixingLink
         variables = dict((name, SubscriptableVariable(name, type_))
                          for name, type_ in globals)
         variables.update(self.variables)

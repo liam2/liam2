@@ -18,7 +18,7 @@ import matching
 import properties
 import actions
 import regressions
-
+import links
 
 input_directory = "."
 output_directory = "."
@@ -205,6 +205,14 @@ class Simulation(object):
                                               self.globals_fields,
                                               entity_registry,
                                               self.start_period - 1)
+#        input_dataset = self.data_source.run(self.globals_fields,
+#                                             entity_registry)
+#        output_dataset = self.data_sink.prepare(self.globals_fields,
+#                                                entity_registry)
+#        output_dataset.copy(input_dataset, self.start_period - 1)
+#        for entity in input_dataset:
+#            indexed_array = buildArrayForPeriod(entity)
+
         if periodic_globals is not None:
             try:
                 globals_periods = periodic_globals['PERIOD']
