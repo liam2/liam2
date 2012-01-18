@@ -86,27 +86,25 @@ class RemoveIndividuals(Process):
 
         entity = context['__entity__']
         len_before = len(entity.array)
-        already_removed = entity.id_to_rownum == -1
-        already_removed_indices = already_removed.nonzero()[0]
-        already_removed_indices_shifted = already_removed_indices - \
-                                  np.arange(len(already_removed_indices))
 
-        # recreate id_to_rownum from scratch
-        id_to_rownum = np.arange(len_before)
-        id_to_rownum -= filter_value.cumsum()
-        #XXX: use np.putmask(id_to_rownum, filter_value, -1)
-        id_to_rownum[filter_value] = -1
-        entity.id_to_rownum = np.insert(id_to_rownum,
-                                        already_removed_indices_shifted,
-                                        -1)
-        #FIXME: this allocates a new (slightly smaller) array then the old
-        # array is discarded when the gc does its job, effectively doubling
-        # the peak memory usage for the main array
+        #FIXME: this allocates a new (slightly smaller) array. The old
+        # array is only discarded when the gc does its job, effectively
+        # doubling the peak memory usage for the main array for a while.
+        # Seems like another good reason to store columns separately.
+
+        # Shrink array & temporaries. 99% of the function time is spent here.
         entity.array = entity.array[not_removed]
         temp_variables = entity.temp_variables
         for name, temp_value in temp_variables.iteritems():
             if isinstance(temp_value, np.ndarray) and temp_value.shape:
                 temp_variables[name] = temp_value[not_removed]
+
+        # update id_to_rownum
+        ids = entity.array['id']
+        id_to_rownum = np.empty(np.max(ids) + 1)
+        id_to_rownum.fill(-1)
+        id_to_rownum[ids] = np.arange(len(ids))
+        entity.id_to_rownum = id_to_rownum
 
         print "%d %s(s) removed (%d -> %d)" % (filter_value.sum(), entity.name,
                                                len_before, len(entity.array)),
