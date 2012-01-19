@@ -1,12 +1,11 @@
-from itertools import izip, groupby, chain
-from operator import itemgetter
+from itertools import izip, chain
 
 import numpy as np
 
 from expr import Expr, Variable, Where, functions, as_string, dtype, \
                  coerce_types, type_to_idx, idx_to_type, expr_eval, \
                  collect_variables, get_tmp_varname, \
-                 missing_values, get_missing_value, get_missing_record, \
+                 missing_values, get_missing_record, \
                  get_missing_vector
 from entities import entity_registry, EntityContext, \
                      context_length, context_subset
