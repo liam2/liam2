@@ -35,7 +35,7 @@ class EntityContext(object):
             return self.extra[key]
         except KeyError:
             period = self.extra['period']
-#            current_period = self.entity.array['period'][0]
+            current_period = self.entity.array['period'][0]
             if self._iscurrentperiod:
                 try:
                     return self.entity.temp_variables[key]
@@ -44,12 +44,12 @@ class EntityContext(object):
                         return self.entity.array[key]
                     except ValueError:
                         raise KeyError(key)
-#            elif period == current_period - 1 and \
-#                 self.entity.array_lag is not None:
-#                try:
-#                    return self.entity.array_lag[key]
-#                except ValueError:
-#                    raise KeyError(key)
+            elif period == current_period - 1 and \
+                 self.entity.array_lag is not None:
+                try:
+                    return self.entity.array_lag[key]
+                except ValueError:
+                    raise KeyError(key)
             else:
                 bounds = self.entity.output_rows.get(period)
                 if bounds is not None:
@@ -456,7 +456,7 @@ class Entity(object):
         else:
             #TODO: only store variables which are effectively used in lag
             # expressions
-#            self.array_lag = self.array.copy()
+            self.array_lag = self.array.copy()
             startrow = self.table.nrows
             self.table.append(self.array)
             self.output_rows[period] = (startrow, self.table.nrows)
