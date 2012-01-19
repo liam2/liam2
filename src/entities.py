@@ -4,6 +4,7 @@ import tables
 
 from utils import safe_put, count_occurences
 from data import mergeArrays, get_fields
+from registry import entity_registry
 from expr import parse, Variable, SubscriptableVariable, \
                  expr_eval, dtype, \
                  get_missing_value, hasvalue
@@ -591,15 +592,3 @@ class Entity(object):
 
     def __repr__(self):
         return "<Entity '%s'>" % self.name
-
-
-class EntityRegistry(dict):
-    def add(self, entity):
-        self[entity.name] = entity
-
-    def add_all(self, entities_def):
-        for k, v in entities_def.iteritems():
-            self.add(Entity.from_yaml(k, v))
-
-
-entity_registry = EntityRegistry()

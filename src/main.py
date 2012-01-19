@@ -7,8 +7,7 @@ from simulation import Simulation
 from importer import csv2h5
 from console import Console
 from data import populate_registry
-import entities
-
+from registry import entity_registry
 
 __version__ = "0.5.0rc"
 
@@ -112,8 +111,7 @@ def explore(fpath):
         simulation = Simulation.from_yaml(fpath)
         h5in, h5out, periodic_globals = simulation.load()
         ent_name = simulation.default_entity
-        entity = entities.entity_registry[ent_name] if ent_name is not None \
-                                                    else None
+        entity = entity_registry[ent_name] if ent_name is not None else None
         period = simulation.start_period + simulation.periods - 1
     try:
         c = Console(entity, period)

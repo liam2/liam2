@@ -556,7 +556,8 @@ class Void(DataSource):
 
 def populate_registry(fpath):
     import entities
+    import registry
     h5in = tables.openFile(fpath, mode="r")
     for table in h5in.root.entities:
-        entities.entity_registry.add(entities.Entity.from_table(table))
+        registry.entity_registry.add(entities.Entity.from_table(table))
     return h5in

@@ -5,7 +5,8 @@ import numpy as np
 
 from expr import Variable, functions, dtype, expr_eval, \
                  missing_values, get_missing_value
-from entities import entity_registry, EntityContext, context_length
+from entities import EntityContext, context_length
+from registry import entity_registry
 from properties import EvaluableExpression
 
 

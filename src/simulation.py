@@ -8,7 +8,8 @@ import numpy as np
 import yaml
 
 from data import H5Data, Void
-from entities import entity_registry, str_to_type
+from entities import Entity, str_to_type
+from registry import entity_registry
 from utils import time2str, timed, gettime, validate_dict
 import console
 import config
@@ -149,7 +150,9 @@ class Simulation(object):
             output_file = output_def['file']
         output_path = os.path.join(output_directory, output_file)
 
-        entity_registry.add_all(content['entities'])
+        for k, v in content['entities'].iteritems():
+            entity_registry.add(Entity.from_yaml(k, v))
+
         for entity in entity_registry.itervalues():
             entity.check_links()
             entity.parse_processes(globals_fields)

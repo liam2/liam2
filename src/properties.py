@@ -7,8 +7,8 @@ from expr import Expr, Variable, Where, functions, as_string, dtype, \
                  collect_variables, get_tmp_varname, \
                  missing_values, get_missing_record, \
                  get_missing_vector
-from entities import entity_registry, EntityContext, \
-                     context_length, context_subset
+from entities import EntityContext, context_length, context_subset
+from registry import entity_registry
 import utils
 
 

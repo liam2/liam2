@@ -4,6 +4,7 @@ import numpy as np
 
 from expr import expr_eval, parse, Variable
 import entities
+from registry import entity_registry
 from properties import Process
 
 entity_required = \
@@ -39,7 +40,7 @@ class Console(object):
         self.period = period
 
     def list_entities(self):
-        ent_names = [repr(k) for k in entities.entity_registry.keys()]
+        ent_names = [repr(k) for k in entity_registry.keys()]
         print "available entities:", ', '.join(ent_names)
 
     def list_fields(self, ent_name=None):
@@ -55,7 +56,7 @@ class Console(object):
 
     def get_entity(self, name):
         try:
-            return entities.entity_registry[name]
+            return entity_registry[name]
         except KeyError:
             print "entity '%s' does not exist" % name
             self.list_entities()
