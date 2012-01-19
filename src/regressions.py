@@ -1,7 +1,6 @@
 import numpy as np
 
-from properties import Log, Exp, Normal, Max, \
-                       CompoundExpression
+from properties import Log, Exp, Normal, Max, CompoundExpression
 from alignment import Alignment
 from expr import Expr, Variable, ShortLivedVariable, functions, \
                  collect_variables, get_tmp_varname
