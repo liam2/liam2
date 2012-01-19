@@ -3,8 +3,8 @@ import csv
 
 import numpy as np
 
+import config
 from expr import functions, Expr, expr_eval
-import simulation
 from properties import Process, BreakpointException, TableExpression
 
 
@@ -14,7 +14,7 @@ class Show(Process):
         self.args = args
 
     def run(self, context):
-        if simulation.skip_shows:
+        if config.skip_shows:
             print "show skipped",
         else:
             values = [expr_eval(expr, context) for expr in self.args]
@@ -57,7 +57,7 @@ class CSV(Process):
         period = context['period']
         fname = self.fname.format(entity=entity.name, period=period)
         print "writing to", fname, "...",
-        file_path = os.path.join(simulation.output_directory, fname)
+        file_path = os.path.join(config.output_directory, fname)
 
         with open(file_path, self.mode + 'b') as f:
             dataWriter = csv.writer(f)
@@ -101,9 +101,9 @@ class RemoveIndividuals(Process):
 
         # update id_to_rownum
         ids = entity.array['id']
-        id_to_rownum = np.empty(np.max(ids) + 1)
+        id_to_rownum = np.empty(np.max(ids) + 1, dtype=int)
         id_to_rownum.fill(-1)
-        id_to_rownum[ids] = np.arange(len(ids))
+        id_to_rownum[ids] = np.arange(len(ids), dtype=int)
         entity.id_to_rownum = id_to_rownum
 
         print "%d %s(s) removed (%d -> %d)" % (filter_value.sum(), entity.name,

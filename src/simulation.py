@@ -11,6 +11,7 @@ from data import H5Data, Void
 from entities import entity_registry, str_to_type
 from utils import time2str, timed, gettime, validate_dict
 import console
+import config
 
 # imports needed for the simulation file eval
 import alignment
@@ -19,10 +20,6 @@ import properties
 import actions
 import regressions
 import links
-
-input_directory = "."
-output_directory = "."
-skip_shows = False
 
 
 def show_top_processes(process_time, num_processes):
@@ -99,17 +96,14 @@ class Simulation(object):
         self.processes = processes
         self.entities = entities
         self.data_source = data_source
-        self.stepbystep = False
         self.default_entity = default_entity
+
+        self.stepbystep = False
 
     @classmethod
     def from_yaml(cls, fpath,
                   input_dir=None, input_file=None,
                   output_dir=None, output_file=None):
-        global output_directory
-        global input_directory
-        global skip_shows
-
         simulation_path = os.path.abspath(fpath)
         simulation_dir = os.path.dirname(simulation_path)
         with open(fpath) as f:
@@ -135,19 +129,21 @@ class Simulation(object):
 
         periods = simulation_def['periods']
         start_period = simulation_def['start_period']
-        skip_shows = simulation_def.get('skip_shows', False)
+        config.skip_shows = simulation_def.get('skip_shows', False)
 
         input_def = simulation_def['input']
         input_directory = input_dir if input_dir is not None \
                                     else input_def.get('path', '')
         if not os.path.isabs(input_directory):
             input_directory = os.path.join(simulation_dir, input_directory)
+        config.input_directory = input_directory
 
         output_def = simulation_def['output']
         output_directory = output_dir if output_dir is not None \
                                       else output_def.get('path', '')
         if not os.path.isabs(output_directory):
             output_directory = os.path.join(simulation_dir, output_directory)
+        config.output_directory = output_directory
 
         if output_file is None:
             output_file = output_def['file']
