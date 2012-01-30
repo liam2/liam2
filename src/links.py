@@ -3,9 +3,9 @@ from operator import itemgetter
 
 import numpy as np
 
-from expr import Variable, functions, dtype, expr_eval, \
+from expr import Variable, dtype, expr_eval, \
                  missing_values, get_missing_value
-from entities import EntityContext, context_length
+from context import EntityContext, context_length
 from registry import entity_registry
 from properties import EvaluableExpression
 
@@ -326,10 +326,10 @@ class MaxLink(MinLink):
     aggregate_func = max
 
 
-functions.update({
+functions = {
     'countlink': CountLink,
     'sumlink': SumLink,
     'avglink': AvgLink,
     'minlink': MinLink,
     'maxlink': MaxLink,
-})
+}

@@ -2,8 +2,9 @@ import sys
 
 import numpy as np
 
-from expr import expr_eval, parse, Variable
-import entities
+from expr import expr_eval, Variable
+from exprparser import parse
+from context import EntityContext
 from registry import entity_registry
 from properties import Process
 
@@ -79,7 +80,7 @@ class Console(object):
                                         % (self.entity.name, self.period))
 
     def _list_periods(self):
-        return entities.EntityContext(self.entity, {}).list_periods()
+        return EntityContext(self.entity, {}).list_periods()
 
     def list_periods(self):
         if self.entity is None:
@@ -124,7 +125,7 @@ class Console(object):
         cond_context = entity.conditional_context
         expr = parse(s, variables, cond_context)
         #FIXME: add globals
-        ctx = entities.EntityContext(entity, {'period': period, 'nan': np.nan})
+        ctx = EntityContext(entity, {'period': period, 'nan': np.nan})
         if isinstance(expr, Process):
             expr.run(ctx)
             print "done."

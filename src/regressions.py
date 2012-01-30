@@ -2,9 +2,9 @@ import numpy as np
 
 from properties import Log, Exp, Normal, Max, CompoundExpression
 from alignment import Alignment
-from expr import Expr, Variable, ShortLivedVariable, functions, \
+from expr import Expr, Variable, ShortLivedVariable, \
                  collect_variables, get_tmp_varname
-from entities import context_length
+from context import context_length
 
 
 #TODO: make those available
@@ -154,10 +154,10 @@ class LogRegr(ContRegr):
         return Exp(ContRegr.build_expr(self))
 
 
-functions.update({
+functions = {
     'logit_score': LogitScore,
     'logit_regr': LogitRegr,
     'cont_regr': ContRegr,
     'clip_regr': ClipRegr,
     'log_regr': LogRegr,
-})
+}

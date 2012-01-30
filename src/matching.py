@@ -1,7 +1,7 @@
 import numpy as np
 
-from expr import parse, functions, expr_eval, collect_variables
-from entities import context_length, context_subset, context_delete
+from expr import expr_eval, collect_variables
+from context import context_length, context_subset, context_delete
 from properties import EvaluableExpression
 from links import PrefixingLink
 
@@ -40,6 +40,7 @@ class Matching(EvaluableExpression):
 
         score_expr = self.score_expr
         if isinstance(score_expr, basestring):
+            from exprparser import parse
             print("\n\nWARNING: using a string for the score expression is "
                   "deprecated, you should use a normal expression (ie simply "
                   "remove the quotes)\n")
@@ -109,4 +110,5 @@ class Matching(EvaluableExpression):
     def dtype(self, context):
         return int
 
-functions['matching'] = Matching
+
+functions = {'matching': Matching}

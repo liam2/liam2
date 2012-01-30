@@ -14,14 +14,6 @@ from utils import time2str, timed, gettime, validate_dict
 import console
 import config
 
-# imports needed for the simulation file eval
-import alignment
-import matching
-import properties
-import actions
-import regressions
-import links
-
 
 def show_top_processes(process_time, num_processes):
     process_times = sorted(process_time.iteritems(),

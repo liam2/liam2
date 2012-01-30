@@ -4,7 +4,7 @@ import csv
 import numpy as np
 
 import config
-from expr import functions, Expr, expr_eval
+from expr import Expr, expr_eval
 from properties import Process, BreakpointException, TableExpression
 
 
@@ -126,11 +126,11 @@ class Breakpoint(Process):
             return ''
 
 
-functions.update({
+functions = {
     # can't use "print" in python 2.x because it's a keyword, not a function
 #    'print': Print,
     'csv': CSV,
     'show': Show,
     'remove': RemoveIndividuals,
     'breakpoint': Breakpoint,
-})
+}

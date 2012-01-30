@@ -8,8 +8,8 @@ import os
 import numpy as np
 
 import config
-from expr import functions, Expr, Variable, expr_eval, parse, collect_variables
-from entities import context_length, context_subset
+from expr import Expr, Variable, expr_eval, collect_variables
+from context import context_length, context_subset
 from utils import skip_comment_cells, strip_rows, PrettyTable, unique, \
                   duplicates, unique_duplicate, prod
 from properties import (FilteredExpression, TableExpression, GroupCount,
@@ -549,6 +549,8 @@ class Alignment(FilteredExpression):
         self.overflows = None
 
     def load(self, fpath):
+        from exprparser import parse
+
         with open(os.path.join(config.input_directory, fpath), "rb") as f:
             reader = csv.reader(f)
             lines = skip_comment_cells(strip_rows(reader))
@@ -671,7 +673,7 @@ class Alignment(FilteredExpression):
         return bool
 
 
-functions.update({
+functions = {
     'align': Alignment,
     'groupby': GroupBy
-})
+}
