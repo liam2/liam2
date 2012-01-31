@@ -6,8 +6,8 @@ class EntityContext(object):
         self.entity = entity
         self.extra = extra
         self['__entity__'] = entity
-        self['__weight_col__'] = entity.weight_col
-        self['__on_align_overflow__'] = entity.on_align_overflow
+#        self['__weight_col__'] = entity.weight_col
+#        self['__on_align_overflow__'] = entity.on_align_overflow
 
     def __getitem__(self, key):
         try:
