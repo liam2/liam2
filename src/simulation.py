@@ -267,12 +267,12 @@ class Simulation(object):
                 print "  *", entity.name, "...",
                 timed(entity.store_period_data, period)
                 print "    -> %d individuals" % len(entity.array)
-#                print " - compressing period data"
-#                for entity in entities:
-#                    print "  *", entity.name, "...",
-#                    for level in range(1, 10, 2):
-#                        print "   %d:" % level,
-#                        timed(entity.compress_period_data, level)
+#            print " - compressing period data"
+#            for entity in entities:
+#                print "  *", entity.name, "...",
+#                for level in range(1, 10, 2):
+#                    print "   %d:" % level,
+#                    timed(entity.compress_period_data, level)
             period_objects[period] = sum(len(entity.array)
                                          for entity in entities)
 

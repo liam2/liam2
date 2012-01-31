@@ -6,8 +6,7 @@ from utils import safe_put, count_occurences
 from data import mergeArrays, get_fields
 from registry import entity_registry
 from expr import Variable, SubscriptableVariable, \
-                 expr_eval, dtype, \
-                 get_missing_value, hasvalue
+                 expr_eval, get_missing_value
 from exprparser import parse
 from context import EntityContext, context_length
 
