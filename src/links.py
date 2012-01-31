@@ -112,7 +112,7 @@ class LinkValue(LinkExpression):
 
     __getattr__ = get
 
-    def eval(self, context):
+    def evaluate(self, context):
         link = self.get_link(context)
         target_ids = expr_eval(Variable(link._link_field), context)
         target_context = self.target_context(context)
@@ -140,7 +140,7 @@ class AggregateLink(LinkExpression):
         LinkExpression.__init__(self, link)
         self.target_filter = target_filter
 
-    def eval(self, context):
+    def evaluate(self, context):
         assert isinstance(context, EntityContext), \
                "aggregates in groupby is currently not supported"
         link = self.get_link(context)

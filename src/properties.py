@@ -160,7 +160,7 @@ class ProcessGroup(Process):
 
 
 class EvaluableExpression(Expr):
-    def eval(self, context):
+    def evaluate(self, context):
         raise NotImplementedError
 
     def as_string(self, context):
@@ -188,7 +188,7 @@ class CompoundExpression(Expr):
     def __init__(self):
         self._complete_expr = None
 
-    def eval(self, context):
+    def evaluate(self, context):
         context = self.build_context(context)
         return expr_eval(self.complete_expr, context)
 
@@ -368,7 +368,7 @@ class NumpyProperty(EvaluableExpression):
         self.args = args
         self.kwargs = kwargs
 
-    def eval(self, context):
+    def evaluate(self, context):
         eval_func = self.get_eval_func()
         args = [eval_func(arg, context) for arg in self.args]
         kwargs = dict((k, eval_func(v, context))
@@ -467,7 +467,7 @@ class Choice(EvaluableExpression):
         else:
             self.bins = None
 
-    def eval(self, context):
+    def evaluate(self, context):
         num = context_length(context)
 
         if num:
@@ -520,7 +520,7 @@ class Round(NumpyProperty):
 class Trunc(FunctionExpression):
     func_name = 'trunc'
 
-    def eval(self, context):
+    def evaluate(self, context):
         return expr_eval(self.expr, context).astype(int)
 
     def dtype(self, context):
@@ -551,7 +551,7 @@ class GroupMax(NumpyProperty):
 class GroupSum(FilteredExpression):
     func_name = 'grpsum'
 
-    def eval(self, context):
+    def evaluate(self, context):
         expr = self.expr
         filter_expr = self._getfilter(context)
         if filter_expr is not None:
@@ -588,7 +588,7 @@ class GroupMedian(NumpyAggregate):
 class GroupGini(FilteredExpression):
     func_name = 'grpgini'
 
-    def eval(self, context):
+    def evaluate(self, context):
         # from Wikipedia:
         # G = 1/n * (n + 1 - 2 * (sum((n + 1 - i) * a[i]) / sum(a[i])))
         #                        i=1..n                    i=1..n
@@ -623,7 +623,7 @@ class GroupCount(EvaluableExpression):
     def __init__(self, filter=None):
         self.filter = filter
 
-    def eval(self, context):
+    def evaluate(self, context):
         if self.filter is None:
             return context_length(context)
         else:
@@ -653,7 +653,7 @@ class GroupCount(EvaluableExpression):
 class GroupAverage(FilteredExpression):
     func_name = 'grpavg'
 
-    def eval(self, context):
+    def evaluate(self, context):
         expr = self.expr
         #FIXME: either take "contextual filter" into account here (by using
         # self._getfilter), or don't do it in grpsum (& grpgini?)
@@ -775,7 +775,7 @@ class CreateIndividual(EvaluableExpression):
             used_variables.update(collect_variables(v, context))
         return used_variables
 
-    def eval(self, context):
+    def evaluate(self, context):
         source_entity = context['__entity__']
         if self.entity_name is None:
             target_entity = source_entity
@@ -871,7 +871,7 @@ class Dump(TableExpression):
                    "dump arguments must be expressions, not a list of them, " \
                    "or strings"
 
-    def eval(self, context):
+    def evaluate(self, context):
         if self.filter is not None:
             filter_value = expr_eval(self.filter, context)
         else:

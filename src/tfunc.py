@@ -13,7 +13,7 @@ class ValueForPeriod(FunctionExpression):
         self.period = period
         self.missing = missing
 
-    def eval(self, context):
+    def evaluate(self, context):
         entity = context['__entity__']
         return entity.value_for_period(self.expr, self.period, context,
                                        self.missing)
@@ -27,7 +27,7 @@ class Lag(FunctionExpression):
         self.num_periods = num_periods
         self.missing = missing
 
-    def eval(self, context):
+    def evaluate(self, context):
         entity = context['__entity__']
         period = context['period'] - self.num_periods
         return entity.value_for_period(self.expr, period, context,
@@ -40,7 +40,7 @@ class Lag(FunctionExpression):
 class Duration(FunctionExpression):
     func_name = 'duration'
 
-    def eval(self, context):
+    def evaluate(self, context):
         entity = context['__entity__']
 #        return entity.duration(self.expr, context)
 
@@ -85,7 +85,7 @@ class Duration(FunctionExpression):
 class TimeAverage(FunctionExpression):
     func_name = 'tavg'
 
-    def eval(self, context):
+    def evaluate(self, context):
         entity = context['__entity__']
 #        return entity.tavg(self.expr, context)
 
@@ -131,7 +131,7 @@ class TimeAverage(FunctionExpression):
 class TimeSum(FunctionExpression):
     func_name = 'tsum'
 
-    def eval(self, context):
+    def evaluate(self, context):
         entity = context['__entity__']
 
         baseperiod = entity.base_period

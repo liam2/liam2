@@ -115,7 +115,7 @@ def expr_eval(expr, context):
             if var_name not in context:
                 raise Exception("variable '%s' is unknown (it is either not "
                                 "defined or not computed yet)" % var_name)
-        return expr.eval(context)
+        return expr.evaluate(context)
     else:
         return expr
 
@@ -244,8 +244,8 @@ class Expr(object):
     def __invert__(self):
         return Not('~', self)
 
-    def eval(self, context):
-#        print "eval", self
+    def evaluate(self, context):
+#        print "evaluate", self
 #        FIXME: this cannot work, because dict.__contains__(k) calls k.__eq__
 #        which has a non standard meaning
 #        if self in expr_cache:
@@ -500,7 +500,7 @@ class SubscriptedVariable(Variable):
 
     #XXX: inherit from EvaluableExpression?
     def as_string(self, context):
-        result = self.eval(context)
+        result = self.evaluate(context)
         if isinstance(self.key, int):
             tmp_varname = '__%s_%s' % (self.name, self.key)
             if tmp_varname in context:
@@ -512,7 +512,7 @@ class SubscriptedVariable(Variable):
             context[tmp_varname] = result
         return tmp_varname
 
-    def eval(self, context):
+    def evaluate(self, context):
         period = expr_eval(self.key, context)
         globals = context['__globals__']
         try:

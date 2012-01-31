@@ -22,7 +22,7 @@ class Matching(EvaluableExpression):
         expr_vars |= collect_variables(self.orderby, context)
         return expr_vars
 
-    def eval(self, context):
+    def evaluate(self, context):
         global local_ctx
 
         ctx_filter = context.get('__filter__')

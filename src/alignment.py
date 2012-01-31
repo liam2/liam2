@@ -365,7 +365,7 @@ class GroupBy(TableExpression):
         self.by = by
         self.percent = kwargs.get('percent', False)
 
-    def eval(self, context):
+    def evaluate(self, context):
         expressions = self.expressions
         columns = [expr_eval(e, context) for e in expressions]
 
@@ -602,7 +602,7 @@ class Alignment(FilteredExpression):
                                ' * '.join(str(len(values))
                                           for values in possible_values)))
 
-    def eval(self, context):
+    def evaluate(self, context):
         scores = expr_eval(self.expr, context)
 
         on_overflow = self.on_overflow
