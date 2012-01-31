@@ -345,68 +345,6 @@ class FilteredExpression(FunctionExpression):
 #------------------------------------
 
 
-class ValueForPeriod(FunctionExpression):
-    func_name = 'value_for_period'
-
-    def __init__(self, expr, period, missing='auto'):
-        FunctionExpression.__init__(self, expr)
-        self.period = period
-        self.missing = missing
-
-    def eval(self, context):
-        entity = context['__entity__']
-        return entity.value_for_period(self.expr, self.period, context,
-                                       self.missing)
-
-
-class Lag(FunctionExpression):
-    func_name = 'lag'
-
-    def __init__(self, expr, num_periods=1, missing='auto'):
-        FunctionExpression.__init__(self, expr)
-        self.num_periods = num_periods
-        self.missing = missing
-
-    def eval(self, context):
-        entity = context['__entity__']
-        period = context['period'] - self.num_periods
-        return entity.value_for_period(self.expr, period, context,
-                                       self.missing)
-
-    def dtype(self, context):
-        return dtype(self.expr, context)
-
-
-class Duration(FunctionExpression):
-    func_name = 'duration'
-
-    def eval(self, context):
-        entity = context['__entity__']
-        return entity.duration(self.expr, context)
-
-    def dtype(self, context):
-        assert dtype(self.expr, context) == bool
-        return int
-
-
-class TimeAverage(FunctionExpression):
-    func_name = 'tavg'
-
-    def eval(self, context):
-        entity = context['__entity__']
-        return entity.tavg(self.expr, context)
-
-
-class TimeSum(FunctionExpression):
-    func_name = 'tsum'
-
-    def eval(self, context):
-        entity = context['__entity__']
-        return entity.tsum(self.expr, context)
-
-#------------------------------------
-
-
 class NumpyProperty(EvaluableExpression):
     func_name = None  # optional (for display)
     np_func = (None,)
@@ -1008,12 +946,6 @@ functions = {
     'normal': Normal,
     'choice': Choice,
     'randint': RandInt,
-    # past data
-    'value_for_period': ValueForPeriod,
-    'lag': Lag,
-    'duration': Duration,
-    'tavg': TimeAverage,
-    'tsum': TimeSum,
     # aggregates
     'grpcount': GroupCount,
     'grpmin': GroupMin,

@@ -12,10 +12,11 @@ import properties
 import actions
 import regressions
 import links
+import tfunc
 
 functions = {}
 for module in (expr, alignment, matching, properties, actions, regressions,
-               links):
+               links, tfunc):
     functions.update(module.functions)
 
 and_re = re.compile('([ )])and([ (])')
