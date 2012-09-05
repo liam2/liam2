@@ -11,15 +11,6 @@ Released on 2012-01-??.
 New features:
 -------------
 
-* added an optional "default_entity" key to the "simulation" block of
-  simulation files, so that the interactive console starts directly in that
-  entity.
-
-* added commands to the console:
-
-  - entities: prints the list of available entities.
-  - periods: prints the list of available periods for the current entity.
-
 * added a way to import several files for the same entity. Each file can
   have different data points. eg if you have historical data for some fields
   data going back to 1950 for some individuals, and other fields going back to
@@ -37,6 +28,15 @@ New features:
 
   As a consequence of this new feature, it is now possible to import liam1
   files using the "normal" import file syntax.
+
+* added an optional "default_entity" key to the "simulation" block of
+  simulation files, so that the interactive console starts directly in that
+  entity.
+
+* added commands to the console:
+
+  - entities: prints the list of available entities.
+  - periods: prints the list of available periods for the current entity.
 
 Miscellaneous improvements:
 ---------------------------
