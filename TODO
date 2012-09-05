@@ -17,6 +17,9 @@
  
  - fix globals in a lag
  
+ - if an entity is only used through links (no process is run directly on that
+   entity), the data for that entity is not loaded!
+ 
  - somehow work around numexpr 2.0 limitation of 31 variables (create hidden
    temporary variables?)
 
@@ -343,6 +346,8 @@
  optimisation
  ------------
 
+ - try Numba
+ 
  - try SymPy speed. They use mpmath and I wonder how fast it is.
  
  - use bottleneck (http://pypi.python.org/pypi/Bottleneck)
@@ -352,7 +357,10 @@
  
  - try raw sql (in C)
 
- - try using corepy 
+ - try using corepy
+ 
+ - try to compress data using google snappy, quicklz or lz4 (they seem even
+   faster than fastLZ on which blosc is based) 
  
  - try making python bindings to ORC
    http://code.entropywave.com/projects/orc/
