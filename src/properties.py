@@ -185,6 +185,7 @@ class EvaluableExpression(Expr):
 
 class CompoundExpression(Expr):
     '''expression written in terms of other expressions'''
+
     def __init__(self):
         self._complete_expr = None
 
@@ -299,7 +300,7 @@ class ZeroClip(CompoundExpression):
         return dtype(self.expr1, context)
 
 
-#TODO: generalise to a function with several arguments?
+#TODO: generalise to a function with several arguments
 class FunctionExpression(EvaluableExpression):
     func_name = None
 
