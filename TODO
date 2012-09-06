@@ -2,6 +2,51 @@
  TODO
  --------------------------------------
 
+ 1) unit tests !!!!
+ 
+ 2) find & fix speed regression Geert found
+ 
+ 3) "compile" expressions to another representation which:
+    * has an uniform interface, so that it can be walked/traversed
+      recursively without having to define a traverse method on most
+      expression classes.
+    * has not its __eq__ method overloaded so that I can use "expr in d"
+      (dict.__contains__(k) calls k.__eq__) so that I can store
+      expressions in a dict to check whether they occur more than once 
+
+    see ASTNode class in numexpr. Use it as is?
+    
+    Questions:
+    * use ASTNode class in numexpr as is?    
+    * would an uniform interface make things cleaner for current
+      functionalities (mainly as_string, collect_variables and simplify)?
+    * adding traversal functions shouldn't be that hard even on current
+      version.
+    * we could rewrite   
+    
+ 4) cache columns which are used in lag expressions 
+ 
+ 5) examine cx_freeze (Geert)  
+ 
+ 6) produce 64b binaries (using visual studio express?)
+ 
+ 7) upgrade LIAM2 version on production PC
+    + fix all models of Raphaël & Gijs
+ 
+ 8) clean up the code where necessary
+ 
+ 9) link trac to our svn repository (or move the repository on that machine)
+ 
+ 10) make release
+ 
+ 11) use numexpr.E instead of passing strings
+
+ 12) find a clean way to make variants, to avoid having 54 different files
+     with slight differences in MIDAS.
+     * includes might be enough
+
+========================    
+
  - rewrite the whole import process: load boolean fields as int8 (shouldn't
    need more work/conversion),
    then do a n-way merge, then do interpolation, then convert boolean fields
@@ -27,8 +72,6 @@
      
  - the filter argument in all regressions without alignment is ignored. 
    I should either fix that or remove the argument.
-
- - some unit test work
  
  - launch external command during simulation (for example external model in
    another program). That should be easy. However, to be useful, we need
@@ -58,12 +101,20 @@
        chunk it would take the x% best scoring individuals *but* the best in
        a chunk could very well be the worst of another chunk and thus wouldn't
        be selected if the whole population was simulated at once.
-     * the total number would be a slightly less precise because we would round
+     * the total number would be slightly less precise because we would round
        to integers in each chunk instead of for the whole population. This can
        be mitigated/corrected by storing the error in each chunk and adapt
        the target in the next chunk
      * if there is no deterministic ranking, it should be as good as a single
        block simulation
+     * if the ranking score has only a small set of possible values, 
+       we could partition individuals using their values, eg with integer:
+       partition 1: values 0-10
+       partition 2: values 11-20
+       etc...
+       This should allow to treat/sort chunks separately without having to
+       reconstruct the complete array in memory (see mapreduce sort).
+       However, I don't think this is the case here, so I'm stuck...
    x matching is problematic    
    x new is problematic as it breaks the implicit sort by id of the table
      > I have to "block" other processes during the new. The new itself can
@@ -91,8 +142,7 @@
    * what would the syntax be for multi-value alignment (when there are more
      than two possible outcomes)
      align([2, 3, 4]
- - unit tests !!!!
-
+ 
  non feature tasks
  -----------------
 
@@ -321,7 +371,7 @@
    eg, when someone dies, you want to change more than one field, and it
    is a bit tedious to need to repeat the filter
    same comment for divorce 
- - move away from yaml for the user...
+ ? move away from yaml for the user...
  - filter in all aggregates, not only in grpavg, grpsum & grpgini
  - add a concept of "per individual" constant (ie not saved each period)
    (eg errsal)
