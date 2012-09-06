@@ -160,9 +160,9 @@ class Simulation(object):
             init_processes.extend([entity.processes[proc_name]
                                    for proc_name in proc_names])
 
-        agespine_def = [d.items()[0] for d in simulation_def['processes']]
+        processes_def = [d.items()[0] for d in simulation_def['processes']]
         processes, entities = [], set()
-        for ent_name, proc_names in agespine_def:
+        for ent_name, proc_names in processes_def:
             entity = entity_registry[ent_name]
             entities.add(entity)
             processes.extend([entity.processes[proc_name]
