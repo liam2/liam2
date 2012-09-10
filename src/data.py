@@ -18,28 +18,27 @@ def get_fields(array):
             for name in dtype.names]
 
 
-def assertValidFields(s_fields, array, allowed_missing=None):
+def assertValidFields(array, wanted_fields, allowed_missing=None):
     # extract types from field description and normalise to python types
-    t_fields = get_fields(array)
+    actual_fields = get_fields(array)
 
     # check that all required fields are present
-    s_names = set(name for name, _ in s_fields)
-    t_names = set(name for name, _ in t_fields)
+    wanted_names = set(name for name, _ in wanted_fields)
+    actual_names = set(name for name, _ in actual_fields)
     allowed_missing = set(allowed_missing) if allowed_missing is not None \
                                            else set()
-    missing = s_names - t_names - allowed_missing
+    missing = wanted_names - actual_names - allowed_missing
     if missing:
         raise Exception("Missing field(s) in hdf5 input file: %s"
                         % ', '.join(missing))
 
     # check that types match
-    common_t_fields = [(name, type_)
-                       for name, type_ in t_fields if name in s_names]
-    common_s_fields = [(name, type_)
-                       for name, type_ in s_fields if name in t_names]
+    common_fields1 = sorted((name, type_) for name, type_ in actual_fields
+                            if name in wanted_names)
+    common_fields2 = sorted((name, type_) for name, type_ in wanted_fields
+                            if name in actual_names)
     bad_fields = []
-    for (name1, t1), (name2, t2) in zip(sorted(common_s_fields),
-                                        sorted(common_t_fields)):
+    for (name1, t1), (name2, t2) in zip(common_fields1, common_fields2):
         assert name1 == name2, "%s != %s" % (name1, name2)
         if t1 != t2:
             bad_fields.append((name1, t2.__name__, t1.__name__))
@@ -393,7 +392,7 @@ def index_tables(globals_fields, entities, fpath):
             if 'periodic' in input_globals:
                 # load globals in memory
                 #FIXME: make sure either period or PERIOD is present
-                assertValidFields(globals_fields, input_globals.periodic,
+                assertValidFields(input_globals.periodic, globals_fields, 
                                   allowed_missing=('period', 'PERIOD'))
                 periodic_globals = input_globals.periodic.read()
 
@@ -408,7 +407,7 @@ def index_tables(globals_fields, entities, fpath):
             print "    -", ent_name, "...",
 
             table = getattr(input_entities, ent_name)
-            assertValidFields(entity.fields, table, entity.missing_fields)
+            assertValidFields(table, entity.fields, entity.missing_fields)
 
             start_time = time.time()
             rows_per_period, id_to_rownum_per_period = index_table(table)
@@ -514,7 +513,7 @@ class H5Data(DataSource):
                 start_time = time.time()
 
                 #TODO: this whole process of merging all periods is very
-                # opiniated and does not allow individuals to die/disappear
+                # opinionated and does not allow individuals to die/disappear
                 # before the simulation starts. We couldn't for example,
                 # take the output of one of our simulation and
                 # re-simulate only some years in the middle, because the dead
