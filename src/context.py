@@ -121,9 +121,10 @@ class EntityContext(object):
 
 
 def context_subset(context, index, keys=None):
+    # if keys is None, take all fields
     if keys is None:
         keys = context.keys()
-    # tuple are not valid numpy indexes (I don't know why)
+    # tuples are not valid numpy indexes (I don't know why)
     if isinstance(index, list):
         if not index:
             index = np.array([], dtype=int)
