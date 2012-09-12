@@ -24,6 +24,21 @@ or_re = re.compile('([ )])or([ (])')
 not_re = re.compile(r'([ (=]|^)not(?=[ (])')
 
 
+#class Token(object):
+#    def __init__(self, name):
+#        self.name = name
+#        self.args = None
+#        self.kwargs = None
+#        self.attr = None
+#
+#    def __call__(self, *args, **kwargs):
+#        self.args = args
+#        self.kwargs = kwargs
+#
+#    def __getattr__(self, key):
+#        self.attr = key
+
+
 def parse(s, globals=None, conditional_context=None, expression=True,
           autovariables=False):
     if not isinstance(s, basestring):
@@ -56,7 +71,22 @@ def parse(s, globals=None, conditional_context=None, expression=True,
     if autovariables:
         varnames = c.co_names
         context.update((name, Variable(name)) for name in varnames)
+#        context.update((name, Token(name)) for name in varnames)
 
+    #FIXME: this whole conditional context feature is a huge hack.
+    # It relies on the link target not having the same fields/links
+    # than the local entity (or not using them).
+    # A collision will only occur rarely but it will make it all the more
+    # frustrating for the user. The only solution I can see is to split the
+    # parsing into two distinct phases:
+    # 1) parse using a dummy evaluation context with: all names are bound
+    #    to dummy objects with an overridden __getattr__ and __call__
+    #    methods which simply store their args without any check.
+    # 2) evaluate/convert that to expression objects and check that each
+    #    field/link actually exist in the context it is used.
+    # the Token class above was my first naive try at doing that, however,
+    # it's not as easy as I first thought because functions need to be
+    # delayed too.
     if conditional_context is not None:
         for var in c.co_names:
             if var in conditional_context:
