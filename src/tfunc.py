@@ -42,18 +42,15 @@ class Duration(FunctionExpression):
 
     def evaluate(self, context):
         entity = context['__entity__']
-#        return entity.duration(self.expr, context)
 
-#    def duration(self, bool_expr, context):
+        baseperiod = entity.base_period
+        period = context['period'] - 1
         bool_expr = self.expr
         value = expr_eval(bool_expr, context)
 
-        baseperiod = self.base_period
-        period = context['period'] - 1
-
         # using a full int so that the "store" type check works
         result = value.astype(np.int)
-        res_size = len(self.array)
+        res_size = len(entity.array)
         last_period_true = np.empty(res_size, dtype=np.int)
         last_period_true.fill(period + 1)
 
@@ -87,9 +84,7 @@ class TimeAverage(FunctionExpression):
 
     def evaluate(self, context):
         entity = context['__entity__']
-#        return entity.tavg(self.expr, context)
 
-#    def tavg(self, expr, context):
         baseperiod = entity.base_period
         period = context['period'] - 1
         expr = self.expr
