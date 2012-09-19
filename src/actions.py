@@ -39,6 +39,9 @@ class CSV(Process):
         suffix = kwargs.pop('suffix', '')
         fname = kwargs.pop('fname', None)
         mode = kwargs.pop('mode', 'w')
+        if kwargs:
+            k, _ = kwargs.popitem()
+            raise TypeError("'%s' is an invalid keyword argument for csv()" % k)
 
         if fname is not None and suffix:
             raise ValueError("csv() can't have both 'suffix' and 'fname' "
@@ -100,11 +103,26 @@ class RemoveIndividuals(Process):
                 temp_variables[name] = temp_value[not_removed]
 
         # update id_to_rownum
-        ids = entity.array['id']
-        id_to_rownum = np.empty(np.max(ids) + 1, dtype=int)
-        id_to_rownum.fill(-1)
-        id_to_rownum[ids] = np.arange(len(ids), dtype=int)
-        entity.id_to_rownum = id_to_rownum
+        already_removed = entity.id_to_rownum == -1
+        already_removed_indices = already_removed.nonzero()[0]
+        already_removed_indices_shifted = already_removed_indices - \
+                                  np.arange(len(already_removed_indices))
+
+        id_to_rownum = np.arange(len_before)
+        id_to_rownum -= filter_value.cumsum()
+        #XXX: use np.putmask(id_to_rownum, filter_value, -1)
+        id_to_rownum[filter_value] = -1
+        entity.id_to_rownum = np.insert(id_to_rownum,
+                                        already_removed_indices_shifted,
+                                        -1)
+        # this version is cleaner and slightly faster but the result is also
+        # slightly different: it eliminates ids for dead/removed individuals
+        # and this cause bugs in time-related functions
+#        ids = entity.array['id']
+#        id_to_rownum = np.empty(np.max(ids) + 1, dtype=int)
+#        id_to_rownum.fill(-1)
+#        id_to_rownum[ids] = np.arange(len(ids), dtype=int)
+#        entity.id_to_rownum = id_to_rownum
 
         print "%d %s(s) removed (%d -> %d)" % (filter_value.sum(), entity.name,
                                                len_before, len(entity.array)),
