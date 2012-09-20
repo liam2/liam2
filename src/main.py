@@ -146,7 +146,7 @@ def main():
     parser_import = subparsers.add_parser('import', help='import data')
     parser_import.add_argument('file', help='import file')
 
-    # create the parser for the "import" command
+    # create the parser for the "explore" command
     parser_import = subparsers.add_parser('explore', help='explore data of a '
                                           'past simulation')
     parser_import.add_argument('file', help='explore file')
