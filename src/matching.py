@@ -3,7 +3,6 @@ import numpy as np
 from expr import expr_eval, collect_variables
 from context import context_length, context_subset, context_delete
 from properties import EvaluableExpression
-from links import PrefixingLink
 
 from utils import loop_wh_progress
 
@@ -13,12 +12,20 @@ class Matching(EvaluableExpression):
         self.set1filter = set1filter
         self.set2filter = set2filter
         self.score_expr = score
+        if isinstance(score, basestring):
+            raise Exception("Using a string for the score expression is not "
+                            "supported anymore. You should use a normal "
+                            "expression (ie simply remove the quotes).")
         self.orderby = orderby
 
     def collect_variables(self, context):
-        #FIXME: add score_expr
         expr_vars = collect_variables(self.set1filter, context)
         expr_vars |= collect_variables(self.set2filter, context)
+        #FIXME: add variables from score_expr. This is not done currently,
+        # because the presence of variables is done in expr.expr_eval before
+        # the evaluate method is called and the context is completed during
+        # evaluation (__other_xxx is added during evaluation).
+#        expr_vars |= collect_variables(self.score_expr, context)
         expr_vars |= collect_variables(self.orderby, context)
         return expr_vars
 
@@ -39,14 +46,6 @@ class Matching(EvaluableExpression):
             set2filter = expr_eval(self.set2filter, context)
 
         score_expr = self.score_expr
-        if isinstance(score_expr, basestring):
-            from exprparser import parse
-            print("\n\nWARNING: using a string for the score expression is "
-                  "deprecated, you should use a normal expression (ie simply "
-                  "remove the quotes)\n")
-            variables = {'other': PrefixingLink({}, {}, '__other_')}
-            variables.update(context.entity.variables)
-            score_expr = parse(score_expr, variables)
 
         used_variables = score_expr.collect_variables(context)
         used_variables1 = ['id'] + [v for v in used_variables
@@ -62,10 +61,10 @@ class Matching(EvaluableExpression):
         print "matching with %d/%d individuals" % (set1filter.sum(),
                                                    set2filter.sum())
 
-#        #TODO: compute pk_names automatically: variables which are either
-#        # boolean, or have very few possible values and which are used more
-#        # than once in the expression and/or which are used in boolean
-#        # expressions
+        #TODO: compute pk_names automatically: variables which are either
+        # boolean, or have very few possible values and which are used more
+        # than once in the expression and/or which are used in boolean
+        # expressions
 #        pk_names = ('eduach', 'work')
 #        optimized_exprs = {}
 
