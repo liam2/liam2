@@ -2,8 +2,7 @@ import numpy as np
 
 from properties import Log, Exp, Normal, Max, CompoundExpression
 from alignment import Alignment
-from expr import Expr, Variable, ShortLivedVariable, \
-                 collect_variables, get_tmp_varname
+from expr import Expr, Variable, ShortLivedVariable, get_tmp_varname
 from context import context_length
 
 
@@ -17,6 +16,8 @@ def logistic(expr):
 
 
 class Regression(CompoundExpression):
+    '''abstract base class for all regressions'''
+
     def __init__(self, expr, filter=None):
         CompoundExpression.__init__(self)
         self.expr = expr
@@ -24,9 +25,6 @@ class Regression(CompoundExpression):
 
     def build_context(self, context):
         return context
-
-    def build_expr(self):
-        raise NotImplementedError()
 
 #TODO: this fixes the filter problem for non-aligned regression, but breaks
 #      aligned ones (logit_regr):
@@ -45,9 +43,6 @@ class Regression(CompoundExpression):
 #            return {'filter': filter, 'values': result}
 #        else:
 #            return result
-
-    def collect_variables(self, context):
-        return collect_variables(self.expr, context)
 
     def dtype(self, context):
         return float
