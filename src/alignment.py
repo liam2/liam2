@@ -354,16 +354,23 @@ class GroupBy(TableExpression):
         self.expressions = args
 
         # On python 3, we could clean up this code (keyword only arguments).
-        expr = kwargs.get('expr')
+        expr = kwargs.pop('expr', None)
         if expr is None:
             expr = GroupCount()
         self.expr = expr
-        self.filter = kwargs.get('filter')
-        by = kwargs.get('by')
-        if isinstance(by, Expr):
-            by = (by,)
-        self.by = by
-        self.percent = kwargs.get('percent', False)
+
+#        by = kwargs.pop('by', None)
+#        if isinstance(by, Expr):
+#            by = (by,)
+#        self.by = by
+
+        self.filter = kwargs.pop('filter', None)
+        self.percent = kwargs.pop('percent', False)
+
+        if kwargs:
+            kwarg, _ = kwargs.popitem()
+            raise TypeError("'%s' is an invalid keyword argument for groupby()"
+                            % kwarg)
 
     def evaluate(self, context):
         expressions = self.expressions
