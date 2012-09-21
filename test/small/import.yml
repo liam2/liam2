@@ -15,18 +15,51 @@ entities:
         path: param\household.csv
 
     person:
-        path: param\person.csv
         fields:
             # period and id are implicit
-            - dead:         bool
-            - age:          int
-            - gender:       bool
-            - work:         bool
-            - partner_id:   int
-            - hh_id:        int
-            - f_id:         int
-            - m_id:         int
+            - dead:       bool
+            - age:        int
+            - gender:     bool
+            - work:       bool
+            - partner_id: int
+            - hh_id:      int
+            - f_id:       int
+            - m_id:       int
+#            - manquant:   int
+            
+        # deprecated? no, let's just say it's a shortcut if there is only one
+        # file. And it could serve as a prefix for individual files path. 
+        path: param\person.csv
+
+        # deprecated? no. it could be useful even in the case of several files
+        # if you want fields renamed the same way across all files
+#        oldnames:
+#            period: time
+#            p_{name}.txt: value
+
+        newnames:
+            value: eval('{basename}'[2:])
+#            value: eval('{basename}'.replace('p_', ''))
+            time: period
+            co_alive: dead
         
-        oldnames:
-            dead: co_alive
+#        
+#        # deprecated? well. I guess not if we don't deprecate the others    
+##        transposed: true
+#
+        files:
+            - param\person.csv:
+#                oldnames:
+#                    period: period
+#                    dead: co_alive
+                newnames:
+                    period: period
+                    co_alive: dead
+
+            - param\p_age.txt: {}
+            - param\p_work.txt: {}
+
+#        interpolate:
+#            work: previous_value
+
         invert: [dead]

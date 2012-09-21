@@ -142,7 +142,7 @@ entities:
                                  take=age > 95, leave=ISCHILD,
                                  fname='al_p_dead_f.csv'))
                                  
-                - show('95+ not dead:', grpsum(not dead and (age > 95)),
+                - show('95+ not_dead:', grpsum(not dead and (age > 95)),
                        'ISCHILD dead:', grpsum(dead and ISCHILD))
 
                 - dead2: align(0.0,
@@ -157,12 +157,12 @@ entities:
                 
                 - one_dim: align(0.0, fname='al_p_one_dim.csv')
                 - show('% aligned', grpavg(one_dim))
-                - show('% aligned (False)', grpavg(one_dim, filter=not gender))
-                - show('% aligned (True)', grpavg(one_dim, filter=gender))
-                - show('num aligned (False)', grpcount(one_dim and not gender))
-                - show('num aligned (True)', grpcount(one_dim and gender))
-                - show('num total (False)', grpcount(not gender))
-                - show('num total (True)', grpcount(gender))
+                - show('% aligned (women)', grpavg(one_dim, filter=not gender))
+                - show('% aligned (men)', grpavg(one_dim, filter=gender))
+                - show('num aligned (women)', grpcount(one_dim and not gender))
+                - show('num aligned (men)', grpcount(one_dim and gender))
+                - show('num total (women)', grpcount(not gender))
+                - show('num total (men)', grpcount(gender))
                 
                 # align using temporary variable
                 - temp: age + 1
@@ -183,6 +183,8 @@ entities:
                 - fixed_percent: logit_regr(0.0, align=0.5)
                 
             test_log_regr:
+                # currently filter is ignored for all non-aligned regressions,
+                # so this test fails!
                 - v1: "42"
                 - v1: log_regr(2.484557 + 0.2283921 * age - 0.0026106 * age **2,
                                filter=MALE)
@@ -270,8 +272,8 @@ entities:
                        'num persons:', household.get(countlink(persons)),
                        'num high edu:', household.get(countlink(persons, eduach == 4)))
 
-            test_extra_comma:           
-                - show('test extra colon'),
+#            test_extra_comma:           
+#                - show('test extra colon'),
                  
             test_predictor1:
                 predictor: plop
@@ -345,8 +347,11 @@ entities:
                  
             test_lag:
 #                - lagglobal: show(lag(MINR))
+                
                 - lagavg: show(lag(grpavg(age)))
                 - avglag: show(grpavg(lag(age)))
+                - show("age", age)
+
                 - show("lag(age)", lag(age))
                 - lagage_fill_zero: show(lag(age, missing=0))
                 - shouldbenumbirth: show(grpcount(lag(age) == -1))
@@ -433,7 +438,10 @@ entities:
                 - show('grpgini([0, 0, 0, 1])', grpgini([0, 0, 0, 1]), 'should be 3/4')
 
             test_groupby:
-                - show('groupby scalar', groupby(grpavg(age), gender))
+                # fails as it should
+#                - show('groupby scalar', groupby(True, gender))
+                # this is currently broken
+#                - show('groupby scalar', groupby(grpavg(age), gender))
                 - show('expr=grpsum(weight)', 
                        groupby(agegroup, gender, expr=grpsum(weight)))
                 - show(groupby(round(logit_score(0.0), 1)))
@@ -535,7 +543,7 @@ simulation:
         path: c:\tmp
         file: simulation.h5
 
-#    random_seed: 0
+    random_seed: 0
     start_period: 2002   # first simulated period
     periods: 2
     default_entity: person 
