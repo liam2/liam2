@@ -148,6 +148,7 @@ class Simulation(object):
         for entity in entity_registry.itervalues():
             entity.check_links()
             entity.parse_processes(globals_fields)
+            entity.compute_lagged_fields()
 
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()

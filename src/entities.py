@@ -25,8 +25,11 @@ def decompress_column(a):
 
 
 class Entity(object):
-    def __init__(self, name, fields, missing_fields, links,
-                 macro_strings, process_strings, weight_col=None,
+    '''
+    fields is a list of tuple (name, type, options)
+    '''
+    def __init__(self, name, fields, missing_fields=None, links=None,
+                 macro_strings=None, process_strings=None, weight_col=None,
                  on_align_overflow='carry'):
         self.name = name
 
@@ -82,6 +85,8 @@ class Entity(object):
 
         self.base_period = None
         self.array = None
+
+        self.lag_fields = None
         self.array_lag = None
 
         self.num_tmp = 0
@@ -247,7 +252,33 @@ class Entity(object):
                 else:
                     v.attach(k, self)
         attach_processes(processes.iteritems())
+
         self.processes = processes
+
+    def compute_lagged_fields(self):
+        from tfunc import Lag
+        from links import LinkValue
+        lag_vars = set()
+        for p in self.processes.itervalues():
+            for expr in p.expressions():
+                for node in expr.allOf(Lag):
+                    for v in node.allOf(Variable):
+                        lag_vars.add(v.name)
+                    for lv in node.allOf(LinkValue):
+                        link = lv.get_link({'__entity__': self})
+                        lag_vars.add(link._link_field)
+
+                        target_entity = lv.target_entity({'__entity__': self})
+                        if target_entity == self:
+                            target_vars = lv.target_expression.allOf(Variable)
+                            lag_vars.update(v.name for v in target_vars)
+
+        # make sure 'id' comes first
+        lag_vars.discard('id')
+        lag_vars = ['id'] + sorted(lag_vars)
+
+        field_type = dict(self.fields)
+        self.lag_fields = [(v, field_type[v]) for v in lag_vars]
 
     def load_period_data(self, period):
         rows = self.input_rows.get(period)
@@ -279,9 +310,10 @@ class Entity(object):
         if period in self.output_rows:
             raise Exception("trying to modify already simulated rows")
         else:
-            #TODO: only store variables which are effectively used in lag
-            # expressions
-            self.array_lag = self.array.copy()
+            self.array_lag = np.empty(len(self.array),
+                                      dtype=np.dtype(self.lag_fields))
+            for field, _ in self.lag_fields:
+                self.array_lag[field] = self.array[field]
             startrow = self.table.nrows
             self.table.append(self.array)
             self.output_rows[period] = (startrow, self.table.nrows)
@@ -293,18 +325,28 @@ class Entity(object):
         print "%d -> %d (%f)" % compressed._get_stats()
 
     def fill_missing_values(self, ids, values, context, filler='auto'):
+        '''ids: ids present in past period
+           context: current period context'''
         if filler is 'auto':
             filler = get_missing_value(values)
         result = np.empty(context_length(context), dtype=values.dtype)
         result.fill(filler)
         if len(ids):
-            safe_put(result, context.id_to_rownum[ids], values)
+            id_to_rownum = context.id_to_rownum
+            # if there was more objects in the past than in the current
+            # period. Currently, remove() keeps old ids, so this never
+            # happens, but if we ever change remove(), we'll need to add
+            # such a check everywhere we use id_to_rownum
+#            invalid_ids = ids > len(id_to_rownum)
+#            if np.any(invalid_ids):
+#                fix ids
+            rows = id_to_rownum[ids]
+            safe_put(result, rows, values)
         return result
 
     def value_for_period(self, expr, period, context, fill='auto'):
         sub_context = EntityContext(self, {'period': period})
         result = expr_eval(expr, sub_context)
-
         if isinstance(result, np.ndarray) and result.shape:
             ids = expr_eval(Variable('id'), sub_context)
             if fill is None:

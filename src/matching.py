@@ -1,6 +1,6 @@
 import numpy as np
 
-from expr import expr_eval, collect_variables
+from expr import expr_eval, collect_variables, traverse_expr
 from context import context_length, context_subset, context_delete
 from properties import EvaluableExpression
 
@@ -17,6 +17,17 @@ class Matching(EvaluableExpression):
                             "supported anymore. You should use a normal "
                             "expression (ie simply remove the quotes).")
         self.orderby = orderby
+
+    def traverse(self, context):
+        for node in traverse_expr(self.set1filter, context):
+            yield node
+        for node in traverse_expr(self.set2filter, context):
+            yield node
+        for node in traverse_expr(self.score_expr, context):
+            yield node
+        for node in traverse_expr(self.orderby, context):
+            yield node
+        yield self
 
     def collect_variables(self, context):
         expr_vars = collect_variables(self.set1filter, context)

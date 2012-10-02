@@ -8,7 +8,7 @@ import os
 import numpy as np
 
 import config
-from expr import Expr, Variable, expr_eval, collect_variables
+from expr import Expr, Variable, expr_eval, collect_variables, traverse_expr
 from context import context_length, context_subset
 from utils import skip_comment_cells, strip_rows, PrettyTable, unique, \
                   duplicates, unique_duplicate, prod
@@ -348,9 +348,15 @@ class GroupBy(TableExpression):
 
     def __init__(self, *args, **kwargs):
         assert len(args), "groupby needs at least one expression"
-        assert isinstance(args[0], Expr), "groupby takes expressions as " \
-                                          "arguments, not a list of " \
-                                          "expressions"
+        #TODO: allow lists/tuples of arguments to group by the combinations
+        # of keys
+        for arg in args:
+            if isinstance(arg, (bool, int, float)):
+                raise TypeError("groupby takes expressions as arguments, "
+                                "not scalar values")
+            if isinstance(arg, (tuple, list)):
+                raise TypeError("groupby takes expressions as arguments, "
+                                "not a list of expressions")
         self.expressions = args
 
         # On python 3, we could clean up this code (keyword only arguments).
@@ -375,7 +381,6 @@ class GroupBy(TableExpression):
     def evaluate(self, context):
         expressions = self.expressions
         columns = [expr_eval(e, context) for e in expressions]
-
         if self.filter is not None:
             filter_value = expr_eval(self.filter, context)
             #TODO: make a function out of this, I think we have this pattern
@@ -519,11 +524,20 @@ class GroupBy(TableExpression):
 
         return PrettyTable(result)
 
+    def traverse(self, context):
+        for expr in self.expressions:
+            for node in traverse_expr(expr, context):
+                yield node
+        for node in traverse_expr(self.expr, context):
+            yield node
+        for node in traverse_expr(self.filter, context):
+            yield node
+        yield self
+
     def collect_variables(self, context):
         variables = set.union(*[collect_variables(expr, context)
                                 for expr in self.expressions])
-        if self.filter is not None:
-            variables |= collect_variables(self.filter, context)
+        variables |= collect_variables(self.filter, context)
         variables |= collect_variables(self.expr, context)
         return variables
 
@@ -554,6 +568,27 @@ class Alignment(FilteredExpression):
         self.leave_filter = leave
         self.on_overflow = on_overflow
         self.overflows = None
+
+    def traverse(self, context):
+        for node in FilteredExpression.traverse(self, context):
+            yield node
+        for expr in self.expressions:
+            for node in traverse_expr(expr, context):
+                yield node
+        for node in traverse_expr(self.take_filter, context):
+            yield node
+        for node in traverse_expr(self.leave_filter, context):
+            yield node
+        yield self
+
+    def collect_variables(self, context):
+        variables = FilteredExpression.collect_variables(self, context)
+        if self.expressions:
+            variables |= set.union(*[collect_variables(expr, context)
+                                     for expr in self.expressions])
+        variables |= collect_variables(self.take_filter, context)
+        variables |= collect_variables(self.leave_filter, context)
+        return variables
 
     def load(self, fpath):
         from exprparser import parse

@@ -13,6 +13,11 @@ class Show(Process):
         Process.__init__(self)
         self.args = args
 
+    def expressions(self):
+        for arg in self.args:
+            if isinstance(arg, Expr):
+                yield arg
+
     def run(self, context):
         if config.skip_shows:
             print "show skipped",
@@ -40,8 +45,9 @@ class CSV(Process):
         fname = kwargs.pop('fname', None)
         mode = kwargs.pop('mode', 'w')
         if kwargs:
-            k, _ = kwargs.popitem()
-            raise TypeError("'%s' is an invalid keyword argument for csv()" % k)
+            kwarg, _ = kwargs.popitem()
+            raise TypeError("'%s' is an invalid keyword argument for csv()"
+                            % kwarg)
 
         if fname is not None and suffix:
             raise ValueError("csv() can't have both 'suffix' and 'fname' "
@@ -54,6 +60,15 @@ class CSV(Process):
             raise ValueError("csv() mode argument must be either "
                              "'w' (overwrite) or 'a' (append)")
         self.mode = mode
+
+    def expressions(self):
+        for arg in self.args:
+            if isinstance(arg, (list, tuple)):
+                for expr in arg:
+                    if isinstance(expr, Expr):
+                        yield expr
+            elif isinstance(arg, Expr):
+                yield arg
 
     def run(self, context):
         entity = context['__entity__']
@@ -78,6 +93,9 @@ class RemoveIndividuals(Process):
     def __init__(self, filter):
         Process.__init__(self)
         self.filter = filter
+
+    def expressions(self):
+        yield self.filter
 
     def run(self, context):
         filter_value = expr_eval(self.filter, context)
@@ -142,6 +160,9 @@ class Breakpoint(Process):
             return 'breakpoint(%d)' % self.period
         else:
             return ''
+
+    def expressions(self):
+        return ()
 
 
 functions = {

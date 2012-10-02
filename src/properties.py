@@ -4,7 +4,7 @@ import numpy as np
 
 from expr import Expr, Variable, Where, as_string, dtype, \
                  coerce_types, type_to_idx, idx_to_type, expr_eval, \
-                 collect_variables, get_tmp_varname, \
+                 collect_variables, traverse_expr, get_tmp_varname, \
                  missing_values, get_missing_record, \
                  get_missing_vector
 from context import EntityContext, context_length, context_subset
@@ -45,16 +45,27 @@ class Process(object):
     def run(self, context):
         raise NotImplementedError()
 
+    def expressions(self):
+        raise NotImplementedError()
+
+    def __str__(self):
+        return "<process '%s'>" % self.name
+
 
 class Compute(Process):
     '''these processes only compute an expression and do not store their
-       result (but they have side-effects)'''
+       result (but they usually have side-effects)'''
+
     def __init__(self, expr):
         super(Compute, self).__init__()
         self.expr = expr
 
     def run(self, context):
         expr_eval(self.expr, context)
+
+    def expressions(self):
+        if isinstance(self.expr, Expr):
+            yield self.expr
 
 
 class Assignment(Process):
@@ -135,6 +146,10 @@ class Assignment(Process):
             elif filter_values is not None:
                 np.putmask(target[self.predictor], filter_values, result)
 
+    def expressions(self):
+        if isinstance(self.expr, Expr):
+            yield self.expr
+
 
 class ProcessGroup(Process):
     def __init__(self, name, subprocesses):
@@ -157,6 +172,11 @@ class ProcessGroup(Process):
         local_vars = set(temp_vars.keys()) - set(all_vars.keys())
         for var in local_vars:
             del temp_vars[var]
+
+    def expressions(self):
+        for _, p in self.subprocesses:
+            for e in p.expressions():
+                yield e
 
 
 class EvaluableExpression(Expr):
@@ -201,7 +221,12 @@ class CompoundExpression(Expr):
         return context
 
     def build_expr(self):
-        raise NotImplementedError
+        raise NotImplementedError()
+
+    def traverse(self, context):
+        for node in traverse_expr(self.complete_expr, context):
+            yield node
+        yield self
 
     def collect_variables(self, context):
         return collect_variables(self.complete_expr, context)
@@ -307,6 +332,11 @@ class FunctionExpression(EvaluableExpression):
     def __init__(self, expr):
         self.expr = expr
 
+    def traverse(self, context):
+        for node in traverse_expr(self.expr, context):
+            yield node
+        yield self
+
     def __str__(self):
         return '%s(%s)' % (self.func_name, self.expr)
 
@@ -318,6 +348,12 @@ class FilteredExpression(FunctionExpression):
     def __init__(self, expr, filter=None):
         super(FilteredExpression, self).__init__(expr)
         self.filter = filter
+
+    def traverse(self, context):
+        for node in traverse_expr(self.filter, context):
+            yield node
+        for node in FunctionExpression.traverse(self, context):
+            yield node
 
     def _getfilter(self, context):
         ctx_filter = context.get('__filter__')
@@ -339,8 +375,7 @@ class FilteredExpression(FunctionExpression):
 
     def collect_variables(self, context):
         expr_vars = collect_variables(self.expr, context)
-        if self.filter is not None:
-            expr_vars |= collect_variables(self.filter, context)
+        expr_vars |= collect_variables(self.filter, context)
         return expr_vars
 
 #------------------------------------
@@ -395,6 +430,15 @@ class NumpyProperty(EvaluableExpression):
         str_args = ', '.join('%s=%s' % (name, value) for name, value in values)
         return '%s(%s)' % (func_name, str_args)
 
+    def traverse(self, context):
+        for arg in self.args:
+            for node in traverse_expr(arg, context):
+                yield node
+        for kwarg in self.kwargs.itervalues():
+            for node in traverse_expr(kwarg, context):
+                yield node
+        yield self
+
     def collect_variables(self, context):
         args_vars = [collect_variables(arg, context) for arg in self.args]
         args_vars.extend(collect_variables(v, context)
@@ -446,6 +490,7 @@ class Choice(EvaluableExpression):
     func_name = 'choice'
 
     def __init__(self, choices, weights=None):
+        #TODO: allow expressions in choices & weights
         EvaluableExpression.__init__(self)
         self.choices = np.array(choices)
         if weights is not None:
@@ -484,6 +529,9 @@ class Choice(EvaluableExpression):
 
     def dtype(self, context):
         return self.choices.dtype
+
+    def traverse(self, context):
+        yield self
 
     def collect_variables(self, context):
         return set()
@@ -638,11 +686,13 @@ class GroupCount(EvaluableExpression):
     def dtype(self, context):
         return int
 
+    def traverse(self, context):
+        for node in traverse_expr(self.filter, context):
+            yield node
+        yield self
+
     def collect_variables(self, context):
-        if self.filter is None:
-            return set()
-        else:
-            return collect_variables(self.filter, context)
+        return collect_variables(self.filter, context)
 
     def __str__(self):
         filter_str = str(self.filter) if self.filter is not None else ''
@@ -697,6 +747,10 @@ class NumexprFunctionProperty(Expr):
     def __str__(self):
         return '%s(%s)' % (self.func_name, self.expr)
 
+    def traverse(self, context):
+        for node in traverse_expr(self.expr, context):
+            yield node
+
 
 class Abs(NumexprFunctionProperty):
     func_name = 'abs'
@@ -749,6 +803,7 @@ def add_individuals(target_context, children):
 
 
 #TODO: inherit from FilteredExpression
+#TODO: allow number to be an expression
 class CreateIndividual(EvaluableExpression):
     def __init__(self, entity_name=None, filter=None, number=None, **kwargs):
         self.entity_name = entity_name
@@ -763,6 +818,14 @@ class CreateIndividual(EvaluableExpression):
         children = np.empty(num_birth, dtype=array.dtype)
         children[:] = get_missing_record(array)
         return children
+
+    def traverse(self, context):
+        for node in traverse_expr(self.filter, context):
+            yield node
+        for kwarg in self.kwargs.itervalues():
+            for node in traverse_expr(kwarg, context):
+                yield node
+        yield self
 
     def collect_variables(self, context):
         #FIXME: we need to add variables from self.filter (that's what is
@@ -863,14 +926,19 @@ class TableExpression(EvaluableExpression):
 class Dump(TableExpression):
     def __init__(self, *args, **kwargs):
         self.expressions = args
-        self.filter = kwargs.pop('filter', None)
-        self.missing = kwargs.pop('missing', None)
-        self.periods = kwargs.pop('periods', None)
-        self.header = kwargs.pop('header', True)
         if len(args):
             assert all(isinstance(e, Expr) for e in args), \
                    "dump arguments must be expressions, not a list of them, " \
                    "or strings"
+
+        self.filter = kwargs.pop('filter', None)
+        self.missing = kwargs.pop('missing', None)
+#        self.periods = kwargs.pop('periods', None)
+        self.header = kwargs.pop('header', True)
+        if kwargs:
+            kwarg, _ = kwargs.popitem()
+            raise TypeError("'%s' is an invalid keyword argument for dump()"
+                            % kwarg)
 
     def evaluate(self, context):
         if self.filter is not None:
@@ -891,11 +959,11 @@ class Dump(TableExpression):
         else:
             id_pos = str_expressions.index('id')
 
-        if (self.periods is not None and len(self.periods) and
-            'period' not in str_expressions):
-            str_expressions.insert(0, 'period')
-            expressions.insert(0, Variable('period'))
-            id_pos += 1
+#        if (self.periods is not None and len(self.periods) and
+#            'period' not in str_expressions):
+#            str_expressions.insert(0, 'period')
+#            expressions.insert(0, Variable('period'))
+#            id_pos += 1
 
         columns = []
         for expr in expressions:
@@ -927,14 +995,21 @@ class Dump(TableExpression):
         table = chain([str_expressions], data) if self.header else data
         return utils.PrettyTable(table, self.missing)
 
+    def traverse(self, context):
+        for expr in self.expressions:
+            for node in traverse_expr(expr, context):
+                yield node
+        for node in traverse_expr(self.filter, context):
+            yield node
+        yield self
+
     def collect_variables(self, context):
         if self.expressions:
             variables = set.union(*[collect_variables(expr, context)
                                     for expr in self.expressions])
         else:
             variables = set(context.keys())
-        if self.filter is not None:
-            variables |= collect_variables(self.filter, context)
+        variables |= collect_variables(self.filter, context)
         return variables
 
     def dtype(self, context):

@@ -77,6 +77,10 @@ class LinkExpression(EvaluableExpression):
         target_entity = self.target_entity(context)
         return EntityContext(target_entity, {'period': context['period']})
 
+    #XXX: I think this is not enough. Implement Visitor pattern instead?
+    def traverse(self, context):
+        yield self
+
 
 class LinkValue(LinkExpression):
     def __init__(self, link, target_expression, missing_value=None):
@@ -94,6 +98,7 @@ class LinkValue(LinkExpression):
 
     def collect_variables(self, context):
         link = self.get_link(context)
+        #XXX: don't we also need the fields within the target expression?
         return set([link._link_field])
 
     def dtype(self, context):
@@ -101,8 +106,9 @@ class LinkValue(LinkExpression):
         return dtype(self.target_expression, target_context)
 
     def get(self, key, missing_value=None):
-        # in this case, target_expression must have been a link name, however
-        # given that we have no context, we don't know the current entity and
+        # in this case, target_expression must be a Variable with a
+        # link name, however given that we have no context, we
+        # don't know the current entity and
         # can't make a strong assertion here
         # assert self.target_expression in entity.links
         assert isinstance(self.target_expression, Variable)

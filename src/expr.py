@@ -93,6 +93,13 @@ def as_string(expr, context):
         return expr
 
 
+def traverse_expr(expr, context):
+    if isinstance(expr, Expr):
+        return expr.traverse(context)
+    else:
+        return ()
+
+
 def dtype(expr, context):
     if isinstance(expr, Expr):
         return expr.dtype(context)
@@ -102,6 +109,8 @@ def dtype(expr, context):
 
 # context is needed because in LinkValue we need to know what is the current
 # entity (so that we can resolve links)
+#TODO: we shouldn't resolve links during the simulation but
+# rather in a "compilation" phase
 def collect_variables(expr, context):
     if isinstance(expr, Expr):
         return expr.collect_variables(context)
@@ -152,6 +161,14 @@ class ExplainTypeError(type):
 
 class Expr(object):
     __metaclass__ = ExplainTypeError
+
+    def traverse(self, context):
+        raise NotImplementedError()
+
+    def allOf(self, node_type, context=None):
+        for node in self.traverse(context):
+            if isinstance(node, node_type):
+                yield node
 
     # makes sure we dont use "normal" python logical operators
     # (and, or, not)
@@ -308,6 +325,11 @@ class UnaryOp(Expr):
     def dtype(self, context):
         return dtype(self.expr, context)
 
+    def traverse(self, context):
+        for node in traverse_expr(self.expr, context):
+            yield node
+        yield self
+
 
 class Not(UnaryOp):
     def simplify(self):
@@ -325,6 +347,13 @@ class BinaryOp(Expr):
         self.op = op
         self.expr1 = expr1
         self.expr2 = expr2
+
+    def traverse(self, context):
+        for c in traverse_expr(self.expr1, context):
+            yield c
+        for c in traverse_expr(self.expr2, context):
+            yield c
+        yield self
 
     def as_string(self, context):
         expr1 = as_string(self.expr1, context)
@@ -448,6 +477,9 @@ class Variable(Expr):
         self._dtype = dtype
         self.value = value
 
+    def traverse(self, context):
+        yield self
+
     def __str__(self):
         if self.value is None:
             return self.name
@@ -543,6 +575,15 @@ class Where(Expr):
         self.cond = cond
         self.iftrue = iftrue
         self.iffalse = iffalse
+
+    def traverse(self, context):
+        for node in traverse_expr(self.cond, context):
+            yield node
+        for node in traverse_expr(self.iftrue, context):
+            yield node
+        for node in traverse_expr(self.iffalse, context):
+            yield node
+        yield self
 
     def as_string(self, context):
         cond = as_string(self.cond, context)
