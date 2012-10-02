@@ -10,13 +10,18 @@ setup(console=['main.py'],
                         "base64", "bz2", "calendar", "compiler", "ctypes",
                         "distutils", "doctest", "dummy_thread",
                         "dummy_threading", "email", "ftplib", "io",
-                        "locale", "logging", "multiprocessing", "nose",
+                        "logging", "multiprocessing", "nose",
                         "numpy.distutils", "numpy.core._dotblas",
                         "os2emxpath", "pdb", "pkg_resources",
                         "posixpath", "pydoc", "pydoc_topics", "repr", "scipy",
                         "select", "stringprep", "strptime",
                         "tcl", "unicodedata", "xml"],
-                        # StringIO and difflib are required with python2.7/64b
+                        # locale, StringIO and difflib are required with
+                        # python2.7/64b
+               # py2exe seems to be unable to find this dll, so we exclude it
+               # but than we *must* copy the file from numpy (usually
+               # $PYTHONROOT\Lib\site-packages\numpy\) to the "dist" directory.
+               dll_excludes=["libiomp5md.dll"]
           )
       )
 )
