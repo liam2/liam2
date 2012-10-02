@@ -21,6 +21,9 @@ setup(console=['main.py'],
                # py2exe seems to be unable to find this dll, so we exclude it
                # but than we *must* copy the file from numpy (usually
                # $PYTHONROOT\Lib\site-packages\numpy\) to the "dist" directory.
+               # XXX: this might be because I installed numexpr from the
+               # binaries from Christoph Gohlke which depend on Numpy-MKL
+               # (http://www.lfd.uci.edu/~gohlke/pythonlibs/)
                dll_excludes=["libiomp5md.dll"]
           )
       )
