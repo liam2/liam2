@@ -217,6 +217,7 @@ class CountLink(AggregateLink):
         return counts
 
     def count(self, source_rows, target_filter, context):
+        #XXX: the test is probably not needed anymore with numpy 1.6.2+
         if len(source_rows):
             return np.bincount(source_rows)
         else:
