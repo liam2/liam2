@@ -43,6 +43,9 @@ New features:
 Miscellaneous improvements:
 ---------------------------
 
+* choices() arguments (options and probabilities) now accept expressions
+  (ie. they can be computed at run time).
+
 * improved the interactive console:
 
   - made the interactive console start in the last simulated period by default.

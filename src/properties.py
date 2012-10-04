@@ -1,3 +1,4 @@
+from collections import Sequence
 from itertools import izip, chain
 
 import numpy as np
@@ -492,42 +493,66 @@ class Choice(EvaluableExpression):
     func_name = 'choice'
 
     def __init__(self, choices, weights=None):
-        #TODO: allow expressions in choices & weights
         EvaluableExpression.__init__(self)
-        self.choices = np.array(choices)
+        if not isinstance(choices, Sequence):
+            raise TypeError("choice() first argument should be a sequence "
+                            "(tuple or list)")
+
+        if any(isinstance(c, Expr) for c in choices):
+            self.choices = ('dynamic', choices)
+        else:
+            self.choices = np.array(choices)
+
         if weights is not None:
-            self.bins = np.array([0.0] + list(np.cumsum(weights)))
-            error = abs(self.bins[-1] - 1.0)
-            if 0.0 < error <= 1e-6:
-                # overshooting a bit is the lesser evil here (the last choice
-                # will be picked a tad less than its probability) but we can't
-                # easily "correct" that one to 1.0 because in that case, we
-                # would have the last bin boundary smaller than the second last
-                if str(1.0 - self.bins[-2]) != str(weights[-1]) and \
-                   self.bins[-1] < 1.0:
-                    print "Warning: last choice probability adjusted to %s " \
-                          "instead of %s !" % (1.0 - self.bins[-2],
-                                               weights[-1])
-                    self.bins[-1] = 1.0
-            elif error > 1e-6:
-                raise Exception(
-                    "the cumulative sum of choice weights must be ~1")
+            if not isinstance(weights, Sequence):
+                raise TypeError("if provided, choice weights should be a "
+                                "sequence (tuple or list)")
+            if any(isinstance(w, Expr) for w in weights):
+                self.bins = ('dynamic', weights)
+            else:
+                self.bins = self._weights_to_bins(weights)
         else:
             self.bins = None
 
+    @staticmethod
+    def _weights_to_bins(weights):
+        bins = np.array([0.0] + list(np.cumsum(weights)))
+        error = abs(bins[-1] - 1.0)
+        if 0.0 < error <= 1e-6:
+            # overshooting a bit is the lesser evil here (the last choice
+            # will be picked a tad less than its probability) but we can't
+            # easily "correct" that one to 1.0 because in that case, we
+            # would have the last bin boundary smaller than the second last
+            if str(1.0 - bins[-2]) != str(weights[-1]) and \
+               bins[-1] < 1.0:
+                print "Warning: last choice probability adjusted to %s " \
+                      "instead of %s !" % (1.0 - bins[-2],
+                                           weights[-1])
+                bins[-1] = 1.0
+        return bins
+
     def evaluate(self, context):
         num = context_length(context)
-
+        choices = self.choices
         if num:
-            if self.bins is None:
+            bins = self.bins
+            if bins is None:
                 # all values have the same probability
-                choices_idx = np.random.randint(len(self.choices), size=num)
+                choices_idx = np.random.randint(len(choices), size=num)
             else:
+                if len(bins) == 2 and bins[0] == 'dynamic':
+                    weights = [expr_eval(expr, context) for expr in bins[1]]
+                    bins = self._weights_to_bins(weights)
                 u = np.random.uniform(size=num)
-                choices_idx = np.digitize(u, self.bins) - 1
+                choices_idx = np.digitize(u, bins) - 1
         else:
             choices_idx = []
-        return self.choices[choices_idx]
+
+        if len(choices) == 2 and choices[0] == 'dynamic':
+            choices = np.array([expr_eval(expr, context)
+                                for expr in choices[1]])
+
+        return choices[choices_idx]
 
     def dtype(self, context):
         return self.choices.dtype

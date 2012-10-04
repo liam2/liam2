@@ -437,21 +437,41 @@ entities:
                 - num_young: grpcount(age < age_10p)
                 - num_old: grpcount(age > age_10p)
                 
-                - check_young: show('num_young <= num_total / 10:',
-                                    num_young, '<=', num_total / 10,
-                                    '[', num_young <= num_total / 10, ']')
-                - check_old: show('num_old <= num_total * 90 / 100:',
-                                  num_old, '<=', num_total * 90 / 100, 
-                                  '[', num_old <= num_total * 90 / 100, ']')
-                - check_total: show('num_young + grpcount(age == age_10p) + num_old == num_total:',
-                                    num_young, '+', grpcount(age == age_10p), '+', num_old, '==', num_total,
-                                    '[', num_young + grpcount(age == age_10p) + num_old == num_total, ']')
+                - show('num_young <= num_total / 10:',
+                       num_young, '<=', num_total / 10,
+                       '[', num_young <= num_total / 10, ']')
+                - show('num_old <= num_total * 90 / 100:',
+                       num_old, '<=', num_total * 90 / 100, 
+                       '[', num_old <= num_total * 90 / 100, ']')
+                - show('num_young + grpcount(age == age_10p) + num_old == num_total:',
+                       num_young, '+', grpcount(age == age_10p), '+', num_old, '==', num_total,
+                       '[', num_young + grpcount(age == age_10p) + num_old == num_total, ']')
 
             test_grpgini:
                 - show('grpgini(age)', grpgini(age))
                 - show('grpgini(age) by sex:', grpgini(age, filter=MALE), '/', grpgini(age, filter=FEMALE))
                 - show('grpgini([1, 1, 1])', grpgini([1, 1, 1]), 'should be zero')
                 - show('grpgini([0, 0, 0, 1])', grpgini([0, 0, 0, 1]), 'should be 3/4')
+                
+            test_choice:
+                - intchoice: choice([0, 5, 10], [0.1, 0.2, 0.7])
+                - num0: grpcount(intchoice == 0)
+                - num5: grpcount(intchoice == 5)
+                - num10: grpcount(intchoice == 10)
+                - num_total: grpcount()
+                - show('num0 + num5 + num10 == num_total',
+                       num0, '+', num5, '+', num10, '==', num_total,
+                       '[', num0 + num5 + num10 == num_total, ']')
+
+                - zero: grpavg(age) - grpavg(age) 
+                
+                - w0: grpavg(age) / grpmax(age)
+                - w1: 0.1
+                - w2: 1.0 - w0 - w1
+                
+                - show('choice([zero, zero + 1, zero + 2], [w0, w1, 1.0 - w0 - w1])',
+                       'choice([', zero, ',', zero + 1, ',', zero + 2, '], [', w0, ',', w1, ',', 1.0 - w0 - w1, '])',
+                       choice([zero, zero + 1, zero + 2], [w0, w1, 1.0 - w0 - w1]))
 
             test_groupby:
                 # fails as it should
@@ -543,6 +563,8 @@ simulation:
                    test_grpmedian,
                    test_grppercentile,
                    test_grpgini,
+                   
+                   test_choice,
                    
                    show_weight,
                    test_groupby,
