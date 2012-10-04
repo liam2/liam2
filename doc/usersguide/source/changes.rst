@@ -63,6 +63,9 @@ Fixes:
 
 * fixed typo in the code outputting durations ("hourss" instead of "hours").
 
+* fixed a bug which prevented to define constants without quoting them in some
+  cases
+
 
 Version 0.4.1
 =============

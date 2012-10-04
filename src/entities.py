@@ -136,8 +136,7 @@ class Entity(object):
         for k, v in items:
             if k is None:
                 continue
-            #FIXME: what about int and float literals?
-            if isinstance(v, basestring):
+            if isinstance(v, (basestring, int, float)):
                 predictors.append(k)
             elif isinstance(v, dict):
                 predictors.append(v['predictor'])
