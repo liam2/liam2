@@ -37,6 +37,8 @@ New features:
 
   - entities: prints the list of available entities.
   - periods: prints the list of available periods for the current entity.
+  
+* added function to compute the Nth percentile: grppercentile(expr, percent)  
 
 Miscellaneous improvements:
 ---------------------------
@@ -159,6 +161,8 @@ Miscellaneous improvements:
 * allowed the result of new() to not be stored in a variable.
 
 * allowed using temporary variables in matching() function.
+
+* using a string for matching expressions is deprecated.
 
 * added a tolerance of 1e-6 to the sum of choice's probabilities to be equal 1.0
 

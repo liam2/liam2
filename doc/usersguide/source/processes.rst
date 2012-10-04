@@ -275,6 +275,7 @@ aggregate functions
 - grpstd(expr): standard deviation
 - grpmax(expr), grpmin(expr): max or min
 - grpmedian(expr): median
+- grppercentile(expr, percent): percentile
 - grpgini(expr[, filter=condition]): gini
 
 **grpsum** sums any expression over all the individuals of the current entity.

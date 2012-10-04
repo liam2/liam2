@@ -453,7 +453,9 @@ class NumpyAggregate(NumpyProperty):
         if self.skip_missing:
             def local_expr_eval(expr, context):
                 values = expr_eval(expr, context)
-                return values[ispresent(values)]
+                if isinstance(values, np.ndarray) and values.shape:
+                    values = values[ispresent(values)]
+                return values
             return local_expr_eval
         else:
             return expr_eval
@@ -628,6 +630,16 @@ class GroupMedian(NumpyAggregate):
     func_name = 'grpmedian'
     np_func = (np.median,)
     arg_names = ('a', 'axis', 'out', 'overwrite_input')
+    skip_missing = True
+
+    def dtype(self, context):
+        return float
+
+
+class GroupPercentile(NumpyAggregate):
+    func_name = 'grppercentile'
+    np_func = (np.percentile,)
+    arg_names = ('a', 'q', 'axis', 'out', 'overwrite_input')
     skip_missing = True
 
     def dtype(self, context):
@@ -1030,6 +1042,7 @@ functions = {
     'grpavg': GroupAverage,
     'grpstd': GroupStd,
     'grpmedian': GroupMedian,
+    'grppercentile': GroupPercentile,
     'grpgini': GroupGini,
     # per element
     'min': Min,
