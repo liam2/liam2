@@ -134,6 +134,30 @@ entities:
             agegroup: if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))
 
             test_align:
+                - int_aligned: align(age,
+                                     expressions=[gender],
+                                     possible_values=[[False, True]],
+                                     probabilities=[0.1, 0.2])
+                - show(groupby(gender, int_aligned))
+                
+                - show(groupby(age, int_aligned))
+                
+                - nan_age: if(age < 10, nan, age * 1.0)
+                
+                - float_aligned: align(nan_age,
+                                       expressions=[gender],
+                                       possible_values=[[False, True]],
+                                       probabilities=[0.1, 0.2])
+                - show(groupby(gender, float_aligned))
+                - show(groupby(age, float_aligned))
+                 
+                - no_expr_aligned: align(False, filter=age < 10,
+                                         expressions=[gender],
+                                         possible_values=[[False, True]],
+                                         probabilities=[0.1, 0.2])
+#                - show("aligned", id[no_expr_aligned])                         
+#                - show(groupby(no_expr_aligned, expr=id))
+                                 
                 - dead: if(gender, 
                            align(0.0, 
                                  take=age > 95, leave=ISCHILD,
