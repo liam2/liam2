@@ -280,6 +280,10 @@ def align_get_indices_nd(context, filter_value, score,
                     sorted_global_indices = \
                         group_maybe_indices[sorted_local_indices]
                 else:
+                    assert isinstance(score, (bool, int, float))
+                    # if the score expression is a constant, we don't need to
+                    # sort indices. In that case, the alignment will take
+                    # the last individuals created first (highest id). 
                     sorted_global_indices = group_maybe_indices
 
                 # maybe_to_take is always > 0
