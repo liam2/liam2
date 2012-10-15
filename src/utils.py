@@ -103,13 +103,17 @@ def skip_comment_cells(lines):
     for line in lines:
         yield list(itertools.takewhile(notacomment, line))
 
-def strip_rows(lines):
-    'returns an iterator of lines with leading and trailing blank cells removed'
 
+def strip_rows(lines):
+    '''
+    returns an iterator of lines with leading and trailing blank cells
+    removed
+    '''
     isblank = lambda s: s == ''
     for line in lines:
         leading_dropped = list(itertools.dropwhile(isblank, line))
-        rev_line = list(itertools.dropwhile(isblank, reversed(leading_dropped)))
+        rev_line = list(itertools.dropwhile(isblank,
+                                            reversed(leading_dropped)))
         yield list(reversed(rev_line))
 
 
@@ -251,12 +255,16 @@ def countlines(filepath):
     with open(filepath) as f:
         return sum(1 for _ in f)
 
-def validate_keys(d, required=(), optional=(), context=''):
+def validate_keys(d, required=(), optional=(), context='',
+                  extra_allowed=False):
     required_keys = set(required)
     optional_keys = set(optional)
-    valid_keys = required_keys | optional_keys
     used_keys = set(d.keys())
-    invalid_keys = used_keys - valid_keys
+    if extra_allowed:
+        invalid_keys = set()
+    else:
+        valid_keys = required_keys | optional_keys
+        invalid_keys = used_keys - valid_keys
     missing_keys = required_keys - used_keys
     if invalid_keys:
         kind, keys = 'invalid', invalid_keys
