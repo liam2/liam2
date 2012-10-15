@@ -122,8 +122,29 @@ def explore(fpath):
             h5out.close()
 
 
+class PrintVersionsAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        import numpy
+        import numexpr
+        import carray
+        import tables
+
+        print '''numpy {np}
+numexpr {ne}
+pytables {pt}
+carray {ca}
+pyyaml {yml}'''.format(np=numpy.__version__,
+                       ne=numexpr.__version__,
+                       pt=tables.__version__,
+                       ca=carray.__version__,
+                       yml=yaml.__version__)
+        parser.exit()
+
+
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--versions', action=PrintVersionsAction, nargs=0,
+                        help="display versions of dependencies")
     parser.add_argument('--input-path', dest='input_path',
                         help='override the input path')
     parser.add_argument('--input-file', dest='input_file',
