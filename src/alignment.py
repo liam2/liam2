@@ -464,7 +464,11 @@ class GroupBy(TableExpression):
             data.append(expr_eval(expr, local_context))
 
         if self.percent:
-            total_value = data[-1]
+            # convert to np.float64 to get +-inf if total_value is int(0)
+            # instead of Python's built-in behavior of raising an exception.
+            # This can happen at least when using the default expr (grpcount())
+            # and the filter yields empty groups
+            total_value = np.float64(data[-1])
             data = [100.0 * value / total_value for value in data]
 
 #        if self.by or self.percent:

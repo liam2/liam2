@@ -502,6 +502,9 @@ entities:
 #                - show('groupby scalar', groupby(True, gender))
                 # this is currently broken
 #                - show('groupby scalar', groupby(grpavg(age), gender))
+
+                - show('groupby with percent when total is int(0)',
+                       groupby(age, filter=age > 200, percent=True))
                 - show('expr=grpsum(weight)', 
                        groupby(agegroup, gender, expr=grpsum(weight)))
                 - show(groupby(round(logit_score(0.0), 1)))
