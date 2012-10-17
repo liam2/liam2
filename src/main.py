@@ -9,7 +9,7 @@ from console import Console
 from data import populate_registry
 from registry import entity_registry
 
-__version__ = "0.5.0rc"
+__version__ = "0.5.0beta3"
 
 
 class AutoflushFile(object):
@@ -32,6 +32,9 @@ def eat_traceback(func, *args, **kwargs):
         except Exception, e:
             try:
                 import traceback
+                #TODO: use config.output_directory. The problem is that it
+                # might not be available at this point and it's only valid
+                # for run and explore commands
                 with file('error.log', 'w') as f:
                     traceback.print_exc(file=f)
             except IOError, log_ex:
@@ -173,6 +176,9 @@ def main():
     parser_import.add_argument('file', help='explore file')
 
     parsed_args = parser.parse_args()
+#   action_funcs = {'run': simulate, 'import': csv2h5, 'explore': explore}
+#   action_funcs[parsed_args.action](parsed_args)
+
     action = parsed_args.action
     fpath = parsed_args.file
     if action == 'run':
