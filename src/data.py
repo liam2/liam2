@@ -259,6 +259,7 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
         present_in_period.resize(max_id + 1)
         is_present |= present_in_period
 
+    # if all individuals are present in the target period, we are done already!
     if np.array_equal(present_in_period, is_present):
         start, stop = input_rows[target_period]
         input_array = input_table.read(start=start, stop=stop)
@@ -274,22 +275,39 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
             id_to_rownum[row_id] = rownum
             rownum += 1
 
-    # computing source row (period) for each destination row
+    # computing the source row for each destination row
+    # we loop over the periods before start_period in reverse order
     output_array_source_rows = np.empty(rownum, dtype=int)
     output_array_source_rows.fill(-1)
     for period in periods_before[::-1]:
         start, stop = input_rows[period]
-        input_id_to_rownum = input_index[period]
-        input_ids = (input_id_to_rownum != -1).nonzero()[0]
         input_rownums = np.arange(start, stop)
-        output_rownums = id_to_rownum[input_ids]
+        
+        input_id_to_rownum = input_index[period]
+        id_is_in_period = input_id_to_rownum != -1
+
+        # which output rows are filled by input for this period
+        output_rownums = id_to_rownum[id_is_in_period]
+
+        # get the (current) source row in the global array for individuals in
+        # this period
         source_rows = output_array_source_rows[output_rownums]
-        np.putmask(source_rows, source_rows == -1, input_rownums)
-        safe_put(output_array_source_rows, output_rownums, source_rows)
+        
+        # if their source row is already known, leave them alone
+        need_update = source_rows == -1
+        
+        # global indice of rows which are not set yet (for the current period)
+        rows_to_update = output_rownums[need_update]
+
+        # source row for those rows
+        local_source_rows = input_rownums[need_update]
+        
+        # update the source row for those rows
+        safe_put(output_array_source_rows, rows_to_update, local_source_rows)
 
         if np.all(output_array_source_rows != -1):
             break
-
+            
     # reading data
     output_array = input_table.readCoordinates(output_array_source_rows)
     output_array = add_and_drop_fields(output_array, output_fields)
