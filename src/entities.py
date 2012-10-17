@@ -1,4 +1,4 @@
-import carray as ca
+#import carray as ca
 import numpy as np
 import tables
 
@@ -13,15 +13,15 @@ from context import EntityContext, context_length
 str_to_type = {'float': float, 'int': int, 'bool': bool}
 
 
-def compress_column(a, level):
-    arr = ca.carray(a, cparams=ca.cparams(level))
-    print "%d -> %d (%.2f)" % (arr.nbytes, arr.cbytes,
-                               float(arr.nbytes) / arr.cbytes),
-    return arr
-
-
-def decompress_column(a):
-    return a[:]
+#def compress_column(a, level):
+#    arr = ca.carray(a, cparams=ca.cparams(level))
+#    print "%d -> %d (%.2f)" % (arr.nbytes, arr.cbytes,
+#                               float(arr.nbytes) / arr.cbytes),
+#    return arr
+#
+#
+#def decompress_column(a):
+#    return a[:]
 
 
 class Entity(object):
@@ -319,9 +319,9 @@ class Entity(object):
             self.output_index[period] = self.id_to_rownum
         self.table.flush()
 
-    def compress_period_data(self, level):
-        compressed = ca.ctable(self.array, cparams=ca.cparams(level))
-        print "%d -> %d (%f)" % compressed._get_stats()
+#    def compress_period_data(self, level):
+#        compressed = ca.ctable(self.array, cparams=ca.cparams(level))
+#        print "%d -> %d (%f)" % compressed._get_stats()
 
     def fill_missing_values(self, ids, values, context, filler='auto'):
         '''ids: ids present in past period
