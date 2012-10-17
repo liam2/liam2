@@ -81,7 +81,9 @@ class Simulation(object):
     def __init__(self, globals_fields, periods, start_period,
                  init_processes, init_entities, processes, entities,
                  data_source, default_entity=None):
-        self.globals_fields = [('PERIOD', int)] + globals_fields
+        if globals_fields is not None:
+            globals_fields = [('PERIOD', int)] + globals_fields
+        self.globals_fields = globals_fields
         self.periods = periods
         self.start_period = start_period
         self.init_processes = init_processes
