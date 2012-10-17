@@ -4,6 +4,8 @@ import sys
 
 import numpy as np
 
+from context import get_local_data
+
 try:
     import numexpr
 #    numexpr.set_num_threads(1)
@@ -120,8 +122,16 @@ def collect_variables(expr, context):
 
 def expr_eval(expr, context):
     if isinstance(expr, Expr):
+        local_data = get_local_data(context)
         for var_name in expr.collect_variables(context):
-            if var_name not in context:
+            #XXX: make collect_variables return "prefixed" variables so that I
+            # can check if *all* variables are really present in the context,
+            # not only those of the local entity in local_data.
+            # but maybe this is unnecessary because in the end, it will be
+            # checked by the local entity later anyway???
+            # * another option might be to check for missing variable later
+            #   (just before it is passed to numexpr)?
+            if var_name not in local_data:
                 raise Exception("variable '%s' is unknown (it is either not "
                                 "defined or not computed yet)" % var_name)
         return expr.evaluate(context)
@@ -270,18 +280,19 @@ class Expr(object):
 #        else:
 #            s = self.as_string(context)
 #            expr_cache[self] = s
+
         s = self.as_string(context)
-        r = context.get(s)
+        local_data = get_local_data(context)
+        r = local_data.get(s)
         if r is not None:
             return r
 
         try:
-            return evaluate(s, context, {}, truediv='auto')
+            return evaluate(s, local_data, {}, truediv='auto')
         except KeyError, e:
             raise add_context(e, s)
         except Exception, e:
             raise
-
 
 #class IsPresent(Expr):
 #    def __init__(self, expr):
@@ -509,6 +520,10 @@ class Variable(Expr):
             return normalize_type(type_)
         else:
             return self._dtype
+
+#TODO: allow all variables to be subscripted/filtered
+#    def __getitem__(self, key):
+#        return SubscriptedVariable(self.name, self._dtype, key)
 
 
 class ShortLivedVariable(Variable):

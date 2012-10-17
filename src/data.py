@@ -3,7 +3,8 @@ import time
 import tables
 import numpy as np
 
-from expr import normalize_type, get_missing_value, get_missing_record
+from expr import normalize_type, get_missing_value, get_missing_record, \
+                 missing_values
 from utils import loop_wh_progress, time2str, safe_put
 
 
@@ -18,34 +19,31 @@ def get_fields(array):
             for name in dtype.names]
 
 
-def assertValidFields(array, wanted_fields, allowed_missing=None):
+def assertValidFields(array, required_fields):
     # extract types from field description and normalise to python types
     actual_fields = get_fields(array)
 
     # check that all required fields are present
-    wanted_names = set(name for name, _ in wanted_fields)
+    required_names = set(name for name, _ in required_fields)
     actual_names = set(name for name, _ in actual_fields)
-    allowed_missing = set(allowed_missing) if allowed_missing is not None \
-                                           else set()
-    missing = wanted_names - actual_names - allowed_missing
+    missing = sorted(required_names - actual_names)
     if missing:
-        raise Exception("Missing field(s) in hdf5 input file: %s"
+        raise Exception("Missing field(s) in input data: %s"
                         % ', '.join(missing))
 
     # check that types match
-    common_fields1 = sorted((name, type_) for name, type_ in actual_fields
-                            if name in wanted_names)
-    common_fields2 = sorted((name, type_) for name, type_ in wanted_fields
-                            if name in actual_names)
+    sorted_subset = sorted((name, type_) for name, type_ in actual_fields
+                           if name in required_names)
+    sorted_req_fields = sorted(required_fields)
     bad_fields = []
-    for (name1, t1), (name2, t2) in zip(common_fields1, common_fields2):
+    for (name1, t1), (name2, t2) in zip(sorted_subset, sorted_req_fields):
         assert name1 == name2, "%s != %s" % (name1, name2)
         if t1 != t2:
             bad_fields.append((name1, t2.__name__, t1.__name__))
     if bad_fields:
         bad_fields_str = "\n".join(" - %s: %s instead of %s" % f
                                    for f in bad_fields)
-        raise Exception("Field types in hdf5 input file differ from those "
+        raise Exception("Field types in input data differ from those "
                         "defined in the simulation:\n%s" % bad_fields_str)
 
 
@@ -351,6 +349,32 @@ def index_table(table):
     return rows_per_period, id_to_rownum_per_period
 
 
+class ListOfMaps(list):
+    '''helper class to make a list of dict behave "like a context"
+    (ie the get method that is used in evaluate to see if the variable
+    is already in the context)
+    maybe that's not what I need: maybe I should have a "context" object
+    between XXXTable and evaluate?
+    '''
+    def __getitem__(self, key):
+        if isinstance(key, basestring):
+            return [row[key] for row in self]
+        else:
+            return list.__getitem__(self, key)
+
+    def __contains__(self, key):
+        if isinstance(key, basestring):
+            return key in self[0]
+        else:
+            return list.__getitem__(self, key)
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+
 def index_table_light(table):
     '''
     table is an iterable of rows, each row is a mapping (name -> value)
@@ -374,79 +398,214 @@ def index_table_light(table):
     return rows_per_period
 
 
-class IndexedTable(object):
-    def __init__(self, table, period_index, id2rownum_per_period):
-        self.table = table
-        self.period_index = period_index
-        self.id2rownum_per_period = id2rownum_per_period
+class PeriodTable(object):
+    def __init__(self, data, period):
+        self.data = data
+        self.period = period
 
+    def __getitem__(self, fieldname):
+        return self.data.read(self.period, field=fieldname)
+
+    def __contains__(self, key):
+        return key in self.data
+
+    @property
+    def id_to_rownum(self):
+        return self.data.id2rownum_per_period[self.period]
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __len__(self):
+        return len(self.data)
+
+
+class FilteredTable(object):
+    def __init__(self, period_table, ids, filter_missing_ids=True):
+        self.period_table = period_table
+        self.ids = ids
+        self.filter_missing_ids = filter_missing_ids
+        self.rows = period_table.id_to_rownum[ids]
+
+    def __getattr__(self, key):
+        return getattr(self.period_table, key)
+
+    def __getitem__(self, fieldname):
+        try:
+            fid = self.filter_missing_ids
+            return self.period_table.data.read(self.period_table.period,
+                                               self.ids,
+                                               field=fieldname,
+                                               filter_missing_ids=fid)
+        except ValueError:
+            raise KeyError
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __contains__(self, key):
+        return key in self.period_table
+
+
+class IndexedTable(object):
+    def __init__(self, table):
+        self.table = table
+        self.period_index, self.id2rownum_per_period = index_table(table)
+
+    def __getitem__(self, period):
+        if isinstance(period, basestring):
+            raise Exception("yargl")
+        return PeriodTable(self, period)
+
+    def __contains__(self, key):
+        return key in self.table.dtype.fields
+
+    def get(self, key, default=None):
+        try:
+            return self.table[key]
+        except KeyError:
+            return default
+
+    def __len__(self):
+        return len(self.table)
+
+#XXX: might be cleaner/more logical to move this to PeriodTable instead
     # In the future, we will probably want a more flexible interface, but
     # it will need a lot more machinery (query language and so on) so let's
     # stick with something simple for now.
-    def read(self, period, ids=None, field=None):
+    def read(self, period, ids=None, field=None, filter_missing_ids=False):
         if period not in self.period_index:
             raise Exception('no data for period %d' % period)
+        start, stop = self.period_index[period]
         if ids is None:
-            start, stop = self.period_index[period]
-            return self.table.read(start=start, stop=stop, field=field)
+            # this is probably faster, but it is not compatible with
+            # in-memory arrays
+#            return self.table.read(start=start, stop=stop, field=field)
+            return self.table[start:stop][field]
         else:
-            raise NotImplementedError('reading only some ids is not '
-                                      'implemented yet')
+            id_to_rownum = self.id2rownum_per_period[period]
+            missing_int = missing_values[int]
+            #XXX: this might be inefficient because we'll recompute
+            #valid_ids & target_rows for each field in the expression
+            target_rows = id_to_rownum[ids]
+            if filter_missing_ids:
+                valid_ids = (ids != missing_int) & (target_rows != missing_int)
+            else:
+                assert np.all(ids != missing_int)
+                valid_ids = target_rows != missing_int
+            target_rows += start
+
+            # this is probably faster, but it is not compatible with
+            # in-memory arrays
+#            target_values = self.table.readRows(target_rows, field=field)
+            target_values = self.table[target_rows][field]
+            missing_value = get_missing_value(target_values)
+            return np.where(valid_ids, target_values, missing_value)
 
     @property
     def base_period(self):
         return min(self.period_index.keys())
 
 
+class DictNodeWrapper(object):
+    def __init__(self, node):
+        self.node = node
+
+    def __getitem__(self, key):
+        child = self.node._f_getChild(key)
+        if isinstance(child, tables.Leaf):
+            return child
+        else:
+            return DictNodeWrapper(child)
+
+
+def validate_dataset(dataset, dataset_def):
+    '''
+    check that a data set contains at least all the tables and groups defined
+    in dataset_def, that the tables contain at least the fields described
+    for each table and those fields are of the correct type.
+    '''
+    assert isinstance(dataset_def, dict)
+    for k, node_def in dataset_def.iteritems():
+        try:
+            node_data = dataset[k]
+        except KeyError:
+            raise Exception('Missing node in input dataset', k)
+        if isinstance(node_def, dict):
+            # we have a group structure
+            validate_dataset(node_data, node_def)
+        else:
+            # we have a list of fields
+            assert isinstance(node_def, list), str(node_def)
+            assertValidFields(node_data, node_def)
+
+
+#XXX: inherit from dict instead of having a .data dict attribute?
 class DataSet(object):
     pass
 
 
-def index_tables(globals_fields, entities, fpath):
-    print "reading data from %s ..." % fpath
+#TODO: indexed vs full_load should be transparent to the outside world
+#XXX: would it be a good idea to make the decision of indexing or full load
+# automatic (if a table is smaller than X)?
+def index_tables(input_dataset, dataset_def):
+    '''
+    index or load all tables present in dataset_def which should have the
+    following format: dict for group nodes, boolean for table nodes. eg
+    {'group_name':
+        {'subgroup':
+            ...
+            {'tablename': full_load}
+    where full_load determines whether the table is loaded entirely in memory
+    or is only indexed.
+    '''
+    assert isinstance(dataset_def, dict)
+    output_dataset = {}
+    for node_name, node_def in dataset_def.iteritems():
+        node_data = input_dataset[node_name]
+        if isinstance(node_def, dict):
+            # we have a group structure
+            output_dataset[node_name] = index_tables(node_data, node_def)
+        else:
+            # we have a list of fields
+            assert isinstance(node_def, bool)
+            full_load = node_def
+            if full_load:
+                output_dataset[node_name] = node_data.read()
+            else:
+                print " * indexing table:", node_name, "...",
+                start_time = time.time()
+                output_dataset[node_name] = IndexedTable(node_data)
+                print "done (%s elapsed)." % time2str(time.time() - start_time)
 
-    input_file = tables.openFile(fpath, mode="r")
-    try:
-        periodic_globals = None
-        input_root = input_file.root
-
-        if 'globals' in input_root:
-            input_globals = input_root.globals
-            if 'periodic' in input_globals:
-                # load globals in memory
-                #FIXME: make sure either period or PERIOD is present
-                assertValidFields(input_globals.periodic, globals_fields, 
-                                  allowed_missing=('period', 'PERIOD'))
-                periodic_globals = input_globals.periodic.read()
-
-        input_entities = input_root.entities
-
-        entities_tables = {}
-        dataset = {'globals': periodic_globals,
-                   'entities': entities_tables}
-
-        print " * indexing tables"
-        for ent_name, entity in entities.iteritems():
-            print "    -", ent_name, "...",
-
-            table = getattr(input_entities, ent_name)
-            assertValidFields(table, entity.fields, entity.missing_fields)
-
-            start_time = time.time()
-            rows_per_period, id_to_rownum_per_period = index_table(table)
-            indexed_table = IndexedTable(table, rows_per_period,
-                                         id_to_rownum_per_period)
-            entities_tables[ent_name] = indexed_table
-            print "done (%s elapsed)." % time2str(time.time() - start_time)
-    except:
-        input_file.close()
-        raise
-
-    return input_file, dataset
+    return output_dataset
 
 
 class DataSource(object):
     pass
+
+
+def create_dataset_def(entities, globals_fields):
+    entities_def = {}
+    for name, entity in entities.iteritems():
+        allowed_missing = set(entity.missing_fields)
+        # compute required fields
+        entities_def[name] = [(fname, ftype) for fname, ftype in entity.fields
+                           if fname not in allowed_missing]
+    return {'globals': {'periodic': globals_fields},
+            'entities': entities_def}
+
+
+def create_dataset_index_def(entities):
+    # periodic globals shouldn't be indexed
+    return {'globals': {'periodic': True},
+            'entities': dict((name, False) for name in entities)}
 
 
 # A data source is not necessarily read-only, but should be connected to
@@ -458,8 +617,15 @@ class H5Data(DataSource):
         self.output_path = output_path
 
     def load(self, globals_fields, entities):
-        h5file, dataset = index_tables(globals_fields, entities,
-                                       self.output_path)
+        print "reading data from %s ..." % self.output_path
+        h5file = tables.openFile(self.output_path, mode="r")
+        dataset_def = create_dataset_def(entities, globals_fields)
+        raw_dataset = DictNodeWrapper(h5file.root)
+        validate_dataset(raw_dataset, dataset_def)
+
+        dataset_def = create_dataset_index_def(entities)
+        dataset = index_tables(raw_dataset, dataset_def)
+
         entities_tables = dataset['entities']
         for ent_name, entity in entities.iteritems():
 # this is what should happen
@@ -477,15 +643,24 @@ class H5Data(DataSource):
 
             entity.base_period = table.base_period
 
-        return h5file, None, dataset['globals']
+        return h5file, None, dataset['globals']['periodic']
 
     def run(self, globals_fields, entities, start_period):
-        input_file, dataset = index_tables(globals_fields, entities,
-                                           self.input_path)
+        print "reading data from %s ..." % self.input_path
+        input_file = tables.openFile(self.input_path, mode="r")
+        dataset_def = create_dataset_def(entities, globals_fields)
+        raw_dataset = DictNodeWrapper(input_file.root)
+        validate_dataset(raw_dataset, dataset_def)
+
+        dataset_def = create_dataset_index_def(entities)
+        dataset = index_tables(raw_dataset, dataset_def)
+
         output_file = tables.openFile(self.output_path, mode="w")
 
+        globals_table = None
         try:
-            if dataset['globals'] is not None:
+            if dataset.get('globals', {}).get('periodic') is not None:
+                globals_table = dataset.get('globals', {}).get('periodic')
                 output_globals = output_file.createGroup("/", "globals",
                                                          "Globals")
                 copyTable(input_file.root.globals.periodic, output_file,
@@ -553,7 +728,7 @@ class H5Data(DataSource):
             output_file.close()
             raise
 
-        return input_file, output_file, dataset['globals']
+        return input_file, output_file, globals_table
 
 
 class Void(DataSource):

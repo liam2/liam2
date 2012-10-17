@@ -66,7 +66,7 @@ class LinkExpression(EvaluableExpression):
         # the entity population
         link = self.link
         if isinstance(link, basestring):
-            link = context['__entity__'].links[link]
+            link = context['entity'].links[link]
         return link
 
     def target_entity(self, context):
@@ -74,8 +74,15 @@ class LinkExpression(EvaluableExpression):
         return entity_registry[link._target_entity]
 
     def target_context(self, context):
-        target_entity = self.target_entity(context)
-        return EntityContext(target_entity, {'period': context['period']})
+        link = self.get_link(context)
+        target_context = {}
+        target_context['data'] = context['data']
+        target_context['period'] = context['period']
+        target_context['entity'] = link._target_entity
+#        target_context['ids'] = None
+#        target_context['filter_missing_ids'] = True
+#        target_context['missing_value'] = self.missing_value
+        return target_context
 
     #XXX: I think this is not enough. Implement Visitor pattern instead?
     def traverse(self, context):
@@ -121,20 +128,56 @@ class LinkValue(LinkExpression):
     def evaluate(self, context):
         link = self.get_link(context)
         target_ids = expr_eval(Variable(link._link_field), context)
-        target_context = self.target_context(context)
 
-        id_to_rownum = target_context.id_to_rownum
+#        target_context = self.target_context(context)
+# unroll self.target_context:
+#        target_entity = self.target_entity(context)
+#        target_context = EntityContext(target_entity, {'period': context['period']})
+
+        #FIXME: if at all possible, id_to_rownum should be entirely
+        # encapsulated inside the data module functions
+
+#        id_to_rownum = target_context.id_to_rownum
 
         missing_int = missing_values[int]
-        target_rows = id_to_rownum[target_ids]
+#        target_rows = id_to_rownum[target_ids]
 
+        #FIXME: this is very inefficient: even if there are only a few
+        # different ids in target_ids, it will compute the expression for
+        # all ids in the target_entity
+#        missing_value = self.missing_value
+#        if missing_value is None:
+#            missing_value = get_missing_value(target_values)
+
+        # assume target_context is a PeriodDataSet
+#        expr_fields = collect_variables(self.target_expression)
+
+#        target_context = NewContext(context, ids=target_ids, filter_ids=True)
+
+        #TODO: make an helper function for this
+        target_context = self.target_context(context)
+        target_context['ids'] = target_ids
+        target_context['filter_missing_ids'] = True
+        target_context['missing_value'] = self.missing_value
+
+        # everything should be done in the target_context, including
+        # fill the missing links with the correct missing value
+#        return expr_eval(self.target_expression, target_context)
         target_values = expr_eval(self.target_expression, target_context)
+
+        # this is a hack because missing int values are not propagated
+        # correctly, so we need to set them to the missing value manually
+        # afterwards
+        #XXX: what if we have a link to an id that is not in the dataset
+        # anymore
         missing_value = self.missing_value
         if missing_value is None:
             missing_value = get_missing_value(target_values)
+        valid_link = target_ids != missing_int
+        return np.where(valid_link, target_values, missing_value)
 
-        valid_link = (target_ids != missing_int) & (target_rows != missing_int)
-        return np.where(valid_link, target_values[target_rows], missing_value)
+#        valid_link = (target_ids != missing_int) & (target_rows != missing_int)
+#        return np.where(valid_link, target_values[target_rows], missing_value)
 
     def __str__(self):
         return '%s.%s' % (self.link, self.target_expression)
@@ -147,8 +190,6 @@ class AggregateLink(LinkExpression):
         self.target_filter = target_filter
 
     def evaluate(self, context):
-        assert isinstance(context, EntityContext), \
-               "aggregates in groupby is currently not supported"
         link = self.get_link(context)
         assert link._link_type == 'one2many'
 
@@ -168,23 +209,28 @@ class AggregateLink(LinkExpression):
             target_filter = None
             source_ids = link_column
 
-        id_to_rownum = context.id_to_rownum
-        if len(id_to_rownum):
-            source_rows = id_to_rownum[source_ids]
-            # filter out missing values: those where the value of the link
-            # points to nowhere (-1)
-            #XXX: use np.putmask(source_rows, source_ids == missing_int,
-            #                    missing_int)
-            source_rows[source_ids == missing_int] = missing_int
-        else:
-            assert np.all(source_ids == missing_int)
-            # we need to make a copy because eval_rows modifies the array
-            # in place
-            source_rows = source_ids.copy()
+        return self.eval_rows2(source_ids, target_filter, context)
 
-        return self.eval_rows(source_rows, target_filter, context)
+#        id_to_rownum = context.id_to_rownum
+#        if len(id_to_rownum):
+#            source_rows = id_to_rownum[source_ids]
+#            # filter out missing values: those where the value of the link
+#            # points to nowhere (-1)
+#            #XXX: use np.putmask(source_rows, source_ids == missing_int,
+#            #                    missing_int)
+#            source_rows[source_ids == missing_int] = missing_int
+#        else:
+#            assert np.all(source_ids == missing_int)
+#            # we need to make a copy because eval_rows modifies the array
+#            # in place
+#            source_rows = source_ids.copy()
+#
+#        return self.eval_rows(source_rows, target_filter, context)
 
     def eval_rows(self, source_rows, target_filter, context):
+        raise NotImplementedError
+
+    def eval_rows2(self, source_ids, target_filter, context):
         raise NotImplementedError
 
     def collect_variables(self, context):
@@ -216,12 +262,35 @@ class CountLink(AggregateLink):
         counts.resize(idx_for_missing)
         return counts
 
+    def eval_rows2(self, source_ids, target_filter, context):
+        # We can't use a negative value because that is not allowed by
+        # bincount, and using a value too high will uselessly increase the size
+        # of the array returned by bincount
+        idx_for_missing = context_length(context)
+
+        missing_int = missing_values[int]
+
+        # filter out missing values: those where the object pointed to does not
+        # exist anymore (the id corresponds to -1 in id_to_rownum)
+        #XXX: use np.putmask(source_rows, source_ids == missing_int,
+        #                    missing_int)
+#        source_rows[source_rows == missing_int] = idx_for_missing
+
+        counts = self.count2(source_ids, target_filter, context)
+        counts.resize(idx_for_missing)
+        return counts
+
     def count(self, source_rows, target_filter, context):
         #XXX: the test is probably not needed anymore with numpy 1.6.2+
         if len(source_rows):
             return np.bincount(source_rows)
         else:
             return np.array([], dtype=int)
+
+    def count2(self, source_ids, target_filter, context):
+        _, inverse = np.unique(source_ids, return_inverse=True)
+        unique_counts = np.bincount(inverse)
+        return unique_counts[inverse]
 
     def dtype(self, context):
         return int
@@ -248,6 +317,21 @@ class SumLink(CountLink):
             value_column = value_column[target_filter]
         assert len(source_rows) == len(value_column)
         res = np.bincount(source_rows, value_column)
+
+        # we need to explicitly convert to the type of the value field because
+        # bincount always return floats when its weight argument is used.
+        return res.astype(value_column.dtype)
+
+    def count2(self, source_ids, target_filter, context):
+        target_context = self.target_context(context)
+        value_column = expr_eval(self.target_expr, target_context)
+        if target_filter is not None:
+            value_column = value_column[target_filter]
+
+        _, inverse = np.unique(source_ids, return_inverse=True)
+        assert len(inverse) == len(value_column)
+        unique_counts = np.bincount(inverse, value_column)
+        res = unique_counts[inverse]
 
         # we need to explicitly convert to the type of the value field because
         # bincount always return floats when its weight argument is used.

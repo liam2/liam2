@@ -177,3 +177,17 @@ def context_length(ctx):
                                     (k, len(value), usual_len))
                 usual_len = len(value)
         return usual_len
+
+
+def get_local_data(context):
+    from data import FilteredTable
+    data = context['data']
+    period = context['period']
+    entity = context['entity']
+    period_table = data[entity][period]
+    ids = context.get('ids')
+    if ids is not None:
+        filter_missing_ids = context.get('filter_missing_ids')
+        return FilteredTable(period_table, ids, filter_missing_ids)
+    else:
+        return period_table
