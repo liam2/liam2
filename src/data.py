@@ -282,32 +282,31 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
     for period in periods_before[::-1]:
         start, stop = input_rows[period]
         input_rownums = np.arange(start, stop)
-        
+
         input_id_to_rownum = input_index[period]
         id_is_in_period = input_id_to_rownum != -1
 
         # which output rows are filled by input for this period
         output_rownums = id_to_rownum[id_is_in_period]
 
-        # get the (current) source row in the global array for individuals in
-        # this period
+        # get source rows (in the global array) for individuals in this period
         source_rows = output_array_source_rows[output_rownums]
-        
+
         # if their source row is already known, leave them alone
         need_update = source_rows == -1
-        
-        # global indice of rows which are not set yet (for the current period)
+
+        # global indices of rows which are not set yet (for this period)
         rows_to_update = output_rownums[need_update]
 
         # source row for those rows
         local_source_rows = input_rownums[need_update]
-        
+
         # update the source row for those rows
         safe_put(output_array_source_rows, rows_to_update, local_source_rows)
 
         if np.all(output_array_source_rows != -1):
             break
-            
+
     # reading data
     output_array = input_table.readCoordinates(output_array_source_rows)
     output_array = add_and_drop_fields(output_array, output_fields)
@@ -316,8 +315,11 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
 
 
 def index_table(table):
-    '''table is an iterable of rows, each row is a mapping (name -> value)'''
-
+    '''
+    table is an iterable of rows, each row is a mapping (name -> value).
+    Rows must contain at least 'period' and 'id' columns and must be sorted
+    by period.
+    '''
     rows_per_period = {}
     id_to_rownum_per_period = {}
     temp_id_to_rownum = []
@@ -328,7 +330,8 @@ def index_table(table):
         period, row_id = row['period'], row['id']
         if period != current_period:
             # 0 > None is True
-            assert period > current_period, "data is not time-ordered"
+            if period < current_period:
+                raise Exception("data is not time-ordered")
             if start_row is not None:
                 rows_per_period[current_period] = start_row, idx
                 # assumes the data is sorted on period then id
@@ -349,8 +352,10 @@ def index_table(table):
 
 
 def index_table_light(table):
-    '''table is an iterable of rows, each row is a mapping (name -> value)'''
-
+    '''
+    table is an iterable of rows, each row is a mapping (name -> value)
+    Rows must contain at least a 'period' column and must be sorted by period.
+    '''
     rows_per_period = {}
     current_period = None
     start_row = None
