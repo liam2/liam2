@@ -460,6 +460,8 @@ def load_def(localdir, ent_name, section_def, required_fields):
         else:
             raise Exception("invalid structure for 'files'")
 
+        #XXX: shouldn't we use the "path" defined for the whole entity if any?
+        # section_def.get('path')
         files = []
         for path, kwargs in files_items:
             kwargs['newnames'] = \
