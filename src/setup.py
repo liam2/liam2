@@ -18,12 +18,11 @@ setup(console=['main.py'],
                         "tcl", "unicodedata", "xml"],
                         # locale, StringIO and difflib are required with
                         # python2.7/64b
-               # py2exe seems to be unable to find this dll, so we exclude it
-               # but than we *must* copy the file from numpy (usually
+               # When use versions of numpy and numexpr linked to the MKL
+               # (for example those provided by Christoph Gohlke), py2exe is
+               # unable to find this dll, so we have to exclude it but than we
+               # *must* copy the file from numpy (usually
                # $PYTHONROOT\Lib\site-packages\numpy\) to the "dist" directory.
-               # XXX: this might be because I installed numexpr from the
-               # binaries from Christoph Gohlke which depend on Numpy-MKL
-               # (http://www.lfd.uci.edu/~gohlke/pythonlibs/)
                dll_excludes=["libiomp5md.dll"]
           )
       )

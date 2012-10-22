@@ -415,7 +415,7 @@ def index_tables(globals_fields, entities, fpath):
             if 'periodic' in input_globals:
                 # load globals in memory
                 #FIXME: make sure either period or PERIOD is present
-                assertValidFields(input_globals.periodic, globals_fields, 
+                assertValidFields(input_globals.periodic, globals_fields,
                                   allowed_missing=('period', 'PERIOD'))
                 periodic_globals = input_globals.periodic.read()
 

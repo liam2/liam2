@@ -130,24 +130,29 @@ def format_value(value, missing):
     else:
         return str(value)
 
+
 def get_col_width(table, index):
     return max(len(row[index]) for row in table)
+
 
 def longest_word(s):
     return max(len(w) for w in s.split()) if s else 0
 
+
 def get_min_width(table, index):
     return max(longest_word(row[index]) for row in table)
 
+
 def table2str(table, missing):
+    table_len = len(table[0])
     formatted = [[format_value(value, missing) for value in row]
                   for row in table]
-    colwidths = [get_col_width(formatted, i) for i in xrange(len(table[0]))]
+    colwidths = [get_col_width(formatted, i) for i in xrange(table_len)]
 
     total_width = sum(colwidths)
     sep_width = (len(colwidths) - 1) * 3
     if total_width + sep_width > 80:
-        minwidths = [get_min_width(formatted, i) for i in xrange(len(table[0]))]
+        minwidths = [get_min_width(formatted, i) for i in xrange(table_len)]
         available_width = 80.0 - sep_width - sum(minwidths)
         ratio = available_width / total_width
         colwidths = [minw + max(int(width * ratio), 0)
@@ -194,6 +199,7 @@ class PrettyTable(object):
         return '\n' + table2str(self.data, missing) + '\n'
     __repr__ = __str__
 
+
 # copied from itertools recipes
 def unique(iterable):
     "List unique elements, preserving order. Remember all elements ever seen."
@@ -205,9 +211,11 @@ def unique(iterable):
             seen_add(element)
             yield element
 
+
 def duplicates(iterable):
     """
-    List duplicated elements once, preserving order. Remember all elements ever seen.
+    List duplicated elements once, preserving order. Remember all elements ever
+    seen.
     """
     # duplicates('AAAABBBCCDAABBB') --> A B C D
     counts = defaultdict(int)
@@ -215,6 +223,7 @@ def duplicates(iterable):
         counts[element] += 1
         if counts[element] == 2:
             yield element
+
 
 def unique_duplicate(iterable):
     counts = {}
@@ -230,6 +239,7 @@ def unique_duplicate(iterable):
             append_uniques(element)
     return uniques, dupes
 
+
 def merge_dicts(*args, **kwargs):
     result = args[0].copy()
     for arg in args[1:] + (kwargs,):
@@ -238,6 +248,7 @@ def merge_dicts(*args, **kwargs):
                 v = merge_dicts(result[k], v)
             result[k] = v
     return result
+
 
 def merge_items(*args):
     result = args[0][:]
@@ -248,12 +259,19 @@ def merge_items(*args):
         keys_seen |= set(k for k, _ in new_items)
     return result
 
+
 def invert_dict(d):
     return dict((v, k) for k, v in d.iteritems())
+
 
 def countlines(filepath):
     with open(filepath) as f:
         return sum(1 for _ in f)
+
+
+#--------------------#
+# validate functions #
+#--------------------#
 
 def validate_keys(d, required=(), optional=(), context='',
                   extra_allowed=False):
@@ -280,11 +298,13 @@ def validate_keys(d, required=(), optional=(), context='',
             template = "%s keyword(s): '%s'"
         raise SyntaxError(template % (kind, "', '".join(keys)))
 
+
 def validate_list(l, target, context):
     assert len(target) == 1
     target_element = target[0]
     for v in l:
         validate_value(v, target_element, context)
+
 
 def validate_dict(d, target, context=''):
     targets = target.keys()
@@ -311,6 +331,7 @@ def validate_dict(d, target, context=''):
                 validate_value(v, section_def, subcontext)
             else:
                 raise Exception("invalid structure for '%s'" % subcontext)
+
 
 def validate_value(v, target, context):
     if isinstance(v, dict):
