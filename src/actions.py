@@ -165,6 +165,62 @@ class Breakpoint(Process):
         return ()
 
 
+class Assert(Process):
+    def eval_assertion(self, context):
+        raise NotImplementedError()
+
+    def run(self, context):
+        if config.assertions == "skip":
+            print "assert skipped",
+        else:
+            print "assert",
+            failure = self.eval_assertion(context)
+            if failure:
+                if config.assertions == "warn":
+                    print "ASSERTION FAILED:", failure
+                else:
+                    raise AssertionError(failure)
+            else:
+                print "ok",
+
+
+class AssertTrue(Assert):
+    def __init__(self, expr):
+        Process.__init__(self)
+        self.expr = expr
+
+    def eval_assertion(self, context):
+        if not expr_eval(self.expr, context):
+            return str(self.expr)
+
+    def expressions(self):
+        if isinstance(self.expr, Expr):
+            yield self.expr
+
+
+class AssertEqual(Assert):
+    def __init__(self, expr1, expr2):
+        Process.__init__(self)
+        self.expr1 = expr1
+        self.expr2 = expr2
+
+    def eval_assertion(self, context):
+        r1 = expr_eval(self.expr1, context)
+        r2 = expr_eval(self.expr2, context)
+        if isinstance(r1, np.ndarray) and isinstance(r2, np.ndarray):
+            passed = np.array_equal(r1, r2)
+        else:
+            passed = r1 == r2
+        if not passed:
+            return "%s != %s (%s != %s)" % (r1, r2, self.expr1, self.expr2)
+
+    def expressions(self):
+        if isinstance(self.expr1, Expr):
+            yield self.expr1
+        if isinstance(self.expr2, Expr):
+            yield self.expr2
+
+
 functions = {
     # can't use "print" in python 2.x because it's a keyword, not a function
 #    'print': Print,
@@ -172,4 +228,6 @@ functions = {
     'show': Show,
     'remove': RemoveIndividuals,
     'breakpoint': Breakpoint,
+    'assertTrue': AssertTrue,
+    'assertEqual': AssertEqual
 }
