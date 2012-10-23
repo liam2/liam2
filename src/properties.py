@@ -6,7 +6,7 @@ import numpy as np
 from expr import Expr, Variable, Where, as_string, dtype, \
                  coerce_types, type_to_idx, idx_to_type, expr_eval, \
                  collect_variables, traverse_expr, get_tmp_varname, \
-                 missing_values, get_missing_record, \
+                 missing_values, get_missing_value, get_missing_record, \
                  get_missing_vector
 from context import EntityContext, context_length, context_subset
 from registry import entity_registry
@@ -387,9 +387,10 @@ class NumpyProperty(EvaluableExpression):
     np_func = (None,)
     # arg_names can be set automatically by using inspect.getargspec,
     # but it only works for pure Python functions, so I decided to avoid it
-    # because when you add a function, it's hard to know whether it's
+    # because when you add a function, it is hard to know whether it is
     # implemented in C or not.
     arg_names = None
+    allow_filter = True
 
     def __init__(self, *args, **kwargs):
         EvaluableExpression.__init__(self)
@@ -397,6 +398,10 @@ class NumpyProperty(EvaluableExpression):
             # + 1 to be consistent with Python (to account for self)
             raise TypeError("takes at most %d arguments (%d given)" %
                             (len(self.arg_names) + 1, len(args) + 1))
+        if self.allow_filter:
+            self.filter_expr = kwargs.pop("filter", None)
+        else:
+            self.filter_expr = None
         extra_kwargs = set(kwargs.keys()) - set(self.arg_names)
         if extra_kwargs:
             extra_kwargs = [repr(arg) for arg in extra_kwargs]
@@ -406,18 +411,20 @@ class NumpyProperty(EvaluableExpression):
         self.kwargs = kwargs
 
     def evaluate(self, context):
-        eval_func = self.get_eval_func()
-        args = [eval_func(arg, context) for arg in self.args]
-        kwargs = dict((k, eval_func(v, context))
+        args = [expr_eval(arg, context) for arg in self.args]
+        kwargs = dict((k, expr_eval(v, context))
                       for k, v in self.kwargs.iteritems())
         if 'size' in self.arg_names and 'size' not in kwargs:
             kwargs['size'] = context_length(context)
-
+        if self.filter_expr is None:
+            filter_value = None
+        else:
+            filter_value = expr_eval(self.filter_expr, context)
         func = self.np_func[0]
-        return func(*args, **kwargs)
+        return self.compute(func, args, kwargs, filter_value)
 
-    def get_eval_func(self):
-        return expr_eval
+    def compute(self, func, args, kwargs, filter_value=None):
+        raise NotImplementedError()
 
     def __str__(self):
         func_name = self.func_name
@@ -447,19 +454,49 @@ class NumpyProperty(EvaluableExpression):
         return set.union(*args_vars) if args_vars else set()
 
 
+class NumpyChangeArray(NumpyProperty):
+    def compute(self, func, args, kwargs, filter_value=None):
+        # the first argument should be the array to work on ('a')
+        assert self.arg_names[0] == 'a'
+        old_values = args[0]
+        new_values = func(*args, **kwargs)
+
+        # we cannot do this yet because dtype() currently requires context
+        # (and I don't want to change the signature of compute just for that)
+#        assert dtype(old_values) == dtype(new_values)
+        if filter_value is None:
+            return new_values
+        else:
+            return np.where(filter_value, new_values, old_values)
+
+
+class NumpyCreateArray(NumpyProperty):
+    def compute(self, func, args, kwargs, filter_value=None):
+        values = func(*args, **kwargs)
+        if filter_value is None:
+            return values
+        else:
+            missing_value = get_missing_value(values)
+            return np.where(filter_value, values, missing_value)
+
+
 class NumpyAggregate(NumpyProperty):
     skip_missing = False
 
-    def get_eval_func(self):
-        if self.skip_missing:
-            def local_expr_eval(expr, context):
-                values = expr_eval(expr, context)
-                if isinstance(values, np.ndarray) and values.shape:
-                    values = values[ispresent(values)]
-                return values
-            return local_expr_eval
-        else:
-            return expr_eval
+    def compute(self, func, args, kwargs, filter_value=None):
+        # the first argument should be the array to work on ('a')
+        assert self.arg_names[0] == 'a'
+
+        values, args = args[0], args[1:]
+        if isinstance(values, np.ndarray) and values.shape:
+            if self.skip_missing and filter_value is not None:
+                filter_value &= ispresent(values)
+            elif self.skip_missing:
+                filter_value = ispresent(values)
+            if filter_value is not None:
+                values = values[filter_value]
+
+        return func(values, *args, **kwargs)
 
 
 # >>> mi = 1
@@ -472,21 +509,29 @@ class NumpyAggregate(NumpyProperty):
 # 10 loops, best of 3: 26.2 ms per loop
 # >>> timeit ne.evaluate('where(a < mi, mi, where(a > ma, ma, a))')
 # 10 loops, best of 3: 94.1 ms per loop
-class Clip(NumpyProperty):
+class Clip(NumpyChangeArray):
     np_func = (np.clip,)
     arg_names = ('a', 'a_min', 'a_max', 'out')
 
 #------------------------------------
 
 
-class Uniform(NumpyProperty):
+class Uniform(NumpyCreateArray):
     np_func = (np.random.uniform,)
     arg_names = ('low', 'high', 'size')
 
 
-class Normal(NumpyProperty):
+class Normal(NumpyCreateArray):
     np_func = (np.random.normal,)
     arg_names = ('loc', 'scale', 'size')
+
+
+class RandInt(NumpyCreateArray):
+    np_func = (np.random.randint,)
+    arg_names = ('low', 'high', 'size')
+
+    def dtype(self, context):
+        return int
 
 
 class Choice(EvaluableExpression):
@@ -558,9 +603,11 @@ class Choice(EvaluableExpression):
         return self.choices.dtype
 
     def traverse(self, context):
+        #FIXME: add choices & prob if they are expr 
         yield self
 
     def collect_variables(self, context):
+        #FIXME: add choices & prob if they are expr 
         return set()
 
     def __str__(self):
@@ -571,17 +618,10 @@ class Choice(EvaluableExpression):
         return "%s(%s%s)" % (self.func_name, list(self.choices), weights)
 
 
-class RandInt(NumpyProperty):
-    np_func = (np.random.randint,)
-    arg_names = ('low', 'high', 'size')
-
-    def dtype(self, context):
-        return int
-
 #------------------------------------
 
 
-class Round(NumpyProperty):
+class Round(NumpyChangeArray):
     func_name = 'round'  # np.round redirects to np.round_
     np_func = (np.round,)
     arg_names = ('a', 'decimals', 'out')
@@ -606,7 +646,7 @@ class Trunc(FunctionExpression):
 #------------------------------------
 
 
-class GroupMin(NumpyProperty):
+class GroupMin(NumpyAggregate):
     func_name = 'grpmin'
     np_func = (np.amin,)
     arg_names = ('a', 'axis', 'out')
@@ -615,7 +655,7 @@ class GroupMin(NumpyProperty):
         return dtype(self.args[0], context)
 
 
-class GroupMax(NumpyProperty):
+class GroupMax(NumpyAggregate):
     func_name = 'grpmax'
     np_func = (np.amax,)
     arg_names = ('a', 'axis', 'out')
