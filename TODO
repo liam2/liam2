@@ -2,55 +2,43 @@
  TODO
  --------------------------------------
 
- 1) unit tests !!!!
+ 1) try cx_freeze  
  
- 2) find & fix speed regression Geert found
+ 2) make release
  
- 3) "compile" expressions to another representation which:
-    * has an uniform interface, so that it can be walked/traversed
-      recursively without having to define a traverse method on most
-      expression classes.
-    * has not its __eq__ method overloaded so that I can use "expr in d"
-      (dict.__contains__(k) calls k.__eq__) so that I can store
-      expressions in a dict to check whether they occur more than once 
+========================
 
-    see ASTNode class in numexpr. Use it as is?
-    
-    Questions:
-    * use ASTNode class in numexpr as is?    
-    * would an uniform interface make things cleaner for current
-      functionalities (mainly as_string, collect_variables and simplify)?
-    * adding traversal functions shouldn't be that hard even on current
-      version.
-    * we could rewrite   
-    
- 4) cache columns which are used in lag expressions 
- 
- 5) examine cx_freeze (Geert)  
- 
- 6) produce 64b binaries (using visual studio express?)
- 
- 7) upgrade LIAM2 version on production PC
-    + fix all models of Raphaël & Gijs
- 
- 8) clean up the code where necessary
- 
- 9) link trac to our svn repository (or move the repository on that machine)
- 
- 10) make release
- 
- 11) use numexpr.E instead of passing strings
 
- 12) find a clean way to make variants, to avoid having 54 different files
-     with slight differences in MIDAS.
-     * includes might be enough
+ - implement all() and any()
 
-========================    
+ - link trac to our svn repository (or move the repository on that machine)
+
+ - refactor/redesign the clunky parts
+   * the goals are:
+     - to make things testable by real unittests
+     - to have better separations of concepts / clearer "scopes" for each
+       class
+   * all entities in context
+   * hide id_to_rownum
+   * .array vs .table vs .lagged_array vs Entity vs EntityContext 
+     vs full_context vs mapping passed to numexpr
+
+     .array doesn't need to be entirely in memory, .table
+     does not need to be on disk, but we need separate concepts in some places
+     because they need to support different functionalities: enlarge, remove,
+     add column, delete column for .array and only .append for .table
+
+ - find a clean way to make variants, to avoid having 54 different files
+   with slight differences in MIDAS.
+   * includes might be enough
+
+ - use numexpr.E instead of passing strings
 
  - rewrite the whole import process: load boolean fields as int8 (shouldn't
    need more work/conversion),
    then do a n-way merge, then do interpolation, then convert boolean fields
-   back to booleans. We'll have to copy the data using:
+   back to booleans (if we haven't done the bool->int8 migration for the
+   simulation code). We'll have to copy the data using:
    b = i8 == 1, otherwise "missing" (-1) evaluates as True, which is not what
    we want in most case (and for backward compatibility)
 
@@ -58,7 +46,23 @@
    grpsum but not grpavg. The problem is that implementing it for grpavg would
    break difficult_match for example.
    I think the best way out of this is to ignore the contextual filter in all
-   aggregate functions.
+   aggregate functions. But in that case, what about ctx filter in new(),
+   matching(), ...?
+
+ - "compile" expressions to another representation which:
+   * has an uniform interface, so that it can be walked/traversed
+     recursively without having to define a traverse method on most
+     expression classes.
+   * has not its __eq__ method overloaded so that I can use "expr in d"
+     (dict.__contains__(k) calls k.__eq__) so that I can store
+     expressions in a dict to check whether they occur more than once 
+
+   see ASTNode class in numexpr. Use it as is?
+   
+   Questions:
+   * use ASTNode class in numexpr as is?    
+   * would an uniform interface make things cleaner for current
+     functionalities (mainly as_string, collect_variables and simplify)?
  
  - fix globals in a lag
  
@@ -393,6 +397,8 @@
    * currperiodstart(variable): returns the time period the current value
                                 of the variable started
 
+ - test/integrate sumatra to launch simulations 
+
  optimisation
  ------------
 
@@ -485,6 +491,11 @@
    elsewhere. It might cause a problem if the last ids (newly borns) die.
    it seems to be a tad slower in fact. However, it might be a better starting
    point to translate in C if that is ever necessary. 
+   
+ GUI
+ ---
+
+ - try Kivy (kivy.org)   
      
  cleanup
  -------
