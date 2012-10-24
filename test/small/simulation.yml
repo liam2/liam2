@@ -70,7 +70,7 @@ entities:
         # simulation must be defined below
         processes:
             bp: breakpoint(2002)
-            
+
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
                 - weight: randint(1, 11)
@@ -86,7 +86,7 @@ entities:
             temp_global_test2:
                 - temp_global: temp_global - 10
             show_temp_global: show(temp_global)
-                
+
             test_expr:
                 - show("count:", grpcount())
                 - show("age:", age)
@@ -94,8 +94,8 @@ entities:
                 - show("age / 10:", age / 10)
                 - show("100 / age:", 100 / age)
                 - show("age * (1 / 2):", age * (1 / 2))
-                - show("clip(age, 10, 50)", clip(age, 10, 50)) 
-            
+                - show("clip(age, 10, 50)", clip(age, 10, 50))
+
             test_globals:
                 - no_index: MINR
                 - const_index: MINR[2005]
@@ -109,55 +109,130 @@ entities:
                 - yob: randint(1900, period)
                 - yop: yob + 65
                 - vector_idx_globals_in_expr: 1.0 + MINR[yob + 65]
-                - show("yob", yob, "yop", yop, "v", vector_idx_globals_in_expr) 
+                - show("yob", yob, "yop", yop, "v", vector_idx_globals_in_expr)
 
             test_macro:
                 - ischild: age < 18
                 - test_nonmacro1: show(grpsum(ischild))
                 - test_macro1: show(grpsum(ISCHILD))
 #                - breakpoint(2002)
-            
+
                 - age: age + 1
-            
+
                 - test_nonmacro2: show(grpsum(ischild))
                 - show("test grpsum:", grpsum(ischild))
                 - test_macro2: show(grpsum(ISCHILD))
-                
+
                 - show('male students', grpcount(MALE and LOWER_SECONDARY_EDU))
-                
+
 #                - show('expr wh missing parenthesis', grpcount(age < 15 & eduach == 2))
                 # equivalent to grpcount(age < (15 & eduach) == 2)
                 # equivalent to grpcount((age < (15 & eduach)) *and* ((15 & eduach) == 2))
                 # calls __nonzero__ on the first part (age < (15 & eduach))
                 - show(groupby(eduach, gender))
-            
+
             agegroup: if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))
 
             test_align:
+                - num_all: grpcount()
+                - num_women: grpcount(not gender)
+                - num_men: grpcount(gender)
+
+                # manual alignment on an integer column 
+                # ------------------------------------- 
                 - int_aligned: align(age,
                                      expressions=[gender],
                                      possible_values=[[False, True]],
                                      probabilities=[0.1, 0.2])
-                - show(groupby(gender, int_aligned))
-                
-                - show(groupby(age, int_aligned))
-                
+                - num_aligned: grpcount(int_aligned)
+                - num_aligned_women: grpcount(int_aligned and not gender)
+                - num_aligned_men: grpcount(int_aligned and gender)
+
+                - assertTrue(num_aligned_women - 0.1 * num_women < 1.0)
+                - assertTrue(num_aligned_men - 0.2 * num_men < 1.0)
+                - assertEqual(num_aligned_women + num_aligned_men, num_aligned)
+
+                # check that older individuals are taken first
+                - assertTrue(grpmax(age, filter=gender and not int_aligned)
+                             <= 
+                             grpmin(age, filter=gender and int_aligned))
+                - assertTrue(grpmax(age, filter=not gender and not int_aligned)
+                             <= 
+                             grpmin(age, filter=not gender and int_aligned))
+
+                # manual alignment on a float column (with nan)
+                # --------------------------------------------- 
                 - nan_age: if(age < 10, nan, age * 1.0)
-                
+                - assertEqual(grpcount(nan_age != nan_age), grpcount(age < 10))
                 - float_aligned: align(nan_age,
                                        expressions=[gender],
                                        possible_values=[[False, True]],
                                        probabilities=[0.1, 0.2])
-                - show(groupby(gender, float_aligned))
-                - show(groupby(age, float_aligned))
-                 
-                - no_expr_aligned: align(False, filter=age < 10,
-                                         expressions=[gender],
-                                         possible_values=[[False, True]],
-                                         probabilities=[0.1, 0.2])
-#                - show("aligned", id[no_expr_aligned])                         
-#                - show(groupby(no_expr_aligned, expr=id))
-                                 
+                - num_aligned: grpcount(float_aligned)
+                - num_aligned_women: grpcount(float_aligned and not gender)
+                - num_aligned_men: grpcount(float_aligned and gender)
+
+                - assertTrue(num_aligned_women - 0.1 * num_women < 1.0)
+                - assertTrue(num_aligned_men - 0.2 * num_men < 1.0)
+                - assertEqual(num_aligned_women + num_aligned_men, num_aligned)
+
+                # check that nan are chosen first
+                # we have two different scenarii:
+                # 1) we have more "nan" than we need
+                #    => we check that all taken are "nan"
+                # 2) or we have less "nan" than we need
+                #    => we check that all "nan" are taken / aligned
+                # and we have to check separetly for men and women
+
+                - isnan: nan_age != nan_age
+
+                # women
+                
+                # more than 10% women are "nan"
+                - morenan: grpcount(not gender and isnan) > num_women * 0.1
+                - all_taken_nan: grpmin(isnan,
+                                        filter=not gender and float_aligned)
+                - all_nan_taken: grpmin(float_aligned,
+                                        filter=not gender and isnan)
+                - assertTrue(if(morenan, all_taken_nan, all_nan_taken))
+
+                # men
+
+                # more than 20% men are "nan"
+                - morenan: grpcount(gender and isnan) > num_men * 0.2
+                - all_taken_nan: grpmin(isnan, filter=gender and float_aligned)
+                - all_nan_taken: grpmin(float_aligned, filter=gender and isnan)
+
+                - assertTrue(if(morenan, all_taken_nan, all_nan_taken))
+
+                # manual alignment with a constant 
+                # -------------------------------- 
+                - const_aligned: align(False, filter=age < 10,
+                                       expressions=[gender],
+                                       possible_values=[[False, True]],
+                                       probabilities=[0.1, 0.2])
+                - num_aligned: grpcount(const_aligned)
+                - num_aligned_women: grpcount(const_aligned and not gender)
+                - num_aligned_men: grpcount(const_aligned and gender)
+
+                - assertTrue(num_aligned_women - 0.1 * num_women < 1.0)
+                - assertTrue(num_aligned_men - 0.2 * num_men < 1.0)
+                - assertEqual(num_aligned_women + num_aligned_men, num_aligned)
+
+                # check that individuals with higher ids are chosen first
+                - assertTrue(grpmax(id, filter=gender and (age < 10) and
+                                               not const_aligned)
+                             <= 
+                             grpmin(id, filter=gender and const_aligned))
+                - assertTrue(grpmax(id, filter=not gender and (age < 10) and
+                                               not const_aligned)
+                             <= 
+                             grpmin(id, filter=not gender and const_aligned))
+
+                # alignment with an implicit filter 
+                # ---------------------------------
+ 
+                # the "dead" variable is also used for the cleanup process
                 - dead: if(gender, 
                            align(0.0, 
                                  take=age > 95, leave=ISCHILD,
@@ -165,44 +240,54 @@ entities:
                            align(0.0,
                                  take=age > 95, leave=ISCHILD,
                                  fname='al_p_dead_f.csv'))
-                                 
-                - show('95+ not_dead:', grpsum(not dead and (age > 95)),
-                       'ISCHILD dead:', grpsum(dead and ISCHILD))
 
+                - assertEqual(grpcount(not dead and (age > 95)), 0)
+                - assertEqual(grpcount(dead and ISCHILD), 0)
+
+                # 3d alignment (gender, age, period) 
+                # ----------------------------------
                 - dead2: align(0.0,
                                take=age > 95, leave=ISCHILD,
                                fname='al_p_dead.csv')
 
-                - show('dead != dead2:',
-                       grpcount(dead != dead2) > 105)
-                       
+                - assertTrue(grpcount(dead != dead2) <= 105)
+
+                # 1d alignment (period)
+                # ---------------------
                 - period_only: align(0.0, fname='al_p_period_only.csv')
-                - show('% aligned', grpavg(period_only))
-                
+                - num_aligned: grpcount(period_only)
+                - target_percent: if(period == 2002, 0.2,
+                                  if(period == 2003, 0.3,
+                                  0.4))
+                - assertTrue(num_aligned - target_percent * num_all < 1.0)
+
+                # 1d alignment (other than period)
+                # --------------------------------
                 - one_dim: align(0.0, fname='al_p_one_dim.csv')
-                - show('% aligned', grpavg(one_dim))
-                - show('% aligned (women)', grpavg(one_dim, filter=not gender))
-                - show('% aligned (men)', grpavg(one_dim, filter=gender))
-                - show('num aligned (women)', grpcount(one_dim and not gender))
-                - show('num aligned (men)', grpcount(one_dim and gender))
-                - show('num total (women)', grpcount(not gender))
-                - show('num total (men)', grpcount(gender))
-                
-                # align using temporary variable
+
+                - num_aligned: grpcount(one_dim)
+                - num_aligned_women: grpcount(one_dim and not gender)
+                - num_aligned_men: grpcount(one_dim and gender)
+
+                - assertTrue(num_aligned_women - 0.2 * num_women < 1.0)
+                - assertTrue(num_aligned_men - 0.3 * num_men < 1.0)
+                - assertEqual(num_aligned_women + num_aligned_men, num_aligned)
+
+                # align using a temporary variable
                 - temp: age + 1
-                # this is not exactly the same number because of the way we 
-                # correct for "fractional persons" with a probability of adding
-                # one person. However the difference should be < than the number
-                # of alignment categories.
+
+                # these do not produce exactly the same values because of the
+                # way we correct for "fractional persons" with a probability of
+                # adding one person. However the difference should be <= than
+                # the number of alignment categories.
                 - var_aligned: align(0.0, fname='al_p_dead_m.csv')
                 - temp_aligned: align(0.0, fname='al_p_temp.csv')
                 - expr_aligned: align(0.0, fname='al_p_expr.csv')
-                - show('temp != var:',
-                       grpcount(temp_aligned != var_aligned) > 105)
-                - show('expr != var:',
-                       grpcount(expr_aligned != var_aligned) > 105)
+                - assertTrue(grpcount(temp_aligned != var_aligned) <= 105)
+                - assertTrue(grpcount(expr_aligned != var_aligned) <= 105)
 
-            test_logit: 
+            test_logit:
+                # equivalent to uniform() > 0.5
                 - simple: logit_regr(0.0)
                 - fixed_percent: logit_regr(0.0, align=0.5)
                 
@@ -366,27 +451,40 @@ entities:
                             hh_id)
 
             test_compound:
-                - show("min(age, 10):", min(age, 10))
-                - show("max(age, 20):", max(age, 20))
+                - show(min(age, 10))
+                - show(grpmax(min(age, 10)))
+            
+                - assertEqual(grpmax(min(age, 10)), 10)
+                - assertEqual(grpmin(max(age, 20)), 20)
                  
             test_lag:
 #                - lagglobal: show(lag(MINR))
                 
                 - lagavg: show(lag(grpavg(age)))
                 - avglag: show(grpavg(lag(age)))
-                - show("age", age)
 
-                - show("lag(age)", lag(age))
-                - lagage_fill_zero: show(lag(age, missing=0))
-                - shouldbenumbirth: show(grpcount(lag(age) == -1))
-                - shouldbezero: show(grpcount(lag(age, missing=0) == -1))
-                - num1yearold: show(grpcount(age == 1))
-                - shouldbenumbirthand1yearold: show(grpcount(lag(age, missing=0) == 0))
-                - show("age", age, 
-                       "lag(age)", lag(age), 
-                       "lag(age, 2)", lag(age, 2), 
-                       "lag(lag(age))", lag(lag(age)))
+                - assertEqual(lag(age, missing=0), if(age == 0, 0, age - 1))
                 
+                - num_birth: grpcount(age == 0)
+                - assertEqual(grpcount(lag(age) == -1), num_birth)
+                - assertEqual(grpcount(lag(age, missing=0) == -1), 0)
+
+                - num1yearold: grpcount(age == 1)
+                - assertEqual(grpcount(lag(age, missing=0) == 0),
+                              num1yearold + num_birth)
+
+                - assertEqual(lag(age, 2), lag(lag(age)))
+
+                # for clones lag(age, 2) is -1, even if the parent of the clone
+                # is alive in period - 2
+                - cloned: (m_id == f_id) and (m_id != -1)
+                - assertEqual(if(cloned,
+                                 age - 2,
+                                 lag(age, 2)),
+                              if(period > 2002,
+                                 if(age >= 2, age - 2, -1),
+                                 -1))
+
             test_duration:
                 - show("> 10", duration(age > 10))
                 - show("max(d, 2)", max(duration(age > 10), 2))
@@ -430,52 +528,72 @@ entities:
             cleanup: remove(lag(dead))
             
             test_o2m_aggregate: show(grpavg(countlink(children)))
+
             test_grpsum:
-                - unfiltered: grpsum(age)
+                - population_age: grpsum(age)
+                - males_age: grpsum(age, filter=MALE)
+                - females_age: grpsum(age, filter=FEMALE)
+                - assertEqual(males_age + females_age, population_age)
+                
+                # assign to each man the sum of men ages and to each woman
+                # the sum of women ages
                 - filtered: if(MALE, grpsum(age), grpsum(age))
-                - check: show(groupby(filtered, gender))
-                - males: grpsum(age, filter=MALE)
-                - females: grpsum(age, filter=FEMALE)
-                - check: show(males, '+', females, '=', unfiltered, 
-                              '(', males + females == unfiltered, ')')
+                - assertEqual(grpcount(filtered == males_age),
+                              grpcount(MALE))
+                - assertEqual(grpcount(filtered == females_age),
+                              grpcount(FEMALE))
 
             test_grpmedian:
+                # without filter
                 - median_age: grpmedian(age)
-                - num_total: grpcount()
                 - num_young: grpcount(age < median_age)
+                - num_median: grpcount(age == median_age)
                 - num_old: grpcount(age > median_age)
-                
-                - check_young: show('num_young <= num_total / 2:',
-                                    num_young, '<=', num_total / 2, 
-                                    '[', num_young <= num_total / 2, ']')
-                - check_old: show('num_old <= num_total / 2:',
-                                  num_old, '<=', num_total / 2, 
-                                  '[', num_old <= num_total / 2, ']')
-                - check_total: show('num_young + grpcount(age == median_age) + num_old == num_total:',
-                                    num_young, '+', grpcount(age == median_age), '+', num_old, '==', num_total,
-                                    '[', num_young + grpcount(age == median_age) + num_old == num_total, ']')
+                - num_total: grpcount()
+
+                - assertTrue(num_young <= num_total / 2)
+                - assertTrue(num_old <= num_total / 2)
+                - assertEqual(num_young + num_median + num_old, num_total)
+
+                # with a filter
+                - median_age: grpmedian(age, filter=gender)
+                - num_young: grpcount(gender and (age < median_age))
+                - num_median: grpcount(gender and (age == median_age))
+                - num_old: grpcount(gender and (age > median_age))
+                - num_total: grpcount(gender)
+
+                - assertTrue(num_young <= num_total / 2)
+                - assertTrue(num_old <= num_total / 2)
+                - assertEqual(num_young + num_median + num_old, num_total)
 
             test_grppercentile:
+                # without filter
                 - age_10p: grppercentile(age, 10)
-                - num_total: grpcount()
                 - num_young: grpcount(age < age_10p)
+                - num_10p: grpcount(age == age_10p)
                 - num_old: grpcount(age > age_10p)
-                
-                - show('num_young <= num_total / 10:',
-                       num_young, '<=', num_total / 10,
-                       '[', num_young <= num_total / 10, ']')
-                - show('num_old <= num_total * 90 / 100:',
-                       num_old, '<=', num_total * 90 / 100, 
-                       '[', num_old <= num_total * 90 / 100, ']')
-                - show('num_young + grpcount(age == age_10p) + num_old == num_total:',
-                       num_young, '+', grpcount(age == age_10p), '+', num_old, '==', num_total,
-                       '[', num_young + grpcount(age == age_10p) + num_old == num_total, ']')
+                - num_total: grpcount()
+
+                - assertTrue(num_young <= num_total / 10)
+                - assertTrue(num_old <= num_total * 90 / 100)
+                - assertEqual(num_young + num_10p + num_old, num_total)
+
+                # with a filter
+                - age_10p: grppercentile(age, 10, filter=gender)
+                - num_young: grpcount(gender and (age < age_10p))
+                - num_10p: grpcount(gender and (age == age_10p))
+                - num_old: grpcount(gender and (age > age_10p))
+                - num_total: grpcount(gender)
+
+                - assertTrue(num_young <= num_total / 10)
+                - assertTrue(num_old <= num_total * 90 / 100)
+                - assertEqual(num_young + num_10p + num_old, num_total)
 
             test_grpgini:
                 - show('grpgini(age)', grpgini(age))
                 - show('grpgini(age) by sex:', grpgini(age, filter=MALE), '/', grpgini(age, filter=FEMALE))
-                - show('grpgini([1, 1, 1])', grpgini([1, 1, 1]), 'should be zero')
-                - show('grpgini([0, 0, 0, 1])', grpgini([0, 0, 0, 1]), 'should be 3/4')
+                - assertEqual(grpgini([1, 1, 1]), 0)
+                - assertEqual(grpgini([0, 0, 0, 1]), 0.75)
                 
             test_choice:
                 - intchoice: choice([0, 5, 10], [0.1, 0.2, 0.7])
@@ -483,19 +601,22 @@ entities:
                 - num5: grpcount(intchoice == 5)
                 - num10: grpcount(intchoice == 10)
                 - num_total: grpcount()
-                - show('num0 + num5 + num10 == num_total',
-                       num0, '+', num5, '+', num10, '==', num_total,
-                       '[', num0 + num5 + num10 == num_total, ']')
+                - assertEqual(num0 + num5 + num10, num_total)
 
-                - zero: grpavg(age) - grpavg(age) 
+                # test choices and probablities being expressions
+                - zero: grpavg(age) - grpavg(age)
                 
-                - w0: grpavg(age) / grpmax(age)
-                - w1: 0.1
-                - w2: 1.0 - w0 - w1
-                
-                - show('choice([zero, zero + 1, zero + 2], [w0, w1, 1.0 - w0 - w1])',
-                       'choice([', zero, ',', zero + 1, ',', zero + 2, '], [', w0, ',', w1, ',', 1.0 - w0 - w1, '])',
-                       choice([zero, zero + 1, zero + 2], [w0, w1, 1.0 - w0 - w1]))
+                - p0: zero + 0.1
+                - p1: zero + 0.3
+               
+                - fchoice: choice([zero, zero + 1.0, zero + 2.0], [p0, p1, 1.0 - p0 - p1])
+
+                - num0: grpcount(fchoice == 0.0)
+                - num1: grpcount(fchoice == 1.0)
+                - num2: grpcount(fchoice == 2.0)
+                - assertEqual(num0 + num1 + num2, num_total)
+                # this assertion can fail but it should occur pretty rarely
+                - assertTrue((num0 < num1) and (num1 < num2))
 
             test_groupby:
                 # fails as it should
