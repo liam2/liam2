@@ -410,14 +410,17 @@ def index_tables(globals_fields, entities, fpath):
         periodic_globals = None
         input_root = input_file.root
 
-        if 'globals' in input_root:
-            input_globals = input_root.globals
-            if 'periodic' in input_globals:
-                # load globals in memory
-                #FIXME: make sure either period or PERIOD is present
-                assertValidFields(input_globals.periodic, globals_fields,
-                                  allowed_missing=('period', 'PERIOD'))
-                periodic_globals = input_globals.periodic.read()
+        if globals_fields:
+            if 'globals' not in input_root or 'periodic' in input_root.globals:
+                raise Exception('could not find globals in the input data '
+                                'file (but they are declared in the '
+                                'simulation file)')
+            globals_table = input_root.globals.periodic
+            # load globals in memory
+            #FIXME: make sure either period or PERIOD is present
+            assertValidFields(globals_table, globals_fields,
+                              allowed_missing=('period', 'PERIOD'))
+            periodic_globals = globals_table.read()
 
         input_entities = input_root.entities
 
