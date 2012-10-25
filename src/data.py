@@ -411,7 +411,8 @@ def index_tables(globals_fields, entities, fpath):
         input_root = input_file.root
 
         if globals_fields:
-            if 'globals' not in input_root or 'periodic' in input_root.globals:
+            if ('globals' not in input_root or 
+                'periodic' not in input_root.globals):
                 raise Exception('could not find globals in the input data '
                                 'file (but they are declared in the '
                                 'simulation file)')
