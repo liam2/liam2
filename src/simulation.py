@@ -74,6 +74,7 @@ class Simulation(object):
             '#periods': int,
             '#start_period': int,
             'skip_shows': bool,
+            'assertions': str,
             'default_entity': str
         }
     }
@@ -125,6 +126,8 @@ class Simulation(object):
         periods = simulation_def['periods']
         start_period = simulation_def['start_period']
         config.skip_shows = simulation_def.get('skip_shows', False)
+        #TODO: check that the value is one of "raise", "skip", "warn"
+        config.assertions = simulation_def.get('assertions', 'raise')
 
         input_def = simulation_def['input']
         input_directory = input_dir if input_dir is not None \
