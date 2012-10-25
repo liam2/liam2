@@ -544,6 +544,11 @@ entities:
                               grpcount(FEMALE))
 
             test_grpmedian:
+                # scalar (there is not much point but it should not crash)
+                - median_age: grpmedian(age)
+                - median_age2: grpmedian(median_age)
+                - assertEqual(median_age, median_age2)
+
                 # without filter
                 - median_age: grpmedian(age)
                 - num_young: grpcount(age < median_age)
