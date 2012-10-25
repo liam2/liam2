@@ -262,20 +262,20 @@ mathematical functions
 - min(x, a), max(x, a): the minimum or maximum of x and a.
 
 
-.. index::
-    single: aggregate functions;
+.. index:: grpcount, grpsum, grpavg, grpstd, grpmax, grpmedian, grppercentile,
+           grpgini, aggregate functions
 
 aggregate functions
 ~~~~~~~~~~~~~~~~~~~
 
-- grpcount([condition]): count the objects in the entity. If filter is given, only
-                      count the ones satisfying the filter.
+- grpcount([condition]): count the objects in the entity. If filter is given,
+                         only count the ones satisfying the filter.
 - grpsum(expr[, filter=condition]): sum the expression
 - grpavg(expr[, filter=condition]): average
-- grpstd(expr): standard deviation
-- grpmax(expr), grpmin(expr): max or min
-- grpmedian(expr): median
-- grppercentile(expr, percent): percentile
+- grpstd(expr[, filter=condition]): standard deviation
+- grpmax(expr[, filter=condition]), grpmin(expr[, filter=condition]): max or min
+- grpmedian(expr[, filter=condition]): median
+- grppercentile(expr, percent[, filter=condition]): percentile
 - grpgini(expr[, filter=condition]): gini
 
 **grpsum** sums any expression over all the individuals of the current entity.
