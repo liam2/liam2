@@ -171,13 +171,13 @@ class Assert(Process):
 
     def run(self, context):
         if config.assertions == "skip":
-            print "assert skipped",
+            print "assertion skipped",
         else:
-            print "assert",
+            print "assertion",
             failure = self.eval_assertion(context)
             if failure:
                 if config.assertions == "warn":
-                    print "ASSERTION FAILED:", failure
+                    print "FAILED:", failure,
                 else:
                     raise AssertionError(failure)
             else:
