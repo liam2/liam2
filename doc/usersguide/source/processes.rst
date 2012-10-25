@@ -1,6 +1,5 @@
 ﻿.. highlight:: yaml
-.. index::
-    single: processes;
+.. index:: processes
 
 .. _processes_label:
 
@@ -178,8 +177,7 @@ Actions inside procedures don't even need a process name.
             - dead: age > 150
             - remove(dead)
 
-.. index::
-    single: expressions;
+.. index:: expressions
 
 Expressions
 ===========
@@ -195,9 +193,8 @@ of a variable by one each simulation period.
 The name of the process is *age* and what it does is increasing the variable
 *age* of each individual by one, each period.
 
-.. index::
-    single: simple expressions;
 
+.. index:: simple expressions
 
 simple expressions
 ~~~~~~~~~~~~~~~~~~
@@ -245,8 +242,7 @@ You can nest if-statements. The example below retires men (gender = True) over
                   if(age >= WEMRA, 9, workstate))
 
 
-.. index::
-    single: mathematical functions;
+.. index:: mathematical functions
 
 mathematical functions
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -919,7 +915,7 @@ can *dump* data to csv-file for further study.
 If you run LIAM 2 in interactive mode, you can type in output functions in the
 console to inspect the data.
 
-.. index::  show
+.. index:: show
 
 show
 ----
@@ -963,7 +959,7 @@ result on the next line.
     Average age: 42.7496991576
     Age std dev: 21.9815913417
 
-.. index::  csv
+.. index:: csv
 
 csv
 ---
@@ -1050,7 +1046,7 @@ Will produce a file with a layout like this: ::
 | this is | a header      |
 | with    | several lines |
 
-.. index::  dump
+.. index:: dump
 
 dump
 ----
@@ -1096,7 +1092,7 @@ gives ::
      8 |  38 |          35 |   True
      9 |  48 |          52 |   True
 
-.. index::  groupby
+.. index:: groupby
 
 groupby
 -------
@@ -1170,10 +1166,10 @@ gives the average age by workstate and gender ::
             5 | 42.35 | 46.56 | 43.48
         total | 42.67 | 42.38 | 42.53
 
-.. index::  interactive console
+.. index:: interactive console, debugging
 
-Interactive console
-===================
+Debugging and the interactive console
+=====================================
 
 LIAM 2 features an interactive console which allows you to interactively explore
 the state of the memory either during or after a simulation completed.
@@ -1204,7 +1200,7 @@ file and have the result directly. Show is implicit for all operations.
              5 |     0 |    0 |     0
          total |   689 |  874 |  1563
 
-.. index::  breakpoint
+.. index:: breakpoint
 
 breakpoint
 ----------
@@ -1228,3 +1224,15 @@ interactive console when you reach it through a breakpoint: "step" to execute
         - breakpoint(2002)
         - ...
 
+.. index:: assertions, assertTrue, assertEqual 
+
+assertions
+----------
+
+Assertions can be used to check that your model really produce the results it
+should produce. The behavior when an assertion fails is determined by
+the :ref:`assertions-label` simulation option.
+
+- assertTrue(expr): evaluates the expression and check its result is True.
+- assertEqual(expr1, expr2): evaluates both expressions and check their 
+  results are equal.

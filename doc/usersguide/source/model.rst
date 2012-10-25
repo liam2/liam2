@@ -335,6 +335,8 @@ skip_shows
 If set to True, makes all show() functions do nothing. This can speed up
 simulations which include many shows (usually for debugging).
 
+.. _assertions-label:
+
 assertions
 ----------
 
