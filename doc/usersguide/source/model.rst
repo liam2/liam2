@@ -263,6 +263,7 @@ and composition is again used.
         periods: 10
         skip_shows: True        # optional
         random_seed: 5235       # optional
+        assertions: warn        # optional
         default_entity: person  # optional
 
 
@@ -333,6 +334,20 @@ skip_shows
 
 If set to True, makes all show() functions do nothing. This can speed up
 simulations which include many shows (usually for debugging).
+
+assertions
+----------
+
+This option can take any of the following values:
+
+raise
+  interrupt the simulation if an assertion fails (this is the default).
+
+warn
+  display a warning message.
+
+skip
+  do not run the assertions at all. 
 
 default_entity
 --------------
