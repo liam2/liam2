@@ -2,13 +2,8 @@
  TODO
  --------------------------------------
 
- 1) try cx_freeze  
+ - try cx_freeze
  
- 2) make release
- 
-========================
-
-
  - implement all() and any()
 
  - link trac to our svn repository (or move the repository on that machine)
