@@ -1,5 +1,6 @@
 import argparse
 from os.path import splitext
+import platform
 
 import yaml
 
@@ -132,11 +133,15 @@ class PrintVersionsAction(argparse.Action):
         import carray
         import tables
 
-        print '''numpy {np}
+        py_version = '{} ({})'.format(platform.python_version(),
+                                      platform.architecture()[0])
+        print '''python {py}
+numpy {np}
 numexpr {ne}
 pytables {pt}
 carray {ca}
-pyyaml {yml}'''.format(np=numpy.__version__,
+pyyaml {yml}'''.format(py=py_version,
+                       np=numpy.__version__,
                        ne=numexpr.__version__,
                        pt=tables.__version__,
                        ca=carray.__version__,
@@ -190,13 +195,10 @@ def main():
 
 if __name__ == '__main__':
     import sys
-    import platform
 
     sys.stdout = AutoflushFile(sys.stdout)
     sys.stderr = AutoflushFile(sys.stderr)
-    print "LIAM2 %s using Python %s (%s)" % (__version__,
-                                             platform.python_version(),
-                                             platform.architecture()[0])
+    print "LIAM2 %s (%s)" % (__version__, platform.architecture()[0])
     print
 
     eat_traceback(main)
