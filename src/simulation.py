@@ -314,6 +314,8 @@ class Simulation(object):
             if run_console:
                 if self.default_entity is not None:
                     entity = entity_registry[self.default_entity]
+                elif len(entity_registry) == 1:
+                    entity = entity_registry.values()[0]
                 else:
                     entity = None
                 c = console.Console(entity, periods[-1])
