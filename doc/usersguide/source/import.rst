@@ -177,8 +177,8 @@ directory where the description file is.
 This will load all the fields of the household entity in 
 "*household.csv*" and load from "person.csv" only the fields listed above. 
 The data will be converted (if necessary) to the type declared. In this case,
-person.csv should contain the following columns (not necessarily in this
-order): period, id, age, male, workstate, civilstate, partner_id.
+person.csv should contain at least the following columns (not necessarily in
+this order): period, id, age, male, workstate, civilstate, partner_id.
 
 If the fields of an entity are scattered in several files, you can use the
 "files" key to list them, as in *example 4* ::
