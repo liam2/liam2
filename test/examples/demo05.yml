@@ -183,6 +183,6 @@ simulation:
     output:
         file: simulation.h5
 
-    # first simulated period
     start_period: 2002
     periods: 2
+    default_entity: person

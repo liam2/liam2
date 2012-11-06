@@ -2,7 +2,7 @@
 # environment, or run the following command in a console: 
 # INSTALL PATH\liam2 run demo03.yml
 
-# tech: macros, new, remove, logit_regr, grpsum, grpavg
+# tech: macros, new, remove, logit_regr, grpsum, grpavg, default_entity
 # model: birth, death
 entities:
     household:
@@ -117,6 +117,9 @@ simulation:
     output:
         file: simulation.h5
 
-    # first simulated period
     start_period: 2002
     periods: 2
+
+    # at the end of the simulation, start the interactive console directly in
+    # the "person" entity
+    default_entity: person
