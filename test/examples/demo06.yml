@@ -1,8 +1,12 @@
+# this is a "simulation" file. To run the simulation, press F6 in liam2
+# environment, or run the following command in a console: 
+# INSTALL PATH\liam2 run demo06.yml
+
 # tech: globals, logit_score, align(leave=)
 # model: education_level, ineducation, inwork
 globals:
     periodic:
-        - WEMRA: float
+        - WEMRA: int
 
 entities:
     household:

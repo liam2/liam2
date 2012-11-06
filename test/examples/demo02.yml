@@ -1,5 +1,10 @@
-# second entity, links, link methods, init, procedures, local variables,
-# dump's suffix argument, choice
+# this is a "simulation" file. To run the simulation, press F6 in liam2
+# environment, or run the following command in a console: 
+# INSTALL PATH\liam2 run demo02.yml
+
+# This example builds upon the first example and introduces a few additional
+# features: a second entity, links and their associated functions, procedures
+# with local variables, and the choice function.
 entities:
     household:
         fields:
@@ -12,7 +17,10 @@ entities:
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
+            # init_region_id is a procedure (it contains another process)
             init_region_id:
+                # region_id is set randomly, with a 10% probability to be 0,
+                # a 20% probability to be 1, etc.
                 - region_id: choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
 
             household_composition:
@@ -44,15 +52,21 @@ entities:
         processes:
             ageing:
                 - age: age + 1
+
+                # juniors and plus50 are local variables. This means they are
+                # only useable within the ageing procedure. As we have seen
+                # in the first example this could just as well be written using
+                # a single process (without using local variables).
                 - juniors: 5 * trunc(age / 5)
                 - plus50: 10 * trunc(age / 10)
                 - agegroup: if(age < 50, juniors, plus50)
-                # it could just as well be written as:
-#                - agegroup: if(age < 50,
-#                               5 * trunc(age / 5),
-#                               10 * trunc(age / 10))
 
-            # produces "person_20xx_info.csv"
+            # * dump is not limited to simple columns, it can evaluate any
+            #   expression in place
+            # * one can easily get the value of a linked object by using
+            #   "linkname.variable_name"
+            # * the suffix argument can be used to customize the name of the
+            #   csv file. It uses this pattern: <entity>_<period>_<suffix>.csv
             dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
                                 mother.age, partner.age), suffix='info')
             show_demography: show(groupby(agegroup, gender))

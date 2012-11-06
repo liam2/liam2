@@ -1,6 +1,6 @@
 # this is a "simulation" file. To run the simulation, press F6 in liam2
 # environment, or run the following command in a console: 
-# INSTALL PATH\liam2 run demo_01.yml
+# INSTALL PATH\liam2 run demo01.yml
 
 # This first example demonstrates how to define a simple entity with a few
 # fields and some processes. We will use the following functions: 
@@ -22,6 +22,7 @@ entities:
             agegroup: if(age < 50,
                          5 * trunc(age / 5),
                          10 * trunc(age / 10))
+
             # produces 2 csv files (one per period): "person_20xx.csv"
             dump_info: csv(dump(id, age, gender))
             show_demography: show(groupby(agegroup, gender))

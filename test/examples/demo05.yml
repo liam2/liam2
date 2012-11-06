@@ -1,3 +1,7 @@
+# this is a "simulation" file. To run the simulation, press F6 in liam2
+# environment, or run the following command in a console: 
+# INSTALL PATH\liam2 run demo05.yml
+
 # tech: break links, logit_regr with real expr, lag
 # model: get_a_life, divorce
 entities:
