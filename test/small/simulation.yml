@@ -9,7 +9,7 @@ entities:
             - num_persons:  {type: int, initialdata: False}
             - nch:          {type: int, initialdata: False}
             - start_period: {type: int, initialdata: False}
-           
+
         links:
             persons: {type: one2many, target: person, field: hh_id}
 
@@ -26,12 +26,12 @@ entities:
             - dead:         bool
             - gender:       bool
             - work:         bool
-            
-            - partner_id:   int            
+
+            - partner_id:   int
             - hh_id:        int
             - f_id:         int
             - m_id:         int
-            
+
             - weight:       {type: int, initialdata: False}
             - v1:           {type: float, initialdata: False}
             - nch:          {type: int, initialdata: False}
@@ -41,7 +41,7 @@ entities:
             - ch_minage:    {type: int, initialdata: False}
             - ch_maxage:    {type: int, initialdata: False}
             - young_mother: {type: bool, initialdata: False}
-            
+
 #        weight: weight
 
         links:
@@ -53,10 +53,10 @@ entities:
 
         macros:
             ISCHILD: age < 18
-            
+
 #            BOY: ISCHILD and MALE
 #            GIRL: ISCHILD and FEMALE
-            
+
             MALE: gender
             FEMALE: not gender
 
@@ -100,8 +100,8 @@ entities:
                 - no_index: MINR
                 - const_index: MINR[2005]
                 - expr_index: MINR[period - 1]
-                - show("implicit current period:", no_index, 
-                       "/ in 2005:", const_index, 
+                - show("implicit current period:", no_index,
+                       "/ in 2005:", const_index,
                        "/ previous period:", expr_index)
                 - globals_in_expr: 1.0 + MINR
                 - idx_globals_in_expr: 1.0 + MINR[2002]
@@ -138,8 +138,8 @@ entities:
                 - num_women: grpcount(not gender)
                 - num_men: grpcount(gender)
 
-                # manual alignment on an integer column 
-                # ------------------------------------- 
+                # manual alignment on an integer column
+                # -------------------------------------
                 - int_aligned: align(age,
                                      expressions=[gender],
                                      possible_values=[[False, True]],
@@ -154,14 +154,14 @@ entities:
 
                 # check that older individuals are taken first
                 - assertTrue(grpmax(age, filter=gender and not int_aligned)
-                             <= 
+                             <=
                              grpmin(age, filter=gender and int_aligned))
                 - assertTrue(grpmax(age, filter=not gender and not int_aligned)
-                             <= 
+                             <=
                              grpmin(age, filter=not gender and int_aligned))
 
                 # manual alignment on a float column (with nan)
-                # --------------------------------------------- 
+                # ---------------------------------------------
                 - nan_age: if(age < 10, nan, age * 1.0)
                 - assertEqual(grpcount(nan_age != nan_age), grpcount(age < 10))
                 - float_aligned: align(nan_age,
@@ -187,7 +187,7 @@ entities:
                 - isnan: nan_age != nan_age
 
                 # women
-                
+
                 # more than 10% women are "nan"
                 - morenan: grpcount(not gender and isnan) > num_women * 0.1
                 - all_taken_nan: grpmin(isnan,
@@ -205,8 +205,8 @@ entities:
 
                 - assertTrue(if(morenan, all_taken_nan, all_nan_taken))
 
-                # manual alignment with a constant 
-                # -------------------------------- 
+                # manual alignment with a constant
+                # --------------------------------
                 - const_aligned: align(False, filter=age < 10,
                                        expressions=[gender],
                                        possible_values=[[False, True]],
@@ -222,19 +222,19 @@ entities:
                 # check that individuals with higher ids are chosen first
                 - assertTrue(grpmax(id, filter=gender and (age < 10) and
                                                not const_aligned)
-                             <= 
+                             <=
                              grpmin(id, filter=gender and const_aligned))
                 - assertTrue(grpmax(id, filter=not gender and (age < 10) and
                                                not const_aligned)
-                             <= 
+                             <=
                              grpmin(id, filter=not gender and const_aligned))
 
-                # alignment with an implicit filter 
+                # alignment with an implicit filter
                 # ---------------------------------
- 
+
                 # the "dead" variable is also used for the cleanup process
-                - dead: if(gender, 
-                           align(0.0, 
+                - dead: if(gender,
+                           align(0.0,
                                  take=age > 95, leave=ISCHILD,
                                  fname='al_p_dead_m.csv'),
                            align(0.0,
@@ -244,7 +244,7 @@ entities:
                 - assertEqual(grpcount(not dead and (age > 95)), 0)
                 - assertEqual(grpcount(dead and ISCHILD), 0)
 
-                # 3d alignment (gender, age, period) 
+                # 3d alignment (gender, age, period)
                 # ----------------------------------
                 - dead2: align(0.0,
                                take=age > 95, leave=ISCHILD,
@@ -290,7 +290,7 @@ entities:
                 # equivalent to uniform() > 0.5
                 - simple: logit_regr(0.0)
                 - fixed_percent: logit_regr(0.0, align=0.5)
-                
+
             test_log_regr:
                 # currently filter is ignored for all non-aligned regressions,
                 # so this test fails!
@@ -300,15 +300,15 @@ entities:
                 - v2: if(MALE,
                          log_regr(2.484557 + 0.2283921 * age - 0.0026106 * age **2),
                          42)
-                - v3: if(MALE, 
+                - v3: if(MALE,
                          exp(2.484557 + 0.2283921 * age - 0.0026106 * age **2),
                          42)
                 - show('v1', v1, '\n',
                        'num values:', grpcount(v1 != 42), '\n',
                        'num problems:', grpcount((v1 != v2) or (v2 != v3)))
-                
+
                 - err: normal()
-                       
+
                 - v4: if(MALE,
                          log_regr(2.484557 + 0.2283921 * age, error_var='err'),
                          0)
@@ -329,11 +329,11 @@ entities:
                 - show('log(v6)', log(v6), '\n', 'log(v7)', log(v7), '\n',
                        'num values:', grpcount(v6 > 0), '\n',
                        'num problems:', grpcount(log(v6) - log(v7) > 20))
-            
+
             test_uninitialized_var: not to_give_birth
             to_give_birth: if(not gender and (age >= 15) and (age <= 50),
                               logit_regr(0.0, align='al_p_birth.csv'),
-                              False) 
+                              False)
             newbirth: if(to_give_birth,
                          if(age > 45,
                             new('person',
@@ -343,8 +343,8 @@ entities:
                                 m_id=id,
                                 f_id=partner.id,
                                 m_age=age,
-                                weight=weight, 
-                                gender=choice([True, False], [0.51, 0.49])),  
+                                weight=weight,
+                                gender=choice([True, False], [0.51, 0.49])),
                             new('person',
                                 age=0,
                                 partner_id=-1,
@@ -352,11 +352,11 @@ entities:
                                 m_id=id,
                                 f_id=partner.id,
                                 m_age=age,
-                                weight=weight, 
-                                young_mother=True, 
+                                weight=weight,
+                                young_mother=True,
                                 gender=logit_regr(0.0))),
                          -1)
-            
+
             test_o2m:
                 - nch: countlink(children)
                 - nch_012: countlink(children, age <= 12)
@@ -367,13 +367,13 @@ entities:
                 - ch_maxage: maxlink(children, age)
                 - xx: show(dump(nch, nch_012, ch_012_age_sum, ch_012_age2_sum,
                                 ch_012_age_avg, filter=(nch > 0) and (id < 100)))
-            
+
             test_mixed_links:
                 - show('mother vs step-mother:', mother.age, partner.mother.age)
                 - show('other sex step-parent:',
                         where(gender, partner.mother.age, partner.father.age))
                 - show('age vs age if married:', age, partner.partner.age)
-                - show('mother.partner.age:', mother.partner.age, 
+                - show('mother.partner.age:', mother.partner.age,
                        'father.age:', father.age)
                 - show('hh.id:', household.id,
                        'hh.id+1:', household.get(id + 1),
@@ -381,9 +381,9 @@ entities:
                        'num persons:', household.get(countlink(persons)),
                        'num high edu:', household.get(countlink(persons, eduach == 4)))
 
-#            test_extra_comma:           
+#            test_extra_comma:
 #                - show('test extra colon'),
-                 
+
             test_predictor1:
                 predictor: plop
                 expr: if(age < 10, age ** 3, age ** 2)
@@ -399,14 +399,14 @@ entities:
                     predictor: plop2
                     expr: if(age >= 50, 100, plop2)
                 - show(plop2)
-            
+
             test_clone:
                 - clone(filter = age == 95,
                         f_id = id,
                         m_id = id,
                         nch = household.get(countlink(persons)))
-                                    
-            
+
+
             marriage:
                 - married: partner_id != -1
 
@@ -417,9 +417,9 @@ entities:
                                       abs(age - avg_age_men),
                                       nan)
                 - workless: not work
-# commented to make the test faster                
+# commented to make the test faster
 #                                      + 0.0015 * abs(household.num_persons - other.household.num_persons)
-#                                      - 0.0015 * abs(household.get(countlink(persons, age < 18)) 
+#                                      - 0.0015 * abs(household.get(countlink(persons, age < 18))
 #                                                     - other.household.get(countlink(persons, age < 18)))
                 - partner_id:
                     if(to_marry,
@@ -441,7 +441,7 @@ entities:
                                       - 0.5451 * ((other.eduach == 2) and LOWER_SECONDARY_EDU),
                                 orderby=difficult_match),
                        partner_id)
-                              
+
                 - just_married: to_marry and (partner_id != -1)
 
                 - newhousehold: new('household', filter=just_married and not gender,
@@ -453,18 +453,18 @@ entities:
             test_compound:
                 - show(min(age, 10))
                 - show(grpmax(min(age, 10)))
-            
+
                 - assertEqual(grpmax(min(age, 10)), 10)
                 - assertEqual(grpmin(max(age, 20)), 20)
-                 
+
             test_lag:
 #                - lagglobal: show(lag(MINR))
-                
+
                 - lagavg: show(lag(grpavg(age)))
                 - avglag: show(grpavg(lag(age)))
 
                 - assertEqual(lag(age, missing=0), if(age == 0, 0, age - 1))
-                
+
                 - num_birth: grpcount(age == 0)
                 - assertEqual(grpcount(lag(age) == -1), num_birth)
                 - assertEqual(grpcount(lag(age, missing=0) == -1), 0)
@@ -493,18 +493,18 @@ entities:
                 - empty_file: csv(fname='empty_file.csv')
                 - one_line_header: csv('period', 'id', 'age', fname='person_ages.csv')
                 - two_line_header: csv(['average', 'gini'],
-                                       ['-', 'inequality coefficient'], 
+                                       ['-', 'inequality coefficient'],
                                        fname='person_age_aggregates.csv')
 
-            test_dump: 
+            test_dump:
                 - expr: csv(dump(gender, age, partner_id, partner.age),
                             suffix='partner_ages')
                 - full: csv(dump(), suffix='full')
                 - twodumps: csv(dump(gender, age, filter=not gender),
-                                'and now something completely different', 
+                                'and now something completely different',
                                 dump(gender, age, filter=gender),
                                 suffix='split_ages')
-                # no fname nor suffix                
+                # no fname nor suffix
                 - csv(dump(age))
                 - fname: csv(dump(age), fname='person_ages_{period}.csv')
                 # append
@@ -515,10 +515,10 @@ entities:
                 # aggregate and filter (0.6 * is important, otherwise we don't
                 # get a 0-d ndarray back, which was the cause of a bug)
                 - median_age: 0.6 * grpmedian(age)
-                - csv(dump(age, grpavg(age), age > grpavg(age), median_age, 
+                - csv(dump(age, grpavg(age), age > grpavg(age), median_age,
                            filter=id < 10),
-                      suffix='aggregate_filter') 
-                
+                      suffix='aggregate_filter')
+
             test_csv:
                 - expr: csv(grpavg(age),
                             fname='person_age_aggregates.csv', mode='a')
@@ -526,7 +526,7 @@ entities:
                              fname='person_age_aggregates.csv', mode='a')
 
             cleanup: remove(lag(dead))
-            
+
             test_o2m_aggregate: show(grpavg(countlink(children)))
 
             test_grpsum:
@@ -534,7 +534,7 @@ entities:
                 - males_age: grpsum(age, filter=MALE)
                 - females_age: grpsum(age, filter=FEMALE)
                 - assertEqual(males_age + females_age, population_age)
-                
+
                 # assign to each man the sum of men ages and to each woman
                 # the sum of women ages
                 - filtered: if(MALE, grpsum(age), grpsum(age))
@@ -599,7 +599,7 @@ entities:
                 - show('grpgini(age) by sex:', grpgini(age, filter=MALE), '/', grpgini(age, filter=FEMALE))
                 - assertEqual(grpgini([1, 1, 1]), 0)
                 - assertEqual(grpgini([0, 0, 0, 1]), 0.75)
-                
+
             test_choice:
                 - intchoice: choice([0, 5, 10], [0.1, 0.2, 0.7])
                 - num0: grpcount(intchoice == 0)
@@ -610,10 +610,10 @@ entities:
 
                 # test choices and probablities being expressions
                 - zero: grpavg(age) - grpavg(age)
-                
+
                 - p0: zero + 0.1
                 - p1: zero + 0.3
-               
+
                 - fchoice: choice([zero, zero + 1.0, zero + 2.0], [p0, p1, 1.0 - p0 - p1])
 
                 - num0: grpcount(fchoice == 0.0)
@@ -631,39 +631,39 @@ entities:
 
                 - show('groupby with percent when total is int(0)',
                        groupby(age, filter=age > 200, percent=True))
-                - show('expr=grpsum(weight)', 
+                - show('expr=grpsum(weight)',
                        groupby(agegroup, gender, expr=grpsum(weight)))
                 - show(groupby(round(logit_score(0.0), 1)))
-                - show('explicit count', groupby(round(logit_score(0.0), 1), 
+                - show('explicit count', groupby(round(logit_score(0.0), 1),
                                                  expr=grpcount()))
                 - show('grpmin', groupby(agegroup, expr=grpmin(age)))
-                - temp_scalar: grpavg(age)                                 
+                - temp_scalar: grpavg(age)
                 - show('wh scalar variable', groupby(agegroup, expr=temp_scalar * grpmin(age)))
-                                                 
+
                 - num_persons2: show(groupby(agegroup, gender))
                 - num_persons2_percent: show(groupby(agegroup, gender, percent=True))
                 - num_persons_weight_percent: show(groupby(agegroup, gender, expr=grpsum(weight), percent=True))
                 - num_persons_csv: csv(groupby(agegroup, gender), suffix='groupby')
                 - num_persons3: show(groupby(agegroup, dead, gender))
-                
+
                 - ismarried: partner_id != -1
                 - num_persons3t: show(groupby(agegroup, gender, ismarried))
                 - num_alive: show(groupby(agegroup, gender,
                                           expr=grpcount(not dead)))
                 - num_married: show(groupby(agegroup, gender,
                                             expr=grpcount(ismarried)))
-                - num_widows: show(groupby(agegroup, gender, 
+                - num_widows: show(groupby(agegroup, gender,
                                            expr=grpcount(partner.dead)))
-                - num_bad_partner: show(groupby(agegroup, gender, 
+                - num_bad_partner: show(groupby(agegroup, gender,
                                                 expr=grpcount((partner_id != -1) and (partner.partner.id != id))))
-                - agediff: show(groupby(agegroup, gender, 
+                - agediff: show(groupby(agegroup, gender,
                                         expr=grpavg(age - if(partner.age == -1, nan, partner.age))))
 #                                        expr=grpavg(abs(age - if(partner.age == -1, nan, partner.age)))))
 #                                        expr=grpsum(countlink(children)) / grpsum(not dead)))
 #                                        expr=grpavg(nch)))
 #                - minmax_age: show(groupby(id / 100, gender, expr=grpmax(age) - grpmin(age)))
-                
-            show_weight: show("avg weight", grpavg(weight), 
+
+            show_weight: show("avg weight", grpavg(weight),
                               "total population", grpsum(weight))
 
 
@@ -678,37 +678,37 @@ simulation:
         - person: [
 #                   bp,
                    cleanup,
-                   
+
                    temp_global,
                    show_temp_global,
                    temp_global_test1,
                    show_temp_global,
                    temp_global_test2,
                    show_temp_global,
-                    
+
                    test_expr,
                    test_globals,
                    test_macro,
-                   test_compound, 
+                   test_compound,
                    agegroup,
                    test_align,
                    test_logit,
                    test_log_regr,
 
                    marriage,
-                   
+
 #                   test_extra_comma,
-                   
+
 #                   test_uninitialized_var,
-                   
+
                    to_give_birth, newbirth,
                    test_lag,
                    test_duration,
-                   
+
                    test_o2m,
                    test_mixed_links,
                    test_clone,
-                   
+
                    test_predictor1, test_predictor2, test_predictor3,
 
                    test_o2m_aggregate,
@@ -716,16 +716,16 @@ simulation:
                    test_grpmedian,
                    test_grppercentile,
                    test_grpgini,
-                   
+
                    test_choice,
-                   
+
                    show_weight,
                    test_groupby,
                    test_dump,
                    test_csv,
 
         ]
-        - household: [num_persons, nch, maxnch, 
+        - household: [num_persons, nch, maxnch,
 #                      dump_csv_h
                      ]
 
@@ -738,5 +738,5 @@ simulation:
     random_seed: 0
     start_period: 2002   # first simulated period
     periods: 2
-    default_entity: person 
-    
+    default_entity: person
+

@@ -26,9 +26,9 @@ entities:
             - f_id:       int
             - m_id:       int
 #            - manquant:   int
-            
+
         # deprecated? no, let's just say it's a shortcut if there is only one
-        # file. And it could serve as a prefix for individual files path. 
+        # file. And it could serve as a prefix for individual files path.
         path: param\person.csv
 
         # deprecated? no. it could be useful even in the case of several files
@@ -42,9 +42,9 @@ entities:
 #            value: eval('{basename}'.replace('p_', ''))
             time: period
             co_alive: dead
-        
-#        
-#        # deprecated? well. I guess not if we don't deprecate the others    
+
+#
+#        # deprecated? well. I guess not if we don't deprecate the others
 ##        transposed: true
 #
         files:
