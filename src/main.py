@@ -198,7 +198,17 @@ if __name__ == '__main__':
 
     sys.stdout = AutoflushFile(sys.stdout)
     sys.stderr = AutoflushFile(sys.stderr)
-    print "LIAM2 %s (%s)" % (__version__, platform.architecture()[0])
+
+    try:
+        from groupby import filter_to_indices, group_indices_nd
+        cext = True
+    except ImportError:
+        cext = False
+
+
+    cextstr = ("not " if not cext else "") + "using C extensions"
+    print "LIAM2 %s (%s %s)" % (__version__, platform.architecture()[0],
+                                cextstr)
     print
 
     eat_traceback(main)
