@@ -2,8 +2,15 @@
  TODO
  --------------------------------------
 
+ - when trying to "import" a simulation file or trying to "run" an import file,
+   output an informative warning
+
+ - check versions of dependencies on startup, instead of letting it crash
+   randomly in the middle of a simulation with an error message difficult
+   to understand
+
  - try cx_freeze
- 
+
  - implement all() and any()
 
  - link trac to our svn repository (or move the repository on that machine)
@@ -15,7 +22,7 @@
        class
    * all entities in context
    * hide id_to_rownum
-   * .array vs .table vs .lagged_array vs Entity vs EntityContext 
+   * .array vs .table vs .lagged_array vs Entity vs EntityContext
      vs full_context vs mapping passed to numexpr
 
      .array doesn't need to be entirely in memory, .table
@@ -50,41 +57,41 @@
      expression classes.
    * has not its __eq__ method overloaded so that I can use "expr in d"
      (dict.__contains__(k) calls k.__eq__) so that I can store
-     expressions in a dict to check whether they occur more than once 
+     expressions in a dict to check whether they occur more than once
 
    see ASTNode class in numexpr. Use it as is?
-   
+
    Questions:
-   * use ASTNode class in numexpr as is?    
+   * use ASTNode class in numexpr as is?
    * would an uniform interface make things cleaner for current
      functionalities (mainly as_string, collect_variables and simplify)?
- 
+
  - fix globals in a lag
- 
+
  - if an entity is only used through links (no process is run directly on that
    entity), the data for that entity is not loaded!
- 
+
  - somehow work around numexpr 2.0 limitation of 31 variables (create hidden
    temporary variables?)
 
  - better document csv format: -- for missing
-     
- - the filter argument in all regressions without alignment is ignored. 
+
+ - the filter argument in all regressions without alignment is ignored.
    I should either fix that or remove the argument.
- 
+
  - launch external command during simulation (for example external model in
    another program). That should be easy. However, to be useful, we need
    to be able to load back the result in the middle of a simulation.
- 
+
  - test the speed difference of loading & writing each column individually,
    instead of all together
-   * both using a table (as is done currently) and storing columns individually 
+   * both using a table (as is done currently) and storing columns individually
    * if is not too bad, it would enable us to load fields as late as possible
      and write/flush them to disk (removing them from memory) as early as
      possible.
    * it would save some memory, possibly much of it in combination with
      reordering of processes.
- 
+
  - compressing main "table" (ie the columns) with carray:
    ac[indice_vector] is 1000x slower than a[indice_vector] !
    ac[bool_vector] is 4.5x slower than a[bool_vector]
@@ -92,7 +99,7 @@
    bincount(ac) is 100x slower than bincount(a)
    ca.eval(expr, out_flavor='numpy') is 2x slower than ne.evaluate(expr)
    ca.eval(expr) is 6x slower than ne.evaluate(expr)
- 
+
  - chunking to simulate any size of data:
    x alignment will be hard to do right *when there is ranking involved*
      because if we simply apply alignment to each chunk:
@@ -106,7 +113,7 @@
        the target in the next chunk
      * if there is no deterministic ranking, it should be as good as a single
        block simulation
-     * if the ranking score has only a small set of possible values, 
+     * if the ranking score has only a small set of possible values,
        we could partition individuals using their values, eg with integer:
        partition 1: values 0-10
        partition 2: values 11-20
@@ -114,7 +121,7 @@
        This should allow to treat/sort chunks separately without having to
        reconstruct the complete array in memory (see mapreduce sort).
        However, I don't think this is the case here, so I'm stuck...
-   x matching is problematic    
+   x matching is problematic
    x new is problematic as it breaks the implicit sort by id of the table
      > I have to "block" other processes during the new. The new itself can
      > be done progressively as it doesn't modify any variable
@@ -124,16 +131,16 @@
  - allow input fields to not be in the output
  - document what each regression function does
  ? use more python-like syntax: use = instead of :
- 
+
  - review field def: do input fields need to be declared at all?
    I could collect variables from all expressions and check that they are
    all present in the input file.
-   however, some information about input fields will need to be defined anyway: 
+   however, some information about input fields will need to be defined anyway:
    enumerations, ranges, default values, ... (unless I store all that in the
    input file metadata)
  - review the whole filter concept. The missing "else" value is often a problem,
-   but can we avoid it? do we want to avoid it?  
- - review align() function/alignment process (I don't want to code anything just 
+   but can we avoid it? do we want to avoid it?
+ - review align() function/alignment process (I don't want to code anything just
    yet, I just want to know if the current syntax will need to be modified).
    * should it return false for all the persons which are not selected? instead
      of the current weird situation: False if stored in a temp variable,
@@ -141,7 +148,7 @@
    * what would the syntax be for multi-value alignment (when there are more
      than two possible outcomes)
      align([2, 3, 4]
- 
+
  non feature tasks
  -----------------
 
@@ -180,7 +187,7 @@
      result:
 
      where (p2.male and p1.father_id=p2.id) or (not p2.male and p1.mother_id=p2.id)
-     
+
    * simply work around it
      children_as_mother: {type: one2many, target: person, field: m_id}
      children_as_father: {type: one2many, target: person, field: f_id}
@@ -191,14 +198,14 @@
  - missing values for int columns
 
    using floats everywhere should work (even for "id" and "link" columns (it
-   would only limit the number of individuals per entity to 2^24 = ~16 millions 
-   for float32 or 2^53 = ~9 * 10^15 for float64) 
+   would only limit the number of individuals per entity to 2^24 = ~16 millions
+   for float32 or 2^53 = ~9 * 10^15 for float64)
 
  - missing values for boolean columns (see test_missing.py)
- 
+
    if using floats / NaN:
    ======================
-   
+
    a & b -> a * b
    a | b -> (a + b) > 0 # Wrong: > 0 loose the NaNs and NaN > 0 is False, not NaN
          -> where(a1 + a2 == 2, 1, a1 + a2)
@@ -209,14 +216,14 @@
                   -> where(a != a, a, where(a == 1.0, b, c))
                   or
                   -> where(a == 1.0, b, where(a == 0.0, c, a))
-                  or 
+                  or
                   -> add an new opcode nanwhere_dddd in numexpr
                      np.where(a != a, float('nan'), np.where(a, b, c))
                      a != a ? a : (a == 1.0 ? b : c)
 
    if using int / -1:
    ==================
-   
+
    a & b          -> where((a == -1) | (b == -1), -1, a * b)
    a & b & c      -> where((where((a == -1) | (b == -1), -1, a * b) == -1) | (c == -1),
                            -1,
@@ -226,12 +233,12 @@
    a | b | c      -> where((a == -1) | (b == -1) | (c == -1), -1, a + b + c > 0)
    ~ a            -> where(a == -1, -1, 1 - a)
    where(a, b, c) -> where(a == -1, -1, where(a == 1, b, c))
-   
+
    bool_expr * float_expr -> where(bool_expr == -1, nan, bool_expr * float_expr)
 
    where(bool_expr, float_expr1, float_expr2)
       -> where(bool_expr == -1, -1, where(bool_expr, float_expr1, float_expr2))
-                   
+
  - delete "empty" households (dead persons)
    OR
  - implement cascading deletes/death on links
@@ -240,7 +247,7 @@
 
  bug fixes
  ---------
- 
+
  - globals should have the correct type, not always "float" (see data_main)
    > is it still the case?
  - nan -> 0 for sum in groupby (see numpy Ticket #1123)
@@ -250,14 +257,14 @@
 
  ? use stata regressions directly
    * would introduce some kind of dependency on Stata which is not a good thing
-     IMO -> convert them first? 
+     IMO -> convert them first?
  - data_main: import all columns, except a few
- ? make specifying output field types optional (I can compute them): 
+ ? make specifying output field types optional (I can compute them):
    listing the fields is technically enough, though having the type make things
    easier and we can have some type checks
  - implement something like "by x, y, z" in stata (though I don't remember what
    it does exactly): it is similar to groupby but can do more stuff.
- - "compress" in stata tries to autodetect the type of each field by 
+ - "compress" in stata tries to autodetect the type of each field by
    inspecting the data, and convert it to the smallest type which can handle
    that data.
  - integrate more stuff into the console:
@@ -274,18 +281,18 @@
          - yob: int
      output:
          - cscar: int
- 
+
          - csw: float
          - cswl1: float
          - cswl2: float
          - cswl3: float
          - cswl4: float
          - cswl5: float
- 
+
          - dunemp: int
          - earny: float
          - secar: int
- 
+
          - minr60_c: int
          - minr61_c: int
          - minr62_c: int
@@ -306,31 +313,31 @@
          - werb_wemin63_sum: float
          - werb_wemin64_sum: float
          - werb_wemin65_sum: float
- 
- ? two different values for missing links: 
+
+ ? two different values for missing links:
    * linked to none = -1
    * missing value = -2
-   the problem is that in liam1, there wasn't such a difference 
+   the problem is that in liam1, there wasn't such a difference
  - data_main:
    * remove the need for objtype_...
    * macro.av: YEAR is not always the 1st row
    * link names
  - round(X) should return int
  - warning for unused fields
- ? either allow setting temporary variables in new() (though I'm not sure it's a 
+ ? either allow setting temporary variables in new() (though I'm not sure it's a
    good idea) or produce a better error message when we try to set an
    unknown field
- - better error message when a procedure's processes are missing ordering 
+ - better error message when a procedure's processes are missing ordering
    (it is a dict, instead of a list of dict)
    >> we need to to remove the {'predictor': xxx, 'expr': yyy} syntax before
    >> we can do that
  - better error message if unknown entity in simulation.processes (KeyError)
    >> almost done for "init"
- - better error message when an extra comma is used (see test.test_extra_comma)   
+ - better error message when an extra comma is used (see test.test_extra_comma)
  - better error message when a temporary variable is used before it is computed
    (the error is not caught by the parser since the variable exists)
    KeyError: '(~to_give_birth)\nto_give_birth'
- - Error messages containing utf8 chars are not displayed on notepad++ or 
+ - Error messages containing utf8 chars are not displayed on notepad++ or
    dos prompt consoles (py2exe is irrelevant, it just removes the intermediate
    lines of code from the traceback but doesn't change the last lines).
    Example: syntax error if there is a comment containing non-ascii chars inside
@@ -341,35 +348,35 @@
  - macros using other macros. This will need:
    1) pre-parse macros to compute which macro depend on which other macro
    2) do a topological sort on them
-   3) parse them in order 
+   3) parse them in order
  - labeled enumerations
    eg workstate: 1: "unemployed, 2: "employee", 3: "civserv", ...
    * display the labels in show/groupby instead of the numeric values
    ? use the labels in "read" expressions (instead of using macros)
-     macros contain the == and can contain < or >, which is more generic, 
+     macros contain the == and can contain < or >, which is more generic,
      so I'm not sure it would be an improvement
-   * use labels when setting new values (this could be done with macros, but 
+   * use labels when setting new values (this could be done with macros, but
      that's not how they use it now)
      eg: workstate: "if(RETIREMENTAGE, 10, workstate)"
-         workstate: "if(RETIREMENTAGE, RETIRED, workstate)" 
-      
+         workstate: "if(RETIREMENTAGE, RETIRED, workstate)"
+
             RETIREMENTAGE: "((gender) and (age >= 65)) or ((not gender) and (age >= WEMRA))"
             RETIREMENTAGE: "age >= if(gender, 65, WEMRA)"
-     
+
  - numpy methods (min/max/...) on zero-length array
  - implement "log" action = show in a file
  - lastpresent(col[, condition]) -> returns the last value which is not missing
    the problem is that if even a single individual never had any value for that
-   column, it will go back all the way to the first period 
+   column, it will go back all the way to the first period
  - initialdata: s/false/value
  - allow setting/creating temporary variables in interactive console
  - merge per_period_fields and globals
- - line numbers in error messages. It might be tricky because we loose the 
+ - line numbers in error messages. It might be tricky because we loose the
    information after yaml parsed the file
  - one filter, several actions.
    eg, when someone dies, you want to change more than one field, and it
    is a bit tedious to need to repeat the filter
-   same comment for divorce 
+   same comment for divorce
  ? move away from yaml for the user...
  - filter in all aggregates, not only in grpavg, grpsum & grpgini
  - add a concept of "per individual" constant (ie not saved each period)
@@ -380,63 +387,63 @@
  - explicit function to check if a value is present:
    where(ispresent(err), err, normal(0, 1))
    we can't use != NaN because that wouldn't work for int and bool
-   or even floats because NaN != NaN! 
- - infer expressions types systematically so that we can do more clever stuff: 
+   or even floats because NaN != NaN!
+ - infer expressions types systematically so that we can do more clever stuff:
    some type checking, correct type for missing values when using filter, and
    missing values handling in general.
  - store some metadata in .h5 (list of entities, start_period, links, ...)
- - implement other historic functions (with missing values): 
+ - implement other historic functions (with missing values):
    * duration limited in time: eg: duration(xxx, 5): max 5 periods
    * durationcurr(variable): duration of the current value of the variable
    * tavg with a filter: only count when it satisfy a filter (eg > 0)
    * currperiodstart(variable): returns the time period the current value
                                 of the variable started
 
- - test/integrate sumatra to launch simulations 
+ - test/integrate sumatra to launch simulations
 
  optimisation
  ------------
 
  - try Numba
- 
+
  - try SymPy speed. They use mpmath and I wonder how fast it is.
- 
+
  - use bottleneck (http://pypi.python.org/pypi/Bottleneck)
    nansum, nanmin, nanmax, nanmean, nanstd
    it will probably be integrated back into numpy/scipy at some point but it
    will probably take a while, so let's use this in the mean time
- 
+
  - try raw sql (in C)
 
  - try using corepy
- 
+
  - try to compress data using google snappy, quicklz or lz4 (they seem even
-   faster than fastLZ on which blosc is based) 
- 
+   faster than fastLZ on which blosc is based)
+
  - try making python bindings to ORC
    http://code.entropywave.com/projects/orc/
    or any of the other C JIT referenced in the external links at:
    http://en.wikipedia.org/wiki/Just-in-time_compilation
- 
+
  - try using Theano (http://deeplearning.net/software/theano/)
    it seems to be a PITA to install though (no pre-built packages, needs a
    compiler, BLAS, etc...). It is only integrated with CUDA (ie NVidia)
-   
+
  - try PyOpenCL: OpenCL seem pretty powerful and more standardised than CUDA
    (also works on some CPUs, not only GPUs).
- 
- - try scipy.weave.blitz. It seems a bit limited in functionality but it uses 
+
+ - try scipy.weave.blitz. It seems a bit limited in functionality but it uses
    blitz++ (http://www.oonumerics.org/blitz/) internally which seems to contain
    all I need and more, so adding the missing functionality might not be too
-   hard. It seems to be really slow to compile though, so it'll probably be 
+   hard. It seems to be really slow to compile though, so it'll probably be
    only worth it when using very large arrays.
-   
- - improve numexpr caching algorithm (LRU), and/or increase its size and/or 
-   cache expressions ourselves. Some long expressions take a lot longer to 
+
+ - improve numexpr caching algorithm (LRU), and/or increase its size and/or
+   cache expressions ourselves. Some long expressions take a lot longer to
    "compile" than to compute on small arrays. Eg minr & friends.
 
  - store row indices in hdf file
- 
+
  - optimise memory allocation by building a dependency graph between variables
    and:
    * free temporary variables as soon as they are not needed anymore
@@ -445,8 +452,8 @@
      does to not duplicate effort.
      > that might make logging & debugging harder, so it should be an option
 
- - optimise "normal" expressions by collecting variables, and replacing them 
-   with their definitions when they are temporary variables, unless that 
+ - optimise "normal" expressions by collecting variables, and replacing them
+   with their definitions when they are temporary variables, unless that
    particular variable is used more than N times. (testing should help us
    determine what value to use for N)
    -> this can only be done for variable which do not change between the place
@@ -459,50 +466,50 @@
    >> [3, 10], [15, 40]
    >> this would be limited to expressions which do not "recompute" any of
    >> the variable used
-   >> if it is the only factorization, it would limit some of it, because if 
+   >> if it is the only factorization, it would limit some of it, because if
    >> some sub expression is common between one expression of the group and
    >> one which is not in the group, there wouldn't be any factorization
    Ideally, I could feed targets too, so that numexpr would be able to do
    the whole thing by itself:
-   eg ne.evalutate([('c', 'a + (a * b)'), 
+   eg ne.evalutate([('c', 'a + (a * b)'),
                     ('d', '(a * b) * c'),
                     ('a', 'd + 1'),
                     ('c', 'a * 2')], {'a': [1, 2], 'b': [3, 4]})
    >> {'a': ..., 'c': ..., 'd': ...}
-   
+
  - optimise mean by storing partial sum in an hidden field, and compute
    the mean like this: (sum_last_period + period_value) / num_periods
  - optimise duration by using duration for last period if present
  ? if links are accessed more often than they are modified, it could make sense
    to store row indices in memory, instead of ids. It would make both
    end-of-period data storage (would have to translate back to ids) and
-   lifecycle functions (new and remove) slower.  
+   lifecycle functions (new and remove) slower.
  ? do not repartition data for each alignment and each period, but keep the
    groups from period to period and update them when the linked variable
    changes.
  ? translate partition_nd to C/cython
- ? translate other performance-critical code to C 
+ ? translate other performance-critical code to C
  ? try alternate algorithm for RemoveIndividuals: simply reindex, like I do it
    elsewhere. It might cause a problem if the last ids (newly borns) die.
    it seems to be a tad slower in fact. However, it might be a better starting
-   point to translate in C if that is ever necessary. 
-   
+   point to translate in C if that is ever necessary.
+
  GUI
  ---
 
- - try Kivy (kivy.org)   
-     
+ - try Kivy (kivy.org)
+
  cleanup
  -------
 
  - constants handling is ugly
  - __entity__ vs .entity
- - change constructor arguments to Entity, so that 
+ - change constructor arguments to Entity, so that
    1) it is shielded from YAML specifics
    2) I can use the real thing in test_expr instead of FakeEntity
- - factorize/simplify __str__ methods in some way: by using multi-inheritance? 
+ - factorize/simplify __str__ methods in some way: by using multi-inheritance?
  - merge src/expr with tools/expr
- ? do not store the array/data into the entity. The entity would only be a 
+ ? do not store the array/data into the entity. The entity would only be a
    descriptor.
 
  undecided
@@ -513,7 +520,7 @@
      #minr61_c: "duration(minr61_d)"
      minr61_c: "if(minr61_d, minr61_c + 1, minr61_c)"
    we do not (necessarily) need to store the value for each year (unless we
-   want to inspect it after-the fact)    
+   want to inspect it after-the fact)
     => problème de la première periode
  ? generalize the concept of SubscriptableVariable to "indexed table"
  ? installer
@@ -523,7 +530,7 @@
    two ways to do the same thing and the other way (should) already work(s):
        hh_nch: household.get(countlink(persons))
  ? a: "where(b, c[, d])" -> d implicitly = a
- ? specific choice method for boolean: boolchoice(0.3) 
+ ? specific choice method for boolean: boolchoice(0.3)
    instead of: choice([True, False], [0.3, 1-0.3])
  ? use __filter__ in dump_csv
    in fact the real need is to be able to disable logging easily
@@ -531,17 +538,17 @@
  ? explicit file pattern for "csv" function
  ? add "limit" argument to dump()
  ? prevent writing too many rows through show(dump())
- ? somehow "merge" grpxxx and xxxlink functions (at least for the user, not 
+ ? somehow "merge" grpxxx and xxxlink functions (at least for the user, not
    necessarily technically):
    grpcount()            -> count()
    countlink(persons)    -> count(persons)
    >>> this is problematic because count() returns a scalar while
    >>> count(persons) return a vector
    grpsum(age)           -> sum(age)
-   sumlink(persons, age) -> [sum(person.age for person in household.persons) 
+   sumlink(persons, age) -> [sum(person.age for person in household.persons)
                              for each household]
  ? at the start of each period, wipe out the array (set all to missing)
-   => need to use lag explicitly 
+   => need to use lag explicitly
  ? allow processes to be run only at specific periodicity: eg. some monthly,
    some quarterly, and some annually
  ? store alignment tables in hdf input & output files
@@ -569,18 +576,18 @@
  ? move expression optimisation/simplification to numexpr
  ? "new" action is limited because it can only have one parent, it might be
    interesting to have an arbitrary number of them. eg:
-    newbirth: "new('person', filters={'mother': to_give_birth & ~male, 
+    newbirth: "new('person', filters={'mother': to_give_birth & ~male,
                                       'father': to_give_birth & male},
                    mother_id=mother.id,
                    father_id=father.id,
                    male=logit(0.0),
                    partner_id=-1)"
-   however, this might be useless/impractical, as eg, the father filter above 
-   is wrong, and if an individual is created from several parents, they will 
+   however, this might be useless/impractical, as eg, the father filter above
+   is wrong, and if an individual is created from several parents, they will
    usually (always?) need to be matched beforehand, so one or several fields
    or links will be available to get to the other parents. Consequently, this
    syntax might be more appropriate:
-    newbirth: "new('person', filter={'mother': to_give_birth}, 
+    newbirth: "new('person', filter={'mother': to_give_birth},
                              links={'father': mother.partner},
                    mother_id=mother.id,
                    father_id=father.id,
