@@ -1,5 +1,5 @@
 # this is an "import" file. To use it press F5 in liam2 environment, or run
-# the following command in a console: 
+# the following command in a console:
 # INSTALL PATH\liam2 import demo_import.yml
 output: simple2001.h5
 
@@ -20,7 +20,7 @@ entities:
             - age:           int
             - gender:        bool
             - workstate:     int
-            - civilstate:    int     
+            - civilstate:    int
             - dur_in_couple: int
             - mother_id:     int
             - partner_id:    int
@@ -31,7 +31,7 @@ entities:
         # here. The format is: "newname: oldname"
         oldnames:
             gender: male
-            
+
         # if you want to invert the value of some boolean fields (True -> False
         # and False -> True), add them to the "invert" list below.
 #        invert: [list, of, boolean, fields, to, invert]

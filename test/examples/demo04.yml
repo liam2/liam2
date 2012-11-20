@@ -1,8 +1,8 @@
 # this is a "simulation" file. To run the simulation, press F6 in liam2
-# environment, or run the following command in a console: 
+# environment, or run the following command in a console:
 # INSTALL PATH\liam2 run demo04.yml
 
-# tech: matching, make new links, change existing links, abs, 
+# tech: matching, make new links, change existing links, abs,
 #       new('other entity', ...)
 # model: marriage
 entities:

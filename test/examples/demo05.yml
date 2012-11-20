@@ -1,5 +1,5 @@
 # this is a "simulation" file. To run the simulation, press F6 in liam2
-# environment, or run the following command in a console: 
+# environment, or run the following command in a console:
 # INSTALL PATH\liam2 run demo05.yml
 
 # tech: break links, logit_regr with real expr, lag
@@ -165,7 +165,7 @@ entities:
 
             dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
                                 mother.age, partner.age), suffix='info')
-            
+
             civilstate_changes: show(groupby(civilstate, lag(civilstate)))
 
 simulation:

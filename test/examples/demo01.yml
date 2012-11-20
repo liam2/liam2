@@ -1,9 +1,9 @@
 # this is a "simulation" file. To run the simulation, press F6 in liam2
-# environment, or run the following command in a console: 
+# environment, or run the following command in a console:
 # INSTALL PATH\liam2 run demo01.yml
 
 # This first example demonstrates how to define a simple entity with a few
-# fields and some processes. We will use the following functions: 
+# fields and some processes. We will use the following functions:
 # if, trunc, csv, show, dump, groupby
 entities:
     person:

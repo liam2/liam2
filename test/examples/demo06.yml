@@ -1,5 +1,5 @@
 # this is a "simulation" file. To run the simulation, press F6 in liam2
-# environment, or run the following command in a console: 
+# environment, or run the following command in a console:
 # INSTALL PATH\liam2 run demo06.yml
 
 # tech: globals, logit_score, align(leave=)
@@ -91,7 +91,7 @@ entities:
             LOWER_SECONDARY_EDU: 2
             UPPER_SECONDARY_EDU: 3
             TERTIARY_EDU: 4
-            
+
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
         processes:
@@ -254,7 +254,7 @@ entities:
 #                                                      - 0.5590975 * ISMARRIED - 10.48043)),
 #                                       -1)),
 #                                 -1)
-                                 
+
                 - work: if((age > 15) and (age < 65),
                            if(ISMALE,
                               align(work_score,
@@ -267,9 +267,9 @@ entities:
                 - workstate: if(work, INWORK, workstate)
                 # if not selected to work and last period in work set workstate temporary to -1
                 - workstate: if(not work and lag(ISINWORK), -1, workstate)
-                
+
                 - show(groupby(workstate, lag(workstate)))
-                - show('have job', grpsum(work), 
+                - show('have job', grpsum(work),
                        '(kept:', grpsum(work and lag(ISINWORK)),
                        '/ new:', grpsum(work and not lag(ISINWORK)), ')')
 #                - csv(dump(id, agegroup_work, education_level,
@@ -307,7 +307,7 @@ entities:
                                   unemp_score)
                # Alignment of unemployment based on those not selected by inwork
                # Alignment files are constructed as follows:
-               # [Number of unemployed / (Population - Number of Workers)] by age class 
+               # [Number of unemployed / (Population - Number of Workers)] by age class
                # The here below condition must correspond to the here above denumerator
                - unemp: if((age > 15) and (age < 65) and not ISINWORK,
                             if(ISMALE,
@@ -320,9 +320,9 @@ entities:
                                      leave=ISSTUDENT or ISRETIRED,
                                      fname='al_p_unemployed_f.csv')),
                             False)
-               - workstate: if(unemp, UNEMPLOYED, workstate)  
-               - workstate: if((workstate == -1) and not unemp, OTHERINACTIVE, workstate)  
-               
+               - workstate: if(unemp, UNEMPLOYED, workstate)
+               - workstate: if((workstate == -1) and not unemp, OTHERINACTIVE, workstate)
+
             dump_all: csv(dump())
 
 simulation:
