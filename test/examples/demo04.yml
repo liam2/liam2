@@ -1,10 +1,11 @@
-# this is a "simulation" file. To run the simulation, press F6 in liam2
+# This is a "simulation" file. To run the simulation, press F6 in liam2
 # environment, or run the following command in a console:
 # INSTALL PATH\liam2 run demo04.yml
 
-# tech: matching, make new links, change existing links, abs,
-#       new('other entity', ...)
-# model: marriage
+# In this example, we will add a simple marriage process to our model. We also
+# demonstrate the following additional features: the matching() function,
+# how to create new links, how to change existing links, the abs() function and
+# new() function used with a different entity.
 entities:
     household:
         fields:

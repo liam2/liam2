@@ -1,8 +1,8 @@
-# this is a "simulation" file. To run the simulation, press F6 in liam2
+# This is a "simulation" file. To run the simulation, press F6 in liam2
 # environment, or run the following command in a console:
 # INSTALL PATH\liam2 run demo02.yml
 
-# This example builds upon the first example and introduces a few additional
+# This example builds upon the first one and introduces a few additional
 # features: a second entity, links and one of their associated functions
 # (countlink), procedures with local variables, and the choice function.
 entities:

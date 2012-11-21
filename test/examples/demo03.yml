@@ -1,9 +1,12 @@
-# this is a "simulation" file. To run the simulation, press F6 in liam2
+# This is a "simulation" file. To run the simulation, press F6 in liam2
 # environment, or run the following command in a console:
 # INSTALL PATH\liam2 run demo03.yml
 
-# tech: macros, new, remove, logit_regr, grpsum, grpavg, default_entity
-# model: birth, death
+# This example builds upon the previous ones and introduces the following
+# additional features: macros, lifecycle functions (new and remove), logit_regr,
+# aggregate functions (grpsum and grpavg) and the default_entity option. We use
+# the features we have introduced so far to add very simple birth and death
+# procedures to our model.
 entities:
     household:
         fields:
