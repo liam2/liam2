@@ -10,7 +10,7 @@ from console import Console
 from data import populate_registry
 from registry import entity_registry
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 
 class AutoflushFile(object):
