@@ -3,17 +3,58 @@
  --------------------------------------
 
  - when trying to "import" a simulation file or trying to "run" an import file,
-   output an informative warning
+   output an informative error
 
  - check versions of dependencies on startup, instead of letting it crash
    randomly in the middle of a simulation with an error message difficult
-   to understand
+   to understand (for example with numexpr 1.4.2)
 
- - try cx_freeze
+ - write a known issues documentation
+   * ctx filter
+   * 31 vars
+   * globals in a lag
+   * filter in regressions
+
+ - cleanup/sort/update this TODO file
+
+ - move all these TODO to trac tickets
+
+ - when there is a divide by zero or 0/0, numpy outputs a RuntimeWarning
+   which seems to confuse users (especially 0/0 which produces a cryptic
+   warning: RuntimeWarning: invalid value encountered in double_scalars
+   This can happen at least in a groupby() call with percent=True when the
+   total is 0.0 (for example if expr = grpcount() and there is no individual
+   matching the filter - see example in the test simulation)
+   The current situation is a MESS because of the code of avglink (what did
+   I think???) which disables the warning in the middle of the simulation and
+   does not restore the behavior afterwards, which means that if we have
+   an avglink before an error, we don't get any warning, but we do get some if
+   we don't use any avglink or it is after. This is crazy!
+
+   I think the ideal solution here would be to let the user configure what he
+   wants (raise/warn/ignore) but show him the line number in his code, though
+   that will be hard to achieve.
+
+ - make an installer with shortcuts, etc...
+   even though cx_freeze can produce basic installers and works fine to produce
+   the executable, their installers is not sufficient in our case
+   since we need a shortcut to notepad, not to the liam2 simulation engine
+   I guess I'll simply use NSIS
+
+ - improve examples:
+   * comment each new stuff as it appears the first time
+   ? kill logit_regr without expr (logit_regr(0.0, align='al_p_dead_m.csv'):
+     use align instead?
+   * kill children link, use it or at least add a comment about it
+     (it is declared but not used in any example)
+
+ - try cx_freeze on linux
 
  - implement all() and any()
 
  - link trac to our svn repository (or move the repository on that machine)
+
+ - countlink(persons) -> persons.count()
 
  - refactor/redesign the clunky parts
    * the goals are:
@@ -38,11 +79,12 @@
 
  - rewrite the whole import process: load boolean fields as int8 (shouldn't
    need more work/conversion),
-   then do a n-way merge, then do interpolation, then convert boolean fields
-   back to booleans (if we haven't done the bool->int8 migration for the
-   simulation code). We'll have to copy the data using:
-   b = i8 == 1, otherwise "missing" (-1) evaluates as True, which is not what
-   we want in most case (and for backward compatibility)
+   then do a n-way merge, then do interpolation.
+   If we haven't done the bool->int8 migration for the simulation code then
+   we will also need to convert boolean fields back to booleans.
+   In that case, we will have to copy the data using: b = i8 == 1, otherwise
+   "missing" (-1) evaluates as True, which is not what we want in most case
+   (and for backward compatibility)
 
  - fix the "contextual filter" mess: it is taken into account for grpgini &
    grpsum but not grpavg. The problem is that implementing it for grpavg would
@@ -203,6 +245,10 @@
 
  - missing values for boolean columns (see test_missing.py)
 
+   one option would be to use a boolean mask (and possibly masked arrays in
+   numpy) internally/for computations, but use special values in the output
+   (because that's much more readable)
+
    if using floats / NaN:
    ======================
 
@@ -210,16 +256,18 @@
    a | b -> (a + b) > 0 # Wrong: > 0 loose the NaNs and NaN > 0 is False, not NaN
          -> where(a1 + a2 == 2, 1, a1 + a2)
    ~a    -> 1 - a
-   where(a, b, c) -> a * b + (1 - a) * c -> Wrong: that leaks NaNs in "unused branches"
-                  -> where(a == NaN, NaN, where(a == 1.0, b, c)) -> Wrong: can't compare to Nan
-                  -> where(isnan(a), NaN, where(a == 1.0, b, c))
-                  -> where(a != a, a, where(a == 1.0, b, c))
-                  or
-                  -> where(a == 1.0, b, where(a == 0.0, c, a))
-                  or
-                  -> add an new opcode nanwhere_dddd in numexpr
-                     np.where(a != a, float('nan'), np.where(a, b, c))
-                     a != a ? a : (a == 1.0 ? b : c)
+   where(a, b, c)
+   -> a * b + (1 - a) * c          # Wrong: that leaks NaNs in "unused branch"
+   -> where(a == NaN,
+            NaN,
+            where(a == 1.0, b, c)) # Wrong: can't compare to Nan
+   -> where(isnan(a), NaN, where(a == 1.0, b, c))
+   -> where(a != a, a, where(a == 1.0, b, c))
+   or
+   -> where(a == 1.0, b, where(a == 0.0, c, a))
+   or
+   -> add an new opcode nanwhere_dddd in numexpr:
+      nanwhere(a, b, c) => a != a ? a : (a == 1.0 ? b : c)
 
    if using int / -1:
    ==================
@@ -258,7 +306,7 @@
  ? use stata regressions directly
    * would introduce some kind of dependency on Stata which is not a good thing
      IMO -> convert them first?
- - data_main: import all columns, except a few
+ ? data_main: import all columns, except a few
  ? make specifying output field types optional (I can compute them):
    listing the fields is technically enough, though having the type make things
    easier and we can have some type checks
@@ -333,6 +381,7 @@
    >> we can do that
  - better error message if unknown entity in simulation.processes (KeyError)
    >> almost done for "init"
+ - better error message on invalid (unknown) process name in agespine
  - better error message when an extra comma is used (see test.test_extra_comma)
  - better error message when a temporary variable is used before it is computed
    (the error is not caught by the parser since the variable exists)
@@ -403,6 +452,8 @@
 
  optimisation
  ------------
+ - use pandas: we could kill half of my code and it would bring many features
+   I wanted to develop for free (this is a major refactoring though)
 
  - try Numba
 
