@@ -133,9 +133,17 @@ class PrintVersionsAction(argparse.Action):
         import carray
         import tables
 
+        try:
+            from groupby import filter_to_indices, group_indices_nd
+            cext = True
+        except ImportError:
+            cext = False
+        print "C extensions are" + (" NOT" if not cext else "") + " available"
+
         py_version = '{} ({})'.format(platform.python_version(),
                                       platform.architecture()[0])
-        print '''python {py}
+        print '''
+python {py}
 numpy {np}
 numexpr {ne}
 pytables {pt}
@@ -199,16 +207,7 @@ if __name__ == '__main__':
     sys.stdout = AutoflushFile(sys.stdout)
     sys.stderr = AutoflushFile(sys.stderr)
 
-    try:
-        from groupby import filter_to_indices, group_indices_nd
-        cext = True
-    except ImportError:
-        cext = False
-
-
-    cextstr = ("not " if not cext else "") + "using C extensions"
-    print "LIAM2 %s (%s %s)" % (__version__, platform.architecture()[0],
-                                cextstr)
+    print "LIAM2 %s (%s)" % (__version__, platform.architecture()[0])
     print
 
     eat_traceback(main)
