@@ -9,6 +9,7 @@ from expr import Variable, SubscriptableVariable, \
                  expr_eval, get_missing_value
 from exprparser import parse
 from context import EntityContext, context_length
+from process import Assignment, Compute, Process, ProcessGroup
 
 str_to_type = {'float': float, 'int': int, 'bool': bool}
 
@@ -179,7 +180,6 @@ class Entity(object):
         return cond_context
 
     def parse_processes(self, globals):
-        from properties import Assignment, Compute, Process, ProcessGroup
         from links import PrefixingLink
         variables = dict((name, SubscriptableVariable(name, type_))
                          for name, type_ in globals)

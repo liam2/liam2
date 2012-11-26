@@ -6,7 +6,7 @@ from expr import expr_eval, Variable
 from exprparser import parse
 from context import EntityContext
 from registry import entity_registry
-from properties import Process
+from process import Process
 
 entity_required = \
     "current entity is not set. It is required to set one using " \

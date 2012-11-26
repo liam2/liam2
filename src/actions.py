@@ -5,7 +5,8 @@ import numpy as np
 
 import config
 from expr import Expr, expr_eval
-from properties import Process, BreakpointException, TableExpression
+from properties import TableExpression
+from process import Process, BreakpointException
 
 
 class Show(Process):
