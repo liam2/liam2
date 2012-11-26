@@ -166,6 +166,7 @@ class CSV(object):
     def field_names(self):
         if self._field_names is None:
             #TODO: use self._fields instead if it was already computed
+            # read the first line in the file
             self.rewind()
             fnames = self.next()
             if self.newnames is not None:
