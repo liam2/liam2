@@ -3,6 +3,36 @@
 Change log
 ##########
 
+Version 0.5.1
+=============
+
+Released on 2012-11-26.
+
+Miscellaneous improvements:
+---------------------------
+
+* if there is only one entity defined in a model (like in demo01.yml) and the
+  interactive console is launched, start directly in that entity, instead of
+  requiring the user to set it manually.  
+
+* improved introduction comments in demo models.
+
+* display whether C extensions are used or not in --versions.
+
+* use default_entity from demo03 onward.
+
+* do not display python version in normal execution but only in --versions.
+
+Fixes:
+------
+
+* fixed integer fields on 64 bit platforms other than Windows.
+
+* fixed demo06: WEMRA is an int now.
+
+* fixed demo01 introduction comment (bad file name).
+
+
 Version 0.5.0
 =============
 
