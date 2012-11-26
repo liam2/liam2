@@ -366,10 +366,6 @@
    * linked to none = -1
    * missing value = -2
    the problem is that in liam1, there wasn't such a difference
- - data_main:
-   * remove the need for objtype_...
-   * macro.av: YEAR is not always the 1st row
-   * link names
  - round(X) should return int
  - warning for unused fields
  ? either allow setting temporary variables in new() (though I'm not sure it's a
@@ -427,7 +423,6 @@
    is a bit tedious to need to repeat the filter
    same comment for divorce
  ? move away from yaml for the user...
- - filter in all aggregates, not only in grpavg, grpsum & grpgini
  - add a concept of "per individual" constant (ie not saved each period)
    (eg errsal)
  - expand variable definition: min, max values, default value, enum, ...
@@ -449,6 +444,10 @@
                                 of the variable started
 
  - test/integrate sumatra to launch simulations
+
+ - add "limit" argument to dump()
+
+ - prevent writing too many rows through show(dump())
 
  optimisation
  ------------
@@ -538,8 +537,7 @@
  ? do not repartition data for each alignment and each period, but keep the
    groups from period to period and update them when the linked variable
    changes.
- ? translate partition_nd to C/cython
- ? translate other performance-critical code to C
+ ? translate more performance-critical code to C/Cython
  ? try alternate algorithm for RemoveIndividuals: simply reindex, like I do it
    elsewhere. It might cause a problem if the last ids (newly borns) die.
    it seems to be a tad slower in fact. However, it might be a better starting
@@ -586,9 +584,7 @@
  ? use __filter__ in dump_csv
    in fact the real need is to be able to disable logging easily
    all logging or some of it?
- ? explicit file pattern for "csv" function
- ? add "limit" argument to dump()
- ? prevent writing too many rows through show(dump())
+
  ? somehow "merge" grpxxx and xxxlink functions (at least for the user, not
    necessarily technically):
    grpcount()            -> count()
