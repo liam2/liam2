@@ -964,51 +964,69 @@ result on the next line.
 csv
 ---
 
-The **csv** function writes values to a csv-file.
+The **csv** function writes values to (a) csv-file(s).
 
     csv(expr1[, expr2, expr3, ...,
-        suffix='file_suffix', fname='filename', mode='w'])
+        [suffix='file_suffix'][, fname='filename'][, mode='w'])
 
-The suffix, fname and mode are optional arguments.
-
-  - 'fname' allows defining the exact file names used. You can optionally use
-    {entity} and {period} to customize the name.
-  - 'suffix' allows to set the name of csv file more easily. If suffix is used,
-    the filename will be: "{entity}_{period}_{suffix}.csv"
-
-The default file name (if neither 'fname' nor 'suffix' is used) is  
-"{entity}_{period}.csv".
+'suffix', 'fname' and 'mode' are optional arguments. By default (if neither
+'fname' nor 'suffix' is used), the name of the csv file is generated using the
+following pattern: "{entity}_{period}.csv".
 
 *example* ::
 
-    csv(grpavg(income), suffix='income')
+    csv(grpavg(income))
 
 will create one file for each simulated period. Assuming, start_period is
-2002 and periods is 2, it will create two files: "person_2002_income.csv" and
-"person_2003_income.csv" with the average income of the population for period
+2002 and periods is 2, it will create two files: "person_2002.csv" and
+"person_2003.csv" with the average income of the population for period
 2002 and 2003 respectively.
 
-   - 'mode' allows appending (mode='a') to a csv file instead of overwriting it
-     (mode='w' by default). This allows you, for example, to store the value of
-     some expression for all periods in the same file (instead of one file per
-     period by default).
+Arguments:
 
-*example* ::
+  - 'suffix' allows to customize the name of the files easily.
+    When it is used, the files are named using the following pattern:
+    "{entity}_{period}_{suffix}.csv".
 
-    csv(period, grpavg(income), fname='avg_income.csv', mode='a')
+    *example* ::
 
-Note that unless you erase/overwrite the file one way or another between two
-runs of a simulation, you will append the data of the current simulation to
-that of the previous one. One way to do that automatically is to have a
-procedure in the init section without mode='a' to overwrite the file.
+        csv(grpavg(income), suffix='income')
 
-If you want that file to start empty, you can do so this way: ::
+    would create "person_2002_income.csv" and "person_2003_income.csv".
+
+  - 'fname' allows defining the exact file name or pattern to use.
+    You can optionally use the '{entity}' and '{period}' key words to customize
+    the name.
+
+    *example* ::
+
+        csv(grpavg(income), fname='income{period}.csv')
     
-    csv(fname='avg_income.csv')
+    would create "income2002.csv" and "income2003.csv".
 
-If you want some headers in your file, you could write them at that point: ::
+  - 'mode' allows appending (mode='a') to a csv file instead of overwriting it
+    (mode='w' by default). This allows you, for example, to store the value of
+    some expression for all periods in the same file (instead of one file per
+    period by default).
+
+    *example* ::
+
+        csv(period, grpavg(income), fname='avg_income.csv', mode='a')
+
+    Note that unless you erase/overwrite the file one way or another between
+    two runs of a simulation, you will append the data of the current
+    simulation to that of the previous one. One way to do overwrite the file
+    automatically at the start of a simulation is to have a procedure in the
+    init section without mode='a'.
     
-    csv('period', 'average income', fname='avg_income.csv')
+    If you want that file to start empty, you can do so this way: ::
+
+        csv(fname='avg_income.csv')
+
+    If you want some headers in your file, you could write them at that
+    point: ::
+
+        csv('period', 'average income', fname='avg_income.csv')
 
 When you use the csv() function in combination with (at least one) table
 expressions (see dump and groupby functions below), the results are appended
