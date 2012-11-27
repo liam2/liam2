@@ -23,6 +23,9 @@ Miscellaneous improvements:
 
 * do not display python version in normal execution but only in --versions.
 
+* use cx_freeze instead of py2exe to build executables for Windows so that
+  we can use the same script to build executables across platforms
+
 Fixes:
 ------
 
