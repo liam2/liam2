@@ -18,20 +18,30 @@ class my_build_ext(cython_build_ext):
         sys.path.insert(0, self.build_lib)
 
 # cx_freeze options
-excludes = ["Tkconstants", "Tkinter", "Cython", "_ssl",
-            "base64", "bz2", "calendar", "compiler", "ctypes",
-            "distutils", "doctest", "dummy_thread",
-            "dummy_threading", "email", "ftplib", "io",
-            "logging", "multiprocessing", "nose",
-            "numpy.distutils", "numpy.core._dotblas",
-            "os2emxpath", "pdb", "pkg_resources",
-            "posixpath", "pydoc", "pydoc_topics", "repr", "scipy",
-            "select", "stringprep", "strptime",
-            "tcl", "unicodedata", "xml"]
-build_exe_options = {"compressed": True,
-                     "optimize": 2,
-                     "replace_paths": [("*", "")],
-                     "excludes": excludes}
+build_exe_options = {
+    # compress zip archive
+    "compressed": True, 
+    # optimze pyc files (strip docstrings and asserts)
+    "optimize": 2,      
+    # strip paths in __file__ attributes
+    "replace_paths": [("*", "")],
+    "excludes": [
+        # linux-specific modules
+        "_codecs", "_codecs_cn", "_codecs_hk", "_codecs_iso2022",
+        "_codecs_jp", "_codecs_kr", "_codecs_tw",
+        # common modules
+        "Tkconstants", "Tkinter", "Cython", "_ssl",
+        "base64", "bz2", "calendar", "compiler", "ctypes",
+        "distutils", "doctest", "dummy_thread",
+        "dummy_threading", "email", "ftplib", "io",
+        "logging", "multiprocessing", "nose",
+        "numpy.distutils", "numpy.core._dotblas",
+        "os2emxpath", "pdb", "pkg_resources",
+        "posixpath", "pydoc", "pydoc_topics", "repr", "scipy",
+        "select", "stringprep", "strptime",
+        "tcl", "unicodedata", "xml"
+    ]
+}
 
 setup(name="liam2",
       version="0.5.1",
