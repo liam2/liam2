@@ -551,6 +551,7 @@
  cleanup
  -------
 
+ - move expr to its own directory and split it. Move properties there too. 
  - constants handling is ugly
  - __entity__ vs .entity
  - change constructor arguments to Entity, so that
