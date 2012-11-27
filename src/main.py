@@ -114,8 +114,7 @@ def explore(fpath):
     else:
         simulation = Simulation.from_yaml(fpath)
         h5in, h5out, periodic_globals = simulation.load()
-        ent_name = simulation.default_entity
-        entity = entity_registry[ent_name] if ent_name is not None else None
+        entity = simulation.console_entity
         period = simulation.start_period + simulation.periods - 1
     try:
         c = Console(entity, period)

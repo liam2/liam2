@@ -312,19 +312,24 @@ class Simulation(object):
             show_top_processes(process_time, 10)
 
             if run_console:
-                if self.default_entity is not None:
-                    entity = entity_registry[self.default_entity]
-                elif len(entity_registry) == 1:
-                    entity = entity_registry.values()[0]
-                else:
-                    entity = None
-                c = console.Console(entity, periods[-1])
+                c = console.Console(self.console_entity, periods[-1])
                 c.run()
 
         finally:
             if h5in is not None:
                 h5in.close()
             h5out.close()
+
+    @property
+    def console_entity(self):
+        '''compute the entity the console should start in (if any)'''
+
+        if self.default_entity is not None:
+            return entity_registry[self.default_entity]
+        elif len(entity_registry) == 1:
+            return entity_registry.values()[0]
+        else:
+            return None
 
     def start_console(self, entity, period):
         if self.stepbystep:
