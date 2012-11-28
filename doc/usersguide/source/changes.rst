@@ -6,7 +6,7 @@ Change log
 Version 0.5.1
 =============
 
-Released on 2012-11-26.
+Released on 2012-11-28.
 
 Miscellaneous improvements:
 ---------------------------
@@ -30,6 +30,8 @@ Miscellaneous improvements:
 * compressed as many files as possible in the 32 bit Windows bundle with UPX
   to make the archive yet smaller (UPX does not support 64 bit executables
   yet).
+  
+* improved our build system to automate much of the release process.
 
 Fixes:
 ------
