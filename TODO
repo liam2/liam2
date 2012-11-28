@@ -2,6 +2,8 @@
  TODO
  --------------------------------------
 
+ - make a release script to automate releases as much as possible
+
  - when trying to "import" a simulation file or trying to "run" an import file,
    output an informative error
 
@@ -546,6 +548,11 @@
  GUI
  ---
 
+ - make liam2 useable within Ipython notebook
+   * if it doesn't exist yet, develop a web-based generic "table" viewer for
+     Ipython (using their archicture). This might need (or not) developing an
+     ipython extension
+   * on the server side, implement an hdf5 backend
  - try Kivy (kivy.org)
 
  cleanup
