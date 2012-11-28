@@ -19,15 +19,22 @@ Miscellaneous improvements:
 
 * display whether C extensions are used or not in --versions.
 
-* use default_entity from demo03 onward.
+* use default_entity in demos (from demo03 onward).
 
 * do not display python version in normal execution but only in --versions.
 
 * use cx_freeze instead of py2exe to build executables for Windows so that
-  we can use the same script to build executables across platforms
+  we can use the same script to build executables across platforms and tweaked
+  further our build script to minimise the executable size. 
+  
+* compressed as many files as possible in the 32 bit Windows bundle with UPX
+  to make the archive yet smaller (UPX does not support 64 bit executables
+  yet).
 
 Fixes:
 ------
+
+* fixed the "explore" command.
 
 * fixed integer fields on 64 bit platforms other than Windows.
 
