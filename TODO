@@ -50,9 +50,7 @@
    * kill children link, use it or at least add a comment about it
      (it is declared but not used in any example)
 
- - try cx_freeze on linux
-
- - implement all() and any()
+  - implement all() and any()
 
  - link trac to our svn repository (or move the repository on that machine)
 
