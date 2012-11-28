@@ -550,6 +550,7 @@ class H5Data(DataSource):
                     buildArrayForPeriod(table.table, entity.fields,
                                         entity.input_rows,
                                         entity.input_index, start_period)
+                entity.array_period = start_period
                 print "done (%s elapsed)." % time2str(time.time() - start_time)
                 entity.table = output_table
         except:
@@ -570,6 +571,7 @@ class Void(DataSource):
         for entity in entities.itervalues():
             dtype = np.dtype(entity.fields)
             entity.array = np.empty(0, dtype=dtype)
+            entity.array_period = start_period
             entity.id_to_rownum = np.empty(0, dtype=int)
             output_table = output_file.createTable(
                 output_entities, entity.name, dtype,

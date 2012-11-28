@@ -14,8 +14,8 @@ class EntityContext(object):
             return self.extra[key]
         except KeyError:
             period = self.extra['period']
-            current_period = self.entity.array['period'][0]
-            if self._iscurrentperiod:
+            array_period = self.entity.array_period
+            if period == array_period:
                 try:
                     return self.entity.temp_variables[key]
                 except KeyError:
@@ -23,7 +23,7 @@ class EntityContext(object):
                         return self.entity.array[key]
                     except ValueError:
                         raise KeyError(key)
-            elif period == current_period - 1 and \
+            elif array_period is not None and period == array_period - 1 and \
                  self.entity.array_lag is not None:
                 try:
                     return self.entity.array_lag[key]
@@ -48,23 +48,10 @@ class EntityContext(object):
                 return self.entity.table.read(start=startrow, stop=stoprow,
                                               field=key)
 
+    # is the current array period the same as the context period?
     @property
-    def _iscurrentperiod(self):
-        current_array = self.entity.array
-
-        if current_array is None:
-            return False
-
-        #FIXME: in the rare case where there is nothing in the current array
-        #       we cannot know whether the period in the context is the
-        #       "current" period or a past period. For now we assume it is
-        #       the current period because it is the most likely situation, but
-        #       it is not correct!
-        if not len(current_array):
-            return True
-
-        # if the current period array is the same as the context period
-        return current_array['period'][0] == self.extra['period']
+    def _is_array_period(self):
+        return self.entity.array_period == self.extra['period']
 
     def __setitem__(self, key, value):
         self.extra[key] = value
@@ -91,7 +78,7 @@ class EntityContext(object):
         return EntityContext(self.entity, self.extra.copy())
 
     def length(self):
-        if self._iscurrentperiod:
+        if self._is_array_period:
             return len(self.entity.array)
         else:
             period = self.extra['period']
@@ -108,7 +95,7 @@ class EntityContext(object):
     @property
     def id_to_rownum(self):
         period = self.extra['period']
-        if self._iscurrentperiod:
+        if self._is_array_period:
             return self.entity.id_to_rownum
         elif period in self.entity.output_index:
             return self.entity.output_index[period]

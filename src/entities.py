@@ -85,6 +85,9 @@ class Entity(object):
         self.output_index = {}
 
         self.base_period = None
+        # we need a separate field, instead of using array['period'] to be able
+        # to get the period even when the array is empty.
+        self.array_period = None
         self.array = None
 
         self.lag_fields = None

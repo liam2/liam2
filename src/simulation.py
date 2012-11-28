@@ -233,6 +233,7 @@ class Simulation(object):
                     timed(entity.load_period_data, period)
                     print "    -> %d individuals" % len(entity.array)
             for entity in entities:
+                entity.array_period = period
                 entity.array['period'] = period
 
             if processes:
