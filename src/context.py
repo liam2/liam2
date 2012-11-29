@@ -147,8 +147,10 @@ def context_delete(context, rownum):
     # this copies everything including __len__, period, nan, ...
     for key in context.keys():
         value = context[key]
-        if isinstance(value, np.ndarray) and value.shape:
-            value = np.delete(value, rownum)
+        # globals are left unmodified
+        if key != '__globals__':
+            if isinstance(value, np.ndarray) and value.shape:
+                value = np.delete(value, rownum)
         result[key] = value
     result['__len__'] -= 1
     return result
