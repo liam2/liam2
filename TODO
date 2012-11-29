@@ -2,7 +2,14 @@
  TODO
  --------------------------------------
 
- - make a release script to automate releases as much as possible
+ - expand release script to automate as much as possible:
+   * make Bundle files
+   * upload to server
+   
+ - change dtype method on expr to return (shape, dtype) or something like that
+   the immediate goal is to be able to distinguish between arrays and scalars
+   in advance in methods like Variable.__getitem__
+    
 
  - when trying to "import" a simulation file or trying to "run" an import file,
    output an informative error
@@ -551,6 +558,8 @@
      Ipython (using their archicture). This might need (or not) developing an
      ipython extension
    * on the server side, implement an hdf5 backend
+ - assess whether we can get inspiration (or even code) from spyke viewer:
+   http://neuralensemble.blogspot.be/2012/11/spyke-viewer-020-released.html
  - try Kivy (kivy.org)
 
  cleanup
