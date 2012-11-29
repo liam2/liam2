@@ -120,8 +120,13 @@ def collect_variables(expr, context):
 
 def expr_eval(expr, context):
     if isinstance(expr, Expr):
+        globals_table = context['__globals__']
+        if globals_table is not None:
+            globals_names = set(globals_table.dtype.names)
+        else:
+            globals_names = set()
         for var_name in expr.collect_variables(context):
-            if var_name not in context:
+            if var_name not in globals_names and var_name not in context:
                 raise Exception("variable '%s' is unknown (it is either not "
                                 "defined or not computed yet)" % var_name)
         return expr.evaluate(context)
@@ -510,31 +515,49 @@ class Variable(Expr):
         else:
             return self._dtype
 
+#    def __getitem__(self, key):
+#        #TODO: we should be able to know at "compile" time if this is a
+#        # scalar or a vector and disallow getitem in case of a scalar
+#        #TODO: maybe I should move this to Expr
+#        return SubscriptedVariable(self.name, self._dtype, key)
+
 
 class ShortLivedVariable(Variable):
     def collect_variables(self, context):
         return set()
 
 
-class SubscriptableVariable(Variable):
-    def __getitem__(self, key):
-        return SubscriptedVariable(self.name, self._dtype, key)
+#TODO: move this to Expr
+#class SubscriptedVariable(Variable):
+#    def __init__(self, name, dtype, key):
+#        Variable.__init__(self, name, dtype)
+#        self.key = key
+#
+#    def __str__(self):
+#        return '%s[%s]' % (self.name, self.key)
+#    __repr__ = __str__
+#
+#    #XXX: inherit from EvaluableExpression?
+#    def as_string(self, context):
+#        tmp_varname = get_tmp_varname()
+#        context[tmp_varname] = self.evaluate(context)
+#        return tmp_varname
+#
+#    def evaluate(self, context):
+#        key = expr_eval(self.key, context)
+#        #FIXME: Variable(self.name)?
+#        column = expr_eval(self.name, context)
+#        #XXX: return -1 for out_of_bounds like for globals?
+#        return column[key]
 
 
-class SubscriptedVariable(Variable):
-    def __init__(self, name, dtype, key):
-        Variable.__init__(self, name, dtype)
-        self.key = key
-
-    def __str__(self):
-        return '%s[%s]' % (self.name, self.key)
-    __repr__ = __str__
-
+class GlobalVariable(Variable):
     #XXX: inherit from EvaluableExpression?
     def as_string(self, context):
         result = self.evaluate(context)
-        if isinstance(self.key, int):
-            tmp_varname = '__%s_%s' % (self.name, self.key)
+        period = self._eval_period(context)
+        if isinstance(period, int):
+            tmp_varname = '__%s_%s' % (self.name, period)
             if tmp_varname in context:
                 assert context[tmp_varname] == result
             else:
@@ -544,21 +567,23 @@ class SubscriptedVariable(Variable):
             context[tmp_varname] = result
         return tmp_varname
 
+    def _eval_period(self, context):
+        return context['period']
+
     def evaluate(self, context):
-        period = expr_eval(self.key, context)
-        globals = context['__globals__']
+        period = self._eval_period(context)
+        globals_table = context['__globals__']
         try:
-            globals_periods = globals['PERIOD']
+            globals_periods = globals_table['PERIOD']
         except ValueError:
-            globals_periods = globals['period']
+            globals_periods = globals_table['period']
         period_idx = period - globals_periods[0]
 
-        if self.name not in globals.dtype.fields:
+        if self.name not in globals_table.dtype.fields:
             raise Exception("Unknown global: %s" % self.name)
-        column = globals[self.name]
+        column = globals_table[self.name]
         num_periods = len(globals_periods)
         missing_value = get_missing_value(column)
-
         if isinstance(period_idx, np.ndarray):
             out_of_bounds = (period_idx < 0) | (period_idx >= num_periods)
             period_idx[out_of_bounds] = -1
@@ -566,6 +591,24 @@ class SubscriptedVariable(Variable):
         else:
             out_of_bounds = (period_idx < 0) or (period_idx >= num_periods)
             return column[period_idx] if not out_of_bounds else missing_value
+
+    def __getitem__(self, key):
+        return SubscriptedGlobal(self.name, self._dtype, key)
+
+
+class SubscriptedGlobal(GlobalVariable):
+    def __init__(self, name, dtype, key):
+        Variable.__init__(self, name, dtype)
+        self.key = key
+
+    def __str__(self):
+        return '%s[%s]' % (self.name, self.key)
+    __repr__ = __str__
+
+    def _eval_period(self, context):
+        return expr_eval(self.key, context)
+
+
 
 
 class Where(Expr):

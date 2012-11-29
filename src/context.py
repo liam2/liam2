@@ -2,8 +2,10 @@ import numpy as np
 
 
 class EntityContext(object):
-    def __init__(self, entity, extra):
+    def __init__(self, entity, extra=None):
         self.entity = entity
+        if extra is None:
+            extra = {}
         self.extra = extra
         self['__entity__'] = entity
 #        self['__weight_col__'] = entity.weight_col
@@ -63,9 +65,11 @@ class EntityContext(object):
         except KeyError:
             return False
 
-    def keys(self):
+    def keys(self, extra=True):
         res = list(self.entity.array.dtype.names)
         res.extend(sorted(self.entity.temp_variables.keys()))
+        if extra:
+            res.extend(sorted(self.extra.keys()))
         return res
 
     def get(self, key, elsevalue=None):
@@ -128,6 +132,7 @@ def context_subset(context, index, keys=None):
     result = {'period': context['period'],
               '__len__': length,
               '__entity__': context['__entity__'],
+              '__globals__': context['__globals__'],
               'nan': float('nan')}
     for key in keys:
         value = context[key]

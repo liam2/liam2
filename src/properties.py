@@ -387,7 +387,7 @@ class Choice(EvaluableExpression):
                             "(tuple or list)")
 
         if any(isinstance(c, Expr) for c in choices):
-            self.choices = ('dynamic', choices)
+            self.choices = choices
         else:
             self.choices = np.array(choices)
 
@@ -396,7 +396,7 @@ class Choice(EvaluableExpression):
                 raise TypeError("if provided, choice weights should be a "
                                 "sequence (tuple or list)")
             if any(isinstance(w, Expr) for w in weights):
-                self.bins = ('dynamic', weights)
+                self.bins = weights
             else:
                 self.bins = self._weights_to_bins(weights)
         else:
@@ -428,17 +428,16 @@ class Choice(EvaluableExpression):
                 # all values have the same probability
                 choices_idx = np.random.randint(len(choices), size=num)
             else:
-                if len(bins) == 2 and bins[0] == 'dynamic':
-                    weights = [expr_eval(expr, context) for expr in bins[1]]
+                if any(isinstance(b, Expr) for b in bins):
+                    weights = [expr_eval(expr, context) for expr in bins]
                     bins = self._weights_to_bins(weights)
                 u = np.random.uniform(size=num)
                 choices_idx = np.digitize(u, bins) - 1
         else:
             choices_idx = []
 
-        if len(choices) == 2 and choices[0] == 'dynamic':
-            choices = np.array([expr_eval(expr, context)
-                                for expr in choices[1]])
+        if any(isinstance(c, Expr) for c in choices):
+            choices = np.array([expr_eval(expr, context) for expr in choices])
 
         return choices[choices_idx]
 
@@ -454,11 +453,16 @@ class Choice(EvaluableExpression):
         return set()
 
     def __str__(self):
-        if self.bins is None:
-            weights = ""
+        bins = self.bins
+        if bins is None:
+            weights_str = ""
         else:
-            weights = ", [%s]" % ', '.join(str(v) for v in np.diff(self.bins))
-        return "%s(%s%s)" % (self.func_name, list(self.choices), weights)
+            weights_str = ", %s" % (bins
+                                    if any(isinstance(b, Expr) for b in bins)
+                                    else '[%s]' % \
+                                             ', '.join(str(b)
+                                                       for b in np.diff(bins)))
+        return "%s(%s%s)" % (self.func_name, list(self.choices), weights_str)
 
 
 #------------------------------------
@@ -582,6 +586,9 @@ class GroupGini(FilteredExpression):
         # force float to avoid overflows with integer input expressions
         cumsum = np.cumsum(sorted_values, dtype=float)
         values_sum = cumsum[-1]
+        if values_sum == 0:
+            print "grpgini(%s, filter=%s): expression is all zeros (or nan) " \
+                  "for filter" % (self.expr, filter_expr)
         return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
 
     def dtype(self, context):
@@ -769,9 +776,10 @@ class CreateIndividual(EvaluableExpression):
         if target_entity is source_entity:
             target_context = context
         else:
-            target_context = EntityContext(target_entity,
-                                           {'period': context['period']})
-
+            target_context = \
+                EntityContext(target_entity,
+                              {'period': context['period'],
+                               '__globals__': context['__globals__']})
         ctx_filter = context.get('__filter__')
 
         if self.filter is not None and ctx_filter is not None:
@@ -869,7 +877,10 @@ class Dump(TableExpression):
         if self.expressions:
             expressions = list(self.expressions)
         else:
-            expressions = [Variable(name) for name in context.keys()]
+            # extra=False because we don't want globals nor "system" variables
+            # (nan, period, __xxx__)
+            expressions = [Variable(name)
+                           for name in context.keys(extra=False)]
 
         str_expressions = [str(e) for e in expressions]
         if 'id' not in str_expressions:
@@ -928,7 +939,7 @@ class Dump(TableExpression):
             variables = set.union(*[collect_variables(expr, context)
                                     for expr in self.expressions])
         else:
-            variables = set(context.keys())
+            variables = set(context.keys(extra=False))
         variables |= collect_variables(self.filter, context)
         return variables
 

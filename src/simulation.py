@@ -210,13 +210,6 @@ class Simulation(object):
 #        for entity in input_dataset:
 #            indexed_array = buildArrayForPeriod(entity)
 
-        if periodic_globals is not None:
-            try:
-                globals_periods = periodic_globals['PERIOD']
-            except ValueError:
-                globals_periods = periodic_globals['period']
-            globals_base_period = globals_periods[0]
-
         process_time = defaultdict(float)
         period_objects = {}
 
@@ -239,19 +232,8 @@ class Simulation(object):
             if processes:
                 # build context for this period:
                 const_dict = {'period': period,
-                              'nan': float('nan')}
-
-                # update "globals" with their value for this period
-                if periodic_globals is not None:
-                    globals_row = period - globals_base_period
-                    if globals_row < 0:
-                        #XXX: use missing values instead?
-                        raise Exception('Missing globals data for period %d'
-                                        % period)
-                    period_globals = periodic_globals[globals_row]
-                    const_dict.update((k, period_globals[k])
-                                      for k in period_globals.dtype.names)
-                    const_dict['__globals__'] = periodic_globals
+                              'nan': float('nan'),
+                              '__globals__': periodic_globals}
 
                 num_processes = len(processes)
                 for p_num, process in enumerate(processes, start=1):
@@ -267,7 +249,8 @@ class Simulation(object):
 
                     process_time[process.name] += elapsed
                     print "done (%s elapsed)." % time2str(elapsed)
-                    self.start_console(process.entity, period)
+                    self.start_console(process.entity, period,
+                                       periodic_globals)
 
             print "- storing period data"
             for entity in entities:
@@ -313,7 +296,8 @@ class Simulation(object):
             show_top_processes(process_time, 10)
 
             if run_console:
-                c = console.Console(self.console_entity, periods[-1])
+                c = console.Console(self.console_entity, periods[-1],
+                                    periodic_globals)
                 c.run()
 
         finally:
@@ -332,8 +316,8 @@ class Simulation(object):
         else:
             return None
 
-    def start_console(self, entity, period):
+    def start_console(self, entity, period, globals_table):
         if self.stepbystep:
-            c = console.Console(entity, period)
+            c = console.Console(entity, period, globals_table)
             res = c.run(debugger=True)
             self.stepbystep = res == "step"

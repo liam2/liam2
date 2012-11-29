@@ -5,7 +5,7 @@ import tables
 from utils import safe_put, count_occurences
 from data import mergeArrays, get_fields
 from registry import entity_registry
-from expr import Variable, SubscriptableVariable, \
+from expr import Variable, GlobalVariable, \
                  expr_eval, get_missing_value
 from exprparser import parse
 from context import EntityContext, context_length
@@ -182,10 +182,10 @@ class Entity(object):
                 cond_context[name] = target_entity.variables
         return cond_context
 
-    def parse_processes(self, globals):
+    def parse_processes(self, global_fields):
         from links import PrefixingLink
-        variables = dict((name, SubscriptableVariable(name, type_))
-                         for name, type_ in globals)
+        variables = dict((name, GlobalVariable(name, type_))
+                         for name, type_ in global_fields)
         variables.update(self.variables)
         cond_context = self.conditional_context
         macros = dict((k, parse(v, variables, cond_context))
@@ -265,7 +265,8 @@ class Entity(object):
             for expr in p.expressions():
                 for node in expr.allOf(Lag):
                     for v in node.allOf(Variable):
-                        lag_vars.add(v.name)
+                        if not isinstance(v, GlobalVariable):
+                            lag_vars.add(v.name)
                     for lv in node.allOf(LinkValue):
                         link = lv.get_link({'__entity__': self})
                         lag_vars.add(link._link_field)
@@ -347,7 +348,9 @@ class Entity(object):
         return result
 
     def value_for_period(self, expr, period, context, fill='auto'):
-        sub_context = EntityContext(self, {'period': period})
+        sub_context = EntityContext(self, 
+                                    {'period': period,
+                                     '__globals__': context['__globals__']})
         result = expr_eval(expr, sub_context)
         if isinstance(result, np.ndarray) and result.shape:
             ids = expr_eval(Variable('id'), sub_context)

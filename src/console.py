@@ -2,7 +2,9 @@ import sys
 
 import numpy as np
 
-from expr import expr_eval, Variable
+import config
+from data import get_fields
+from expr import expr_eval, Variable, GlobalVariable
 from exprparser import parse
 from context import EntityContext
 from registry import entity_registry
@@ -36,9 +38,10 @@ class InvalidPeriod(ValueError):
 
 
 class Console(object):
-    def __init__(self, entity=None, period=None):
+    def __init__(self, entity=None, period=None, globals_table=None):
         self.entity = entity
         self.period = period
+        self.globals_table = globals_table
 
     def list_entities(self):
         ent_names = [repr(k) for k in entity_registry.keys()]
@@ -80,7 +83,7 @@ class Console(object):
                                         % (self.entity.name, self.period))
 
     def _list_periods(self):
-        return EntityContext(self.entity, {}).list_periods()
+        return EntityContext(self.entity).list_periods()
 
     def list_periods(self):
         if self.entity is None:
@@ -117,15 +120,19 @@ class Console(object):
         if period is None:
             raise Exception(period_required)
 
-        variables = entity.variables
+        global_fields = get_fields(self.globals_table)
+        variables = dict((name, GlobalVariable(name, type_))
+                         for name, type_ in global_fields)
+        variables.update(entity.variables)
         # add all currently defined temp_variables because otherwise
         # local variables (defined within a procedure) wouldn't be available
         variables.update((name, Variable(name))
                          for name in entity.temp_variables.keys())
         cond_context = entity.conditional_context
         expr = parse(s, variables, cond_context)
-        #FIXME: add globals
-        ctx = EntityContext(entity, {'period': period, 'nan': np.nan})
+        ctx = EntityContext(entity, {'period': period,
+                                     'nan': np.nan,
+                                     '__globals__': self.globals_table})
         if isinstance(expr, Process):
             expr.run(ctx)
             print "done."
@@ -182,8 +189,9 @@ class Console(object):
                     if res is not None:
                         print res
             except Exception, e:
-#                import traceback
-#                traceback.print_exc()
+                if config.debug:
+                    import traceback
+                    traceback.print_exc()
                 msg = str(e)
                 lines = msg.splitlines()
                 if len(lines) > 1:

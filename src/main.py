@@ -4,11 +4,11 @@ import platform
 
 import yaml
 
+import config
 from simulation import Simulation
 from importer import csv2h5
 from console import Console
 from data import populate_registry
-from registry import entity_registry
 
 __version__ = "0.5.1"
 
@@ -117,7 +117,7 @@ def explore(fpath):
         entity = simulation.console_entity
         period = simulation.start_period + simulation.periods - 1
     try:
-        c = Console(entity, period)
+        c = Console(entity, period, periodic_globals)
         c.run()
     finally:
         h5in.close()
@@ -209,5 +209,7 @@ if __name__ == '__main__':
     print "LIAM2 %s (%s)" % (__version__, platform.architecture()[0])
     print
 
-    eat_traceback(main)
-#    main()
+    if config.debug:
+        main()
+    else:
+        eat_traceback(main)

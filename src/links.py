@@ -75,7 +75,9 @@ class LinkExpression(EvaluableExpression):
 
     def target_context(self, context):
         target_entity = self.target_entity(context)
-        return EntityContext(target_entity, {'period': context['period']})
+        return EntityContext(target_entity,
+                             {'period': context['period'],
+                             '__globals__': context['__globals__']})
 
     #XXX: I think this is not enough. Implement Visitor pattern instead?
     def traverse(self, context):

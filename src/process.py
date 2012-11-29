@@ -18,9 +18,9 @@ class Process(object):
         self.name = name
         self.entity = entity
 
-    def run_guarded(self, simulation, globals):
+    def run_guarded(self, simulation, const_dict):
         try:
-            context = EntityContext(self.entity, globals.copy())
+            context = EntityContext(self.entity, const_dict.copy())
             self.run(context)
         except BreakpointException:
             simulation.stepbystep = True
@@ -140,15 +140,16 @@ class ProcessGroup(Process):
         self.name = name
         self.subprocesses = subprocesses
 
-    def run_guarded(self, simulation, globals):
+    def run_guarded(self, simulation, const_dict):
         print
         for k, v in self.subprocesses:
             print "    *",
             if k is not None:
                 print k,
-            utils.timed(v.run_guarded, simulation, globals)
+            utils.timed(v.run_guarded, simulation, const_dict)
 #            print "done."
-            simulation.start_console(v.entity, globals['period'])
+            simulation.start_console(v.entity, const_dict['period'],
+                                     const_dict['__globals__'])
         # purge all local variables
         temp_vars = self.entity.temp_variables
         all_vars = self.entity.variables
