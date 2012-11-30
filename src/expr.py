@@ -4,6 +4,8 @@ import sys
 
 import numpy as np
 
+from context import context_length
+
 try:
     import numexpr
 #    numexpr.set_num_threads(1)
@@ -267,7 +269,6 @@ class Expr(object):
         return Not('~', self)
 
     def evaluate(self, context):
-#        print "evaluate", self
 #        FIXME: this cannot work, because dict.__contains__(k) calls k.__eq__
 #        which has a non standard meaning
 #        if self in expr_cache:
@@ -286,6 +287,109 @@ class Expr(object):
             raise add_context(e, s)
         except Exception, e:
             raise
+
+    def as_string(self):
+        raise NotImplementedError()
+
+    def __getitem__(self, key):
+        #TODO: we should be able to know at "compile" time if this is a
+        # scalar or a vector and disallow getitem in case of a scalar
+        return SubscriptedExpr(self, key)
+
+    def __getattr__(self, key):
+        return ExprAttribute(self, key)
+
+
+class EvaluableExpression(Expr):
+    def evaluate(self, context):
+        raise NotImplementedError
+
+    def as_string(self, context):
+        tmp_varname = get_tmp_varname()
+        result = expr_eval(self, context)
+        if isinstance(result, dict):
+            indices = result['indices']
+            values = result['values']
+        else:
+            indices = None
+
+        if indices is not None:
+            if isinstance(values, np.ndarray):
+                res_type = values.dtype.type
+            else:
+                res_type = type(values)
+            result = np.zeros(context_length(context), dtype=res_type)
+            np.put(result, indices, values)
+        context[tmp_varname] = result
+        return tmp_varname
+
+
+class SubscriptedExpr(EvaluableExpression):
+    def __init__(self, expr, key):
+        self.expr = expr
+        self.key = key
+
+    def __str__(self):
+        return '%s[%s]' % (self.expr, self.key)
+    __repr__ = __str__
+
+    def evaluate(self, context):
+        expr = expr_eval(self.expr, context)
+        key = expr_eval(self.key, context)
+        #XXX: return -1 for out_of_bounds like for globals?
+        return expr[key]
+
+    def collect_variables(self, context):
+        exprvars = collect_variables(self.expr, context)
+        return exprvars | collect_variables(self.key, context)
+
+
+class ExprAttribute(EvaluableExpression):
+    def __init__(self, expr, key):
+        self.expr = expr
+        self.key = key
+
+    def __str__(self):
+        return '%s.%s' % (self.expr, self.key)
+    __repr__ = __str__
+
+    def evaluate(self, context):
+        return getattr(expr_eval(self.expr, context),
+                       expr_eval(self.key, context))
+
+    def __call__(self, *args, **kwargs):
+        return ExprCall(self, args, kwargs)
+
+    def collect_variables(self, context):
+        exprvars = collect_variables(self.expr, context)
+        return exprvars | collect_variables(self.key, context)
+
+
+#XXX: factorize with NumpyProperty?
+class ExprCall(EvaluableExpression):
+    def __init__(self, expr, args, kwargs):
+        self.expr = expr
+        self.args = args
+        self.kwargs = kwargs
+
+    def evaluate(self, context):
+        expr = expr_eval(self.expr, context)
+        args = [expr_eval(arg, context) for arg in self.args]
+        kwargs = dict((k, expr_eval(v, context))
+                      for k, v in self.kwargs.iteritems())
+        return expr(*args, **kwargs)
+
+    def __str__(self):
+        args = [repr(a) for a in self.args]
+        kwargs = ['%s=%r' % (k, v) for k, v in self.kwargs.iteritems()]
+        return '%s(%s)' % (self.expr, ', '.join(args + kwargs))
+    __repr__ = __str__
+
+    def collect_variables(self, context):
+        args_vars = [collect_variables(arg, context) for arg in self.args]
+        args_vars.extend(collect_variables(v, context)
+                         for v in self.kwargs.itervalues())
+        return set.union(*args_vars) if args_vars else set()
 
 
 #class IsPresent(Expr):
@@ -515,40 +619,10 @@ class Variable(Expr):
         else:
             return self._dtype
 
-#    def __getitem__(self, key):
-#        #TODO: we should be able to know at "compile" time if this is a
-#        # scalar or a vector and disallow getitem in case of a scalar
-#        #TODO: maybe I should move this to Expr
-#        return SubscriptedVariable(self.name, self._dtype, key)
-
 
 class ShortLivedVariable(Variable):
     def collect_variables(self, context):
         return set()
-
-
-#TODO: move this to Expr
-#class SubscriptedVariable(Variable):
-#    def __init__(self, name, dtype, key):
-#        Variable.__init__(self, name, dtype)
-#        self.key = key
-#
-#    def __str__(self):
-#        return '%s[%s]' % (self.name, self.key)
-#    __repr__ = __str__
-#
-#    #XXX: inherit from EvaluableExpression?
-#    def as_string(self, context):
-#        tmp_varname = get_tmp_varname()
-#        context[tmp_varname] = self.evaluate(context)
-#        return tmp_varname
-#
-#    def evaluate(self, context):
-#        key = expr_eval(self.key, context)
-#        #FIXME: Variable(self.name)?
-#        column = expr_eval(self.name, context)
-#        #XXX: return -1 for out_of_bounds like for globals?
-#        return column[key]
 
 
 class GlobalVariable(Variable):
@@ -607,8 +681,6 @@ class SubscriptedGlobal(GlobalVariable):
 
     def _eval_period(self, context):
         return expr_eval(self.key, context)
-
-
 
 
 class Where(Expr):

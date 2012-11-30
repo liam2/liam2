@@ -3,8 +3,8 @@ from itertools import izip, chain
 
 import numpy as np
 
-from expr import Expr, Variable, Where, as_string, dtype, \
-                 coerce_types, expr_eval, \
+from expr import Expr, EvaluableExpression, Variable, Where, as_string, \
+                 dtype, coerce_types, expr_eval, \
                  collect_variables, traverse_expr, get_tmp_varname, \
                  missing_values, get_missing_value, get_missing_record, \
                  get_missing_vector
@@ -21,30 +21,6 @@ def ispresent(values):
         return values != missing_values[int]
     elif np.issubdtype(dtype, bool):
         return values != missing_values[bool]
-
-
-class EvaluableExpression(Expr):
-    def evaluate(self, context):
-        raise NotImplementedError
-
-    def as_string(self, context):
-        tmp_varname = get_tmp_varname()
-        result = expr_eval(self, context)
-        if isinstance(result, dict):
-            indices = result['indices']
-            values = result['values']
-        else:
-            indices = None
-
-        if indices is not None:
-            if isinstance(values, np.ndarray):
-                res_type = values.dtype.type
-            else:
-                res_type = type(values)
-            result = np.zeros(context_length(context), dtype=res_type)
-            np.put(result, indices, values)
-        context[tmp_varname] = result
-        return tmp_varname
 
 
 class CompoundExpression(Expr):
