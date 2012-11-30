@@ -28,6 +28,7 @@ help_template = """
     periods:         list the available periods for the current entity
     period [period]: set the current period
     fields [entity]: list the fields of that entity (or the current entity)
+    globals:         list the available globals
 
     show is implicit on all commands
 """
@@ -46,17 +47,6 @@ class Console(object):
     def list_entities(self):
         ent_names = [repr(k) for k in entity_registry.keys()]
         print "available entities:", ', '.join(ent_names)
-
-    def list_fields(self, ent_name=None):
-        if ent_name is None:
-            entity = self.entity
-            if entity is None:
-                raise Exception(entity_required)
-        else:
-            entity = self.get_entity(ent_name)
-            if entity is None:
-                return
-        print "fields:", ', '.join(name for name, _ in entity.fields)
 
     def get_entity(self, name):
         try:
@@ -110,6 +100,20 @@ class Console(object):
             raise
         except ValueError:
             print "invalid period"
+
+    def list_fields(self, ent_name=None):
+        if ent_name is None:
+            entity = self.entity
+            if entity is None:
+                raise Exception(entity_required)
+        else:
+            entity = self.get_entity(ent_name)
+            if entity is None:
+                return
+        print "fields:", ', '.join(name for name, _ in entity.fields)
+
+    def list_globals(self):
+        print "globals:", ', '.join(self.globals_table.dtype.names)
 
     def execute(self, s):
         entity = self.entity
@@ -178,6 +182,8 @@ class Console(object):
                         self.list_fields(s[7:])
                     else:
                         self.list_fields()
+                elif s == "globals":
+                    self.list_globals()
                 elif debugger and s in ('s', 'step'):
                     return 'step'
                 elif debugger and s in ('r', 'resume'):
