@@ -133,7 +133,7 @@ class Console(object):
         variables.update((name, Variable(name))
                          for name in entity.temp_variables.keys())
         cond_context = entity.conditional_context
-        expr = parse(s, variables, cond_context)
+        expr = parse(s, variables, cond_context, interactive=True)
         ctx = EntityContext(entity, {'period': period,
                                      'nan': np.nan,
                                      '__globals__': self.globals_table})
