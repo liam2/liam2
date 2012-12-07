@@ -1,4 +1,5 @@
 import argparse
+import os
 from os.path import splitext
 import platform
 
@@ -27,17 +28,23 @@ def eat_traceback(func, *args, **kwargs):
 # e.context_mark | in "import.yml", line 18, column 9
 # e.problem      | expected <block end>, but found '<block sequence start>'
 # e.problem_mark | in "import.yml", line 29, column 12
+    used_error_path = None
     try:
         try:
             return func(*args, **kwargs)
         except Exception, e:
             try:
                 import traceback
-                #TODO: use config.output_directory. The problem is that it
-                # might not be available at this point and it's only valid
-                # for run and explore commands
-                with file('error.log', 'w') as f:
+                # output_directory might not be set at this point yet and it is
+                # only set for run and explore commands but when it is not set
+                # its default value of "." is used and thus we get the "old"
+                # behaviour: error.log in the working directory
+                out_dir = config.output_directory
+                error_path = os.path.join(out_dir, 'error.log')
+                error_path = os.path.abspath(error_path)
+                with file(error_path, 'w') as f:
                     traceback.print_exc(file=f)
+                error_log_path = error_path
             except IOError, log_ex:
                 print "WARNING: %s on '%s'" % (log_ex.strerror,
                                                log_ex.filename)
@@ -83,6 +90,10 @@ def eat_traceback(func, *args, **kwargs):
             print offset_str + '^'
     except Exception, e:
         print "\nERROR:", str(e)
+
+    if error_log_path is not None:
+        print
+        print "the technical error log can be found at", error_log_path
 
 
 def simulate(args):
