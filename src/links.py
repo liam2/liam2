@@ -277,8 +277,11 @@ class AvgLink(SumLink):
     def count(self, source_rows, target_filter, context):
         sums = super(AvgLink, self).count(source_rows, target_filter, context)
         count = np.bincount(source_rows)
+
         # silence x/0 and 0/0
-        np.seterr(invalid='ignore', divide='ignore')
+        #TODO: this should be either done globally or not at all, or as a last
+        # resort restored before returning from this function.
+#        np.seterr(invalid='ignore', divide='ignore')
 
         # this is slightly sub optimal if the value column contains integers
         # as the data is converted from float to int then back to float
