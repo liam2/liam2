@@ -135,6 +135,7 @@ class LinkValue(LinkExpression):
         if missing_value is None:
             missing_value = get_missing_value(target_values)
 
+        #XXX: use numexpr here?
         valid_link = (target_ids != missing_int) & (target_rows != missing_int)
         return np.where(valid_link, target_values[target_rows], missing_value)
 
@@ -181,7 +182,8 @@ class AggregateLink(LinkExpression):
         else:
             assert np.all(source_ids == missing_int)
             # we need to make a copy because eval_rows modifies the array
-            # in place
+            # in place in some cases (countlink and descendants)
+            #TODO: document this fact in eval_rows
             source_rows = source_ids.copy()
 
         return self.eval_rows(source_rows, target_filter, context)
