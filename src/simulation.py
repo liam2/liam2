@@ -13,19 +13,25 @@ from registry import entity_registry
 from utils import time2str, timed, gettime, validate_dict
 import console
 import config
+import expr
 
+def show_top_times(what, times):
+    count = len(times)
+    print "top %d %s:" % (count, what)
+    for name, timing in times:
+        print " - %s: %s" % (name, time2str(timing))
+    print "total for top %d %s:" % (count, what),
+    print time2str(sum(timing for name, timing in times))
 
-def show_top_processes(process_time, num_processes):
+def show_top_processes(process_time, count):
     process_times = sorted(process_time.iteritems(),
                            key=operator.itemgetter(1),
                            reverse=True)
-    print "top %d processes:" % num_processes
-    for name, p_time in process_times[:num_processes]:
-        print " - %s: %s" % (name, time2str(p_time))
-    print "total for top %d processes:" % num_processes,
-    print time2str(sum(p_time for name, p_time
-                       in process_times[:num_processes]))
+    show_top_times('processes', process_times[:count])
 
+def show_top_expr(count=None):
+    show_top_times('expressions', expr.timings.most_common(count))
+                       
 
 class Simulation(object):
     yaml_layout = {
@@ -294,6 +300,8 @@ class Simulation(object):
        total_objects / total_time)
 
             show_top_processes(process_time, 10)
+#            if config.debug:
+#                show_top_expr()
 
             if run_console:
                 c = console.Console(self.console_entity, periods[-1],
