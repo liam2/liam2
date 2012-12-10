@@ -6,6 +6,38 @@
 
  - move all these TODO to trac tickets
 
+ - merge code for loading ndarrays and tables (ie importer.load_ndarray and
+   importer.CSV(), they are both special cases of nd record arrays which I
+   would like to support at some point. For that I will need: 
+
+   - support loading nd arrays from csv files formatted like "tables" (one
+     column per field). The only difference is that the last dimension is
+     not "expanded" horizontally. 
+
+   - support nd array of "record" arrays (if using the "table" format, this is
+     only a matter of "folding" the non record "dimension"/columns (ie checking
+     that all combination of values are present -- because I don't want to
+     support sparse arrays yet, that they are correctly sorted -- else I should
+     sort them)
+     
+   - support loading "tables" with the last "dimension" expanded horizontally
+     this means the "data" in those expanded columns is not named explicitly
+     (at least with the current format)
+     see person_salary.csv. This implies that the last column is a "dimension"
+     (ie, all rows have values for all the possible values for that field -- 
+     it can be the "missing" value though)
+   
+ - change the format for ndarray/alignement files to be the same as groupby
+   output (or the opposite). See person_salary2.csv for an example:
+   
+   ,,,,,,,period,2001,2002,2003
+   co_alive,partner_id,hh_id,f_id,m_id,extra,gender,id,,,
+     
+   VS (current format):
+     
+   co_alive,partner_id,hh_id,f_id,m_id,extra,gender,id,period,,
+   ,,,,,,,,2001,2002,2003
+ 
  - somehow prevent running two simulations on the same output file at the same
    time. I have a report that it causes all sorts of strange problems but I
    could not reproduce it here (on my very small test case).
