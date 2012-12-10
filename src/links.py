@@ -321,6 +321,7 @@ class MinLink(AggregateLink):
         for rownum, values in groups:
             if rownum == -1:
                 continue
+            # Note that v[n] is faster than using an itemgetter, even with map
             result[rownum] = aggregate_func(v[1] for v in values)
         return result
 
