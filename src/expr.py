@@ -1,9 +1,11 @@
 from __future__ import division
 import re
 import sys
+from collections import Counter
 
 import numpy as np
 
+from utils import gettime
 from context import context_length
 
 try:
@@ -120,6 +122,8 @@ def collect_variables(expr, context):
         return set()
 
 
+timings = Counter()
+        
 def expr_eval(expr, context):
     if isinstance(expr, Expr):
         globals_table = context['__globals__']
@@ -131,7 +135,19 @@ def expr_eval(expr, context):
             if var_name not in globals_names and var_name not in context:
                 raise Exception("variable '%s' is unknown (it is either not "
                                 "defined or not computed yet)" % var_name)
+        
         return expr.evaluate(context)
+        # there are severeal flaws with this approach:
+        # 1) I don't get action times (csv et al)
+        # 2) these are cumulative times (they include child expr/processes)
+        #    we might want to store the timings in a tree (based on call stack
+        #    depth???) so that I could rebuild both cumulative and "real"
+        #    timings.
+        # 3) the sum of timings is wrong since children/nested expr times count
+        #    both for themselves and for all their parents
+#        time, res = gettime(expr.evaluate, context)
+#        timings[expr.__class__.__name__] += time
+#        return res
     else:
         return expr
 
@@ -584,6 +600,7 @@ class Variable(Expr):
     def __init__(self, name, dtype=None, value=None):
         self.name = name
         self._dtype = dtype
+        #XXX: is this still used?
         self.value = value
 
     def traverse(self, context):
