@@ -2,21 +2,45 @@
  TODO
  --------------------------------------
 
+ - cleanup/sort/update this TODO file
+
+ - move all these TODO to trac tickets
+
+ - somehow prevent running two simulations on the same output file at the same
+   time. I have a report that it causes all sorts of strange problems but I
+   could not reproduce it here (on my very small test case).
+ 
+ ? if we make fields listing optional in simulation, we could still check
+   whether needed fields are present or not (by analysing the simulation
+   code), but we couldn't check that the type of fields is "correct". We would
+   also need to postpone "compiling" to numexpr (which uses types) to after
+   the input data file is loaded (or at least known and analysed).
+   I like the idea, but it would be much work for a small benefit.
+ 
+ - allow to "import" globals during the simulation (effectively allowing to
+   bypass the import step for time series and other csv files)
+ 
+ - set config.debug through a command line argument or environment variable
+   so that I can have it True without changing config.py 
+ 
  - expand release script to automate as much as possible:
    * make Bundle files
    * upload to server
    
+ - build my own fromiter because np.fromiter is really a pain
+   * it fails with the dreaded "iteratator too short" on any exception
+     including when a row has too few columns  
+   
  - change dtype method on expr to return (shape, dtype) or something like that
    the immediate goal is to be able to distinguish between arrays and scalars
    in advance in methods like Variable.__getitem__
-    
-
+ 
  - when trying to "import" a simulation file or trying to "run" an import file,
    output an informative error
 
  - check versions of dependencies on startup, instead of letting it crash
    randomly in the middle of a simulation with an error message difficult
-   to understand (for example with numexpr 1.4.2)
+   to understand for users (for example with numexpr 1.4.2)
 
  - write a known issues documentation
    * ctx filter
@@ -24,25 +48,51 @@
    * globals in a lag
    * filter in regressions
 
- - cleanup/sort/update this TODO file
-
- - move all these TODO to trac tickets
-
  - when there is a divide by zero or 0/0, numpy outputs a RuntimeWarning
    which seems to confuse users (especially 0/0 which produces a cryptic
    warning: RuntimeWarning: invalid value encountered in double_scalars
    This can happen at least in a groupby() call with percent=True when the
    total is 0.0 (for example if expr = grpcount() and there is no individual
    matching the filter - see example in the test simulation)
-   The current situation is a MESS because of the code of avglink (what did
-   I think???) which disables the warning in the middle of the simulation and
-   does not restore the behavior afterwards, which means that if we have
-   an avglink before an error, we don't get any warning, but we do get some if
-   we don't use any avglink or it is after. This is crazy!
+
+   The situation in release 0.5.1 was even messier because of the code of
+   avglink which disabled the warning in the middle of the simulation and
+   did not restore the behaviour afterwards, which means that if we had
+   an avglink before an error, we did not get any warning, but we did get some
+   if we did not use any avglink or avglink was after the error.
 
    I think the ideal solution here would be to let the user configure what he
    wants (raise/warn/ignore) but show him the line number in his code, though
-   that will be hard to achieve.
+   that will be hard to achieve. Easier to achieve would be to print the expr
+   where it happened. It should be possible to do this by using np.seterrcall:
+   >>> old_handler = np.seterrcall(my_handler)
+   >>> old_err = np.seterr(all='call')
+   and inspect the caller frame at that point (using sys._getframe([depth])
+   
+   it would be cleaner to use np.seterr(all='raise') and catch the 
+   exception in Expr.evaluate, possibly simply using add_context. But that
+   would only work for the "raise" behaviour which is not what all users want,
+   since divide by 0 and 0/0 can be normal/expected result.
+    
+   for the "warn" or "message" case, I think the simplest option is to use
+   the caller frame hack. Another option would be to use seterr("raise") at
+   first but in the exception handler (at expr level), use seterr("ignore")
+   and re-evaluate the expression. Hmmm, that would only work once per class
+   of exception (invalid, overflow, ...), not once per exception localtion, 
+   as warnings do (and this is the behavior we would like).
+   
+   yet another option is to call np.seterrcall(my_handler) before any expression
+   is evaluated by numpy. This might be slow though. We would use something
+   like:
+   def make_err_handler(expr):
+       msg = str(expr)
+       def handler(a, b, c): # check what the signature need to be
+           raise/print/... msg
+       return handler
+   def evaluate(self):
+       myhandler = make_err_handler(self) 
+       np.seterrcall(myhandler)
+       [do real stuff here]
 
  - make an installer with shortcuts, etc...
    even though cx_freeze can produce basic installers and works fine to produce
@@ -57,7 +107,7 @@
    * kill children link, use it or at least add a comment about it
      (it is declared but not used in any example)
 
-  - implement all() and any()
+ - implement all() and any()
 
  - link trac to our svn repository (or move the repository on that machine)
 
@@ -458,8 +508,9 @@
 
  optimisation
  ------------
- - use pandas: we could kill half of my code and it would bring many features
-   I wanted to develop for free (this is a major refactoring though)
+ - use pandas: we could kill half of my code and it would bring for free many of
+   the features I want to develop (and more), but this would need such a major
+   refactoring that I am uneager to start it :)
 
  - try Numba
 
@@ -499,7 +550,10 @@
    cache expressions ourselves. Some long expressions take a lot longer to
    "compile" than to compute on small arrays. Eg minr & friends.
 
- - store row indices in hdf file
+ - store our indices in hdf file (id_to_rownum) so that we wouldn't have to
+   compute them for each simulation.
+   OR
+   use pytables built-in indexing engine (pytables 2.3 and later)
 
  - optimise memory allocation by building a dependency graph between variables
    and:
@@ -516,8 +570,10 @@
    -> this can only be done for variable which do not change between the place
       they are defined and the one they are used
    -> watch out for random functions !
+ 
  - optimise expressions by factoring out common sub expressions (which are used
    more than N times) in temporary variables
+
  ? make numexpr able to compute several expressions at the same time
    eg ne.evalutate(["a + (a * b)", "(a * b) * 5", {'a': [1, 2], 'b': [3, 4]})
    >> [3, 10], [15, 40]
@@ -538,12 +594,20 @@
    the mean like this: (sum_last_period + period_value) / num_periods
  - optimise duration by using duration for last period if present
  ? if links are accessed more often than they are modified, it could make sense
-   to store row indices in memory, instead of ids. It would make both
-   end-of-period data storage (would have to translate back to ids) and
-   lifecycle functions (new and remove) slower.
- ? do not repartition data for each alignment and each period, but keep the
+   to store row indices in memory (and possibly on disk?), instead of ids.
+   It would make both end-of-period data storage (would have to translate back
+   to ids) and lifecycle functions (new and remove) slower.
+ - do not repartition data for each alignment and each period, but keep the
    groups from period to period and update them when the linked variable
-   changes.
+   changes. Or, implement a weaker form of this: cache only within a
+   period, so that only the first alignment with a particular combination of
+   variables would do the partitioning. eg in MIDAS alignments currently
+   (10/12/2012) use only very few different columns:
+   * period: 10x
+   * age, period: 3x (birth, dead_f, dead_m)
+   * agegroup_civilstate, period: 2x (divorce, separate)
+   * agegroup_civilstate, civilstate: 2x (mmkt_f, mmkt_m)
+   * agegroup_work, period: ~22x !!! (all the others)
  ? translate more performance-critical code to C/Cython
  ? try alternate algorithm for RemoveIndividuals: simply reindex, like I do it
    elsewhere. It might cause a problem if the last ids (newly borns) die.
@@ -565,6 +629,7 @@
  cleanup
  -------
 
+ - use proper logging & warnings (use logging and warnings modules)
  - move expr to its own directory and split it. Move properties there too. 
  - constants handling is ugly
  - __entity__ vs .entity
@@ -585,7 +650,7 @@
      minr61_c: "if(minr61_d, minr61_c + 1, minr61_c)"
    we do not (necessarily) need to store the value for each year (unless we
    want to inspect it after-the fact)
-    => problème de la première periode
+    => probleme for the first period
  ? generalize the concept of SubscriptableVariable to "indexed table"
  ? installer
  ? m2o link in aggregate link
@@ -609,6 +674,7 @@
    grpsum(age)           -> sum(age)
    sumlink(persons, age) -> [sum(person.age for person in household.persons)
                              for each household]
+                             
  ? at the start of each period, wipe out the array (set all to missing)
    => need to use lag explicitly
  ? allow processes to be run only at specific periodicity: eg. some monthly,
@@ -624,7 +690,7 @@
  ? implicit "dead" field. Not sure it is really necessary, as some simulations
    might not involve the creation or death of individuals. And some people
    might want to name it differently: alive, ...
- ? implicit age
+ ? implicit age: I don't like the idea but Geert would like to have it.
  ? implement data generator using variable definitions + custom code where
    it is absolutely needed
  ? explicit "fill missing values" so that you can do operations between vectors
