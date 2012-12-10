@@ -106,7 +106,7 @@ def simulate(args):
                                       output_file=args.output_file)
     simulation.run(args.interactive)
 #    import cProfile as profile
-#    profile.runctx('simulation.run()', vars(), {},
+#    profile.runctx('simulation.run(args.interactive)', vars(), {},
 #                   'c:\\tmp\\simulation.profile')
     # to use profiling data:
     # import pstats
