@@ -1,0 +1,16 @@
+<NotepadPlus>
+    <InternalCommands>
+        <Shortcut id="49000" Ctrl="no" Alt="no" Shift="yes" Key="116" />
+        <Shortcut id="43045" Ctrl="yes" Alt="no" Shift="no" Key="118" />
+    </InternalCommands>
+    <Macros />
+    <UserDefinedCommands />
+    <PluginCommands>
+        <PluginCommand moduleName="NppExec.dll" internalID="20" Ctrl="no" Alt="no" Shift="no" Key="116" />
+        <PluginCommand moduleName="NppExec.dll" internalID="22" Ctrl="no" Alt="no" Shift="no" Key="117" />
+        <PluginCommand moduleName="NppExec.dll" internalID="12" Ctrl="yes" Alt="no" Shift="yes" Key="79" />
+        <PluginCommand moduleName="NppExec.dll" internalID="0" Ctrl="no" Alt="no" Shift="yes" Key="117" />
+        <PluginCommand moduleName="NppExec.dll" internalID="23" Ctrl="no" Alt="no" Shift="no" Key="118" />
+    </PluginCommands>
+    <ScintillaKeys />
+</NotepadPlus>
