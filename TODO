@@ -6,6 +6,26 @@
 
  - move all these TODO to trac tickets
 
+ - kill "kind" keyword in simulation validation def
+
+ - kill "kind" keyword in import (make type & fields keyword synonyms)
+ 
+ - reuse importer code (load_ndarray) in alignment
+ 
+ - kill output_file argument in copyTable
+ 
+ - add *automated* tests for:
+   other global table
+   periodic namespace for globals
+   ndarray (MIG is not commited)
+   
+ - automate tests for MIG, calledExpr, subscriptedExpr and exprAttr
+   
+ 
+ 
+ 
+ - add command to console to list macros
+
  - merge code for loading ndarrays and tables (ie importer.load_ndarray and
    importer.CSV(), they are both special cases of nd record arrays which I
    would like to support at some point. For that I will need: 

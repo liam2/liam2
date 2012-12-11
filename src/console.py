@@ -39,10 +39,12 @@ class InvalidPeriod(ValueError):
 
 
 class Console(object):
-    def __init__(self, entity=None, period=None, globals_table=None):
+    def __init__(self, entity=None, period=None,
+                 globals_def=None, globals_data=None):
         self.entity = entity
         self.period = period
-        self.globals_table = globals_table
+        self.globals_def = globals_def
+        self.globals_data = globals_data
 
     def list_entities(self):
         ent_names = [repr(k) for k in entity_registry.keys()]
@@ -113,7 +115,13 @@ class Console(object):
         print "fields:", ', '.join(name for name, _ in entity.fields)
 
     def list_globals(self):
-        print "globals:", ', '.join(self.globals_table.dtype.names)
+        print "globals:"
+        for k, v in self.globals_data.iteritems():
+            if v.dtype.names:
+                details = ": " + ", ".join(v.dtype.names)
+            else:
+                details = ""
+            print "* %s%s" % (k, details)
 
     def execute(self, s):
         entity = self.entity
@@ -124,19 +132,16 @@ class Console(object):
         if period is None:
             raise Exception(period_required)
 
-        global_fields = get_fields(self.globals_table)
-        variables = dict((name, GlobalVariable(name, type_))
-                         for name, type_ in global_fields)
-        variables.update(entity.variables)
+        cond_context = entity.conditional_context
+        variables = entity.all_variables(self.globals_def)
         # add all currently defined temp_variables because otherwise
         # local variables (defined within a procedure) wouldn't be available
         variables.update((name, Variable(name))
                          for name in entity.temp_variables.keys())
-        cond_context = entity.conditional_context
         expr = parse(s, variables, cond_context, interactive=True)
         ctx = EntityContext(entity, {'period': period,
                                      'nan': np.nan,
-                                     '__globals__': self.globals_table})
+                                     '__globals__': self.globals_data})
         if isinstance(expr, Process):
             expr.run(ctx)
             print "done."

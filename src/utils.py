@@ -4,7 +4,7 @@ import operator
 import itertools
 from itertools import izip
 from textwrap import wrap
-from collections import defaultdict
+from collections import defaultdict, deque
 
 import numpy as np
 
@@ -202,7 +202,9 @@ class PrettyTable(object):
 
 # copied from itertools recipes
 def unique(iterable):
-    "List unique elements, preserving order. Remember all elements ever seen."
+    """
+    List all elements once, preserving order. Remember all elements ever seen.
+    """
     # unique('AAAABBBCCDAABBB') --> A B C D
     seen = set()
     seen_add = seen.add
@@ -217,7 +219,7 @@ def duplicates(iterable):
     List duplicated elements once, preserving order. Remember all elements ever
     seen.
     """
-    # duplicates('AAAABBBCCDAABBB') --> A B C D
+    # duplicates('AAAABBBCCDAABBB') --> A B C
     counts = defaultdict(int)
     for element in iterable:
         counts[element] += 1
@@ -226,6 +228,11 @@ def duplicates(iterable):
 
 
 def unique_duplicate(iterable):
+    """
+    List all elements once and duplicated elements, preserving order.
+    Remember all elements ever seen.
+    """
+    # unique_duplicate('AAAABBBCCDAABBB') --> [A, B, C, D], [A, B, C]
     counts = {}
     uniques = []
     dupes = []
@@ -238,6 +245,30 @@ def unique_duplicate(iterable):
         elif count == 1:
             append_uniques(element)
     return uniques, dupes
+
+
+# adapted from pseudo code of itertools.tee
+def split_columns_as_iterators(iterable):
+    iterator = iter(iterable)
+    header = iterator.next()
+    numcolumns = len(header)
+    # deque (used as a FIFO queue) for each column (so that each iterator does
+    # not need to advance at the same speed. However in that case the memory
+    # consumption can be high.
+    deques = [deque() for _ in range(numcolumns)]
+
+    def gen(mydeque):
+        while True:
+            if not mydeque:                # when the local queue is empty
+                row = next(iterator)       # fetch a new row and
+                if len(row) != numcolumns:
+                    raise Exception("all rows do not have the same number of "
+                                    "columns")
+                # dispatch it to the other queues
+                for queue, value in zip(deques, row):
+                    queue.append(value)
+            yield mydeque.popleft()
+    return tuple(gen(d) for d in deques)
 
 
 def merge_dicts(*args, **kwargs):
@@ -308,18 +339,25 @@ def validate_list(l, target, context):
 
 def validate_dict(d, target, context=''):
     targets = target.keys()
-    required = [k[1:] for k in targets if k.startswith('#')]
-    optional = [k for k in targets if not k.startswith('#')]
-    anykey = required == [] and optional == ['*']
-    if not anykey:
-        validate_keys(d, required, optional, context)
+    required = set(k[1:] for k in targets if k.startswith('#'))
+    optional = set(k for k in targets if not k.startswith('#'))
+    anykey = '*' in optional
+    if anykey:
+        optional.remove('*')
+    # in case we have a * in there, we should only make sure that required keys
+    # are present, otherwise we have to also check if provided keys are valid
+    validate_keys(d, required, optional, context, extra_allowed=anykey)
     for k, v in d.iteritems():
-        if anykey:
-            section_def = target['*']
-        elif k in required:
+        if k in required:
             section_def = target['#' + k]
-        else:
+        elif k in optional:
             section_def = target[k]
+        elif anykey:
+            section_def = target['*']
+        else:
+            # this shouldn't happen unless target is an empty dictionary
+            assert not target
+            raise KeyError('empty section def at: %s' % context)
         if section_def is None or isinstance(section_def, type):
             target_type = section_def
         else:
@@ -339,3 +377,34 @@ def validate_value(v, target, context):
     elif isinstance(v, list):
         validate_list(v, target, context)
     # otherwise that type (int, str) is not validated further
+
+
+# fields handling
+# ---------------
+str_to_type = {'float': float, 'int': int, 'bool': bool}
+
+
+def field_str_to_type(str_type, context):
+    """
+    Converts a (field) string type to its Python type.
+    """
+    if str_type not in str_to_type:
+        raise SyntaxError("'%s' is not a valid type for %s." % context)
+    return str_to_type[str_type]
+
+
+def fields_str_to_type(str_fields_list):
+    """
+    Converts a field list (list of tuple) with string types to a list with
+    Python types.
+    """
+    return [(name, field_str_to_type(type_, "field '%s'" % name))
+            for name, type_ in str_fields_list]
+
+
+def fields_yaml_to_type(dict_fields_list):
+    '''
+    Transform a list of (one item) dict with str types to a list of tuple with
+    Python types
+    '''
+    return fields_str_to_type([d.items()[0] for d in dict_fields_list])

@@ -119,16 +119,19 @@ def explore(fpath):
     ftype = 'data' if ext in ('.h5', '.hdf5') else 'simulation'
     print "Using %s file: '%s'" % (ftype, fpath)
     if ftype == 'data':
-        h5in = populate_registry(fpath)
-        h5out = None
-        entity, period = None, None
+        raise NotImplementedError("exploring a data file is not implemented "
+                                  "yet")
+#        h5in = populate_registry(fpath)
+#        h5out = None
+#        entity, period = None, None
     else:
         simulation = Simulation.from_yaml(fpath)
-        h5in, h5out, periodic_globals = simulation.load()
+        h5in, h5out, globals_data = simulation.load()
         entity = simulation.console_entity
         period = simulation.start_period + simulation.periods - 1
+        globals_def = simulation.globals_def
     try:
-        c = Console(entity, period, periodic_globals)
+        c = Console(entity, period, globals_def, globals_data)
         c.run()
     finally:
         h5in.close()

@@ -10,6 +10,11 @@ globals:
             - MINR: float
             - WEMRA: int
 
+    MIG:
+        path: param\mig.csv
+        kind: ndarray
+        type: int
+
 entities:
     household:
         path: param\household.csv

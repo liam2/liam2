@@ -136,6 +136,70 @@ cdef extern from "khash.h":
     bint kh_exist_int32(kh_int32_t*, khiter_t)
 
 
+def fromiter_i32(iterable, dtype, Py_ssize_t count):
+    cdef ndarray[int32_t] buf
+    cdef Py_ssize_t i
+    cdef int32_t e
+
+    buf = np.empty(count, dtype=dtype)
+    i = 0
+    for e in iterable:
+        buf[i] = e
+        i += 1
+    return buf
+
+def fromiter_f32(iterable, dtype, Py_ssize_t count):
+    cdef ndarray[np.float32_t] buf
+    cdef Py_ssize_t i
+    cdef np.float32_t e
+
+    buf = np.empty(count, dtype=dtype)
+    i = 0
+    for e in iterable:
+        buf[i] = e
+        i += 1
+    return buf
+
+def fromiter_f64(iterable, dtype, Py_ssize_t count):
+    cdef ndarray[np.float64_t] buf
+    cdef Py_ssize_t i
+    cdef np.float64_t e
+
+    buf = np.empty(count, dtype=dtype)
+    i = 0
+    for e in iterable:
+        buf[i] = e
+        i += 1
+    return buf
+    
+def fromiter_generic(iterable, dtype, Py_ssize_t count):
+    cdef ndarray buf
+    cdef Py_ssize_t i
+    cdef object e
+
+    buf = np.empty(count, dtype=dtype)
+    i = 0
+    for e in iterable:
+        buf[i] = e
+        i += 1
+    return buf
+    
+def fromiter(iterable, dtype, Py_ssize_t count):
+    if isinstance(dtype, np.dtype):
+        value_type = dtype.type
+    else:
+        value_type = dtype
+
+    if value_type in (int, np.int32, np.intc):
+        return fromiter_i32(iterable, dtype, count)
+    elif value_type in (np.float32,):
+        return fromiter_f32(iterable, dtype, count)
+    elif value_type in (float, np.float64):
+        return fromiter_f64(iterable, dtype, count)
+    else:
+        return fromiter_generic(iterable, dtype, count)
+    
+
 @cython.wraparound(False)
 @cython.boundscheck(False)
 def filter_to_indices(ndarray[int8_t, cast=True] values):

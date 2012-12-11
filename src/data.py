@@ -18,35 +18,44 @@ def get_fields(array):
             for name in dtype.names]
 
 
-def assertValidFields(array, wanted_fields, allowed_missing=None):
-    # extract types from field description and normalise to python types
-    actual_fields = get_fields(array)
+def assertValidType(array, wanted_type, allowed_missing=None, context=None):
+    if isinstance(wanted_type, list):
+        wanted_fields = wanted_type
+        # extract types from field description and normalise to python types
+        actual_fields = get_fields(array)
 
-    # check that all required fields are present
-    wanted_names = set(name for name, _ in wanted_fields)
-    actual_names = set(name for name, _ in actual_fields)
-    allowed_missing = set(allowed_missing) if allowed_missing is not None \
-                                           else set()
-    missing = wanted_names - actual_names - allowed_missing
-    if missing:
-        raise Exception("Missing field(s) in hdf5 input file: %s"
-                        % ', '.join(missing))
+        # check that all required fields are present
+        wanted_names = set(name for name, _ in wanted_fields)
+        actual_names = set(name for name, _ in actual_fields)
+        allowed_missing = set(allowed_missing) if allowed_missing is not None \
+                                               else set()
+        missing = wanted_names - actual_names - allowed_missing
+        if missing:
+            raise Exception("Missing field(s) in hdf5 input file: %s"
+                            % ', '.join(missing))
 
-    # check that types match
-    common_fields1 = sorted((name, type_) for name, type_ in actual_fields
-                            if name in wanted_names)
-    common_fields2 = sorted((name, type_) for name, type_ in wanted_fields
-                            if name in actual_names)
-    bad_fields = []
-    for (name1, t1), (name2, t2) in zip(common_fields1, common_fields2):
-        assert name1 == name2, "%s != %s" % (name1, name2)
-        if t1 != t2:
-            bad_fields.append((name1, t2.__name__, t1.__name__))
-    if bad_fields:
-        bad_fields_str = "\n".join(" - %s: %s instead of %s" % f
-                                   for f in bad_fields)
-        raise Exception("Field types in hdf5 input file differ from those "
-                        "defined in the simulation:\n%s" % bad_fields_str)
+        # check that types match
+        common_fields1 = sorted((name, type_) for name, type_ in actual_fields
+                                if name in wanted_names)
+        common_fields2 = sorted((name, type_) for name, type_ in wanted_fields
+                                if name in actual_names)
+        bad_fields = []
+        for (name1, t1), (name2, t2) in zip(common_fields1, common_fields2):
+            assert name1 == name2, "%s != %s" % (name1, name2)
+            if t1 != t2:
+                bad_fields.append((name1, t2.__name__, t1.__name__))
+        if bad_fields:
+            bad_fields_str = "\n".join(" - %s: %s instead of %s" % f
+                                       for f in bad_fields)
+            raise Exception("Field types in hdf5 input file differ from those "
+                            "defined in the simulation:\n%s" % bad_fields_str)
+    else:
+        assert isinstance(wanted_type, type)
+        actual_type = normalize_type(array.dtype.type)
+        if actual_type != wanted_type:
+            raise Exception("Field type for '%s' in hdf5 input file is '%s' "
+                            "instead of '%s'" % (context, actual_type.__name__,
+                                                 wanted_type.__name__))
 
 
 def add_and_drop_fields(array, output_fields, output_array=None):
@@ -217,6 +226,7 @@ def appendTable(input_table, output_table, chunksize=10000, condition=None,
     return output_table
 
 
+#TODO: remove output_file argument, as it can be deduced
 def copyTable(input_table, output_file, output_node, output_fields=None,
               chunksize=10000, condition=None, stop=None, show_progress=False,
               **kwargs):
@@ -232,6 +242,13 @@ def copyTable(input_table, output_file, output_node, output_fields=None,
                                            output_dtype, **complete_kwargs)
     return appendTable(input_table, output_table, chunksize, condition,
                        stop=stop, show_progress=show_progress)
+
+
+def copyLeafNode(input_node, output_file, output_node, **kwargs):
+    if isinstance(input_node, tables.Table):
+        return copyTable(input_node, output_file, output_node, **kwargs)
+    else:
+        return input_node.copy(output_node)
 
 
 #XXX: should I make a generic n-way array merge out of this?
@@ -402,39 +419,50 @@ class DataSet(object):
     pass
 
 
-def index_tables(globals_fields, entities, fpath):
+def index_tables(globals_def, entities, fpath):
     print "reading data from %s ..." % fpath
 
     input_file = tables.openFile(fpath, mode="r")
     try:
-        periodic_globals = None
         input_root = input_file.root
 
-        if globals_fields:
-            if ('globals' not in input_root or 
-                'periodic' not in input_root.globals):
-                raise Exception('could not find globals in the input data '
+        #TODO: move the checking (assertValidType) to a separate function
+        globals_data = {}
+        if globals_def:
+            if 'globals' not in input_root:
+                raise Exception('could not find any globals in the input data '
                                 'file (but they are declared in the '
                                 'simulation file)')
-            globals_table = input_root.globals.periodic
-            # load globals in memory
-            #FIXME: make sure either period or PERIOD is present
-            assertValidFields(globals_table, globals_fields,
-                              allowed_missing=('period', 'PERIOD'))
-            periodic_globals = globals_table.read()
+            globals_node = input_root.globals
+            for name, global_type in globals_def.iteritems():
+                if name not in globals_node:
+                    raise Exception('could not find %s in the input data file '
+                                    'globals' % name)
+
+                global_data = getattr(globals_node, name)
+                # load globals in memory
+                if name == 'periodic':
+                    periodic_fields = set(global_data.dtype.names)
+                    if ('period' not in periodic_fields and
+                        'PERIOD' not in periodic_fields):
+                        raise Exception("Table 'periodic' in hdf5 input file "
+                                        "is missing a field named 'PERIOD'")
+                    allowed_missing = ('period', 'PERIOD')
+                else:
+                    allowed_missing = None
+                assertValidType(global_data, global_type, allowed_missing,
+                                name)
+                globals_data[name] = global_data.read()
 
         input_entities = input_root.entities
 
         entities_tables = {}
-        dataset = {'globals': periodic_globals,
-                   'entities': entities_tables}
-
         print " * indexing tables"
         for ent_name, entity in entities.iteritems():
             print "    -", ent_name, "...",
 
             table = getattr(input_entities, ent_name)
-            assertValidFields(table, entity.fields, entity.missing_fields)
+            assertValidType(table, entity.fields, entity.missing_fields)
 
             start_time = time.time()
             rows_per_period, id_to_rownum_per_period = index_table(table)
@@ -446,7 +474,7 @@ def index_tables(globals_fields, entities, fpath):
         input_file.close()
         raise
 
-    return input_file, dataset
+    return input_file, {'globals': globals_data, 'entities': entities_tables}
 
 
 class DataSource(object):
@@ -461,9 +489,8 @@ class H5Data(DataSource):
         self.input_path = input_path
         self.output_path = output_path
 
-    def load(self, globals_fields, entities):
-        h5file, dataset = index_tables(globals_fields, entities,
-                                       self.output_path)
+    def load(self, globals_def, entities):
+        h5file, dataset = index_tables(globals_def, entities, self.output_path)
         entities_tables = dataset['entities']
         for ent_name, entity in entities.iteritems():
 # this is what should happen
@@ -483,17 +510,22 @@ class H5Data(DataSource):
 
         return h5file, None, dataset['globals']
 
-    def run(self, globals_fields, entities, start_period):
-        input_file, dataset = index_tables(globals_fields, entities,
+    def run(self, globals_def, entities, start_period):
+        input_file, dataset = index_tables(globals_def, entities,
                                            self.input_path)
         output_file = tables.openFile(self.output_path, mode="w")
 
         try:
-            if dataset['globals'] is not None:
+            globals_data = dataset['globals']
+            if globals_data is not None:
+                globals_node = input_file.root.globals
                 output_globals = output_file.createGroup("/", "globals",
                                                          "Globals")
-                copyTable(input_file.root.globals.periodic, output_file,
-                          output_globals)
+                # index_tables already checks whether all tables exist and
+                # are coherent with globals_def
+                for name in globals_def:
+                    global_disk_data = getattr(globals_node, name)
+                    copyLeafNode(global_disk_data, output_file, output_globals)
 
             entities_tables = dataset['entities']
             output_entities = output_file.createGroup("/", "entities",
@@ -565,7 +597,7 @@ class Void(DataSource):
     def __init__(self, output_path):
         self.output_path = output_path
 
-    def run(self, globals_fields, entities, start_period):
+    def run(self, globals_def, entities, start_period):
         output_file = tables.openFile(self.output_path, mode="w")
         output_entities = output_file.createGroup("/", "entities", "Entities")
         for entity in entities.itervalues():

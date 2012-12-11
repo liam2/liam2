@@ -2,16 +2,14 @@
 import numpy as np
 import tables
 
-from utils import safe_put, count_occurences
+from utils import safe_put, count_occurences, field_str_to_type
 from data import mergeArrays, get_fields
 from registry import entity_registry
-from expr import Variable, GlobalVariable, \
-                 expr_eval, get_missing_value
+from expr import (Variable, GlobalVariable, GlobalTable, GlobalArray,
+                  expr_eval, get_missing_value)
 from exprparser import parse
 from context import EntityContext, context_length
 from process import Assignment, Compute, Process, ProcessGroup
-
-str_to_type = {'float': float, 'int': int, 'bool': bool}
 
 
 #def compress_column(a, level):
@@ -117,7 +115,8 @@ class Entity(object):
                     missing_fields.append(name)
             else:
                 strtype = fielddef
-            fields.append((name, str_to_type[strtype]))
+            fields.append((name,
+                           field_str_to_type(strtype, "field '%s'" % name)))
 
         link_defs = entity_def.get('links', {})
         links = dict((name, Link(name, l['type'], l['field'], l['target']))
@@ -163,6 +162,25 @@ class Entity(object):
             self._variables = variables
         return self._variables
 
+    def global_variables(self, globals_def):
+        #FIXME: these should be computed once somewhere else, not for each
+        # entity. I guess they should have a class of their own
+        variables = {}
+        for name, global_type in globals_def.iteritems():
+            if isinstance(global_type, list):
+                # add namespace for table
+                variables[name] = GlobalTable(name, global_type)
+                if name == 'periodic':
+                    # special case to add periodic variables in the global
+                    # namespace
+                    variables.update(
+                        (name, GlobalVariable('periodic', name, type_))
+                        for name, type_ in global_type)
+            else:
+                assert isinstance(global_type, type)
+                variables[name] = GlobalArray(name, global_type)
+        return variables
+
     def check_links(self):
         for name, link in self.links.iteritems():
             target_name = link._target_entity
@@ -182,60 +200,64 @@ class Entity(object):
                 cond_context[name] = target_entity.variables
         return cond_context
 
-    def parse_processes(self, global_fields):
+    def all_variables(self, globals_def):
         from links import PrefixingLink
-        variables = dict((name, GlobalVariable(name, type_))
-                         for name, type_ in global_fields)
+
+        variables = self.global_variables(globals_def).copy()
         variables.update(self.variables)
         cond_context = self.conditional_context
         macros = dict((k, parse(v, variables, cond_context))
                       for k, v in self.macro_strings.iteritems())
-        variables['other'] = PrefixingLink(macros, self.links, '__other_')
-
         variables.update(macros)
+        variables['other'] = PrefixingLink(macros, self.links, '__other_')
+        return variables
 
-        def parse_expressions(items, variables):
-            processes = []
-            for k, v in items:
-                if isinstance(v, (bool, int, float)):
-                    process = Assignment(v)
-                elif isinstance(v, basestring):
-                    expr = parse(v, variables, cond_context)
-                    if not isinstance(expr, Process):
-                        if k is None:
-                            process = Compute(expr)
-                        else:
-                            process = Assignment(expr)
+    def parse_expressions(self, items, variables, cond_context):
+        processes = []
+        for k, v in items:
+            if isinstance(v, (bool, int, float)):
+                process = Assignment(v)
+            elif isinstance(v, basestring):
+                expr = parse(v, variables, cond_context)
+                if not isinstance(expr, Process):
+                    if k is None:
+                        process = Compute(expr)
                     else:
-                        process = expr
-                elif isinstance(v, list):
-                    # v should be a list of dict
-                    group_expressions = []
-                    for element in v:
-                        if isinstance(element, dict):
-                            group_expressions.append(element.items()[0])
-                        else:
-                            group_expressions.append((None, element))
-                    group_predictors = \
-                        self.collect_predictors(group_expressions)
-                    group_context = variables.copy()
-                    group_context.update((name, Variable(name))
-                                         for name in group_predictors)
-                    sub_processes = parse_expressions(group_expressions,
-                                                      group_context)
-                    process = ProcessGroup(k, sub_processes)
-                elif isinstance(v, dict):
-                    expr = parse(v['expr'], variables, cond_context)
-                    process = Assignment(expr)
-                    process.predictor = v['predictor']
+                        process = Assignment(expr)
                 else:
-                    raise Exception("unknown expression type for %s: %s"
-                                    % (k, type(v)))
-                processes.append((k, process))
-            return processes
+                    process = expr
+            elif isinstance(v, list):
+                # v should be a list of dict
+                group_expressions = []
+                for element in v:
+                    if isinstance(element, dict):
+                        group_expressions.append(element.items()[0])
+                    else:
+                        group_expressions.append((None, element))
+                group_predictors = \
+                    self.collect_predictors(group_expressions)
+                group_context = variables.copy()
+                group_context.update((name, Variable(name))
+                                     for name in group_predictors)
+                sub_processes = self.parse_expressions(group_expressions,
+                                                       group_context,
+                                                       cond_context)
+                process = ProcessGroup(k, sub_processes)
+            elif isinstance(v, dict):
+                expr = parse(v['expr'], variables, cond_context)
+                process = Assignment(expr)
+                process.predictor = v['predictor']
+            else:
+                raise Exception("unknown expression type for %s: %s"
+                                % (k, type(v)))
+            processes.append((k, process))
+        return processes
 
-        processes = dict(parse_expressions(self.process_strings.iteritems(),
-                                           variables))
+    def parse_processes(self, globals_def):
+        processes = self.parse_expressions(self.process_strings.iteritems(),
+                                           self.all_variables(globals_def),
+                                           self.conditional_context)
+        processes = dict(processes)
 
         fnames = set(self.period_individual_fnames)
 

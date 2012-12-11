@@ -30,6 +30,7 @@ except ImportError:
         return eval(expr, complete_globals, {})
 
 num_tmp = 0
+timings = Counter()
 
 
 def get_tmp_varname():
@@ -122,22 +123,22 @@ def collect_variables(expr, context):
         return set()
 
 
-timings = Counter()
-        
 def expr_eval(expr, context):
     if isinstance(expr, Expr):
-        globals_table = context['__globals__']
-        if globals_table is not None:
-            globals_names = set(globals_table.dtype.names)
+        globals_data = context['__globals__']
+        if globals_data is not None:
+            globals_names = set(globals_data.keys())
+            if 'periodic' in globals_data:
+                globals_names |= set(globals_data['periodic'].dtype.names)
         else:
             globals_names = set()
         for var_name in expr.collect_variables(context):
             if var_name not in globals_names and var_name not in context:
                 raise Exception("variable '%s' is unknown (it is either not "
                                 "defined or not computed yet)" % var_name)
-        
+
         return expr.evaluate(context)
-        # there are severeal flaws with this approach:
+        # there are several flaws with this approach:
         # 1) I don't get action times (csv et al)
         # 2) these are cumulative times (they include child expr/processes)
         #    we might want to store the timings in a tree (based on call stack
@@ -355,9 +356,17 @@ class SubscriptedExpr(EvaluableExpression):
         #XXX: return -1 for out_of_bounds like for globals?
         return expr[key]
 
+    #TODO: implement traverse
     def collect_variables(self, context):
         exprvars = collect_variables(self.expr, context)
         return exprvars | collect_variables(self.key, context)
+
+    def traverse(self, context):
+        for node in traverse_expr(self.expr, context):
+            yield node
+        for node in traverse_expr(self.key, context):
+            yield node
+        yield self
 
 
 class ExprAttribute(EvaluableExpression):
@@ -379,6 +388,13 @@ class ExprAttribute(EvaluableExpression):
     def collect_variables(self, context):
         exprvars = collect_variables(self.expr, context)
         return exprvars | collect_variables(self.key, context)
+
+    def traverse(self, context):
+        for node in traverse_expr(self.expr, context):
+            yield node
+        for node in traverse_expr(self.key, context):
+            yield node
+        yield self
 
 
 #XXX: factorize with NumpyProperty?
@@ -406,6 +422,17 @@ class ExprCall(EvaluableExpression):
         args_vars.extend(collect_variables(v, context)
                          for v in self.kwargs.itervalues())
         return set.union(*args_vars) if args_vars else set()
+
+    def traverse(self, context):
+        for node in traverse_expr(self.expr, context):
+            yield node
+        for arg in self.args:
+            for node in traverse_expr(arg, context):
+                yield node
+        for kwarg in self.kwargs.itervalues():
+            for node in traverse_expr(kwarg, context):
+                yield node
+        yield self
 
 
 #class IsPresent(Expr):
@@ -597,34 +624,25 @@ class Division(BinaryOp):
 
 
 class Variable(Expr):
-    def __init__(self, name, dtype=None, value=None):
+    def __init__(self, name, dtype=None):
         self.name = name
         self._dtype = dtype
-        #XXX: is this still used?
-        self.value = value
 
     def traverse(self, context):
         yield self
 
     def __str__(self):
-        if self.value is None:
-            return self.name
-        else:
-            return str(self.value)
+        return self.name
     __repr__ = __str__
 
     def as_string(self, context):
         return self.__str__()
 
     def simplify(self):
-        if self.value is None:
-            return self
-        else:
-            return self.value
+        return self
 
     def show(self, indent):
-        value = "[%s]" % self.value if self.value is not None else ''
-        print indent, self.name, value
+        print indent, self.name
 
     def collect_variables(self, context):
         return set([self.name])
@@ -643,6 +661,10 @@ class ShortLivedVariable(Variable):
 
 
 class GlobalVariable(Variable):
+    def __init__(self, tablename, name, dtype=None):
+        Variable.__init__(self, name, dtype)
+        self.tablename = tablename
+
     #XXX: inherit from EvaluableExpression?
     def as_string(self, context):
         result = self.evaluate(context)
@@ -663,7 +685,11 @@ class GlobalVariable(Variable):
 
     def evaluate(self, context):
         period = self._eval_period(context)
-        globals_table = context['__globals__']
+        globals_data = context['__globals__']
+        globals_table = globals_data[self.tablename]
+
+        #TODO: this period_idx computation should be encapsulated in the
+        # globals_table object
         try:
             globals_periods = globals_table['PERIOD']
         except ValueError:
@@ -684,12 +710,12 @@ class GlobalVariable(Variable):
             return column[period_idx] if not out_of_bounds else missing_value
 
     def __getitem__(self, key):
-        return SubscriptedGlobal(self.name, self._dtype, key)
+        return SubscriptedGlobal(self.tablename, self.name, self._dtype, key)
 
 
 class SubscriptedGlobal(GlobalVariable):
-    def __init__(self, name, dtype, key):
-        Variable.__init__(self, name, dtype)
+    def __init__(self, tablename, name, dtype, key):
+        GlobalVariable.__init__(self, tablename, name, dtype)
         self.key = key
 
     def __str__(self):
@@ -698,6 +724,41 @@ class SubscriptedGlobal(GlobalVariable):
 
     def _eval_period(self, context):
         return expr_eval(self.key, context)
+
+
+class GlobalArray(Variable):
+    def __init__(self, name, dtype=None):
+        Variable.__init__(self, name, dtype)
+
+    def as_string(self, context):
+        globals_data = context['__globals__']
+        result = globals_data[self.name]
+        #XXX: maybe I should just use self.name?
+        tmp_varname = '__%s' % self.name
+        if tmp_varname in context:
+            assert context[tmp_varname] == result
+        context[tmp_varname] = result
+        return tmp_varname
+
+
+class GlobalTable(object):
+    def __init__(self, name, fields):
+        '''fields is a list of tuples (name, type)'''
+
+        self.name = name
+        self.fields = fields
+        self.fields_map = dict(fields)
+
+    def __getattr__(self, key):
+        return GlobalVariable(self.name, key, self.fields_map[key])
+
+    def traverse(self, context):
+        yield self
+
+    def __str__(self):
+        #TODO: print data instead
+        return 'Table(%s)' % ', '.join([name for name, _ in self.fields])
+    __repr__ = __str__
 
 
 class Where(Expr):

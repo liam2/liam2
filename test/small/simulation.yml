@@ -1,6 +1,11 @@
 globals:
     periodic:
         - MINR: float
+        - WEMRA: int
+
+    MIG:
+        kind: ndarray
+        type: int
 
 entities:
     household:
@@ -71,6 +76,56 @@ entities:
         processes:
             bp: breakpoint(2002)
 
+#            test_proc:
+#                code:
+#                    - toto: 10
+#
+#            test_function:
+#                args: a, b
+#                code: 
+#                    - result: a + b
+#                    - result: result * 2
+#                return: result * 2
+#
+#            test_small_function:
+#                args: a, b
+#                return: a + b
+#            
+#            test_call:
+#                - aplusb: test_function(age, 1)
+#                - show("age", age, "aplusb", aplusb)
+#                
+#            test_loop:
+#                variables: a, b
+#                sequence: age[age < 10]
+#                #sequence: zip(range(10), range(10))
+#                code:
+#                    - show("a", a, "b", b)
+#
+#            test_while:
+#                while: grpmin(age) < 10
+#                code:
+#                    - show("age", age)
+#                    - age: age + 1
+#
+#            #XXX: embed python code instead?                    
+#            while_in_proc:
+#                - done: False
+#                # => while is a reserved keyword and can't be used as a
+#                #    variable name
+#                - while:
+#                    cond: not done
+#                    code:
+#                        - age: age + 1
+#                        - show("age", age)
+#                        - done: gtpmin(age) >= 10
+            
+#            embbeded_python:
+#                done = False
+#                while not done:
+#                    age += 1
+#                    done = min(age) >= 10
+                
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
                 - weight: randint(1, 11)
@@ -110,6 +165,23 @@ entities:
                 - yop: yob + 65
                 - vector_idx_globals_in_expr: 1.0 + MINR[yob + 65]
                 - show("yob", yob, "yop", yop, "v", vector_idx_globals_in_expr)
+                - yop2: yob + if(gender, 65, WEMRA)
+                - global_in_idx: show("real yop", yop2,
+                                      "minr", MINR[yob + if(gender, 65, WEMRA)])
+
+            test_globals_nd:
+                - show("MIG ndim", MIG.ndim)
+
+                # need should be a 3d table: belgian-gender-age (for current period) 
+                - need: MIG * 1
+                - show("need ndim", need.ndim)
+
+                # should return a 2d table: gender-age
+                - need_by_sex_age: need.sum(axis=0)
+                - show("ndim", need_by_sex_age.ndim)
+
+                - need_by_sex: need_by_sex_age.sum(axis=1)
+                - show("ndim", need_by_sex.ndim)
 
             test_macro:
                 - ischild: age < 18
@@ -458,7 +530,19 @@ entities:
                 - assertEqual(grpmin(max(age, 20)), 20)
 
             test_lag:
-#                - lagglobal: show(lag(MINR))
+                - global: show(MINR)
+                - global_t: show(MINR[period])
+                
+                - lagglobal: show(lag(MINR))
+                - lagglobal_period: show(lag(MINR[period]))
+                - lagglobal_attr: show(lag(MINR.shape))
+                - global_t_1: show(MINR[period - 1])
+                
+                - global_t_age: show(MINR[period - age])
+                # does not work yet
+#                - lagglobalage: show(lag(MINR, age))
+
+                - lag_age_subscript: show(lag(age[0]))
 
                 - lagavg: show(lag(grpavg(age)))
                 - avglag: show(grpavg(lag(age)))
@@ -622,13 +706,22 @@ entities:
                 - assertEqual(num0 + num1 + num2, num_total)
                 # this assertion can fail but it should occur pretty rarely
                 - assertTrue((num0 < num1) and (num1 < num2))
+                
+                - show(groupby(choice([zero, zero + 1.0], [p0, 1.0 - p0]),
+                               choice([0, 1], [0.3, 0.7]),
+                               choice([0, 1])))
 
             test_groupby:
+                - stored: groupby(agegroup, gender)
+                - show(stored)
+#                - show(stored * 2)
+                
                 # fails as it should
 #                - show('groupby scalar', groupby(True, gender))
                 # this is currently broken
 #                - show('groupby scalar', groupby(grpavg(age), gender))
 
+                - show('groupby global', groupby(if(gender, 65, WEMRA), gender))
                 - show('groupby with percent when total is int(0)',
                        groupby(age, filter=age > 200, percent=True))
                 - show('expr=grpsum(weight)',
@@ -688,6 +781,7 @@ simulation:
 
                    test_expr,
                    test_globals,
+                   test_globals_nd,
                    test_macro,
                    test_compound,
                    agegroup,

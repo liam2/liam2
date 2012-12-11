@@ -8,12 +8,14 @@ import numpy as np
 import yaml
 
 from data import H5Data, Void
-from entities import Entity, str_to_type
+from entities import Entity
 from registry import entity_registry
-from utils import time2str, timed, gettime, validate_dict
+from utils import (time2str, timed, gettime, validate_dict,
+                   field_str_to_type, fields_yaml_to_type)
 import console
 import config
 import expr
+
 
 def show_top_times(what, times):
     count = len(times)
@@ -23,22 +25,28 @@ def show_top_times(what, times):
     print "total for top %d %s:" % (count, what),
     print time2str(sum(timing for name, timing in times))
 
+
 def show_top_processes(process_time, count):
     process_times = sorted(process_time.iteritems(),
                            key=operator.itemgetter(1),
                            reverse=True)
     show_top_times('processes', process_times[:count])
 
+
 def show_top_expr(count=None):
     show_top_times('expressions', expr.timings.most_common(count))
-                       
+
 
 class Simulation(object):
     yaml_layout = {
         'globals': {
             'periodic': [{
                 '*': str
-            }]
+            }],
+            '*': {
+                'kind': str,
+                'type': str
+            }
         },
         '#entities': {
             '*': {
@@ -85,12 +93,13 @@ class Simulation(object):
         }
     }
 
-    def __init__(self, globals_fields, periods, start_period,
+    def __init__(self, globals_def, periods, start_period,
                  init_processes, init_entities, processes, entities,
                  data_source, default_entity=None):
-        if globals_fields:
-            globals_fields = [('PERIOD', int)] + globals_fields
-        self.globals_fields = globals_fields
+        if 'periodic' in globals_def:
+            globals_def['periodic'].insert(0, ('PERIOD', int))
+
+        self.globals_def = globals_def
         self.periods = periods
         self.start_period = start_period
         self.init_processes = init_processes
@@ -114,12 +123,24 @@ class Simulation(object):
         # http://readthedocs.org/docs/validictory/
         validate_dict(content, cls.yaml_layout)
 
-        globals_def = content.get('globals', {})
-        periodic_globals = globals_def.get('periodic', [])
-        # list of one-item-dicts to list of tuples
-        periodic_globals = [d.items()[0] for d in periodic_globals]
-        globals_fields = [(name, str_to_type[typestr])
-                          for name, typestr in periodic_globals]
+        # the goal is to get something like:
+        # globals_def = {'periodic': [('a': int), ...],
+        #                'MIG': int}
+        globals_def = {}
+        for k, v in content.get('globals', {}).iteritems():
+            # periodic is a special case
+            if k == 'periodic':
+                type_ = fields_yaml_to_type(v)
+            else:
+                # "fields" and "type" are synonyms
+                type_def = v.get('fields') or v.get('type')
+                if isinstance(type_def, basestring):
+                    type_ = field_str_to_type(type_def, "array '%s'" % k)
+                else:
+                    if not isinstance(type_def, list):
+                        raise SyntaxError("invalid structure for globals")
+                    type_ = fields_yaml_to_type(type_def)
+            globals_def[k] = type_
 
         simulation_def = content['simulation']
         seed = simulation_def.get('random_seed')
@@ -158,7 +179,7 @@ class Simulation(object):
 
         for entity in entity_registry.itervalues():
             entity.check_links()
-            entity.parse_processes(globals_fields)
+            entity.parse_processes(globals_def)
             entity.compute_lagged_fields()
 
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
@@ -194,23 +215,23 @@ class Simulation(object):
             print method, type(method)
 
         default_entity = simulation_def.get('default_entity')
-        return Simulation(globals_fields, periods, start_period,
+        return Simulation(globals_def, periods, start_period,
                           init_processes, init_entities, processes, entities,
                           data_source, default_entity)
 
     def load(self):
-        return timed(self.data_source.load, self.globals_fields,
+        return timed(self.data_source.load, self.globals_def,
                      entity_registry)
 
     def run(self, run_console=False):
         start_time = time.time()
-        h5in, h5out, periodic_globals = timed(self.data_source.run,
-                                              self.globals_fields,
-                                              entity_registry,
-                                              self.start_period - 1)
-#        input_dataset = self.data_source.run(self.globals_fields,
+        h5in, h5out, globals_data = timed(self.data_source.run,
+                                          self.globals_def,
+                                          entity_registry,
+                                          self.start_period - 1)
+#        input_dataset = self.data_source.run(self.globals_def,
 #                                             entity_registry)
-#        output_dataset = self.data_sink.prepare(self.globals_fields,
+#        output_dataset = self.data_sink.prepare(self.globals_def,
 #                                                entity_registry)
 #        output_dataset.copy(input_dataset, self.start_period - 1)
 #        for entity in input_dataset:
@@ -239,7 +260,7 @@ class Simulation(object):
                 # build context for this period:
                 const_dict = {'period': period,
                               'nan': float('nan'),
-                              '__globals__': periodic_globals}
+                              '__globals__': globals_data}
 
                 num_processes = len(processes)
                 for p_num, process in enumerate(processes, start=1):
@@ -256,7 +277,7 @@ class Simulation(object):
                     process_time[process.name] += elapsed
                     print "done (%s elapsed)." % time2str(elapsed)
                     self.start_console(process.entity, period,
-                                       periodic_globals)
+                                       globals_data)
 
             print "- storing period data"
             for entity in entities:
@@ -305,7 +326,7 @@ class Simulation(object):
 
             if run_console:
                 c = console.Console(self.console_entity, periods[-1],
-                                    periodic_globals)
+                                    self.globals_def, globals_data)
                 c.run()
 
         finally:
@@ -324,8 +345,8 @@ class Simulation(object):
         else:
             return None
 
-    def start_console(self, entity, period, globals_table):
+    def start_console(self, entity, period, globals_data):
         if self.stepbystep:
-            c = console.Console(entity, period, globals_table)
+            c = console.Console(entity, period, self.globals_def, globals_data)
             res = c.run(debugger=True)
             self.stepbystep = res == "step"
