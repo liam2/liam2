@@ -714,6 +714,14 @@ class GlobalVariable(Variable):
     def __getitem__(self, key):
         return SubscriptedGlobal(self.tablename, self.name, self._dtype, key)
 
+    def collect_variables(self, context):
+        #FIXME: this is a quick hack to make "othertable" work.
+        # We should return prefixed variable instead.
+        if self.tablename != 'periodic':
+            return set()
+        else:
+            return Variable.collect_variables(self, context)
+
 
 class SubscriptedGlobal(GlobalVariable):
     def __init__(self, tablename, name, dtype, key):
