@@ -11,9 +11,10 @@ import config
 from expr import Expr, Variable, expr_eval, collect_variables, traverse_expr
 from context import context_length, context_subset
 from utils import skip_comment_cells, strip_rows, PrettyTable, unique, \
-                  duplicates, unique_duplicate, prod
+                  duplicates, unique_duplicate, prod, isconstant
 from properties import (FilteredExpression, TableExpression, GroupCount,
                         add_individuals)
+from importer import load_ndarray
 
 try:
     from groupby import filter_to_indices
@@ -132,24 +133,30 @@ except ImportError:
         return np.ravel(result)
 
 
-def extract_period(period, expressions, possible_values, probabilities):
-    #TODO: allow any temporal variable
-    str_expressions = [str(e) for e in expressions]
-    periodcol = str_expressions.index('period')
-    #TODO: allow period in any dimension
-    if periodcol != len(expressions) - 1:
-        raise NotImplementedError('period, if present, should be the last '
-                                  'expression')
-    expressions = expressions[:periodcol] + expressions[periodcol + 1:]
-    possible_values = possible_values[:]
-    period_values = possible_values.pop(periodcol)
-    num_periods = len(period_values)
-    try:
-        period_idx = period_values.index(period)
-        probabilities = probabilities[period_idx::num_periods]
-    except ValueError:
-        raise Exception('missing alignment data for period %d' % period)
+def kill_axis(axis_name, value, expressions, possible_values, probabilities):
+    '''possible_values is a list of ndarrays'''
 
+    str_expressions = [str(e) for e in expressions]
+    axis_num = str_expressions.index(axis_name)
+    expressions = expressions[:axis_num] + expressions[axis_num + 1:]
+    possible_values = possible_values[:]
+    axis_values = possible_values.pop(axis_num)
+
+    #TODO: make sure possible_values are sorted and use searchsorted instead
+    is_wanted_value = axis_values == value
+    value_idx = is_wanted_value.nonzero()[0]
+    num_idx = len(value_idx)
+    if num_idx < 1:
+        raise Exception('missing alignment data for %s %s'
+                        % (axis_name, value))
+    if num_idx > 1:
+        raise Exception('invalid alignment data for %s %s: there are %d cells'
+                        'for that value (instead of one)'
+                        % (num_idx, axis_name, value))
+    value_idx = value_idx[0]
+    complete_idx = [slice(None) for _ in range(probabilities.ndim)]
+    complete_idx[axis_num] = value_idx
+    probabilities = probabilities[complete_idx]
     return expressions, possible_values, probabilities
 
 
@@ -163,18 +170,30 @@ def align_get_indices_nd(context, filter_value, score,
     else:
         num_to_align = context_length(context)
 
-    #TODO: allow any temporal variable
     if 'period' in [str(e) for e in expressions]:
         period = context['period']
         expressions, possible_values, probabilities = \
-            extract_period(period, expressions, possible_values,
-                           probabilities)
+            kill_axis('period', period, expressions, possible_values,
+                      probabilities)
 
     if expressions:
-        assert len(probabilities) == prod(len(pv) for pv in possible_values)
+        shape1 = probabilities.shape
+        shape2 = tuple(len(pv) for pv in possible_values)
+        assert shape1 == shape2, "%s != %s" % (shape1, shape2)
 
         # retrieve the columns we need to work with
         columns = [expr_eval(expr, context) for expr in expressions]
+
+        # kill any axis where the value is constant for all individuals
+        # satisfying the filter
+#        tokill = [(expr, column[0])
+#                  for expr, column in zip(expressions, columns)
+#                  if isconstant(column, filter_value)]
+#        for expr, value in tokill:
+#            expressions, possible_values, probabilities = \
+#                kill_axis(str(expr), value, expressions, possible_values,
+#                          probabilities)
+
         if filter_value is not None:
             groups = partition_nd(columns, filter_value, possible_values)
         else:
@@ -239,7 +258,7 @@ def align_get_indices_nd(context, filter_value, score,
     to_split_indices = []
     to_split_overflow = []
     for group_idx, members_indices, probability in izip(count(), groups,
-                                                        probabilities):
+                                                        probabilities.flat):
         if len(members_indices):
             if weights is None:
                 expected = len(members_indices) * probability
@@ -569,8 +588,8 @@ class Alignment(FilteredExpression):
         else:
             self.expressions = [Variable(e) if isinstance(e, basestring) else e
                                 for e in expressions]
-            self.possible_values = possible_values
-            self.probabilities = probabilities
+            self.possible_values = [np.array(pv) for pv in possible_values]
+            self.probabilities = np.array(probabilities)
 
         self.take_filter = take
         self.leave_filter = leave
@@ -601,56 +620,10 @@ class Alignment(FilteredExpression):
     def load(self, fpath):
         from exprparser import parse
 
-        with open(os.path.join(config.input_directory, fpath), "rb") as f:
-            reader = csv.reader(f)
-            lines = skip_comment_cells(strip_rows(reader))
-            header = lines.next()
-            self.expressions = [parse(s, autovariables=True) for s in header]
-            table = []
-            for line in lines:
-                if any(value == '' for value in line):
-                    raise Exception("empty cell found in %s" % fpath)
-                table.append([eval(value) for value in line])
-        ndim = len(header)
-        unique_last_d, dupe_last_d = unique_duplicate(table.pop(0))
-        if dupe_last_d:
-            print("Duplicate column header value(s) (for '%s') in '%s': %s"
-                  % (header[-1], fpath,
-                     ", ".join(str(v) for v in dupe_last_d)))
-            raise Exception("bad alignment data in '%s': found %d "
-                            "duplicate column header value(s)"
-                            % (fpath, len(dupe_last_d)))
-
-        # strip the ndim-1 first columns
-        headers = [[line.pop(0) for line in table]
-                   for _ in range(ndim - 1)]
-
-        possible_values = [list(unique(values)) for values in headers]
-        if ndim > 1:
-            # having duplicate values is normal when there are more than 2
-            # dimensions but we need to test whether there are duplicates of
-            # combinations.
-            dupe_combos = list(duplicates(zip(*headers)))
-            if dupe_combos:
-                print("Duplicate row header value(s) in '%s':" % fpath)
-                print(PrettyTable(dupe_combos))
-                raise Exception("bad alignment data in '%s': found %d "
-                                "duplicate row header value(s)"
-                                % (fpath, len(dupe_combos)))
-
-        possible_values.append(unique_last_d)
+        header, possible_values, array = load_ndarray(fpath, float)
+        self.expressions = [parse(expr, autovariables=True) for expr in header]
         self.possible_values = possible_values
-        self.probabilities = list(chain.from_iterable(table))
-        num_possible_values = prod(len(values) for values in possible_values)
-        if len(self.probabilities) != num_possible_values:
-            raise Exception("incoherent alignment data in '%s': %d data cells "
-                            "found while it should be %d based on the number "
-                            "of possible values in headers (%s)"
-                            % (fpath,
-                               len(self.probabilities),
-                               num_possible_values,
-                               ' * '.join(str(len(values))
-                                          for values in possible_values)))
+        self.probabilities = array
 
     def evaluate(self, context):
         scores = expr_eval(self.expr, context)

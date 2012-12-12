@@ -68,6 +68,32 @@ def safe_put(a, ind, v):
         a[-1] = last_value
 
 
+#TODO: provide a cython version for this (using fused types)
+#ctypedef fused np_numeric:
+#     np.int32_t
+#     np.int64_t
+#     np.float32_t
+#     np.float64_t
+#
+#@cython.boundscheck(False)
+#@cython.wraparound(False)
+#def bool isconstant(np.ndarray[np_numeric, ndim=1] a):
+#    cdef:
+#        np.float64_t value
+#        Py_ssize_t i, n=a.size
+#    value = a[0]
+#    for i in range(1, n):
+#        if a[i] != value:
+#            return False
+#    return True
+def isconstant(a, filter_value=None):
+    if filter_value is None:
+        return a.max() == a.min()
+    else:
+        value = a[0]
+        return np.all(filter_value & (a == value))
+
+
 def loop_wh_progress(func, sequence):
     len_todo = len(sequence)
     write = sys.stdout.write
