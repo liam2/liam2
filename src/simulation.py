@@ -44,7 +44,9 @@ class Simulation(object):
                 '*': str
             }],
             '*': {
-                'kind': str,
+                'fields': [{
+                    '*': None
+                }],
                 'type': str
             }
         },
