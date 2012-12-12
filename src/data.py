@@ -227,12 +227,13 @@ def appendTable(input_table, output_table, chunksize=10000, condition=None,
 
 
 #TODO: remove output_file argument, as it can be deduced
-def copyTable(input_table, output_file, output_node, output_fields=None,
+def copyTable(input_table, output_node, output_fields=None,
               chunksize=10000, condition=None, stop=None, show_progress=False,
               **kwargs):
     complete_kwargs = {'title': input_table._v_title,
                       }
 #                       'filters': input_table.filters}
+    output_file = output_node._v_file
     complete_kwargs.update(kwargs)
     if output_fields is None:
         output_dtype = input_table.dtype
@@ -244,9 +245,9 @@ def copyTable(input_table, output_file, output_node, output_fields=None,
                        stop=stop, show_progress=show_progress)
 
 
-def copyLeafNode(input_node, output_file, output_node, **kwargs):
+def copyLeafNode(input_node, output_node, **kwargs):
     if isinstance(input_node, tables.Table):
-        return copyTable(input_node, output_file, output_node, **kwargs)
+        return copyTable(input_node, output_node, **kwargs)
     else:
         return input_node.copy(output_node)
 
@@ -524,8 +525,7 @@ class H5Data(DataSource):
                 # index_tables already checks whether all tables exist and
                 # are coherent with globals_def
                 for name in globals_def:
-                    global_disk_data = getattr(globals_node, name)
-                    copyLeafNode(global_disk_data, output_file, output_globals)
+                    copyLeafNode(getattr(globals_node, name), output_globals)
 
             entities_tables = dataset['entities']
             output_entities = output_file.createGroup("/", "entities",
@@ -561,8 +561,7 @@ class H5Data(DataSource):
                 else:
                     stoprow = 0
 
-                output_table = copyTable(table.table,
-                                         output_file, output_entities,
+                output_table = copyTable(table.table, output_entities,
                                          entity.fields, stop=stoprow,
                                          show_progress=True)
                 entity.output_rows = output_rows
