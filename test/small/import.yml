@@ -15,6 +15,10 @@ globals:
         kind: ndarray
         type: int
 
+    othertable:
+        path: param\othertable.csv
+        kind: table
+
 entities:
     household:
         path: param\household.csv

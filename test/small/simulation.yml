@@ -6,6 +6,11 @@ globals:
     MIG:
         type: int
 
+    othertable:
+        fields:
+            - INTFIELD: int
+            - FLOATFIELD: float
+
 entities:
     household:
         fields:
@@ -179,11 +184,13 @@ entities:
             test_periodic_globals:
                 # implicit global namespace
                 # -------------------------
-                - fake_wemra: if(period <= 1999, 61,
+                - fake_wemra: if(period <= 1996, 60,
+                              if(period <= 1999, 61,
                               if(period <= 2002, 62,
                               if(period <= 2005, 63,
                               if(period <= 2008, 64, 65))))
-                - fake_wemra_pm1: if(period <= 2000, 61,
+                - fake_wemra_pm1: if(period <= 1997, 60,
+                                  if(period <= 2000, 61,
                                   if(period <= 2003, 62,
                                   if(period <= 2006, 63,
                                   if(period <= 2009, 64, 65))))
@@ -214,6 +221,17 @@ entities:
                 # expr_index
                 - assertEqual(periodic.WEMRA[period - 1], fake_wemra_pm1)
                 - vector_idx: periodic.MINR[yob + 65]
+
+            test_other_globals:
+                # with a PERIOD column 
+                - fake_intfield: if(period <= 1996, 60,
+                                 if(period <= 1999, 61,
+                                 if(period <= 2002, 62,
+                                 if(period <= 2005, 63,
+                                 if(period <= 2008, 64, 65))))
+                - assertEqual(othertable.INTFIELD, fake_intfield)
+                # expr_index
+                - assertEqual(othertable.INTFIELD[period], fake_intfield)
 
             test_globals_nd:
                 # need should be a 4d array: belgian-gender-age-period 
@@ -850,6 +868,7 @@ simulation:
                    test_call,
 
                    test_periodic_globals,
+                   test_other_globals,
                    test_globals_nd,
 
                    test_macro,
