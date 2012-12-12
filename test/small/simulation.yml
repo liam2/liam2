@@ -4,7 +4,6 @@ globals:
         - WEMRA: int
 
     MIG:
-        kind: ndarray
         type: int
 
 entities:
@@ -151,6 +150,32 @@ entities:
                 - show("age * (1 / 2):", age * (1 / 2))
                 - show("clip(age, 10, 50)", clip(age, 10, 50))
 
+            test_attr:
+                - assertEqual(age.ndim, 1)
+
+            test_subscript:
+                # with constant argument
+                # take advantage of the fact that data is ordered by id
+                - assertEqual(id[0], grpmin(id))
+
+                # with expr argument
+                - newborn: age[age == 0]
+                - assertEqual(newborn[0], 0)
+
+            test_call:
+                # without argument
+                - assertEqual(age.sum(), grpsum(age))
+                - assertEqual(age.std(), grpstd(age))
+                - assertEqual(age.max(), grpmax(age))
+                - assertEqual(age.min(), grpmin(age))
+
+                # with constant argument
+                - assertEqual(age.min(axis=-1), grpmin(age))
+
+                # with expr argument
+                - axis: 0
+                - assertEqual(age.min(axis=axis), grpmin(age))
+
             test_globals:
                 - no_index: MINR
                 - const_index: MINR[2005]
@@ -170,18 +195,37 @@ entities:
                                       "minr", MINR[yob + if(gender, 65, WEMRA)])
 
             test_globals_nd:
-                - show("MIG ndim", MIG.ndim)
+                # need should be a 4d array: belgian-gender-age-period 
+                - need: MIG * 2.5
+                - assertEqual(need.ndim, 4)
+                - assertEqual(need.shape, (2, 2, 121, 61))
 
-                # need should be a 3d table: belgian-gender-age (for current period) 
-                - need: MIG * 1
-                - show("need ndim", need.ndim)
+                # should be a 3d table: gender-age-period
+                - need_by_sex_age_p: need.sum(axis=0)
+                - assertEqual(need_by_sex_age_p.ndim, 3)
+                - assertEqual(need_by_sex_age_p.shape, (2, 121, 61))
 
-                # should return a 2d table: gender-age
-                - need_by_sex_age: need.sum(axis=0)
-                - show("ndim", need_by_sex_age.ndim)
+                # should be a 2d table: gender-period
+                - need_by_sex_period: need_by_sex_age_p.sum(axis=1)
+                - assertEqual(need_by_sex_period.ndim, 2)
+                - assertEqual(need_by_sex_period.shape, (2, 61))
 
-                - need_by_sex: need_by_sex_age.sum(axis=1)
-                - show("ndim", need_by_sex.ndim)
+                # should be a 1d table: gender
+                - total_need_by_sex: need_by_sex_period.sum(axis=1)
+                - assertEqual(total_need_by_sex.ndim, 1)
+                - assertEqual(total_need_by_sex.shape, (2,))
+                - tmp: total_need_by_sex
+                
+                # can't compare two arrays with assertEqual
+                #TODO: implement assertArrayEqual
+                - assertEqual(tmp[0], 7818940)
+                - assertEqual(tmp[1], 7692870)
+                
+                # for current period, a 1d table: gender
+#                - need_by_sex: need_by_sex_period[:,period]
+#                - assertEqual(total_need_by_sex.ndim, 1)
+#                - assertEqual(total_need_by_sex.shape, (2,))
+#                - show(total_need_by_sex)
 
             test_macro:
                 - ischild: age < 18
@@ -780,8 +824,13 @@ simulation:
                    show_temp_global,
 
                    test_expr,
+                   test_attr,
+                   test_subscript,
+                   test_call,
+
                    test_globals,
                    test_globals_nd,
+
                    test_macro,
                    test_compound,
                    agegroup,
