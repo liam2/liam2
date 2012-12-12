@@ -188,12 +188,12 @@ entities:
                               if(period <= 1999, 61,
                               if(period <= 2002, 62,
                               if(period <= 2005, 63,
-                              if(period <= 2008, 64, 65))))
+                              if(period <= 2008, 64, 65)))))
                 - fake_wemra_pm1: if(period <= 1997, 60,
                                   if(period <= 2000, 61,
                                   if(period <= 2003, 62,
                                   if(period <= 2006, 63,
-                                  if(period <= 2009, 64, 65))))
+                                  if(period <= 2009, 64, 65)))))
                 # no index
                 - assertEqual(WEMRA, fake_wemra)
                 # const_index 
@@ -228,7 +228,7 @@ entities:
                                  if(period <= 1999, 61,
                                  if(period <= 2002, 62,
                                  if(period <= 2005, 63,
-                                 if(period <= 2008, 64, 65))))
+                                 if(period <= 2008, 64, 65)))))
                 - assertEqual(othertable.INTFIELD, fake_intfield)
                 # expr_index
                 - assertEqual(othertable.INTFIELD[period], fake_intfield)
@@ -337,7 +337,7 @@ entities:
                 #    => we check that all taken are "nan"
                 # 2) or we have less "nan" than we need
                 #    => we check that all "nan" are taken / aligned
-                # and we have to check separetly for men and women
+                # and we have to check separately for men and women
 
                 - isnan: nan_age != nan_age
 
@@ -406,6 +406,21 @@ entities:
                                fname='al_p_dead.csv')
 
                 - assertTrue(grpcount(dead != dead2) <= 105)
+                
+                # 2d alignment with period not last
+                # ---------------------------------
+                - percent_f: if(period <= 2002, 0.2,
+                             if(period <= 2003, 0.3, 0.4))
+                - percent_m: percent_f + 0.1
+                - aligned: align(0.0, fname='al_p_period_notlast.csv')
+
+                - theoric_aligned_f: trunc(grpcount(not gender) * percent_f)
+                - theoric_aligned_m: trunc(grpcount(gender) * percent_m)
+                - diff_f: grpcount(aligned and not gender) - theoric_aligned_f  
+                - diff_m: grpcount(aligned and gender) - theoric_aligned_m  
+                - assertTrue((0 <= diff_f) and (diff_f <= 1))
+                - assertTrue((0 <= diff_m) and (diff_m <= 1))
+                - show('diff_f', diff_f, 'diff_m', diff_m)
 
                 # 1d alignment (period)
                 # ---------------------
