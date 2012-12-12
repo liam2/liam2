@@ -379,6 +379,8 @@ class ExprAttribute(EvaluableExpression):
     __repr__ = __str__
 
     def evaluate(self, context):
+        # currently key can only be a string but if I ever expose getattr,
+        # it could be an expr too
         return getattr(expr_eval(self.expr, context),
                        expr_eval(self.key, context))
 
