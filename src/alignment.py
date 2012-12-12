@@ -1,17 +1,13 @@
 from __future__ import print_function
 
-from itertools import izip, chain, product, count
+from itertools import izip, product, count
 import random
-import csv
-import os
 
 import numpy as np
 
-import config
-from expr import Expr, Variable, expr_eval, collect_variables, traverse_expr
+from expr import  Variable, expr_eval, collect_variables, traverse_expr
 from context import context_length, context_subset
-from utils import skip_comment_cells, strip_rows, PrettyTable, unique, \
-                  duplicates, unique_duplicate, prod, isconstant
+from utils import PrettyTable, prod
 from properties import (FilteredExpression, TableExpression, GroupCount,
                         add_individuals)
 from importer import load_ndarray
