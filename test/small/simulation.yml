@@ -176,13 +176,24 @@ entities:
                 - axis: 0
                 - assertEqual(age.min(axis=axis), grpmin(age))
 
-            test_globals:
-                - no_index: MINR
-                - const_index: MINR[2005]
-                - expr_index: MINR[period - 1]
-                - show("implicit current period:", no_index,
-                       "/ in 2005:", const_index,
-                       "/ previous period:", expr_index)
+            test_periodic_globals:
+                # implicit global namespace
+                # -------------------------
+                - fake_wemra: if(period <= 1999, 61,
+                              if(period <= 2002, 62,
+                              if(period <= 2005, 63,
+                              if(period <= 2008, 64, 65))))
+                - fake_wemra_pm1: if(period <= 2000, 61,
+                                  if(period <= 2003, 62,
+                                  if(period <= 2006, 63,
+                                  if(period <= 2009, 64, 65))))
+                # no index
+                - assertEqual(WEMRA, fake_wemra)
+                # const_index 
+                - assertEqual(MINR[2005], 13620.2)
+                # expr_index
+                - assertEqual(WEMRA[period - 1], fake_wemra_pm1)
+
                 - globals_in_expr: 1.0 + MINR
                 - idx_globals_in_expr: 1.0 + MINR[2002]
                 - expr_idx_globals_in_expr: 1.0 + MINR[period - 1]
@@ -193,6 +204,16 @@ entities:
                 - yop2: yob + if(gender, 65, WEMRA)
                 - global_in_idx: show("real yop", yop2,
                                       "minr", MINR[yob + if(gender, 65, WEMRA)])
+
+                # explicit "periodic" namespace
+                # -----------------------------
+                # no index
+                - assertEqual(periodic.WEMRA, fake_wemra)
+                # const_index 
+                - assertEqual(periodic.MINR[2005], 13620.2)
+                # expr_index
+                - assertEqual(periodic.WEMRA[period - 1], fake_wemra_pm1)
+                - vector_idx: periodic.MINR[yob + 65]
 
             test_globals_nd:
                 # need should be a 4d array: belgian-gender-age-period 
@@ -828,7 +849,7 @@ simulation:
                    test_subscript,
                    test_call,
 
-                   test_globals,
+                   test_periodic_globals,
                    test_globals_nd,
 
                    test_macro,
