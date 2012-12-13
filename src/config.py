@@ -1,5 +1,6 @@
-debug = False
-#debug = True
+import os
+
+debug = os.environ.get("DEBUG", False)
 input_directory = "."
 output_directory = "."
 skip_shows = False
