@@ -148,6 +148,7 @@ def fromiter_i32(iterable, dtype, Py_ssize_t count):
         i += 1
     return buf
 
+
 def fromiter_f32(iterable, dtype, Py_ssize_t count):
     cdef ndarray[np.float32_t] buf
     cdef Py_ssize_t i
@@ -160,6 +161,7 @@ def fromiter_f32(iterable, dtype, Py_ssize_t count):
         i += 1
     return buf
 
+
 def fromiter_f64(iterable, dtype, Py_ssize_t count):
     cdef ndarray[np.float64_t] buf
     cdef Py_ssize_t i
@@ -171,7 +173,8 @@ def fromiter_f64(iterable, dtype, Py_ssize_t count):
         buf[i] = e
         i += 1
     return buf
-    
+
+
 def fromiter_generic(iterable, dtype, Py_ssize_t count):
     cdef ndarray buf
     cdef Py_ssize_t i
@@ -183,7 +186,8 @@ def fromiter_generic(iterable, dtype, Py_ssize_t count):
         buf[i] = e
         i += 1
     return buf
-    
+
+
 def fromiter(iterable, dtype, Py_ssize_t count):
     if isinstance(dtype, np.dtype):
         value_type = dtype.type
@@ -198,7 +202,7 @@ def fromiter(iterable, dtype, Py_ssize_t count):
         return fromiter_f64(iterable, dtype, count)
     else:
         return fromiter_generic(iterable, dtype, count)
-    
+
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
