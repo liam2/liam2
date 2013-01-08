@@ -9,9 +9,9 @@ import config
 from simulation import Simulation
 from importer import csv2h5
 from console import Console
-from data import populate_registry
+#from data import populate_registry
 
-__version__ = "0.5.1"
+__version__ = "0.6.0dev"
 
 
 class AutoflushFile(object):
@@ -28,7 +28,7 @@ def eat_traceback(func, *args, **kwargs):
 # e.context_mark | in "import.yml", line 18, column 9
 # e.problem      | expected <block end>, but found '<block sequence start>'
 # e.problem_mark | in "import.yml", line 29, column 12
-    used_error_path = None
+    error_log_path = None
     try:
         try:
             return func(*args, **kwargs)
