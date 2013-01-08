@@ -127,7 +127,9 @@ def count_occurences(seq):
 def skip_comment_cells(lines):
     notacomment = lambda v: not v.startswith('#')
     for line in lines:
-        yield list(itertools.takewhile(notacomment, line))
+        stripped_line = list(itertools.takewhile(notacomment, line))
+        if stripped_line:
+            yield stripped_line
 
 
 def strip_rows(lines):
