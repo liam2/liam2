@@ -688,8 +688,12 @@ def add_individuals(target_context, children):
     target_entity.array = np.concatenate((array, children))
     temp_variables = target_entity.temp_variables
     for name, temp_value in temp_variables.iteritems():
-        if isinstance(temp_value, np.ndarray) and temp_value.shape:
+        #FIXME: OUCH, this is getting ugly, I'll need a better way to
+        # differentiate nd-arrays from "entity" variables
+        if (isinstance(temp_value, np.ndarray) and
+            temp_value.shape == (num_rows,)):
             extra = get_missing_vector(num_birth, temp_value.dtype)
+            print (temp_value.shape, extra.shape)
             temp_variables[name] = np.concatenate((temp_value, extra))
 
     extra_variables = target_context.extra
