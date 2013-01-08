@@ -10,9 +10,14 @@ from process import Process, BreakpointException
 
 
 class Show(Process):
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         Process.__init__(self)
         self.args = args
+        self.print_exprs = kwargs.pop('print_exprs', False)
+        if kwargs:
+            kwarg, _ = kwargs.popitem()
+            raise TypeError("'%s' is an invalid keyword argument for show()"
+                            % kwarg)
 
     def expressions(self):
         for arg in self.args:
@@ -24,7 +29,12 @@ class Show(Process):
             print "show skipped",
         else:
             values = [expr_eval(expr, context) for expr in self.args]
-            print ' '.join(str(v) for v in values),
+            if self.print_exprs:
+                titles = [str(expr) for expr in self.args]
+                print '\n'.join('%s: %s' % (title, value)
+                                for title, value in zip(titles, values)),
+            else:
+                print ' '.join(str(v) for v in values),
 
     def __str__(self):
         #TODO: the differentiation shouldn't be needed. I guess I should
@@ -32,6 +42,14 @@ class Show(Process):
         str_args = [str(arg) if isinstance(arg, Expr) else repr(arg)
                     for arg in self.args]
         return 'show(%s)' % ', '.join(str_args)
+
+
+class QuickShow(Show):
+    def __init__(self, *args):
+        Show.__init__(self, *args, print_exprs=True)
+
+    def __str__(self):
+        return Show.__str__(self).replace('show(', 'qshow(')
 
 
 class CSV(Process):
@@ -227,6 +245,7 @@ functions = {
 #    'print': Print,
     'csv': CSV,
     'show': Show,
+    'qshow': QuickShow,
     'remove': RemoveIndividuals,
     'breakpoint': Breakpoint,
     'assertTrue': AssertTrue,
