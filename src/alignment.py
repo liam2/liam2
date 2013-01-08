@@ -5,7 +5,7 @@ import random
 
 import numpy as np
 
-from expr import  Variable, expr_eval, collect_variables, traverse_expr
+from expr import (Variable, expr_eval, collect_variables, traverse_expr)
 from context import context_length, context_subset
 from utils import PrettyTable, prod
 from properties import (FilteredExpression, TableExpression, GroupCount,
@@ -360,6 +360,23 @@ def align_get_indices_nd(context, filter_value, score,
         return total_indices, (to_split_indices, to_split_overflow)
     else:
         return total_indices, None
+
+
+# this is a quick hack, I should use "standard" GroupBy instead but I'm
+# running out of time, so quick hack it is...
+#TODO: somehow move "headers"/totals out of GroupBy
+def groupby(filtered_columns, expr, context, possible_values=None):
+    if possible_values is None:
+        possible_values = [np.unique(col) for col in filtered_columns]
+    groups = partition_nd(filtered_columns, True, possible_values)
+    used_variables = expr.collect_variables(context)
+    used_variables.add('id')
+    data = [expr_eval(expr,
+                      context_subset(context, member_indices, used_variables))
+            for member_indices in groups]
+    data = np.array(data)
+    shape = tuple(len(pv) for pv in possible_values)
+    return data.reshape(shape)
 
 
 class GroupBy(TableExpression):

@@ -7,6 +7,7 @@ from expr import add_context, Variable
 
 import expr
 import alignment
+import align_other
 import matching
 import properties
 import actions
@@ -15,8 +16,8 @@ import links
 import tfunc
 
 functions = {}
-for module in (expr, alignment, matching, properties, actions, regressions,
-               links, tfunc):
+for module in (expr, alignment, align_other, matching, properties, actions,
+               regressions, links, tfunc):
     functions.update(module.functions)
 
 and_re = re.compile('([ )])and([ (])')
