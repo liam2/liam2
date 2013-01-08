@@ -9,11 +9,12 @@ globals:
             # period is implicit
             - MINR: float
             - WEMRA: int
+            - MIG_PERCENT: float
 
     MIG:
         path: param\mig.csv
         kind: ndarray
-        type: int
+        type: float
 
     othertable:
         path: param\othertable.csv
