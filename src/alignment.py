@@ -2,9 +2,11 @@ from __future__ import print_function
 
 from itertools import izip, product, count
 import random
+import os
 
 import numpy as np
 
+import config
 from expr import (Variable, expr_eval, collect_variables, traverse_expr)
 from context import context_length, context_subset
 from utils import PrettyTable, prod
@@ -630,9 +632,9 @@ class Alignment(FilteredExpression):
         variables |= collect_variables(self.leave_filter, context)
         return variables
 
-    def load(self, fpath):
+    def load(self, fname):
         from exprparser import parse
-
+        fpath = os.path.join(config.input_directory, fname)
         header, possible_values, array = load_ndarray(fpath, float)
         self.expressions = [parse(expr, autovariables=True) for expr in header]
         self.possible_values = possible_values
