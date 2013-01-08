@@ -352,7 +352,11 @@ class SubscriptedExpr(EvaluableExpression):
 
     def evaluate(self, context):
         expr = expr_eval(self.expr, context)
-        key = expr_eval(self.key, context)
+        key = self.key
+        if isinstance(key, tuple):
+            key = tuple(expr_eval(k, context) for k in key)
+        else:
+            key = expr_eval(key, context)
         #XXX: return -1 for out_of_bounds like for globals?
         return expr[key]
 
