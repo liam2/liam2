@@ -6,25 +6,29 @@
 
  - move all these TODO to trac tickets
 
- - kill "kind" keyword in simulation validation def
+
 
  - kill "kind" keyword in import (make type & fields keyword synonyms)
+
+
+ - dump and groupby should produce a wrapper for an ndarray with headers and
+   show and csv should have the options to display headers or not, totals or
+   not and how to display missing values
+   internally csv and show should use the same code for that
+   >>> what if you want to compute something on one of those ndarray wrapper,
+       including the "totals" 
+
+ - move groupby out of alignment.py
  
- - reuse importer code (load_ndarray) in alignment
- 
- - kill output_file argument in copyTable
- 
- - add *automated* tests for:
-   other global table
-   periodic namespace for globals
-   ndarray (MIG is not commited)
-   
- - automate tests for MIG, calledExpr, subscriptedExpr and exprAttr
-   
- 
- 
+ - use the ast, instead of string replaces to transform and to &, or to |,
+   not to ~, so that we get the correct operator precedence!
  
  - add command to console to list macros
+
+ - make "othertable" work without a PERIOD column
+ 
+ - make "variable checking" (collect_variable) prefix variable by their
+   entity and globals by their "table"
 
  - merge code for loading ndarrays and tables (ie importer.load_ndarray and
    importer.CSV(), they are both special cases of nd record arrays which I
@@ -67,7 +71,8 @@
    code), but we couldn't check that the type of fields is "correct". We would
    also need to postpone "compiling" to numexpr (which uses types) to after
    the input data file is loaded (or at least known and analysed).
-   I like the idea, but it would be much work for a small benefit.
+   I like the idea, because it brings us closer to Python but it would be much
+   work for only a small benefit.
  
  - allow to "import" globals during the simulation (effectively allowing to
    bypass the import step for time series and other csv files)
@@ -415,7 +420,7 @@
  ? use stata regressions directly
    * would introduce some kind of dependency on Stata which is not a good thing
      IMO -> convert them first?
- ? data_main: import all columns, except a few
+ ? importer: import all columns, except a few
  ? make specifying output field types optional (I can compute them):
    listing the fields is technically enough, though having the type make things
    easier and we can have some type checks
@@ -525,6 +530,7 @@
  - initialdata: s/false/value
  - allow setting/creating temporary variables in interactive console
  - merge per_period_fields and globals
+   >>> ie make globals writeable
  - line numbers in error messages. It might be tricky because we loose the
    information after yaml parsed the file
  - one filter, several actions.
@@ -560,43 +566,9 @@
 
  optimisation
  ------------
- - use pandas: we could kill half of my code and it would bring for free many of
-   the features I want to develop (and more), but this would need such a major
-   refactoring that I am uneager to start it :)
-
- - try Numba
-
- - try SymPy speed. They use mpmath and I wonder how fast it is.
-
- - use bottleneck (http://pypi.python.org/pypi/Bottleneck)
-   nansum, nanmin, nanmax, nanmean, nanstd
-   it will probably be integrated back into numpy/scipy at some point but it
-   will probably take a while, so let's use this in the mean time
-
- - try raw sql (in C)
-
- - try using corepy
 
  - try to compress data using google snappy, quicklz or lz4 (they seem even
    faster than fastLZ on which blosc is based)
-
- - try making python bindings to ORC
-   http://code.entropywave.com/projects/orc/
-   or any of the other C JIT referenced in the external links at:
-   http://en.wikipedia.org/wiki/Just-in-time_compilation
-
- - try using Theano (http://deeplearning.net/software/theano/)
-   it seems to be a PITA to install though (no pre-built packages, needs a
-   compiler, BLAS, etc...). It is only integrated with CUDA (ie NVidia)
-
- - try PyOpenCL: OpenCL seem pretty powerful and more standardised than CUDA
-   (also works on some CPUs, not only GPUs).
-
- - try scipy.weave.blitz. It seems a bit limited in functionality but it uses
-   blitz++ (http://www.oonumerics.org/blitz/) internally which seems to contain
-   all I need and more, so adding the missing functionality might not be too
-   hard. It seems to be really slow to compile though, so it'll probably be
-   only worth it when using very large arrays.
 
  - improve numexpr caching algorithm (LRU), and/or increase its size and/or
    cache expressions ourselves. Some long expressions take a lot longer to
@@ -665,6 +637,60 @@
    elsewhere. It might cause a problem if the last ids (newly borns) die.
    it seems to be a tad slower in fact. However, it might be a better starting
    point to translate in C if that is ever necessary.
+
+ projects to keep an eye on
+ --------------------------
+ 
+ - Julia (http://julialang.org): a language specifically tailored for
+   scientific computing. It seem to have a very interesting feature set
+   (optional typing, fast resulting code, builtin parallelisation primitives,
+   ...) but a somewhat ugly syntax. What I don't know though is whether its
+   "stdlib" is complete enough for our needs (csv input, hdf output, plotting,
+   ...).
+
+ - SciDB: http://www.scidb.org   
+
+ - pandas: we could kill half of my code and it would bring for free many
+   of the features I want to develop (and more), but this would need such a
+   major refactoring that I am uneager to start it :)
+
+ - Numba
+ 
+ - Blaze (http://blaze.pydata.org/) is a generalisation of ndarray with more
+   data layouts -- potentially distributed), a delayed-evaluation system
+   (like I have done in liam2) and a built-in code generation framework based
+   on LLVM (using Numba I think). Documentation is a bit scarce at this point,
+   but from my quick glance at it, it seems to be exactly what I have been
+   dreaming for but would have been unable to achieve by myself.
+
+ - SymPy. They use mpmath and I wonder how fast it is.
+
+ - bottleneck (http://pypi.python.org/pypi/Bottleneck)
+   nansum, nanmin, nanmax, nanmean, nanstd
+   it will probably be integrated back into numpy/scipy at some point but it
+   will probably take a while, so let's use this in the mean time
+
+ - corepy
+
+ - Theano (http://deeplearning.net/software/theano/)
+   it seems to be a PITA to install though (no pre-built packages, needs a
+   compiler, BLAS, etc...). It is only integrated with CUDA (ie NVidia)
+
+ - PyOpenCL: OpenCL seem pretty powerful and more standardised than CUDA
+   (also works on some CPUs, not only GPUs).
+
+ - scipy.weave.blitz. It seems a bit limited in functionality but it uses
+   blitz++ (http://www.oonumerics.org/blitz/) internally which seems to contain
+   all I need and more, so adding the missing functionality might not be too
+   hard. It seems to be really slow to compile though, so it'll probably be
+   only worth it when using very large arrays.
+
+ - ORC (but I would need to create python bindings for it) 
+   http://code.entropywave.com/projects/orc/
+   or any of the other C JIT referenced in the external links at:
+   http://en.wikipedia.org/wiki/Just-in-time_compilation
+
+
 
  GUI
  ---
