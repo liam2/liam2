@@ -1,6 +1,7 @@
 from __future__ import division
 
 import re
+import ast
 
 from expr import add_context, Variable
 
@@ -20,10 +21,6 @@ for module in (expr, alignment, align_other, matching, properties, actions,
                regressions, links, tfunc):
     functions.update(module.functions)
 
-and_re = re.compile('([ )])and([ (])')
-or_re = re.compile('([ )])or([ (])')
-not_re = re.compile(r'([ (=]|^)not(?=[ (])')
-
 
 #class Token(object):
 #    def __init__(self, name):
@@ -40,6 +37,28 @@ not_re = re.compile(r'([ (=]|^)not(?=[ (])')
 #        self.attr = key
 
 
+class BoolToBitTransformer(ast.NodeTransformer):
+    def visit_BoolOp(self, node):
+        # first transform children of the node
+        self.generic_visit(node)
+
+        # using a dict doesn't seem to work
+        if isinstance(node.op, ast.And):
+            new_op = ast.BitAnd()
+        else:
+            assert isinstance(node.op, ast.Or)
+            new_op = ast.BitOr()
+        values = node.values
+        right = values.pop()
+        while len(values):
+            left = values.pop()
+            right = ast.copy_location(ast.BinOp(left, new_op, right), node)
+        return right
+
+    def visit_Not(self, node):
+        return ast.Invert()
+
+
 def parse(s, globals=None, conditional_context=None, interactive=False,
           autovariables=False):
     if not isinstance(s, basestring):
@@ -47,9 +66,9 @@ def parse(s, globals=None, conditional_context=None, interactive=False,
 
     # this prevents any function named something ending in "if"
     str_to_parse = s.replace('if(', 'where(')
-    str_to_parse = and_re.sub(r'\1&\2', str_to_parse)
-    str_to_parse = or_re.sub(r'\1|\2', str_to_parse)
-    str_to_parse = not_re.sub(r'\1~', str_to_parse)
+    tree = ast.parse(str_to_parse)
+    tree = BoolToBitTransformer().visit(tree)
+    body = tree.body
 
     # disable for now because it is not very useful yet. To be useful, I need
     # to implement:
@@ -58,8 +77,6 @@ def parse(s, globals=None, conditional_context=None, interactive=False,
     #   console
 #    if interactive:
     if False:
-        import ast
-        body = ast.parse(str_to_parse).body
         if len(body) == 0:
             to_compile = []
         else:
@@ -69,9 +86,10 @@ def parse(s, globals=None, conditional_context=None, interactive=False,
                 to_compile = [('exec', ast.Module(body[:-1])),
                               ('eval', ast.Expression(body[-1].value))]
             else:
-                to_compile = [('exec', str_to_parse)]
+                to_compile = [('exec', tree)]
     else:
-        to_compile = [('eval', str_to_parse)]
+        assert len(body) == 1 and isinstance(body[0], ast.Expr)
+        to_compile = [('eval', ast.Expression(body[0].value))]
 
     try:
         to_eval = [(mode, compile(code, '<expr>', mode))
@@ -142,3 +160,4 @@ def parse(s, globals=None, conditional_context=None, interactive=False,
                 raise
             except Exception, e:
                 raise add_context(e, s)
+

@@ -10,7 +10,6 @@
 
  - kill "kind" keyword in import (make type & fields keyword synonyms)
 
-
  - dump and groupby should produce a wrapper for an ndarray with headers and
    show and csv should have the options to display headers or not, totals or
    not and how to display missing values
@@ -19,9 +18,6 @@
        including the "totals" 
 
  - move groupby out of alignment.py
- 
- - use the ast, instead of string replaces to transform and to &, or to |,
-   not to ~, so that we get the correct operator precedence!
  
  - add command to console to list macros
 
