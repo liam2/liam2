@@ -14,6 +14,7 @@ from utils import (validate_dict, merge_dicts, merge_items, invert_dict,
                    field_str_to_type, fields_yaml_to_type)
 from properties import missing_values
 
+
 MB = 2.0 ** 20
 
 
@@ -233,7 +234,10 @@ class CSV(object):
     @property
     def numlines(self):
         if self._numlines is None:
-            self._numlines = countlines(self.fpath) - 1
+            if self.transposed is not None:
+                self._numlines = len(self.transposed) - 1
+            else:
+                self._numlines = countlines(self.fpath) - 1
         return self._numlines
 
     def read(self, fields=None):
