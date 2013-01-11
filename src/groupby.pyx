@@ -136,72 +136,24 @@ cdef extern from "khash.h":
     bint kh_exist_int32(kh_int32_t*, khiter_t)
 
 
-def fromiter_i32(iterable, dtype, Py_ssize_t count):
-    cdef ndarray[int32_t] buf
-    cdef Py_ssize_t i
-    cdef int32_t e
-
-    buf = np.empty(count, dtype=dtype)
-    i = 0
-    for e in iterable:
-        buf[i] = e
-        i += 1
-    return buf
-
-
-def fromiter_f32(iterable, dtype, Py_ssize_t count):
-    cdef ndarray[np.float32_t] buf
-    cdef Py_ssize_t i
-    cdef np.float32_t e
-
-    buf = np.empty(count, dtype=dtype)
-    i = 0
-    for e in iterable:
-        buf[i] = e
-        i += 1
-    return buf
-
-
-def fromiter_f64(iterable, dtype, Py_ssize_t count):
-    cdef ndarray[np.float64_t] buf
-    cdef Py_ssize_t i
-    cdef np.float64_t e
-
-    buf = np.empty(count, dtype=dtype)
-    i = 0
-    for e in iterable:
-        buf[i] = e
-        i += 1
-    return buf
-
-
-def fromiter_generic(iterable, dtype, Py_ssize_t count):
+def fromiter(iterable, dtype, Py_ssize_t count=-1):
     cdef ndarray buf
     cdef Py_ssize_t i
     cdef object e
 
-    buf = np.empty(count, dtype=dtype)
-    i = 0
-    for e in iterable:
-        buf[i] = e
-        i += 1
-    return buf
-
-
-def fromiter(iterable, dtype, Py_ssize_t count):
-    if isinstance(dtype, np.dtype):
-        value_type = dtype.type
+    if count == -1:
+        return np.fromiter(iterable, dtype)
     else:
-        value_type = dtype
-
-    if value_type in (int, np.int32, np.intc):
-        return fromiter_i32(iterable, dtype, count)
-    elif value_type in (np.float32,):
-        return fromiter_f32(iterable, dtype, count)
-    elif value_type in (float, np.float64):
-        return fromiter_f64(iterable, dtype, count)
-    else:
-        return fromiter_generic(iterable, dtype, count)
+        buf = np.empty(count, dtype=dtype)
+        i = 0
+        for e in iterable:
+            buf[i] = e
+            i += 1
+            if i == count:
+                break
+        if i < count:
+            raise ValueError("iterator too short")
+        return buf
 
 
 @cython.wraparound(False)
@@ -396,6 +348,7 @@ def _group_labels_int32_light(ndarray[int32_t] values, object filter_value):
         khiter_t k
         kh_int32_t *table
         ndarray[int8_t, cast=True] bool_filter
+        int8_t keep_value
 
     table = kh_init_int32()
     kh_resize_int32(table, n)
@@ -409,6 +362,9 @@ def _group_labels_int32_light(ndarray[int32_t] values, object filter_value):
                 labels[i] = idx
             else:
                 k = kh_put_int32(table, val, &ret)
+                #XXX: the behavior on put failure seem weird:
+                # table.vals[k] = count
+                # should probably not happen in that case
                 if not ret:
                     kh_del_int32(table, k)
                 table.vals[k] = count
@@ -460,6 +416,7 @@ def _group_labels_generic(ndarray[object] values, object filter_value):
         object val
         int32_t count = 0
         ndarray[int8_t, cast=True] bool_filter
+        int8_t keep_value
 
     if filter_value is True:
         for i in range(n):
@@ -530,6 +487,7 @@ def _group_labels_generic_light(ndarray[object] values, object filter_value):
         object val
         int32_t count = 0
         ndarray[int8_t, cast=True] bool_filter
+        int8_t keep_value
 
     if filter_value is True:
         for i in range(n):

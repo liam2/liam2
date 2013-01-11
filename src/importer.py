@@ -11,7 +11,7 @@ import yaml
 from utils import (validate_dict, merge_dicts, merge_items, invert_dict,
                    countlines, skip_comment_cells, strip_rows, PrettyTable,
                    unique, duplicates, unique_duplicate, prod,
-                   field_str_to_type, fields_yaml_to_type)
+                   field_str_to_type, fields_yaml_to_type, fromiter)
 from properties import missing_values
 
 
@@ -49,19 +49,18 @@ def convert(iterable, fields, positions=None):
             yield tuple(func(value) for func, value in zip(funcs, row))
     else:
         assert len(positions) <= len(fields)
-#        rowlen = None
+        rowlen = None
         for row in iterable:
-            # until we provide our own np.fromiter implementation, there is no
-            # use to raise an exception here, as it will be silently swallowed
-            # and replaced by the dreaded "iterator too short" exception
-#            if rowlen is None:
-#                rowlen = len(row)
-#            elif len(row) != rowlen:
-#                raise Exception("error in row: " + str(row))
+            if rowlen is None:
+                rowlen = len(row)
+            elif len(row) != rowlen:
+                raise Exception("invalid row length (%d != %d): %s"
+                                % (len(row), rowlen, row))
 
             # Note that [x for x in y] is generally faster than
             # tuple(x for x in y) but the stream is usually consumed by
-            # np.fromiter which only accepts tuples
+            # fromiter which only accepts tuples (because a[i] = x works only
+            # when x is a tuple)
             yield tuple(func(row[pos])
                         for func, pos in zip(funcs, positions))
 
@@ -145,13 +144,6 @@ def transpose_table(data):
 
     return [[data[rownum][colnum] for rownum in range(numrows)]
             for colnum in range(numcols)]
-
-
-def convert_stream_and_close_file(f, data_stream, fields, positions):
-    #XXX: is there no way to avoid this? yield from?
-    for row in convert(data_stream, fields, positions):
-        yield row
-    f.close()
 
 
 def eval_with_template(s, template_context):
@@ -250,35 +242,26 @@ class CSV(object):
             fields = self.fields
             positions = None
         else:
-            self.check_has_fields(fields)
+            missing_fields = set(name for name, _ in fields) - \
+                                 set(self.field_names)
+            if missing_fields:
+                raise Exception("%s does not contain any field(s) named: %s"
+                                % (self.fpath, ", ".join(missing_fields)))
             available_fields = self.field_names
             positions = [available_fields.index(name)
                          for name, _ in fields]
         self.rewind()
         self.next()
-        return convert_stream_and_close_file(self.f, self.data_stream,
-                                             fields, positions)
-
-    def check_has_fields(self, fields):
-        missing_fields = set(name for name, _ in fields) - \
-                             set(self.field_names)
-        if missing_fields:
-            raise Exception("%s does not contain any field(s) named: %s"
-                            % (self.fpath, ", ".join(missing_fields)))
+        return convert(self.data_stream, fields, positions)
 
     def as_array(self, fields=None):
         if fields is None:
             fields = self.fields
-        else:
-            # we need to explicitly check for missing fields here, even if
-            # it is already done in self.read() because np.fromiter
-            # swallows exceptions, so the error message in that case is awful.
-            self.check_has_fields(fields)
 
         # csv file is assumed to be in the correct order (ie by period then id)
         datastream = self.read(fields)
-        return np.fromiter(datastream, dtype=np.dtype(fields),
-                           count=self.numlines)
+        return fromiter(datastream, dtype=np.dtype(fields),
+                        count=self.numlines)
 
 
 def complete_path(prefix, path):
@@ -326,10 +309,10 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
             buffer_rows = min(numlines, max_buffer_rows)
             # ideally, we should preallocate an empty buffer and reuse it,
             # but that does not seem to be supported by numpy
-            array = np.fromiter(dataslice, dtype=dtype, count=buffer_rows)
+            array = fromiter(dataslice, dtype=dtype, count=buffer_rows)
             numlines -= buffer_rows
         else:
-            array = np.fromiter(dataslice, dtype=dtype)
+            array = fromiter(dataslice, dtype=dtype)
             if not len(array):
                 break
 
@@ -353,8 +336,8 @@ def array_to_disk_array(h5file, node, name, array, title='', compression=None):
         disk_array = h5file.createArray(node, name, data, title)
     attrs = disk_array.attrs
     attrs.dimensions = np.array(dim_names)
-    # attrs.dim0_pvalues = array([a, b])
-    # attrs.dim1_pvalues = array([a, b])
+    # attrs.dim0_pvalues = array([a, b, c])
+    # attrs.dim1_pvalues = array([d, e])
     # ...
     for i, pvalues in enumerate(possible_values):
         setattr(attrs, 'dim%d_pvalues' % i, pvalues)
@@ -573,17 +556,13 @@ def load_def(localdir, ent_name, section_def, required_fields):
                        delimiter=',', transpose=transpose)
         if fields is not None:
             fields = required_fields + fields
-            # we have to check explicitly for missing fields here, even if it
-            # is done in csv_file.read because of that stupid bug in
-            # np.fromiter which swallows exceptions in generators
-            csv_file.check_has_fields(fields)
         stream = csv_file.read(fields)
         if fields is None:
             fields = csv_file.fields
         if interpolate_def is not None:
             raise Exception('interpolate is currently only supported with '
                             'multiple files')
-        return 'table', (fields, csv_file.numlines, stream)
+        return 'table', (fields, csv_file.numlines, stream, csv_file)
     else:
         # we have to load all files, merge them and return a stream out of that
         print " * computing number of rows..."
@@ -639,8 +618,12 @@ def load_def(localdir, ent_name, section_def, required_fields):
         target['period'] = id_periods['period']
         target['id'] = id_periods['id']
 
-        arrays = (f.as_array(fields_to_load)
-                  for f, fields_to_load in zip(files, fields_per_file))
+        arrays = [f.as_array(fields_to_load)
+                  for f, fields_to_load in zip(files, fields_per_file)]
+
+        # close all files
+        for f in files:
+            f.close()
 
         #FIXME: interpolation currently only interpolates missing data points,
         # not data points with their value equal the missing value
@@ -657,7 +640,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
             to_interpolate = []
 
         interpolate(target, arrays, id_periods, to_interpolate)
-        return 'table', (target_fields, total_lines, iter(target))
+        return 'table', (target_fields, total_lines, iter(target), None)
 
 
 def csv2h5(fpath, buffersize=10 * 2 ** 20):
@@ -737,11 +720,14 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
                                         compression=compression)
                 else:
                     assert kind == 'table'
-                    fields, numlines, datastream = info
+                    fields, numlines, datastream, csvfile = info
                     stream_to_table(h5file, const_node, global_name, fields,
                                     datastream, numlines,
                                     title="%s table" % global_name,
-                                    buffersize=buffersize, compression=compression)
+                                    buffersize=buffersize,
+                                    compression=compression)
+                    if csvfile is not None:
+                        csvfile.close()
 
         ent_node = h5file.createGroup("/", "entities", "Entities")
         for ent_name, entity_def in content['entities'].iteritems():
@@ -749,13 +735,15 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
             kind, info = load_def(localdir, ent_name,
                                   entity_def, [('period', int), ('id', int)])
             assert kind == "table"
-            fields, numlines, datastream = info
+            fields, numlines, datastream, csvfile = info
 
             stream_to_table(h5file, ent_node, ent_name, fields,
                             datastream, numlines,
                             title="%s table" % ent_name,
                             invert=entity_def.get('invert', []),
                             buffersize=buffersize, compression=compression)
+            if csvfile is not None:
+                csvfile.close()
     finally:
         h5file.close()
     print "done."

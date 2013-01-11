@@ -68,6 +68,27 @@ def safe_put(a, ind, v):
         a[-1] = last_value
 
 
+# we provide our own version of fromiter because it swallows any exception
+# occurring within the iterable if the count argument is used
+try:
+    from groupby import fromiter
+except ImportError:
+    def fromiter(iterable, dtype, count=-1):
+        if count == -1:
+            return np.fromiter(iterable, dtype)
+        else:
+            buf = np.empty(count, dtype=dtype)
+            i = 0
+            for e in iterable:
+                buf[i] = e
+                i += 1
+                if i == count:
+                    break
+            if i < count:
+                raise ValueError("iterator too short")
+            return buf
+
+
 #TODO: provide a cython version for this (using fused types)
 #ctypedef fused np_numeric:
 #     np.int32_t
