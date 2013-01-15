@@ -4,30 +4,23 @@ import numpy as np
 
 from expr import expr_eval, collect_variables, traverse_expr, Variable, \
                  missing_values, get_missing_value
-
+from links import Link, LinkValue
 from alignment import groupby
 from context import context_length, context_subset, context_delete
 from context import EntityContext
 from properties import EvaluableExpression, GroupCount
 from registry import entity_registry
-from utils import loop_wh_progress
 
 
 class AlignOther(EvaluableExpression):
-    def __init__(self, link, target_expressions, target_filter, filter, need,
+    def __init__(self, link, target_expressions, filter, need,
                  orderby):
         """
         filter is a local filter (eg filter on hh, eg is_candidate)
-        target_filter, is the filter for targets,
-        eg hh.is_candidate
-        XXX: we might want to compute target_filter automatically as I am
-        unsure if it makes sense to use a filter different from
-        [reverse_link].local_filter
         """
 
         self.link = link
         self.target_expressions = target_expressions
-        self.target_filter_expr = target_filter
         self.filter_expr = filter
         self.need_expr = need
         self.orderby_expr = orderby
@@ -52,7 +45,7 @@ class AlignOther(EvaluableExpression):
         expr_vars |= collect_variables(self.orderby_expr, context)
         return expr_vars
 
-    #TODO: somehow merge this with LinkExpression or move these two functions
+    #TODO: somehow merge these two functions with LinkExpression or move them
     # to the Link class
     def target_entity(self, context):
         return entity_registry[self.link._target_entity]
@@ -71,11 +64,14 @@ class AlignOther(EvaluableExpression):
         target_columns = [expr_eval(e, target_context)
                           for e in self.target_expressions]
         # this is a one2many, so the link column is on the target side
-        link = self.link
-        link_column = expr_eval(Variable(link._link_field), target_context)
-        if self.target_filter_expr is not None:
-            target_filter_value = expr_eval(self.target_filter_expr,
-                                            target_context)
+        link_column = expr_eval(Variable(self.link._link_field),
+                                target_context)
+
+        if self.filter_expr is not None:
+            reverse_link = Link("reverse", "many2one", self.link._link_field,
+                                context['__entity__'].name)
+            target_filter = LinkValue(reverse_link, self.filter_expr, False)
+            target_filter_value = expr_eval(target_filter, target_context)
             filtered_columns = [col[target_filter_value]
                                   if isinstance(col, np.ndarray) and col.shape
                                   else [col]
@@ -85,22 +81,7 @@ class AlignOther(EvaluableExpression):
             filtered_columns = target_columns
 
         id_to_rownum = context.id_to_rownum
-        if self.filter_expr is not None:
-            filter_value = expr_eval(self.filter_expr, context)
-            filtered_context = context_subset(context, filter_value)
-            #FIXME: move this somewhere else
-            id_to_rownum = filtered_context.id_to_rownum
-            orderby = orderby[filter_value]
-        else:
-            filtered_context = context
-
-
         missing_int = missing_values[int]
-
-        #TODO: implement "source" filter (we don't want any target filter, like
-        # we do in "normal" AggregateLink functions but we do want to filter
-        # the source (ie only take source_ids which point to an id in the
-        # filtered subset)
         source_ids = link_column
 
         if len(id_to_rownum):
@@ -117,7 +98,7 @@ class AlignOther(EvaluableExpression):
         # individual. e.g. (gender, age) for each person in each household
         # we store it as a distinct list for each column, eg:
         # hh = [([15, 26, 12], [True, False, True]), ([23], [True])]
-        hh = np.empty(context_length(filtered_context), dtype=object)
+        hh = np.empty(context_length(context), dtype=object)
         # we can use .fill([]) because it reuses the same list for all hh
         numcol = len(filtered_columns)
         col_range = range(numcol)
@@ -128,30 +109,45 @@ class AlignOther(EvaluableExpression):
         # groupby._group_labels (in the first pass, only count the number of
         # different values) so that we can create arrays directly
         #XXX: we might want to use group_labels directly
-        hh_rows = id_to_rownum[link_column]
-        for person_row, hh_row in enumerate(hh_rows):
-            #TODO: we need int indices, not bool
-            #TODO: convert all those lists to ndarrays it is 10x faster
-            # In [82]: i2
-            # Out[82]: ([0, 2, 4, 1, 2], [0, 1, 1, 0, 0])
+        for target_row, source_row in enumerate(source_rows):
+            if source_row == -1:
+                continue
+            #TODO: try storing only target_row here and then get column values
+            # (ie build "persons_in_hh") only in the main algorithm loop.
+            # This will save some memory and should be as fast because we
+            # only ever iterate on persons_in_hh once
+            #XXX: in that case, we could use partition_nd on link_column.
+            # It would be a bit overkill because in this case we know the
+            # possible values in advance but, in practice, creating a version
+            # of partition_nd with known labels would only save one "if"
+            # per object and compared to the hash lookup, it is probably a
+            # very small gain. However, a version of partition_nd with known
+            # labels *as* a ndarray (ala id_to_rownum) might be worth it.
+            for target_list, source_col in zip(hh[source_row],
+                                               filtered_columns):
+                target_list.append(source_col[target_row])
 
-            # In [83]: i2a2
-            # Out[83]: (array([0, 2, 4, 1, 2]), array([0, 1, 1, 0, 0]))
+        #FIXME: we need to store the indices of the values, not the values
+        # themselves. These indices should be consistent with the "need" and "
+        # "num_candidates" matrices (and all their derived matrices: rel_need,
+        # unfillable_bins, ...). In our current example, this is luckily the
+        # same thing because age starts at 0 and has no gaps in values
+        arr = np.array
+        for i in range(len(hh)):
+            # we convert to int because we need indices, not booleans
+            hh[i] = tuple(arr(l, dtype=int) for l in hh[i])
 
-            # In [84]: timeit a[i2]
-            # 10000 loops, best of 3: 19.9 us per loop
-
-            # In [85]: timeit a[i2a2]
-            # 100000 loops, best of 3: 2.12 us per loop
-
-            for target_list, source_col in zip(hh[hh_row], filtered_columns):
-                target_list.append(source_col[person_row])
-
-        #FIXME: pvalues should come from need "indexed columns"/possible values
+        #TODO: pvalues should come from need "indexed columns"/possible values
+        # the problem is that we don't have that information in ndarrays (but
+        # we do have it in the hdf file). Setting the attrs on the "initial"
+        # ndarray when loading from hdf should be easy (it is only a matter of
+        # defining a subclass of ndarray -- can set attribute on instances of
+        # the original class), however propagating them on results of
+        # expressions (including subscripting) will be tedious.
+        #FIXME: the only sane option I see *for now* is to let the user specify
+        # those himself
         pvalues = [range(n) for n in need.shape]
-        #FIXME: target_context should be filtered too
-        num_candidates = groupby(filtered_columns, GroupCount(),
-                                 target_context, pvalues)
+        num_candidates = groupby(filtered_columns, pvalues)
 
 #        print "candidates"
 #        print num_candidates
@@ -167,7 +163,7 @@ class AlignOther(EvaluableExpression):
         unfillable_bins = still_needed > still_available
         overfilled_bins = still_needed <= 0
 
-        #FIXME: add an argument for this or compute it automatically
+        #FIXME: add an argument to specify which column(s) to sum on
         age_axis = 1
         still_needed_by_sex = need.sum(axis=age_axis)
         print "needed by sex", still_needed_by_sex
@@ -182,7 +178,8 @@ class AlignOther(EvaluableExpression):
                 print "total reached"
                 break
             persons_in_hh = hh[sorted_idx]
-            if not persons_in_hh:
+            # persons_in_hh is a tuple of ndarrays
+            if len(persons_in_hh[0]) == 0:
                 continue
 
             # Keep the highest relative need index for the family
@@ -190,9 +187,6 @@ class AlignOther(EvaluableExpression):
             num_excedent = overfilled_bins[persons_in_hh].sum()
             num_unfillable = unfillable_bins[persons_in_hh].sum()
 
-#            print "hh: relneed %f, exc %d / unf %d" % (hh_rel_need,
-#                                                       num_excedent,
-#                                                       num_unfillable),
             # if either excedent or unfillable are not zero, adjust rel_need:
             if (num_excedent != 0) or (num_unfillable != 0):
                 if num_unfillable > num_excedent:
