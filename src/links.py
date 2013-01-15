@@ -15,6 +15,8 @@ class Link(object):
         # the leading underscores are necessary to not collide with
         # user-defined fields via __getattr__.
         self._name = name
+        assert link_type in ('many2one', 'one2many'), \
+               "link type should be either 'many2one' or 'one2many'"
         self._link_type = link_type
         self._link_field = link_field
         self._target_entity = target_entity
@@ -135,9 +137,10 @@ class LinkValue(LinkExpression):
         if missing_value is None:
             missing_value = get_missing_value(target_values)
 
+        result_values = target_values[target_rows]
         #XXX: use numexpr here?
         valid_link = (target_ids != missing_int) & (target_rows != missing_int)
-        return np.where(valid_link, target_values[target_rows], missing_value)
+        return np.where(valid_link, result_values, missing_value)
 
     def __str__(self):
         return '%s.%s' % (self.link, self.target_expression)
@@ -151,7 +154,7 @@ class AggregateLink(LinkExpression):
 
     def evaluate(self, context):
         assert isinstance(context, EntityContext), \
-               "aggregates in groupby is currently not supported"
+               "one2many aggregates in groupby are currently not supported"
         link = self.get_link(context)
         assert link._link_type == 'one2many'
 
