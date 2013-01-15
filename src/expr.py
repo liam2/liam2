@@ -136,6 +136,11 @@ def expr_eval(expr, context):
             if var_name not in globals_names and var_name not in context:
                 raise Exception("variable '%s' is unknown (it is either not "
                                 "defined or not computed yet)" % var_name)
+#            if var_name in globals_data:
+#                arr = globals_data[var_name]
+#                assert isinstance(arr, np.ndarray)
+#                if arr.ndim > 1:
+#                    print "ndim global", var_name, arr.shape
 
         return expr.evaluate(context)
         # there are several flaws with this approach:
