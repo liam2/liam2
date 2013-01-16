@@ -3,12 +3,12 @@ import random
 import numpy as np
 
 from expr import expr_eval, collect_variables, traverse_expr, Variable, \
-                 missing_values, get_missing_value
+                 missing_values
 from links import Link, LinkValue
 from alignment import groupby
-from context import context_length, context_subset, context_delete
+from context import context_length
 from context import EntityContext
-from properties import EvaluableExpression, GroupCount
+from properties import EvaluableExpression
 from registry import entity_registry
 
 
@@ -80,6 +80,9 @@ class AlignOther(EvaluableExpression):
         else:
             filtered_columns = target_columns
 
+        numcol = len(target_columns)
+        col_range = range(numcol)
+
         id_to_rownum = context.id_to_rownum
         missing_int = missing_values[int]
         source_ids = link_column
@@ -100,42 +103,28 @@ class AlignOther(EvaluableExpression):
         # hh = [([15, 26, 12], [True, False, True]), ([23], [True])]
         hh = np.empty(context_length(context), dtype=object)
         # we can use .fill([]) because it reuses the same list for all hh
-        numcol = len(filtered_columns)
-        col_range = range(numcol)
         for i in range(len(hh)):
-            hh[i] = tuple([] for _ in col_range)
+            hh[i] = []
 
+        # Even though this is highly sub-optimal, the time taken to create
+        # those lists of ids is very small compared to the total time taken
+        # for align_other (0.2s vs 4.26), so I shouldn't care too much about
+        # it for now
         #XXX: we might want to do this in two passes, like in
         # groupby._group_labels (in the first pass, only count the number of
         # different values) so that we can create arrays directly
         #XXX: we might want to use group_labels directly
+        #XXX: we could use partition_nd on link_column.
+        # It would be a bit overkill because in this case we know the
+        # possible values in advance but, in practice, creating a version
+        # of partition_nd with known labels would only save one "if"
+        # per object and compared to the hash lookup, it is probably a
+        # very small gain. However, a version of partition_nd with known
+        # labels *as* a ndarray (ala id_to_rownum) might be worth it.
         for target_row, source_row in enumerate(source_rows):
             if source_row == -1:
                 continue
-            #TODO: try storing only target_row here and then get column values
-            # (ie build "persons_in_hh") only in the main algorithm loop.
-            # This will save some memory and should be as fast because we
-            # only ever iterate on persons_in_hh once
-            #XXX: in that case, we could use partition_nd on link_column.
-            # It would be a bit overkill because in this case we know the
-            # possible values in advance but, in practice, creating a version
-            # of partition_nd with known labels would only save one "if"
-            # per object and compared to the hash lookup, it is probably a
-            # very small gain. However, a version of partition_nd with known
-            # labels *as* a ndarray (ala id_to_rownum) might be worth it.
-            for target_list, source_col in zip(hh[source_row],
-                                               filtered_columns):
-                target_list.append(source_col[target_row])
-
-        #FIXME: we need to store the indices of the values, not the values
-        # themselves. These indices should be consistent with the "need" and "
-        # "num_candidates" matrices (and all their derived matrices: rel_need,
-        # unfillable_bins, ...). In our current example, this is luckily the
-        # same thing because age starts at 0 and has no gaps in values
-        arr = np.array
-        for i in range(len(hh)):
-            # we convert to int because we need indices, not booleans
-            hh[i] = tuple(arr(l, dtype=int) for l in hh[i])
+            hh[source_row].append(target_row)
 
         #TODO: pvalues should come from need "indexed columns"/possible values
         # the problem is that we don't have that information in ndarrays (but
@@ -177,10 +166,23 @@ class AlignOther(EvaluableExpression):
             if still_needed_total <= 0:
                 print "total reached"
                 break
-            persons_in_hh = hh[sorted_idx]
-            # persons_in_hh is a tuple of ndarrays
-            if len(persons_in_hh[0]) == 0:
+            persons_in_hh_indices = hh[sorted_idx]
+            num_persons_in_hh = len(persons_in_hh_indices)
+            if num_persons_in_hh == 0:
                 continue
+
+            #FIXME: we need to store the indices of the values, not the values
+            # themselves. These indices should be consistent with the "need"
+            # and "num_candidates" matrices (and all their derived matrices:
+            # rel_need, unfillable_bins, ...). In our current example, this is
+            # luckily the same thing because age starts at 0 and has no gaps
+            # in values
+            persons_in_hh = tuple(np.empty(num_persons_in_hh, dtype=int)
+                                  for _ in col_range)
+            prange = range(num_persons_in_hh)
+            for hh_col, fcol in zip(persons_in_hh, filtered_columns):
+                for i in prange:
+                    hh_col[i] = fcol[persons_in_hh_indices[i]]
 
             # Keep the highest relative need index for the family
             hh_rel_need = np.nanmax(rel_need[persons_in_hh])
@@ -202,7 +204,7 @@ class AlignOther(EvaluableExpression):
                 aligned_indices.append(sorted_idx)
 
                 # update all counters
-                still_needed_total -= len(persons_in_hh)
+                still_needed_total -= num_persons_in_hh
 
                 # update grids (only the age/gender present in the family)
 
