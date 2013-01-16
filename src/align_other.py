@@ -24,6 +24,7 @@ class AlignOther(EvaluableExpression):
         self.filter_expr = filter
         self.need_expr = need
         self.orderby_expr = orderby
+        self.last_error = None
 
     def traverse(self, context):
         for expr in self.target_expressions:
@@ -144,6 +145,10 @@ class AlignOther(EvaluableExpression):
         #frac_taken = frac_need > 0.5
         need = need.astype(int)
         still_needed = need.copy()
+        if self.last_error is not None:
+            print "adding %d individuals from last period" \
+                  % np.sum(self.last_error)
+            still_needed += self.last_error
 
         still_available = num_candidates.copy()
 
@@ -237,7 +242,8 @@ class AlignOther(EvaluableExpression):
                     unfillable_bins[values] = sn > sa
 
                     rel_need[values] = float(sn) / sa
-
+        print "missing %d persons" % np.sum(still_needed)
+        self.last_error = still_needed
         return {'values': True, 'indices': aligned_indices}
 
     def dtype(self, context):
