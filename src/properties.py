@@ -690,6 +690,8 @@ def add_individuals(target_context, children):
     for name, temp_value in temp_variables.iteritems():
         #FIXME: OUCH, this is getting ugly, I'll need a better way to
         # differentiate nd-arrays from "entity" variables
+        # I guess having the context contain all entities and a separate
+        # globals namespace should fix this problem
         if (isinstance(temp_value, np.ndarray) and
             temp_value.shape == (num_rows,)):
             extra = get_missing_vector(num_birth, temp_value.dtype)
