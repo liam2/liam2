@@ -2,6 +2,7 @@ from itertools import izip, groupby
 from operator import itemgetter
 
 import numpy as np
+import numexpr as ne
 
 from expr import Variable, dtype, expr_eval, \
                  missing_values, get_missing_value
@@ -138,9 +139,12 @@ class LinkValue(LinkExpression):
             missing_value = get_missing_value(target_values)
 
         result_values = target_values[target_rows]
-        #XXX: use numexpr here?
-        valid_link = (target_ids != missing_int) & (target_rows != missing_int)
-        return np.where(valid_link, result_values, missing_value)
+
+        # it is a bit faster with numexpr (mixed_links: 0.22s -> 0.17s)
+        return ne.evaluate("where((ids != mi) & (rows != mi), values, mv)",
+                           {'ids': target_ids, 'rows': target_rows,
+                            'values': result_values, 'mi': missing_int,
+                            'mv': missing_value})
 
     def __str__(self):
         return '%s.%s' % (self.link, self.target_expression)
