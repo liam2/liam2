@@ -139,17 +139,42 @@ class AlignOther(EvaluableExpression):
         pvalues = [range(n) for n in need.shape]
         num_candidates = groupby(filtered_columns, pvalues)
 
-#        print "candidates"
-#        print num_candidates
-        #TODO: account for fractional persons
-        #frac_taken = frac_need > 0.5
-        need = need.astype(int)
-        still_needed = need.copy()
-        if self.last_error is not None:
-            print "adding %d individuals from last period" \
-                  % np.sum(self.last_error)
-            still_needed += self.last_error
+        # handle the "fractional people problem"
+        int_need = need.astype(int)
+        frac_need = need - int_need
+        need = int_need
 
+        # the sum of fractional objects number of extra objects we want aligned
+        extra_wanted = int(round(np.sum(frac_need)))
+        # search cutoff that yield np.sum(frac_need >= cutoff) == extra_wanted
+        sorted_frac_need = frac_need.flatten()
+        sorted_frac_need.sort()
+        cutoff = sorted_frac_need[-extra_wanted]
+        extra = frac_need >= cutoff
+        if np.sum(extra) > extra_wanted:
+            # This case can only happen when several bins have the same
+            # frac_need. In this case we could try to be even closer to our
+            # target by randomly selecting X out of the Y bins which have a
+            # frac_need equal to the cutoff.
+            assert np.sum(frac_need == cutoff) > 1
+        need += extra
+
+        # another, much simpler, option to handle fractional people is to
+        # always use 0.5 as a cutoff point:
+#        need = (need + 0.5).astype(int)
+
+        # a third option is to use random numbers:
+#        int_need = need.astype(int)
+#        frac_need = need - int_need
+#        need = int_need + (np.random.rand(need.shape) < frac_need)
+        print "need", np.sum(need)
+
+        if self.last_error is not None:
+            print "adding %d individuals from last period error" \
+                  % np.sum(self.last_error)
+            need += self.last_error
+
+        still_needed = need.copy()
         still_available = num_candidates.copy()
 
         rel_need = still_needed.astype(float) / still_available
@@ -192,6 +217,13 @@ class AlignOther(EvaluableExpression):
             # Keep the highest relative need index for the family
             hh_rel_need = np.nanmax(rel_need[persons_in_hh])
             num_excedent = overfilled_bins[persons_in_hh].sum()
+            if num_excedent == 0:
+                #FIXME: we assume sex is the first dimension
+                gender = persons_in_hh[0]
+                sex_counts = np.bincount(gender, minlength=2)
+                if np.any(still_needed_by_sex - sex_counts <= 0):
+                    num_excedent = 1
+
             num_unfillable = unfillable_bins[persons_in_hh].sum()
 
             # if either excedent or unfillable are not zero, adjust rel_need:
@@ -229,7 +261,7 @@ class AlignOther(EvaluableExpression):
                     still_needed_by_sex[values[0]] = snbs
 
                     # unfillable stays unchanged in this case
-                    overfilled_bins[values] = sn <= 0 or snbs <= 0
+                    overfilled_bins[values] = sn <= 0
 
                     rel_need[values] = float(sn) / sa
             else:
