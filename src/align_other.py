@@ -98,10 +98,8 @@ class AlignOther(EvaluableExpression):
         else:
             raise Exception("blarf")
 
-        # fetch the list of values for linked individuals of each local
-        # individual. e.g. (gender, age) for each person in each household
-        # we store it as a distinct list for each column, eg:
-        # hh = [([15, 26, 12], [True, False, True]), ([23], [True])]
+        # fetch the list of linked individuals for each local individual.
+        # e.g. the list of person ids for each household
         hh = np.empty(context_length(context), dtype=object)
         # we can use .fill([]) because it reuses the same list for all hh
         for i in range(len(hh)):
