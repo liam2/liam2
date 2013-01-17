@@ -375,6 +375,9 @@ def groupby(filtered_columns, possible_values=None):
     # We could even create a custom function because we don't need the label
     # vector nor the reverse dict, though I am unsure it would gain us much
     # (I guess the big time spender is the hash map lookup).
+
+    # Note that when len(filtered_columns) == 1 we could use np.bincount
+    # instead but bincount does not support multiple columns nor record arrays
     groups = partition_nd(filtered_columns, True, possible_values)
     data = [len(member_indices) for member_indices in groups]
     data = np.array(data)
