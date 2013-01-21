@@ -5,7 +5,7 @@ from collections import Counter
 
 import numpy as np
 
-from utils import gettime
+from utils import gettime, LabeledArray
 from context import context_length
 
 try:
@@ -132,17 +132,13 @@ def expr_eval(expr, context):
                 globals_names |= set(globals_data['periodic'].dtype.names)
         else:
             globals_names = set()
+
         for var_name in expr.collect_variables(context):
             if var_name not in globals_names and var_name not in context:
                 raise Exception("variable '%s' is unknown (it is either not "
                                 "defined or not computed yet)" % var_name)
-#            if var_name in globals_data:
-#                arr = globals_data[var_name]
-#                assert isinstance(arr, np.ndarray)
-#                if arr.ndim > 1:
-#                    print "ndim global", var_name, arr.shape
-
         return expr.evaluate(context)
+
         # there are several flaws with this approach:
         # 1) I don't get action times (csv et al)
         # 2) these are cumulative times (they include child expr/processes)
@@ -298,13 +294,38 @@ class Expr(object):
 #        else:
 #            s = self.as_string(context)
 #            expr_cache[self] = s
+
         s = self.as_string(context)
         r = context.get(s)
         if r is not None:
             return r
 
+        # check for labeled arrays, to work around the fact that numexpr
+        # does not preserve ndarray subclasses.
+        globals_data = context['__globals__']
+        labels = None
+        for var_name in self.collect_variables(context):
+            value = None
+            if var_name in context:
+                value = context[var_name]
+            elif var_name in globals_data:
+                value = globals_data[var_name]
+            if isinstance(value, LabeledArray):
+                if labels is None:
+                    labels = (value.dim_names, value.pvalues)
+                else:
+                    if labels != (value.dim_names, value.pvalues):
+                        raise Exception('several arrays with inconsistent '
+                                        'labels in the same expression')
         try:
-            return evaluate(s, context, {}, truediv='auto')
+            res = evaluate(s, context, {}, truediv='auto')
+            if labels is not None:
+                #FIXME: This is a hack which relies on the fact that currently
+                # all the expression we evaluate through numexpr preserve
+                # array shapes, but if we ever use numexpr reduction
+                # capabilities, we will be in trouble
+                res = LabeledArray(res, labels[0], labels[1])
+            return res
         except KeyError, e:
             raise add_context(e, s)
         except Exception, e:
