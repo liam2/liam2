@@ -4,7 +4,7 @@ import tables
 import numpy as np
 
 from expr import normalize_type, get_missing_value, get_missing_record
-from utils import loop_wh_progress, time2str, safe_put
+from utils import loop_wh_progress, time2str, safe_put, LabeledArray
 
 
 def table_size(table):
@@ -226,7 +226,6 @@ def appendTable(input_table, output_table, chunksize=10000, condition=None,
     return output_table
 
 
-#TODO: remove output_file argument, as it can be deduced
 def copyTable(input_table, output_node, output_fields=None,
               chunksize=10000, condition=None, stop=None, show_progress=False,
               **kwargs):
@@ -245,11 +244,11 @@ def copyTable(input_table, output_node, output_fields=None,
                        stop=stop, show_progress=show_progress)
 
 
-def copyLeafNode(input_node, output_node, **kwargs):
+def copyNode(input_node, output_node, **kwargs):
     if isinstance(input_node, tables.Table):
         return copyTable(input_node, output_node, **kwargs)
     else:
-        return input_node.copy(output_node)
+        return input_node._f_copy(output_node)
 
 
 #XXX: should I make a generic n-way array merge out of this?
@@ -453,7 +452,14 @@ def index_tables(globals_def, entities, fpath):
                     allowed_missing = None
                 assertValidType(global_data, global_type, allowed_missing,
                                 name)
-                globals_data[name] = global_data.read()
+                array = global_data.read()
+                attrs = global_data.attrs
+                dim_names = getattr(attrs, 'dimensions', None)
+                if dim_names is not None:
+                    pvalues = [getattr(attrs, 'dim%d_pvalues' % i)
+                               for i in range(len(dim_names))]
+                    array = LabeledArray(array, dim_names, pvalues)
+                globals_data[name] = array
 
         input_entities = input_root.entities
 
@@ -525,7 +531,7 @@ class H5Data(DataSource):
                 # index_tables already checks whether all tables exist and
                 # are coherent with globals_def
                 for name in globals_def:
-                    copyLeafNode(getattr(globals_node, name), output_globals)
+                    copyNode(getattr(globals_node, name), output_globals)
 
             entities_tables = dataset['entities']
             output_entities = output_file.createGroup("/", "entities",
@@ -620,3 +626,9 @@ def populate_registry(fpath):
     for table in h5in.root.entities:
         registry.entity_registry.add(entities.Entity.from_table(table))
     return h5in
+
+#FIXME: to remove
+d3 = np.arange(60).reshape(2, 10, 3)
+la = LabeledArray(d3,
+                  ['gender', 'age', 'status'],
+                  [[False, True], range(10), range(3)])
