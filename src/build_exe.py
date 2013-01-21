@@ -16,7 +16,7 @@ setup(console=[script],
       options=dict(
           py2exe=dict(
               excludes=["Tkconstants", "Tkinter", "tcl", "_ssl", "pdb",
-                        "pydoc", "pydoc_topics", "difflib"],
+                        "pydoc", "pydoc_topics"],
               # 1 = bundle everything, including the Python interpreter
               # 2 = bundle everything but the Python interpreter
               # 3 = don't bundle (default)
