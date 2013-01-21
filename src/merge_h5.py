@@ -1,10 +1,10 @@
 import numpy as np
 import tables
 
-from data import copyTable, mergeArrays, get_fields, index_table_light
+from data import mergeArrays, get_fields, index_table_light
 from utils import timed, loop_wh_progress, merge_items
 
-__version__ = "0.2"
+__version__ = "0.3"
 
 
 def get_h5_fields(input_file):
@@ -17,10 +17,9 @@ def merge_h5(input1_path, input2_path, output_path):
     input2_file = tables.openFile(input2_path, mode="r")
 
     output_file = tables.openFile(output_path, mode="w")
-    output_globals = output_file.createGroup("/", "globals", "Globals")
 
     print "copying globals from", input1_path,
-    copyTable(input1_file.root.globals.periodic, output_file, output_globals)
+    input1_file.root.globals._f_copy(output_file.root, recursive=True)
     print "done."
 
     input1_entities = input1_file.root.entities

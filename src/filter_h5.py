@@ -3,7 +3,7 @@ import tables
 from data import copyTable
 from utils import timed
 
-__version__ = "0.2"
+__version__ = "0.3"
 
 
 def filter_h5(input_path, output_path, condition):
@@ -11,13 +11,13 @@ def filter_h5(input_path, output_path, condition):
     input_file = tables.openFile(input_path, mode="r")
     output_file = tables.openFile(output_path, mode="w")
 
-    output_globals = output_file.createGroup("/", "globals", "Globals")
-    copyTable(input_file.root.globals.periodic, output_file, output_globals)
+    # copy globals
+    input_file.root.globals._f_copy(output_file.root, recursive=True)
 
     output_entities = output_file.createGroup("/", "entities", "Entities")
     for table in input_file.iterNodes(input_file.root.entities):
         print table._v_name, "..."
-        copyTable(table, output_file, output_entities, condition=condition)
+        copyTable(table, output_entities, condition=condition)
 
     input_file.close()
     output_file.close()
