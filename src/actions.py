@@ -226,7 +226,7 @@ class AssertEqual(Assert):
     def eval_assertion(self, context):
         r1 = expr_eval(self.expr1, context)
         r2 = expr_eval(self.expr2, context)
-        if isinstance(r1, np.ndarray) and isinstance(r2, np.ndarray):
+        if isinstance(r1, np.ndarray) or isinstance(r2, np.ndarray):
             passed = np.array_equal(r1, r2)
         else:
             passed = r1 == r2
