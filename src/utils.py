@@ -9,6 +9,15 @@ from collections import defaultdict, deque
 import numpy as np
 
 
+class AutoflushFile(object):
+    def __init__(self, f):
+        self.f = f
+
+    def write(self, s):
+        self.f.write(s)
+        self.f.flush()
+
+
 def time2str(seconds):
     minutes = seconds // 60
     seconds = seconds % 60
@@ -113,6 +122,79 @@ def isconstant(a, filter_value=None):
     else:
         value = a[0]
         return np.all(filter_value & (a == value))
+
+
+class LabeledArray(np.ndarray):
+    def __new__(cls, input_array, dim_names, pvalues):
+        obj = np.asarray(input_array).view(cls)
+        ndim = obj.ndim
+        if len(dim_names) != ndim:
+            raise Exception('number of dimension names (%d) does not match '
+                            'number of dimensions (%d)'
+                            % (len(dim_names), ndim))
+        if len(pvalues) != obj.ndim:
+            raise Exception('number of label vectors (%d) does not match '
+                            'number of dimensions (%d)' % (len(pvalues), ndim))
+        label_shape = tuple(len(pv) for pv in pvalues)
+        if label_shape != obj.shape:
+            raise Exception('sizes of label vectors (%s) do not match array '
+                            'shape (%s)' % (label_shape, obj.shape))
+        obj.dim_names = dim_names
+        obj.pvalues = pvalues
+        return obj
+
+    def __getitem__(self, key):
+        obj = np.ndarray.__getitem__(self, key)
+        if obj.ndim > 0:
+            if isinstance(key, tuple):
+                # complete the key if needed
+                if len(key) < self.ndim:
+                    key = key + (slice(None),) * (self.ndim - len(key))
+                # int keys => dimension disappear & pvalues are discarded
+                obj.pvalues = [pv[dim_key]
+                               for pv, dim_key in zip(self.pvalues, key)
+                               if isinstance(dim_key, slice)]
+                obj.dim_names = [name
+                                 for name, dim_key in zip(self.dim_names, key)
+                                 if isinstance(dim_key, slice)]
+            elif isinstance(key, slice):
+                obj.pvalues = [self.pvalues[0][key]] + [self.pvalues[1:]]
+            else:
+                # key is "int-like"
+                obj.dim_names = self.dim_names[1:]
+                obj.pvalues = self.pvalues[1:]
+        return obj
+
+    # deprecated since Python 2.0 but we need to define it to catch "simple"
+    # slices because ndarray is a "builtin" type
+    def __getslice__(self, i, j):
+        obj = np.ndarray.__getslice__(self, i, j)
+        obj.pvalues = [self.pvalues[0][slice(i, j)]] + [self.pvalues[1:]]
+        return obj
+
+    def __array_finalize__(self, obj):
+        # We are in the middle of the LabeledArray.__new__ constructor,
+        # and our special attributes will be set when we return to that
+        # constructor, so we do not need to set them here.
+        if obj is None:
+            return
+
+        # obj is our "template" object (on which we have asked a view on).
+        if isinstance(obj, LabeledArray):
+            # arr.view(InfoArray)
+            # labeled_arr[:3]
+            self.dim_names = obj.dim_names
+            self.pvalues = obj.pvalues
+        else:
+            self.dim_names = None
+            self.pvalues = None
+
+#    def __array_wrap__(self, out_arr, context=None):
+#        print 'In __array_wrap__:'
+#        print '   self is %s' % repr(self)
+#        print '   arr is %s' % repr(out_arr)
+#        print '   context is %s' % repr(context)
+#        return np.ndarray.__array_wrap__(self, out_arr, context)
 
 
 def loop_wh_progress(func, sequence):

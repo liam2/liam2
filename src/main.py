@@ -9,18 +9,10 @@ import config
 from simulation import Simulation
 from importer import csv2h5
 from console import Console
+from utils import AutoflushFile
 #from data import populate_registry
 
 __version__ = "0.6.0dev"
-
-
-class AutoflushFile(object):
-    def __init__(self, f):
-        self.f = f
-
-    def write(self, s):
-        self.f.write(s)
-        self.f.flush()
 
 
 def eat_traceback(func, *args, **kwargs):
