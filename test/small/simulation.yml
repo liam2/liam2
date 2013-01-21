@@ -20,11 +20,31 @@ entities:
             - nch:          {type: int, initialdata: False}
             - start_period: {type: int, initialdata: False}
             - clone_id:     {type: int, initialdata: False}
+            - weight:       {type: int, initialdata: False}
 
         links:
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
+            setweight: 
+                - weight: randint(2, 32)
+               
+            expand:
+                - last_non_clone_id: grpmax(id)
+                - toclone: weight > 1
+                - clone_id: clone(toclone)
+                - is_clone: id > last_non_clone_id
+                - weight: if(toclone,
+                             trunc((weight + 1) / 2),
+                             if(is_clone,
+                                trunc(weight / 2),
+                                1))
+            
+            check:
+                - show('min/max weight:', grpmin(weight), grpmax(weight))
+                - show('total population:', grpsum(countlink(persons)),
+                       '/ expanded:', grpsum(weight * countlink(persons)))
+
             num_persons: countlink(persons)
             nch: countlink(persons, age <= 18)
             maxnch: grpmax(nch)
@@ -45,25 +65,44 @@ entities:
                 - qshow(num_migrants)
 
                 # MIG is a 3d table but we want the 2d table for this period
-                # currently, we need to compute manually the index (column this  
-                - base_period: 2000 
-                - MIG_PERIOD: MIG[:,:,period - base_period]
+                # currently, we need to manually compute the index
+                - base_period: 2000
+#                - qshow(MIG.dim_names)
+#                - qshow(MIG.pvalues)
+#                - show(MIG.attrs) 
+                - mig_period: MIG[:,:,period - base_period]
+                - qshow(mig_period.shape)
+                - qshow(mig_period.dim_names)
+                - qshow(mig_period.pvalues)
 
                 # Distribute total desired migrants, by age and sex
-                - need: num_migrants * MIG_PERIOD
+                - need: num_migrants * mig_period
                 - qshow(need.shape)
-                - qshow(trunc(need))
+                - qshow(need.dim_names)
+                - qshow(need.pvalues)
+#                - qshow(trunc(need))
                 - qshow(grpsum(trunc(need)))
                 
                 # sanity check
                 - show("need.sum() == num_migrants | ",
                        need.sum(), "~=", num_migrants, " | ",
-                       abs(need.sum() - num_migrants) < 1e-6)
+                       abs(need.sum() - num_migrants) < 1e-4)
+
+                - is_candidate: uniform() < 0.5
+                - qshow(grpcount(is_candidate),
+                        grpsum(num_persons, filter=is_candidate))
 
                 # Warning: columns need to be in the correct order !!!
-                - aligned: align_other(persons, (gender, age), None, None,
+                - aligned_all: align_other(persons, (gender, age), None,
+                                           need, countlink(persons))
+                - qshow(grpcount(aligned_all),
+                        grpsum(num_persons, filter=aligned_all))
+
+                - aligned: align_other(persons, (gender, age), is_candidate,
                                        need, countlink(persons))
-                - qshow(grpcount(aligned), grpsum(num_persons, filter=aligned))
+                - qshow(grpcount(aligned),
+                        grpsum(num_persons, filter=aligned))
+
                 - clone_id: clone(aligned)
 
     person:
@@ -117,6 +156,18 @@ entities:
         # simulation must be defined below
         processes:
             bp: breakpoint(2002)
+
+            expand:
+                - last_non_clone_id: grpmax(id)
+                - toclone: household.clone_id != -1
+                - clone_id: clone(toclone)
+
+                - is_clone: id > last_non_clone_id
+
+                - hh_id: if(is_clone, household.clone_id, hh_id)
+                - m_id: if(is_clone, mother.clone_id, m_id)
+                - f_id: if(is_clone, father.clone_id, f_id)
+                - partner_id: if(is_clone, partner.clone_id, partner_id)
 
 #            test_proc:
 #                code:
@@ -276,6 +327,9 @@ entities:
                 - need: MIG * 2.5
                 - assertEqual(need.ndim, 3)
                 - assertEqual(need.shape, (2, 121, 61))
+                - assertEqual(need.dim_names[0], 'gender')
+                - assertEqual(need.dim_names[1], 'age')
+                - assertEqual(need.dim_names[2], 'period')
 
                 # should be a 2d table: gender-period
                 - need_by_sex_period: need.sum(axis=1)
@@ -288,8 +342,8 @@ entities:
                 - assertEqual(total_need_by_sex.shape, (2,))
                 - tmp: total_need_by_sex
                 
-                # can't compare two arrays with assertEqual
-                #TODO: implement assertArrayEqual
+                #TODO: compare arrays directly (assertEqual uses array_equal
+                #      if both instances are arrays)
 #fails since I changed mig.csv
 #                - assertEqual(tmp[0], 7818940)
 #                - assertEqual(tmp[1], 7692870)
@@ -677,8 +731,11 @@ entities:
                 - global_t_1: show(MINR[period - 1])
                 
                 - global_t_age: show(MINR[period - age])
-                # does not work yet
-#                - lagglobalage: show(lag(MINR, age))
+                - lagglobal_expr: show(lag(MINR, grpmin(age) + 1))
+
+                # does not work yet. It needs the context to accept a vector
+                # of periods instead of a single period
+#                - lagglobal_expr_multi: show(lag(MINR, age))
 
                 - lag_age_subscript: show(lag(age[0]))
 
@@ -857,13 +914,14 @@ entities:
                 - show(stored)
 #                - show(stored * 2)
                 
-                # fails as it should
+                # fails as expected, but if we can fix this, it would be nice
 #                - show('groupby scalar', groupby(True, gender))
                 # this is currently broken
 #                - show('groupby scalar', groupby(grpavg(age), gender))
 
                 - show('groupby global', groupby(if(gender, 65, WEMRA), gender))
-                - show('groupby with percent when total is int(0)',
+                - show('groupby with percent when total is 0 (int) => '
+                       'total should be nan',
                        groupby(age, filter=age > 200, percent=True))
                 - show('expr=grpsum(weight)',
                        groupby(agegroup, gender, expr=grpsum(weight)))
@@ -907,6 +965,24 @@ simulation:
             test_init,
             test_dump_init
         ]
+#        - household: [setweight, check]
+#        # pass 1: weight up to 2
+#        - household: [expand]
+#        - person: [expand]
+#        # pass 2: weights up to 4
+#        - household: [expand]
+#        - person: [expand]
+#        # pass 3: weights up to 8
+#        - household: [expand]
+#        - person: [expand]
+#        # pass 4: weights up to 16
+#        - household: [expand]
+#        - person: [expand]
+#        # pass 5: weights up to 32
+#        - household: [expand]
+#        - person: [expand]
+#
+#        - household: [check]
 
     processes:
         - person: [
@@ -933,7 +1009,8 @@ simulation:
                    test_compound,
                    agegroup,
 
-                   test_align]
+#                   test_align
+                   ]
         - household: [test_align_other]
         - person: [check_align_other,
         
@@ -948,7 +1025,7 @@ simulation:
 
                    to_give_birth, newbirth,
                    test_lag,
-                   test_duration,
+#                   test_duration,
 
                    test_o2m,
                    test_mixed_links,
@@ -965,8 +1042,8 @@ simulation:
                    test_choice,
 
                    show_weight,
-                   test_groupby,
-                   test_dump,
+#                   test_groupby,
+#                   test_dump,
                    test_csv,
 
         ]
@@ -982,6 +1059,6 @@ simulation:
 
     random_seed: 0
     start_period: 2002   # first simulated period
-    periods: 2
+    periods: 1
     default_entity: person
 
