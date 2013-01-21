@@ -29,7 +29,7 @@ class Lag(FunctionExpression):
 
     def evaluate(self, context):
         entity = context['__entity__']
-        period = context['period'] - self.num_periods
+        period = context['period'] - expr_eval(self.num_periods, context)
         return entity.value_for_period(self.expr, period, context,
                                        self.missing)
 
