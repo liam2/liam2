@@ -13,6 +13,7 @@ from registry import entity_registry
 
 
 class AlignOther(EvaluableExpression):
+    #TODO: allow specifying possible_values manually, like in align()
     def __init__(self, link, need, orderby, filter=None, expressions=None):
         """
         filter is a local filter (eg filter on hh, eg is_candidate)
@@ -25,6 +26,7 @@ class AlignOther(EvaluableExpression):
         #XXX: make orderby optional? (defaults to 'id'? -- not sure it makes
         # sense)
         self.orderby_expr = orderby
+        
         self.last_error = None
 
     def traverse(self, context):
