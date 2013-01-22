@@ -13,23 +13,25 @@ from registry import entity_registry
 
 
 class AlignOther(EvaluableExpression):
-    def __init__(self, link, target_expressions, filter, need,
-                 orderby):
+    def __init__(self, link, need, orderby, filter=None, expressions=None):
         """
         filter is a local filter (eg filter on hh, eg is_candidate)
         """
 
         self.link = link
-        self.target_expressions = target_expressions
+        self.target_expressions = expressions
         self.filter_expr = filter
         self.need_expr = need
+        #XXX: make orderby optional? (defaults to 'id'? -- not sure it makes
+        # sense)
         self.orderby_expr = orderby
         self.last_error = None
 
     def traverse(self, context):
-        for expr in self.target_expressions:
-            for node in traverse_expr(expr, context):
-                yield node
+        if self.target_expressions is not None:
+            for expr in self.target_expressions:
+                for node in traverse_expr(expr, context):
+                    yield node
         for node in traverse_expr(self.filter_expr, context):
             yield node
         for node in traverse_expr(self.filter_expr, context):
@@ -58,7 +60,19 @@ class AlignOther(EvaluableExpression):
                              '__globals__': context['__globals__']})
 
     def evaluate(self, context):
+        #TODO: remove the target_expressions argument, as dim_names should
+        # always match the expressions, so we could just as well use dim_names
+        # *as* the expressions, like we do in normal alignment
+        # As a related note, I don't like to have expressions in the datafiles,
+        # but we want to allow expressions anyway, so we will need an optional
+        # expr argument. And this seems like a better solution for normal
+        # alignment too!
+
         need = expr_eval(self.need_expr, context)
+        if self.target_expressions is None:
+            self.target_expressions = [Variable(name)
+                                       for name in need.dim_names]
+
         orderby = expr_eval(self.orderby_expr, context)
 
         target_context = self.target_context(context)
@@ -96,12 +110,13 @@ class AlignOther(EvaluableExpression):
             #                    missing_int)
             source_rows[source_ids == missing_int] = missing_int
         else:
-            raise Exception("blarf")
+            assert np.all(source_ids == missing_int)
+            source_rows = []
 
         # fetch the list of linked individuals for each local individual.
         # e.g. the list of person ids for each household
         hh = np.empty(context_length(context), dtype=object)
-        # we can use .fill([]) because it reuses the same list for all hh
+        # we can't use .fill([]) because it reuses the same list for all hh
         for i in range(len(hh)):
             hh[i] = []
 
@@ -125,17 +140,8 @@ class AlignOther(EvaluableExpression):
                 continue
             hh[source_row].append(target_row)
 
-        #TODO: pvalues should come from need "indexed columns"/possible values
-        # the problem is that we don't have that information in ndarrays (but
-        # we do have it in the hdf file). Setting the attrs on the "initial"
-        # ndarray when loading from hdf should be easy (it is only a matter of
-        # defining a subclass of ndarray -- can set attribute on instances of
-        # the original class), however propagating them on results of
-        # expressions (including subscripting) will be tedious.
-        #FIXME: the only sane option I see *for now* is to let the user specify
-        # those himself
-        pvalues = [range(n) for n in need.shape]
-        num_candidates = groupby(filtered_columns, pvalues)
+        #XXX: what if need does not specify values present in f_columns?
+        num_candidates = groupby(filtered_columns, need.pvalues)
 
         # handle the "fractional people problem"
         int_need = need.astype(int)
@@ -266,7 +272,6 @@ class AlignOther(EvaluableExpression):
                 for values in zip(*persons_in_hh):
                     sa = still_available[values] - 1
                     still_available[values] = sa
-
                     sn = still_needed[values]
 
                     unfillable_bins[values] = sn > sa
