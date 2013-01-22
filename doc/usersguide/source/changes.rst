@@ -3,6 +3,17 @@
 Change log
 ##########
 
+Version 0.6
+===========
+
+Released on 2013-xx-xx.
+
+Fixes:
+------
+
+* fixed the editor shortcuts (to launch liam2) to work when the directory
+  containing the model contains spaces.
+
 Version 0.5.1
 =============
 
@@ -45,8 +56,8 @@ Fixes:
 * fixed demo01 introduction comment (bad file name).
 
 
-Version 0.5.0
-=============
+Version 0.5
+===========
 
 Released on 2012-10-25.
 
@@ -165,8 +176,9 @@ Miscellaneous improvements:
 
 * disallow strings for the score expression in the matching() function.
 
-* improved the test coverage:  There is still a long way for full test coverage, but the changes in this
-  version is already a first step in the right direction:
+* improved the test coverage:  There is still a long way for full test coverage,
+  but the changes in this version is already a first step in the right
+  direction:
 
   - automated many tests by using the new assertions functions.
   - added more tests.
@@ -244,8 +256,8 @@ Fixes:
 * fixed usage to include the 'explore' command.
 
 
-Version 0.4.0
-=============
+Version 0.4
+===========
 
 Released on 2011-11-25.
 
@@ -342,8 +354,8 @@ Fixes:
 * fixed void data source.
 
 
-Version 0.3.0
-=============
+Version 0.3
+===========
 
 Released on 2011-06-29.
 
