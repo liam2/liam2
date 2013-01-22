@@ -7,7 +7,7 @@ import os
 import numpy as np
 
 import config
-from expr import (Variable, expr_eval, collect_variables, traverse_expr)
+from expr import Expr, Variable, expr_eval, collect_variables, traverse_expr
 from context import context_length, context_subset
 from utils import PrettyTable, prod
 from properties import (FilteredExpression, TableExpression, GroupCount,
@@ -175,6 +175,8 @@ def align_get_indices_nd(context, filter_value, score,
                       probabilities)
 
     if expressions:
+        #TODO: we should also accept a flat version as long as the number of
+        # elements is the same (that's how we use it anyway)
         shape1 = probabilities.shape
         shape2 = tuple(len(pv) for pv in possible_values)
         assert shape1 == shape2, "%s != %s" % (shape1, shape2)
@@ -232,6 +234,14 @@ def align_get_indices_nd(context, filter_value, score,
         # account or not. This only impacts what it displayed on the console,
         # but still...
         take = np.sum(take_filter)
+        #XXX: it would probably be faster to leave the filters as boolean
+        # vector and do
+        #     take_members = take_filter[member_indices]
+        #     group_always = member_indices[take_members]
+        # instead of
+        #     group_always = np.intersect1d(members_indices, take_indices,
+        #                                   assume_unique=True)
+
         take_indices = (take_filter & bool_filter_value).nonzero()[0]
         maybe_filter &= ~take_filter
     else:
@@ -604,18 +614,60 @@ class Alignment(FilteredExpression):
                  on_overflow='default'):
         super(Alignment, self).__init__(score_expr, filter)
 
-        assert ((expressions is not None and
-                 possible_values is not None and
-                 probabilities is not None) or
-                (fname is not None))
+        #TODO: make it possible to override expressions/pvalues given in
+        # the file
+
+        #XXX: rename align -> select?
+
+        #TODO: make score_expr optional and rename it to "score"
+        #XXX: make the "need" argument (=probabilities) the first one and
+        # accept a file name in that argument
+        # align(xyz, fname='al_p_dead_m.csv')
+        # ->
+        # align('al_p_dead_m.csv', xyz)
+
+        #FIXME: - rename probabilities to "proportion"?
+        #       - switch to absolute values like align_other?
+        #         align(0.0, fname='al_p_dead_m.csv')
+        #         ->
+        #         align(0.0, AL_P_DEAD_M * grpcount())
+#        >>> hum, this is not the same thing
+        #       - align(0.0, AL_P_DEAD_M)
+        #       ==
+        #       - align(proportions=AL_P_DEAD_M)
+        #       ==
+        #       - select(AL_P_DEAD_M * groupby(age), score)
+
+        if possible_values is not None:
+            if expressions is None or len(possible_values) != len(expressions):
+                raise Exception("align() expressions and possible_values "
+                                "arguments should have the same length")
+
+        if probabilities is None and fname is None:
+            raise Exception("align() needs either a filename or probabilities")
 
         if fname is not None:
             self.load(fname)
         else:
+            if expressions is None:
+                expressions = []
             self.expressions = [Variable(e) if isinstance(e, basestring) else e
                                 for e in expressions]
+            if possible_values is None:
+                possible_values = []
             self.possible_values = [np.array(pv) for pv in possible_values]
-            self.probabilities = np.array(probabilities)
+
+            # e -> e
+            # v -> array([v])
+            # [v1, v2] -> array([v1, v2])
+            # [e1, e2] -> [e1, e2]
+            if not isinstance(probabilities, (tuple, list, Expr)):
+                probabilities = [probabilities]
+
+            if not any(isinstance(p, Expr) for p in probabilities):
+                self.probabilities = np.array(probabilities)
+            else:
+                self.probabilities = probabilities
 
         self.take_filter = take
         self.leave_filter = leave
@@ -692,10 +744,22 @@ class Alignment(FilteredExpression):
                        if self.leave_filter is not None \
                        else None
 
+        if isinstance(self.probabilities, list):
+            probabilities = np.array([expr_eval(p, context)
+                                      for p in self.probabilities])
+        elif isinstance(self.probabilities, Expr):
+            probabilities = expr_eval(self.probabilities, context)
+            if not (isinstance(probabilities, np.ndarray) and
+                    probabilities.shape):
+                probabilities = np.array([probabilities])
+        else:
+            assert isinstance(self.probabilities, np.ndarray)
+            probabilities = self.probabilities
+
         indices, overflows = \
             align_get_indices_nd(context, filter_value, scores,
                                  self.expressions, self.possible_values,
-                                 self.probabilities,
+                                 probabilities,
                                  take_filter, leave_filter, weights,
                                  self.overflows)
 
