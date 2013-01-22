@@ -13,6 +13,10 @@ globals:
             - FLOATFIELD: float
 
 entities:
+#    test:
+#        fields:
+#            - test_field: int
+
     household:
         fields:
             # period and id are implicit
@@ -71,6 +75,8 @@ entities:
 #                - qshow(MIG.pvalues)
 #                - show(MIG.attrs) 
                 - mig_period: MIG[:,:,period - base_period]
+                #FIXME: move these "shows" to test_globals_nd (and change them
+                # to asserts).
                 - qshow(mig_period.shape)
                 - qshow(mig_period.dim_names)
                 - qshow(mig_period.pvalues)
@@ -93,13 +99,14 @@ entities:
                         grpsum(num_persons, filter=is_candidate))
 
                 # Warning: columns need to be in the correct order !!!
-                - aligned_all: align_other(persons, (gender, age), None,
-                                           need, countlink(persons))
+                - aligned_all: align_other(persons, need,
+                                           orderby=countlink(persons))
                 - qshow(grpcount(aligned_all),
                         grpsum(num_persons, filter=aligned_all))
 
-                - aligned: align_other(persons, (gender, age), is_candidate,
-                                       need, countlink(persons))
+                - aligned: align_other(persons, need,
+                                       filter=is_candidate,
+                                       orderby=countlink(persons))
                 - qshow(grpcount(aligned),
                         grpsum(num_persons, filter=aligned))
 
@@ -386,7 +393,7 @@ entities:
                 - int_aligned: align(age,
                                      expressions=[gender],
                                      possible_values=[[False, True]],
-                                     probabilities=[0.1, 0.2])
+                                     proportions=[0.1, 0.2])
                 - num_aligned: grpcount(int_aligned)
                 - num_aligned_women: grpcount(int_aligned and not gender)
                 - num_aligned_men: grpcount(int_aligned and gender)
@@ -410,7 +417,7 @@ entities:
                 - float_aligned: align(nan_age,
                                        expressions=[gender],
                                        possible_values=[[False, True]],
-                                       probabilities=[0.1, 0.2])
+                                       proportions=[0.1, 0.2])
                 - num_aligned: grpcount(float_aligned)
                 - num_aligned_women: grpcount(float_aligned and not gender)
                 - num_aligned_men: grpcount(float_aligned and gender)
@@ -453,7 +460,7 @@ entities:
                 - const_aligned: align(False, filter=age < 10,
                                        expressions=[gender],
                                        possible_values=[[False, True]],
-                                       probabilities=[0.1, 0.2])
+                                       proportions=[0.1, 0.2])
                 - num_aligned: grpcount(const_aligned)
                 - num_aligned_women: grpcount(const_aligned and not gender)
                 - num_aligned_men: grpcount(const_aligned and gender)
@@ -543,7 +550,40 @@ entities:
                 - expr_aligned: align(0.0, fname='al_p_expr.csv')
                 - assertTrue(grpcount(temp_aligned != var_aligned) <= 105)
                 - assertTrue(grpcount(expr_aligned != var_aligned) <= 105)
+
+                # fixed proportion
+                # ----------------
+                - fixed_percent_aligned: align(0.0, proportions=0.1)
+                - num_aligned: grpcount(fixed_percent_aligned)
+                - assertTrue(abs(num_aligned - trunc(num_all * 0.1)) <= 1)
                 
+                # expr proportion
+                # ---------------
+                - percent: if(period == 2002, 0.1, 0.2) 
+                - expr_percent_aligned: align(0.0, proportions=percent)
+                - num_aligned: grpcount(expr_percent_aligned)
+                - target_num: if(period == 2002, 
+                                 trunc(0.1 * num_all),
+                                 trunc(0.2 * num_all))
+                - assertTrue(abs(num_aligned - target_num) <= 1)
+
+                # expr ndarray
+                # ------------
+                - total_population: grpcount()
+
+                # MIG_PERCENT is a simple float periodic global
+                - num_migrants: total_population * MIG_PERCENT
+                - qshow(num_migrants)
+
+                # MIG is a 3d table but we want the 2d table for this period
+                # currently, we need to manually compute the index
+                - base_period: 2000
+                - mig_period: MIG[:,:,period - 2000]
+
+                # Distribute total desired migrants, by age and sex
+                - need: num_migrants * mig_period
+#                - expr_ndarray_aligned: align(0.0, proportions=mig_period)
+
             check_align_other:
                 - show(groupby(age, gender, filter=household.aligned))
                 - clone_id: clone(household.aligned,
@@ -1009,11 +1049,11 @@ simulation:
                    test_compound,
                    agegroup,
 
-#                   test_align
+                   test_align
                    ]
         - household: [test_align_other]
-        - person: [check_align_other,
-        
+        - person: [
+                   check_align_other,
                    test_logit,
                    test_log_regr,
 
@@ -1025,7 +1065,7 @@ simulation:
 
                    to_give_birth, newbirth,
                    test_lag,
-#                   test_duration,
+                   test_duration,
 
                    test_o2m,
                    test_mixed_links,
@@ -1042,8 +1082,8 @@ simulation:
                    test_choice,
 
                    show_weight,
-#                   test_groupby,
-#                   test_dump,
+                   test_groupby,
+                   test_dump,
                    test_csv,
 
         ]
@@ -1054,7 +1094,6 @@ simulation:
     input:
         file: small.h5
     output:
-        path: c:\tmp
         file: simulation.h5
 
     random_seed: 0
