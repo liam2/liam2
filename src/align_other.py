@@ -26,7 +26,6 @@ class AlignOther(EvaluableExpression):
         #XXX: make orderby optional? (defaults to 'id'? -- not sure it makes
         # sense)
         self.orderby_expr = orderby
-        
         self.last_error = None
 
     def traverse(self, context):

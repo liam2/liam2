@@ -616,27 +616,32 @@ class Alignment(FilteredExpression):
 
         #TODO: make it possible to override expressions/pvalues given in
         # the file
-
-        #XXX: rename align -> select?
-
         #TODO: make score_expr optional and rename it to "score"
-        #XXX: make the "need" argument (=probabilities) the first one and
-        # accept a file name in that argument
-        # align(xyz, fname='al_p_dead_m.csv')
-        # ->
-        # align('al_p_dead_m.csv', xyz)
 
-        #FIXME: - rename probabilities to "proportion"?
-        #       - switch to absolute values like align_other?
-        #         align(0.0, fname='al_p_dead_m.csv')
-        #         ->
-        #         align(0.0, AL_P_DEAD_M * grpcount())
-#        >>> hum, this is not the same thing
-        #       - align(0.0, AL_P_DEAD_M)
-        #       ==
-        #       - align(proportions=AL_P_DEAD_M)
-        #       ==
-        #       - select(AL_P_DEAD_M * groupby(age), score)
+        # Q: make the "need" argument (=probabilities) the first one and
+        #    accept a file name in that argument
+        #      align(xyz, fname='al_p_dead_m.csv')
+        #    ->
+        #      align('al_p_dead_m.csv', xyz)
+        # A: I personally would prefer that, but this is backward incompatible,
+        #    so I guess users will not like the change ;-).
+        #    >>> Ask for more opinions
+
+        # Q: rename probabilities to "proportion(s)"?
+        # A: I think so, but to confirm with Raph
+
+        # Q: switch to absolute values like align_other?
+        #      align(0.0, fname='al_p_dead_m.csv')
+        #    ->
+        #      align(0.0, AL_P_DEAD_M * groupby(age))
+        # A: no, as in that case we have to "duplicate" the information about
+        #    columns/dimension (age in groupby() while it is already defined
+        #    in the alignment file.
+        #    so the solution is to introduce a new "select" method for that
+        #    purpose:
+        #      align(0.0, AL_P_DEAD_M)
+        #      align(proportions=AL_P_DEAD_M)
+        #      select(AL_P_DEAD_M * groupby(age), 0.0)
 
         if possible_values is not None:
             if expressions is None or len(possible_values) != len(expressions):
