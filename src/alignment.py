@@ -131,7 +131,7 @@ except ImportError:
         return np.ravel(result)
 
 
-def kill_axis(axis_name, value, expressions, possible_values, probabilities):
+def kill_axis(axis_name, value, expressions, possible_values, proportions):
     '''possible_values is a list of ndarrays'''
 
     str_expressions = [str(e) for e in expressions]
@@ -152,14 +152,14 @@ def kill_axis(axis_name, value, expressions, possible_values, probabilities):
                         'for that value (instead of one)'
                         % (num_idx, axis_name, value))
     value_idx = value_idx[0]
-    complete_idx = [slice(None) for _ in range(probabilities.ndim)]
+    complete_idx = [slice(None) for _ in range(proportions.ndim)]
     complete_idx[axis_num] = value_idx
-    probabilities = probabilities[complete_idx]
-    return expressions, possible_values, probabilities
+    proportions = proportions[complete_idx]
+    return expressions, possible_values, proportions
 
 
 def align_get_indices_nd(context, filter_value, score,
-                         expressions, possible_values, probabilities,
+                         expressions, possible_values, proportions,
                          take_filter=None, leave_filter=None, weights=None,
                          past_error=None):
     assert len(expressions) == len(possible_values)
@@ -170,14 +170,14 @@ def align_get_indices_nd(context, filter_value, score,
 
     if 'period' in [str(e) for e in expressions]:
         period = context['period']
-        expressions, possible_values, probabilities = \
+        expressions, possible_values, proportions = \
             kill_axis('period', period, expressions, possible_values,
-                      probabilities)
+                      proportions)
 
     if expressions:
         #TODO: we should also accept a flat version as long as the number of
         # elements is the same (that's how we use it anyway)
-        shape1 = probabilities.shape
+        shape1 = proportions.shape
         shape2 = tuple(len(pv) for pv in possible_values)
         assert shape1 == shape2, "%s != %s" % (shape1, shape2)
 
@@ -190,9 +190,9 @@ def align_get_indices_nd(context, filter_value, score,
 #                  for expr, column in zip(expressions, columns)
 #                  if isconstant(column, filter_value)]
 #        for expr, value in tokill:
-#            expressions, possible_values, probabilities = \
+#            expressions, possible_values, proportions = \
 #                kill_axis(str(expr), value, expressions, possible_values,
-#                          probabilities)
+#                          proportions)
 
         if filter_value is not None:
             groups = partition_nd(columns, filter_value, possible_values)
@@ -203,7 +203,7 @@ def align_get_indices_nd(context, filter_value, score,
             groups = [filter_value.nonzero()[0]]
         else:
             groups = [np.arange(num_to_align)]
-        assert len(probabilities) == 1
+        assert len(proportions) == 1
 
     # the sum is not necessarily equal to len(a), because some individuals
     # might not fit in any group (eg if some alignment data is missing)
@@ -266,7 +266,7 @@ def align_get_indices_nd(context, filter_value, score,
     to_split_indices = []
     to_split_overflow = []
     for group_idx, members_indices, probability in izip(count(), groups,
-                                                        probabilities.flat):
+                                                        proportions.flat):
         if len(members_indices):
             if weights is None:
                 expected = len(members_indices) * probability
@@ -610,7 +610,7 @@ class Alignment(FilteredExpression):
 
     def __init__(self, score_expr, filter=None, take=None, leave=None,
                  fname=None,
-                 expressions=None, possible_values=None, probabilities=None,
+                 expressions=None, possible_values=None, proportions=None,
                  on_overflow='default'):
         super(Alignment, self).__init__(score_expr, filter)
 
@@ -618,7 +618,7 @@ class Alignment(FilteredExpression):
         # the file
         #TODO: make score_expr optional and rename it to "score"
 
-        # Q: make the "need" argument (=probabilities) the first one and
+        # Q: make the "need" argument (=proportions) the first one and
         #    accept a file name in that argument
         #      align(xyz, fname='al_p_dead_m.csv')
         #    ->
@@ -626,9 +626,6 @@ class Alignment(FilteredExpression):
         # A: I personally would prefer that, but this is backward incompatible,
         #    so I guess users will not like the change ;-).
         #    >>> Ask for more opinions
-
-        # Q: rename probabilities to "proportion(s)"?
-        # A: I think so, but to confirm with Raph
 
         # Q: switch to absolute values like align_other?
         #      align(0.0, fname='al_p_dead_m.csv')
@@ -648,8 +645,8 @@ class Alignment(FilteredExpression):
                 raise Exception("align() expressions and possible_values "
                                 "arguments should have the same length")
 
-        if probabilities is None and fname is None:
-            raise Exception("align() needs either a filename or probabilities")
+        if proportions is None and fname is None:
+            raise Exception("align() needs either a filename or proportions")
 
         if fname is not None:
             self.load(fname)
@@ -666,13 +663,13 @@ class Alignment(FilteredExpression):
             # v -> array([v])
             # [v1, v2] -> array([v1, v2])
             # [e1, e2] -> [e1, e2]
-            if not isinstance(probabilities, (tuple, list, Expr)):
-                probabilities = [probabilities]
+            if not isinstance(proportions, (tuple, list, Expr)):
+                proportions = [proportions]
 
-            if not any(isinstance(p, Expr) for p in probabilities):
-                self.probabilities = np.array(probabilities)
+            if not any(isinstance(p, Expr) for p in proportions):
+                self.proportions = np.array(proportions)
             else:
-                self.probabilities = probabilities
+                self.proportions = proportions
 
         self.take_filter = take
         self.leave_filter = leave
@@ -706,7 +703,7 @@ class Alignment(FilteredExpression):
         header, possible_values, array = load_ndarray(fpath, float)
         self.expressions = [parse(expr, autovariables=True) for expr in header]
         self.possible_values = possible_values
-        self.probabilities = array
+        self.proportions = array
 
     def evaluate(self, context):
         scores = expr_eval(self.expr, context)
@@ -722,7 +719,7 @@ class Alignment(FilteredExpression):
         if weight_col is not None:
             weights = expr_eval(Variable(weight_col), context)
             if on_overflow == 'carry' and self.overflows is None:
-                self.overflows = np.zeros(len(self.probabilities))
+                self.overflows = np.zeros(len(self.proportions))
         else:
             weights = None
 
@@ -749,22 +746,22 @@ class Alignment(FilteredExpression):
                        if self.leave_filter is not None \
                        else None
 
-        if isinstance(self.probabilities, list):
-            probabilities = np.array([expr_eval(p, context)
-                                      for p in self.probabilities])
-        elif isinstance(self.probabilities, Expr):
-            probabilities = expr_eval(self.probabilities, context)
-            if not (isinstance(probabilities, np.ndarray) and
-                    probabilities.shape):
-                probabilities = np.array([probabilities])
+        if isinstance(self.proportions, list):
+            proportions = np.array([expr_eval(p, context)
+                                      for p in self.proportions])
+        elif isinstance(self.proportions, Expr):
+            proportions = expr_eval(self.proportions, context)
+            if not (isinstance(proportions, np.ndarray) and
+                    proportions.shape):
+                proportions = np.array([proportions])
         else:
-            assert isinstance(self.probabilities, np.ndarray)
-            probabilities = self.probabilities
+            assert isinstance(self.proportions, np.ndarray)
+            proportions = self.proportions
 
         indices, overflows = \
             align_get_indices_nd(context, filter_value, scores,
                                  self.expressions, self.possible_values,
-                                 probabilities,
+                                 proportions,
                                  take_filter, leave_filter, weights,
                                  self.overflows)
 
