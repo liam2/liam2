@@ -124,6 +124,9 @@ class Assignment(Process):
                 # be unnecessary.
                 target[self.predictor] = np.zeros(len(self.entity.array),
                                                   dtype=res_type)
+            #XXX: I'm not sure this feature is a good idea after all, as it
+            # makes for a confusing behaviour. It is only used in align() and
+            # align_other()
             if indices is not None:
                 np.put(target[self.predictor], indices, result)
             elif filter_values is not None:
