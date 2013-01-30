@@ -9,6 +9,7 @@ from expr import add_context, Variable
 import expr
 import alignment
 import align_other
+import groupby
 import matching
 import properties
 import actions
@@ -17,8 +18,8 @@ import links
 import tfunc
 
 functions = {}
-for module in (expr, alignment, align_other, matching, properties, actions,
-               regressions, links, tfunc):
+for module in (expr, alignment, align_other, groupby, matching, properties,
+               actions, regressions, links, tfunc):
     functions.update(module.functions)
 
 

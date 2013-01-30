@@ -2,12 +2,11 @@ import random
 
 import numpy as np
 
-from expr import expr_eval, collect_variables, traverse_expr, Variable, \
-                 missing_values
+from expr import (expr_eval, collect_variables, traverse_expr, Variable,
+                  missing_values)
 from links import Link, LinkValue
-from alignment import groupby
-from context import context_length
-from context import EntityContext
+from groupby import groupby
+from context import context_length, EntityContext
 from properties import EvaluableExpression
 from registry import entity_registry
 

@@ -6,7 +6,7 @@ from Cython.Distutils import build_ext as cython_build_ext
 import numpy as np
 
 # cython options
-ext_modules = [Extension("groupby", ["groupby.pyx"],
+ext_modules = [Extension("cpartition", ["cpartition.pyx"],
                          include_dirs=[np.get_include()]),
                Extension("cutils", ["cutils.pyx"],
                          include_dirs=[np.get_include()])
