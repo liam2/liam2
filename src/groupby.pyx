@@ -136,26 +136,6 @@ cdef extern from "khash.h":
     bint kh_exist_int32(kh_int32_t*, khiter_t)
 
 
-def fromiter(iterable, dtype, Py_ssize_t count=-1):
-    cdef ndarray buf
-    cdef Py_ssize_t i
-    cdef object e
-
-    if count == -1:
-        return np.fromiter(iterable, dtype)
-    else:
-        buf = np.empty(count, dtype=dtype)
-        i = 0
-        for e in iterable:
-            buf[i] = e
-            i += 1
-            if i == count:
-                break
-        if i < count:
-            raise ValueError("iterator too short")
-        return buf
-
-
 @cython.wraparound(False)
 @cython.boundscheck(False)
 def filter_to_indices(ndarray[int8_t, cast=True] values):

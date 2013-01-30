@@ -7,11 +7,14 @@ import numpy as np
 
 # cython options
 ext_modules = [Extension("groupby", ["groupby.pyx"],
-                         include_dirs=[np.get_include()])]
+                         include_dirs=[np.get_include()]),
+               Extension("cutils", ["cutils.pyx"],
+                         include_dirs=[np.get_include()])
+              ]
 build_ext_options = {}
 
 # Add the output directory of build_ext to sys.path so that build_exe finds
-# and copies groupby.pyd
+# and copies C extensions
 class my_build_ext(cython_build_ext):
     def finalize_options(self):
         cython_build_ext.finalize_options(self)
@@ -44,7 +47,7 @@ build_exe_options = {
 }
 
 setup(name="liam2",
-      version="0.5.1",
+      version="0.6.0",
       description="LIAM2",
 
       cmdclass={"build_ext": my_build_ext},

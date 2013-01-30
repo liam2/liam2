@@ -80,7 +80,7 @@ def safe_put(a, ind, v):
 # we provide our own version of fromiter because it swallows any exception
 # occurring within the iterable if the count argument is used
 try:
-    from groupby import fromiter
+    from cutils import fromiter
 except ImportError:
     def fromiter(iterable, dtype, count=-1):
         if count == -1:
