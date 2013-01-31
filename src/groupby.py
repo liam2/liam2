@@ -181,17 +181,18 @@ class GroupBy(TableExpression):
 #            data = [100.0 * value / divisor
 #                    for value, divisor in izip(data, divisors)]
 
-        # gender | False | True | total
-        #        |    20 |   16 |    35
+        # gender |      |
+        #  False | True | total
+        #     20 |   16 |    35
 
-        # gender | False | True |
-        #   dead |       |      | total
-        #  False |    20 |   15 |    35
-        #   True |     0 |    1 |     1
-        #  total |    20 |   16 |    36
+        #   dead | gender |      |
+        #        |  False | True | total
+        #  False |     20 |   15 |    35
+        #   True |      0 |    1 |     1
+        #  total |     20 |   16 |    36
 
-        #          |   dead | False | True |
-        # agegroup | gender |       |      | total
+        # agegroup | gender |  dead |      |
+        #          |        | False | True | total
         #        5 |  False |    20 |   15 |    xx
         #        5 |   True |     0 |    1 |    xx
         #       10 |  False |    25 |   10 |    xx
@@ -199,28 +200,23 @@ class GroupBy(TableExpression):
         #          |  total |    xx |   xx |    xx
 
         # add headers
-        labels = [str(e) for e in expressions]
+        result = [[str(e) for e in expressions] +
+                  [''] * (width - 1),
+                  # 2nd line
+                  [''] * folded_exprs +
+                  list(possible_values[-1]) +
+                  ['total']]
         if folded_exprs:
-            result = [[''] * (folded_exprs - 1) +
-                      [labels[-1]] +
-                      list(possible_values[-1]) +
-                      [''],
-                      # 2nd line
-                      labels[:-1] +
-                      [''] * len(possible_values[-1]) +
-                      ['total']]
             categ_values = list(product(*possible_values[:-1]))
             last_line = [''] * (folded_exprs - 1) + ['total']
             categ_values.append(last_line)
             height += 1
+            for y in range(height):
+                result.append(list(categ_values[y]) +
+                              data[y * width:(y + 1) * width])
         else:
-            # if there is only one expression, the headers are different
-            result = [[labels[-1]] + list(possible_values[-1]) + ['total']]
-            categ_values = [['']]
-
-        for y in range(height):
-            result.append(list(categ_values[y]) +
-                          data[y * width:(y + 1) * width])
+            for y in range(height):
+                result.append(data[y * width:(y + 1) * width])
 
         return PrettyTable(result)
 
