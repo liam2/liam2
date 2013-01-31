@@ -139,7 +139,7 @@ class PrintVersionsAction(argparse.Action):
         import tables
 
         try:
-            from groupby import filter_to_indices, group_indices_nd
+            from cpartition import filter_to_indices, group_indices_nd
             cext = True
         except ImportError:
             cext = False
