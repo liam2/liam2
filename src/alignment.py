@@ -12,7 +12,7 @@ from context import context_length
 from utils import PrettyTable
 from properties import FilteredExpression, add_individuals
 from importer import load_ndarray
-from partition import partition_nd
+from partition import partition_nd, filter_to_indices
 
 
 def kill_axis(axis_name, value, expressions, possible_values, proportions):
@@ -84,7 +84,7 @@ def align_get_indices_nd(context, filter_value, score,
             groups = partition_nd(columns, True, possible_values)
     else:
         if filter_value is not None:
-            groups = [filter_value.nonzero()[0]]
+            groups = [filter_to_indices(filter_value)]
         else:
             groups = [np.arange(num_to_align)]
         assert len(proportions) == 1
@@ -94,7 +94,7 @@ def align_get_indices_nd(context, filter_value, score,
     num_aligned = sum(len(g) for g in groups)
     if num_aligned < num_to_align:
         if filter_value is not None:
-            to_align = set(filter_value.nonzero()[0])
+            to_align = set(filter_to_indices(filter_value))
         else:
             to_align = set(xrange(num_to_align))
         aligned = set()
@@ -126,7 +126,7 @@ def align_get_indices_nd(context, filter_value, score,
         #     group_always = np.intersect1d(members_indices, take_indices,
         #                                   assume_unique=True)
 
-        take_indices = (take_filter & bool_filter_value).nonzero()[0]
+        take_indices = filter_to_indices(take_filter & bool_filter_value)
         maybe_filter &= ~take_filter
     else:
         take = 0
@@ -139,7 +139,7 @@ def align_get_indices_nd(context, filter_value, score,
         leave = 0
 
     if take_filter is not None or leave_filter is not None:
-        maybe_indices = maybe_filter.nonzero()[0]
+        maybe_indices = filter_to_indices(maybe_filter)
     else:
         maybe_indices = None
 

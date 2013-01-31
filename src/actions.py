@@ -7,6 +7,7 @@ import config
 from expr import Expr, expr_eval
 from properties import TableExpression
 from process import Process, BreakpointException
+from partition import filter_to_indices
 
 
 class Show(Process):
@@ -141,7 +142,7 @@ class RemoveIndividuals(Process):
 
         # update id_to_rownum
         already_removed = entity.id_to_rownum == -1
-        already_removed_indices = already_removed.nonzero()[0]
+        already_removed_indices = filter_to_indices(already_removed)
         already_removed_indices_shifted = already_removed_indices - \
                                   np.arange(len(already_removed_indices))
 
