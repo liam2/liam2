@@ -75,7 +75,7 @@ class Simulation(object):
                 '*': [str]
             }],
             '#processes': [{
-                '*': [str]
+                '*': [None]
             }],
             'random_seed': int,
             '#input': {
@@ -104,8 +104,10 @@ class Simulation(object):
         self.globals_def = globals_def
         self.periods = periods
         self.start_period = start_period
+        # init_processes is a list of tuple: (process, 1)
         self.init_processes = init_processes
         self.init_entities = init_entities
+        # processes is a list of tuple: (process, periodicity)
         self.processes = processes
         self.entities = entities
         self.data_source = data_source
@@ -192,16 +194,22 @@ class Simulation(object):
 
             entity = entity_registry[ent_name]
             init_entities.add(entity)
-            init_processes.extend([entity.processes[proc_name]
+            init_processes.extend([(entity.processes[proc_name], 1)
                                    for proc_name in proc_names])
 
         processes_def = [d.items()[0] for d in simulation_def['processes']]
         processes, entities = [], set()
-        for ent_name, proc_names in processes_def:
+        for ent_name, proc_defs in processes_def:
             entity = entity_registry[ent_name]
             entities.add(entity)
-            processes.extend([entity.processes[proc_name]
-                              for proc_name in proc_names])
+            for proc_def in proc_defs:
+                # proc_def is simply a process name
+                if isinstance(proc_def, basestring):
+                    # use the default periodicity of 1
+                    proc_name, periodicity = proc_def, 1
+                else:
+                    proc_name, periodicity = proc_def
+                processes.append((entity.processes[proc_name], periodicity))
 
         method = input_def.get('method', 'h5')
 
@@ -242,7 +250,8 @@ class Simulation(object):
         process_time = defaultdict(float)
         period_objects = {}
 
-        def simulate_period(period, processes, entities, init=False):
+        def simulate_period(period_idx, period, processes, entities,
+                            init=False):
             print "\nperiod", period
             if init:
                 for entity in entities:
@@ -265,7 +274,9 @@ class Simulation(object):
                               '__globals__': globals_data}
 
                 num_processes = len(processes)
-                for p_num, process in enumerate(processes, start=1):
+                for p_num, process_def in enumerate(processes, start=1):
+                    process, periodicity = process_def
+
                     print "- %d/%d" % (p_num, num_processes), process.name,
                     #TODO: provided a custom __str__ method for Process &
                     # Assignment instead
@@ -273,8 +284,12 @@ class Simulation(object):
                        and process.predictor != process.name:
                         print "(%s)" % process.predictor,
                     print "...",
-
-                    elapsed, _ = gettime(process.run_guarded, self, const_dict)
+                    if period_idx % periodicity == 0: 
+                        elapsed, _ = gettime(process.run_guarded, self,
+                                             const_dict)
+                    else:
+                        elapsed = 0
+                        print "skipped (periodicity)"
 
                     process_time[process.name] += elapsed
                     print "done (%s elapsed)." % time2str(elapsed)
@@ -296,14 +311,15 @@ class Simulation(object):
                                          for entity in entities)
 
         try:
-            simulate_period(self.start_period - 1, self.init_processes,
+            simulate_period(0, self.start_period - 1, self.init_processes,
                             self.entities, init=True)
             main_start_time = time.time()
             periods = range(self.start_period,
                             self.start_period + self.periods)
-            for period in periods:
+            for period_idx, period in enumerate(periods):
                 period_start_time = time.time()
-                simulate_period(period, self.processes, self.entities)
+                simulate_period(period_idx, period,
+                                self.processes, self.entities)
                 time_elapsed = time.time() - period_start_time
                 print "period %d done (%s elapsed)." % (period,
                                                         time2str(time_elapsed))
