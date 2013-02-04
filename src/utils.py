@@ -503,12 +503,16 @@ def validate_dict(d, target, context=''):
 
 
 def validate_value(v, target, context):
-    if isinstance(v, dict):
+    if target is None:
+        # None is meant as "any" object
+        return
+    if isinstance(target, dict):
         validate_dict(v, target, context)
-    elif isinstance(v, list):
+    elif isinstance(target, list):
         validate_list(v, target, context)
-    # otherwise that type (int, str) is not validated further
-
+    else:
+        if not isinstance(v, target):
+            raise Exception("invalid structure for '%s'" % context)
 
 # fields handling
 # ---------------
