@@ -5,7 +5,7 @@ set REPOSITORY=svn://filemail/liam2
 if "%1"=="" (
     set SVNPATH=trunk
     rem this is a hack to retrieve the command output in a variable
-    for /f "usebackq" %%a in (`python get_rev.py %REPOSITORY%`) do @set REV=%%a
+    for /f "usebackq delims=" %%a in (`python get_rev.py %REPOSITORY%`) do set REV=%%a
     set VERSION=r%REV%
 ) else (
     set SVNPATH=tags/%1
