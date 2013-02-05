@@ -2,8 +2,9 @@ import numpy as np
 import tables
 
 from data import get_fields, index_table_light
+from utils import PrettyTable
 
-__version__ = "0.1"
+__version__ = "0.2"
 
 
 def get_h5_fields(input_file):
@@ -18,7 +19,7 @@ def unique_dupes(a):
     return unique_indices, a[is_dupe]
 
 
-def diff_h5(input1_path, input2_path):
+def diff_h5(input1_path, input2_path, numdiff=10):
     input1_file = tables.openFile(input1_path, mode="r")
     input2_file = tables.openFile(input2_path, mode="r")
 
@@ -34,12 +35,16 @@ def diff_h5(input1_path, input2_path):
 
     ent_names1 = set(fields1.keys())
     ent_names2 = set(fields2.keys())
-    if ent_names1 != ent_names2:
-        raise Exception("entities are different in both files")
-
     for ent_name in sorted(ent_names1 | ent_names2):
         print
         print ent_name
+        if ent_name not in ent_names1:
+            print "missing in file 1"
+            continue
+        elif ent_name not in ent_names2:
+            print "missing in file 2"
+            continue
+
         ent_fields1 = fields1.get(ent_name, [])
         ent_fields2 = fields2.get(ent_name, [])
         fnames1 = set(fname for fname, _ in ent_fields1)
@@ -108,11 +113,15 @@ def diff_h5(input1_path, input2_path):
                         print "(length)"
                     else:
                         diff = (col1 != col2).nonzero()[0]
-                        print "(%d differences)" % len(diff),
-                        if len(diff) < 100:
-                            print "row numbers (this is not the id!):", diff
-                        else:
-                            print
+                        print "(%d differences)" % len(diff)
+                        ids = array1['id']
+                        if len(diff) > numdiff:
+                            diff = diff[:numdiff]
+                        print PrettyTable([['id',
+                                            fname + ' (file1)',
+                                            fname + ' (file2)']] +
+                                          [[ids[idx], col1[idx], col2[idx]]
+                                           for idx in diff])
 
     input1_file.close()
     input2_file.close()
@@ -127,7 +136,11 @@ if __name__ == '__main__':
 
     args = sys.argv
     if len(args) < 3:
-        print "Usage: %s inputpath1 inputpath2" % args[0]
+        print "Usage: %s inputpath1 inputpath2 [numdiff]" % args[0]
         sys.exit()
 
-    diff_h5(args[1], args[2])
+    if len(args) > 3:
+        numdiff = int(args[3])
+    else:
+        numdiff = 10
+    diff_h5(args[1], args[2], numdiff)
