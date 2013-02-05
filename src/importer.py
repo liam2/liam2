@@ -237,7 +237,7 @@ class CSV(object):
            * columns can be in any order (they will be reordered if needed)
            * row order is preserved
         '''
-        print "  - reading", self.fpath
+        print " - reading", self.fpath
         if fields is None:
             fields = self.fields
             positions = None
@@ -296,7 +296,7 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
     # np.array(l[:max_rows])
     datastream = iter(datastream)
     msg, filters = compression_str2filter(compression)
-    print "  - storing %s..." % msg
+    print " - storing %s..." % msg
     dtype = np.dtype(fields)
     table = h5file.createTable(node, name, dtype, title=title, filters=filters)
     # buffered load
@@ -328,7 +328,7 @@ def array_to_disk_array(h5file, node, name, array, title='', compression=None):
     dim_names, possible_values, data = array
     assert len(dim_names) == len(possible_values)
     msg, filters = compression_str2filter(compression)
-    print "  - storing %s..." % msg
+    print " - storing %s..." % msg
     if filters is not None:
         disk_array = h5file.createCArray(node, name, data, title,
                                          filters=filters)
@@ -391,7 +391,7 @@ def interpolate(target, arrays, id_periods, fields):
     csize = sum(row_for_id[period].cbytes for period in periods)
     print "done. (%.2f Mb)" % (csize / MB)
 
-    print " * loading and interpolating..."
+    print " * interpolating..."
     for values in arrays:
         # sort it by id, then period
         values.sort(order=('id', 'period'))
@@ -444,6 +444,7 @@ def interpolate(target, arrays, id_periods, fields):
 
 
 def load_ndarray(fpath, celltype=None):
+    print " - reading", fpath
     with open(fpath, "rb") as f:
         reader = csv.reader(f)
         line_stream = skip_comment_cells(strip_rows(reader))
@@ -517,7 +518,12 @@ def load_ndarray(fpath, celltype=None):
 
 
 def load_def(localdir, ent_name, section_def, required_fields):
-    if section_def.get('kind', 'table') == 'ndarray':
+    if 'type' in section_def and 'fields' in section_def:
+        raise Exception("invalid structure for '%s': "
+                        "type and fields sections are mutually exclusive"
+                        % ent_name)
+
+    if 'type' in section_def:
         csv_filename = section_def.get('path', ent_name + ".csv")
         csv_filepath = complete_path(localdir, csv_filename)
         str_type = section_def.get('type')
@@ -594,6 +600,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
             files.append(f)
         id_periods = union1d(f.as_array(required_fields) for f in files)
 
+        print " * reading files..."
         # 2) load all fields
         if fields is None:
             target_fields = merge_items(*[f.fields for f in files])
@@ -664,8 +671,15 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
             },
             '*': {
                 'path': str,
-                'kind': str,
-                'type': str
+                'type': str,
+                'fields': [{
+                    '*': str
+                }],
+                'oldnames': {
+                    '*': str
+                },
+                'invert': [str],
+                'transposed': bool
             }
         },
         '#entities': {
@@ -705,10 +719,13 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
 
         globals_def = content.get('globals', {})
         if globals_def:
-            print "* globals"
+            print
+            print "globals"
+            print "-------"
             const_node = h5file.createGroup("/", "globals", "Globals")
             for global_name, global_def in globals_def.iteritems():
-                print "* %s" % global_name
+                print
+                print " %s" % global_name
                 req_fields = ([('PERIOD', int)] if global_name == 'periodic'
                                                 else [])
 
@@ -729,9 +746,13 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
                     if csvfile is not None:
                         csvfile.close()
 
+        print
+        print "entities"
+        print "--------"
         ent_node = h5file.createGroup("/", "entities", "Entities")
         for ent_name, entity_def in content['entities'].iteritems():
-            print "* %s" % ent_name
+            print
+            print " %s" % ent_name
             kind, info = load_def(localdir, ent_name,
                                   entity_def, [('period', int), ('id', int)])
             assert kind == "table"
@@ -746,4 +767,5 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
                 csvfile.close()
     finally:
         h5file.close()
+    print
     print "done."
