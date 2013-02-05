@@ -712,34 +712,38 @@ class GlobalVariable(Variable):
             context[tmp_varname] = result
         return tmp_varname
 
-    def _eval_period(self, context):
+    def _eval_key(self, context):
         return context['period']
 
     def evaluate(self, context):
-        period = self._eval_period(context)
+        key = self._eval_key(context)
         globals_data = context['__globals__']
         globals_table = globals_data[self.tablename]
 
-        #TODO: this period_idx computation should be encapsulated in the
-        # globals_table object
-        try:
-            globals_periods = globals_table['PERIOD']
-        except ValueError:
-            globals_periods = globals_table['period']
-        period_idx = period - globals_periods[0]
-
+        #TODO: this row computation should be encapsulated in the
+        # globals_table object and the index column should be configurable
+        colnames = globals_table.dtype.names
+        if 'period' in colnames or 'PERIOD' in colnames:
+            try:
+                globals_periods = globals_table['PERIOD']
+            except ValueError:
+                globals_periods = globals_table['period']
+            base_period = globals_periods[0]
+            row = key - base_period
+        else:
+            row = key
         if self.name not in globals_table.dtype.fields:
             raise Exception("Unknown global: %s" % self.name)
         column = globals_table[self.name]
-        num_periods = len(globals_periods)
+        numrows = len(column)
         missing_value = get_missing_value(column)
-        if isinstance(period_idx, np.ndarray):
-            out_of_bounds = (period_idx < 0) | (period_idx >= num_periods)
-            period_idx[out_of_bounds] = -1
-            return np.where(out_of_bounds, missing_value, column[period_idx])
+        if isinstance(row, np.ndarray) and row.shape:
+            out_of_bounds = (row < 0) | (row >= numrows)
+            row[out_of_bounds] = -1
+            return np.where(out_of_bounds, missing_value, column[row])
         else:
-            out_of_bounds = (period_idx < 0) or (period_idx >= num_periods)
-            return column[period_idx] if not out_of_bounds else missing_value
+            out_of_bounds = (row < 0) or (row >= numrows)
+            return column[row] if not out_of_bounds else missing_value
 
     def __getitem__(self, key):
         return SubscriptedGlobal(self.tablename, self.name, self._dtype, key)
@@ -762,7 +766,7 @@ class SubscriptedGlobal(GlobalVariable):
         return '%s[%s]' % (self.name, self.key)
     __repr__ = __str__
 
-    def _eval_period(self, context):
+    def _eval_key(self, context):
         return expr_eval(self.key, context)
 
 
