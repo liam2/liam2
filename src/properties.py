@@ -332,6 +332,11 @@ class Clip(NumpyChangeArray):
     np_func = (np.clip,)
     arg_names = ('a', 'a_min', 'a_max', 'out')
 
+
+class Sort(NumpyChangeArray):
+    np_func = (np.sort,)
+    arg_names = ('a', 'axis', 'kind', 'order')
+
 #------------------------------------
 
 
@@ -954,8 +959,8 @@ functions = {
     'trunc': Trunc,
     'exp': Exp,
     'log': Log,
-
     # misc
+    'sort': Sort,
     'new': CreateIndividual,
     'clone': Clone,
     'dump': Dump,
