@@ -6,19 +6,23 @@ globals:
         path: param\globals.csv
         transposed: true
         fields:
-            # period is implicit
+            # PERIOD is implicit
             - MINR: float
             - WEMRA: int
             - MIG_PERCENT: float
 
     MIG:
         path: param\mig.csv
-        kind: ndarray
         type: float
 
     othertable:
         path: param\othertable.csv
-        kind: table
+
+    othertable_noperiod:
+        path: param\othertable.csv
+        fields:
+            # PERIOD is *not* implicit
+            - INTFIELD: int
 
 entities:
     household:
