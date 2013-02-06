@@ -150,6 +150,10 @@ def expr_eval(expr, context):
 #        time, res = gettime(expr.evaluate, context)
 #        timings[expr.__class__.__name__] += time
 #        return res
+    elif isinstance(expr, list) and any(isinstance(e, Expr) for e in expr):
+        return [expr_eval(e, context) for e in expr]
+    elif isinstance(expr, tuple) and any(isinstance(e, Expr) for e in expr):
+        return tuple([expr_eval(e, context) for e in expr])
     else:
         return expr
 
@@ -373,7 +377,14 @@ class SubscriptedExpr(EvaluableExpression):
         self.key = key
 
     def __str__(self):
-        return '%s[%s]' % (self.expr, self.key)
+        key = self.key
+        if isinstance(key, slice):
+            key_str = '%s:%s' % (key.start, key.stop)
+            if key.step is not None:
+                key_str += ':%s' % key.step
+        else:
+            key_str = str(key)
+        return '%s[%s]' % (self.expr, key_str)
     __repr__ = __str__
 
     def evaluate(self, context):
@@ -381,6 +392,10 @@ class SubscriptedExpr(EvaluableExpression):
         key = self.key
         if isinstance(key, tuple):
             key = tuple(expr_eval(k, context) for k in key)
+        elif isinstance(key, slice):
+            key = slice(expr_eval(key.start, context),
+                        expr_eval(key.stop, context),
+                        expr_eval(key.step, context))
         else:
             key = expr_eval(key, context)
         #XXX: return -1 for out_of_bounds like for globals?
