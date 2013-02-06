@@ -12,6 +12,10 @@ globals:
             - INTFIELD: int
             - FLOATFIELD: float
 
+    othertable_noperiod:
+        fields:
+            - INTFIELD: int
+
 entities:
 #    test:
 #        fields:
@@ -262,6 +266,15 @@ entities:
                 # with expr argument
                 - newborn: age[age == 0]
                 - assertEqual(newborn[0], 0)
+                
+                # with slice
+                - assertEqual(age[0:1], [age[0]])
+                
+                # with expr slice
+                - indice: trunc(grpcount() / 2)
+                - ages: age[indice:indice+10:2]
+                - assertEqual(ages.__len__(), 5)
+                - assertEqual(ages[0], age[indice])
 
             test_call:
                 # without argument
@@ -328,6 +341,17 @@ entities:
                 - assertEqual(othertable.INTFIELD, fake_intfield)
                 # expr_index
                 - assertEqual(othertable.INTFIELD[period], fake_intfield)
+
+                - baseperiod: 1980
+                - assertEqual(othertable_noperiod.INTFIELD[0], 60)
+                # expr_index
+                - assertEqual(othertable_noperiod.INTFIELD[period - baseperiod],
+                              fake_intfield)
+                # this is equivalent to INTFIELD[2002], so it is (way) out of
+                # bounds but it does not fail, it simply returns "missing"
+                #FIXME: it should not be allowed (ie not all global variable
+                # should have this "current period if not indexed" behavior.
+                - assertEqual(othertable_noperiod.INTFIELD, -1)
 
             test_globals_nd:
                 # need should be a 3d array: gender-age-period 
@@ -901,8 +925,25 @@ entities:
                 - num_old: grpcount(age > age_10p)
                 - num_total: grpcount()
 
-                - assertTrue(num_young <= num_total / 10)
-                - assertTrue(num_old <= num_total * 90 / 100)
+                # the + 1 are necessary in case the Nth value is between two
+                # different values because in that case, the percentile is a
+                # linear approximation of both values, and thus the number of
+                # values smaller can be 1 more. Note that if we are between
+                # two indices but the values at those two indices is the same
+                # we do not have a problem, that is why this problem only
+                # triggers rarely in our test because many individuals have
+                # the same age.
+                # >>> a = [0, 1, 2, 3, 4]
+                # >>> np.percentile(a, 25)
+                # 1.0
+                # >>> np.sum(a < 1.0)
+                # 1
+                # >>> np.percentile(a, 26)
+                # 1.04
+                # >>> np.sum(a < 1.04)
+                # 2 
+                - assertTrue(num_young <= (num_total / 10) + 1)
+                - assertTrue(num_old <= (num_total * 90 / 100) + 1)
                 - assertEqual(num_young + num_10p + num_old, num_total)
 
                 # with a filter
@@ -911,9 +952,8 @@ entities:
                 - num_10p: grpcount(gender and (age == age_10p))
                 - num_old: grpcount(gender and (age > age_10p))
                 - num_total: grpcount(gender)
-
-                - assertTrue(num_young <= num_total / 10)
-                - assertTrue(num_old <= num_total * 90 / 100)
+                - assertTrue(num_young <= (num_total / 10) + 1)
+                - assertTrue(num_old <= (num_total * 90 / 100) + 1)
                 - assertEqual(num_young + num_10p + num_old, num_total)
 
             test_grpgini:
@@ -1057,7 +1097,7 @@ simulation:
                    test_logit,
                    test_log_regr,
 
-                   marriage,
+                   [marriage, 4],
 
 #                   test_extra_comma,
 
@@ -1098,6 +1138,6 @@ simulation:
 
     random_seed: 0
     start_period: 2002   # first simulated period
-    periods: 1
+    periods: 8
     default_entity: person
 
