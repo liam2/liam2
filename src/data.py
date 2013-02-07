@@ -456,6 +456,10 @@ def index_tables(globals_def, entities, fpath):
                 attrs = global_data.attrs
                 dim_names = getattr(attrs, 'dimensions', None)
                 if dim_names is not None:
+                    # we serialise dim_names as a numpy array so that it is
+                    # stored as a native hdf type and not a pickle but we
+                    # prefer to work with simple lists
+                    dim_names = list(dim_names)
                     pvalues = [getattr(attrs, 'dim%d_pvalues' % i)
                                for i in range(len(dim_names))]
                     array = LabeledArray(array, dim_names, pvalues)
