@@ -8,6 +8,7 @@ from expr import Expr, expr_eval
 from properties import TableExpression
 from process import Process, BreakpointException
 from partition import filter_to_indices
+from utils import LabeledArray
 
 
 class Show(Process):
@@ -102,6 +103,8 @@ class CSV(Process):
             for arg in self.args:
                 if isinstance(arg, TableExpression):
                     data = expr_eval(arg, context)
+                    if isinstance(data, LabeledArray):
+                        data = data.as_table()
                 elif isinstance(arg, (list, tuple)):
                     data = [[expr_eval(expr, context) for expr in arg]]
                 else:
