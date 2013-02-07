@@ -59,6 +59,7 @@ class GroupBy(TableExpression):
 
         self.filter = kwargs.pop('filter', None)
         self.percent = kwargs.pop('percent', False)
+        self.pvalues = kwargs.pop('pvalues', None)
 
         if kwargs:
             kwarg, _ = kwargs.popitem()
@@ -79,7 +80,9 @@ class GroupBy(TableExpression):
         else:
             filtered_columns = columns
 
-        possible_values = [np.unique(col) for col in filtered_columns]
+        possible_values = self.pvalues
+        if possible_values is None:
+            possible_values = [np.unique(col) for col in filtered_columns]
         groups = partition_nd(filtered_columns, True, possible_values)
         if not groups:
             return
