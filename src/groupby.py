@@ -1,12 +1,10 @@
 from __future__ import print_function
 
-from itertools import product
-
 import numpy as np
 
 from expr import expr_eval, collect_variables, traverse_expr
 from context import context_subset
-from utils import PrettyTable, prod
+from utils import prod, LabeledArray
 from properties import TableExpression, GroupCount
 from partition import partition_nd
 
@@ -83,6 +81,14 @@ class GroupBy(TableExpression):
 
         possible_values = [np.unique(col) for col in filtered_columns]
         groups = partition_nd(filtered_columns, True, possible_values)
+        if not groups:
+            return
+
+        # evaluate the expression on each group
+        expr = self.expr
+        used_vars = expr.collect_variables(context)
+        data = [expr_eval(expr, context_subset(context, indices, used_vars))
+                for indices in groups]
 
         #TODO: use group_indices_nd directly to avoid using np.unique
         # this is twice as fast (unique is very slow) but breaks because
@@ -104,64 +110,33 @@ class GroupBy(TableExpression):
         # the last one the inner most.
 
         # add total for each row
-        folded_exprs = len(expressions) - 1
         len_pvalues = [len(vals) for vals in possible_values]
         width = len_pvalues[-1]
         height = prod(len_pvalues[:-1])
 
-        def xy_to_idx(x, y):
-            # divide by the prod of possible values of expressions to its
-            # right, mod by its own number of possible values
-            offsets = [(y / prod(len_pvalues[v + 1:folded_exprs]))
-                       % len_pvalues[v]
-                       for v in range(folded_exprs)]
-            return sum(v * prod(len_pvalues[i + 1:])
-                       for i, v in enumerate(offsets)) + x
+        rows_indices = [np.concatenate([groups[y * width + x]
+                                        for x in range(width)])
+                        for y in range(height)]
+        cols_indices = [np.concatenate([groups[y * width + x]
+                                        for y in range(height)])
+                        for x in range(width)]
+        cols_indices.append(np.concatenate(cols_indices))
 
-        groups_wh_totals = []
-        for y in range(height):
-            line_indices = []
-            for x in range(width):
-                member_indices = groups[xy_to_idx(x, y)]
-                groups_wh_totals.append(member_indices)
-                line_indices.extend(member_indices)
-            groups_wh_totals.append(line_indices)
-
-        # width just increased because of totals
-        width += 1
-
-        # add total for each column (including the "total per row" one)
-        for x in range(width):
-            column_indices = []
-            for y in range(height):
-                column_indices.extend(groups_wh_totals[y * width + x])
-            groups_wh_totals.append(column_indices)
-
-        # evaluate the expression on each group
-        expr = self.expr
-        used_variables = expr.collect_variables(context)
-        #TODO: only add it when really needed, as it makes context_subset much
-        # faster in the usual GroupCount() case.
-        # Ironically, I think I added this
-        # for GroupCount() because otherwise the context was empty, but it
-        # is not needed in the end.
-        # I'll need to test whether simply removing this works for MIDAS.
-        # it does work on the test model
-#        used_variables.add('id')
-
-        data = []
-        for member_indices in groups_wh_totals:
-            local_context = context_subset(context, member_indices,
-                                           used_variables)
-            data.append(expr_eval(expr, local_context))
+        # evaluate the expression on each "combined" group (ie compute totals)
+        row_totals = [expr_eval(expr, context_subset(context, inds, used_vars))
+                      for inds in rows_indices]
+        col_totals = [expr_eval(expr, context_subset(context, inds, used_vars))
+                      for inds in cols_indices]
 
         if self.percent:
             # convert to np.float64 to get +-inf if total_value is int(0)
             # instead of Python's built-in behaviour of raising an exception.
             # This can happen at least when using the default expr (grpcount())
             # and the filter yields empty groups
-            total_value = np.float64(data[-1])
+            total_value = np.float64(col_totals[-1])
             data = [100.0 * value / total_value for value in data]
+            row_totals = [100.0 * value / total_value for value in row_totals]
+            col_totals = [100.0 * value / total_value for value in col_totals]
 
 #        if self.by or self.percent:
 #            if self.percent:
@@ -181,44 +156,12 @@ class GroupBy(TableExpression):
 #            data = [100.0 * value / divisor
 #                    for value, divisor in izip(data, divisors)]
 
-        # gender |      |
-        #  False | True | total
-        #     20 |   16 |    35
-
-        #   dead | gender |      |
-        #        |  False | True | total
-        #  False |     20 |   15 |    35
-        #   True |      0 |    1 |     1
-        #  total |     20 |   16 |    36
-
-        # agegroup | gender |  dead |      |
-        #          |        | False | True | total
-        #        5 |  False |    20 |   15 |    xx
-        #        5 |   True |     0 |    1 |    xx
-        #       10 |  False |    25 |   10 |    xx
-        #       10 |   True |     1 |    1 |    xx
-        #          |  total |    xx |   xx |    xx
-
         # add headers
-        result = [[str(e) for e in expressions] +
-                  [''] * (width - 1),
-                  # 2nd line
-                  [''] * folded_exprs +
-                  list(possible_values[-1]) +
-                  ['total']]
-        if folded_exprs:
-            categ_values = list(product(*possible_values[:-1]))
-            last_line = [''] * (folded_exprs - 1) + ['total']
-            categ_values.append(last_line)
-            height += 1
-            for y in range(height):
-                result.append(list(categ_values[y]) +
-                              data[y * width:(y + 1) * width])
-        else:
-            for y in range(height):
-                result.append(data[y * width:(y + 1) * width])
-
-        return PrettyTable(result)
+        labels = [str(e) for e in expressions]
+        data = np.array(data)
+        data = data.reshape(len_pvalues)
+        return LabeledArray(data, labels, possible_values,
+                            row_totals, col_totals)
 
     def traverse(self, context):
         for expr in self.expressions:
