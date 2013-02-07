@@ -2,7 +2,7 @@ import sys
 import time
 import operator
 import itertools
-from itertools import izip
+from itertools import izip, product
 from textwrap import wrap
 from collections import defaultdict, deque
 
@@ -125,7 +125,8 @@ def isconstant(a, filter_value=None):
 
 
 class LabeledArray(np.ndarray):
-    def __new__(cls, input_array, dim_names, pvalues):
+    def __new__(cls, input_array, dim_names, pvalues,
+                row_totals=None, col_totals=None):
         obj = np.asarray(input_array).view(cls)
         ndim = obj.ndim
         if len(dim_names) != ndim:
@@ -141,6 +142,8 @@ class LabeledArray(np.ndarray):
                             'shape (%s)' % (label_shape, obj.shape))
         obj.dim_names = dim_names
         obj.pvalues = pvalues
+        obj.row_totals = row_totals
+        obj.col_totals = col_totals
         return obj
 
     def __getitem__(self, key):
@@ -169,7 +172,8 @@ class LabeledArray(np.ndarray):
     # slices because ndarray is a "builtin" type
     def __getslice__(self, i, j):
         obj = np.ndarray.__getslice__(self, i, j)
-        obj.pvalues = [self.pvalues[0][slice(i, j)]] + [self.pvalues[1:]]
+        if self.pvalues is not None:
+            obj.pvalues = [self.pvalues[0][slice(i, j)]] + [self.pvalues[1:]]
         return obj
 
     def __array_finalize__(self, obj):
@@ -180,21 +184,82 @@ class LabeledArray(np.ndarray):
             return
 
         # obj is our "template" object (on which we have asked a view on).
-        if isinstance(obj, LabeledArray):
-            # arr.view(InfoArray)
+        if isinstance(obj, LabeledArray) and self.shape == obj.shape:
+            # obj.view(LabeledArray)
             # labeled_arr[:3]
             self.dim_names = obj.dim_names
             self.pvalues = obj.pvalues
+            self.row_totals = obj.row_totals
+            self.col_totals = obj.col_totals
         else:
             self.dim_names = None
             self.pvalues = None
+            self.row_totals = None
+            self.col_totals = None
+
+    def as_table(self):
+        if not self.ndim:
+            return []
+
+        # gender |      |
+        #  False | True | total
+        #     20 |   16 |    35
+
+        #   dead | gender |      |
+        #        |  False | True | total
+        #  False |     20 |   15 |    35
+        #   True |      0 |    1 |     1
+        #  total |     20 |   16 |    36
+
+        # agegroup | gender |  dead |      |
+        #          |        | False | True | total
+        #        5 |  False |    20 |   15 |    xx
+        #        5 |   True |     0 |    1 |    xx
+        #       10 |  False |    25 |   10 |    xx
+        #       10 |   True |     1 |    1 |    xx
+        #          |  total |    xx |   xx |    xx
+        width = self.shape[-1]
+        height = prod(self.shape[:-1])
+        if self.dim_names is not None:
+            result = [self.dim_names +
+                      [''] * (width - 1),
+                      # 2nd line
+                      [''] * (self.ndim - 1) +
+                      list(self.pvalues[-1])]
+            if self.row_totals is not None:
+                result[0].append('')
+                result[1].append('total')
+        else:
+            result = []
+        data = self.ravel()
+
+        if self.pvalues is not None:
+            categ_values = list(product(*self.pvalues[:-1]))
+        else:
+            categ_values = [[] for y in range(height)]
+        row_totals = self.row_totals
+        for y in range(height):
+            line = list(categ_values[y]) + \
+                   list(data[y * width:(y + 1) * width])
+            if row_totals is not None:
+                line.append(row_totals[y])
+            result.append(line)
+        if self.col_totals is not None and self.ndim > 1:
+            result.append([''] * (self.ndim - 2) + ['total'] + self.col_totals)
+
+        return result
+
+    def __str__(self):
+        return '\n' + table2str(self.as_table(), 'nan') + '\n'
 
 #    def __array_wrap__(self, out_arr, context=None):
 #        print 'In __array_wrap__:'
 #        print '   self is %s' % repr(self)
 #        print '   arr is %s' % repr(out_arr)
 #        print '   context is %s' % repr(context)
-#        return np.ndarray.__array_wrap__(self, out_arr, context)
+#        res = np.ndarray.__array_wrap__(self, out_arr, context)
+#        print '   result is %s' % repr(res)
+#        return res
 
 
 def loop_wh_progress(func, sequence):
@@ -275,15 +340,17 @@ def get_min_width(table, index):
 
 
 def table2str(table, missing):
-    table_len = len(table[0])
+    if not table:
+        return ''
+    numcol = len(table[0])
     formatted = [[format_value(value, missing) for value in row]
                   for row in table]
-    colwidths = [get_col_width(formatted, i) for i in xrange(table_len)]
+    colwidths = [get_col_width(formatted, i) for i in xrange(numcol)]
 
     total_width = sum(colwidths)
     sep_width = (len(colwidths) - 1) * 3
     if total_width + sep_width > 80:
-        minwidths = [get_min_width(formatted, i) for i in xrange(table_len)]
+        minwidths = [get_min_width(formatted, i) for i in xrange(numcol)]
         available_width = 80.0 - sep_width - sum(minwidths)
         ratio = available_width / total_width
         colwidths = [minw + max(int(width * ratio), 0)
