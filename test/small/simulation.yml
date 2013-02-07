@@ -333,11 +333,13 @@ entities:
 
             test_other_globals:
                 # with a PERIOD column 
-                - fake_intfield: if(period <= 1996, 60,
+                - fake_intfield: if(period <= 1979, -1,
+                                 if(period <= 1996, 60,
                                  if(period <= 1999, 61,
                                  if(period <= 2002, 62,
                                  if(period <= 2005, 63,
-                                 if(period <= 2008, 64, 65)))))
+                                 if(period <= 2008, 64, 
+                                 if(period <= 2010, 65, -1)))))))
                 - assertEqual(othertable.INTFIELD, fake_intfield)
                 # expr_index
                 - assertEqual(othertable.INTFIELD[period], fake_intfield)
