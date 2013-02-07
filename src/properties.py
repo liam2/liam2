@@ -492,6 +492,7 @@ class GroupMax(NumpyAggregate):
         return dtype(self.args[0], context)
 
 
+#FIXME: inherit from NumpyAggregate
 class GroupSum(FilteredExpression):
     func_name = 'grpsum'
 
