@@ -503,6 +503,30 @@ entities:
                              <=
                              grpmin(id, filter=not gender and const_aligned))
 
+                # manual alignment with no score
+                # ------------------------------
+                - none_aligned: align(filter=age < 10,
+                                      expressions=[gender],
+                                      possible_values=[[False, True]],
+                                      proportions=[0.1, 0.2])
+                - num_aligned: grpcount(none_aligned)
+                - num_aligned_women: grpcount(none_aligned and not gender)
+                - num_aligned_men: grpcount(none_aligned and gender)
+
+                - assertTrue(num_aligned_women - 0.1 * num_women < 1.0)
+                - assertTrue(num_aligned_men - 0.2 * num_men < 1.0)
+                - assertEqual(num_aligned_women + num_aligned_men, num_aligned)
+
+                # check that individuals with higher ids are chosen first
+                - assertTrue(grpmax(id, filter=gender and (age < 10) and
+                                               not none_aligned)
+                             <=
+                             grpmin(id, filter=gender and none_aligned))
+                - assertTrue(grpmax(id, filter=not gender and (age < 10) and
+                                               not none_aligned)
+                             <=
+                             grpmin(id, filter=not gender and none_aligned))
+
                 # alignment with an implicit filter
                 # ---------------------------------
 
@@ -992,7 +1016,22 @@ entities:
             test_groupby:
                 - stored: groupby(agegroup, gender)
                 - show(stored)
-#                - show(stored * 2)
+                
+                - count2: stored * 2  
+                - qshow(count2)
+                - assertEqual(count2.ndim, 2)
+                - assertEqual(count2.dim_names, ['agegroup', 'gender'])
+                - assertEqual(count2.row_totals, None)
+                - assertEqual(count2.col_totals, None)
+
+                - count3: grpmin(stored, axis=0)  
+                - qshow(count3)
+                - assertEqual(count3.dim_names, None)
+                - assertEqual(count3.row_totals, None)
+                - assertEqual(count3.col_totals, None)
+
+                - count4: grpmin(stored, axis=1)  
+                - qshow(count4)
                 
                 # fails as expected, but if we can fix this, it would be nice
 #                - show('groupby scalar', groupby(True, gender))
@@ -1138,6 +1177,6 @@ simulation:
 
     random_seed: 0
     start_period: 2002   # first simulated period
-    periods: 8
+    periods: 1
     default_entity: person
 
