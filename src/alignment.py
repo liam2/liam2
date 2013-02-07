@@ -191,7 +191,8 @@ def align_get_indices_nd(context, filter_value, score,
                     sorted_global_indices = \
                         group_maybe_indices[sorted_local_indices]
                 else:
-                    assert isinstance(score, (bool, int, float))
+                    assert score is None or isinstance(score,
+                                                       (bool, int, float))
                     # if the score expression is a constant, we don't need to
                     # sort indices. In that case, the alignment will take
                     # the last individuals created first (highest id).
@@ -261,15 +262,14 @@ def align_get_indices_nd(context, filter_value, score,
 class Alignment(FilteredExpression):
     func_name = 'align'
 
-    def __init__(self, score_expr, filter=None, take=None, leave=None,
+    def __init__(self, score=None, filter=None, take=None, leave=None,
                  fname=None,
                  expressions=None, possible_values=None, proportions=None,
                  on_overflow='default'):
-        super(Alignment, self).__init__(score_expr, filter)
+        super(Alignment, self).__init__(score, filter)
 
         #TODO: make it possible to override expressions/pvalues given in
         # the file
-        #TODO: make score_expr optional and rename it to "score"
 
         # Q: make the "need" argument (=proportions) the first one and
         #    accept a file name in that argument
