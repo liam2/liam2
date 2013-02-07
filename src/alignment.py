@@ -353,9 +353,10 @@ class Alignment(FilteredExpression):
     def load(self, fname):
         from exprparser import parse
         fpath = os.path.join(config.input_directory, fname)
-        header, possible_values, array = load_ndarray(fpath, float)
-        self.expressions = [parse(expr, autovariables=True) for expr in header]
-        self.possible_values = possible_values
+        array = load_ndarray(fpath, float)
+        self.expressions = [parse(expr, autovariables=True)
+                            for expr in array.dim_names]
+        self.possible_values = array.pvalues
         self.proportions = array
 
     def evaluate(self, context):

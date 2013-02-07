@@ -11,7 +11,8 @@ import yaml
 from utils import (validate_dict, merge_dicts, merge_items, invert_dict,
                    countlines, skip_comment_cells, strip_rows, PrettyTable,
                    unique, duplicates, unique_duplicate, prod,
-                   field_str_to_type, fields_yaml_to_type, fromiter)
+                   field_str_to_type, fields_yaml_to_type, fromiter,
+                   LabeledArray)
 from properties import missing_values
 
 
@@ -325,22 +326,23 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
 
 
 def array_to_disk_array(h5file, node, name, array, title='', compression=None):
-    dim_names, possible_values, data = array
-    assert len(dim_names) == len(possible_values)
     msg, filters = compression_str2filter(compression)
     print " - storing %s..." % msg
     if filters is not None:
-        disk_array = h5file.createCArray(node, name, data, title,
+        disk_array = h5file.createCArray(node, name, array, title,
                                          filters=filters)
     else:
-        disk_array = h5file.createArray(node, name, data, title)
-    attrs = disk_array.attrs
-    attrs.dimensions = np.array(dim_names)
-    # attrs.dim0_pvalues = array([a, b, c])
-    # attrs.dim1_pvalues = array([d, e])
-    # ...
-    for i, pvalues in enumerate(possible_values):
-        setattr(attrs, 'dim%d_pvalues' % i, pvalues)
+        disk_array = h5file.createArray(node, name, array, title)
+    if isinstance(array, LabeledArray):
+        attrs = disk_array.attrs
+        # pytables serialises Python lists as pickles but np.arrays as native
+        # types, so it is more portable this way
+        attrs.dimensions = np.array(array.dim_names)
+        # attrs.dim0_pvalues = array([a, b, c])
+        # attrs.dim1_pvalues = array([d, e])
+        # ...
+        for i, pvalues in enumerate(array.pvalues):
+            setattr(attrs, 'dim%d_pvalues' % i, pvalues)
     return disk_array
 
 
@@ -514,7 +516,7 @@ def load_ndarray(fpath, celltype=None):
         celltype = detect_column_type(str_table)
     data = convert_1darray(str_table, celltype)
     array = np.array(data, dtype=celltype)
-    return header, possible_values, array.reshape(shape)
+    return LabeledArray(array.reshape(shape), header, possible_values)
 
 
 def load_def(localdir, ent_name, section_def, required_fields):
