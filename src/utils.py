@@ -140,6 +140,18 @@ class LabeledArray(np.ndarray):
         if label_shape != obj.shape:
             raise Exception('sizes of label vectors (%s) do not match array '
                             'shape (%s)' % (label_shape, obj.shape))
+        if row_totals is not None:
+            height = prod(obj.shape[:-1])
+            if len(row_totals) != height:
+                raise Exception('size of row totals vector (%s) does not '
+                                'match array shape (%s)' % (len(row_totals),
+                                                            height))
+        if col_totals is not None:
+            width = obj.shape[-1] if row_totals is None else obj.shape[-1] + 1
+            if len(col_totals) != width:
+                raise Exception('size of col totals vector (%s) does not '
+                                'match array shape (%s)' % (len(col_totals),
+                                                            width))
         obj.dim_names = dim_names
         obj.pvalues = pvalues
         obj.row_totals = row_totals
@@ -173,7 +185,9 @@ class LabeledArray(np.ndarray):
     def __getslice__(self, i, j):
         obj = np.ndarray.__getslice__(self, i, j)
         if self.pvalues is not None:
-            obj.pvalues = [self.pvalues[0][slice(i, j)]] + [self.pvalues[1:]]
+            obj.pvalues = [self.pvalues[0][slice(i, j)]] + self.pvalues[1:]
+        obj.col_totals = None
+        obj.row_totals = None
         return obj
 
     def __array_finalize__(self, obj):
@@ -239,6 +253,9 @@ class LabeledArray(np.ndarray):
             categ_values = [[] for y in range(height)]
         row_totals = self.row_totals
         for y in range(height):
+            # this is a bit wasteful because it creates LabeledArrays for each
+            # line, but the waste is insignificant compared to the time to
+            # compute the array in the first place
             line = list(categ_values[y]) + \
                    list(data[y * width:(y + 1) * width])
             if row_totals is not None:
@@ -246,7 +263,6 @@ class LabeledArray(np.ndarray):
             result.append(line)
         if self.col_totals is not None and self.ndim > 1:
             result.append([''] * (self.ndim - 2) + ['total'] + self.col_totals)
-
         return result
 
     def __str__(self):
