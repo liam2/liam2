@@ -9,27 +9,6 @@ from properties import TableExpression, GroupCount
 from partition import partition_nd
 
 
-# this is a quick hack, I should use "standard" GroupBy instead but I'm
-# running out of time, so quick hack it is...
-#TODO: somehow move "headers"/totals out of GroupBy
-def groupby(filtered_columns, possible_values=None):
-    if possible_values is None:
-        possible_values = [np.unique(col) for col in filtered_columns]
-    #TODO: use _group_labels directly because we do not need the
-    # indices themselves, only the number of individuals.
-    # We could even create a custom function because we don't need the label
-    # vector nor the reverse dict, though I am unsure it would gain us much
-    # (I guess the big time spender is the hash map lookup).
-
-    # Note that when len(filtered_columns) == 1 we could use np.bincount
-    # instead but bincount does not support multiple columns nor record arrays
-    groups = partition_nd(filtered_columns, True, possible_values)
-    data = [len(member_indices) for member_indices in groups]
-    data = np.array(data)
-    shape = tuple(len(pv) for pv in possible_values)
-    return data.reshape(shape)
-
-
 class GroupBy(TableExpression):
 #    func_name = 'groupby'
 

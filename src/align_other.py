@@ -5,7 +5,7 @@ import numpy as np
 from expr import (expr_eval, collect_variables, traverse_expr, Variable,
                   missing_values)
 from links import Link, LinkValue
-from groupby import groupby
+from groupby import GroupBy
 from context import context_length, EntityContext
 from properties import EvaluableExpression
 from registry import entity_registry
@@ -141,7 +141,8 @@ class AlignOther(EvaluableExpression):
             hh[source_row].append(target_row)
 
         #XXX: what if need does not specify values present in f_columns?
-        num_candidates = groupby(filtered_columns, need.pvalues)
+        groupby_expr = GroupBy(*filtered_columns, pvalues=need.pvalues)
+        num_candidates = expr_eval(groupby_expr, context)
 
         # handle the "fractional people problem"
         int_need = need.astype(int)
