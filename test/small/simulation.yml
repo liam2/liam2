@@ -75,23 +75,10 @@ entities:
                 # MIG is a 3d table but we want the 2d table for this period
                 # currently, we need to manually compute the index
                 - base_period: 2000
-#                - qshow(MIG.dim_names)
-#                - qshow(MIG.pvalues)
-#                - show(MIG.attrs) 
                 - mig_period: MIG[:,:,period - base_period]
-                #FIXME: move these "shows" to test_globals_nd (and change them
-                # to asserts).
-                - qshow(mig_period.shape)
-                - qshow(mig_period.dim_names)
-                - qshow(mig_period.pvalues)
 
                 # Distribute total desired migrants, by age and sex
                 - need: num_migrants * mig_period
-                - qshow(need.shape)
-                - qshow(need.dim_names)
-                - qshow(need.pvalues)
-#                - qshow(trunc(need))
-                - qshow(grpsum(trunc(need)))
                 
                 # sanity check
                 - show("need.sum() == num_migrants | ",
@@ -102,7 +89,6 @@ entities:
                 - qshow(grpcount(is_candidate),
                         grpsum(num_persons, filter=is_candidate))
 
-                # Warning: columns need to be in the correct order !!!
                 - aligned_all: align_other(persons, need,
                                            orderby=countlink(persons))
                 - qshow(grpcount(aligned_all),
@@ -356,18 +342,34 @@ entities:
                 - assertEqual(othertable_noperiod.INTFIELD, -1)
 
             test_globals_nd:
-                # need should be a 3d array: gender-age-period 
+                # MIG is a 3d array: gender-age-period
+
+                # test that MIG was loaded correctly
+                - assertEqual(MIG.ndim, 3)
+                - assertEqual(MIG.shape, (2, 121, 61))
+                - assertEqual(MIG.dim_names, ['gender', 'age', 'period'])
+
+                # need should have the same characteristics 
                 - need: MIG * 2.5
                 - assertEqual(need.ndim, 3)
                 - assertEqual(need.shape, (2, 121, 61))
-                - assertEqual(need.dim_names[0], 'gender')
-                - assertEqual(need.dim_names[1], 'age')
-                - assertEqual(need.dim_names[2], 'period')
+                - assertEqual(need.dim_names, ['gender','age', 'period'])
+                
+                # let us take the 2d table for this period
+                # currently, we need to manually compute the index
+                - base_period: 2000
+                - mig_period: MIG[:,:,period - base_period]
+                - assertEqual(mig_period.ndim, 2)
+                - assertEqual(mig_period.shape, (2, 121))
+                - assertEqual(mig_period.dim_names, ['gender', 'age'])
+                - assertEqual(mig_period.pvalues.__len__(), 2)
 
                 # should be a 2d table: gender-period
                 - need_by_sex_period: need.sum(axis=1)
                 - assertEqual(need_by_sex_period.ndim, 2)
                 - assertEqual(need_by_sex_period.shape, (2, 61))
+                # LabeledArray does not support reduction functions for now
+                - assertEqual(need_by_sex_period.dim_names, None)
 
                 # should be a 1d table: gender
                 - total_need_by_sex: need_by_sex_period.sum(axis=1)
