@@ -150,9 +150,6 @@ def align_get_indices_nd(context, filter_value, score,
     to_split_indices = []
     to_split_overflow = []
 
-#        int_need = need.astype(int)
-#        frac_need = need - int_need
-#        need = int_need + (np.random.rand(need.shape) < frac_need)
     for group_idx, members_indices, proportion in izip(count(), groups,
                                                        proportions.flat):
         if len(members_indices):
