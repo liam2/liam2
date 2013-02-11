@@ -44,8 +44,9 @@ def kill_axis(axis_name, value, expressions, possible_values, proportions):
 
 def align_get_indices_nd(context, filter_value, score,
                          expressions, possible_values, proportions,
-                         take_filter=None, leave_filter=None, weights=None,
+                         take_filter=None, leave_filter=None,
                          past_error=None):
+    assert score is None or isinstance(score, (bool, int, float, np.ndarray))
     assert len(expressions) == len(possible_values)
     if filter_value is not None:
         num_to_align = np.sum(filter_value)
@@ -147,16 +148,10 @@ def align_get_indices_nd(context, filter_value, score,
     total_overflow = 0
     total_affected = 0
     total_indices = []
-    to_split_indices = []
-    to_split_overflow = []
-
     for group_idx, members_indices, proportion in izip(count(), groups,
                                                        proportions.flat):
         if len(members_indices):
-            if weights is None:
-                expected = len(members_indices) * proportion
-            else:
-                expected = np.sum(weights[members_indices]) * proportion
+            expected = len(members_indices) * proportion
             affected = int(expected)
             if past_error is not None:
                 group_overflow = past_error[group_idx]
@@ -171,10 +166,7 @@ def align_get_indices_nd(context, filter_value, score,
             if take_indices is not None:
                 group_always = np.intersect1d(members_indices, take_indices,
                                               assume_unique=True)
-                if weights is None:
-                    num_always = len(group_always)
-                else:
-                    num_always = np.sum(weights[group_always])
+                num_always = len(group_always)
                 total_indices.extend(group_always)
             else:
                 num_always = 0
@@ -192,8 +184,6 @@ def align_get_indices_nd(context, filter_value, score,
                     sorted_global_indices = \
                         group_maybe_indices[sorted_local_indices]
                 else:
-                    assert score is None or isinstance(score,
-                                                       (bool, int, float))
                     # if the score expression is a constant, we don't need to
                     # sort indices. In that case, the alignment will take
                     # the last individuals created first (highest id).
@@ -201,41 +191,8 @@ def align_get_indices_nd(context, filter_value, score,
 
                 # maybe_to_take is always > 0
                 maybe_to_take = affected - num_always
-                if weights is None:
-                    # take the last X individuals (ie those with the highest
-                    # score)
-                    indices_to_take = sorted_global_indices[-maybe_to_take:]
-                else:
-                    maybe_weights = weights[sorted_global_indices]
-
-                    # we need to invert the order because members are sorted
-                    # on score ascendingly and we need to take those with
-                    # highest score.
-                    weight_sums = np.cumsum(maybe_weights[::-1])
-
-                    threshold_idx = np.searchsorted(weight_sums, maybe_to_take)
-                    if threshold_idx < len(weight_sums):
-                        num_to_take = threshold_idx + 1
-                        # if there is enough weight to reach "maybe_to_take"
-                        overflow = weight_sums[threshold_idx] - maybe_to_take
-                        if overflow > 0:
-                            # the next individual has too much weight, so we
-                            # need to split it.
-                            id_to_split = sorted_global_indices[threshold_idx]
-                            past_error[group_idx] = overflow
-                            to_split_indices.append(id_to_split)
-                            to_split_overflow.append(overflow)
-                        else:
-                            # we got exactly the number we wanted
-                            assert overflow == 0
-                    else:
-                        # we can't reach our target number of individuals
-                        # (probably because of a "leave" filter), so we
-                        # take all the ones we have
-                        #XXX: should we add *this* underflow to the past_error
-                        # too? It would probably accumulate!
-                        num_to_take = len(weight_sums)
-                    indices_to_take = sorted_global_indices[-num_to_take:]
+                # take the last X individuals (ie those with the highest score)
+                indices_to_take = sorted_global_indices[-maybe_to_take:]
 
                 underflow = maybe_to_take - len(indices_to_take)
                 if underflow > 0:
@@ -243,9 +200,9 @@ def align_get_indices_nd(context, filter_value, score,
                 total_indices.extend(indices_to_take)
             elif affected < num_always:
                 total_overflow += num_always - affected
-# this assertion is only valid in the non weighted case
-#    assert len(total_indices) == \
-#           total_affected + total_overflow - total_underflow
+    # this assertion is only valid in the non weighted case
+    assert len(total_indices) == \
+           total_affected + total_overflow - total_underflow
     print(" %d/%d" % (len(total_indices), num_aligned), end=" ")
     if (take_filter is not None) or (leave_filter is not None):
         print("[take %d, leave %d]" % (take, leave), end=" ")
@@ -254,10 +211,7 @@ def align_get_indices_nd(context, filter_value, score,
     if total_overflow:
         print("OVERFLOW: %d" % total_overflow, end=" ")
 
-    if to_split_indices:
-        return total_indices, (to_split_indices, to_split_overflow)
-    else:
-        return total_indices, None
+    return total_indices
 
 
 class Alignment(FilteredExpression):
@@ -365,18 +319,10 @@ class Alignment(FilteredExpression):
 
         on_overflow = self.on_overflow
         if on_overflow == 'default':
-            on_overflow = context.get('__on_align_overflow__', 'carry')
+            on_overflow = context.get('__on_align_overflow__')
 
-        #XXX: I should try to pre-parse weight_col in the entity, rather than
-        # here, possibly allowing expressions. Not sure it has any use, but it
-        # should not cost us much
-        weight_col = context.get('__weight_col__')
-        if weight_col is not None:
-            weights = expr_eval(Variable(weight_col), context)
-            if on_overflow == 'carry' and self.overflows is None:
-                self.overflows = np.zeros(len(self.proportions))
-        else:
-            weights = None
+        if on_overflow == 'carry' and self.overflows is None:
+            self.overflows = np.zeros(len(self.proportions))
 
         ctx_filter = context.get('__filter__')
         if self.filter is not None:
@@ -422,29 +368,12 @@ class Alignment(FilteredExpression):
             assert isinstance(self.proportions, np.ndarray)
             proportions = self.proportions
 
-        indices, overflows = \
+        indices = \
             align_get_indices_nd(context, filter_value, scores,
                                  expressions, possible_values,
                                  proportions,
-                                 take_filter, leave_filter, weights,
+                                 take_filter, leave_filter,
                                  self.overflows)
-
-        if overflows is not None:
-            to_split_indices, to_split_overflow = overflows
-            if on_overflow == 'split':
-                num_birth = len(to_split_indices)
-                source_entity = context['__entity__']
-                target_entity = source_entity
-                array = target_entity.array
-                clones = array[to_split_indices]
-                id_to_rownum = target_entity.id_to_rownum
-                num_individuals = len(id_to_rownum)
-                clones['id'] = np.arange(num_individuals,
-                                         num_individuals + num_birth)
-                #FIXME: self.weight_col is not defined
-                clones[self.weight_col] = to_split_overflow
-                array[self.weight_col][to_split_indices] -= to_split_overflow
-                add_individuals(context, clones)
 
         return {'values': True, 'indices': indices}
 
