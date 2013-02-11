@@ -68,12 +68,6 @@ class LogitScore(CompoundExpression):
         if not isinstance(expr, Expr) and not expr:
             expr = u
         else:
-            # In some case, the expression could crash LIAM's interpreter:
-            # logit(-1000) => logistic(-1000.0 + epsilon) => exp(1000)
-            # => overflow, so LIAM uses "exp(min(expr, 99))" instead.
-            # However, this is not needed here since numpy/numexpr handles
-            # overflows nicely with "inf".
-            # The maximum value before exp overflows is 709.
             epsilon = logit(u)
             expr = logistic(expr - epsilon)
         return expr
@@ -142,8 +136,6 @@ class LogRegr(ContRegr):
     func_name = 'log_regr'
 
     def build_expr(self):
-        # exp(x) overflows for x > 709 but that is handled gracefully by numpy
-        # and numexpr
         return Exp(ContRegr.build_expr(self))
 
 
