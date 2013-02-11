@@ -140,7 +140,9 @@ class AlignOther(EvaluableExpression):
                 continue
             hh[source_row].append(target_row)
 
-        #XXX: what if need does not specify values present in f_columns?
+        # If need does not specify values present in filtered_columns, they
+        # will simply be ignored (at least, they should). Though, we could
+        # print a warning in that case in partition_nd.
         groupby_expr = GroupBy(*filtered_columns, pvalues=need.pvalues)
         num_candidates = expr_eval(groupby_expr, context)
 
