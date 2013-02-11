@@ -45,7 +45,7 @@ class Simulation(object):
             }],
             '*': {
                 'fields': [{
-                    '*': None
+                    '*': None  # Or(str, {'type': str, 'initialdata': bool})
                 }],
                 'type': str
             }
@@ -57,7 +57,7 @@ class Simulation(object):
                 }],
                 'links': {
                     '*': {
-                        '#type': str,
+                        '#type': str,  # Or('many2one', 'one2many')
                         '#target': str,
                         '#field': str
                     }
@@ -75,7 +75,7 @@ class Simulation(object):
                 '*': [str]
             }],
             '#processes': [{
-                '*': [None]
+                '*': [None]  # Or(str, [str, int])
             }],
             'random_seed': int,
             '#input': {
@@ -123,8 +123,6 @@ class Simulation(object):
         simulation_dir = os.path.dirname(simulation_path)
         with open(fpath) as f:
             content = yaml.load(f)
-        #XXX: use validictory instead of my custom validator?
-        # http://readthedocs.org/docs/validictory/
         validate_dict(content, cls.yaml_layout)
 
         # the goal is to get something like:
