@@ -91,11 +91,18 @@ def coerce_types(context, *args):
     return idx_to_type[max(dtype_indices)]
 
 
-def as_string(expr, context):
+def as_simple_expr(expr, context):
     if isinstance(expr, Expr):
-        return expr.as_string(context)
+        return expr.as_simple_expr(context)
     else:
         return expr
+
+
+def as_string(expr):
+    if isinstance(expr, Expr):
+        return expr.as_string()
+    else:
+        return str(expr)
 
 
 def traverse_expr(expr, context):
@@ -103,6 +110,13 @@ def traverse_expr(expr, context):
         return expr.traverse(context)
     else:
         return ()
+
+
+def gettype(value):
+    if isinstance(value, np.ndarray):
+        return value.dtype.type
+    else:
+        return type(value)
 
 
 def dtype(expr, context):
@@ -299,32 +313,33 @@ class Expr(object):
 #            s = self.as_string(context)
 #            expr_cache[self] = s
 
-        s = self.as_string(context)
-        r = context.get(s)
-        if r is not None:
-            return r
+        simple_expr = self.as_simple_expr(context)
 
         # check for labeled arrays, to work around the fact that numexpr
         # does not preserve ndarray subclasses.
-        globals_data = context['__globals__']
         labels = None
-        for var_name in self.collect_variables(context):
-            value = None
-            if var_name in context:
-                value = context[var_name]
-            elif var_name in globals_data:
-                value = globals_data[var_name]
+        for var_name in simple_expr.collect_variables(context):
+            # var_name should always be in the context at this point because
+            # missing temporaries should have been already caught in expr_eval
+            value = context[var_name]
             if isinstance(value, LabeledArray):
                 if labels is None:
                     labels = (value.dim_names, value.pvalues)
                 else:
-                    if labels != (value.dim_names, value.pvalues):
+                    if (labels[0] != value.dim_names or
+                        not np.array_equal(labels[1], value.pvalues)):
                         raise Exception('several arrays with inconsistent '
                                         'labels in the same expression')
+
+        s = simple_expr.as_string()
+        r = context.get(s)
+        if r is not None:
+            return r
+
         try:
             res = evaluate(s, context, {}, truediv='auto')
             if labels is not None:
-                #FIXME: This is a hack which relies on the fact that currently
+                # This is a hack which relies on the fact that currently
                 # all the expression we evaluate through numexpr preserve
                 # array shapes, but if we ever use numexpr reduction
                 # capabilities, we will be in trouble
@@ -335,8 +350,15 @@ class Expr(object):
         except Exception, e:
             raise
 
+    def as_simple_expr(self, context):
+        '''
+        evaluate any construct that is not supported by numexpr and
+        create temporary variables for them
+        '''
+        raise NotImplementedError
+
     def as_string(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def __getitem__(self, key):
         #TODO: we should be able to know at "compile" time if this is a
@@ -346,12 +368,15 @@ class Expr(object):
     def __getattr__(self, key):
         return ExprAttribute(self, key)
 
+    def collect_variables(self, context):
+        raise NotImplementedError
+
 
 class EvaluableExpression(Expr):
     def evaluate(self, context):
         raise NotImplementedError
 
-    def as_string(self, context):
+    def as_simple_expr(self, context):
         tmp_varname = get_tmp_varname()
         result = expr_eval(self, context)
         if isinstance(result, dict):
@@ -361,14 +386,10 @@ class EvaluableExpression(Expr):
             indices = None
 
         if indices is not None:
-            if isinstance(values, np.ndarray):
-                res_type = values.dtype.type
-            else:
-                res_type = type(values)
-            result = np.zeros(context_length(context), dtype=res_type)
+            result = np.zeros(context_length(context), dtype=gettype(values))
             np.put(result, indices, values)
         context[tmp_varname] = result
-        return tmp_varname
+        return Variable(tmp_varname, normalize_type(gettype(result)))
 
 
 class SubscriptedExpr(EvaluableExpression):
@@ -401,7 +422,6 @@ class SubscriptedExpr(EvaluableExpression):
         #XXX: return -1 for out_of_bounds like for globals?
         return expr[key]
 
-    #TODO: implement traverse
     def collect_variables(self, context):
         exprvars = collect_variables(self.expr, context)
         return exprvars | collect_variables(self.key, context)
@@ -511,8 +531,11 @@ class UnaryOp(Expr):
         print indent, self.op
         self.expr.show(indent + '    ')
 
-    def as_string(self, context):
-        return "(%s%s)" % (self.op, self.expr.as_string(context))
+    def as_simple_expr(self, context):
+        return self.__class__(self.op, self.expr.as_simple_expr(context))
+
+    def as_string(self):
+        return "(%s%s)" % (self.op, self.expr.as_string())
 
     def __str__(self):
         return "(%s%s)" % (self.op, self.expr)
@@ -554,10 +577,16 @@ class BinaryOp(Expr):
             yield c
         yield self
 
-    def as_string(self, context):
-        expr1 = as_string(self.expr1, context)
-        expr2 = as_string(self.expr2, context)
-        return "(%s %s %s)" % (expr1, self.op, expr2)
+    def as_simple_expr(self, context):
+        expr1 = as_simple_expr(self.expr1, context)
+        expr2 = as_simple_expr(self.expr2, context)
+        return self.__class__(self.op, expr1, expr2)
+
+    # We can't simply use __str__ because of where vs if
+    def as_string(self):
+        return "(%s %s %s)" % (as_string(self.expr1),
+                               self.op,
+                               as_string(self.expr2))
 
     def dtype(self, context):
         return coerce_types(context, self.expr1, self.expr2)
@@ -681,9 +710,10 @@ class Variable(Expr):
     def __str__(self):
         return self.name
     __repr__ = __str__
+    as_string = __str__
 
-    def as_string(self, context):
-        return self.__str__()
+    def as_simple_expr(self, context):
+        return self
 
     def simplify(self):
         return self
@@ -713,7 +743,7 @@ class GlobalVariable(Variable):
         self.tablename = tablename
 
     #XXX: inherit from EvaluableExpression?
-    def as_string(self, context):
+    def as_simple_expr(self, context):
         result = self.evaluate(context)
         period = self._eval_period(context)
         if isinstance(period, int):
@@ -725,7 +755,7 @@ class GlobalVariable(Variable):
         else:
             tmp_varname = get_tmp_varname()
             context[tmp_varname] = result
-        return tmp_varname
+        return Variable(tmp_varname)
 
     def _eval_key(self, context):
         return context['period']
@@ -789,7 +819,7 @@ class GlobalArray(Variable):
     def __init__(self, name, dtype=None):
         Variable.__init__(self, name, dtype)
 
-    def as_string(self, context):
+    def as_simple_expr(self, context):
         globals_data = context['__globals__']
         result = globals_data[self.name]
         #XXX: maybe I should just use self.name?
@@ -797,7 +827,7 @@ class GlobalArray(Variable):
         if tmp_varname in context:
             assert context[tmp_varname] == result
         context[tmp_varname] = result
-        return tmp_varname
+        return Variable(tmp_varname)
 
 
 class GlobalTable(object):
@@ -821,8 +851,6 @@ class GlobalTable(object):
 
 
 class Where(Expr):
-    func_name = 'if'
-
     def __init__(self, cond, iftrue, iffalse):
         self.cond = cond
         self.iftrue = iftrue
@@ -837,8 +865,8 @@ class Where(Expr):
             yield node
         yield self
 
-    def as_string(self, context):
-        cond = as_string(self.cond, context)
+    def as_simple_expr(self, context):
+        cond = as_simple_expr(self.cond, context)
 
         # filter is stored as an unevaluated expression
         filter_expr = context.get('__filter__')
@@ -847,16 +875,21 @@ class Where(Expr):
             context['__filter__'] = self.cond
         else:
             context['__filter__'] = filter_expr & self.cond
-        iftrue = as_string(self.iftrue, context)
+        iftrue = as_simple_expr(self.iftrue, context)
 
         if filter_expr is None:
             context['__filter__'] = ~self.cond
         else:
             context['__filter__'] = filter_expr & ~self.cond
-        iffalse = as_string(self.iffalse, context)
+        iffalse = as_simple_expr(self.iffalse, context)
 
         context['__filter__'] = None
-        return "where(%s, %s, %s)" % (cond, iftrue, iffalse)
+        return Where(cond, iftrue, iffalse)
+
+    def as_string(self):
+        return "where(%s, %s, %s)" % (as_string(self.cond),
+                                      as_string(self.iftrue),
+                                      as_string(self.iffalse))
 
     def __str__(self):
         return "if(%s, %s, %s)" % (self.cond, self.iftrue, self.iffalse)

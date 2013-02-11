@@ -4,8 +4,9 @@ globals:
         - WEMRA: int
         - MIG_PERCENT: float
 
-    MIG:
-        type: float
+#    MIG:
+#        type: float
+    MIG: {type: float}
 
     othertable:
         fields:
@@ -354,6 +355,12 @@ entities:
                 - assertEqual(need.ndim, 3)
                 - assertEqual(need.shape, (2, 121, 61))
                 - assertEqual(need.dim_names, ['gender','age', 'period'])
+
+                # nd_mul_nd should have the same characteristics too 
+                - nd_mul_nd: need * MIG
+                - assertEqual(nd_mul_nd.ndim, 3)
+                - assertEqual(nd_mul_nd.shape, (2, 121, 61))
+                - assertEqual(nd_mul_nd.dim_names, ['gender','age', 'period'])
                 
                 # let us take the 2d table for this period
                 # currently, we need to manually compute the index
@@ -369,7 +376,7 @@ entities:
                 - assertEqual(need_by_sex_period.ndim, 2)
                 - assertEqual(need_by_sex_period.shape, (2, 61))
                 # LabeledArray does not support reduction functions for now
-                - assertEqual(need_by_sex_period.dim_names, None)
+                #- assertEqual(need_by_sex_period.dim_names, None)
 
                 # should be a 1d table: gender
                 - total_need_by_sex: need_by_sex_period.sum(axis=1)
@@ -384,10 +391,11 @@ entities:
 #                - assertEqual(tmp[1], 7692870)
                 
                 # for current period, a 1d table: gender
-#                - need_by_sex: need_by_sex_period[:,period]
-#                - assertEqual(total_need_by_sex.ndim, 1)
-#                - assertEqual(total_need_by_sex.shape, (2,))
-#                - show(total_need_by_sex)
+                # currently, we need to manually compute the index
+                - need_by_sex: need_by_sex_period[:,period - base_period]
+                - assertEqual(need_by_sex.ndim, 1)
+                - assertEqual(need_by_sex.shape, (2,))
+#                - show(need_by_sex)
 
             test_macro:
                 - ischild: age < 18
@@ -536,11 +544,9 @@ entities:
 
                 # the "dead" variable is also used for the cleanup process
                 - dead: if(gender,
-                           align(0.0,
-                                 take=age > 95, leave=ISCHILD,
+                           align(take=age > 95, leave=ISCHILD,
                                  fname='al_p_dead_m.csv'),
-                           align(0.0,
-                                 take=age > 95, leave=ISCHILD,
+                           align(take=age > 95, leave=ISCHILD,
                                  fname='al_p_dead_f.csv'))
 
                 - assertEqual(grpcount(not dead and (age > 95)), 0)
@@ -548,8 +554,7 @@ entities:
 
                 # 3d alignment (gender, age, period)
                 # ----------------------------------
-                - dead2: align(0.0,
-                               take=age > 95, leave=ISCHILD,
+                - dead2: align(take=age > 95, leave=ISCHILD,
                                fname='al_p_dead.csv')
 
                 - assertTrue(grpcount(dead != dead2) <= 105)
@@ -559,7 +564,7 @@ entities:
                 - percent_f: if(period <= 2002, 0.2,
                              if(period <= 2003, 0.3, 0.4))
                 - percent_m: percent_f + 0.1
-                - aligned: align(0.0, fname='al_p_period_notlast.csv')
+                - aligned: align(fname='al_p_period_notlast.csv')
 
                 - theoric_aligned_f: trunc(grpcount(not gender) * percent_f)
                 - theoric_aligned_m: trunc(grpcount(gender) * percent_m)
@@ -571,7 +576,7 @@ entities:
 
                 # 1d alignment (period)
                 # ---------------------
-                - period_only: align(0.0, fname='al_p_period_only.csv')
+                - period_only: align(fname='al_p_period_only.csv')
                 - num_aligned: grpcount(period_only)
                 - target_percent: if(period == 2002, 0.2,
                                   if(period == 2003, 0.3,
@@ -580,7 +585,7 @@ entities:
 
                 # 1d alignment (other than period)
                 # --------------------------------
-                - one_dim: align(0.0, fname='al_p_one_dim.csv')
+                - one_dim: align(fname='al_p_one_dim.csv')
 
                 - num_aligned: grpcount(one_dim)
                 - num_aligned_women: grpcount(one_dim and not gender)
@@ -597,22 +602,22 @@ entities:
                 # way we correct for "fractional persons" with a probability of
                 # adding one person. However the difference should be <= than
                 # the number of alignment categories.
-                - var_aligned: align(0.0, fname='al_p_dead_m.csv')
-                - temp_aligned: align(0.0, fname='al_p_temp.csv')
-                - expr_aligned: align(0.0, fname='al_p_expr.csv')
+                - var_aligned: align(fname='al_p_dead_m.csv')
+                - temp_aligned: align(fname='al_p_temp.csv')
+                - expr_aligned: align(fname='al_p_expr.csv')
                 - assertTrue(grpcount(temp_aligned != var_aligned) <= 105)
                 - assertTrue(grpcount(expr_aligned != var_aligned) <= 105)
 
                 # fixed proportion
                 # ----------------
-                - fixed_percent_aligned: align(0.0, proportions=0.1)
+                - fixed_percent_aligned: align(proportions=0.1)
                 - num_aligned: grpcount(fixed_percent_aligned)
                 - assertTrue(abs(num_aligned - trunc(num_all * 0.1)) <= 1)
                 
                 # expr proportion
                 # ---------------
                 - percent: if(period == 2002, 0.1, 0.2) 
-                - expr_percent_aligned: align(0.0, proportions=percent)
+                - expr_percent_aligned: align(proportions=percent)
                 - num_aligned: grpcount(expr_percent_aligned)
                 - target_num: if(period == 2002, 
                                  trunc(0.1 * num_all),
@@ -621,20 +626,27 @@ entities:
 
                 # expr ndarray
                 # ------------
-                - total_population: grpcount()
 
-                # MIG_PERCENT is a simple float periodic global
-                - num_migrants: total_population * MIG_PERCENT
-                - qshow(num_migrants)
-
-                # MIG is a 3d table but we want the 2d table for this period
-                # currently, we need to manually compute the index
-                - base_period: 2000
-                - mig_period: MIG[:,:,period - 2000]
-
-                # Distribute total desired migrants, by age and sex
-                - need: num_migrants * mig_period
-#                - expr_ndarray_aligned: align(0.0, proportions=mig_period)
+                # compute % of females for each age
+                - women_by_age: groupby(age, filter=gender)
+                - women_prop_by_age: women_by_age / groupby(age)
+                - expr_ndarray_aligned: align(proportions=women_prop_by_age)
+                - num_aligned: grpcount(expr_ndarray_aligned)
+                # this is correct (and not modulo 1 for each category like
+                # other alignment tests) because for each age:
+                # expected = len(member_indices) * proportion
+                # where len(member_indices) = grpcount(age==x) 
+                #                             grpcount(age==x and gender)
+                #   and proportion          = ---------------------------
+                #                             grpcount(age==x)
+                #            grpcount(age==x) * grpcount(age==x and gender)
+                # expected = ------------------------------------------------
+                #            grpcount(age==x)
+                #          = grpcount(age==x and gender)
+                # and thus expected == int(expected)
+                - assertEqual(num_aligned, grpcount(gender))
+                - assertEqual(groupby(age, filter=expr_ndarray_aligned),
+                              groupby(age, filter=gender))
 
             check_align_other:
                 - show(groupby(age, gender, filter=household.aligned))
@@ -1018,25 +1030,13 @@ entities:
                                choice([0, 1])))
 
             test_groupby:
-                - stored: groupby(agegroup, gender)
-                - show(stored)
-                
-                - count2: stored * 2  
-                - qshow(count2)
-                - assertEqual(count2.ndim, 2)
-                - assertEqual(count2.dim_names, ['agegroup', 'gender'])
-                - assertEqual(count2.row_totals, None)
-                - assertEqual(count2.col_totals, None)
+                - by_agegroup_gender: groupby(agegroup, gender)
+                - assertEqual(by_agegroup_gender.ndim, 2)
+                - assertEqual(by_agegroup_gender.dim_names,
+                              ['agegroup', 'gender'])
+                - assertTrue(by_agegroup_gender.row_totals.__len__() > 0)
+                - assertEqual(by_agegroup_gender.col_totals.__len__(), 3)
 
-                - count3: grpmin(stored, axis=0)  
-                - qshow(count3)
-                - assertEqual(count3.dim_names, None)
-                - assertEqual(count3.row_totals, None)
-                - assertEqual(count3.col_totals, None)
-
-                - count4: grpmin(stored, axis=1)  
-                - qshow(count4)
-                
                 # fails as expected, but if we can fix this, it would be nice
 #                - show('groupby scalar', groupby(True, gender))
                 # this is currently broken
@@ -1077,6 +1077,43 @@ entities:
 #                                        expr=grpsum(countlink(children)) / grpsum(not dead)))
 #                                        expr=grpavg(nch)))
 #                - minmax_age: show(groupby(id / 100, gender, expr=grpmax(age) - grpmin(age)))
+
+                # groupby in expressions
+                # ----------------------
+                - simple_expr: by_agegroup_gender * 2  
+                - assertEqual(simple_expr.ndim, 2)
+                - assertEqual(simple_expr.dim_names, ['agegroup', 'gender'])
+                - assertEqual(simple_expr.row_totals, None)
+                - assertEqual(simple_expr.col_totals, None)
+                
+                - women_by_age: groupby(age, filter=gender)
+                - assertEqual(women_by_age.dim_names, ['age'])
+                - by_age: groupby(age)
+                - assertEqual(by_age.dim_names, ['age'])
+                - women_prop_by_age: women_by_age / by_age
+                - assertEqual(women_prop_by_age.dim_names, ['age'])
+                - assertEqual(women_prop_by_age,
+                              groupby(age, expr=grpcount(gender) / grpcount()))
+
+                # this does not trigger the same path than women_prop_by_age
+                # (even though both go through ne), but this one creates hidden
+                # temporary variables in EvaluableExpression.as_simple_expr
+                # while the other does not
+                - women_prop2: groupby(age, filter=gender) / groupby(age)
+                - assertEqual(women_prop2.dim_names, ['age'])
+
+                - min_count_by_gender: grpmin(by_agegroup_gender, axis=0)  
+                - assertEqual(min_count_by_gender.shape, (2,))
+                - assertEqual(min_count_by_gender.dim_names, None)
+                - assertEqual(min_count_by_gender.row_totals, None)
+                - assertEqual(min_count_by_gender.col_totals, None)
+
+                - min_count_by_agegroup: grpmin(by_agegroup_gender, axis=1)  
+                - assertEqual(min_count_by_agegroup.shape, (16,))
+                - assertEqual(min_count_by_agegroup.dim_names, None)
+                - assertEqual(min_count_by_gender.row_totals, None)
+                - assertEqual(min_count_by_gender.col_totals, None)
+
 
             show_weight: show("avg weight", grpavg(weight),
                               "total population", grpsum(weight))

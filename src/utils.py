@@ -168,12 +168,15 @@ class LabeledArray(np.ndarray):
                 if len(key) < self.ndim:
                     key = key + (slice(None),) * (self.ndim - len(key))
                 # int keys => dimension disappear & pvalues are discarded
-                obj.pvalues = [pv[dim_key]
-                               for pv, dim_key in zip(self.pvalues, key)
-                               if isinstance(dim_key, slice)]
-                obj.dim_names = [name
-                                 for name, dim_key in zip(self.dim_names, key)
-                                 if isinstance(dim_key, slice)]
+                if self.pvalues is not None:
+                    obj.pvalues = [pv[dim_key]
+                                   for pv, dim_key in zip(self.pvalues, key)
+                                   if isinstance(dim_key, slice)]
+                if self.dim_names is not None:
+                    obj.dim_names = [name
+                                     for name, dim_key in zip(self.dim_names,
+                                                              key)
+                                     if isinstance(dim_key, slice)]
             elif isinstance(key, slice):
                 obj.pvalues = [self.pvalues[0][key]] + [self.pvalues[1:]]
             else:

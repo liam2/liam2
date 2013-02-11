@@ -9,7 +9,7 @@ import numpy as np
 import config
 from expr import Expr, Variable, expr_eval, collect_variables, traverse_expr
 from context import context_length
-from utils import PrettyTable
+from utils import PrettyTable, LabeledArray
 from properties import FilteredExpression, add_individuals
 from importer import load_ndarray
 from partition import partition_nd, filter_to_indices
@@ -149,13 +149,17 @@ def align_get_indices_nd(context, filter_value, score,
     total_indices = []
     to_split_indices = []
     to_split_overflow = []
-    for group_idx, members_indices, probability in izip(count(), groups,
-                                                        proportions.flat):
+
+#        int_need = need.astype(int)
+#        frac_need = need - int_need
+#        need = int_need + (np.random.rand(need.shape) < frac_need)
+    for group_idx, members_indices, proportion in izip(count(), groups,
+                                                       proportions.flat):
         if len(members_indices):
             if weights is None:
-                expected = len(members_indices) * probability
+                expected = len(members_indices) * proportion
             else:
-                expected = np.sum(weights[members_indices]) * probability
+                expected = np.sum(weights[members_indices]) * proportion
             affected = int(expected)
             if past_error is not None:
                 group_overflow = past_error[group_idx]
@@ -400,6 +404,9 @@ class Alignment(FilteredExpression):
                        if self.leave_filter is not None \
                        else None
 
+        expressions = self.expressions
+        possible_values = self.possible_values
+
         if isinstance(self.proportions, list):
             proportions = np.array([expr_eval(p, context)
                                       for p in self.proportions])
@@ -408,13 +415,19 @@ class Alignment(FilteredExpression):
             if not (isinstance(proportions, np.ndarray) and
                     proportions.shape):
                 proportions = np.array([proportions])
+            if isinstance(proportions, LabeledArray):
+                if not expressions:
+                    expressions = [Variable(name)
+                                   for name in proportions.dim_names]
+                if not possible_values:
+                    possible_values = proportions.pvalues
         else:
             assert isinstance(self.proportions, np.ndarray)
             proportions = self.proportions
 
         indices, overflows = \
             align_get_indices_nd(context, filter_value, scores,
-                                 self.expressions, self.possible_values,
+                                 expressions, possible_values,
                                  proportions,
                                  take_filter, leave_filter, weights,
                                  self.overflows)

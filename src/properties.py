@@ -3,11 +3,11 @@ from itertools import izip, chain
 
 import numpy as np
 
-from expr import Expr, EvaluableExpression, Variable, Where, as_string, \
-                 dtype, coerce_types, expr_eval, \
-                 collect_variables, traverse_expr, get_tmp_varname, \
-                 missing_values, get_missing_value, get_missing_record, \
-                 get_missing_vector
+from expr import (Expr, EvaluableExpression, Variable, Where, as_simple_expr,
+                  as_string, dtype, coerce_types, expr_eval,
+                  collect_variables, traverse_expr, get_tmp_varname,
+                  missing_values, get_missing_value, get_missing_record,
+                  get_missing_vector)
 from context import EntityContext, context_length, context_subset
 from registry import entity_registry
 import utils
@@ -33,9 +33,9 @@ class CompoundExpression(Expr):
         context = self.build_context(context)
         return expr_eval(self.complete_expr, context)
 
-    def as_string(self, context):
+    def as_simple_expr(self, context):
         context = self.build_context(context)
-        return self.complete_expr.as_string(context)
+        return self.complete_expr.as_simple_expr(context)
 
     def build_context(self, context):
         return context
@@ -426,11 +426,11 @@ class Choice(EvaluableExpression):
         return self.choices.dtype
 
     def traverse(self, context):
-        #FIXME: add choices & prob if they are expr 
+        #FIXME: add choices & prob if they are expr
         yield self
 
     def collect_variables(self, context):
-        #FIXME: add choices & prob if they are expr 
+        #FIXME: add choices & prob if they are expr
         return set()
 
     def __str__(self):
@@ -650,8 +650,11 @@ class NumexprFunctionProperty(Expr):
     def collect_variables(self, context):
         return collect_variables(self.expr, context)
 
-    def as_string(self, context):
-        return '%s(%s)' % (self.func_name, as_string(self.expr, context))
+    def as_simple_expr(self, context):
+        return self.__class__(as_simple_expr(self.expr, context))
+
+    def as_string(self):
+        return '%s(%s)' % (self.func_name, as_string(self.expr))
 
     def __str__(self):
         return '%s(%s)' % (self.func_name, self.expr)
