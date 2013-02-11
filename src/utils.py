@@ -125,21 +125,23 @@ def isconstant(a, filter_value=None):
 
 
 class LabeledArray(np.ndarray):
-    def __new__(cls, input_array, dim_names, pvalues,
+    def __new__(cls, input_array, dim_names=None, pvalues=None,
                 row_totals=None, col_totals=None):
         obj = np.asarray(input_array).view(cls)
         ndim = obj.ndim
-        if len(dim_names) != ndim:
+        if dim_names is not None and len(dim_names) != ndim:
             raise Exception('number of dimension names (%d) does not match '
                             'number of dimensions (%d)'
                             % (len(dim_names), ndim))
-        if len(pvalues) != obj.ndim:
-            raise Exception('number of label vectors (%d) does not match '
-                            'number of dimensions (%d)' % (len(pvalues), ndim))
-        label_shape = tuple(len(pv) for pv in pvalues)
-        if label_shape != obj.shape:
-            raise Exception('sizes of label vectors (%s) do not match array '
-                            'shape (%s)' % (label_shape, obj.shape))
+        if pvalues is not None:
+            if len(pvalues) != obj.ndim:
+                raise Exception('number of label vectors (%d) does not match '
+                                'number of dimensions (%d)' % (len(pvalues),
+                                                               ndim))
+            label_shape = tuple(len(pv) for pv in pvalues)
+            if label_shape != obj.shape:
+                raise Exception('sizes of label vectors (%s) do not match '
+                                'array shape (%s)' % (label_shape, obj.shape))
         if row_totals is not None:
             height = prod(obj.shape[:-1])
             if len(row_totals) != height:
@@ -268,14 +270,25 @@ class LabeledArray(np.ndarray):
     def __str__(self):
         return '\n' + table2str(self.as_table(), 'nan') + '\n'
 
-#    def __array_wrap__(self, out_arr, context=None):
+#    def __array_prepare__(self, arr, context=None):
+#        print 'In __array_prepare__:'
+#        print '   self is %s' % repr(self)
+#        print '   arr is %s' % repr(arr)
+#        print '   context is %s' % repr(context)
+#        res = np.ndarray.__array_prepare__(self, arr, context)
+#        print '   result is %s' % repr(res)
+#        return res
+
+    def __array_wrap__(self, out_arr, context=None):
 #        print 'In __array_wrap__:'
 #        print '   self is %s' % repr(self)
 #        print '   arr is %s' % repr(out_arr)
 #        print '   context is %s' % repr(context)
-#        res = np.ndarray.__array_wrap__(self, out_arr, context)
+        res = np.ndarray.__array_wrap__(self, out_arr, context)
+        res.col_totals = None
+        res.row_totals = None
 #        print '   result is %s' % repr(res)
-#        return res
+        return res
 
 
 def loop_wh_progress(func, sequence):
