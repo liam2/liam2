@@ -24,6 +24,10 @@ try:
             pvalues = possible_values[0]
 
         empty_list = np.empty(0, dtype=int)
+
+        # XXX: It would be nice to print a warning if d contains keys not in
+        # pvalues but that might be hard to implement efficiently in the python
+        # version (and I am not eager to diverge too much).
         return [d.get(pv, empty_list) for pv in pvalues]
 except ImportError:
     #TODO: make possible_values a list of combinations of value. In some cases,
