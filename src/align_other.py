@@ -25,7 +25,7 @@ class AlignOther(EvaluableExpression):
         #XXX: make orderby optional? (defaults to 'id'? -- not sure it makes
         # sense)
         self.orderby_expr = orderby
-        self.last_error = None
+        self.past_error = None
 
     def traverse(self, context):
         if self.target_expressions is not None:
@@ -176,10 +176,10 @@ class AlignOther(EvaluableExpression):
 #        need = int_need + (np.random.rand(need.shape) < frac_need)
         print "need", np.sum(need)
 
-        if self.last_error is not None:
+        if self.past_error is not None:
             print "adding %d individuals from last period error" \
-                  % np.sum(self.last_error)
-            need += self.last_error
+                  % np.sum(self.past_error)
+            need += self.past_error
 
         still_needed = need.copy()
         still_available = num_candidates.copy()
@@ -281,7 +281,7 @@ class AlignOther(EvaluableExpression):
 
                     rel_need[values] = float(sn) / sa
         print "missing %d persons" % np.sum(still_needed)
-        self.last_error = still_needed
+        self.past_error = still_needed
         return {'values': True, 'indices': aligned_indices}
 
     def dtype(self, context):
