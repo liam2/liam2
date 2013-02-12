@@ -5,7 +5,7 @@ from collections import Counter
 
 import numpy as np
 
-from utils import gettime, LabeledArray
+from utils import LabeledArray
 from context import context_length
 
 try:
@@ -114,9 +114,12 @@ def traverse_expr(expr, context):
 
 def gettype(value):
     if isinstance(value, np.ndarray):
-        return value.dtype.type
+        type_ = value.dtype.type
+    elif isinstance(value, (tuple, list)):
+        type_ = type(value[0])
     else:
-        return type(value)
+        type_ = type(value)
+    return normalize_type(type_)
 
 
 def dtype(expr, context):
@@ -386,10 +389,11 @@ class EvaluableExpression(Expr):
             indices = None
 
         if indices is not None:
+            #FIXME: arrgllll zeros!!!! it should be missing...
             result = np.zeros(context_length(context), dtype=gettype(values))
             np.put(result, indices, values)
         context[tmp_varname] = result
-        return Variable(tmp_varname, normalize_type(gettype(result)))
+        return Variable(tmp_varname, gettype(result))
 
 
 class SubscriptedExpr(EvaluableExpression):
@@ -745,7 +749,7 @@ class GlobalVariable(Variable):
     #XXX: inherit from EvaluableExpression?
     def as_simple_expr(self, context):
         result = self.evaluate(context)
-        period = self._eval_period(context)
+        period = self._eval_key(context)
         if isinstance(period, int):
             tmp_varname = '__%s_%s' % (self.name, period)
             if tmp_varname in context:
