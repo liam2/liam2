@@ -98,6 +98,17 @@ except ImportError:
             return buf
 
 
+# this is a workaround because nansum(bool_array) fails on numpy 1.7.
+# see https://github.com/numpy/numpy/issues/2978
+# as a bonus, this version is also faster
+def nansum(a, axis=None):
+    a = np.asarray(a)
+    if issubclass(a.dtype.type, np.inexact):
+        return np.nansum(a, axis)
+    else:
+        return np.sum(a, axis)
+
+
 #TODO: provide a cython version for this (using fused types)
 #ctypedef fused np_numeric:
 #     np.int32_t

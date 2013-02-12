@@ -10,7 +10,7 @@ from expr import (Expr, EvaluableExpression, Variable, Where, as_simple_expr,
                   get_missing_vector)
 from context import EntityContext, context_length, context_subset
 from registry import entity_registry
-import utils
+from utils import PrettyTable, nansum
 
 
 def ispresent(values):
@@ -492,7 +492,7 @@ class GroupMax(NumpyAggregate):
         return dtype(self.args[0], context)
 
 
-#FIXME: inherit from NumpyAggregate
+#FIXME: inherit from NumpyAggregate to have access to all arguments of np.sum
 class GroupSum(FilteredExpression):
     func_name = 'grpsum'
 
@@ -501,8 +501,7 @@ class GroupSum(FilteredExpression):
         filter_expr = self._getfilter(context)
         if filter_expr is not None:
             expr *= filter_expr
-
-        return np.nansum(expr_eval(expr, context))
+        return nansum(expr_eval(expr, context))
 
     def dtype(self, context):
         #TODO: merge this typemap with tsum's
@@ -633,7 +632,7 @@ class GroupAverage(FilteredExpression):
         filter_values &= np.isfinite(values)
         numrows = np.sum(filter_values)
         if numrows:
-            return np.nansum(values) / float(numrows)
+            return nansum(values) / float(numrows)
         else:
             return float('nan')
 
@@ -914,7 +913,7 @@ class Dump(TableExpression):
 
         data = izip(*columns)
         table = chain([str_expressions], data) if self.header else data
-        return utils.PrettyTable(table, self.missing)
+        return PrettyTable(table, self.missing)
 
     def traverse(self, context):
         for expr in self.expressions:
