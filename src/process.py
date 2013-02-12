@@ -76,6 +76,8 @@ class Assignment(Process):
 
         if isinstance(result, dict):
             indices = result.get('indices')
+            #AFAIK, this feature is not currently used anywhere, it was
+            # developed for regressions but this solution has problems too
             filter_values = result.get('filter')
             assert filter_values is None or indices is None
             result = result['values']
@@ -122,6 +124,7 @@ class Assignment(Process):
                 #XXX: I'm not sure we should do this at all and in any case
                 # this step should be delayed further because it could
                 # be unnecessary.
+                #FIXME: zeros??? arrgl... should be missing value...
                 target[self.predictor] = np.zeros(len(self.entity.array),
                                                   dtype=res_type)
             #XXX: I'm not sure this feature is a good idea after all, as it
