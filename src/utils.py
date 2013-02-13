@@ -98,7 +98,7 @@ except ImportError:
             return buf
 
 
-# this is a workaround because nansum(bool_array) fails on numpy 1.7.
+# this is a workaround because nansum(bool_array) fails on numpy 1.7.0
 # see https://github.com/numpy/numpy/issues/2978
 # as a bonus, this version is also faster
 def nansum(a, axis=None):
