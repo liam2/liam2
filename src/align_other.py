@@ -13,6 +13,12 @@ from registry import entity_registry
 
 class AlignOther(EvaluableExpression):
     #TODO: allow specifying possible_values manually, like in align()
+
+    # Note that we currently do not use filter directly to filter the local
+    # objects (eg household), but rather we use it to filter the individuals in
+    # the linked entity (we have to do that). Not filtering the local objects
+    # yields the same results than if we did, but it *might* be possible to
+    # improve the speed by explicitly filtering the local objects.
     def __init__(self, link, need, orderby, filter=None, expressions=None):
         """
         filter is a local filter (eg filter on hh, eg is_candidate)
@@ -60,14 +66,6 @@ class AlignOther(EvaluableExpression):
                              '__globals__': context['__globals__']})
 
     def evaluate(self, context):
-        #TODO: remove the target_expressions argument, as dim_names should
-        # always match the expressions, so we could just as well use dim_names
-        # *as* the expressions, like we do in normal alignment
-        # As a related note, I don't like to have expressions in the datafiles,
-        # but we want to allow expressions anyway, so we will need an optional
-        # expr argument. And this seems like a better solution for normal
-        # alignment too!
-
         need = expr_eval(self.need_expr, context)
         if self.target_expressions is None:
             self.target_expressions = [Variable(name)
@@ -87,6 +85,10 @@ class AlignOther(EvaluableExpression):
                                 context['__entity__'].name)
             target_filter = LinkValue(reverse_link, self.filter_expr, False)
             target_filter_value = expr_eval(target_filter, target_context)
+
+            # It is often not a good idea to pre-filter columns like this
+            # because we loose information about "indices", but in this case,
+            # it is fine, because we do not need that information afterwards.
             filtered_columns = [col[target_filter_value]
                                   if isinstance(col, np.ndarray) and col.shape
                                   else [col]
@@ -135,6 +137,8 @@ class AlignOther(EvaluableExpression):
         # per object and compared to the hash lookup, it is probably a
         # very small gain. However, a version of partition_nd with known
         # labels *as* a ndarray (ala id_to_rownum) might be worth it.
+
+        # target_row is an index valid for *filtered* columns !
         for target_row, source_row in enumerate(source_rows):
             if source_row == -1:
                 continue
@@ -144,7 +148,10 @@ class AlignOther(EvaluableExpression):
         # will simply be ignored (at least, they should). Though, we could
         # print a warning in that case in partition_nd.
         groupby_expr = GroupBy(*filtered_columns, pvalues=need.pvalues)
-        num_candidates = expr_eval(groupby_expr, context)
+        # target_context is not technically correct, as it is not "filtered"
+        # while filtered_columns are, but since we don't use the context
+        # "columns", it does not matter.
+        num_candidates = expr_eval(groupby_expr, target_context)
 
         # handle the "fractional people problem"
         int_need = need.astype(int)
@@ -205,6 +212,9 @@ class AlignOther(EvaluableExpression):
                 break
             persons_in_hh_indices = hh[sorted_idx]
             num_persons_in_hh = len(persons_in_hh_indices)
+
+            # this will usually happen when the household is not a candidate
+            # and thus no person in the household is a candidate either
             if num_persons_in_hh == 0:
                 continue
 
