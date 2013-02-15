@@ -691,50 +691,103 @@ entities:
                 - show(groupby(age, gender, filter=household.aligned))
                 - clone_id: clone(household.aligned,
                                   hh_id=household.clone_id)
-                
-            test_logit:
+
+            test_logit_regr:
                 # equivalent to uniform() > 0.5
                 - simple: logit_regr(0.0)
                 - fixed_percent: logit_regr(0.0, align=0.5)
 
-            test_log_regr:
-                # currently filter is ignored for all non-aligned regressions,
-                # so this test fails!
-                - v1: "42"
-                - v1: log_regr(2.484557 + 0.2283921 * age - 0.0026106 * age **2,
-                               filter=MALE)
-                - v2: if(MALE,
-                         log_regr(2.484557 + 0.2283921 * age - 0.0026106 * age **2),
-                         42)
-                - v3: if(MALE,
-                         exp(2.484557 + 0.2283921 * age - 0.0026106 * age **2),
-                         42)
-                - show('v1', v1, '\n',
-                       'num values:', grpcount(v1 != 42), '\n',
-                       'num problems:', grpcount((v1 != v2) or (v2 != v3)))
+            test_cont_regr:
+                # expr only
+                - assertEqual(cont_regr(2.4 + 0.22 * age),
+                              2.4 + 0.22 * age)
 
+                # with explicit filter
+                - value: cont_regr(2.4 + 0.22 * age, filter=gender)
+                # we can't use assertEqual(value, xxx) because arrays with nans
+                # do not compare equal
+                - check: if(gender,
+                            value == 2.4 + 0.22 * age,
+                            value != value)
+                - assertEqual(grpcount(check), grpcount())
+                
+                # with implicit filter
+                - assertEqual(if(gender, cont_regr(2.4 + 0.22 * age), 42.0),
+                              if(gender, 2.4 + 0.22 * age, 42.0))
+
+                # with both implicit and explicit filter
+                - value: if(gender,
+                            cont_regr(2.4 + 0.22 * age, filter=age > 20),
+                            42.0)
+                - check: if(gender,
+                            if(age > 20,
+                               value == 2.4 + 0.22 * age,
+                               value != value),
+                            value == 42.0)
+                - assertEqual(grpcount(check), grpcount())
+
+                # with error_var
                 - err: normal()
+                - assertEqual(cont_regr(2.4 + 0.22 * age, error_var='err'),
+                              2.4 + 0.22 * age + err)
 
-                - v4: if(MALE,
-                         log_regr(2.484557 + 0.2283921 * age, error_var='err'),
-                         0)
-                - v5: if(MALE,
-                         exp(2.484557 + 0.2283921 * age + err),
-                         0)
-                - show('v4', v4, '\n', 'v5', v5, '\n',
-                       'num values:', grpcount(v4 > 0), '\n',
-                       'num problems:', grpcount(v4 != v5))
+                # with mult
+                - value: cont_regr(2.4 + 0.22 * age, mult=2)
+                # this should yield a simple normal random distribution
+                - check: (value - (2.4 + 0.22 * age)) / 2
 
-                - v6: if(MALE,
-                         log_regr(2.484557 + 0.2283921 * age, mult=2),
-                         0)
-                - v7: if(MALE,
-                         exp(2.484557 + 0.2283921 * age + normal(0, 1) * 2),
-                         0)
-                # max(normal) - min(normal) is commonly < 10
-                - show('log(v6)', log(v6), '\n', 'log(v7)', log(v7), '\n',
-                       'num values:', grpcount(v6 > 0), '\n',
-                       'num problems:', grpcount(log(v6) - log(v7) > 20))
+                # the average of a normal is mu (=0)
+                - mu: 0
+                - assertTrue(abs(mu - grpavg(check)) < 0.1)
+                # the stddev of a normal is sigma (=1)
+                - sigma: 1
+                - assertTrue(abs(sigma - grpstd(check)) < 0.01)
+
+            test_log_regr:
+                # expr only
+                - assertEqual(log_regr(2.4 + 0.22 * age),
+                              exp(2.4 + 0.22 * age))
+
+                # with explicit filter
+                - value: log_regr(2.4 + 0.22 * age, filter=gender)
+                # we can't use assertEqual(value, xxx) because arrays with nans
+                # do not compare equal
+                - check: if(gender,
+                            value == exp(2.4 + 0.22 * age),
+                            value != value)
+                - assertEqual(grpcount(check), grpcount())
+                
+                # with implicit filter
+                - assertEqual(if(gender, log_regr(2.4 + 0.22 * age), 42),
+                              if(gender, exp(2.4 + 0.22 * age), 42))
+
+                # with both implicit and explicit filter
+                - value: if(gender,
+                            log_regr(2.4 + 0.22 * age, filter=age > 20),
+                            42.0)
+                - check: if(gender,
+                            if(age > 20,
+                               value == exp(2.4 + 0.22 * age),
+                               value != value),
+                            value == 42.0)
+                - assertEqual(grpcount(check), grpcount())
+
+                # with error_var
+                - err: normal()
+                - assertEqual(log_regr(2.4 + 0.22 * age, error_var='err'),
+                              exp(2.4 + 0.22 * age + err))
+
+                # with mult
+                - value: log_regr(2.4 + 0.22 * age, mult=2)
+                # this should yield a simple normal random distribution
+                - check: (log(value) - (2.4 + 0.22 * age)) / 2
+
+                # the average of a normal is mu (=0)
+                - mu: 0
+                - assertTrue(abs(mu - grpavg(check)) < 0.1)
+                # the stddev of a normal is sigma (=1)
+                - sigma: 1
+                - assertTrue(abs(sigma - grpstd(check)) < 0.01)
 
             test_uninitialized_var: not to_give_birth
             to_give_birth: if(not gender and (age >= 15) and (age <= 50),
@@ -1276,7 +1329,8 @@ simulation:
         - household: [test_align_other]
         - person: [
                    check_align_other,
-                   test_logit,
+                   test_logit_regr,
+                   test_cont_regr,
                    test_log_regr,
 
                    [marriage, 4],

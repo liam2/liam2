@@ -2,7 +2,9 @@ import numpy as np
 
 from properties import Log, Exp, Normal, Max, CompoundExpression
 from alignment import Alignment
-from expr import Expr, Variable, ShortLivedVariable, get_tmp_varname
+from expr import (Expr, Where, Variable, ShortLivedVariable, get_tmp_varname,
+                  missing_values, dtype, expr_eval)
+
 from context import context_length
 
 
@@ -26,23 +28,25 @@ class Regression(CompoundExpression):
     def build_context(self, context):
         return context
 
-#TODO: this fixes the filter problem for non-aligned regression, but breaks
-#      aligned ones (logit_regr):
-#      * the score expr is Alignment(LogitScore(xxx), filter=filter)
-#      * Alignment.eval() returns {'values': True, 'indices': indices}
-#      * Regression.eval() returns {'filter': filter,
-#                                   'values': {'values': Trues,
-#                                              'indices': indices}}
-#      * this is not supported by Assignment.store_result
+    def build_expr(self):
+        raise NotImplementedError
 
-#    def eval(self, context):
-#        context = self.build_context(context)
-#        result = self.complete_expr.eval(context)
-#        if self.filter is not None:
-#            filter = expr_eval(self.filter, context)
-#            return {'filter': filter, 'values': result}
-#        else:
-#            return result
+    def add_filter(self, expr, context):
+        if self.filter is not None:
+            missing_value = missing_values[dtype(expr, context)]
+            return Where(self.filter, expr, missing_value)
+        else:
+            return expr
+
+    def evaluate(self, context):
+        context = self.build_context(context)
+        expr = self.add_filter(self.complete_expr, context)
+        return expr_eval(expr, context)
+
+    def as_simple_expr(self, context):
+        context = self.build_context(context)
+        expr = self.add_filter(self.complete_expr, context)
+        return expr.as_simple_expr(context)
 
     def dtype(self, context):
         return float
@@ -95,6 +99,13 @@ class LogitRegr(Regression):
             return Alignment(score_expr, self.align, filter=self.filter)
         else:
             return score_expr > 0.5
+
+    # this is an optimisation: Alignment already handles the filter
+    def add_filter(self, expr, context):
+        if self.align is not None:
+            return expr
+        else:
+            return super(LogitRegr, self).add_filter(expr, context)
 
     def dtype(self, context):
         return bool
