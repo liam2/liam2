@@ -82,25 +82,17 @@ class LogitScore(CompoundExpression):
 class LogitRegr(Regression):
     func_name = 'logit_regr'
 
-    def __init__(self, expr, filter=None, align=False):
+    def __init__(self, expr, filter=None, align=None):
         Regression.__init__(self, expr, filter)
-        if isinstance(align, (float, Expr)):
-            align_kwargs = {'proportions': [align]}
-        elif isinstance(align, basestring):
-            align_kwargs = {'fname': align}
-        else:
-            assert not align, "invalid value for align argument"
-            align_kwargs = None
-        self.align_kwargs = align_kwargs
+        self.align = align
 
     def build_context(self, context):
         return context
 
     def build_expr(self):
         score_expr = LogitScore(self.expr)
-        if self.align_kwargs is not None:
-            return Alignment(score_expr, self.filter,
-                             **self.align_kwargs)
+        if self.align is not None:
+            return Alignment(score_expr, self.align, filter=self.filter)
         else:
             return score_expr > 0.5
 

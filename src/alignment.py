@@ -1,7 +1,6 @@
 from __future__ import print_function
 
-from itertools import izip, count
-import random
+from itertools import izip
 import os
 
 import numpy as np
@@ -10,12 +9,12 @@ import config
 from expr import Expr, Variable, expr_eval, collect_variables, traverse_expr
 from context import context_length
 from utils import PrettyTable, LabeledArray
-from properties import FilteredExpression, add_individuals
+from properties import FilteredExpression
 from importer import load_ndarray
 from partition import partition_nd, filter_to_indices
 
 
-def kill_axis(axis_name, value, expressions, possible_values, proportions):
+def kill_axis(axis_name, value, expressions, possible_values, need):
     '''possible_values is a list of ndarrays'''
 
     str_expressions = [str(e) for e in expressions]
@@ -36,77 +35,16 @@ def kill_axis(axis_name, value, expressions, possible_values, proportions):
                         'for that value (instead of one)'
                         % (num_idx, axis_name, value))
     value_idx = value_idx[0]
-    complete_idx = [slice(None) for _ in range(proportions.ndim)]
+    complete_idx = [slice(None) for _ in range(need.ndim)]
     complete_idx[axis_num] = value_idx
-    proportions = proportions[complete_idx]
-    return expressions, possible_values, proportions
+    need = need[complete_idx]
+    return expressions, possible_values, need
 
 
-def align_get_indices_nd(context, filter_value, score,
-                         expressions, possible_values, proportions,
+def align_get_indices_nd(groups, need, filter_value, score,
                          take_filter=None, leave_filter=None,
                          past_error=None):
     assert score is None or isinstance(score, (bool, int, float, np.ndarray))
-    assert len(expressions) == len(possible_values)
-    if filter_value is not None:
-        num_to_align = np.sum(filter_value)
-    else:
-        num_to_align = context_length(context)
-
-    if 'period' in [str(e) for e in expressions]:
-        period = context['period']
-        expressions, possible_values, proportions = \
-            kill_axis('period', period, expressions, possible_values,
-                      proportions)
-
-    if expressions:
-        #TODO: we should also accept a flat version as long as the number of
-        # elements is the same (that's how we use it anyway)
-        shape1 = proportions.shape
-        shape2 = tuple(len(pv) for pv in possible_values)
-        assert shape1 == shape2, "%s != %s" % (shape1, shape2)
-
-        # retrieve the columns we need to work with
-        columns = [expr_eval(expr, context) for expr in expressions]
-
-        # kill any axis where the value is constant for all individuals
-        # satisfying the filter
-#        tokill = [(expr, column[0])
-#                  for expr, column in zip(expressions, columns)
-#                  if isconstant(column, filter_value)]
-#        for expr, value in tokill:
-#            expressions, possible_values, proportions = \
-#                kill_axis(str(expr), value, expressions, possible_values,
-#                          proportions)
-
-        if filter_value is not None:
-            groups = partition_nd(columns, filter_value, possible_values)
-        else:
-            groups = partition_nd(columns, True, possible_values)
-    else:
-        if filter_value is not None:
-            groups = [filter_to_indices(filter_value)]
-        else:
-            groups = [np.arange(num_to_align)]
-        assert len(proportions) == 1
-
-    # the sum is not necessarily equal to len(a), because some individuals
-    # might not fit in any group (eg if some alignment data is missing)
-    num_aligned = sum(len(g) for g in groups)
-    if num_aligned < num_to_align:
-        if filter_value is not None:
-            to_align = set(filter_to_indices(filter_value))
-        else:
-            to_align = set(xrange(num_to_align))
-        aligned = set()
-        for member_indices in groups:
-            aligned |= set(member_indices)
-        unaligned = to_align - aligned
-        print("Warning: %d individual(s) do not fit in any alignment category"
-              % len(unaligned))
-        print(PrettyTable([['id'] + expressions] +
-                          [[col[row] for col in [context['id']] + columns]
-                           for row in unaligned]))
 
     if filter_value is not None:
         bool_filter_value = filter_value.copy()
@@ -119,6 +57,7 @@ def align_get_indices_nd(context, filter_value, score,
         # account or not. This only impacts what it displayed on the console,
         # but still...
         take = np.sum(take_filter)
+
         #XXX: it would probably be faster to leave the filters as boolean
         # vector and do
         #     take_members = take_filter[member_indices]
@@ -126,7 +65,6 @@ def align_get_indices_nd(context, filter_value, score,
         # instead of
         #     group_always = np.intersect1d(members_indices, take_indices,
         #                                   assume_unique=True)
-
         take_indices = filter_to_indices(take_filter & bool_filter_value)
         maybe_filter &= ~take_filter
     else:
@@ -148,19 +86,19 @@ def align_get_indices_nd(context, filter_value, score,
     total_overflow = 0
     total_affected = 0
     total_indices = []
-    for group_idx, members_indices, proportion in izip(count(), groups,
-                                                       proportions.flat):
-        if len(members_indices):
-            expected = len(members_indices) * proportion
-            affected = int(expected)
-            if past_error is not None:
-                group_overflow = past_error[group_idx]
-                if group_overflow != 0:
-                    affected -= group_overflow
-                past_error[group_idx] = 0
 
-            if random.random() < expected - affected:
-                affected += 1
+    #TODO: add other options to handle fractional persons
+    int_need = need.astype(int)
+    u = np.random.uniform(size=need.shape)
+    actual_need = int_need + (u < need - int_need)
+    if past_error is not None:
+        print("adding %d individuals from last period error"
+              % np.sum(past_error))
+        need += past_error
+
+    for members_indices, group_need in izip(groups, actual_need.flat):
+        if len(members_indices):
+            affected = group_need
             total_affected += affected
 
             if take_indices is not None:
@@ -203,6 +141,7 @@ def align_get_indices_nd(context, filter_value, score,
     # this assertion is only valid in the non weighted case
     assert len(total_indices) == \
            total_affected + total_overflow - total_underflow
+    num_aligned = sum(len(g) for g in groups)
     print(" %d/%d" % (len(total_indices), num_aligned), end=" ")
     if (take_filter is not None) or (leave_filter is not None):
         print("[take %d, leave %d]" % (take, leave), end=" ")
@@ -214,53 +153,28 @@ def align_get_indices_nd(context, filter_value, score,
     return total_indices
 
 
-class Alignment(FilteredExpression):
-    func_name = 'align'
+class AlignmentAbsoluteValues(FilteredExpression):
+    func_name = 'align_abs'
 
-    def __init__(self, score=None, filter=None, take=None, leave=None,
-                 fname=None,
-                 expressions=None, possible_values=None, proportions=None,
-                 on_overflow='default'):
-        super(Alignment, self).__init__(score, filter)
-
-        #TODO: make it possible to override expressions/pvalues given in
-        # the file
-
-        # Q: make the "need" argument (=proportions) the first one and
-        #    accept a file name in that argument
-        #      align(xyz, fname='al_p_dead_m.csv')
-        #    ->
-        #      align('al_p_dead_m.csv', xyz)
-        # A: I personally would prefer that, but this is backward incompatible,
-        #    so I guess users will not like the change ;-).
-        #    >>> Ask for more opinions
-
-        # Q: switch to absolute values like align_other?
-        #      align(0.0, fname='al_p_dead_m.csv')
-        #    ->
-        #      align(0.0, AL_P_DEAD_M * groupby(age))
-        # A: no, as in that case we have to "duplicate" the information about
-        #    columns/dimension (age in groupby() while it is already defined
-        #    in the alignment file.
-        #    so the solution is to introduce a new "select" method for that
-        #    purpose:
-        #      align(0.0, AL_P_DEAD_M)
-        #      align(proportions=AL_P_DEAD_M)
-        #      select(AL_P_DEAD_M * groupby(age), 0.0)
+#TODO: make it possible to override expressions/pvalues given in
+# the file
+    def __init__(self, score, need,
+                 filter=None, take=None, leave=None,
+                 expressions=None, possible_values=None,
+                 errors='default'):
+        super(AlignmentAbsoluteValues, self).__init__(score, filter)
 
         if possible_values is not None:
             if expressions is None or len(possible_values) != len(expressions):
                 raise Exception("align() expressions and possible_values "
                                 "arguments should have the same length")
 
-        if proportions is None and fname is None:
-            raise Exception("align() needs either a filename or proportions")
-
-        if fname is not None:
-            self.load(fname)
+        if isinstance(need, basestring):
+            self.load(need)
         else:
             if expressions is None:
                 expressions = []
+
             self.expressions = [Variable(e) if isinstance(e, basestring) else e
                                 for e in expressions]
             if possible_values is None:
@@ -271,18 +185,18 @@ class Alignment(FilteredExpression):
             # v -> array([v])
             # [v1, v2] -> array([v1, v2])
             # [e1, e2] -> [e1, e2]
-            if not isinstance(proportions, (tuple, list, Expr)):
-                proportions = [proportions]
+            if not isinstance(need, (tuple, list, Expr)):
+                need = [need]
 
-            if not any(isinstance(p, Expr) for p in proportions):
-                self.proportions = np.array(proportions)
+            if not any(isinstance(p, Expr) for p in need):
+                self.need = np.array(need)
             else:
-                self.proportions = proportions
+                self.need = need
 
         self.take_filter = take
         self.leave_filter = leave
-        self.on_overflow = on_overflow
-        self.overflows = None
+        self.errors = errors
+        self.past_error = None
 
     def traverse(self, context):
         for node in FilteredExpression.traverse(self, context):
@@ -312,17 +226,17 @@ class Alignment(FilteredExpression):
         self.expressions = [parse(expr, autovariables=True)
                             for expr in array.dim_names]
         self.possible_values = array.pvalues
-        self.proportions = array
+        self.need = array
 
     def evaluate(self, context):
         scores = expr_eval(self.expr, context)
 
-        on_overflow = self.on_overflow
-        if on_overflow == 'default':
-            on_overflow = context.get('__on_align_overflow__')
+        errors = self.errors
+        if errors == 'default':
+            errors = context.get('__on_align_error__')
 
-        if on_overflow == 'carry' and self.overflows is None:
-            self.overflows = np.zeros(len(self.proportions))
+        if errors == 'carry' and self.past_error is None:
+            self.past_error = np.zeros(len(self.need))
 
         ctx_filter = context.get('__filter__')
         if self.filter is not None:
@@ -350,37 +264,124 @@ class Alignment(FilteredExpression):
         expressions = self.expressions
         possible_values = self.possible_values
 
-        if isinstance(self.proportions, list):
-            proportions = np.array([expr_eval(p, context)
-                                      for p in self.proportions])
-        elif isinstance(self.proportions, Expr):
-            proportions = expr_eval(self.proportions, context)
-            if not (isinstance(proportions, np.ndarray) and
-                    proportions.shape):
-                proportions = np.array([proportions])
-            if isinstance(proportions, LabeledArray):
+        if isinstance(self.need, list):
+            need = np.array([expr_eval(e, context) for e in self.need])
+        elif isinstance(self.need, Expr):
+            need = expr_eval(self.need, context)
+            if not (isinstance(need, np.ndarray) and need.shape):
+                need = np.array([need])
+            if isinstance(need, LabeledArray):
                 if not expressions:
                     expressions = [Variable(name)
-                                   for name in proportions.dim_names]
+                                   for name in need.dim_names]
                 if not possible_values:
-                    possible_values = proportions.pvalues
+                    possible_values = need.pvalues
         else:
-            assert isinstance(self.proportions, np.ndarray)
-            proportions = self.proportions
+            assert isinstance(self.need, np.ndarray)
+            need = self.need
+        assert len(expressions) == len(possible_values)
 
-        indices = \
-            align_get_indices_nd(context, filter_value, scores,
-                                 expressions, possible_values,
-                                 proportions,
+        if filter_value is not None:
+            num_to_align = np.sum(filter_value)
+        else:
+            num_to_align = context_length(context)
+
+        if 'period' in [str(e) for e in expressions]:
+            period = context['period']
+            expressions, possible_values, need = \
+                kill_axis('period', period, expressions, possible_values,
+                          need)
+
+        # kill any axis where the value is constant for all individuals
+        # satisfying the filter
+#        tokill = [(expr, column[0])
+#                  for expr, column in zip(expressions, columns)
+#                  if isconstant(column, filter_value)]
+#        for expr, value in tokill:
+#            expressions, possible_values, need = \
+#                kill_axis(str(expr), value, expressions, possible_values,
+#                          need)
+
+        if expressions:
+            # retrieve the columns we need to work with
+            columns = [expr_eval(expr, context) for expr in expressions]
+            if filter_value is not None:
+                groups = partition_nd(columns, filter_value, possible_values)
+            else:
+                groups = partition_nd(columns, True, possible_values)
+        else:
+            if filter_value is not None:
+                groups = [filter_to_indices(filter_value)]
+            else:
+                groups = [np.arange(num_to_align)]
+
+        # the sum is not necessarily equal to len(a), because some individuals
+        # might not fit in any group (eg if some alignment data is missing)
+        num_aligned = sum(len(g) for g in groups)
+        if num_aligned < num_to_align:
+            if filter_value is not None:
+                to_align = set(filter_to_indices(filter_value))
+            else:
+                to_align = set(xrange(num_to_align))
+            aligned = set()
+            for member_indices in groups:
+                aligned |= set(member_indices)
+            unaligned = to_align - aligned
+            print("Warning: %d individual(s) do not fit in any alignment "
+                  "category" % len(unaligned))
+            print(PrettyTable([['id'] + expressions] +
+                              [[col[row] for col in [context['id']] + columns]
+                               for row in unaligned]))
+
+        need = need * self._get_need_correction(groups, possible_values)
+        aligned = \
+            align_get_indices_nd(groups, need, filter_value, scores,
                                  take_filter, leave_filter,
-                                 self.overflows)
+                                 self.past_error)
 
-        return {'values': True, 'indices': indices}
+        return {'values': True, 'indices': aligned}
+
+    def _get_need_correction(self, groups, possible_values):
+        return 1
 
     def dtype(self, context):
         return bool
 
 
+class Alignment(AlignmentAbsoluteValues):
+    func_name = 'align'
+
+    def __init__(self, score=None, proportions=None,
+                 filter=None, take=None, leave=None,
+                 expressions=None, possible_values=None, 
+                 errors='default', fname=None):
+
+        if possible_values is not None:
+            if expressions is None or len(possible_values) != len(expressions):
+                raise Exception("align() expressions and possible_values "
+                                "arguments should have the same length")
+
+        if proportions is None and fname is None:
+            raise Exception("align() needs either an fname or proportions "
+                            "arguments")
+        if proportions is not None and fname is not None:
+            raise Exception("align() cannot have both fname and proportions "
+                            "arguments")
+        if fname is not None:
+            proportions = fname
+
+        super(Alignment, self).__init__(score, proportions,
+                                        filter, take, leave,
+                                        expressions, possible_values,
+                                        errors)
+
+    def _get_need_correction(self, groups, possible_values):
+        data = np.array([len(group) for group in groups])
+        len_pvalues = [len(vals) for vals in possible_values]
+        return data.reshape(len_pvalues)
+
+
 functions = {
+    'align_abs': AlignmentAbsoluteValues,
     'align': Alignment
 }
