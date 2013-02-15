@@ -46,6 +46,9 @@ class GroupBy(TableExpression):
                             % kwarg)
 
     def evaluate(self, context):
+        expr = self.expr
+        expr_vars = expr.collect_variables(context)
+
         expressions = self.expressions
         columns = [expr_eval(e, context) for e in expressions]
         if self.filter is not None:
@@ -56,20 +59,30 @@ class GroupBy(TableExpression):
                                    if isinstance(col, np.ndarray) and col.shape
                                    else [col]
                                 for col in columns]
+            filtered_context = context_subset(context, filter_value, expr_vars)
         else:
             filtered_columns = columns
+            filtered_context = context
 
         possible_values = self.pvalues
         if possible_values is None:
             possible_values = [np.unique(col) for col in filtered_columns]
+
+        # we pre-filter columns instead of passing the filter to partition_nd
+        # because it is a bit faster this way and we do not care about the
+        # actual indices in this case
+#FIXME: we DO care about the indices (if expr != grpcount) !!! 
+# we use them in context_subset below
+# It might work if we use filtered_columns as the context in context_subset
+# (and don't forget row_totals & col_totals)
         groups = partition_nd(filtered_columns, True, possible_values)
         if not groups:
+            #FIXME: return an empty array or something like that
             return
 
         # evaluate the expression on each group
-        expr = self.expr
-        used_vars = expr.collect_variables(context)
-        data = [expr_eval(expr, context_subset(context, indices, used_vars))
+        data = [expr_eval(expr, context_subset(filtered_context, indices,
+                                               expr_vars))
                 for indices in groups]
 
         #TODO: use group_indices_nd directly to avoid using np.unique
@@ -105,9 +118,11 @@ class GroupBy(TableExpression):
         cols_indices.append(np.concatenate(cols_indices))
 
         # evaluate the expression on each "combined" group (ie compute totals)
-        row_totals = [expr_eval(expr, context_subset(context, inds, used_vars))
+        row_totals = [expr_eval(expr, context_subset(filtered_context, inds,
+                                                     expr_vars))
                       for inds in rows_indices]
-        col_totals = [expr_eval(expr, context_subset(context, inds, used_vars))
+        col_totals = [expr_eval(expr, context_subset(filtered_context, inds,
+                                                     expr_vars))
                       for inds in cols_indices]
 
         if self.percent:

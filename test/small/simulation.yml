@@ -1114,7 +1114,10 @@ entities:
                 - assertEqual(by_agegroup_gender.dim_names,
                               ['agegroup', 'gender'])
                 - assertTrue(by_agegroup_gender.row_totals.__len__() > 0)
-                - assertEqual(by_agegroup_gender.col_totals.__len__(), 3)
+                - assertEqual(by_agegroup_gender.col_totals,
+                              [grpcount(not gender),
+                               grpcount(gender),
+                               grpcount()])
                 - assertEqual(by_agegroup_gender[0],
                               [grpcount(agegroup == -1 and not gender),
                                grpcount(agegroup == -1 and gender)])
@@ -1146,9 +1149,11 @@ entities:
 
                 # with expr= and filter
                 - avg_age_work: groupby(gender, expr=grpavg(age), filter=work)
-#                - assertEqual(avg_age_work,
-#                              [grpavg(age, filter=work and not gender),
-#                               grpavg(age, filter=work and gender)])
+                - assertEqual(avg_age_work,
+                              [grpavg(age, filter=work and not gender),
+                               grpavg(age, filter=work and gender)])
+                - assertEqual(avg_age_work.row_totals,
+                              [grpavg(age, filter=work)])
 
                 # ...
                 - num_persons2_percent: show(groupby(agegroup, gender, percent=True))
