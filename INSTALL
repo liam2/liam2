@@ -1,13 +1,34 @@
-To run a simulation, you need to install the following packages:
+Introduction
+------------
+
+To run a simulation from source, you first need to install all the
+dependencies (see below), then (optionally) build the C extensions for
+maximum performance, then simply run LIAM2 using:
+
+python main.py import [your_import_file]
+python main.py run [your_simulation_file]
+
+Installation
+------------
+
+First install Python:
 
 - Python 2.7.x (either 32 bits or 64 bits version): 
   http://www.python.org/download/releases/
+
+Then you need to install all our other dependencies (third-party packages for
+Python). If you are on Windows, the easiest way to install them is to use the
+(unoffical) binary packages from Christoph Gohlke at: 
+
+  http://www.lfd.uci.edu/~gohlke/pythonlibs/
+
+Third party packages:
 
 - Numpy 1.6.0 or later (for your version of python): 
   http://sourceforge.net/projects/numpy/files/NumPy/
 
 - PyTables 2.2.1 or later (for your version of python):
-  http://www.pytables.org/download/stable/
+  http://sourceforge.net/projects/pytables/files/pytables/
   
 - Numexpr 2.0 or later (for your version of python):
   http://code.google.com/p/numexpr/downloads/
@@ -16,10 +37,45 @@ To run a simulation, you need to install the following packages:
   http://pyyaml.org/wiki/PyYAML
   
 - carray 0.4 or later (for your version of python):  
-  http://carray.pytables.org/download/stable/
+  http://carray.pytables.org/download/
+
+Optional dependencies:
+
+- Cython 0.16 or later (needed to build the C extensions, see below).
+  http://www.cython.org/
   
-Some of those libraries do not have official packages for windows 64 bits. 
-You can find unofficial ones at: 
-  http://www.lfd.uci.edu/~gohlke/pythonlibs/
+- Sphinx 1.0 or later (to "build" the documentation to html, or pdf) 
+  http://www.sphinx-doc.org/
+
+Building the C extensions
+-------------------------
+
+Additionally, if you want to get maximum performance, you will also need to
+build the C extensions. This is optional but recommended.
+
+For that you need to have cython (see above) and a C compiler installed, then
+go to the src/ directory of LIAM2 and type:
+
+  python setup.py build_ext --inplace
+
+If all goes according to plan, you should then be up and running.
+
+Building the documentation
+--------------------------
+
+0) make sure both PYTHONDIR and PYTHONDIR\Scripts is in your system PATH
+   where PYTHONDIR is the directory where you installed Python
+
+1) Install sphinx 
+2) Open a command prompt
+3) Go to the documentation directory. For example:
+ 
+  cd liam2\doc\usersguide\
+
+3) Launch the build: 
+
+  make html
+
+4) Open the result in your favourite web browser. It is located in:
   
-To develop, you can use any text editor, or use an IDE like Eclipse with PyDev.
+  build/html/index.html
