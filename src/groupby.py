@@ -155,7 +155,17 @@ class GroupBy(TableExpression):
 
         # add headers
         labels = [str(e) for e in expressions]
-        data = np.array(data)
+
+        # convert to a 1d array. We don't simply use data = np.array(data),
+        # because if data is a list of ndarray (for example if we use
+        # groupby(a, expr=id), *and* all the ndarrays have the same length,
+        # the result is a 2d array instead of an array of ndarrays like we
+        # need (at this point).
+        arr = np.empty(len(data), dtype=type(data[0]))
+        arr[:] = data
+        data = arr
+
+        # and reshape it
         data = data.reshape(len_pvalues)
         return LabeledArray(data, labels, possible_values,
                             row_totals, col_totals)
