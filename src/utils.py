@@ -173,7 +173,9 @@ class LabeledArray(np.ndarray):
 
     def __getitem__(self, key):
         obj = np.ndarray.__getitem__(self, key)
-        if obj.ndim > 0:
+        # I am unsure under which conditions obj is not a LabeledArray, but
+        # it *can* happen.
+        if obj.ndim > 0 and isinstance(obj, LabeledArray):
             if isinstance(key, tuple):
                 # complete the key if needed
                 if len(key) < self.ndim:
