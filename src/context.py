@@ -111,7 +111,18 @@ class EntityContext(object):
             return self.entity.input_index[period]
 
 
-def context_subset(context, index, keys=None):
+def new_context_like(context, length=None):
+    #FIXME: nan should come from somewhere else
+    if length is None:
+        length = context_length(context)
+    return {'period': context['period'],
+            '__len__': length,
+            '__entity__': context['__entity__'],
+            '__globals__': context['__globals__'],
+            'nan': float('nan')}
+
+
+def context_subset(context, index=None, keys=None):
     # if keys is None, take all fields
     if keys is None:
         keys = context.keys()
@@ -121,22 +132,19 @@ def context_subset(context, index, keys=None):
             index = np.array([], dtype=int)
         else:
             index = np.array(index)
-    if np.issubdtype(index.dtype, int):
+    if index is None:
+        length = context_length(context)
+    elif np.issubdtype(index.dtype, int):
         length = len(index)
     else:
         assert len(index) == context_length(context), \
                "boolean index has length %d instead of %d" % \
                (len(index), context_length(context))
         length = np.sum(index)
-    #FIXME: nan should come from somewhere else
-    result = {'period': context['period'],
-              '__len__': length,
-              '__entity__': context['__entity__'],
-              '__globals__': context['__globals__'],
-              'nan': float('nan')}
+    result = new_context_like(context, length=length)
     for key in keys:
         value = context[key]
-        if isinstance(value, np.ndarray):
+        if index is not None and isinstance(value, np.ndarray) and value.shape:
             value = value[index]
         result[key] = value
     return result

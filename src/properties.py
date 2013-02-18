@@ -8,7 +8,8 @@ from expr import (Expr, EvaluableExpression, Variable, Where, as_simple_expr,
                   collect_variables, traverse_expr, get_tmp_varname,
                   missing_values, get_missing_value, get_missing_record,
                   get_missing_vector)
-from context import EntityContext, context_length, context_subset
+from context import (EntityContext, context_length, context_subset,
+                     new_context_like)
 from registry import entity_registry
 from utils import PrettyTable, nansum
 
@@ -801,8 +802,11 @@ class CreateIndividual(EvaluableExpression):
             children['period'] = context['period']
 
             used_variables = self._collect_kwargs_variables(context)
-            child_context = context_subset(context, to_give_birth,
-                                           used_variables)
+            if to_give_birth is None:
+                child_context = new_context_like(context, length=num_birth)
+            else:
+                child_context = context_subset(context, to_give_birth,
+                                               used_variables)
             for k, v in self.kwargs.iteritems():
                 children[k] = expr_eval(v, child_context)
 
