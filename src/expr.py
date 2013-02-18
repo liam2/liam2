@@ -329,10 +329,16 @@ class Expr(object):
                 if labels is None:
                     labels = (value.dim_names, value.pvalues)
                 else:
-                    if (labels[0] != value.dim_names or
-                        not np.array_equal(labels[1], value.pvalues)):
+                    if labels[0] != value.dim_names:
                         raise Exception('several arrays with inconsistent '
-                                        'labels in the same expression')
+                                        'labels (dimension names) in the same '
+                                        'expression: %s vs %s'
+                                        % (labels[0], value.dim_names))
+                    if not np.array_equal(labels[1], value.pvalues):
+                        raise Exception('several arrays with inconsistent '
+                                        'axis values in the same expression: '
+                                        '\n%s\n\nvs\n\n%s'
+                                        % (labels[1], value.pvalues))
 
         s = simple_expr.as_string()
         r = context.get(s)
