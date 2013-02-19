@@ -47,7 +47,7 @@ class GroupBy(TableExpression):
 
     def evaluate(self, context):
         expr = self.expr
-        expr_vars = expr.collect_variables(context)
+        expr_vars = collect_variables(expr, context)
 
         expressions = self.expressions
         columns = [expr_eval(e, context) for e in expressions]

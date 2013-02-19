@@ -255,14 +255,21 @@ class SumLink(CountLink):
     def count(self, source_rows, target_filter, context):
         target_context = self.target_context(context)
         value_column = expr_eval(self.target_expr, target_context)
-        if target_filter is not None:
-            value_column = value_column[target_filter]
-        assert len(source_rows) == len(value_column)
-        res = np.bincount(source_rows, value_column)
+        if isinstance(value_column, np.ndarray) and value_column.shape:
+            if target_filter is not None:
+                value_column = value_column[target_filter]
+            assert len(source_rows) == len(value_column), \
+                   "%d != %d" % (len(source_rows), len(value_column))
 
-        # we need to explicitly convert to the type of the value field because
-        # bincount always return floats when its weight argument is used.
-        return res.astype(value_column.dtype)
+            res = np.bincount(source_rows, value_column)
+
+            # we need to explicitly convert to the type of the value field
+            # because bincount always return floats when its weight argument
+            # is used.
+            return res.astype(value_column.dtype)
+        else:
+            # suming a scalar value
+            return np.bincount(source_rows) * value_column
 
     def dtype(self, context):
         target_context = self.target_context(context)

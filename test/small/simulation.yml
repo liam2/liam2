@@ -66,8 +66,8 @@ entities:
                 - remove(num_persons == 0)
                 
                 - total_population: grpsum(num_persons)
-                - num_hh: grpcount()
-                - qshow(total_population, num_hh)
+                - show("total:", grpcount(), "households /",
+                                 total_population, "persons")
 
                 # MIG_PERCENT is a simple float periodic global
                 - num_migrants: total_population * MIG_PERCENT
@@ -82,18 +82,18 @@ entities:
                 - need: num_migrants * mig_period
                 
                 # sanity check
-                - show("need.sum() == num_migrants | ",
-                       need.sum(), "~=", num_migrants, " | ",
-                       abs(need.sum() - num_migrants) < 1e-4)
+                - assertTrue(abs(need.sum() - num_migrants) < 1e-4)
 
-                - is_candidate: uniform() < 0.5
-                - qshow(grpcount(is_candidate),
-                        grpsum(num_persons, filter=is_candidate))
-
+                # without filter
                 - aligned_all: align_other(persons, need,
                                            orderby=countlink(persons))
                 - qshow(grpcount(aligned_all),
                         grpsum(num_persons, filter=aligned_all))
+
+                # with a filter
+                - is_candidate: uniform() < 0.5
+                - qshow(grpcount(is_candidate),
+                        grpsum(num_persons, filter=is_candidate))
 
                 - aligned: align_other(persons, need,
                                        filter=is_candidate,
@@ -101,7 +101,7 @@ entities:
                 - qshow(grpcount(aligned),
                         grpsum(num_persons, filter=aligned))
 
-                - clone_id: clone(aligned)
+#                - clone_id: clone(aligned)
 
     person:
         fields:
@@ -690,8 +690,8 @@ entities:
 
             check_align_other:
                 - show(groupby(age, gender, filter=household.aligned))
-                - clone_id: clone(household.aligned,
-                                  hh_id=household.clone_id)
+#                - clone_id: clone(household.aligned,
+#                                  hh_id=household.clone_id)
 
             test_logit_regr:
                 # equivalent to uniform() > 0.5
@@ -832,10 +832,17 @@ entities:
                              -1)
 
             test_o2m:
+                # countlink
                 - nch: countlink(children)
                 - nch_012: countlink(children, age <= 12)
+                
+                # sumlink
                 - ch_012_age_sum: sumlink(children, age, age <= 12)
                 - ch_012_age2_sum: sumlink(children, age * 2, age <= 12)
+
+                # with a scalar
+                - assertEqual(sumlink(children, 10), nch * 10)
+
                 - ch_012_age_avg: avglink(children, age, age <= 12)
                 - ch_minage: minlink(children, age)
                 - ch_maxage: maxlink(children, age)
@@ -1232,7 +1239,11 @@ entities:
                 - ids_by_id: groupby(id >= 10, expr=id, filter=id < 20)
                 - assertEqual(ids_by_id[0], id[id < 10])
                 - assertEqual(ids_by_id[1], id[id >= 10 and id < 20])
-                
+
+                # expr=scalar
+                - ten_by_gender: groupby(gender, expr=10)
+                - assertEqual(ten_by_gender, [10, 10])
+
                 # ...
                 - num_persons2_percent: show(groupby(agegroup, gender, percent=True))
                 
