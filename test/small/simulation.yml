@@ -103,6 +103,20 @@ entities:
 
 #                - clone_id: clone(aligned)
 
+                # with pvalues != range(0, X)
+                - bchoice: choice([False, True])
+                - weird_num: choice([5, 25, 45]) #, 65, 85, 105])
+                - weird_need: groupby(bchoice, weird_num, expr=10)
+                - show(weird_need)
+                - show('by sex', weird_need.sum(axis=1))
+                - aligned: align_other(persons, weird_need,
+                                       filter=is_candidate,
+                                       orderby=countlink(persons),
+                                       expressions=[gender, 5 + trunc(age / 20) * 20])
+                - qshow(grpcount(aligned),
+                        grpsum(num_persons, filter=aligned))
+
+
     person:
         fields:
             # period and id are implicit
@@ -887,12 +901,10 @@ entities:
                         m_id = id,
                         nch = household.get(countlink(persons)))
 
-
             marriage:
                 - married: partner_id != -1
 
                 - to_marry: (age >= 18) and (age <= 90) and not married
-
                 - avg_age_men: grpavg(age, filter=to_marry and gender)
                 - difficult_match: if(to_marry and not gender,
                                       abs(age - avg_age_men),

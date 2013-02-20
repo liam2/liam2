@@ -9,6 +9,7 @@ from groupby import GroupBy
 from context import context_length, EntityContext
 from properties import EvaluableExpression
 from registry import entity_registry
+from utils import LabeledArray, PrettyTable
 
 
 class AlignOther(EvaluableExpression):
@@ -28,8 +29,6 @@ class AlignOther(EvaluableExpression):
         self.target_expressions = expressions
         self.filter_expr = filter
         self.need_expr = need
-        #XXX: make orderby optional? (defaults to 'id'? -- not sure it makes
-        # sense)
         self.orderby_expr = orderby
         self.past_error = None
 
@@ -67,6 +66,7 @@ class AlignOther(EvaluableExpression):
 
     def evaluate(self, context):
         need = expr_eval(self.need_expr, context)
+        assert isinstance(need, LabeledArray)
         if self.target_expressions is None:
             self.target_expressions = [Variable(name)
                                        for name in need.dim_names]
@@ -93,9 +93,45 @@ class AlignOther(EvaluableExpression):
                                   if isinstance(col, np.ndarray) and col.shape
                                   else [col]
                                 for col in target_columns]
+
             link_column = link_column[target_filter_value]
         else:
             filtered_columns = target_columns
+
+        # compute labels for filtered columns
+        # -----------------------------------
+        # We can't use _group_labels_light because group_labels assigns labels
+        # on a first come, first served basis, not using the order they are
+        # in pvalues
+        fcols_labels = []
+        filtered_length = len(filtered_columns[0])
+        unaligned = np.zeros(filtered_length, dtype=bool)
+        for fcol, pvalues in zip(filtered_columns, need.pvalues):
+            pvalues_index = dict((v, i) for i, v in enumerate(pvalues))
+            fcol_labels = np.empty(filtered_length, dtype=np.int32)
+            for i in range(filtered_length):
+                value_idx = pvalues_index.get(fcol[i], -1)
+                if value_idx == -1:
+                    unaligned[i] = True
+                fcol_labels[i] = value_idx
+            fcols_labels.append(fcol_labels)
+
+        num_unaligned = np.sum(unaligned)
+        if num_unaligned:
+            # further filter label columns and link_column
+            validlabels = ~unaligned
+            fcols_labels = [labels[validlabels] for labels in fcols_labels]
+            link_column = link_column[validlabels]
+
+            # display who are the evil ones
+            print("Warning: %d individual(s) do not fit in any alignment "
+                  "category" % num_unaligned)
+            unaligned_cols = [col[unaligned] for col in filtered_columns]
+            print(PrettyTable([self.target_expressions] +
+                              [[col[row] for col in unaligned_cols]
+                               for row in range(num_unaligned)]))
+        else:
+            del unaligned
 
         numcol = len(target_columns)
         col_range = range(numcol)
@@ -115,6 +151,15 @@ class AlignOther(EvaluableExpression):
             assert np.all(source_ids == missing_int)
             source_rows = []
 
+        # filtered_columns are not filtered further on invalid labels
+        # (num_unaligned) but this is not a problem since those will be
+        # ignored by GroupBy anyway.
+        groupby_expr = GroupBy(*filtered_columns, pvalues=need.pvalues)
+        # target_context is not technically correct, as it is not "filtered"
+        # while filtered_columns are, but since we don't use the context
+        # "columns", it does not matter.
+        num_candidates = expr_eval(groupby_expr, target_context)
+
         # fetch the list of linked individuals for each local individual.
         # e.g. the list of person ids for each household
         hh = np.empty(context_length(context), dtype=object)
@@ -125,33 +170,17 @@ class AlignOther(EvaluableExpression):
         # Even though this is highly sub-optimal, the time taken to create
         # those lists of ids is very small compared to the total time taken
         # for align_other (0.2s vs 4.26), so I shouldn't care too much about
-        # it for now
-        #XXX: we might want to do this in two passes, like in
-        # groupby._group_labels (in the first pass, only count the number of
-        # different values) so that we can create arrays directly
-        #XXX: we might want to use group_labels directly
-        #XXX: we could use partition_nd on link_column.
-        # It would be a bit overkill because in this case we know the
-        # possible values in advance but, in practice, creating a version
-        # of partition_nd with known labels would only save one "if"
-        # per object and compared to the hash lookup, it is probably a
-        # very small gain. However, a version of partition_nd with known
-        # labels *as* a ndarray (ala id_to_rownum) might be worth it.
+        # it for now.
 
-        # target_row is an index valid for *filtered* columns !
+        # target_row is an index valid for *filtered/label* columns !
         for target_row, source_row in enumerate(source_rows):
             if source_row == -1:
                 continue
             hh[source_row].append(target_row)
 
-        # If need does not specify values present in filtered_columns, they
-        # will simply be ignored (at least, they should). Though, we could
-        # print a warning in that case in partition_nd.
-        groupby_expr = GroupBy(*filtered_columns, pvalues=need.pvalues)
-        # target_context is not technically correct, as it is not "filtered"
-        # while filtered_columns are, but since we don't use the context
-        # "columns", it does not matter.
-        num_candidates = expr_eval(groupby_expr, target_context)
+        # need is a LabeledArray, but we don't need the extra functionality
+        # from this point on
+        need = np.asarray(need)
 
         # handle the "fractional people problem"
         int_need = need.astype(int)
@@ -160,18 +189,20 @@ class AlignOther(EvaluableExpression):
 
         # the sum of fractional objects number of extra objects we want aligned
         extra_wanted = int(round(np.sum(frac_need)))
-        # search cutoff that yield np.sum(frac_need >= cutoff) == extra_wanted
-        sorted_frac_need = frac_need.flatten()
-        sorted_frac_need.sort()
-        cutoff = sorted_frac_need[-extra_wanted]
-        extra = frac_need >= cutoff
-        if np.sum(extra) > extra_wanted:
-            # This case can only happen when several bins have the same
-            # frac_need. In this case we could try to be even closer to our
-            # target by randomly selecting X out of the Y bins which have a
-            # frac_need equal to the cutoff.
-            assert np.sum(frac_need == cutoff) > 1
-        need += extra
+        if extra_wanted:
+            # search cutoff that yield
+            # np.sum(frac_need >= cutoff) == extra_wanted
+            sorted_frac_need = frac_need.flatten()
+            sorted_frac_need.sort()
+            cutoff = sorted_frac_need[-extra_wanted]
+            extra = frac_need >= cutoff
+            if np.sum(extra) > extra_wanted:
+                # This case can only happen when several bins have the same
+                # frac_need. In this case we could try to be even closer to our
+                # target by randomly selecting X out of the Y bins which have a
+                # frac_need equal to the cutoff.
+                assert np.sum(frac_need == cutoff) > 1
+            need += extra
 
         # another, much simpler, option to handle fractional people is to
         # always use 0.5 as a cutoff point:
@@ -181,12 +212,14 @@ class AlignOther(EvaluableExpression):
 #        int_need = need.astype(int)
 #        frac_need = need - int_need
 #        need = int_need + (np.random.rand(need.shape) < frac_need)
-        print "need", np.sum(need)
+
+        print "total needed", need.sum()
 
         if self.past_error is not None:
             print "adding %d individuals from last period error" \
                   % np.sum(self.past_error)
             need += self.past_error
+            print "total needed", need.sum()
 
         still_needed = need.copy()
         still_available = num_candidates.copy()
@@ -201,7 +234,6 @@ class AlignOther(EvaluableExpression):
         still_needed_by_sex = need.sum(axis=age_axis)
         print "needed by sex", still_needed_by_sex
         still_needed_total = need.sum()
-        print "total needed", still_needed_total
 
         sorted_indices = orderby.argsort()[::-1]
 
@@ -218,18 +250,12 @@ class AlignOther(EvaluableExpression):
             if num_persons_in_hh == 0:
                 continue
 
-            #FIXME: we need to store the indices of the values, not the values
-            # themselves. These indices should be consistent with the "need"
-            # and "num_candidates" matrices (and all their derived matrices:
-            # rel_need, unfillable_bins, ...). In our current example, this is
-            # luckily the same thing because age starts at 0 and has no gaps
-            # in values
             persons_in_hh = tuple(np.empty(num_persons_in_hh, dtype=int)
                                   for _ in col_range)
             prange = range(num_persons_in_hh)
-            for hh_col, fcol in zip(persons_in_hh, filtered_columns):
+            for hh_col, fcol_labels in zip(persons_in_hh, fcols_labels):
                 for i in prange:
-                    hh_col[i] = fcol[persons_in_hh_indices[i]]
+                    hh_col[i] = fcol_labels[persons_in_hh_indices[i]]
 
             # Keep the highest relative need index for the family
             hh_rel_need = np.nanmax(rel_need[persons_in_hh])
@@ -238,7 +264,7 @@ class AlignOther(EvaluableExpression):
                 #FIXME: we assume sex is the first dimension
                 gender = persons_in_hh[0]
                 sex_counts = np.bincount(gender, minlength=2)
-                if np.any(still_needed_by_sex - sex_counts <= 0):
+                if np.any(sex_counts >= still_needed_by_sex):
                     num_excedent = 1
 
             num_unfillable = unfillable_bins[persons_in_hh].sum()
