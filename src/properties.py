@@ -719,7 +719,7 @@ def add_individuals(target_context, children):
                                                  id_to_rownum_tail))
 
 
-#TODO: inherit from FilteredExpression
+#TODO: inherit from FilteredExpression so that I can use _getfilter
 #TODO: allow number to be an expression
 class CreateIndividual(EvaluableExpression):
     def __init__(self, entity_name=None, filter=None, number=None, **kwargs):

@@ -238,18 +238,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if errors == 'carry' and self.past_error is None:
             self.past_error = np.zeros(len(self.need))
 
-        ctx_filter = context.get('__filter__')
-        if self.filter is not None:
-            if ctx_filter is not None:
-                filter_expr = ctx_filter & self.filter
-            else:
-                filter_expr = self.filter
-        else:
-            if ctx_filter is not None:
-                filter_expr = ctx_filter
-            else:
-                filter_expr = None
-
+        filter_expr = self._getfilter(context)
         if filter_expr is not None:
             filter_value = expr_eval(filter_expr, context)
         else:
