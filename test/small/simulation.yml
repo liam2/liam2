@@ -60,7 +60,7 @@ entities:
             dump_csv_h: csv(dump())
             aligned: False
 
-            test_align_other:
+            test_align_link:
                 - num_persons: countlink(persons)
                 # kill empty households 
                 - remove(num_persons == 0)
@@ -85,8 +85,8 @@ entities:
                 - assertTrue(abs(need.sum() - num_migrants) < 1e-4)
 
                 # without filter
-                - aligned_all: align_other(persons, need,
-                                           orderby=countlink(persons))
+                - aligned_all: align_abs(countlink(persons), need,
+                                         link=persons)
                 - qshow(grpcount(aligned_all),
                         grpsum(num_persons, filter=aligned_all))
 
@@ -95,9 +95,9 @@ entities:
                 - qshow(grpcount(is_candidate),
                         grpsum(num_persons, filter=is_candidate))
 
-                - aligned: align_other(persons, need,
-                                       filter=is_candidate,
-                                       orderby=countlink(persons))
+                - aligned: align_abs(countlink(persons), need,
+                                     link=persons,
+                                     filter=is_candidate)
                 - qshow(grpcount(aligned),
                         grpsum(num_persons, filter=aligned))
 
@@ -105,16 +105,16 @@ entities:
 
                 # with pvalues != range(0, X)
                 - bchoice: choice([False, True])
-                - weird_num: choice([5, 25, 45]) #, 65, 85, 105])
+                - weird_num: choice([5, 25, 45, 65, 85, 105])
                 - weird_need: groupby(bchoice, weird_num, expr=10)
                 - show(weird_need)
                 - show('by sex', weird_need.sum(axis=1))
-                - aligned: align_other(persons, weird_need,
+                - alignedX: align_abs(countlink(persons), weird_need,
+                                       link=persons,
                                        filter=is_candidate,
-                                       orderby=countlink(persons),
                                        expressions=[gender, 5 + trunc(age / 20) * 20])
-                - qshow(grpcount(aligned),
-                        grpsum(num_persons, filter=aligned))
+                - qshow(grpcount(alignedX),
+                        grpsum(num_persons, filter=alignedX))
 
 
     person:
@@ -460,7 +460,12 @@ entities:
                 - num_aligned: grpcount(int_aligned)
                 - num_aligned_women: grpcount(int_aligned and not gender)
                 - num_aligned_men: grpcount(int_aligned and gender)
-
+                - qshow(num_aligned)
+                - qshow(num_aligned_women)
+                - qshow(num_aligned_men)
+                - qshow(num_all)
+                - qshow(num_men)
+                - qshow(num_women)
                 - assertTrue(num_aligned_women - 0.1 * num_women < 1.0)
                 - assertTrue(num_aligned_men - 0.2 * num_men < 1.0)
                 - assertEqual(num_aligned_women + num_aligned_men, num_aligned)
@@ -702,7 +707,7 @@ entities:
                              <=
                              grpmin(age, filter=not gender and int_aligned))
 
-            check_align_other:
+            check_align_link:
                 - show(groupby(age, gender, filter=household.aligned))
 #                - clone_id: clone(household.aligned,
 #                                  hh_id=household.clone_id)
@@ -1377,9 +1382,9 @@ simulation:
                    test_align,
                    test_align_abs,
                    ]
-        - household: [test_align_other]
+        - household: [test_align_link]
         - person: [
-                   check_align_other,
+                   check_align_link,
                    test_logit_regr,
                    test_cont_regr,
                    test_log_regr,

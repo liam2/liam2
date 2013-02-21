@@ -1,6 +1,5 @@
 from __future__ import division
 
-import re
 import ast
 
 from expr import add_context, Variable
@@ -8,7 +7,6 @@ from expr import add_context, Variable
 
 import expr
 import alignment
-import align_other
 import groupby
 import matching
 import properties
@@ -18,7 +16,7 @@ import links
 import tfunc
 
 functions = {}
-for module in (expr, alignment, align_other, groupby, matching, properties,
+for module in (expr, alignment, groupby, matching, properties,
                actions, regressions, links, tfunc):
     functions.update(module.functions)
 

@@ -6,12 +6,17 @@ import os
 import numpy as np
 
 import config
-from expr import Expr, Variable, expr_eval, collect_variables, traverse_expr
-from context import context_length
-from utils import PrettyTable, LabeledArray
+from align_link import align_link_nd
+from context import context_length, EntityContext
+from expr import (Expr, Variable, expr_eval, collect_variables, traverse_expr,
+                  missing_values)
+from groupby import GroupBy
+from links import Link, LinkValue
+from partition import partition_nd, filter_to_indices
 from properties import FilteredExpression
 from importer import load_ndarray
-from partition import partition_nd, filter_to_indices
+from registry import entity_registry
+from utils import PrettyTable, LabeledArray
 
 
 def kill_axis(axis_name, value, expressions, possible_values, need):
@@ -42,8 +47,9 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
 
 
 def align_get_indices_nd(groups, need, filter_value, score,
-                         take_filter=None, leave_filter=None,
-                         past_error=None):
+                         take_filter=None, leave_filter=None):
+    assert isinstance(need, np.ndarray) and \
+           issubclass(need.dtype.type, np.integer)
     assert score is None or isinstance(score, (bool, int, float, np.ndarray))
 
     if filter_value is not None:
@@ -87,16 +93,7 @@ def align_get_indices_nd(groups, need, filter_value, score,
     total_affected = 0
     total_indices = []
 
-    #TODO: add other options to handle fractional persons
-    int_need = need.astype(int)
-    u = np.random.uniform(size=need.shape)
-    actual_need = int_need + (u < need - int_need)
-    if past_error is not None:
-        print("adding %d individuals from last period error"
-              % np.sum(past_error))
-        need += past_error
-
-    for members_indices, group_need in izip(groups, actual_need.flat):
+    for members_indices, group_need in izip(groups, need.flat):
         if len(members_indices):
             affected = group_need
             total_affected += affected
@@ -161,7 +158,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
     def __init__(self, score, need,
                  filter=None, take=None, leave=None,
                  expressions=None, possible_values=None,
-                 errors='default'):
+                 errors='default', frac_need='uniform',
+                 link=None):
         super(AlignmentAbsoluteValues, self).__init__(score, filter)
 
         if possible_values is not None:
@@ -195,8 +193,16 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         self.take_filter = take
         self.leave_filter = leave
+
         self.errors = errors
         self.past_error = None
+
+        self.frac_need = frac_need
+        if frac_need not in ('uniform', 'cutoff', 'round'):
+            raise Exception("frac_need should be one of: 'uniform', 'cutoff' "
+                            "or 'round'")
+
+        self.link = link
 
     def traverse(self, context):
         for node in FilteredExpression.traverse(self, context):
@@ -204,6 +210,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
         for expr in self.expressions:
             for node in traverse_expr(expr, context):
                 yield node
+        for node in traverse_expr(self.need, context):
+            yield node
         for node in traverse_expr(self.take_filter, context):
             yield node
         for node in traverse_expr(self.leave_filter, context):
@@ -212,9 +220,10 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
     def collect_variables(self, context):
         variables = FilteredExpression.collect_variables(self, context)
-        if self.expressions:
+        if self.expressions and self.link is None:
             variables |= set.union(*[collect_variables(expr, context)
                                      for expr in self.expressions])
+        variables |= collect_variables(self.need, context)
         variables |= collect_variables(self.take_filter, context)
         variables |= collect_variables(self.leave_filter, context)
         return variables
@@ -228,31 +237,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
         self.possible_values = array.pvalues
         self.need = array
 
-    def evaluate(self, context):
-        scores = expr_eval(self.expr, context)
-
-        errors = self.errors
-        if errors == 'default':
-            errors = context.get('__on_align_error__')
-
-        if errors == 'carry' and self.past_error is None:
-            self.past_error = np.zeros(len(self.need))
-
-        filter_expr = self._getfilter(context)
-        if filter_expr is not None:
-            filter_value = expr_eval(filter_expr, context)
-        else:
-            filter_value = None
-
-        take_filter = expr_eval(self.take_filter, context) \
-                      if self.take_filter is not None else None
-        leave_filter = expr_eval(self.leave_filter, context) \
-                       if self.leave_filter is not None \
-                       else None
-
+    def _eval_need(self, context):
         expressions = self.expressions
         possible_values = self.possible_values
-
         if isinstance(self.need, list):
             need = np.array([expr_eval(e, context) for e in self.need])
         elif isinstance(self.need, Expr):
@@ -266,14 +253,10 @@ class AlignmentAbsoluteValues(FilteredExpression):
                 if not possible_values:
                     possible_values = need.pvalues
         else:
-            assert isinstance(self.need, np.ndarray)
             need = self.need
-        assert len(expressions) == len(possible_values)
 
-        if filter_value is not None:
-            num_to_align = np.sum(filter_value)
-        else:
-            num_to_align = context_length(context)
+        assert isinstance(need, np.ndarray)
+        assert len(expressions) == len(possible_values)
 
         if 'period' in [str(e) for e in expressions]:
             period = context['period']
@@ -291,6 +274,91 @@ class AlignmentAbsoluteValues(FilteredExpression):
 #                kill_axis(str(expr), value, expressions, possible_values,
 #                          need)
 
+        return need, expressions, possible_values
+
+    def _handle_frac_need(self, need):
+        # handle the "fractional people problem"
+        if not issubclass(need.dtype.type, np.integer):
+            if self.frac_need == 'uniform':
+                int_need = need.astype(int)
+                u = np.random.uniform(size=need.shape)
+                need = int_need + (u < need - int_need)
+            elif self.frac_need == 'cutoff':
+                int_need = need.astype(int)
+                frac_need = need - int_need
+                need = int_need
+
+                # the sum of fractional objects number of extra objects we want
+                # aligned
+                extra_wanted = int(round(np.sum(frac_need)))
+                if extra_wanted:
+                    # search cutoff that yield
+                    # sum(frac_need >= cutoff) == extra_wanted
+                    sorted_frac_need = frac_need.flatten()
+                    sorted_frac_need.sort()
+                    cutoff = sorted_frac_need[-extra_wanted]
+                    extra = frac_need >= cutoff
+                    if np.sum(extra) > extra_wanted:
+                        # This case can only happen when several bins have the
+                        # same frac_need. In this case we could try to be even
+                        # closer to our target by randomly selecting X out of
+                        # the Y bins which have a frac_need equal to the
+                        # cutoff.
+                        assert np.sum(frac_need == cutoff) > 1
+                    need += extra
+            elif self.frac_need == 'round':
+                # always use 0.5 as a cutoff point
+                need = (need + 0.5).astype(int)
+
+        assert issubclass(need.dtype.type, np.integer)
+        return need
+
+    def _add_past_error(self, need, context):
+        errors = self.errors
+        if errors == 'default':
+            errors = context.get('__on_align_error__')
+
+        if errors == 'carry' and self.past_error is None:
+            self.past_error = np.zeros(len(self.need), dtype=int)
+
+        if self.past_error is not None:
+            print("adding %d individuals from last period error"
+                  % np.sum(self.past_error))
+            need += self.past_error
+#            print("total needed", need.sum())
+
+        return need
+
+    def _display_unaligned(self, expressions, ids, columns, unaligned):
+        print("Warning: %d individual(s) do not fit in any alignment "
+              "category" % np.sum(unaligned))
+        header = ['id'] + [str(e) for e in expressions]
+        columns = [ids] + columns
+        num_rows = len(ids)
+        print(PrettyTable([header] +
+                          [[col[row] for col in columns]
+                           for row in range(num_rows) if unaligned[row]]))
+
+    def evaluate(self, context):
+        if self.link is None:
+            return self.align_no_link(context)
+        else:
+            return self.align_link(context)
+
+    def align_no_link(self, context):
+        scores = expr_eval(self.expr, context)
+
+        need, expressions, possible_values = self._eval_need(context)
+
+        filter_value = expr_eval(self._getfilter(context), context)
+        take_filter = expr_eval(self.take_filter, context)
+        leave_filter = expr_eval(self.leave_filter, context)
+
+        if filter_value is not None:
+            num_to_align = np.sum(filter_value)
+        else:
+            num_to_align = context_length(context)
+
         if expressions:
             # retrieve the columns we need to work with
             columns = [expr_eval(expr, context) for expr in expressions]
@@ -306,29 +374,151 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         # the sum is not necessarily equal to len(a), because some individuals
         # might not fit in any group (eg if some alignment data is missing)
-        num_aligned = sum(len(g) for g in groups)
-        if num_aligned < num_to_align:
+        if sum(len(g) for g in groups) < num_to_align:
+            unaligned = np.ones(num_to_align, dtype=bool)
             if filter_value is not None:
-                to_align = set(filter_to_indices(filter_value))
-            else:
-                to_align = set(xrange(num_to_align))
-            aligned = set()
+                unaligned[~filter_value] = False
             for member_indices in groups:
-                aligned |= set(member_indices)
-            unaligned = to_align - aligned
-            print("Warning: %d individual(s) do not fit in any alignment "
-                  "category" % len(unaligned))
-            print(PrettyTable([['id'] + expressions] +
-                              [[col[row] for col in [context['id']] + columns]
-                               for row in unaligned]))
+                unaligned[member_indices] = False
+            self._display_unaligned(expressions, context['id'], columns,
+                                    unaligned)
 
         need = need * self._get_need_correction(groups, possible_values)
+        need = self._handle_frac_need(need)
+        need = self._add_past_error(need, context)
         aligned = \
             align_get_indices_nd(groups, need, filter_value, scores,
-                                 take_filter, leave_filter,
-                                 self.past_error)
+                                 take_filter, leave_filter)
 
         return {'values': True, 'indices': aligned}
+
+    #TODO: somehow merge these two functions with LinkExpression or move them
+    # to the Link class
+    def target_entity(self, context):
+        return entity_registry[self.link._target_entity]
+
+    def target_context(self, context):
+        target_entity = self.target_entity(context)
+        return EntityContext(target_entity,
+                             {'period': context['period'],
+                             '__globals__': context['__globals__']})
+
+    def align_link(self, context):
+        scores = expr_eval(self.expr, context)
+
+        need, expressions, possible_values = self._eval_need(context)
+        need = self._handle_frac_need(need)
+        need = self._add_past_error(need, context)
+
+        target_context = self.target_context(context)
+        target_columns = [expr_eval(e, target_context) for e in expressions]
+        # this is a one2many, so the link column is on the target side
+        link_column = expr_eval(Variable(self.link._link_field),
+                                target_context)
+
+        filter_expr = self._getfilter(context)
+        if filter_expr is not None:
+            reverse_link = Link("reverse", "many2one", self.link._link_field,
+                                context['__entity__'].name)
+            target_filter = LinkValue(reverse_link, filter_expr, False)
+            target_filter_value = expr_eval(target_filter, target_context)
+
+            # It is often not a good idea to pre-filter columns like this
+            # because we loose information about "indices", but in this case,
+            # it is fine, because we do not need that information afterwards.
+            filtered_columns = [col[target_filter_value]
+                                  if isinstance(col, np.ndarray) and col.shape
+                                  else [col]
+                                for col in target_columns]
+
+            link_column = link_column[target_filter_value]
+        else:
+            filtered_columns = target_columns
+            target_filter_value = None
+
+        # compute labels for filtered columns
+        # -----------------------------------
+        # We can't use _group_labels_light because group_labels assigns labels
+        # on a first come, first served basis, not using the order they are
+        # in pvalues
+        fcols_labels = []
+        filtered_length = len(filtered_columns[0])
+        unaligned = np.zeros(filtered_length, dtype=bool)
+        for fcol, pvalues in zip(filtered_columns, need.pvalues):
+            pvalues_index = dict((v, i) for i, v in enumerate(pvalues))
+            fcol_labels = np.empty(filtered_length, dtype=np.int32)
+            for i in range(filtered_length):
+                value_idx = pvalues_index.get(fcol[i], -1)
+                if value_idx == -1:
+                    unaligned[i] = True
+                fcol_labels[i] = value_idx
+            fcols_labels.append(fcol_labels)
+
+        num_unaligned = np.sum(unaligned)
+        if num_unaligned:
+            # further filter label columns and link_column
+            validlabels = ~unaligned
+            fcols_labels = [labels[validlabels] for labels in fcols_labels]
+            link_column = link_column[validlabels]
+
+            # display who are the evil ones
+            ids = target_context['id']
+            if target_filter_value is not None:
+                filtered_ids = ids[target_filter_value]
+            else:
+                filtered_ids = ids
+            self._display_unaligned(expressions, filtered_ids,
+                                    filtered_columns, unaligned)
+        else:
+            del unaligned
+
+        id_to_rownum = context.id_to_rownum
+        missing_int = missing_values[int]
+        source_ids = link_column
+
+        if len(id_to_rownum):
+            source_rows = id_to_rownum[source_ids]
+            # filter out missing values: those where the value of the link
+            # points to nowhere (-1)
+            #XXX: use np.putmask(source_rows, source_ids == missing_int,
+            #                    missing_int)
+            source_rows[source_ids == missing_int] = missing_int
+        else:
+            assert np.all(source_ids == missing_int)
+            source_rows = []
+
+        # filtered_columns are not filtered further on invalid labels
+        # (num_unaligned) but this is not a problem since those will be
+        # ignored by GroupBy anyway.
+        groupby_expr = GroupBy(*filtered_columns, pvalues=possible_values)
+
+        # target_context is not technically correct, as it is not "filtered"
+        # while filtered_columns are, but since we don't use the context
+        # "columns", it does not matter.
+        num_candidates = expr_eval(groupby_expr, target_context)
+
+        # fetch the list of linked individuals for each local individual.
+        # e.g. the list of person ids for each household
+        hh = np.empty(context_length(context), dtype=object)
+        # we can't use .fill([]) because it reuses the same list for all hh
+        for i in range(len(hh)):
+            hh[i] = []
+
+        # Even though this is highly sub-optimal, the time taken to create
+        # those lists of ids is very small compared to the total time taken
+        # for align_other (0.2s vs 4.26), so I shouldn't care too much about
+        # it for now.
+
+        # target_row is an index valid for *filtered/label* columns !
+        for target_row, source_row in enumerate(source_rows):
+            if source_row == -1:
+                continue
+            hh[source_row].append(target_row)
+
+        aligned_indices, error = \
+            align_link_nd(scores, need, num_candidates, hh, fcols_labels)
+        self.past_error = error
+        return {'values': True, 'indices': aligned_indices}
 
     def _get_need_correction(self, groups, possible_values):
         return 1
@@ -342,8 +532,9 @@ class Alignment(AlignmentAbsoluteValues):
 
     def __init__(self, score=None, proportions=None,
                  filter=None, take=None, leave=None,
-                 expressions=None, possible_values=None, 
-                 errors='default', fname=None):
+                 expressions=None, possible_values=None,
+                 errors='default', frac_need='uniform',
+                 fname=None):
 
         if possible_values is not None:
             if expressions is None or len(possible_values) != len(expressions):
@@ -362,7 +553,7 @@ class Alignment(AlignmentAbsoluteValues):
         super(Alignment, self).__init__(score, proportions,
                                         filter, take, leave,
                                         expressions, possible_values,
-                                        errors)
+                                        errors, frac_need)
 
     def _get_need_correction(self, groups, possible_values):
         data = np.array([len(group) for group in groups])
