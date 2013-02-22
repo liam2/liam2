@@ -46,7 +46,7 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
     return expressions, possible_values, need
 
 
-def align_get_indices_nd(groups, need, filter_value, score,
+def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                          take_filter=None, leave_filter=None):
     assert isinstance(need, np.ndarray) and \
            issubclass(need.dtype.type, np.integer)
@@ -91,8 +91,8 @@ def align_get_indices_nd(groups, need, filter_value, score,
     total_underflow = 0
     total_overflow = 0
     total_affected = 0
-    total_indices = []
 
+    aligned = np.zeros(ctx_length, dtype=bool)
     for members_indices, group_need in izip(groups, need.flat):
         if len(members_indices):
             affected = group_need
@@ -102,7 +102,7 @@ def align_get_indices_nd(groups, need, filter_value, score,
                 group_always = np.intersect1d(members_indices, take_indices,
                                               assume_unique=True)
                 num_always = len(group_always)
-                total_indices.extend(group_always)
+                aligned[group_always] = True
             else:
                 num_always = 0
 
@@ -120,8 +120,8 @@ def align_get_indices_nd(groups, need, filter_value, score,
                         group_maybe_indices[sorted_local_indices]
                 else:
                     # if the score expression is a constant, we don't need to
-                    # sort indices. In that case, the alignment will take
-                    # the last individuals created first (highest id).
+                    # sort indices. In that case, the alignment will first take
+                    # the individuals created last (highest id).
                     sorted_global_indices = group_maybe_indices
 
                 # maybe_to_take is always > 0
@@ -132,14 +132,15 @@ def align_get_indices_nd(groups, need, filter_value, score,
                 underflow = maybe_to_take - len(indices_to_take)
                 if underflow > 0:
                     total_underflow += underflow
-                total_indices.extend(indices_to_take)
+                aligned[indices_to_take] = True
             elif affected < num_always:
                 total_overflow += num_always - affected
+
+    num_aligned = np.sum(aligned)
     # this assertion is only valid in the non weighted case
-    assert len(total_indices) == \
-           total_affected + total_overflow - total_underflow
-    num_aligned = sum(len(g) for g in groups)
-    print(" %d/%d" % (len(total_indices), num_aligned), end=" ")
+    assert num_aligned == total_affected + total_overflow - total_underflow
+    num_partitioned = sum(len(g) for g in groups)
+    print(" %d/%d" % (num_aligned, num_partitioned), end=" ")
     if (take_filter is not None) or (leave_filter is not None):
         print("[take %d, leave %d]" % (take, leave), end=" ")
     if total_underflow:
@@ -147,7 +148,7 @@ def align_get_indices_nd(groups, need, filter_value, score,
     if total_overflow:
         print("OVERFLOW: %d" % total_overflow, end=" ")
 
-    return total_indices
+    return aligned
 
 
 class AlignmentAbsoluteValues(FilteredExpression):
@@ -346,6 +347,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
             return self.align_link(context)
 
     def align_no_link(self, context):
+        ctx_length = context_length(context)
+
         scores = expr_eval(self.expr, context)
 
         need, expressions, possible_values = self._eval_need(context)
@@ -357,7 +360,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if filter_value is not None:
             num_to_align = np.sum(filter_value)
         else:
-            num_to_align = context_length(context)
+            num_to_align = ctx_length
 
         if expressions:
             # retrieve the columns we need to work with
@@ -386,11 +389,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
         need = need * self._get_need_correction(groups, possible_values)
         need = self._handle_frac_need(need)
         need = self._add_past_error(need, context)
-        aligned = \
-            align_get_indices_nd(groups, need, filter_value, scores,
-                                 take_filter, leave_filter)
 
-        return {'values': True, 'indices': aligned}
+        return align_get_indices_nd(ctx_length, groups, need, filter_value,
+                                    scores, take_filter, leave_filter)
 
     #TODO: somehow merge these two functions with LinkExpression or move them
     # to the Link class
@@ -500,7 +501,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # fetch the list of linked individuals for each local individual.
         # e.g. the list of person ids for each household
         hh = np.empty(context_length(context), dtype=object)
-        # we can't use .fill([]) because it reuses the same list for all hh
+        # we can't use .fill([]) because it reuses the same list for all
+        # objects
         for i in range(len(hh)):
             hh[i] = []
 
@@ -515,10 +517,10 @@ class AlignmentAbsoluteValues(FilteredExpression):
                 continue
             hh[source_row].append(target_row)
 
-        aligned_indices, error = \
+        aligned, error = \
             align_link_nd(scores, need, num_candidates, hh, fcols_labels)
         self.past_error = error
-        return {'values': True, 'indices': aligned_indices}
+        return aligned
 
     def _get_need_correction(self, groups, possible_values):
         return 1

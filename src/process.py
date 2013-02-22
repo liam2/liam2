@@ -74,17 +74,6 @@ class Assignment(Process):
         if self.name is None:
             raise Exception('trying to store None key')
 
-        if isinstance(result, dict):
-            indices = result.get('indices')
-            #AFAIK, this feature is not currently used anywhere, it was
-            # developed for regressions but this solution has problems too
-            filter_values = result.get('filter')
-            assert filter_values is None or indices is None
-            result = result['values']
-        else:
-            indices = None
-            filter_values = None
-
         if isinstance(result, np.ndarray):
             res_type = result.dtype.type
         else:
@@ -108,32 +97,8 @@ class Assignment(Process):
                                  self.predictor,
                                  idx_to_type[target_type_idx].__name__))
 
-        if indices is None and filter_values is None:
-            # the whole column is updated
-            target[self.predictor] = result
-        else:
-            if isinstance(target, np.ndarray):
-                hasfield = self.predictor in target.dtype.fields
-            else:
-                hasfield = self.predictor in target
-
-            if not hasfield:
-                assert self.kind is None, \
-                       "found a missing field which is not a temporary " \
-                       "variable"
-                #XXX: I'm not sure we should do this at all and in any case
-                # this step should be delayed further because it could
-                # be unnecessary.
-                #FIXME: zeros??? arrgl... should be missing value...
-                target[self.predictor] = np.zeros(len(self.entity.array),
-                                                  dtype=res_type)
-            #XXX: I'm not sure this feature is a good idea after all, as it
-            # makes for a confusing behaviour. It is only used in align() and
-            # align_other()
-            if indices is not None:
-                np.put(target[self.predictor], indices, result)
-            elif filter_values is not None:
-                np.putmask(target[self.predictor], filter_values, result)
+        # the whole column is updated
+        target[self.predictor] = result
 
     def expressions(self):
         if isinstance(self.expr, Expr):

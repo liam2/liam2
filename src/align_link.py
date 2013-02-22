@@ -27,8 +27,8 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels):
     still_needed_total = need.sum()
 
     col_range = range(len(fcols_labels))
+    aligned = np.zeros(len(hh), dtype=bool)
     sorted_indices = scores.argsort()[::-1]
-    aligned_indices = []
     for sorted_idx in sorted_indices:
         if still_needed_total <= 0:
             print("total reached")
@@ -72,7 +72,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels):
         # Run through the random selection process, using rel_need as the
         # probability
         if random.random() < hh_rel_need:
-            aligned_indices.append(sorted_idx)
+            aligned[sorted_idx] = True
 
             # update all counters
             still_needed_total -= num_persons_in_hh
@@ -108,4 +108,4 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels):
 
                 rel_need[values] = float(sn) / sa
     print("missing %d individuals" % np.sum(still_needed))
-    return aligned_indices, still_needed
+    return aligned, still_needed

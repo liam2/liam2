@@ -109,12 +109,12 @@ entities:
                 - weird_need: groupby(bchoice, weird_num, expr=10)
                 - show(weird_need)
                 - show('by sex', weird_need.sum(axis=1))
-                - alignedX: align_abs(countlink(persons), weird_need,
-                                       link=persons,
-                                       filter=is_candidate,
-                                       expressions=[gender, 5 + trunc(age / 20) * 20])
-                - qshow(grpcount(alignedX),
-                        grpsum(num_persons, filter=alignedX))
+                - aligned: align_abs(countlink(persons), weird_need,
+                                     link=persons,
+                                     filter=is_candidate,
+                                     expressions=[gender, 5 + trunc(age / 20) * 20])
+                - qshow(grpcount(aligned),
+                        grpsum(num_persons, filter=aligned))
 
 
     person:
