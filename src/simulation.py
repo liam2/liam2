@@ -245,6 +245,9 @@ class Simulation(object):
 #        for entity in input_dataset:
 #            indexed_array = buildArrayForPeriod(entity)
 
+        # tell numpy we do not want warnings for x/0 and 0/0
+        np.seterr(divide='ignore', invalid='ignore')
+
         process_time = defaultdict(float)
         period_objects = {}
 
