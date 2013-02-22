@@ -820,7 +820,7 @@ class CreateIndividual(EvaluableExpression):
             if source_entity is target_entity:
                 extra_bools = np.zeros(num_birth, dtype=bool)
                 to_give_birth = np.concatenate((to_give_birth, extra_bools))
-            # Note that np.place is a tad faster, but is currently buggy when
+            # Note that np.place is a bit faster, but is currently buggy when
             # working with columns of structured arrays.
             # See http://projects.scipy.org/numpy/ticket/1869
             result[to_give_birth] = children['id']
