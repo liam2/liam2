@@ -86,7 +86,7 @@ entities:
 
                 # without filter
                 - aligned_all: align_abs(countlink(persons), need,
-                                         link=persons)
+                                         link=persons, secondary_axis=gender)
                 - qshow(grpcount(aligned_all),
                         grpsum(num_persons, filter=aligned_all))
 
@@ -96,7 +96,7 @@ entities:
                         grpsum(num_persons, filter=is_candidate))
 
                 - aligned: align_abs(countlink(persons), need,
-                                     link=persons,
+                                     link=persons, secondary_axis=gender,
                                      filter=is_candidate)
                 - qshow(grpcount(aligned),
                         grpsum(num_persons, filter=aligned))
@@ -110,7 +110,7 @@ entities:
                 - show(weird_need)
                 - show('by sex', weird_need.sum(axis=1))
                 - aligned: align_abs(countlink(persons), weird_need,
-                                     link=persons,
+                                     link=persons, secondary_axis=0,
                                      filter=is_candidate,
                                      expressions=[gender, 5 + trunc(age / 20) * 20])
                 - qshow(grpcount(aligned),

@@ -5,7 +5,8 @@ import random
 import numpy as np
 
 
-def align_link_nd(scores, need, num_candidates, hh, fcols_labels):
+def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
+                  secondary_axis=None):
     # need and num_candidates are LabeledArray, but we don't need the extra
     # functionality from this point on
     need = np.asarray(need)
@@ -20,10 +21,17 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels):
     unfillable_bins = still_needed > still_available
     overfilled_bins = still_needed <= 0
 
-    #FIXME: add an argument to specify which column(s) to sum on
-    age_axis = 1
-    still_needed_by_sex = need.sum(axis=age_axis)
-    print("needed by sex", still_needed_by_sex)
+    if secondary_axis is not None:
+        assert secondary_axis < need.ndim
+        other_axes = range(need.ndim)
+        other_axes.pop(secondary_axis)
+        other_axes = tuple(other_axes)
+        # requires np 1.7+
+        still_needed_by_sec_axis = need.sum(axis=other_axes)
+        print("needed by secondary axis", still_needed_by_sec_axis)
+    else:
+        still_needed_by_sec_axis = None
+
     still_needed_total = need.sum()
 
     col_range = range(len(fcols_labels))
@@ -50,14 +58,18 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels):
 
         # Keep the highest relative need index for the family
         hh_rel_need = np.nanmax(rel_need[persons_in_hh])
+
+        # count number of objects in the family belonging to over-filled bins
         num_excedent = overfilled_bins[persons_in_hh].sum()
-        if num_excedent == 0:
-            #FIXME: we assume sex is the first dimension
-            gender = persons_in_hh[0]
-            sex_counts = np.bincount(gender, minlength=2)
-            if np.any(sex_counts >= still_needed_by_sex):
+        if secondary_axis is not None and num_excedent == 0:
+            hh_axis_values = persons_in_hh[secondary_axis]
+            axis_num_pvalues = len(still_needed_by_sec_axis)
+            hh_counts_by_sec_axis = np.bincount(hh_axis_values,
+                                                minlength=axis_num_pvalues)
+            if np.any(hh_counts_by_sec_axis >= still_needed_by_sec_axis):
                 num_excedent = 1
 
+        # count number of objects in the family belonging to unfillable bins
         num_unfillable = unfillable_bins[persons_in_hh].sum()
 
         # if either excedent or unfillable are not zero, adjust rel_need:
@@ -77,7 +89,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels):
             # update all counters
             still_needed_total -= num_persons_in_hh
 
-            # update grids (only the age/gender present in the family)
+            # update grids (only the bins present in the family)
 
             # Note that we have to loop explicitly on individuals, instead
             # of using xxx[persons_in_hh] += 1 because that syntax does not
@@ -90,9 +102,8 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels):
                 sa = still_available[values] - 1
                 still_available[values] = sa
 
-                #FIXME: we assume sex is the first dimension
-                snbs = still_needed_by_sex[values[0]] - 1
-                still_needed_by_sex[values[0]] = snbs
+                if secondary_axis is not None:
+                    still_needed_by_sec_axis[values[secondary_axis]] -= 1
 
                 # unfillable stays unchanged in this case
                 overfilled_bins[values] = sn <= 0

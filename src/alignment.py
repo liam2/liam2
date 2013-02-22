@@ -160,7 +160,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                  filter=None, take=None, leave=None,
                  expressions=None, possible_values=None,
                  errors='default', frac_need='uniform',
-                 link=None):
+                 link=None, secondary_axis=None):
         super(AlignmentAbsoluteValues, self).__init__(score, filter)
 
         if possible_values is not None:
@@ -204,6 +204,13 @@ class AlignmentAbsoluteValues(FilteredExpression):
                             "or 'round'")
 
         self.link = link
+        if secondary_axis is not None and link is None:
+            raise Exception("the 'secondary_axis' argument is only valid in "
+                            "combination with the 'link' argument")
+        if not isinstance(secondary_axis, (type(None), int, Variable)):
+            raise Exception("'secondary_axis' should be either an integer or "
+                            "an axis name")
+        self.secondary_axis = secondary_axis
 
     def traverse(self, context):
         for node in FilteredExpression.traverse(self, context):
@@ -411,6 +418,24 @@ class AlignmentAbsoluteValues(FilteredExpression):
         need = self._handle_frac_need(need)
         need = self._add_past_error(need, context)
 
+        # handle secondary axis
+        secondary_axis = self.secondary_axis
+        if isinstance(secondary_axis, Expr):
+            axis_name = str(secondary_axis)
+            try:
+                secondary_axis = need.dim_names.index(axis_name)
+            except ValueError:
+                raise ValueError("invalid value for secondary_axis: there is "
+                                 "no axis named '%s' in the need array"
+                                 % axis_name)
+        else:
+            if secondary_axis >= need.ndim:
+                raise Exception("%d is an invalid value for secondary_axis: "
+                                "it should be smaller than the number of "
+                                "dimension of the need array (%d)"
+                                % (secondary_axis, need.ndim))
+
+        # evaluate columns
         target_context = self.target_context(context)
         target_columns = [expr_eval(e, target_context) for e in expressions]
         # this is a one2many, so the link column is on the target side
@@ -518,7 +543,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
             hh[source_row].append(target_row)
 
         aligned, error = \
-            align_link_nd(scores, need, num_candidates, hh, fcols_labels)
+            align_link_nd(scores, need, num_candidates, hh, fcols_labels,
+                          secondary_axis)
         self.past_error = error
         return aligned
 
