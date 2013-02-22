@@ -636,7 +636,8 @@ entities:
                 # the number of alignment categories.
                 - var_aligned: align(fname='al_p_dead_m.csv')
                 - temp_aligned: align(fname='al_p_temp.csv')
-                - expr_aligned: align(fname='al_p_expr.csv')
+                - expr_aligned: align(fname='al_p_dead_m.csv',
+                                      expressions=[age + 1, period])
                 - assertTrue(grpcount(temp_aligned != var_aligned) <= 105)
                 - assertTrue(grpcount(expr_aligned != var_aligned) <= 105)
 
@@ -706,6 +707,32 @@ entities:
                 - assertTrue(grpmax(age, filter=not gender and not int_aligned)
                              <=
                              grpmin(age, filter=not gender and int_aligned))
+
+                # external file
+                # -------------
+                - by_gender: align_abs(0, 'al_p_absolute.csv')
+
+                - assertEqual(grpcount(by_gender), 50)
+                - assertEqual(grpcount(by_gender and not gender), 20)
+                - assertEqual(grpcount(by_gender and gender), 30)
+
+                # external file, overridden expressions
+                # -------------------------------------
+                - by_gender: align_abs(0, 'al_p_absolute.csv',
+                                       expressions=[not gender])
+
+                - assertEqual(grpcount(by_gender), 50)
+                - assertEqual(grpcount(by_gender and not gender), 30)
+                - assertEqual(grpcount(by_gender and gender), 20)
+
+                # external file, overridden possible_values
+                # -----------------------------------------
+                - by_gender: align_abs(0, 'al_p_absolute.csv',
+                                       possible_values=[[True, False]])
+
+                - assertEqual(grpcount(by_gender), 50)
+                - assertEqual(grpcount(by_gender and not gender), 30)
+                - assertEqual(grpcount(by_gender and gender), 20)
 
             check_align_link:
                 - show(groupby(age, gender, filter=household.aligned))

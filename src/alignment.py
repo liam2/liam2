@@ -154,8 +154,6 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
 class AlignmentAbsoluteValues(FilteredExpression):
     func_name = 'align_abs'
 
-#TODO: make it possible to override expressions/pvalues given in
-# the file
     def __init__(self, score, need,
                  filter=None, take=None, leave=None,
                  expressions=None, possible_values=None,
@@ -163,34 +161,30 @@ class AlignmentAbsoluteValues(FilteredExpression):
                  link=None, secondary_axis=None):
         super(AlignmentAbsoluteValues, self).__init__(score, filter)
 
-        if possible_values is not None:
-            if expressions is None or len(possible_values) != len(expressions):
-                raise Exception("align() expressions and possible_values "
-                                "arguments should have the same length")
-
         if isinstance(need, basestring):
-            self.load(need)
+            fpath = os.path.join(config.input_directory, need)
+            need = load_ndarray(fpath, float)
+
+        # need is a single scalar
+        if not isinstance(need, (tuple, list, Expr, np.ndarray)):
+            need = [need]
+
+        # need is a simple list (no expr inside)
+        if isinstance(need, (tuple, list)) and \
+           not any(isinstance(p, Expr) for p in need):
+            need = np.array(need)
+
+        self.need = need
+
+        if expressions is None:
+            expressions = []
+        self.expressions = expressions
+
+        if possible_values is None:
+            possible_values = []
         else:
-            if expressions is None:
-                expressions = []
-
-            self.expressions = [Variable(e) if isinstance(e, basestring) else e
-                                for e in expressions]
-            if possible_values is None:
-                possible_values = []
-            self.possible_values = [np.array(pv) for pv in possible_values]
-
-            # e -> e
-            # v -> array([v])
-            # [v1, v2] -> array([v1, v2])
-            # [e1, e2] -> [e1, e2]
-            if not isinstance(need, (tuple, list, Expr)):
-                need = [need]
-
-            if not any(isinstance(p, Expr) for p in need):
-                self.need = np.array(need)
-            else:
-                self.need = need
+            possible_values = [np.array(pv) for pv in possible_values]
+        self.possible_values = possible_values
 
         self.take_filter = take
         self.leave_filter = leave
@@ -236,35 +230,32 @@ class AlignmentAbsoluteValues(FilteredExpression):
         variables |= collect_variables(self.leave_filter, context)
         return variables
 
-    def load(self, fname):
-        from exprparser import parse
-        fpath = os.path.join(config.input_directory, fname)
-        array = load_ndarray(fpath, float)
-        self.expressions = [parse(expr, autovariables=True)
-                            for expr in array.dim_names]
-        self.possible_values = array.pvalues
-        self.need = array
-
     def _eval_need(self, context):
         expressions = self.expressions
         possible_values = self.possible_values
-        if isinstance(self.need, list):
+        if isinstance(self.need, (tuple, list)):
             need = np.array([expr_eval(e, context) for e in self.need])
         elif isinstance(self.need, Expr):
             need = expr_eval(self.need, context)
+            # need was a *scalar* expr
             if not (isinstance(need, np.ndarray) and need.shape):
                 need = np.array([need])
-            if isinstance(need, LabeledArray):
-                if not expressions:
-                    expressions = [Variable(name)
-                                   for name in need.dim_names]
-                if not possible_values:
-                    possible_values = need.pvalues
         else:
             need = self.need
 
+        if isinstance(need, LabeledArray):
+            if not expressions:
+                expressions = [Variable(name)
+                               for name in need.dim_names]
+            if not possible_values:
+                possible_values = need.pvalues
+
         assert isinstance(need, np.ndarray)
-        assert len(expressions) == len(possible_values)
+
+        if len(expressions) != len(possible_values):
+            raise Exception("align() expressions and possible_values "
+                            "have different length: %d vs %d"
+                            % (len(expressions), len(possible_values)))
 
         if 'period' in [str(e) for e in expressions]:
             period = context['period']
