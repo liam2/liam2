@@ -497,8 +497,6 @@ class AlignmentAbsoluteValues(FilteredExpression):
             source_rows = id_to_rownum[source_ids]
             # filter out missing values: those where the value of the link
             # points to nowhere (-1)
-            #XXX: use np.putmask(source_rows, source_ids == missing_int,
-            #                    missing_int)
             source_rows[source_ids == missing_int] = missing_int
         else:
             assert np.all(source_ids == missing_int)
