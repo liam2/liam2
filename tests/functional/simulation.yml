@@ -97,6 +97,7 @@ entities:
 
                 - aligned: align_abs(countlink(persons), need,
                                      link=persons, secondary_axis=gender,
+                                     errors='carry',
                                      filter=is_candidate)
                 - qshow(grpcount(aligned),
                         grpsum(num_persons, filter=aligned))
