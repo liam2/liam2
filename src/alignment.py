@@ -317,14 +317,13 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if errors == 'default':
             errors = context.get('__on_align_error__')
 
-        if errors == 'carry' and self.past_error is None:
-            self.past_error = np.zeros(len(self.need), dtype=int)
+        if errors == 'carry':
+            if self.past_error is None:
+                self.past_error = np.zeros(need.shape, dtype=int)
 
-        if self.past_error is not None:
             print("adding %d individuals from last period error"
                   % np.sum(self.past_error))
             need += self.past_error
-#            print("total needed", need.sum())
 
         return need
 
