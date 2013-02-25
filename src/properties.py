@@ -301,21 +301,36 @@ class NumpyCreateArray(NumpyProperty):
 
 
 class NumpyAggregate(NumpyProperty):
-    skip_missing = False
+    nan_func = (None,)
+
+    def __init__(self, *args, **kwargs):
+        self.skip_na = kwargs.pop("skip_na", True)
+        NumpyProperty.__init__(self, *args, **kwargs)
 
     def compute(self, func, args, kwargs, filter_value=None):
         # the first argument should be the array to work on ('a')
         assert self.arg_names[0] == 'a'
 
         values, args = args[0], args[1:]
-        if isinstance(values, np.ndarray) and values.shape:
-            if self.skip_missing and filter_value is not None:
-                filter_value &= ispresent(values)
-            elif self.skip_missing:
-                filter_value = ispresent(values)
-            if filter_value is not None:
-                values = values[filter_value]
+        values = np.asanyarray(values)
 
+        usenanfunc = False
+        if (self.skip_na and issubclass(values.dtype.type, np.inexact) and
+            self.nan_func[0] is not None):
+            usenanfunc = True
+            func = self.nan_func[0]
+        if values.shape:
+            if values.ndim == 1:
+                if self.skip_na and not usenanfunc:
+                    if filter_value is not None:
+                        filter_value &= ispresent(values)
+                    else:
+                        filter_value = ispresent(values)
+                if filter_value is not None:
+                    values = values[filter_value]
+            elif values.ndim > 1 and filter_value is not None:
+                raise Exception("filter argument is not supported on arrays "
+                                "with more than 1 dimension")
         return func(values, *args, **kwargs)
 
 
@@ -478,6 +493,7 @@ class Trunc(FunctionExpression):
 class GroupMin(NumpyAggregate):
     func_name = 'grpmin'
     np_func = (np.amin,)
+    nan_func = (np.nanmin,)
     arg_names = ('a', 'axis', 'out')
 
     def dtype(self, context):
@@ -487,6 +503,7 @@ class GroupMin(NumpyAggregate):
 class GroupMax(NumpyAggregate):
     func_name = 'grpmax'
     np_func = (np.amax,)
+    nan_func = (np.nanmax,)
     arg_names = ('a', 'axis', 'out')
 
     def dtype(self, context):
@@ -514,7 +531,6 @@ class GroupStd(NumpyAggregate):
     func_name = 'grpstd'
     np_func = (np.std,)
     arg_names = ('a', 'axis', 'dtype', 'out', 'ddof')
-    skip_missing = True
 
     def dtype(self, context):
         return float
@@ -524,7 +540,6 @@ class GroupMedian(NumpyAggregate):
     func_name = 'grpmedian'
     np_func = (np.median,)
     arg_names = ('a', 'axis', 'out', 'overwrite_input')
-    skip_missing = True
 
     def dtype(self, context):
         return float
@@ -534,7 +549,6 @@ class GroupPercentile(NumpyAggregate):
     func_name = 'grppercentile'
     np_func = (np.percentile,)
     arg_names = ('a', 'q', 'axis', 'out', 'overwrite_input')
-    skip_missing = True
 
     def dtype(self, context):
         return float

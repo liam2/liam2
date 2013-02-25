@@ -1121,6 +1121,27 @@ entities:
                 - avg_bool: grpavg([False, True, True, False])
                 - assertEqual(avg_bool, 0.5)
             
+            test_grpmin:
+                # simple scalars
+                - minscalars: grpmin([2.0, 1.0, 3.0])
+                - assertEqual(minscalars, 1.0)
+
+                # simple column
+                - minage: grpmin(age)
+                - assertEqual(minage, 0)
+
+                # filter
+                - minagefilter: grpmin(age, filter=age >= 10)
+                - assertEqual(minagefilter, 10)
+
+                # with nan
+                - whnan1: grpmin([3.0, nan, 2.0])
+                - assertEqual(whnan1, 2.0)
+
+                # with nan not skipping
+                - whnan2: grpmin([3.0, nan, 2.0], skip_na=False)
+                - assertTrue(whnan2 != whnan2)
+
             test_grpmedian:
                 # scalar (there is not much point but it should not crash)
                 - median_age: grpmedian(age)
@@ -1339,7 +1360,8 @@ entities:
                 - men_prop2: groupby(age, expr=grpcount(gender)) / groupby(age)
                 - assertEqual(men_prop2.dim_names, ['age'])
 
-                - min_count_by_gender: grpmin(by_agegroup_gender, axis=0)  
+                - min_count_by_gender: grpmin(by_agegroup_gender, axis=0)
+                - qshow(min_count_by_gender)
                 - assertEqual(min_count_by_gender.shape, (2,))
                 - assertEqual(min_count_by_gender.dim_names, None)
                 - assertEqual(min_count_by_gender.row_totals, None)
@@ -1435,6 +1457,7 @@ simulation:
                    test_o2m_aggregate,
                    test_grpsum,
                    test_grpavg,
+                   test_grpmin,
                    test_grpmedian,
                    test_grppercentile,
                    test_grpgini,
