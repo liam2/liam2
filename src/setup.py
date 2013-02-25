@@ -13,6 +13,7 @@ ext_modules = [Extension("cpartition", ["cpartition.pyx"],
               ]
 build_ext_options = {}
 
+
 # Add the output directory of build_ext to sys.path so that build_exe finds
 # and copies C extensions
 class my_build_ext(cython_build_ext):
@@ -23,9 +24,9 @@ class my_build_ext(cython_build_ext):
 # cx_freeze options
 build_exe_options = {
     # compress zip archive
-    "compressed": True, 
+    "compressed": True,
     # optimze pyc files (strip docstrings and asserts)
-    "optimize": 2,      
+    "optimize": 2,
     # strip paths in __file__ attributes
     "replace_paths": [("*", "")],
     "excludes": [
