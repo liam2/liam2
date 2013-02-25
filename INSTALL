@@ -24,7 +24,7 @@ Python). If you are on Windows, the easiest way to install them is to use the
 
 Third party packages:
 
-- Numpy 1.6.0 or later (for your version of python): 
+- Numpy 1.7.0 or later (for your version of python): 
   http://sourceforge.net/projects/numpy/files/NumPy/
 
 - PyTables 2.2.1 or later (for your version of python):
