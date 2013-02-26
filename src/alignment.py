@@ -375,7 +375,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # the sum is not necessarily equal to len(a), because some individuals
         # might not fit in any group (eg if some alignment data is missing)
         if sum(len(g) for g in groups) < num_to_align:
-            unaligned = np.ones(num_to_align, dtype=bool)
+            unaligned = np.ones(ctx_length, dtype=bool)
             if filter_value is not None:
                 unaligned[~filter_value] = False
             for member_indices in groups:
