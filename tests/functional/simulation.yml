@@ -461,12 +461,6 @@ entities:
                 - num_aligned: grpcount(int_aligned)
                 - num_aligned_women: grpcount(int_aligned and not gender)
                 - num_aligned_men: grpcount(int_aligned and gender)
-                - qshow(num_aligned)
-                - qshow(num_aligned_women)
-                - qshow(num_aligned_men)
-                - qshow(num_all)
-                - qshow(num_men)
-                - qshow(num_women)
                 - assertTrue(num_aligned_women - 0.1 * num_women < 1.0)
                 - assertTrue(num_aligned_men - 0.2 * num_men < 1.0)
                 - assertEqual(num_aligned_women + num_aligned_men, num_aligned)
@@ -571,6 +565,16 @@ entities:
                                                not none_aligned)
                              <=
                              grpmin(id, filter=not gender and none_aligned))
+
+                # manual alignment with individuals in missing categories
+                # -------------------------------------------------------
+
+                - miss_aligned: align(filter=id < 100,
+                                      expressions=[20 * trunc(age / 20)],
+                                      possible_values=[[0, 20, 60, 80, 100]],
+                                      proportions=[0.1, 0.1, 0.1, 0.1, 0.1])
+                - num_aligned: grpcount(miss_aligned)
+                - assertTrue(num_aligned - 0.1 * num_all < 1.0)
 
                 # alignment with an implicit filter
                 # ---------------------------------
