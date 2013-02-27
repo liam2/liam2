@@ -1073,6 +1073,9 @@ entities:
                 - exprs: csv(grpavg(age), grpgini(age),
                              fname='person_age_aggregates.csv', mode='a')
 
+                # empty groupby
+                - csv(groupby(gender, filter=age > 200))
+
             cleanup: remove(lag(dead))
 
             test_o2m_aggregate: show(grpavg(countlink(children)))
@@ -1272,12 +1275,9 @@ entities:
                 # this is currently broken
 #                - show('groupby scalar', groupby(grpavg(age), gender))
 
-                # with expressions, not only simple columns
+                # grouping by expressions (not only simple columns)
                 - show(groupby(round(logit_score(0.0), 1)))
                 - show('groupby global', groupby(if(gender, 65, WEMRA), gender))
-                - show('groupby with percent when total is 0 (int) => '
-                       'total should be nan',
-                       groupby(age, filter=age > 200, percent=True))
 
                 # with expr=
                 - explicit_count: groupby(gender, expr=grpcount())
@@ -1313,6 +1313,15 @@ entities:
                 # expr=scalar
                 - ten_by_gender: groupby(gender, expr=10)
                 - assertEqual(ten_by_gender, [10, 10])
+
+                # empty result
+                - empty: groupby(gender, filter=age > 200)
+                - show(empty)
+                - assertEqual(empty, [])
+                - empty_percent: groupby(gender, filter=age > 200,
+                                         percent=True)
+                - assertEqual(empty_percent, [])
+                - show(empty_percent)
 
                 # ...
                 - num_persons2_percent: show(groupby(agegroup, gender, percent=True))
@@ -1487,4 +1496,3 @@ simulation:
     start_period: 2002   # first simulated period
     periods: 2
     default_entity: person
-
