@@ -385,9 +385,14 @@ def get_min_width(table, index):
 
 
 def table2str(table, missing):
+    '''table is a list of lists'''
     if not table:
         return ''
-    numcol = len(table[0])
+    numcol = max(len(row) for row in table)
+    # pad rows that have too few columns
+    for row in table:
+        if len(row) < numcol:
+            row.extend([''] * (numcol - len(row)))
     formatted = [[format_value(value, missing) for value in row]
                   for row in table]
     colwidths = [get_col_width(formatted, i) for i in xrange(numcol)]
