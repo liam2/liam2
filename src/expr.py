@@ -240,7 +240,7 @@ class Expr(object):
     def __add__(self, other):
         return Addition('+', self, other)
     def __sub__(self, other):
-        return Substraction('-', self, other)
+        return Subtraction('-', self, other)
     def __mul__(self, other):
         return Multiplication('*', self, other)
     def __div__(self, other):
@@ -271,7 +271,7 @@ class Expr(object):
     def __radd__(self, other):
         return Addition('+', other, self)
     def __rsub__(self, other):
-        return Substraction('-', other, self)
+        return Subtraction('-', other, self)
     def __rmul__(self, other):
         return Multiplication('*', other, self)
     def __rdiv__(self, other):
@@ -682,7 +682,7 @@ class Or(LogicalOp):
     accepted_types = (bool, np.bool_)
 
 
-class Substraction(BinaryOp):
+class Subtraction(BinaryOp):
     neutral_value = 0.0
     overpowering_value = None
     accepted_types = (float,)
