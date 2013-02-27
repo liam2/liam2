@@ -50,6 +50,7 @@ class GroupBy(TableExpression):
         expr_vars = collect_variables(expr, context)
 
         expressions = self.expressions
+        labels = [str(e) for e in expressions]
         columns = [expr_eval(e, context) for e in expressions]
         if self.filter is not None:
             filter_value = expr_eval(self.filter, context)
@@ -68,17 +69,12 @@ class GroupBy(TableExpression):
         if possible_values is None:
             possible_values = [np.unique(col) for col in filtered_columns]
 
-        # we pre-filter columns instead of passing the filter to partition_nd
-        # because it is a bit faster this way and we do not care about the
-        # actual indices in this case
-#FIXME: we DO care about the indices (if expr != grpcount) !!! 
-# we use them in context_subset below
-# It might work if we use filtered_columns as the context in context_subset
-# (and don't forget row_totals & col_totals)
+        # We pre-filtered columns instead of passing the filter to partition_nd
+        # because it is a bit faster this way. The indices are still correct,
+        # because we use them on a filtered_context.
         groups = partition_nd(filtered_columns, True, possible_values)
         if not groups:
-            #FIXME: return an empty array or something like that
-            return
+            return LabeledArray([], labels, possible_values)
 
         # evaluate the expression on each group
         data = [expr_eval(expr, context_subset(filtered_context, indices,
@@ -152,9 +148,6 @@ class GroupBy(TableExpression):
 #
 #            data = [100.0 * value / divisor
 #                    for value, divisor in izip(data, divisors)]
-
-        # add headers
-        labels = [str(e) for e in expressions]
 
         # convert to a 1d array. We don't simply use data = np.array(data),
         # because if data is a list of ndarray (for example if we use
