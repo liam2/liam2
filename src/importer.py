@@ -126,9 +126,13 @@ def detect_column_types(iterable):
         for column, value in enumerate(row):
             coltypes[column] = max(coltypes[column],
                                    type2code[guess_type(value)])
-    for colname, coltype in zip(header, coltypes):
+    for i, colname in enumerate(header):
+        coltype = coltypes[i]
         if coltype == 0:
             raise Exception("column %s is all empty" % colname)
+#            print "Warning: column %s is all empty -> default to float" \
+#                  % colname
+#            coltypes[i] = 3
     num2type = [None, bool, int, float]
     return [(name, num2type[coltype])
             for name, coltype in zip(header, coltypes)]
@@ -158,6 +162,7 @@ class CSV(object):
         f = open(fpath, "rb")
         if delimiter is None:
             dialect = csv.Sniffer().sniff(f.read(1024))
+#            dialect = csv.Sniffer().sniff(f.read(1024), ',:|\t')
             f.seek(0)
             data_stream = csv.reader(f, dialect)
         else:
