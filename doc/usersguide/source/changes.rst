@@ -85,8 +85,10 @@ New features:
     + an expression returning a single scalar.
     + an expression returning an n-dimensional array. expressions and
       possible_values will be retrieved from that array, so you can simply
-      use: :: 
+      use: ::
+
         align(score, array_expr)
+
     + a list of expressions returning scalars [expr1, expr2].
     + a string (in which case, it is treated as a filename). The "fname"
       argument is still provided for backward compatibility.
@@ -104,7 +106,7 @@ New features:
     + "cutoff" tries to match the total need as closely as possible (at the
       expense of a slight loss of precision for individual categories) by 
       searching for the "cutoff point" that yields: ::
-      
+
         count(frac_need >= cutoff) == sum(frac_need)
 
   - changed the order of align() arguments: proportions is now the second
