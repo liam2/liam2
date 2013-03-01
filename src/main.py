@@ -12,7 +12,7 @@ from console import Console
 from utils import AutoflushFile
 #from data import populate_registry
 
-__version__ = "0.6.0dev"
+__version__ = "0.6.0rc1"
 
 
 def eat_traceback(func, *args, **kwargs):
