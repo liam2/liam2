@@ -42,7 +42,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'LIAM 2 User Guide'
-copyright = u'2011-2012, gb@plan.be, gd@plan.be, gdm@plan.be'
+copyright = u'2011-2013, gb@plan.be, gd@plan.be, gdm@plan.be'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -233,7 +233,7 @@ man_pages = [
 epub_title = u'LIAM 2 User Guide'
 epub_author = u'gb@plan.be, gd@plan.be, gdm@plan.be'
 epub_publisher = u'gb@plan.be, gd@plan.be, gdm@plan.be'
-epub_copyright = u'2011-2012, gb@plan.be, gd@plan.be, gdm@plan.be'
+epub_copyright = u'2011-2013, gb@plan.be, gd@plan.be, gdm@plan.be'
 
 # The language of the text. It defaults to the language option
 # or en if the language is not set.
