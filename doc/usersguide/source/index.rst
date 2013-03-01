@@ -24,5 +24,6 @@ Appendix
 .. toctree::
    :maxdepth: 1
 
+   knownissues 
    technicalchoices
    changes
