@@ -632,17 +632,12 @@ def populate_registry(fpath):
     for table in h5root.entities:
         registry.entity_registry.add(entities.Entity.from_table(table))
     globals_def = {}
-    for table in h5root.globals:
-        if isinstance(table, tables.Array):
-            global_def = normalize_type(table.dtype.type)
-        else:
-            global_def = get_fields(table)
-        globals_def[table.name] = global_def
+    if hasattr(h5root, 'globals'):
+        for table in h5root.globals:
+            if isinstance(table, tables.Array):
+                global_def = normalize_type(table.dtype.type)
+            else:
+                global_def = get_fields(table)
+            globals_def[table.name] = global_def
     h5in.close()
     return globals_def
-
-#FIXME: to remove
-d3 = np.arange(60).reshape(2, 10, 3)
-la = LabeledArray(d3,
-                  ['gender', 'age', 'status'],
-                  [[False, True], range(10), range(3)])
