@@ -41,6 +41,7 @@ def assertValidType(array, wanted_type, allowed_missing=None, context=None):
                                 if name in actual_names)
         bad_fields = []
         for (name1, t1), (name2, t2) in zip(common_fields1, common_fields2):
+            # this can happen if we have duplicates in wanted_fields
             assert name1 == name2, "%s != %s" % (name1, name2)
             if t1 != t2:
                 bad_fields.append((name1, t2.__name__, t1.__name__))
@@ -627,9 +628,18 @@ def populate_registry(fpath):
     import entities
     import registry
     h5in = tables.openFile(fpath, mode="r")
-    for table in h5in.root.entities:
+    h5root = h5in.root
+    for table in h5root.entities:
         registry.entity_registry.add(entities.Entity.from_table(table))
-    return h5in
+    globals_def = {}
+    for table in h5root.globals:
+        if isinstance(table, tables.Array):
+            global_def = normalize_type(table.dtype.type)
+        else:
+            global_def = get_fields(table)
+        globals_def[table.name] = global_def
+    h5in.close()
+    return globals_def
 
 #FIXME: to remove
 d3 = np.arange(60).reshape(2, 10, 3)
