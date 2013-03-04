@@ -39,8 +39,12 @@ class Entity(object):
         if duplicate_names:
             raise Exception("duplicate fields in entity '%s': %s"
                             % (self.name, ', '.join(duplicate_names)))
-
-        self.fields = [('period', int), ('id', int)] + fields
+        fnames = [name for name, _ in fields]
+        if 'id' not in fnames:
+            fields.insert(0, ('id', int))
+        if 'period' not in fnames:
+            fields.insert(0, ('period', int))
+        self.fields = fields
 
         # only used in data (to check that all "required" fields are present
         # in the input file)
