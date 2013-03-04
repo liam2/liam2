@@ -22,6 +22,33 @@ implementation that I am aware of.
 features I would like to implement (in no particular order)
 ===========================================================
 
+- use a different "random sequence" for each random number "user" (each
+  alignment with frac_need=uniform, explicit call to a random number generator
+  like uniform(), or logit_score/logit_regr), so that divergences of two
+  simulations with the same seed do not leak to unrelated parts of the model
+  through the position in the random sequence. Ideally, it should work
+  even if one model use one more sequence than the other in the middle of
+  the simulation. That is, the sequence initial seed for one expression/user
+  should not be based on the position/order of the expression in the
+  simulation.
+  >>> dict based on the textual form of the expression?
+      for align/logit_score/logit_regr, it would probably work fine,
+      for uniform(), not so much because the "expression" is the same.
+      adding the sequence position in addition, would fix the "collision", but
+      would introduce the "unrelated" changes problem when inserting a random
+      "user" expression and this is exactly what we are trying to avoid in the
+      first place.
+  >>> optional explicit sequence name will be the most reliable solution but it is
+      also the most verbose and annoying. It would not be that annoying if we
+      only require an additional argument *without* requiring the user to 
+      declare the sequence beforehand.
+  >>> the best option might be to use the position by default but skip any with
+      an explicit name, so that we can set explicit names only for the
+      "inserted" expressions (which is not present in both variants)
+  
+- add an option to disable (sub)process timings, so that a diff between two
+  simulation logs is more meaningful  
+
 - implement aggregates with filter argument on array with 2+ dimensions
   for grpmin, grpmax & grpsum, we could specify "ignore values" for each
   function and dtype and do values[filter_value] = ignore_value.
