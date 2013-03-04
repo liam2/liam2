@@ -116,7 +116,7 @@ New features:
       align(score, 'my_csv_file.csv')
 
   - made align() (and by extension logit_regr) always return False for
-    individuals outside the filter, instead of trying to modifying the target
+    individuals outside the filter, instead of trying to modify the target
     variable only where the filter is True. That feature seemed like a good
     idea on paper but had a very confusing side-effect: the result was
     different when it was stored in an existing variable than in a new
@@ -131,7 +131,8 @@ New features:
 * the result of a groupby can be used in expressions. This can be used, for
   example, to compute alignment targets on the fly.
 
-* added skip_na (defaults to True) argument to all aggregate functions.
+* added skip_na (defaults to True) argument to all aggregate functions to
+  specify whether or not missing values (nans) should be ignored.
 
 * macros can now be used in the interactive console.
 
@@ -215,17 +216,17 @@ Fixes:
 ------
 
 * fixed "transposed" option on import. The number of lines to copy was computed
-  on the untransposed data which meant too few data points were copied if
+  on the untransposed data which meant too few data points were copied if the
   number columns was greater than the number of lines and it crashed if it was
   smaller.
 
 * fixed groupby with both filter and expr arguments.
 
-* fixed new(number=...).
-
 * fixed groupby(expr=scalar).
 
 * fixed sumlink(link, scalar).
+
+* fixed new(number=...).
 
 * fixed non-aligned regressions with a filter (it was ignored).
 
