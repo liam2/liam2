@@ -129,10 +129,9 @@ def detect_column_types(iterable):
     for i, colname in enumerate(header):
         coltype = coltypes[i]
         if coltype == 0:
-            raise Exception("column %s is all empty" % colname)
-#            print "Warning: column %s is all empty -> default to float" \
-#                  % colname
-#            coltypes[i] = 3
+            print "Warning: column %s is all empty, assuming it is float" \
+                  % colname
+            coltypes[i] = 3
     num2type = [None, bool, int, float]
     return [(name, num2type[coltype])
             for name, coltype in zip(header, coltypes)]
