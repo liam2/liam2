@@ -10,7 +10,8 @@ from simulation import Simulation
 from importer import csv2h5
 from console import Console
 from utils import AutoflushFile
-#from data import populate_registry
+import registry
+from data import populate_registry, H5Data
 
 __version__ = "0.6.0rc1"
 
@@ -111,11 +112,12 @@ def explore(fpath):
     ftype = 'data' if ext in ('.h5', '.hdf5') else 'simulation'
     print "Using %s file: '%s'" % (ftype, fpath)
     if ftype == 'data':
-        raise NotImplementedError("exploring a data file is not implemented "
-                                  "yet")
-#        h5in = populate_registry(fpath)
-#        h5out = None
-#        entity, period = None, None
+        globals_def = populate_registry(fpath)
+        data_source = H5Data(None, fpath)
+        h5in, _, globals_data = data_source.load(globals_def,
+                                                 registry.entity_registry)
+        h5out = None
+        entity, period = None, None
     else:
         simulation = Simulation.from_yaml(fpath)
         h5in, h5out, globals_data = simulation.load()
