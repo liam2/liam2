@@ -8,8 +8,6 @@ class EntityContext(object):
             extra = {}
         self.extra = extra
         self['__entity__'] = entity
-#        self['__weight_col__'] = entity.weight_col
-#        self['__on_align_overflow__'] = entity.on_align_overflow
 
     def __getitem__(self, key):
         try:
@@ -30,25 +28,13 @@ class EntityContext(object):
                     array_period is not None and
                     period == array_period - 1 and
                     key in self.entity.array_lag.dtype.fields):
-#                    print "from lag cache"
                     return self.entity.array_lag[key]
 
-#                print "from disk"
                 bounds = self.entity.output_rows.get(period)
                 if bounds is not None:
                     startrow, stoprow = bounds
                 else:
                     startrow, stoprow = 0, 0
-#                print "loading from disk...",
-#                res = timed(self.entity.table.read,
-#                             start=startrow, stop=stoprow,
-#                             field=key)
-#                for level in range(1, 10, 2):
-#                    print "   %d - compress:" % level,
-#                    arr = timed(compress_column, res, level)
-#                    print "decompress:",
-#                    timed(decompress_column, arr)
-#                return res
                 return self.entity.table.read(start=startrow, stop=stoprow,
                                               field=key)
 
@@ -61,24 +47,11 @@ class EntityContext(object):
         self.extra[key] = value
 
     def __contains__(self, key):
-#        if key in self.extra:
-#            return True
-#        period = self.extra['period']
-#        array_period = self.entity.array_period
-#        if period == array_period:
-#            return (key in self.entity.temp_variables or
-#                    key in self.entity.array.dtype.fields)
-#        elif array_period is not None and period == array_period - 1 and \
-#             self.entity.array_lag is not None:
-#            return key in self.entity.array_lag.dtype.fields
-#        else:
-#            return key in self.entity.table.dtype.fields
-        try:
-            #FIXME: this is much more expensive than necessary (in all cases)
-            self[key]
-            return True
-        except KeyError:
-            return False
+        entity = self.entity
+        return (key in self.extra or
+                (self._is_array_period and key in entity.temp_variables) or
+                # use the fact that array fields should be = to table.fields
+                key in entity.array.dtype.fields)
 
     def keys(self, extra=True):
         res = list(self.entity.array.dtype.names)

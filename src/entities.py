@@ -28,7 +28,7 @@ class Entity(object):
     fields is a list of tuple (name, type, options)
     '''
     def __init__(self, name, fields, missing_fields=None, links=None,
-                 macro_strings=None, process_strings=None, weight_col=None,
+                 macro_strings=None, process_strings=None,
                  on_align_overflow='carry'):
         self.name = name
 
@@ -62,7 +62,6 @@ class Entity(object):
         self.period_individual_fnames = [name for name, _ in fields]
         self.links = links
 
-        self.weight_col = weight_col
         self.on_align_overflow = on_align_overflow
 
         self.macro_strings = macro_strings
@@ -127,8 +126,7 @@ class Entity(object):
         #TODO: add option for on_align_overflow
         return Entity(ent_name, fields, missing_fields, links,
                       entity_def.get('macros', {}),
-                      entity_def.get('processes', {}),
-                      entity_def.get('weight'))
+                      entity_def.get('processes', {}))
 
     @classmethod
     def from_table(cls, table):

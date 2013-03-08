@@ -279,7 +279,7 @@ class Simulation(object):
                     process, periodicity = process_def
 
                     print "- %d/%d" % (p_num, num_processes), process.name,
-                    #TODO: provided a custom __str__ method for Process &
+                    #TODO: provide a custom __str__ method for Process &
                     # Assignment instead
                     if hasattr(process, 'predictor') and process.predictor \
                        and process.predictor != process.name:

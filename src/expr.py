@@ -6,7 +6,7 @@ from collections import Counter
 import numpy as np
 
 from utils import LabeledArray
-from context import context_length
+from context import context_length, EntityContext
 
 try:
     import numexpr
@@ -317,39 +317,44 @@ class Expr(object):
 #            expr_cache[self] = s
 
         simple_expr = self.as_simple_expr(context)
+        if isinstance(simple_expr, Variable) and simple_expr.name in context:
+            return context[simple_expr.name]
 
         # check for labeled arrays, to work around the fact that numexpr
         # does not preserve ndarray subclasses.
 
-        #FIXME: there ought to be another way because context[var_name] is
-        # often a costly operation (and sometimes very costly). One option
-        # would be to actually fetch the arrays here and store them in a
-        # simple dict to pass to evaluate, instead of passing the context
+        # avoid checking for arrays types in the past, because that is a
+        # costly operation (context[var_name] fetches the column from disk
+        # in that case). This probably prevents us from doing stuff like
+        # align(lag(groupby() / groupby())), but it is a limitation I can
+        # live with to avoid hitting the disk twice for each disk access.
+
+        #TODO: I should rewrite this whole mess when my "dtype" method
+        # supports ndarrays and LabeledArray so that I can get the dtype from
+        # the expression instead of from actual values.
         labels = None
-        for var_name in simple_expr.collect_variables(context):
-            # var_name should always be in the context at this point because
-            # missing temporaries should have been already caught in expr_eval
-            value = context[var_name]
-            if isinstance(value, LabeledArray):
-                if labels is None:
-                    labels = (value.dim_names, value.pvalues)
-                else:
-                    if labels[0] != value.dim_names:
-                        raise Exception('several arrays with inconsistent '
-                                        'labels (dimension names) in the same '
-                                        'expression: %s vs %s'
-                                        % (labels[0], value.dim_names))
-                    if not np.array_equal(labels[1], value.pvalues):
-                        raise Exception('several arrays with inconsistent '
-                                        'axis values in the same expression: '
-                                        '\n%s\n\nvs\n\n%s'
-                                        % (labels[1], value.pvalues))
+        if isinstance(context, EntityContext) and context._is_array_period:
+            for var_name in simple_expr.collect_variables(context):
+                # var_name should always be in the context at this point
+                # because missing temporaries should have been already caught
+                # in expr_eval
+                value = context[var_name]
+                if isinstance(value, LabeledArray):
+                    if labels is None:
+                        labels = (value.dim_names, value.pvalues)
+                    else:
+                        if labels[0] != value.dim_names:
+                            raise Exception('several arrays with inconsistent '
+                                            'labels (dimension names) in the '
+                                            'same expression: %s vs %s'
+                                            % (labels[0], value.dim_names))
+                        if not np.array_equal(labels[1], value.pvalues):
+                            raise Exception('several arrays with inconsistent '
+                                            'axis values in the same '
+                                            'expression: \n%s\n\nvs\n\n%s'
+                                            % (labels[1], value.pvalues))
 
         s = simple_expr.as_string()
-        r = context.get(s)
-        if r is not None:
-            return r
-
         try:
             res = evaluate(s, context, {}, truediv='auto')
             if labels is not None:
