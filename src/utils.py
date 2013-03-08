@@ -8,6 +8,8 @@ from collections import defaultdict, deque
 
 import numpy as np
 
+import config
+
 
 class AutoflushFile(object):
     def __init__(self, f):
@@ -56,7 +58,10 @@ def gettime(func, *args, **kwargs):
 
 def timed(func, *args, **kwargs):
     elapsed, res = gettime(func, *args, **kwargs)
-    print "done (%s elapsed)." % time2str(elapsed)
+    if config.show_timings:
+        print "done (%s elapsed)." % time2str(elapsed)
+    else:
+        print "done."
     return res
 
 

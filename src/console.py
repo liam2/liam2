@@ -41,7 +41,11 @@ class InvalidPeriod(ValueError):
 class Console(object):
     def __init__(self, entity=None, period=None,
                  globals_def=None, globals_data=None):
+        if entity is None and len(entity_registry) == 1:
+            entity = entity_registry.values()[0]
         self.entity = entity
+        if period is None and entity is not None:
+            period = EntityContext(entity).list_periods()[-1]
         self.period = period
         self.globals_def = globals_def
         self.globals_data = globals_data

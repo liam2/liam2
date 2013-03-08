@@ -293,7 +293,10 @@ class Simulation(object):
                         print "skipped (periodicity)"
 
                     process_time[process.name] += elapsed
-                    print "done (%s elapsed)." % time2str(elapsed)
+                    if config.show_timings:
+                        print "done (%s elapsed)." % time2str(elapsed)
+                    else:
+                        print "done."
                     self.start_console(process.entity, period,
                                        globals_data)
 
@@ -357,12 +360,9 @@ class Simulation(object):
     def console_entity(self):
         '''compute the entity the console should start in (if any)'''
 
-        if self.default_entity is not None:
-            return entity_registry[self.default_entity]
-        elif len(entity_registry) == 1:
-            return entity_registry.values()[0]
-        else:
-            return None
+        return entity_registry[self.default_entity] \
+               if self.default_entity is not None \
+               else None
 
     def start_console(self, entity, period, globals_data):
         if self.stepbystep:
