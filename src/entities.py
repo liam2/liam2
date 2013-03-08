@@ -92,7 +92,7 @@ class Entity(object):
         self.array_period = None
         self.array = None
 
-        self.lag_fields = None
+        self.lag_fields = []
         self.array_lag = None
 
         self.num_tmp = 0
@@ -302,14 +302,24 @@ class Entity(object):
                             target_vars = lv.target_expression.allOf(Variable)
                             lag_vars.update(v.name for v in target_vars)
 
-        # make sure 'id' comes first
-        lag_vars.discard('id')
-        lag_vars = ['id'] + sorted(lag_vars)
+        if lag_vars:
+            # make sure we have an 'id' column, and that it comes first
+            # (makes debugging easier). 'id' is always necessary for lag
+            # expressions to be able to "expand" the vector of values to the
+            # "current" individuals.
+            lag_vars.discard('id')
+            lag_vars = ['id'] + sorted(lag_vars)
 
         field_type = dict(self.fields)
         self.lag_fields = [(v, field_type[v]) for v in lag_vars]
 
     def load_period_data(self, period):
+        if self.lag_fields:
+            self.array_lag = np.empty(len(self.array),
+                                      dtype=np.dtype(self.lag_fields))
+            for field, _ in self.lag_fields:
+                self.array_lag[field] = self.array[field]
+
         rows = self.input_rows.get(period)
         if rows is None:
             # nothing needs to be done in that case
@@ -339,10 +349,6 @@ class Entity(object):
         if period in self.output_rows:
             raise Exception("trying to modify already simulated rows")
         else:
-            self.array_lag = np.empty(len(self.array),
-                                      dtype=np.dtype(self.lag_fields))
-            for field, _ in self.lag_fields:
-                self.array_lag[field] = self.array[field]
             startrow = self.table.nrows
             self.table.append(self.array)
             self.output_rows[period] = (startrow, self.table.nrows)
