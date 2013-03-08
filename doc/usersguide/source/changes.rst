@@ -3,6 +3,32 @@
 Change log
 ##########
 
+Version 0.6 rc2
+===============
+
+New features:
+-------------
+
+* implemented explore on data files (.h5), so that one can, for example,
+  explore the input dataset.
+
+Miscellaneous improvements:
+---------------------------
+
+* during import, when a column is all empty and its type was not specified
+  manually, assume a float column instead of failing to import.
+* only add "id" and "period" columns if they are not already present.
+
+Fixes:
+------
+
+* fixed a nasty bug which made that each variable that needed to be read on
+  the disk (lag of more than one period, duration, value_for_period, ...) was
+  read 2 or 3 times instead of just once, greatly slowing down the function.
+* fixed accessing columns for the next-to-last period in the interactive
+  console after a simulation: it was either giving bad results or returning an
+  error.
+
 Version 0.6 rc1
 ===============
 
