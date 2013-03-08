@@ -60,6 +60,7 @@ class EntityContext(object):
 
     def __contains__(self, key):
         try:
+            #FIXME: this is much more expensive than necessary (in all cases)
             self[key]
             return True
         except KeyError:
