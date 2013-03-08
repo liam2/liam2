@@ -529,7 +529,7 @@ class H5Data(DataSource):
 
         try:
             globals_data = dataset['globals']
-            if globals_data is not None:
+            if globals_data:
                 globals_node = input_file.root.globals
                 output_globals = output_file.createGroup("/", "globals",
                                                          "Globals")
