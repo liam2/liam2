@@ -25,13 +25,15 @@ class EntityContext(object):
                         return self.entity.array[key]
                     except ValueError:
                         raise KeyError(key)
-            elif array_period is not None and period == array_period - 1 and \
-                 self.entity.array_lag is not None:
-                try:
-                    return self.entity.array_lag[key]
-                except ValueError:
-                    raise KeyError(key)
             else:
+                if (self.entity.array_lag is not None and
+                    array_period is not None and
+                    period == array_period - 1 and
+                    key in self.entity.array_lag.dtype.fields):
+#                    print "from lag cache"
+                    return self.entity.array_lag[key]
+
+#                print "from disk"
                 bounds = self.entity.output_rows.get(period)
                 if bounds is not None:
                     startrow, stoprow = bounds
@@ -59,6 +61,18 @@ class EntityContext(object):
         self.extra[key] = value
 
     def __contains__(self, key):
+#        if key in self.extra:
+#            return True
+#        period = self.extra['period']
+#        array_period = self.entity.array_period
+#        if period == array_period:
+#            return (key in self.entity.temp_variables or
+#                    key in self.entity.array.dtype.fields)
+#        elif array_period is not None and period == array_period - 1 and \
+#             self.entity.array_lag is not None:
+#            return key in self.entity.array_lag.dtype.fields
+#        else:
+#            return key in self.entity.table.dtype.fields
         try:
             #FIXME: this is much more expensive than necessary (in all cases)
             self[key]
