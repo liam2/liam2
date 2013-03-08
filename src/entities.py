@@ -76,9 +76,7 @@ class Entity(object):
         self.indexed_output_table = None
 
         self.input_rows = {}
-        #XXX: it might be unnecessary to keep it in memory after the initial
-        # load.
-        #TODO: it *is* unnecessary to keep periods which have already been
+        #TODO: it is unnecessary to keep periods which have already been
         # simulated, because (currently) when we go back in time, we always go
         # back using the output table.
         self.input_index = {}
