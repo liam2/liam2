@@ -320,6 +320,11 @@ class Expr(object):
 
         # check for labeled arrays, to work around the fact that numexpr
         # does not preserve ndarray subclasses.
+
+        #FIXME: there ought to be another way because context[var_name] is
+        # often a costly operation (and sometimes very costly). One option
+        # would be to actually fetch the arrays here and store them in a
+        # simple dict to pass to evaluate, instead of passing the context
         labels = None
         for var_name in simple_expr.collect_variables(context):
             # var_name should always be in the context at this point because
