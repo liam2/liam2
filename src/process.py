@@ -37,7 +37,10 @@ class Process(object):
 
 class Compute(Process):
     '''these processes only compute an expression and do not store their
-       result (but they usually have side-effects)'''
+       result (but they usually have side-effects). No class inherits from
+       this but we use it when a user does not store anywhere the result of
+       an expression (with a side effect) which *does* return a value.
+       new() is a good example for this'''
 
     def __init__(self, expr):
         super(Compute, self).__init__()
