@@ -5,7 +5,7 @@ import numpy as np
 
 import config
 from expr import Expr, expr_eval
-from properties import TableExpression
+from exprbases import TableExpression
 from process import Process, BreakpointException
 from partition import filter_to_indices
 from utils import LabeledArray

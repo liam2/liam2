@@ -8,12 +8,13 @@ import numpy as np
 import config
 from align_link import align_link_nd
 from context import context_length, EntityContext
-from expr import (Expr, Variable, expr_eval, collect_variables, traverse_expr,
+from expr import (Expr, Variable,
+                  expr_eval, collect_variables, traverse_expr,
                   missing_values)
+from exprbases import FilteredExpression
 from groupby import GroupBy
 from links import Link, LinkValue
 from partition import partition_nd, filter_to_indices
-from properties import FilteredExpression
 from importer import load_ndarray
 from registry import entity_registry
 from utils import PrettyTable, LabeledArray

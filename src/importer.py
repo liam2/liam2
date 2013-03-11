@@ -1,6 +1,6 @@
+import csv
 import os.path
 import re
-import csv
 from itertools import islice, chain
 
 import numpy as np
@@ -13,7 +13,7 @@ from utils import (validate_dict, merge_dicts, merge_items, invert_dict,
                    unique, duplicates, unique_duplicate, prod,
                    field_str_to_type, fields_yaml_to_type, fromiter,
                    LabeledArray)
-from properties import missing_values
+from expr import missing_values
 
 
 MB = 2.0 ** 20

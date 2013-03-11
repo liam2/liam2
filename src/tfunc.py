@@ -2,7 +2,7 @@ import numpy as np
 
 from utils import safe_put
 from expr import expr_eval, dtype, hasvalue
-from properties import FunctionExpression
+from exprbases import FunctionExpression
 
 
 class ValueForPeriod(FunctionExpression):

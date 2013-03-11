@@ -1,9 +1,10 @@
 import numpy as np
 
-from properties import Log, Exp, Normal, Max, CompoundExpression
-from alignment import Alignment
-from expr import (Expr, Where, Variable, ShortLivedVariable, get_tmp_varname,
+from expr import (Expr, Variable, ShortLivedVariable, get_tmp_varname,
                   missing_values, dtype, expr_eval)
+from exprbases import CompoundExpression
+from properties import Log, Exp, Normal, Max, Where
+from alignment import Alignment
 
 from context import context_length
 

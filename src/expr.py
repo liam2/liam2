@@ -1,12 +1,10 @@
 from __future__ import division
-import re
-import sys
 from collections import Counter
 
 import numpy as np
 
-from utils import LabeledArray
-from context import context_length, EntityContext
+from utils import LabeledArray, ExplainTypeError, add_context
+from context import EntityContext
 
 try:
     import numexpr
@@ -129,6 +127,16 @@ def dtype(expr, context):
         return normalize_type(type(expr))
 
 
+def ispresent(values):
+    dtype = values.dtype
+    if np.issubdtype(dtype, float):
+        return np.isfinite(values)
+    elif np.issubdtype(dtype, int):
+        return values != missing_values[int]
+    elif np.issubdtype(dtype, bool):
+        return values != missing_values[bool]
+
+
 # context is needed because in LinkValue we need to know what is the current
 # entity (so that we can resolve links)
 #TODO: we shouldn't resolve links during the simulation but
@@ -173,36 +181,6 @@ def expr_eval(expr, context):
         return tuple([expr_eval(e, context) for e in expr])
     else:
         return expr
-
-
-def add_context(exception, s):
-    msg = exception.args[0] if exception.args else ''
-    encoding = sys.getdefaultencoding()
-    expr_str = s.encode(encoding, 'replace')
-    msg = "%s\n%s" % (expr_str, msg)
-    cls = exception.__class__
-    return cls(msg)
-
-
-class ExplainTypeError(type):
-    def __call__(cls, *args, **kwargs):
-        try:
-            return type.__call__(cls, *args, **kwargs)
-        except TypeError, e:
-            if hasattr(cls, 'func_name'):
-                funcname = cls.func_name
-            else:
-                funcname = cls.__name__.lower()
-            if funcname is not None:
-                msg = e.args[0].replace('__init__()', funcname)
-            else:
-                msg = e.args[0]
-
-            def repl(matchobj):
-                needed, given = int(matchobj.group(1)), int(matchobj.group(2))
-                return "%d arguments (%d given)" % (needed - 1, given - 1)
-            msg = re.sub('(\d+) arguments \((\d+) given\)', repl, msg)
-            raise TypeError(msg)
 
 
 class Expr(object):
@@ -397,17 +375,7 @@ class EvaluableExpression(Expr):
 
     def as_simple_expr(self, context):
         tmp_varname = get_tmp_varname()
-        result = expr_eval(self, context)
-        if isinstance(result, dict):
-            indices = result['indices']
-            values = result['values']
-        else:
-            indices = None
-
-        if indices is not None:
-            #FIXME: arrgllll zeros!!!! it should be missing...
-            result = np.zeros(context_length(context), dtype=gettype(values))
-            np.put(result, indices, values)
+        result = self.evaluate(context)
         context[tmp_varname] = result
         return Variable(tmp_varname, gettype(result))
 
@@ -484,7 +452,7 @@ class ExprAttribute(EvaluableExpression):
         yield self
 
 
-#XXX: factorize with NumpyProperty?
+#TODO: factorize with NumpyProperty & FunctionExpression
 class ExprCall(EvaluableExpression):
     def __init__(self, expr, args, kwargs):
         self.expr = expr
@@ -522,19 +490,9 @@ class ExprCall(EvaluableExpression):
         yield self
 
 
-#class IsPresent(Expr):
-#    def __init__(self, expr):
-#        self.expr = expr
-#
-#    def simplify(self):
-#        dtype = self.expr.dtype()
-#        if np.issubdtype(dtype, float):
-#            return np.isfinite(values)
-#        elif np.issubdtype(dtype, int):
-#            return expr != missing_values[int]
-#        elif np.issubdtype(dtype, bool):
-#            return expr != missing_values[bool]
-
+#############
+# Operators #
+#############
 
 class UnaryOp(Expr):
     def __init__(self, op, expr):
@@ -719,6 +677,10 @@ class Division(BinaryOp):
         return float
 
 
+#############
+# Variables #
+#############
+
 class Variable(Expr):
     def __init__(self, name, dtype=None):
         self.name = name
@@ -865,64 +827,6 @@ class GlobalTable(object):
         yield self
 
     def __str__(self):
-        #TODO: print data instead
+        #XXX: print (a subset of) data instead?
         return 'Table(%s)' % ', '.join([name for name, _ in self.fields])
     __repr__ = __str__
-
-
-class Where(Expr):
-    def __init__(self, cond, iftrue, iffalse):
-        self.cond = cond
-        self.iftrue = iftrue
-        self.iffalse = iffalse
-
-    def traverse(self, context):
-        for node in traverse_expr(self.cond, context):
-            yield node
-        for node in traverse_expr(self.iftrue, context):
-            yield node
-        for node in traverse_expr(self.iffalse, context):
-            yield node
-        yield self
-
-    def as_simple_expr(self, context):
-        cond = as_simple_expr(self.cond, context)
-
-        # filter is stored as an unevaluated expression
-        filter_expr = context.get('__filter__')
-
-        if filter_expr is None:
-            context['__filter__'] = self.cond
-        else:
-            context['__filter__'] = filter_expr & self.cond
-        iftrue = as_simple_expr(self.iftrue, context)
-
-        if filter_expr is None:
-            context['__filter__'] = ~self.cond
-        else:
-            context['__filter__'] = filter_expr & ~self.cond
-        iffalse = as_simple_expr(self.iffalse, context)
-
-        context['__filter__'] = None
-        return Where(cond, iftrue, iffalse)
-
-    def as_string(self):
-        return "where(%s, %s, %s)" % (as_string(self.cond),
-                                      as_string(self.iftrue),
-                                      as_string(self.iffalse))
-
-    def __str__(self):
-        return "if(%s, %s, %s)" % (self.cond, self.iftrue, self.iffalse)
-    __repr__ = __str__
-
-    def dtype(self, context):
-        assert dtype(self.cond, context) == bool
-        return coerce_types(context, self.iftrue, self.iffalse)
-
-    def collect_variables(self, context):
-        condvars = collect_variables(self.cond, context)
-        iftruevars = collect_variables(self.iftrue, context)
-        iffalsevars = collect_variables(self.iffalse, context)
-        return condvars | iftruevars | iffalsevars
-
-functions = {'where': Where}

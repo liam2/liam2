@@ -3,60 +3,18 @@ from itertools import izip, chain
 
 import numpy as np
 
-from expr import (Expr, EvaluableExpression, Variable, Where, as_simple_expr,
-                  as_string, dtype, coerce_types, expr_eval,
-                  collect_variables, traverse_expr, get_tmp_varname,
-                  missing_values, get_missing_value, get_missing_record,
-                  get_missing_vector)
+from expr import (Expr, EvaluableExpression, Variable,
+                  dtype, coerce_types, expr_eval,
+                  as_simple_expr, as_string,
+                  collect_variables, traverse_expr,
+                  get_missing_record, get_missing_vector)
+from exprbases import (CompoundExpression, NumexprFunctionProperty,
+                       FunctionExpression, TableExpression,
+                       NumpyCreateArray, NumpyChangeArray)
 from context import (EntityContext, context_length, context_subset,
                      new_context_like)
 from registry import entity_registry
-from utils import PrettyTable, nansum
-
-
-def ispresent(values):
-    dtype = values.dtype
-    if np.issubdtype(dtype, float):
-        return np.isfinite(values)
-    elif np.issubdtype(dtype, int):
-        return values != missing_values[int]
-    elif np.issubdtype(dtype, bool):
-        return values != missing_values[bool]
-
-
-class CompoundExpression(Expr):
-    '''expression written in terms of other expressions'''
-
-    def __init__(self):
-        self._complete_expr = None
-
-    def evaluate(self, context):
-        context = self.build_context(context)
-        return expr_eval(self.complete_expr, context)
-
-    def as_simple_expr(self, context):
-        context = self.build_context(context)
-        return self.complete_expr.as_simple_expr(context)
-
-    def build_context(self, context):
-        return context
-
-    def build_expr(self):
-        raise NotImplementedError()
-
-    def traverse(self, context):
-        for node in traverse_expr(self.complete_expr, context):
-            yield node
-        yield self
-
-    def collect_variables(self, context):
-        return collect_variables(self.complete_expr, context)
-
-    @property
-    def complete_expr(self):
-        if self._complete_expr is None:
-            self._complete_expr = self.build_expr()
-        return self._complete_expr
+from utils import PrettyTable
 
 
 class Min(CompoundExpression):
@@ -144,194 +102,6 @@ class ZeroClip(CompoundExpression):
 
     def dtype(self, context):
         return dtype(self.expr1, context)
-
-
-#TODO: generalise to a function with several arguments
-class FunctionExpression(EvaluableExpression):
-    func_name = None
-
-    def __init__(self, expr):
-        self.expr = expr
-
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
-        yield self
-
-    def __str__(self):
-        return '%s(%s)' % (self.func_name, self.expr)
-
-    def collect_variables(self, context):
-        return collect_variables(self.expr, context)
-
-
-class FilteredExpression(FunctionExpression):
-    def __init__(self, expr, filter=None):
-        super(FilteredExpression, self).__init__(expr)
-        self.filter = filter
-
-    def traverse(self, context):
-        for node in traverse_expr(self.filter, context):
-            yield node
-        for node in FunctionExpression.traverse(self, context):
-            yield node
-
-    def _getfilter(self, context):
-        ctx_filter = context.get('__filter__')
-        if self.filter is not None and ctx_filter is not None:
-            filter_expr = ctx_filter & self.filter
-        elif self.filter is not None:
-            filter_expr = self.filter
-        elif ctx_filter is not None:
-            filter_expr = ctx_filter
-        else:
-            filter_expr = None
-        if filter_expr is not None and dtype(filter_expr, context) is not bool:
-            raise Exception("filter must be a boolean expression")
-        return filter_expr
-
-    def __str__(self):
-        filter_str = ', %s' % self.filter if self.filter is not None else ''
-        return '%s(%s%s)' % (self.func_name, self.expr, filter_str)
-
-    def collect_variables(self, context):
-        expr_vars = collect_variables(self.expr, context)
-        expr_vars |= collect_variables(self.filter, context)
-        return expr_vars
-
-#------------------------------------
-
-
-class NumpyProperty(EvaluableExpression):
-    func_name = None  # optional (for display)
-    np_func = (None,)
-    # arg_names can be set automatically by using inspect.getargspec,
-    # but it only works for pure Python functions, so I decided to avoid it
-    # because when you add a function, it is hard to know whether it is
-    # implemented in C or not.
-    arg_names = None
-    allow_filter = True
-
-    def __init__(self, *args, **kwargs):
-        EvaluableExpression.__init__(self)
-        if len(args) > len(self.arg_names):
-            # + 1 to be consistent with Python (to account for self)
-            raise TypeError("takes at most %d arguments (%d given)" %
-                            (len(self.arg_names) + 1, len(args) + 1))
-        if self.allow_filter:
-            self.filter_expr = kwargs.pop("filter", None)
-        else:
-            self.filter_expr = None
-        extra_kwargs = set(kwargs.keys()) - set(self.arg_names)
-        if extra_kwargs:
-            extra_kwargs = [repr(arg) for arg in extra_kwargs]
-            raise TypeError("got an unexpected keyword argument %s" %
-                            extra_kwargs[0])
-        self.args = args
-        self.kwargs = kwargs
-
-    def evaluate(self, context):
-        args = [expr_eval(arg, context) for arg in self.args]
-        kwargs = dict((k, expr_eval(v, context))
-                      for k, v in self.kwargs.iteritems())
-        if 'size' in self.arg_names and 'size' not in kwargs:
-            kwargs['size'] = context_length(context)
-        if self.filter_expr is None:
-            filter_value = None
-        else:
-            filter_value = expr_eval(self.filter_expr, context)
-        func = self.np_func[0]
-        return self.compute(func, args, kwargs, filter_value)
-
-    def compute(self, func, args, kwargs, filter_value=None):
-        raise NotImplementedError()
-
-    def __str__(self):
-        func_name = self.func_name
-        if func_name is None:
-            func_name = self.np_func[0].__name__
-        kwargs = self.kwargs
-        values = zip(self.arg_names, self.args)
-        for name in self.arg_names[len(self.args):]:
-            if name in kwargs:
-                values.append((name, kwargs[name]))
-        str_args = ', '.join('%s=%s' % (name, value) for name, value in values)
-        return '%s(%s)' % (func_name, str_args)
-
-    def traverse(self, context):
-        for arg in self.args:
-            for node in traverse_expr(arg, context):
-                yield node
-        for kwarg in self.kwargs.itervalues():
-            for node in traverse_expr(kwarg, context):
-                yield node
-        yield self
-
-    def collect_variables(self, context):
-        args_vars = [collect_variables(arg, context) for arg in self.args]
-        args_vars.extend(collect_variables(v, context)
-                         for v in self.kwargs.itervalues())
-        return set.union(*args_vars) if args_vars else set()
-
-
-class NumpyChangeArray(NumpyProperty):
-    def compute(self, func, args, kwargs, filter_value=None):
-        # the first argument should be the array to work on ('a')
-        assert self.arg_names[0] == 'a'
-        old_values = args[0]
-        new_values = func(*args, **kwargs)
-
-        # we cannot do this yet because dtype() currently requires context
-        # (and I don't want to change the signature of compute just for that)
-#        assert dtype(old_values) == dtype(new_values)
-        if filter_value is None:
-            return new_values
-        else:
-            return np.where(filter_value, new_values, old_values)
-
-
-class NumpyCreateArray(NumpyProperty):
-    def compute(self, func, args, kwargs, filter_value=None):
-        values = func(*args, **kwargs)
-        if filter_value is None:
-            return values
-        else:
-            missing_value = get_missing_value(values)
-            return np.where(filter_value, values, missing_value)
-
-
-class NumpyAggregate(NumpyProperty):
-    nan_func = (None,)
-
-    def __init__(self, *args, **kwargs):
-        self.skip_na = kwargs.pop("skip_na", True)
-        NumpyProperty.__init__(self, *args, **kwargs)
-
-    def compute(self, func, args, kwargs, filter_value=None):
-        # the first argument should be the array to work on ('a')
-        assert self.arg_names[0] == 'a'
-
-        values, args = args[0], args[1:]
-        values = np.asanyarray(values)
-
-        usenanfunc = False
-        if (self.skip_na and issubclass(values.dtype.type, np.inexact) and
-            self.nan_func[0] is not None):
-            usenanfunc = True
-            func = self.nan_func[0]
-        if values.shape:
-            if values.ndim == 1:
-                if self.skip_na and not usenanfunc:
-                    if filter_value is not None:
-                        filter_value &= ispresent(values)
-                    else:
-                        filter_value = ispresent(values)
-                if filter_value is not None:
-                    values = values[filter_value]
-            elif values.ndim > 1 and filter_value is not None:
-                raise Exception("filter argument is not supported on arrays "
-                                "with more than 1 dimension")
-        return func(values, *args, **kwargs)
 
 
 # >>> mi = 1
@@ -488,194 +258,6 @@ class Trunc(FunctionExpression):
         return int
 
 #------------------------------------
-
-
-class GroupMin(NumpyAggregate):
-    func_name = 'grpmin'
-    np_func = (np.amin,)
-    nan_func = (np.nanmin,)
-    arg_names = ('a', 'axis', 'out')
-
-    def dtype(self, context):
-        return dtype(self.args[0], context)
-
-
-class GroupMax(NumpyAggregate):
-    func_name = 'grpmax'
-    np_func = (np.amax,)
-    nan_func = (np.nanmax,)
-    arg_names = ('a', 'axis', 'out')
-
-    def dtype(self, context):
-        return dtype(self.args[0], context)
-
-
-#FIXME: inherit from NumpyAggregate to have access to all arguments of np.sum
-class GroupSum(FilteredExpression):
-    func_name = 'grpsum'
-
-    def evaluate(self, context):
-        expr = self.expr
-        filter_expr = self._getfilter(context)
-        if filter_expr is not None:
-            expr *= filter_expr
-        return nansum(expr_eval(expr, context))
-
-    def dtype(self, context):
-        #TODO: merge this typemap with tsum's
-        typemap = {bool: int, int: int, float: float}
-        return typemap[dtype(self.args[0], context)]
-
-
-class GroupStd(NumpyAggregate):
-    func_name = 'grpstd'
-    np_func = (np.std,)
-    arg_names = ('a', 'axis', 'dtype', 'out', 'ddof')
-
-    def dtype(self, context):
-        return float
-
-
-class GroupMedian(NumpyAggregate):
-    func_name = 'grpmedian'
-    np_func = (np.median,)
-    arg_names = ('a', 'axis', 'out', 'overwrite_input')
-
-    def dtype(self, context):
-        return float
-
-
-class GroupPercentile(NumpyAggregate):
-    func_name = 'grppercentile'
-    np_func = (np.percentile,)
-    arg_names = ('a', 'q', 'axis', 'out', 'overwrite_input')
-
-    def dtype(self, context):
-        return float
-
-
-class GroupGini(FilteredExpression):
-    func_name = 'grpgini'
-
-    def evaluate(self, context):
-        # from Wikipedia:
-        # G = 1/n * (n + 1 - 2 * (sum((n + 1 - i) * a[i]) / sum(a[i])))
-        #                        i=1..n                    i=1..n
-        # but sum((n + 1 - i) * a[i])
-        #    i=1..n
-        #   = sum((n - i) * a[i] for i in range(n))
-        #   = sum(cumsum(a))
-        values = expr_eval(self.expr, context)
-        if isinstance(values, (list, tuple)):
-            values = np.array(values)
-
-        filter_expr = self._getfilter(context)
-        if filter_expr is not None:
-            filter_values = expr_eval(filter_expr, context)
-        else:
-            filter_values = True
-        filter_values &= ispresent(values)
-        values = values[filter_values]
-        sorted_values = np.sort(values)
-        n = len(values)
-
-        # force float to avoid overflows with integer input expressions
-        cumsum = np.cumsum(sorted_values, dtype=float)
-        values_sum = cumsum[-1]
-        if values_sum == 0:
-            print "grpgini(%s, filter=%s): expression is all zeros (or nan) " \
-                  "for filter" % (self.expr, filter_expr)
-        return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
-
-    def dtype(self, context):
-        return float
-
-
-class GroupCount(EvaluableExpression):
-    def __init__(self, filter=None):
-        self.filter = filter
-
-    def evaluate(self, context):
-        if self.filter is None:
-            return context_length(context)
-        else:
-            #TODO: check this at "compile" time (in __init__), though for
-            # that we need to know the type of all temporary variables
-            # first
-            if dtype(self.filter, context) is not bool:
-                raise Exception("grpcount filter must be a boolean expression")
-            return np.sum(expr_eval(self.filter, context))
-
-    def dtype(self, context):
-        return int
-
-    def traverse(self, context):
-        for node in traverse_expr(self.filter, context):
-            yield node
-        yield self
-
-    def collect_variables(self, context):
-        return collect_variables(self.filter, context)
-
-    def __str__(self):
-        filter_str = str(self.filter) if self.filter is not None else ''
-        return "grpcount(%s)" % filter_str
-
-
-# we could transform this into a CompoundExpression:
-# grpsum(expr, filter=filter) / grpcount(filter) but that would be inefficient.
-class GroupAverage(FilteredExpression):
-    func_name = 'grpavg'
-
-    def evaluate(self, context):
-        expr = self.expr
-        #FIXME: either take "contextual filter" into account here (by using
-        # self._getfilter), or don't do it in grpsum (& grpgini?)
-        if self.filter is not None:
-            filter_values = expr_eval(self.filter, context)
-            tmp_varname = get_tmp_varname()
-            context = context.copy()
-            context[tmp_varname] = filter_values
-            if dtype(expr, context) is bool:
-                # convert expr to int because mul_bbb is not implemented in
-                # numexpr
-                expr *= 1
-            expr *= Variable(tmp_varname)
-        else:
-            filter_values = True
-        values = expr_eval(expr, context)
-        filter_values &= np.isfinite(values)
-        numrows = np.sum(filter_values)
-        if numrows:
-            return nansum(values) / float(numrows)
-        else:
-            return float('nan')
-
-    def dtype(self, context):
-        return float
-
-
-class NumexprFunctionProperty(Expr):
-    '''For functions which are present as-is in numexpr'''
-
-    def __init__(self, expr):
-        self.expr = expr
-
-    def collect_variables(self, context):
-        return collect_variables(self.expr, context)
-
-    def as_simple_expr(self, context):
-        return self.__class__(as_simple_expr(self.expr, context))
-
-    def as_string(self):
-        return '%s(%s)' % (self.func_name, as_string(self.expr))
-
-    def __str__(self):
-        return '%s(%s)' % (self.func_name, self.expr)
-
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
 
 
 class Abs(NumexprFunctionProperty):
@@ -854,10 +436,6 @@ class Clone(CreateIndividual):
         return array[to_give_birth]
 
 
-class TableExpression(EvaluableExpression):
-    pass
-
-
 class Dump(TableExpression):
     def __init__(self, *args, **kwargs):
         self.expressions = args
@@ -954,22 +532,69 @@ class Dump(TableExpression):
         return None
 
 
+#TODO: inherit from NumexprFunction
+class Where(Expr):
+    def __init__(self, cond, iftrue, iffalse):
+        self.cond = cond
+        self.iftrue = iftrue
+        self.iffalse = iffalse
+
+    def traverse(self, context):
+        for node in traverse_expr(self.cond, context):
+            yield node
+        for node in traverse_expr(self.iftrue, context):
+            yield node
+        for node in traverse_expr(self.iffalse, context):
+            yield node
+        yield self
+
+    def as_simple_expr(self, context):
+        cond = as_simple_expr(self.cond, context)
+
+        # filter is stored as an unevaluated expression
+        filter_expr = context.get('__filter__')
+
+        if filter_expr is None:
+            context['__filter__'] = self.cond
+        else:
+            context['__filter__'] = filter_expr & self.cond
+        iftrue = as_simple_expr(self.iftrue, context)
+
+        if filter_expr is None:
+            context['__filter__'] = ~self.cond
+        else:
+            context['__filter__'] = filter_expr & ~self.cond
+        iffalse = as_simple_expr(self.iffalse, context)
+
+        context['__filter__'] = None
+        return Where(cond, iftrue, iffalse)
+
+    def as_string(self):
+        return "where(%s, %s, %s)" % (as_string(self.cond),
+                                      as_string(self.iftrue),
+                                      as_string(self.iffalse))
+
+    def __str__(self):
+        return "if(%s, %s, %s)" % (self.cond, self.iftrue, self.iffalse)
+    __repr__ = __str__
+
+    def dtype(self, context):
+        assert dtype(self.cond, context) == bool
+        return coerce_types(context, self.iftrue, self.iffalse)
+
+    def collect_variables(self, context):
+        condvars = collect_variables(self.cond, context)
+        iftruevars = collect_variables(self.iftrue, context)
+        iffalsevars = collect_variables(self.iffalse, context)
+        return condvars | iftruevars | iffalsevars
+
+
 functions = {
     # random
     'uniform': Uniform,
     'normal': Normal,
     'choice': Choice,
     'randint': RandInt,
-    # aggregates
-    'grpcount': GroupCount,
-    'grpmin': GroupMin,
-    'grpmax': GroupMax,
-    'grpsum': GroupSum,
-    'grpavg': GroupAverage,
-    'grpstd': GroupStd,
-    'grpmedian': GroupMedian,
-    'grppercentile': GroupPercentile,
-    'grpgini': GroupGini,
     # per element
     'min': Min,
     'max': Max,
@@ -980,6 +605,7 @@ functions = {
     'trunc': Trunc,
     'exp': Exp,
     'log': Log,
+    'where': Where,
     # misc
     'sort': Sort,
     'new': CreateIndividual,

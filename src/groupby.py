@@ -3,9 +3,10 @@ from __future__ import print_function
 import numpy as np
 
 from expr import expr_eval, collect_variables, traverse_expr
+from exprbases import TableExpression
 from context import context_subset
 from utils import prod, LabeledArray
-from properties import TableExpression, GroupCount
+from aggregates import GroupCount
 from partition import partition_nd
 
 

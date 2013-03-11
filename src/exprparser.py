@@ -2,22 +2,23 @@ from __future__ import division
 
 import ast
 
-from expr import add_context, Variable
+from expr import Variable
+from utils import add_context
 
 
-import expr
+import actions
+import aggregates
 import alignment
 import groupby
+import links
 import matching
 import properties
-import actions
 import regressions
-import links
 import tfunc
 
 functions = {}
-for module in (expr, alignment, groupby, matching, properties,
-               actions, regressions, links, tfunc):
+for module in (actions, aggregates, alignment, groupby, links, matching,
+               properties, regressions, tfunc):
     functions.update(module.functions)
 
 

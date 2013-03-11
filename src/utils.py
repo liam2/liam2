@@ -1,3 +1,4 @@
+import re
 import sys
 import time
 import operator
@@ -665,3 +666,36 @@ def fields_yaml_to_type(dict_fields_list):
     Python types
     '''
     return fields_str_to_type([d.items()[0] for d in dict_fields_list])
+
+
+# exceptions handling
+# -------------------
+
+def add_context(exception, s):
+    msg = exception.args[0] if exception.args else ''
+    encoding = sys.getdefaultencoding()
+    expr_str = s.encode(encoding, 'replace')
+    msg = "%s\n%s" % (expr_str, msg)
+    cls = exception.__class__
+    return cls(msg)
+
+
+class ExplainTypeError(type):
+    def __call__(cls, *args, **kwargs):
+        try:
+            return type.__call__(cls, *args, **kwargs)
+        except TypeError, e:
+            if hasattr(cls, 'func_name'):
+                funcname = cls.func_name
+            else:
+                funcname = cls.__name__.lower()
+            if funcname is not None:
+                msg = e.args[0].replace('__init__()', funcname)
+            else:
+                msg = e.args[0]
+
+            def repl(matchobj):
+                needed, given = int(matchobj.group(1)), int(matchobj.group(2))
+                return "%d arguments (%d given)" % (needed - 1, given - 1)
+            msg = re.sub('(\d+) arguments \((\d+) given\)', repl, msg)
+            raise TypeError(msg)
