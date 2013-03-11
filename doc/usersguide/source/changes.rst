@@ -17,7 +17,8 @@ Miscellaneous improvements:
 
 * during import, when a column is all empty and its type was not specified
   manually, assume a float column instead of failing to import.
-* only add "id" and "period" columns if they are not already present.
+* only add "id" and "period" columns if they are not already defined.
+* added a "code architecture" section to the documentation.
 
 Fixes:
 ------

@@ -24,6 +24,7 @@ Appendix
 .. toctree::
    :maxdepth: 1
 
-   knownissues 
+   knownissues
+   architecture 
    technicalchoices
    changes
