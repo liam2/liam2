@@ -10,7 +10,7 @@ data files
 
 As of now, you can only import CSV files, one file for each entity.
 Their first row should contain the name of the fields. You need at least two
-integer columns: "id" and "period" (though they do not necessarily need to be
+*integer* columns: "id" and "period" (though they do not necessarily need to be
 named like that in the csv file).
 
 description file
@@ -198,11 +198,11 @@ If the fields of an entity are scattered in several files, you can use the
                 time: period
 
             files:
-                - param\p_age.txt:
+                - param\p_age.csv:
                     # additional renamings for this file only
                     newnames:
                         value: age
-                - param\p_workstate.txt:
+                - param\p_workstate.csv:
                     newnames:
                         value: workstate
                 # person.csv should have at least 4 columns:
@@ -239,8 +239,8 @@ name of the file, you can automate the process like this:
                 value: eval('{basename}'.replace('p_', ''))
 
             files:
-                - param\p_age.txt
-                - param\p_work.txt
+                - param\p_age.csv
+                - param\p_work.csv
 
             interpolate:
                 work: previous_value
