@@ -4,8 +4,8 @@ from operator import itemgetter
 import numpy as np
 import numexpr as ne
 
-from expr import EvaluableExpression, Variable, dtype, expr_eval, \
-                 missing_values, get_missing_value
+from expr import Variable, dtype, expr_eval, missing_values, get_missing_value
+from exprbases import EvaluableExpression
 from context import EntityContext, context_length
 from registry import entity_registry
 

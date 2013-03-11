@@ -3,12 +3,13 @@ from itertools import izip, chain
 
 import numpy as np
 
-from expr import (Expr, EvaluableExpression, Variable,
+from expr import (Expr, Variable,
                   dtype, coerce_types, expr_eval,
                   as_simple_expr, as_string,
                   collect_variables, traverse_expr,
                   get_missing_record, get_missing_vector)
-from exprbases import (CompoundExpression, NumexprFunctionProperty,
+from exprbases import (EvaluableExpression, CompoundExpression,
+                       NumexprFunctionProperty,
                        FunctionExpression, TableExpression,
                        NumpyCreateArray, NumpyChangeArray)
 from context import (EntityContext, context_length, context_subset,

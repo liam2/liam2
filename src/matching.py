@@ -1,7 +1,7 @@
 import numpy as np
 
-from expr import (expr_eval, collect_variables, traverse_expr,
-                  EvaluableExpression)
+from expr import expr_eval, collect_variables, traverse_expr
+from exprbases import EvaluableExpression
 from context import context_length, context_subset, context_delete
 from utils import loop_wh_progress
 

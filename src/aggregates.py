@@ -1,9 +1,9 @@
 import numpy as np
 
-from expr import (EvaluableExpression, Variable, dtype, expr_eval,
+from expr import (Variable, dtype, expr_eval,
                   collect_variables, traverse_expr, get_tmp_varname,
                   ispresent)
-from exprbases import NumpyAggregate, FilteredExpression
+from exprbases import EvaluableExpression, NumpyAggregate, FilteredExpression
 from context import context_length
 from utils import nansum
 
