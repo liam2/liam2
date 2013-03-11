@@ -452,7 +452,7 @@ class ExprAttribute(EvaluableExpression):
         yield self
 
 
-#TODO: factorize with NumpyProperty & FunctionExpression
+#TODO: factorize with NumpyFunction & FunctionExpression
 class ExprCall(EvaluableExpression):
     def __init__(self, expr, args, kwargs):
         self.expr = expr

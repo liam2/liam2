@@ -9,7 +9,7 @@ from expr import (Expr, Variable,
                   collect_variables, traverse_expr,
                   get_missing_record, get_missing_vector)
 from exprbases import (EvaluableExpression, CompoundExpression,
-                       NumexprFunctionProperty,
+                       NumexprFunction,
                        FunctionExpression, TableExpression,
                        NumpyCreateArray, NumpyChangeArray)
 from context import (EntityContext, context_length, context_subset,
@@ -261,21 +261,21 @@ class Trunc(FunctionExpression):
 #------------------------------------
 
 
-class Abs(NumexprFunctionProperty):
+class Abs(NumexprFunction):
     func_name = 'abs'
 
     def dtype(self, context):
         return float
 
 
-class Log(NumexprFunctionProperty):
+class Log(NumexprFunction):
     func_name = 'log'
 
     def dtype(self, context):
         return float
 
 
-class Exp(NumexprFunctionProperty):
+class Exp(NumexprFunction):
     func_name = 'exp'
 
     def dtype(self, context):

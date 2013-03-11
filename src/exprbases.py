@@ -96,7 +96,7 @@ class FilteredExpression(FunctionExpression):
         return expr_vars
 
 
-class NumpyProperty(EvaluableExpression):
+class NumpyFunction(EvaluableExpression):
     func_name = None  # optional (for display)
     np_func = (None,)
     # arg_names can be set automatically by using inspect.getargspec,
@@ -168,7 +168,7 @@ class NumpyProperty(EvaluableExpression):
         return set.union(*args_vars) if args_vars else set()
 
 
-class NumpyChangeArray(NumpyProperty):
+class NumpyChangeArray(NumpyFunction):
     def compute(self, func, args, kwargs, filter_value=None):
         # the first argument should be the array to work on ('a')
         assert self.arg_names[0] == 'a'
@@ -184,7 +184,7 @@ class NumpyChangeArray(NumpyProperty):
             return np.where(filter_value, new_values, old_values)
 
 
-class NumpyCreateArray(NumpyProperty):
+class NumpyCreateArray(NumpyFunction):
     def compute(self, func, args, kwargs, filter_value=None):
         values = func(*args, **kwargs)
         if filter_value is None:
@@ -194,12 +194,12 @@ class NumpyCreateArray(NumpyProperty):
             return np.where(filter_value, values, missing_value)
 
 
-class NumpyAggregate(NumpyProperty):
+class NumpyAggregate(NumpyFunction):
     nan_func = (None,)
 
     def __init__(self, *args, **kwargs):
         self.skip_na = kwargs.pop("skip_na", True)
-        NumpyProperty.__init__(self, *args, **kwargs)
+        NumpyFunction.__init__(self, *args, **kwargs)
 
     def compute(self, func, args, kwargs, filter_value=None):
         # the first argument should be the array to work on ('a')
@@ -228,7 +228,7 @@ class NumpyAggregate(NumpyProperty):
         return func(values, *args, **kwargs)
 
 
-class NumexprFunctionProperty(Expr):
+class NumexprFunction(Expr):
     '''For functions which are present as-is in numexpr'''
     func_name = None
 

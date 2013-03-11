@@ -71,7 +71,7 @@ file: exprbases.py
 Liam2 provides many different bases classes to inherit from when implementing
 a new function:
 
-* NumexprFunctionProperty: base class for functions which are implemented
+* NumexprFunction: base class for functions which are implemented
   as-is in numexpr. eg. abs, log, exp
 
 * CompoundExpression: base class for expressions which can be expressed in
@@ -84,7 +84,7 @@ a new function:
   EvaluableExpression does. One should only inherit from this class directly
   if none of the below subclasses applies.
 
-  a) NumpyProperty: subclass for functions which are implemented
+  a) NumpyFunction: subclass for functions which are implemented
      as is in Numpy. Should not be used directly.
      
      * NumpyCreateArray: subclass for functions which create arrays out of
