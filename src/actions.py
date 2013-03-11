@@ -40,7 +40,7 @@ class Show(Process):
 
     def __str__(self):
         #TODO: the differentiation shouldn't be needed. I guess I should
-        # have __repr__ defined for all properties
+        # have __repr__ defined for all expressions
         str_args = [str(arg) if isinstance(arg, Expr) else repr(arg)
                     for arg in self.args]
         return 'show(%s)' % ', '.join(str_args)

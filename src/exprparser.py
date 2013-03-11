@@ -12,13 +12,13 @@ import alignment
 import groupby
 import links
 import matching
-import properties
+import exprmisc
 import regressions
 import tfunc
 
 functions = {}
 for module in (actions, aggregates, alignment, groupby, links, matching,
-               properties, regressions, tfunc):
+               exprmisc, regressions, tfunc):
     functions.update(module.functions)
 
 
