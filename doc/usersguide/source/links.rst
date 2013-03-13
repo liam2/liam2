@@ -7,16 +7,20 @@
 Links
 =====
 
-Entities can be linked with each other or with other entities, for example, 
-individuals belong to households, and mothers are linked to their children, 
-while partners are interlinked as well.
+Individuals can be linked with each other or with individuals of other
+entities, for example, mothers are linked to their children, partners are
+linked to each other and persons belong to households. 
 
-A typical link has the following form: ::
+A typical link declaration has the following form: ::
 
     name: {type: <type>, target: <entity>, field: <name of link field>}
     
-LIAM 2 uses integer fields to establish the link between entities. Those
+LIAM 2 uses **integer fields** to establish the link between entities. Those
 integer fields contain the id-number of the linked individual.    
+
+For link fields, -1 is a special value meaning the link points to nothing
+(eg. a person has no partner). Other negative values **should never be used**
+(whatever the reason) for link fields.
 
 LIAM 2 allows two types of links: many2one and one2many.
 
