@@ -90,7 +90,7 @@ New features:
   - *align on a linked entity* (a.k.a immigration): additionally to the
     arguments of align, align_abs has also an optional "link" argument, which
     makes it work on the linked entities. The link argument must a one2many
-    link. For example, it can be used to take as many household as necessary
+    link. For example, it can be used to take as many *household*s as necessary
     trying to get as close as possible to a particular distribution of
     *persons*. When the link argument is in effect, the function uses the
     "Chenard" algorithm.
