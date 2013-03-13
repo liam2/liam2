@@ -149,20 +149,15 @@ definition for that field (see the *agegroup* variable in the example below).
 Field names must be unique per entity (i.e. several entities may have a field
 with the same name). 
 
+Temporary variables are not considered as a fields and do not have to be
+declared.
 
 links
 -----
 
-Entities can be linked with each other or with other entities, for example, 
-individuals belong to households, and mothers are linked to their children, 
-while partners are interlinked as well.
-
-A typical link has the following form: ::
-
-    name: {type: <type>, target: <entity>, field: <name of link field>}
-    
-LIAM 2 uses integer fields to establish links between entities. Those
-integer fields contain the id-number of the linked individual.    
+Individuals can be linked with each other or with individuals of other
+entities, for example, mothers are linked to their children, partners are
+linked to each other and persons belong to households. 
 
 LIAM 2 allows two types of links: many2one and one2many.
 
@@ -223,15 +218,24 @@ More detail, see :ref:`processes_label`.
 simulation
 ==========
 
-The *simulation* block includes the location of the datasets (**input**, **output**), the number of periods and
-the start period. It sets what processes defined in the **entities** block are simulated (since some can be
+The *simulation* block includes the location of the datasets (**input**,
+**output**), the number of periods and the start period. It sets what
+processes defined in the **entities** block are simulated (since some can be
 omitted), and the order in which this is done.
 
-Suppose that we have a model that starts in 2002 and has to simulate for 10 periods. Furthermore, suppose that we have two
-object or entities: individuals and households. The model starts by some initial processes (grouped under the header *init*)
-that precede the actual prospective simulation of the model, and that only apply to the observed dataset in 2002. These
-initial simulations can pertain to the level of the individual or the household. Use the *init* block to calculate variables
-for the starting period.
+Please note that even though in all our examples periods correspond to years,
+the interpretation of the period is up to the modeller and can thus be an
+integer number representing anything (a day, a month, a quarter or anything
+you can think of). This is an important choice as it will impact the whole
+model.
+
+Suppose that we have a model that starts in 2002 and has to simulate for 10
+periods. Furthermore, suppose that we have two entities: individuals and
+households. The model starts by some initial processes (defined in the *init*
+section) that precede the actual prospective simulation of the model, and that
+only apply to the observed dataset in 2001 (or before). These initial
+simulations can pertain to the level of the individual or the household.
+Use the *init* block to calculate variables for the starting period.
 
 The prospective part of the model starts by a number of sub-processes setting the household size and composition. Next, two
 processes apply on the level of the individual, changing the age and agegroup. Finally, mortality and fertility are
@@ -315,7 +319,8 @@ directory where the simulation file is located.
 start_period
 ------------
 
-Defines the first period (integer) to be simulated. 
+Defines the first period (integer) to be simulated. It should be consistent
+(use the same scale/time unit) with the "period" column in the input data.
 
 periods
 -------
