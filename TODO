@@ -12,6 +12,7 @@ implementation that I am aware of.
 - entirely encapsulate the indexing stuff in the data provider layer
   and possibly use pytables indexing engine
 - automatic missing value propagation
+- use a different value for missing int columns (but keep -1 for link columns)
 - all arguments to all functions should accept expressions automatically
   (there should be a base class handling this)
 - expose all numpy functionalities
