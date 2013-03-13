@@ -24,12 +24,15 @@ entities:
 
     household:
         fields:
-            # period and id are implicit
             - num_persons:  {type: int, initialdata: False}
             - nch:          {type: int, initialdata: False}
             - start_period: {type: int, initialdata: False}
             - clone_id:     {type: int, initialdata: False}
             - weight:       {type: int, initialdata: False}
+            # period and id are usually implicit, but we include them here
+            # anyway for the sake of testing
+            - period: int
+            - id: int
 
         links:
             persons: {type: one2many, target: person, field: hh_id}
