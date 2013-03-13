@@ -10,26 +10,26 @@ First, what is a contextual filter? It is the name we gave to the feature which
 propagates the filter of an *if* function to the "True" side of the function,
 and the opposite filter to the "False" side. So, for example, in: ::
 
-  - aligned: if(gender, align(0.0, fname='al_p_dead_m.csv')
-                        align(0.0, fname='al_p_dead_f.csv'))
+  - aligned: if(gender, align(0.0, 'al_p_dead_m.csv')
+                        align(0.0, 'al_p_dead_f.csv'))
 
 the "gender" filter is automatically propagated to the align functions. Which
 means, the above code is exactly equivalent to: ::
 
-  - aligned_m: align(0.0, filter=gender, fname='al_p_dead_m.csv')
-  - aligned_f: align(0.0, filter=not gender, fname='al_p_dead_f.csv')
+  - aligned_m: align(0.0, 'al_p_dead_m.csv', filter=gender)
+  - aligned_f: align(0.0, 'al_p_dead_f.csv', filter=not gender)
   - aligned: if(gender, aligned_m, aligned_f)
 
 One might wonder what happens if an explicit filter is used in addition to the
 contextual filter? Both filters are combined (using "and"), as for example: ::
 
-  - aligned: if(gender, align(0.0, fname='al_p_dead_m.csv', filter=age > 10)
-                        align(0.0, fname='al_p_dead_f.csv'))
+  - aligned: if(gender, align(0.0, 'al_p_dead_m.csv', filter=age > 10)
+                        align(0.0, 'al_p_dead_f.csv'))
 
 which is in fact evaluated as: ::
 
-  - aligned_m: align(0.0, filter=gender and age > 10, fname='al_p_dead_m.csv')
-  - aligned_f: align(0.0, filter=not gender, fname='al_p_dead_f.csv')
+  - aligned_m: align(0.0, 'al_p_dead_m.csv', filter=gender and age > 10)
+  - aligned_f: align(0.0, 'al_p_dead_f.csv', filter=not gender)
   - aligned: if(gender, aligned_m, aligned_f)
   
 What is the inconsistency anyway?
