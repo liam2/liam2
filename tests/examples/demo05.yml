@@ -4,7 +4,8 @@
 
 # In this example, we will model young adults leaving their parents household
 # and some couples divorcing. For that we will show how to break existing links,
-# and use the logit_regr() and lag() functions.
+# use the lag() function and use the logit_regr() function with an actual score
+# expression.
 entities:
     household:
         fields:
@@ -85,7 +86,7 @@ entities:
                 - partner_id: if(partner.dead, UNSET, partner_id)
                 - show('Avg age of dead men', grpavg(age, filter=dead and ISMALE))
                 - show('Avg age of dead women', grpavg(age, filter=dead and ISFEMALE))
-                - show('Widows', grpsum(ISWIDOW))
+                - show('Widows', grpcount(ISWIDOW))
                 - remove(dead)
 
             birth:
@@ -101,8 +102,7 @@ entities:
                                 gender = choice([MALE, FEMALE], [0.51, 0.49]))
 
             marriage:
-                - in_couple: ISMARRIED
-                - to_couple: if((age >= 18) and (age <= 90) and not in_couple,
+                - to_couple: if((age >= 18) and (age <= 90) and not ISMARRIED,
                                 if(ISMALE,
                                    logit_regr(0.0, align='al_p_mmkt_m.csv'),
                                    logit_regr(0.0, align='al_p_mmkt_f.csv')),
@@ -131,14 +131,14 @@ entities:
                 - civilstate: if(justcoupled, MARRIED, civilstate)
                 - dur_in_couple: if(justcoupled,
                                     0,
-                                    if(in_couple, dur_in_couple + 1, 0))
+                                    if(ISMARRIED, dur_in_couple + 1, 0))
 #                - csv(dump(id, age, gender, partner.id, partner.age,
 #                           partner.gender, hh_id, filter=justcoupled),
 #                      suffix='new_couples')
 
             get_a_life:
                 - alone: household.nb_persons == 1
-                - hh_id: if(not(ISMARRIED) and not alone and (age >= 24),
+                - hh_id: if(not ISMARRIED and not alone and (age >= 24),
                             new('household',
                                 region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])),
                             hh_id)
@@ -174,7 +174,7 @@ simulation:
         - household: [init_region_id]
 
     processes:
-        - household: [household_composition, clean_empty]
+        - household: [household_composition]
         - person: [ageing, death, birth, marriage, get_a_life, divorce,
                    civilstate_changes]
         - household: [household_composition, clean_empty]

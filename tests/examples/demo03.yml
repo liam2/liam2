@@ -33,12 +33,9 @@ entities:
             # period and id are implicit
             - age:        int
             - gender:     bool
-            # 1: single, 2: married, 3: divorced, 4: widowed
-            - civilstate: int
 
             # link fields
             - mother_id:  int
-            - partner_id: int
             - hh_id:      int
 
             # fields not present in input
@@ -46,26 +43,14 @@ entities:
 
         links:
             mother: {type: many2one, target: person, field: mother_id}
-            partner: {type: many2one, target: person, field: partner_id}
-            household: {type: many2one, target: household, field: hh_id}
             children: {type: one2many, target: person, field: mother_id}
+            household: {type: many2one, target: household, field: hh_id}
 
         macros:
             MALE: True
             FEMALE: False
             ISMALE: gender
             ISFEMALE: not gender
-
-            UNSET: -1
-
-            SINGLE: 1
-            MARRIED: 2
-            DIVORCED: 3
-            WIDOW: 4
-            ISSINGLE: civilstate == 1
-            ISMARRIED: civilstate == 2
-            ISDIVORCED: civilstate == 3
-            ISWIDOW: civilstate == 4
 
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
@@ -84,23 +69,18 @@ entities:
                       mother_id = id,
                       hh_id = hh_id,
                       age = 0,
-                      partner_id = UNSET,
-                      civilstate = SINGLE,
                       gender = choice([MALE, FEMALE], [0.51, 0.49]))
 
             death:
                 - dead: if(ISMALE,
                            logit_regr(0.0, align='al_p_dead_m.csv'),
                            logit_regr(0.0, align='al_p_dead_f.csv'))
-                - civilstate: if(partner.dead, WIDOW, civilstate)
-                - partner_id: if(partner.dead, UNSET, partner_id)
                 - show('Avg age of dead men', grpavg(age, filter=dead and ISMALE))
                 - show('Avg age of dead women', grpavg(age, filter=dead and ISFEMALE))
-                - show('Widows', grpsum(ISWIDOW))
                 - remove(dead)
 
             dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
-                                mother.age, partner.age), suffix='info')
+                                mother.age), suffix='info')
             show_demography: show(groupby(agegroup, gender))
 
 simulation:
@@ -108,12 +88,9 @@ simulation:
         - household: [init_region_id]
 
     processes:
-        - person: [
-            ageing, birth, death,
-            #dump_info,
-            show_demography
-        ]
+        - person: [ageing, birth, death, show_demography]
         - household: [household_composition, clean_empty]
+#        - person: [dump_info, show_demography]
 
     input:
         file: simple2001.h5

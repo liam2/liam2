@@ -4,7 +4,8 @@
 
 # This example builds upon the first one and introduces a few additional
 # features: a second entity, links and one of their associated functions
-# (countlink), procedures with local variables, and the choice function.
+# (countlink), procedures with local variables, an init procedure and the choice
+# function.
 entities:
     household:
         fields:
@@ -35,7 +36,6 @@ entities:
 
             # link fields
             - mother_id:  int
-            - partner_id: int
             - hh_id:      int
 
             # fields not present in input
@@ -43,9 +43,8 @@ entities:
 
         links:
             mother: {type: many2one, target: person, field: mother_id}
-            partner: {type: many2one, target: person, field: partner_id}
-            household: {type: many2one, target: household, field: hh_id}
             children: {type: one2many, target: person, field: mother_id}
+            household: {type: many2one, target: household, field: hh_id}
 
         # possible transitions and regressions. The actual list used in the
         # simulation must be defined below
@@ -68,7 +67,7 @@ entities:
             # * the suffix argument can be used to customize the name of the
             #   csv file. It uses this pattern: <entity>_<period>_<suffix>.csv
             dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
-                                mother.age, partner.age), suffix='info')
+                                mother.age), suffix='info')
             show_demography: show(groupby(agegroup, gender))
 
 simulation:
@@ -77,7 +76,7 @@ simulation:
 
     processes:
         - household: [household_composition]
-        - person: [ageing, dump_info]
+        - person: [ageing, dump_info, show_demography]
 
     input:
         file: simple2001.h5
