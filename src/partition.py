@@ -62,11 +62,7 @@ except ImportError:
 
         size = tuple([len(colvalues) for colvalues in possible_values])
 
-        #TODO: build result as a flattened array directly instead of calling
-        # ravel afterwards
-
-        # initialise result with empty lists
-        result = np.empty(size, dtype=list)
+        result = []
 
         # for each combination of i, j, k:
         for idx in np.ndindex(*size):
@@ -86,12 +82,15 @@ except ImportError:
                 # filter_value can be a simple boolean, in that case, we
                 # get a 0-d array.
                 local_filter = np.copy(filter_value)
+
             if local_filter.shape:
-                result[idx] = filter_to_indices(local_filter)
+                group_indices = filter_to_indices(local_filter)
             else:
                 # local_filter = True
                 assert local_filter
-                result[idx] = np.arange(len(columns[0]))
+                group_indices = np.arange(len(columns[0]))
+            result.append(group_indices)
+        return result
 
         # pure-python version. It is 10x slower than the NumPy version above
         # but it might be a better starting point to translate to C,
@@ -122,4 +121,4 @@ except ImportError:
 #                    pass
 #        for idx in np.ndindex(*size):
 #            result[idx] = np.array(result[idx])
-        return np.ravel(result)
+#        return np.ravel(result)
