@@ -21,39 +21,51 @@ A LIAM 2 model has the following structure: ::
 
     simulation:
         ...
-        
+
+
+.. index:: globals declaration 
+.. _globals_declaration:
+
 globals
 =======
 
 The *globals* are variables (aka. parameters) that do not relate to any 
 particular *entity* defined in the model. They can be used in expressions
-across all entities.
+in any entity.
 
-Periodic globals can have a different value for each period. For example, the
-retirement age for women in Belgium has been gradually increasing from 61 in 
-1997 to 65 in 2009. A global variable WEMRA has therefore been included.::
+LIAM2 currently supports two kinds of globals: tables and multi-dimensional
+arrays. Both kinds need their data to be imported (as explained in the
+:ref:`import_data` section) before they can be used. They also need to be
+declared in the simulation file, as follow: ::
+
+    globals:
+        mytable:
+            fields:
+                - MYINTFIELD: int
+                - MYFLOATFIELD: float
+
+        MYARRAY:
+            type: float
+
+Please see the :ref:`globals_usage` usage section for how to use them in 
+you expressions. 
+
+There are globals with a special status: **periodic globals**. Those globals
+have a different value for each period. *periodic* is thus a reserved word
+and is always a table, so the "fields" keyword can be omitted for that
+table.
+
+For example, the retirement age for women in Belgium has been gradually
+increasing from 61 in 1997 to 65 in 2009. A global variable WEMRA has
+therefore been included. ::
 
     globals:
         periodic:
+            # PERIOD is an implicit column of the periodic table
             - WEMRA: float
 
-Periodic globals can be used in any process. They can be used in two ways: like
-a normal variable, they will evaluate to their value for the period currently
-being simulated, for example ::
 
-    workstate: if(age >= WEMRA, 9, workstate)
-
-This changes the workstate of the individual to retired (9) if the age is
-higher than the required retirement age in that year.
-
-Another way to use them is to specify explicitly for which period you want
-them to be evaluated. This is done by using GLOBALNAME[period_expr].
-periodexpr can be any expression yielding a valid period value. Here are a few
-artificial examples: ::
-
-    workstate: if(age >= WEMRA[2010], 9, workstate)
-    workstate: if(age >= WEMRA[period - 1], 9, workstate)
-    workstate: if(age >= WEMRA[year_of_birth + 60], 9, workstate)
+.. index:: entities
 
 entities
 ========
@@ -90,6 +102,8 @@ LIAM 2 declares the entities as follows: ::
             
 As we use YAML as the description language, indentation and the use of ":" are
 important.
+
+.. index:: fields
 
 fields
 ------
@@ -160,6 +174,8 @@ linked to each other and persons belong to households.
 
 For details, see the :ref:`links_label` section.
 
+
+.. index:: macros
 
 macros
 ------

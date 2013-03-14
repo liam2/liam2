@@ -138,12 +138,13 @@ block you specify the *ageing*-process if you want to update *age* and
 By using procedures, you can actually make *building blocks* or modules in the
 model.
 
-Temporary variables
--------------------
+Local (temporary) variables
+---------------------------
 
 Temporary variables defined/computed within a procedure are local to that
 procedure: they are only valid within that procedure. If you want to pass
-variables between procedures you have to define them in the **fields** section.
+variables between procedures you have to make them global by defining them in
+the **fields** section.
 
 *(bad) example* ::
 
@@ -239,12 +240,65 @@ leave a variable unchanged if a condition is not met, use the variable in the
     workstate: if(age >= 65, 9, workstate)
 
 You can nest if-statements. The example below retires men (gender = True) over
-64 and women whose age equals at least the parameter/periodic global "WEMRA"
-(Women Retirement Age). ::
+64 and women over 61. ::
 
     workstate: if(gender,
                   if(age >= 65, 9, workstate),
-                  if(age >= WEMRA, 9, workstate))
+                  if(age >= 62, 9, workstate))
+    # could also be written like this:
+    workstate: if(age >= if(gender, 65, 62), 9, workstate)
+
+
+.. index:: globals usage
+.. _globals_usage:
+
+globals
+-------
+
+Globals can be used in expressions in any entity. LIAM2 currently supports
+two kinds of globals: tables and multi-dimensional arrays. They both need to
+be imported (see the :ref:`import_data` section) and declared (see
+the :ref:`globals_declaration` section) before they can be used.
+
+Globals tables come in two variety: those with a PERIOD column and those
+without. 
+
+The fields in a globals **table with a PERIOD column** can be used
+like normal (entity) fields except they need to be prefixed by the name of
+their table: ::
+
+    myvariable: mytable.MYINTFIELD * 10
+
+the value for INTFIELD is in fact the value INTFIELD has for the period
+currently being evaluated.
+
+There is a special case for the **periodic** table: its fields do not need
+to be prefixed by "periodic." (but they can be, if desired). ::
+ 
+    - retirement_age: if(gender, 65, WEMRA) 
+    - workstate: if(age >= retirement_age, 9, workstate)
+
+This changes the workstate of the individual to retired (9) if the age is
+higher than the required retirement age in that year.
+
+Another way to use globals from a table with a PERIOD column is to specify
+explicitly for which period you want them to be evaluated. This is done by
+using tablename.FIELDNAME[period_expr], where period_expr can be any
+expression yielding a valid period value. Here are a few artificial
+examples: ::
+
+    workstate: if(age >= WEMRA[2010], 9, workstate)
+    workstate: if(age >= WEMRA[period - 1], 9, workstate)
+    workstate: if(age >= WEMRA[year_of_birth + 60], 9, workstate)
+
+Globals **tables without a PERIOD column** can only be used with the second
+syntax, and in that case LIAM2 will not automatically subtract the
+"base period" from the index, which means that to access a particular row,
+you have to use its row index (0 based). 
+
+Globals **arrays** can simply be used like a normal field:
+
+    myvariable: MYARRAY * 2
 
 
 .. index:: mathematical functions
@@ -599,10 +653,11 @@ Now let us examine each argument in turn:
         align(score_expr, array_expr)
 
     + a list of expressions returning scalars [expr1, expr2].
-    + a string treated as a filename. In that case, the proportions,
-      expressions (column names) and possible values are read from that file.
-      The "fname" argument which used to be the way to define this is still
-      supported for backward compatibility.
+    + a string treated as a filename. That file should be in the "array"
+      format described in the :ref:`import_data` section. In that case, the
+      proportions, expressions (column names) and possible values are read
+      from that file. The "fname" argument which used to be the way to define
+      this is still supported for backward compatibility.
 
       There is no technical restriction on names for files containing alignment
       data but, by convention, they usually use the following pattern: start
