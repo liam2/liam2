@@ -1335,9 +1335,10 @@ groupby
 -------
 
 **groupby** (aka *pivot table*): group all individuals by their value for the
-given expressions, and optionally compute an expression for each group. If no
-expression is given, it will compute the number of individuals in that
-group. A filter can be specified to limit the individuals taken into account. 
+given expressions, and optionally compute an expression for each group (using
+the *expr* argument). If no expression is given, it will compute the number of
+individuals in that group. A *filter* can be specified to limit the
+individuals taken into account. 
 
 *general format* ::
 
@@ -1406,6 +1407,64 @@ gives the average age by workstate and gender ::
             5 |  42.35 | 46.56 | 43.48
         total |  42.67 | 42.38 | 42.53
 
+As of version 0.6, groupby can also be used in larger expressions. This can be
+used for example to compute alignment targets on the fly: ::
+
+    # see note below about expr=grpcount(condition) vs filter=condition
+    - men_by_age: groupby(age, expr=grpcount(gender))
+    - men_prop_by_age: men_by_age / groupby(age)
+    - aligned: align(proportions=men_prop_by_age)
+
+Note that there is a subtle difference between using "filter=condition" and
+"expr=grpcount(condition))". The former will not take the filtered individuals
+into account at all, while the later will take them into account but not count
+them. This can make a difference on the output if there are some empty
+categories, and this can be important when using the result of a groupby
+inside a larger expression (as above) because it can only work with arrays of
+the same size. Compare : ::
+
+  groupby(civilstate, filter=age > 80)
+  
+  civilstate |     |    |      
+           1 |   3 |  4 | total
+         542 | 150 | 85 |   777
+         
+with ::
+
+  groupby(civilstate, expr=grpcount(age > 80))
+
+  civilstate |   |     |    |      
+           1 | 2 |   3 |  4 | total
+         542 | 0 | 150 | 85 |   777
+
+The *expr* argument will usually be used with an aggregate function, but it
+also supports normal expressions, in which case the values for each individual
+will be displayed in a list. This feature should only be used with care and
+usually in combination with a strong *filter* to avoid producing extremely
+large tables which would take forever to display. ::
+
+  groupby(agegroup_civilstate, gender, expr=id, filter=id < 20)
+
+  agegroup_civilstate |        gender |             |                     
+                      |         False |        True |                total
+                    0 |     [0 1 4 6] |   [2 3 5 7] |    [0 1 4 6 2 3 5 7]
+                    5 |     [8 10 12] |   [9 11 13] |    [8 10 12 9 11 13]
+                   10 |    [14 16 18] |  [15 17 19] |  [14 16 18 15 17 19]
+                total | [0 1 4 6 8 10 |  [2 3 5 7 9 |  [0 1 4 6 8 10 12 14
+                      |  12 14 16 18] | 11 13 15 17 |   16 18 2 3 5 7 9 11
+                      |               |         19] |         13 15 17 19]
+
+or ::
+ 
+  groupby(civilstate, gender, expr=age, filter=id > 100 and id < 110)
+
+  civilstate |        gender |                  |                             
+             |         False |             True |                        total
+           1 |       [46 47] |       [46 47 47] |             [46 47 46 47 47]
+           2 |          [47] |          [45 46] |                   [47 45 46]
+           4 |          [46] |               [] |                         [46]
+       total | [46 47 47 46] | [46 47 47 45 46] | [46 47 47 46 46 47 47 45 46]
+  
 
 .. index:: interactive console, debugging
 
