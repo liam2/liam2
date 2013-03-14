@@ -26,31 +26,30 @@ globals
 =======
 
 The *globals* are variables (aka. parameters) that do not relate to any 
-particular *entity* defined in the model. They can be used in expressions across
-all entities.
+particular *entity* defined in the model. They can be used in expressions
+across all entities.
 
 Periodic globals can have a different value for each period. For example, the
 retirement age for women in Belgium has been gradually increasing from 61 in 
-1997 via 63 from 2003 onward, up to 65 in 2009. A global variable WEMRA has
-therefore been included.::
+1997 to 65 in 2009. A global variable WEMRA has therefore been included.::
 
     globals:
         periodic:
             - WEMRA: float
 
 Periodic globals can be used in any process. They can be used in two ways: like
-a normal variable, they will evaluate to their value for the period being
-simulated, for example ::
+a normal variable, they will evaluate to their value for the period currently
+being simulated, for example ::
 
     workstate: if(age >= WEMRA, 9, workstate)
 
-This changes the workstate of the individual to retired (9) if the age is higher
-than the required retirement age in that year.
+This changes the workstate of the individual to retired (9) if the age is
+higher than the required retirement age in that year.
 
-Another way to use them is to specify explicitly for which period you want them
-to be evaluated. This is done by using GLOBALNAME[period_expr]. periodexpr can
-be any expression yielding a valid period value. Here are a few artificial 
-examples: ::
+Another way to use them is to specify explicitly for which period you want
+them to be evaluated. This is done by using GLOBALNAME[period_expr].
+periodexpr can be any expression yielding a valid period value. Here are a few
+artificial examples: ::
 
     workstate: if(age >= WEMRA[2010], 9, workstate)
     workstate: if(age >= WEMRA[period - 1], 9, workstate)
@@ -159,9 +158,7 @@ Individuals can be linked with each other or with individuals of other
 entities, for example, mothers are linked to their children, partners are
 linked to each other and persons belong to households. 
 
-LIAM 2 allows two types of links: many2one and one2many.
-
-More detail, see :ref:`links_label`.
+For details, see the :ref:`links_label` section.
 
 
 macros
