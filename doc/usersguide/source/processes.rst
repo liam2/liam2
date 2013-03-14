@@ -273,16 +273,16 @@ aggregate functions
                          only count the ones satisfying the filter.
 - grpsum(expr[, filter=condition]): sum the expression
 - grpavg(expr[, filter=condition]): average
-- grpstd(expr[, filter=condition]): standard deviation
-- grpmax(expr[, filter=condition]), grpmin(expr[, filter=condition]): max or min
-- grpmedian(expr[, filter=condition]): median
-- grppercentile(expr, percent[, filter=condition]): percentile
+- grpstd(expr[, filter=condition][, skip_na=True]): standard deviation
+- grpmin(expr[, filter=condition][, skip_na=True]): min
+- grpmax(expr[, filter=condition][, skip_na=True]): max
+- grpmedian(expr[, filter=condition][, skip_na=True]): median
+- grppercentile(expr, percent[, filter=condition][, skip_na=True]): percentile
 - grpgini(expr[, filter=condition]): gini
 
 **grpsum** sums any expression over all the individuals of the current entity.
 For example *grpsum(earnings)* will produce the sum of the earnings of all
-persons in the sample. The expression *grpsum(nch0_11)* will
-result in the total number of children 0 to 11 in the sample.
+persons in the sample.
 
 **grpcount** counts the number of individuals in the current entity, optionally
 satisfying a (boolean) condition. For example, *grpcount(gender)* will produce
@@ -333,28 +333,48 @@ link functions
 temporal functions
 ------------------
 
-- lag: value at previous period
-- value_for_period: value at specific period
-- duration: number of consecutive period the expression was True
-- tavg: average of an expression since the individual was created
-- tsum: sum of an expression since the individual was created
+- lag(expr[, num_periods][, missing=value): value at previous period.
 
-If an item did not exist at that period, the returned value is -1 for a
-int-field, nan for a float or False for a boolean. You can overide this
-behaviour when you specify the *missing* parameter.
+  **expr**: any expression.
+  
+  **num_periods**: optional argument specifying the number of periods to go
+  back to. This can be either a constant or a scalar expression. Defaults to 1. 
 
-*example* ::
+  **missing**: the value to return for individuals which were not present in
+  the past period. By default, it returns the missing value corresponding to
+  the type of the expression: -1 for an integer expression, nan for a float
+  or False for a boolean.
 
-    lag(age, missing=0) # the age each person had last year, 0 if newborn
+  *example* ::
+
     grpavg(lag(age))    # average age that the current population had last year
     lag(grpavg(age))    # average age of the population of last year
+    lag(age, 2)         # the age each person had two years ago (-1 for
+                        # newborns)
+    lag(lag(age))       # this is equivalent (but slightly less efficient)
+    lag(age, missing=0) # the age each person had last year, 0 if newborn
+
+- value_for_period(expr, period[, missing=value]): value at a specific period
+
+  *example* ::
 
     value_for_period(inwork and not male, 2002)
+
+- duration(expr): number of consecutive period the expression was True
+
+  *examples* ::
 
     duration(inwork and (earnings > 2000))
     duration(educationlevel == 4)
 
+- tavg(expr): average of an expression since the individual was created
+
+  *example* ::
+
     tavg(income)
+
+- tsum(expr): sum of an expression since the individual was created
+
 
 .. index:: random, uniform, normal, randint
 
@@ -936,29 +956,38 @@ Lifecycle functions
 new
 ~~~
 
-**new** creates items initiated from another item of the same entity (eg. a
-women gives birth) or another entity (eg. a marriage creates a new houshold).
+**new** creates new individuals. It can create individuals of the same entity
+(eg. a women gives birth) or another entity (eg. a *person*'s marriage creates
+a new *houshold*). The function returns the id of the newly created
+individuals.
 
 *generic format* ::
 
-    new('entity_name', filter=expr,
+    new('entity_name'[, filter=expr][, number=value]
         *set initial values of a selection of variables*)
 
-The first parameter defines the entity in which the item will be created (eg
-person, household, ...).
+The first argument specifies the entity in which the individuals will be
+created (eg person, household, ...).
 
-Then, the filter argument specifies which items of the current entity will serve
-as the origin for the new items (for persons, that would translate to who is
-giving birth, but the function can of course be used for any kind of entity).
+Then, one should use one of either the *filter* or the *number* argument.
+
+ * **filter** specifies which individuals of the current entity will serve as
+   the origin for the new individuals (for persons, that would translate to
+   who is giving birth, but the function can of course be used for any kind of
+   entity).
+
+ * **number** specifies how many individuals need to be created. In this
+   version, those new individuals do not have an "origin", so they can copy
+   value from it.
 
 Any subsequent argument specifies values for fields of the new individuals. Any
 field which is not specified there will receive the missing value corresponding
 to the type of the field ('nan' for floats, -1 for integers and False for
 booleans). Those extra arguments can be given constants, but also any
 expression (possibly using links, random functions, ...). Those expressions are
-evaluated in the context of the origin individuals. For example, you could write
-"mother_age = age", which would set the field "mother_age" on the new item to
-the age of their mother.
+evaluated in the context of the origin individuals. For example, you could
+write "mother_age = age", which would set the field "mother_age" on the new
+children to the age of their mother.
 
 *example 1* ::
 
@@ -973,42 +1002,37 @@ the age of their mother.
               household_id = household_id,
               partner_id = -1,
               age = 0,
-              civilstate = 1,
-              collar = 0,
-              education_level = -1,
-              workstate = 5,
+              civilstate = SINGLE,
               gender=choice([True, False], [0.51, 0.49]) )
 
 The first sub-process (*to_give_birth*) is a logit regression over women (not
 gender) between 15 and 50 which returns a boolean value whether that person
 should give birth or not. The logit itself does not have a deterministic part
-(0.0), which means that the ‘fertility rank’ of women that meet the above
-condition, is only determined by a logistic stochastic variable). This process
-is also aligned on the data in 'al_p_birth.csv'.
+(0.0), which means that all women that meet the above condition are equally
+likely to give birth (they are selected randomly). This process is also
+aligned on the data in 'al_p_birth.csv'.
 
-In the above case, a new person is created for each time a woman is scheduled to
+In the above case, a new person is created for each time a woman is selected to
 give birth. Secondly, a number of links are established: the value for the
 *mother_id* field of the child is set to the id-number of his/her mother, the
-child receives the household number of his/her mother, the child's father is set
-to the partner of the mother, ... Finally some variables of the child are set to
-specific initial values: the most important of these is its gender, which is the
-result of a simple choice process.
+child's father is set to the partner of the mother, the child receives the
+household number of his/her mother, ... Finally some variables of the child are
+set to specific initial values: the most important of these is its gender,
+which is the result of a simple choice process.
 
-**new** is not limited to items of the same entity; the below procedure
-*get a life* makes sure that all those who are single when they are 24 year old,
-leave their parents’ household for their own household. The region of this
-household is created through a simple choice-process.
+**new** can create individuals of different entities; the below procedure
+*get_a_life* makes sure that all those who are single when they are 24 year
+old, leave their parents’ household for their own household. The region of
+this new household is created randomly through a choice-process.
 
 *example 2* ::
 
     get_a_life:
-        - household_id:
-            if((age == 24) and (civilstate != 2) and (civilstate != 3),
-               new('household',
-                   start_period=period,
-                   region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
-               ),
-               household_id)
+        - household_id: if(ISSINGLE and age == 24,
+                           new('household',
+                               region_id=choice([0, 1, 2, 3],
+                                                [0.1, 0.2, 0.3, 0.4])),
+                           household_id)
 
 .. index:: clone
 
@@ -1079,21 +1103,25 @@ LIAM 2 produces simulation output in three ways. First of all, by default, the
 simulated datasets are stored in hdf5 format. These can be accessed at the end
 of the run. You can use several tools to inspect the data.
 
-You can display information during the simulation using *show* or *groupby*. You
-can *dump* data to csv-file for further study.
+You can display information during the simulation (in the console log) using
+the *show* function. You can write that same information to csv files using
+the *csv* function. You can produce tabular data by using the *dump* or
+*groupby* functions.
 
-If you run LIAM 2 in interactive mode, you can type in output functions in the
-console to inspect the data.
+In the interactive console, you can use any of those output functions to
+inspect the data interactively.
+
 
 .. index:: show
 
 show
 ----
 
-*show* evaluates expressions and prints the result to the console. ::
+*show* evaluates expressions and prints the result to the console log. Note
+that, in the *interactive console*, show is implicit on all commands, so you
+do not need to use it. *show* has the following signature: ::
 
     show(expr1[, expr2, expr3, ...])
-
 
 *example 1* ::
 
@@ -1110,11 +1138,11 @@ average age.
          "Average age:", grpavg(age),
          "Age std dev:", grpstd(age))
 
-    gives
+gives ::
 
     Count: 19944 Average age: 42.7496991576 Age std dev: 21.9815913417
 
-Note that you can use the special character "\n" to display the rest of the
+Note that you can use the special character "\\n" to display the rest of the
 result on the next line.
 
 *example 3* ::
@@ -1123,18 +1151,39 @@ result on the next line.
          "\nAverage age:", grpavg(age),
          "\nAge std dev:", grpstd(age))
 
-    gives
+gives ::
 
     Count: 19944
     Average age: 42.7496991576
     Age std dev: 21.9815913417
+
+.. index:: qshow
+
+qshow
+-----
+
+*qshow* evaluates expressions and prints their results to the console log
+alongside the "textual form" of the expressions. If several expressions are
+given, they are each printed on a separate line. *qshow* usage is exactly the
+same than *show*.
+
+*example* ::
+
+    qshow(grpcount(), grpavg(age), grpstd(age))
+
+will give: ::
+
+    grpcount(): 19944
+    grpavg(age): 42.7496991576
+    grpstd(a=age): 21.9815913417
+
 
 .. index:: csv
 
 csv
 ---
 
-The **csv** function writes values to (a) csv-file(s).
+The **csv** function writes values to csv files. ::
 
     csv(expr1[, expr2, expr3, ...,
         [suffix='file_suffix'][, fname='filename'][, mode='w'])
@@ -1200,7 +1249,7 @@ Arguments:
 
 When you use the csv() function in combination with (at least one) table
 expressions (see dump and groupby functions below), the results are appended
-below each other.
+below each other. ::
 
     csv(table_expr1, 'and here goes another table', table_expr2,
         fname='tables.csv')
@@ -1242,25 +1291,25 @@ dump
 **dump** produces a table with the expressions given as argument evaluated over
 many (possibly all) individuals of the dataset.
 
-*general format*
+*general format* ::
 
     dump([expr1, expr2, ...,
-          filter=filterexpression, missing=value, header=True])
+         filter=filterexpression, missing=value, header=True])
 
 If no expression is given, *all* fields of the current entity will be dumped
 (including temporary variables available at that point), otherwise, each
 expression will be evaluated on the objects which satisfy the
 filter and produce a table.
 
-The 'filter' argument allows to evaluate the expressions only on the individuals
-which satisfy the filter. Defaults to None (evaluate on all individuals).
+The 'filter' argument allows to evaluate the expressions only on the
+individuals which satisfy the filter. Defaults to None (evaluate on all
+individuals).
 
 The 'missing' argument can be used to transform 'nan' values to another value.
 Defaults to None (no transformation).
 
 The 'header' argument determine whether column names should be in the dump or
 not. Defaults to True.
-
 
 *example* ::
 
@@ -1292,28 +1341,31 @@ group. A filter can be specified to limit the individuals taken into account.
 
 *general format* ::
 
-    groupby(expr1[, expr2, expr3, ...] [, expr=expression]
-            [, filter=filterexpression] [, percent=True])
+    groupby(expr1[, expr2, expr3, ...]
+            [, expr=expression]
+            [, filter=filterexpression]
+            [, percent=True],
+            [, pvalues=possible_values])
 
 *example* ::
 
-    show(groupby(age / 10, gender))
+    show(groupby(trunc(age / 10), gender))
 
 gives ::
 
-        gender | False | True |
-    (age / 10) |       |      | total
-             0 |   818 |  803 |  1621
-             1 |   800 |  800 |  1600
-             2 |  1199 | 1197 |  2396
-             3 |  1598 | 1598 |  3196
-             4 |  1697 | 1696 |  3393
-             5 |  1496 | 1491 |  2987
-             6 |  1191 | 1182 |  2373
-             7 |   684 |  671 |  1355
-             8 |   369 |  357 |   726
-             9 |   150 |  147 |   297
-         total | 10002 | 9942 | 19944
+    trunc((age / 10)) | gender |      |      
+                      |  False | True | total
+                    0 |    818 |  803 |  1621
+                    1 |    800 |  800 |  1600
+                    2 |   1199 | 1197 |  2396
+                    3 |   1598 | 1598 |  3196
+                    4 |   1697 | 1696 |  3393
+                    5 |   1496 | 1491 |  2987
+                    6 |   1191 | 1182 |  2373
+                    7 |    684 |  671 |  1355
+                    8 |    369 |  357 |   726
+                    9 |    150 |  147 |   297
+                total |  10002 | 9942 | 19944
 
 *example* ::
 
@@ -1321,11 +1373,11 @@ gives ::
 
 gives ::
 
-    gender | False | True |
-    inwork |       |      | total
-     False |  6170 | 5587 | 11757
-      True |  3832 | 4355 |  8187
-     total | 10002 | 9942 | 19944
+    inwork | gender |      |      
+           |  False | True | total
+     False |   6170 | 5587 | 11757
+      True |   3832 | 4355 |  8187
+     total |  10002 | 9942 | 19944
 
 *example* ::
 
@@ -1333,8 +1385,8 @@ gives ::
 
 gives ::
 
-    gender | False |  True |
-    inwork |       |       |  total
+    inwork | gender |      |      
+           |  False | True | total
      False | 30.94 | 28.01 |  58.95
       True | 19.21 | 21.84 |  41.05
      total | 50.15 | 49.85 | 100.00
@@ -1345,27 +1397,28 @@ gives ::
 
 gives the average age by workstate and gender ::
 
-       gender | False |  True |      
-    workstate |       |       | total
-            1 | 41.29 | 40.53 | 40.88
-            2 | 40.28 | 44.51 | 41.88
-            3 |  8.32 |  7.70 |  8.02
-            4 | 72.48 | 72.27 | 72.38
-            5 | 42.35 | 46.56 | 43.48
-        total | 42.67 | 42.38 | 42.53
+    workstate | gender |       |      
+              |  False |  True | total
+            1 |  41.29 | 40.53 | 40.88
+            2 |  40.28 | 44.51 | 41.88
+            3 |   8.32 |  7.70 |  8.02
+            4 |  72.48 | 72.27 | 72.38
+            5 |  42.35 | 46.56 | 43.48
+        total |  42.67 | 42.38 | 42.53
+
 
 .. index:: interactive console, debugging
 
 Debugging and the interactive console
 =====================================
 
-LIAM 2 features an interactive console which allows you to interactively explore
-the state of the memory either during or after a simulation completed.
+LIAM 2 features an interactive console which allows you to interactively
+explore the state of the memory either during or after a simulation completed.
 
-You can reach it in two ways. You can either pass "-i" as the last argument when
-running the executable, in which case the interactive console will launch after
-the whole simulation is over. The alternative is to use breakpoints in your
-simulation to interrupt the simulation at a specific point (see below).
+You can reach it in two ways. You can either pass "-i" as the last argument
+when running the executable, in which case the interactive console will launch
+after the whole simulation is over. The alternative is to use breakpoints in
+your simulation to interrupt the simulation at a specific point (see below).
 
 Type "help" in the console for the list of available commands. In addition to
 those commands, you can type any expression that is allowed in the simulation
@@ -1376,17 +1429,17 @@ file and have the result directly. Show is implicit for all operations.
     >>> grpavg(age)
     53.7131819615
 
-    >>> groupby(age / 20, gender, expr=grpcount(inwork))
+    >>> groupby(trunc(age / 20), gender, expr=grpcount(inwork))
 
-        gender | False | True |
-    (age / 20) |       |      | total
-             0 |    14 |   18 |    32
-             1 |   317 |  496 |   813
-             2 |   318 |  258 |   576
-             3 |    40 |  102 |   142
-             4 |     0 |    0 |     0
-             5 |     0 |    0 |     0
-         total |   689 |  874 |  1563
+    trunc(age / 20) | gender |      |      
+                    |  False | True | total
+                  0 |     14 |   18 |    32
+                  1 |    317 |  496 |   813
+                  2 |    318 |  258 |   576
+                  3 |     40 |  102 |   142
+                  4 |      0 |    0 |     0
+                  5 |      0 |    0 |     0
+              total |    689 |  874 |  1563
 
 .. index:: breakpoint
 
