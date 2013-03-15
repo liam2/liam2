@@ -28,8 +28,14 @@ Miscellaneous improvements:
 Fixes:
 ------
 
+* fixed all aggregate functions (except grpcount and grpsum) with a filter
+  argument equal to a simple variable (eg filter=gender) in the presence of
+  "missing" (nan) values in the expression being aggregated: the filter
+  variable was modified.
+* fixed duration() on a simple variable (eg duration(work)): the variable was
+  modified by the function.
 * fixed a nasty bug which made that each variable that needed to be read on
-  the disk (lag of more than one period, duration, value_for_period, ...) was
+  disk (lag of more than one period, duration, value_for_period, ...) was
   read 2 or 3 times instead of just once, greatly slowing down the function.
 * fixed accessing columns for the next-to-last period in the interactive
   console after a simulation: it was either giving bad results or returning an
