@@ -11,7 +11,6 @@ New features:
 
 * implemented explore on data files (.h5), so that one can, for example,
   explore the input dataset.
-* implemented skip_na for grpsum, grpavg and grpgini
 
 Miscellaneous improvements:
 ---------------------------
@@ -20,7 +19,6 @@ Miscellaneous improvements:
   manually, assume a float column instead of failing to import.
 * allow "id" and "period" columns to be defined explicitly (even though they
   are still implicit by default).
-* grpavg now skips -1 values for integer expressions like other aggregates.
 * improved the documentation, in part thanks to the corrections and
   suggestions from Alexis Eidelman.
 * added a "code architecture" section to the documentation.
@@ -28,6 +26,9 @@ Miscellaneous improvements:
 Fixes:
 ------
 
+* grpavg now skips -1 values for integer expressions like other aggregates.
+* implemented skip_na for grpsum, grpavg and grpgini (it should have been
+  implemented in rc1 but it was not)
 * fixed all aggregate functions (except grpcount and grpsum) with a filter
   argument equal to a simple variable (eg filter=gender) in the presence of
   "missing" (nan) values in the expression being aggregated: the filter
