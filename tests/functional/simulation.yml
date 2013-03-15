@@ -1176,7 +1176,11 @@ entities:
                 
                 # bool expr
                 - assertEqual(grpavg([False, True, True, False]), 0.5)
-            
+
+            test_grpstd:
+                # bool expr
+                - assertEqual(grpstd([False, True, True, False]), 0.5)
+
             test_grpmin:
                 # simple scalars
                 - assertEqual(grpmin([2, 1, 3]), 1)
@@ -1558,6 +1562,7 @@ simulation:
                    test_o2m_aggregate,
                    test_grpsum,
                    test_grpavg,
+                   test_grpstd,
                    test_grpmin,
                    test_grpmedian,
                    test_grppercentile,
