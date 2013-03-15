@@ -325,14 +325,14 @@ aggregate functions
 
 - grpcount([condition]): count the objects in the entity. If filter is given,
                          only count the ones satisfying the filter.
-- grpsum(expr[, filter=condition]): sum the expression
-- grpavg(expr[, filter=condition]): average
+- grpsum(expr[, filter=condition][, skip_na=True]): sum the expression
+- grpavg(expr[, filter=condition][, skip_na=True]): average
 - grpstd(expr[, filter=condition][, skip_na=True]): standard deviation
 - grpmin(expr[, filter=condition][, skip_na=True]): min
 - grpmax(expr[, filter=condition][, skip_na=True]): max
 - grpmedian(expr[, filter=condition][, skip_na=True]): median
 - grppercentile(expr, percent[, filter=condition][, skip_na=True]): percentile
-- grpgini(expr[, filter=condition]): gini
+- grpgini(expr[, filter=condition][, skip_na=True]): gini
 
 **grpsum** sums any expression over all the individuals of the current entity.
 For example *grpsum(earnings)* will produce the sum of the earnings of all
