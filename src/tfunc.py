@@ -55,7 +55,7 @@ class Duration(FunctionExpression):
         last_period_true.fill(period + 1)
 
         id_to_rownum = context.id_to_rownum
-        still_running = value
+        still_running = value.copy()
         while np.any(still_running) and period >= baseperiod:
             ids, values = entity.value_for_period(bool_expr, period, context,
                                                   fill=None)

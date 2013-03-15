@@ -1037,8 +1037,24 @@ entities:
 #                                 -1))
 
             test_duration:
-                - show("> 10", duration(age > 10))
+                - show("age > 10", duration(age > 10))
                 - show("max(d, 2)", max(duration(age > 10), 2))
+
+                # with a simple boolean variable
+                # modify work so that it is not constant for all periods
+                - work: choice([False, True])
+                # this is just a way to save the work variable
+                - work_backup: work and work
+                - dur_work: duration(work)
+                # check that work was not modified (used to be the case)
+                - assertEqual(work, work_backup)
+                # check that dur_work is correct
+                - assertEqual(dur_work == 0, not work)
+                - assertEqual(dur_work == 1, work and not lag(work))
+                - assertEqual(dur_work == 2,
+                              work and lag(work) and not lag(work, 2))
+                - assertEqual(dur_work > 2,
+                              work and lag(work) and lag(work, 2))
 
             test_dump_init:
                 - empty_file: csv(fname='empty_file.csv')
@@ -1097,19 +1113,36 @@ entities:
                 # implicit filter
                 # assign to each man the sum of men ages and to each woman
                 # the sum of women ages
-#                - filtered: if(MALE, grpsum(age), grpsum(age))
-#                - assertEqual(grpcount(filtered == males_age),
-#                              grpcount(MALE))
-#                - assertEqual(grpcount(filtered == females_age),
-#                              grpcount(FEMALE))
+                - filtered: if(MALE, grpsum(age), grpsum(age))
+                - assertEqual(grpcount(filtered == males_age),
+                              grpcount(MALE))
+                - assertEqual(grpcount(filtered == females_age),
+                              grpcount(FEMALE))
                               
-                # with nan
-                - withnan: grpsum([1.0, nan, 2.0])
-                - assertEqual(withnan, 3.0)
+                # with missing
+                - assertEqual(grpsum([1, -1, 2]), 3)
+                - assertEqual(grpsum([1.0, nan, 2.0]), 3.0)
                 
+                # with missing but skip_na=False
+                - assertEqual(grpsum([1, -1, 2], skip_na=False), 2)
+                - withnan: grpsum([1.0, nan, 2.0], skip_na=False)
+                - assertTrue(withnan != withnan)
+
+                # with missing and filter
+                - assertEqual(grpsum(if(age > 10, -1, age), filter=gender),
+                              grpsum(age, filter=age <= 10 and gender))
+                - f_age: age * 1.0
+                - assertEqual(grpsum(if(age > 10, nan, f_age), filter=gender),
+                              grpsum(f_age, filter=age <= 10 and gender))
+
                 # bool expr
                 - sum_bool: grpsum([False, True, True])
                 - assertEqual(sum_bool, 2)
+                
+                # scalar
+                # currently fails
+#                - assertEqual(grpsum(2), 2 * grpcount())
+                - assertEqual(grpsum(2, filter=MALE), 2 * grpcount(MALE))
 
             test_grpavg:
                 # simple
@@ -1122,19 +1155,31 @@ entities:
                               grpsum(age, filter=FEMALE) / grpcount(FEMALE))
 
                 # with missing
-                - assertEqual(grpavg([1.0, nan, 2.0]), 1.5)
-                - assertEqual(grpavg([1, -1, 2]), 1.5)
+                - assertEqual(grpavg([1.0, nan, 3.0]), 2.0)
+                - assertEqual(grpavg([1, -1, 3]), 2.0)
                 
                 # with missing but skip_na=False
-                - assertEqual(grpavg([1, -1, 2, 1], skip_na=False), 0.75)
-                - withnan: grpavg([1.0, nan, 2.0], skip_na=False)
+                - assertEqual(grpavg([1, -1, 3], skip_na=False), 1.0)
+                - withnan: grpavg([1.0, nan, 3.0], skip_na=False)
                 - assertTrue(withnan != withnan)
+
+                # with missing and filter
+                # this is just a way to save the gender variable
+                - gender_backup: gender and gender
+                - assertEqual(grpavg(if(age > 10, -1, age), filter=gender),
+                              grpavg(age, filter=age <= 10 and gender))
+                - f_age: age * 1.0
+                - assertEqual(grpavg(if(age > 10, nan, f_age), filter=gender),
+                              grpavg(f_age, filter=age <= 10 and gender))
+                # check that gender was not modified (used to be the case)
+                - assertEqual(gender, gender_backup)
                 
                 # bool expr
                 - assertEqual(grpavg([False, True, True, False]), 0.5)
             
             test_grpmin:
                 # simple scalars
+                - assertEqual(grpmin([2, 1, 3]), 1)
                 - assertEqual(grpmin([2.0, 1.0, 3.0]), 1.0)
 
                 # simple column
@@ -1143,12 +1188,25 @@ entities:
                 # explicit filter
                 - assertEqual(grpmin(age, filter=age >= 10), 10)
 
-                # with nan
+                # with na
+                - assertEqual(grpmin([3, -1, 2]), 2)
                 - assertEqual(grpmin([3.0, nan, 2.0]), 2.0)
 
-                # with nan not skipping
+                # with na not skipping
+                - assertEqual(grpmin([3, -1, 2], skip_na=False), -1)
                 - whnan: grpmin([3.0, nan, 2.0], skip_na=False)
                 - assertTrue(whnan != whnan)
+
+                # with na and filter
+                # this is just a way to save the gender variable
+                - gender_backup: gender and gender
+                - assertEqual(grpmin(if(age > 10, -1, age), filter=gender),
+                              grpmin(age, filter=age <= 10 and gender))
+                - f_age: age * 1.0
+                - assertEqual(grpmin(if(age > 10, nan, f_age), filter=gender),
+                              grpmin(f_age, filter=age <= 10 and gender))
+                # check that gender was not modified (used to be the case)
+                - assertEqual(gender, gender_backup)
 
             test_grpmedian:
                 # simple without filter
@@ -1240,6 +1298,17 @@ entities:
                        grpgini(age, filter=MALE),
                        '/',
                        grpgini(age, filter=FEMALE))
+
+                # with missing and filter
+                # this is just a way to save the gender variable
+                - gender_backup: gender and gender
+                - assertEqual(grpgini(if(age > 10, -1, age), filter=gender),
+                              grpgini(age, filter=age <= 10 and gender))
+                - f_age: age * 1.0
+                - assertEqual(grpgini(if(age > 10, nan, f_age), filter=gender),
+                              grpgini(f_age, filter=age <= 10 and gender))
+                # check that gender was not modified (used to be the case)
+                - assertEqual(gender, gender_backup)
 
             test_choice:
                 - intchoice: choice([0, 5, 10], [0.1, 0.2, 0.7])

@@ -218,7 +218,9 @@ class NumpyAggregate(NumpyFunction):
             if values.ndim == 1:
                 if self.skip_na and not usenanfunc:
                     if filter_value is not None:
-                        filter_value &= ispresent(values)
+                        # we should *not* use an inplace operation because
+                        # filter_value can be a simple variable
+                        filter_value = filter_value & ispresent(values)
                     else:
                         filter_value = ispresent(values)
                 if filter_value is not None and filter_value is not True:

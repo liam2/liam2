@@ -152,8 +152,9 @@ class GroupAverage(FilteredExpression):
         values = np.asarray(values)
 
         if self.skip_na:
-            #FIXME: ARGL! inplace!!!!!!!!
-            filter_values &= ispresent(values)
+            # we should *not* use an inplace operation because filter_values
+            # can be a simple variable
+            filter_values = filter_values & ispresent(values)
 
         if filter_values is True:
             numrows = len(values)
@@ -216,7 +217,9 @@ class GroupGini(FilteredExpression):
         else:
             filter_values = True
         if self.skip_na:
-            filter_values &= ispresent(values)
+            # we should *not* use an inplace operation because filter_values
+            # can be a simple variable
+            filter_values = filter_values & ispresent(values)
         if filter_values is not True:
             values = values[filter_values]
 
