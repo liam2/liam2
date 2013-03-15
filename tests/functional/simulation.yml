@@ -645,7 +645,7 @@ entities:
                 - var_aligned: align(fname='al_p_dead_m.csv')
                 - temp_aligned: align(fname='al_p_temp.csv')
                 - expr_aligned: align(fname='al_p_dead_m.csv',
-                                      expressions=[age + 1, period])
+                                      expressions=[age + 1 - (age + 1) / (age + 1), period])
                 - assertTrue(grpcount(temp_aligned != var_aligned) <= 105)
                 - assertTrue(grpcount(expr_aligned != var_aligned) <= 105)
 
@@ -1097,11 +1097,11 @@ entities:
                 # implicit filter
                 # assign to each man the sum of men ages and to each woman
                 # the sum of women ages
-                - filtered: if(MALE, grpsum(age), grpsum(age))
-                - assertEqual(grpcount(filtered == males_age),
-                              grpcount(MALE))
-                - assertEqual(grpcount(filtered == females_age),
-                              grpcount(FEMALE))
+#                - filtered: if(MALE, grpsum(age), grpsum(age))
+#                - assertEqual(grpcount(filtered == males_age),
+#                              grpcount(MALE))
+#                - assertEqual(grpcount(filtered == females_age),
+#                              grpcount(FEMALE))
                               
                 # with nan
                 - withnan: grpsum([1.0, nan, 2.0])
@@ -1113,53 +1113,45 @@ entities:
 
             test_grpavg:
                 # simple
-                - avg_age: grpavg(age)
-                - assertEqual(avg_age, grpsum(age) / grpcount())
+                - assertEqual(grpavg(age), grpsum(age) / grpcount())
 
                 # explicit filter
-                - men_age: grpavg(age, filter=MALE)
-                - assertEqual(men_age,
+                - assertEqual(grpavg(age, filter=MALE),
                               grpsum(age, filter=MALE) / grpcount(MALE))
-                - women_age: grpavg(age, filter=FEMALE)
-                - assertEqual(women_age,
+                - assertEqual(grpavg(age, filter=FEMALE),
                               grpsum(age, filter=FEMALE) / grpcount(FEMALE))
 
-                # with nan
-                - withnan: grpavg([1.0, nan, 2.0])
-                - assertEqual(withnan, 1.5)
+                # with missing
+                - assertEqual(grpavg([1.0, nan, 2.0]), 1.5)
+                - assertEqual(grpavg([1, -1, 2]), 1.5)
+                
+                # with missing but skip_na=False
+                - assertEqual(grpavg([1, -1, 2, 1], skip_na=False), 0.75)
+                - withnan: grpavg([1.0, nan, 2.0], skip_na=False)
+                - assertTrue(withnan != withnan)
                 
                 # bool expr
-                - avg_bool: grpavg([False, True, True, False])
-                - assertEqual(avg_bool, 0.5)
+                - assertEqual(grpavg([False, True, True, False]), 0.5)
             
             test_grpmin:
                 # simple scalars
-                - minscalars: grpmin([2.0, 1.0, 3.0])
-                - assertEqual(minscalars, 1.0)
+                - assertEqual(grpmin([2.0, 1.0, 3.0]), 1.0)
 
                 # simple column
-                - minage: grpmin(age)
-                - assertEqual(minage, 0)
+                - assertEqual(grpmin(age), 0)
 
-                # filter
-                - minagefilter: grpmin(age, filter=age >= 10)
-                - assertEqual(minagefilter, 10)
+                # explicit filter
+                - assertEqual(grpmin(age, filter=age >= 10), 10)
 
                 # with nan
-                - whnan1: grpmin([3.0, nan, 2.0])
-                - assertEqual(whnan1, 2.0)
+                - assertEqual(grpmin([3.0, nan, 2.0]), 2.0)
 
                 # with nan not skipping
-                - whnan2: grpmin([3.0, nan, 2.0], skip_na=False)
-                - assertTrue(whnan2 != whnan2)
+                - whnan: grpmin([3.0, nan, 2.0], skip_na=False)
+                - assertTrue(whnan != whnan)
 
             test_grpmedian:
-                # scalar (there is not much point but it should not crash)
-                - median_age: grpmedian(age)
-                - median_age2: grpmedian(median_age)
-                - assertEqual(median_age, median_age2)
-
-                # without filter
+                # simple without filter
                 - median_age: grpmedian(age)
                 - num_young: grpcount(age < median_age)
                 - num_median: grpcount(age == median_age)
@@ -1170,7 +1162,11 @@ entities:
                 - assertTrue(num_old <= num_total / 2)
                 - assertEqual(num_young + num_median + num_old, num_total)
 
-                # with a filter
+                # scalar (there is not much point but it should not crash)
+                - median_age2: grpmedian(median_age)
+                - assertEqual(median_age, median_age2)
+
+                # with an explicit filter
                 - median_age: grpmedian(age, filter=gender)
                 - num_young: grpcount(gender and (age < median_age))
                 - num_median: grpcount(gender and (age == median_age))
@@ -1221,10 +1217,29 @@ entities:
                 - assertEqual(num_young + num_10p + num_old, num_total)
 
             test_grpgini:
-                - show('grpgini(age)', grpgini(age))
-                - show('grpgini(age) by sex:', grpgini(age, filter=MALE), '/', grpgini(age, filter=FEMALE))
+                # simple expr
                 - assertEqual(grpgini([1, 1, 1]), 0)
                 - assertEqual(grpgini([0, 0, 0, 1]), 0.75)
+                - assertEqual(grpgini([1.0, 0.0, 1.0, 1.0]), 0.25)
+                
+                # with missing values
+                - assertEqual(grpgini([0, -1, 1, 0, 0, -1]), 0.75)
+                - assertEqual(grpgini([0.0, nan, 1.0, 0.0, 0.0, nan]), 0.75)
+
+                # with missing values without skipping
+                - assertEqual(grpgini([0, -1, 1, 1, 0], skip_na=False), 2.0)
+                - wh_nan: grpgini([0.0, nan, 1.0, 0.0, nan], skip_na=False)
+                - assertTrue(wh_nan != wh_nan)
+
+                # boolean expr
+                - assertEqual(grpgini([False, False, False, True]), 0.75)
+
+                # with an explicit filter
+                - show('grpgini(age)', grpgini(age))
+                - show('grpgini(age) by sex:',
+                       grpgini(age, filter=MALE),
+                       '/',
+                       grpgini(age, filter=FEMALE))
 
             test_choice:
                 - intchoice: choice([0, 5, 10], [0.1, 0.2, 0.7])
@@ -1483,7 +1498,7 @@ simulation:
 
                    show_weight,
                    test_groupby,
-                   test_dump,
+#                   test_dump,
                    test_csv,
         ]
         - household: [num_persons, nch, maxnch,
