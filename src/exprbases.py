@@ -130,6 +130,7 @@ class NumpyFunction(EvaluableExpression):
                       for k, v in self.kwargs.iteritems())
         if 'size' in self.arg_names and 'size' not in kwargs:
             kwargs['size'] = context_length(context)
+        #XXX: use _getfilter?
         if self.filter_expr is None:
             filter_value = None
         else:
@@ -220,7 +221,7 @@ class NumpyAggregate(NumpyFunction):
                         filter_value &= ispresent(values)
                     else:
                         filter_value = ispresent(values)
-                if filter_value is not None:
+                if filter_value is not None and filter_value is not True:
                     values = values[filter_value]
             elif values.ndim > 1 and filter_value is not None:
                 raise Exception("filter argument is not supported on arrays "

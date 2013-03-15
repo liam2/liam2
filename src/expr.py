@@ -124,17 +124,20 @@ def dtype(expr, context):
     if isinstance(expr, Expr):
         return expr.dtype(context)
     else:
-        return normalize_type(type(expr))
+        return gettype(expr)
 
 
 def ispresent(values):
-    dtype = values.dtype
-    if np.issubdtype(dtype, float):
+    dt = values.dtype
+    if np.issubdtype(dt, float):
         return np.isfinite(values)
-    elif np.issubdtype(dtype, int):
+    elif np.issubdtype(dt, int):
         return values != missing_values[int]
-    elif np.issubdtype(dtype, bool):
-        return values != missing_values[bool]
+    elif np.issubdtype(dt, bool):
+#        return values != missing_values[bool]
+        return True
+    else:
+        raise Exception('%s is not a supported type for ispresent' % dt)
 
 
 # context is needed because in LinkValue we need to know what is the current
