@@ -3,52 +3,10 @@
 Change log
 ##########
 
-Version 0.6 rc2
-===============
+Version 0.6
+===========
 
-New features:
--------------
-
-* implemented explore on data files (.h5), so that one can, for example,
-  explore the input dataset.
-
-Miscellaneous improvements:
----------------------------
-
-* during import, when a column is all empty and its type is not specified
-  manually, assume a float column instead of failing to import.
-* allow "id" and "period" columns to be defined explicitly (even though they
-  are still implicit by default).
-* improved the documentation, in part thanks to the corrections and
-  suggestions from Alexis Eidelman.
-* added a "code architecture" section to the documentation.
-
-Fixes:
-------
-
-* grpavg now skips -1 values for integer expressions like other aggregates.
-* implemented skip_na for grpsum, grpavg and grpgini (it should have been
-  implemented in rc1 but it was not)
-* fixed all aggregate functions (except grpcount and grpsum) with a filter
-  argument equal to a simple variable (eg filter=gender) in the presence of
-  "missing" (nan) values in the expression being aggregated: the filter
-  variable was modified.
-* fixed duration() on a simple variable (eg duration(work)): the variable was
-  modified by the function.
-* fixed a nasty bug which made that each variable that needed to be read on
-  disk (lag of more than one period, duration, value_for_period, ...) was
-  read 2 or 3 times instead of just once, greatly slowing down the function.
-* fixed accessing columns for the next-to-last period in the interactive
-  console after a simulation: it was either giving bad results or returning an
-  error.
-* fixed all aggregate functions (except grpcount, grpsum and grpavg) on boolean
-  expressions. This is actually only (remotely) useful for grpgini and grpstd.
-* fixed groupby without the C extensions (regression in rc1)  
-
-Version 0.6 rc1
-===============
-
-Released on 2013-02-27.
+Released on 2013-03-15.
 
 New features:
 -------------
@@ -173,8 +131,12 @@ New features:
 * the result of a groupby can be used in expressions. This can be used, for
   example, to compute alignment targets on the fly.
 
+* implemented explore on data files (.h5), so that one can, for example,
+  explore the input dataset.
+
 * added skip_na (defaults to True) argument to all aggregate functions to
-  specify whether or not missing values (nans) should be ignored.
+  specify whether or not missing values (nan for float expressions, -1 for
+  integer expressions) should be ignored.
 
 * macros can now be used in the interactive console.
 
@@ -197,10 +159,16 @@ New features:
 Miscellaneous improvements for users:
 -------------------------------------
 
+* improved the documentation, in part thanks to the corrections and
+  suggestions from Alexis Eidelman.
+
 * added a "known issues" section to the documentation.
 
-* grpmin and grpmax ignore nans (missing values) by default like other
+* grpmin and grpmax ignore missing values (nan and -1) by default like other
   aggregate functions.
+
+* grpavg ignore -1 values for integer expressions like other aggregate
+  functions.
 
 * made the operator precedence for "and", "or" and "not" more sensible, which
   means that, for example: ::
@@ -215,7 +183,13 @@ Miscellaneous improvements for users:
 
 * many2one links are now ~30% faster for large datasets.
 
-* allow period in any dimension in alignment files, not only in the last one.
+* during import, when a column is entirely empty and its type is not specified
+  manually, assume a float column instead of failing to import.
+
+* allow "id" and "period" columns to be defined explicitly (even though they
+  are still implicit by default).
+
+* allow "period" in any dimension in alignment files, not only in the last one.
 
 * disabled all warnings for x/0 and 0/0. This is not an ideal situation, but it
   is still an improvement because they appeared in LIAM2 code and not in user
@@ -237,11 +211,10 @@ Miscellaneous improvements for users:
 
 * better error message when using a one2many function in a groupby expression.
 
-* added many tests, fixed a few existing ones and generally greatly improved
-  our test suite.
-
 Miscellaneous improvements for developers:
 ------------------------------------------
+
+* added a "code architecture" section to the documentation.
 
 * python tracebacks can be re-activated by setting the DEBUG environment
   variable to True. 
@@ -254,6 +227,9 @@ Miscellaneous improvements for developers:
 * updated INSTALL file, and include sections on how to build the documentation
   and the C extensions.
 
+* added many tests, fixed a few existing ones and generally greatly improved
+  our test suite.
+
 Fixes:
 ------
 
@@ -261,6 +237,26 @@ Fixes:
   on the untransposed data which meant too few data points were copied if the
   number columns was greater than the number of lines and it crashed if it was
   smaller.
+
+* fixed all aggregate functions (except grpcount and grpsum) with a filter
+  argument equal to a simple variable (eg filter=gender) in the presence of
+  "missing" (nan) values in the expression being aggregated: the filter
+  variable was modified.
+
+* fixed duration() on a simple variable (eg duration(work)): the variable was
+  modified by the function.
+
+* fixed a nasty bug which made that each variable that needed to be read on
+  disk (lag of more than one period, duration, value_for_period, ...) was
+  read 2 or 3 times instead of just once, greatly slowing down the function.
+
+* fixed accessing columns for the next-to-last period in the interactive
+  console after a simulation: it was either giving bad results or returning an
+  error.
+
+* fixed all aggregate functions (except grpcount, grpsum and grpavg which
+  worked) on boolean expressions. This is actually only (remotely) useful for
+  grpgini and grpstd.
 
 * fixed groupby with both filter and expr arguments.
 
