@@ -55,8 +55,8 @@ mkdir win64\editor
 xcopy /e build\bundle\editor win32\editor
 xcopy /e build\bundle\editor win64\editor
 
-copy build\tests\examples\* win32\examples
-copy build\tests\examples\* win64\examples
+xcopy /e build\tests\examples win32\examples
+xcopy /e build\tests\examples win64\examples
 
 copy build\src\build\exe.win32-2.7\* win32\liam2
 copy build\src\build\exe.win-amd64-2.7\* win64\liam2
