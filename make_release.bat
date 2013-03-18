@@ -19,6 +19,10 @@ if /i "%ANSWER:~0,1%" NEQ "y" goto :canceled
 pushd %~dp0
 
 if /i "%VERSION:~0,1%"=="r" goto :skiptag
+
+set /p ANSWER=tag release "%VERSION%" (Y/n)?
+if /i "%ANSWER:~0,1%" NEQ "y" goto :skiptag
+
 svn cp %REPOSITORY%/trunk %REPOSITORY%/tags/%VERSION%
 if %ERRORLEVEL% GEQ 1 goto :failed
 :skiptag
@@ -51,8 +55,8 @@ mkdir win64\editor
 xcopy /e build\bundle\editor win32\editor
 xcopy /e build\bundle\editor win64\editor
 
-copy build\test\examples\* win32\examples
-copy build\test\examples\* win64\examples
+copy build\tests\examples\* win32\examples
+copy build\tests\examples\* win64\examples
 
 copy build\src\build\exe.win32-2.7\* win32\liam2
 copy build\src\build\exe.win-amd64-2.7\* win64\liam2
