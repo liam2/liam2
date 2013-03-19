@@ -3,6 +3,19 @@
 Change log
 ##########
 
+Version 0.7
+===========
+
+New features:
+-------------
+
+Miscellaneous improvements:
+---------------------------
+
+Fixes:
+------
+
+
 Version 0.6
 ===========
 

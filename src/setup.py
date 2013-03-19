@@ -2,10 +2,19 @@ import sys
 from distutils.extension import Extension
 
 from cx_Freeze import setup, Executable
-from Cython.Distutils import build_ext as cython_build_ext
+from Cython.Distutils import build_ext
 import numpy as np
 
+
 # cython options
+
+# Add the output directory of cython build_ext to sys.path so that build_exe
+# finds and copies C extensions
+class my_build_ext(build_ext):
+    def finalize_options(self):
+        build_ext.finalize_options(self)
+        sys.path.insert(0, self.build_lib)
+
 ext_modules = [Extension("cpartition", ["cpartition.pyx"],
                          include_dirs=[np.get_include()]),
                Extension("cutils", ["cutils.pyx"],
@@ -13,13 +22,6 @@ ext_modules = [Extension("cpartition", ["cpartition.pyx"],
               ]
 build_ext_options = {}
 
-
-# Add the output directory of build_ext to sys.path so that build_exe finds
-# and copies C extensions
-class my_build_ext(cython_build_ext):
-    def finalize_options(self):
-        cython_build_ext.finalize_options(self)
-        sys.path.insert(0, self.build_lib)
 
 # cx_freeze options
 build_exe_options = {
@@ -48,7 +50,7 @@ build_exe_options = {
 }
 
 setup(name="liam2",
-      version="0.6.0",
+      version="0.7.0dev",
       description="LIAM2",
 
       cmdclass={"build_ext": my_build_ext},
