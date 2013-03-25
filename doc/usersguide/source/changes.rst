@@ -9,11 +9,18 @@ Version 0.7
 New features:
 -------------
 
+* added a new assert function: assertIsClose to check that two results are
+  "almost" equal tolerating small differences (usually due to rounding
+  differences).
+
 Miscellaneous improvements:
 ---------------------------
 
 Fixes:
 ------
+
+* fixed using non-scalar values (eg fields) as indices of n-dimensional arrays,
+  and generally made indexing n-dimensional arrays more robust.
 
 
 Version 0.6

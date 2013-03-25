@@ -1591,3 +1591,5 @@ the :ref:`assertions-label` simulation option.
 - assertTrue(expr): evaluates the expression and check its result is True.
 - assertEqual(expr1, expr2): evaluates both expressions and check their 
   results are equal.
+- assertIsClose(expr1, expr2): evaluates both expressions and check their 
+  results are almost equal.
