@@ -5,7 +5,7 @@ from expr import (Variable, dtype, expr_eval,
                   ispresent)
 from exprbases import EvaluableExpression, NumpyAggregate, FilteredExpression
 from context import context_length
-from utils import nansum
+#from utils import nansum
 
 
 #XXX: inherit from FilteredExpression instead?

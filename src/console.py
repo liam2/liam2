@@ -3,8 +3,7 @@ import sys
 import numpy as np
 
 import config
-from data import get_fields
-from expr import expr_eval, Variable, GlobalVariable
+from expr import expr_eval, Variable
 from exprparser import parse
 from context import EntityContext
 from registry import entity_registry
