@@ -221,7 +221,7 @@ class AssertTrue(Assert):
             yield self.expr
 
 
-class AssertEqual(Assert):
+class ComparisonAssert(Assert):
     def __init__(self, expr1, expr2):
         Process.__init__(self)
         self.expr1 = expr1
@@ -230,18 +230,39 @@ class AssertEqual(Assert):
     def eval_assertion(self, context):
         r1 = expr_eval(self.expr1, context)
         r2 = expr_eval(self.expr2, context)
-        if isinstance(r1, np.ndarray) or isinstance(r2, np.ndarray):
-            passed = np.array_equal(r1, r2)
-        else:
-            passed = r1 == r2
-        if not passed:
-            return "%s != %s (%s != %s)" % (r1, r2, self.expr1, self.expr2)
+        if not self.compare(r1, r2):
+            op = self.inv_op
+            return "%s %s %s (%s %s %s)" % (self.expr1, op, self.expr2,
+                                            r1, op, r2)
+
+    def compare(self, r1, r2):
+        raise NotImplementedError
 
     def expressions(self):
         if isinstance(self.expr1, Expr):
             yield self.expr1
         if isinstance(self.expr2, Expr):
             yield self.expr2
+
+
+class AssertEqual(ComparisonAssert):
+    inv_op = "!="
+
+    def compare(self, r1, r2):
+        if isinstance(r1, np.ndarray) or isinstance(r2, np.ndarray):
+            return np.array_equiv(r1, r2)
+        else:
+            return r1 == r2
+
+
+class AssertIsClose(ComparisonAssert):
+    inv_op = "is not close"
+
+    def compare(self, r1, r2):
+        if isinstance(r1, np.ndarray) or isinstance(r2, np.ndarray):
+            return np.allclose(r1, r2)
+        else:
+            return r1 == r2
 
 
 functions = {
@@ -253,5 +274,6 @@ functions = {
     'remove': RemoveIndividuals,
     'breakpoint': Breakpoint,
     'assertTrue': AssertTrue,
-    'assertEqual': AssertEqual
+    'assertEqual': AssertEqual,
+    'assertIsClose': AssertIsClose
 }
