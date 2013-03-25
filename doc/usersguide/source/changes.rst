@@ -16,6 +16,9 @@ New features:
 Miscellaneous improvements:
 ---------------------------
 
+* when debug mode is on, print the position in the random sequence before and
+  after operations which use random numbers.
+
 Fixes:
 ------
 

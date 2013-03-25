@@ -1,5 +1,6 @@
 import numpy as np
 
+import config
 from expr import (Expr, Variable, ShortLivedVariable, get_tmp_varname,
                   missing_values, dtype, expr_eval)
 from exprbases import CompoundExpression
@@ -62,8 +63,13 @@ class LogitScore(CompoundExpression):
         self.u_varname = get_tmp_varname()
 
     def build_context(self, context):
+        if config.debug:
+            print
+            print "random sequence position before:", np.random.get_state()[2]
         context[self.u_varname] = \
             np.random.uniform(size=context_length(context))
+        if config.debug:
+            print "random sequence position after:", np.random.get_state()[2]
         return context
 
     def build_expr(self):

@@ -1,5 +1,6 @@
 import numpy as np
 
+import config
 from context import context_length
 from expr import (Expr, EvaluableExpression, expr_eval,
                   traverse_expr, collect_variables, dtype,
@@ -193,6 +194,17 @@ class NumpyCreateArray(NumpyFunction):
         else:
             missing_value = get_missing_value(values)
             return np.where(filter_value, values, missing_value)
+
+
+class NumpyRandom(NumpyCreateArray):
+    def compute(self, *args, **kwargs):
+        if config.debug:
+            print
+            print "random sequence position before:", np.random.get_state()[2]
+        res = super(NumpyRandom, self).compute(*args, **kwargs)
+        if config.debug:
+            print "random sequence position after:", np.random.get_state()[2]
+        return res
 
 
 class NumpyAggregate(NumpyFunction):

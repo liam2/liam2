@@ -3,6 +3,7 @@ from itertools import izip, chain
 
 import numpy as np
 
+import config
 from expr import (Expr, Variable,
                   dtype, coerce_types, expr_eval,
                   as_simple_expr, as_string,
@@ -11,7 +12,7 @@ from expr import (Expr, Variable,
 from exprbases import (EvaluableExpression, CompoundExpression,
                        NumexprFunction,
                        FunctionExpression, TableExpression,
-                       NumpyCreateArray, NumpyChangeArray)
+                       NumpyRandom, NumpyChangeArray)
 from context import (EntityContext, context_length, context_subset,
                      new_context_like)
 from registry import entity_registry
@@ -127,17 +128,17 @@ class Sort(NumpyChangeArray):
 #------------------------------------
 
 
-class Uniform(NumpyCreateArray):
+class Uniform(NumpyRandom):
     np_func = (np.random.uniform,)
     arg_names = ('low', 'high', 'size')
 
 
-class Normal(NumpyCreateArray):
+class Normal(NumpyRandom):
     np_func = (np.random.normal,)
     arg_names = ('loc', 'scale', 'size')
 
 
-class RandInt(NumpyCreateArray):
+class RandInt(NumpyRandom):
     np_func = (np.random.randint,)
     arg_names = ('low', 'high', 'size')
 
@@ -145,6 +146,7 @@ class RandInt(NumpyCreateArray):
         return int
 
 
+#XXX: use np.random.choice (new in np 1.7)
 class Choice(EvaluableExpression):
     func_name = 'choice'
 
@@ -188,6 +190,9 @@ class Choice(EvaluableExpression):
         return bins
 
     def evaluate(self, context):
+        if config.debug:
+            print
+            print "random sequence position before:", np.random.get_state()[2]
         num = context_length(context)
         choices = self.choices
         if num:
@@ -203,6 +208,8 @@ class Choice(EvaluableExpression):
                 choices_idx = np.digitize(u, bins) - 1
         else:
             choices_idx = []
+        if config.debug:
+            print "random sequence position after:", np.random.get_state()[2]
 
         if any(isinstance(c, Expr) for c in choices):
             choices = np.array([expr_eval(expr, context) for expr in choices])

@@ -281,7 +281,14 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if not issubclass(need.dtype.type, np.integer):
             if self.frac_need == 'uniform':
                 int_need = need.astype(int)
+                if config.debug:
+                    print()
+                    print("random sequence position before:",
+                          np.random.get_state()[2])
                 u = np.random.uniform(size=need.shape)
+                if config.debug:
+                    print("random sequence position after:",
+                          np.random.get_state()[2])
                 need = int_need + (u < need - int_need)
             elif self.frac_need == 'cutoff':
                 int_need = need.astype(int)
