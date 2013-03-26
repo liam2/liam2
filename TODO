@@ -408,7 +408,8 @@ features I would like to implement (in no particular order)
   * store a "pointer" to the array into the Link instance
   * store a "pointer" to the table in ???
   * adapt all "link" functions
-  * how do we set those relationships??? via an actions?
+  * how do we set those relationships?
+    via actions?
     - add_child: append(children, child_id)
     - remove_child: remove(children, child_id)
     or via methods on the link (I think I prefer this):
@@ -549,6 +550,14 @@ features I would like to implement (in no particular order)
            RETIREMENTAGE: "((gender) and (age >= 65)) or ((not gender) and (age >= WEMRA))"
            RETIREMENTAGE: "age >= if(gender, 65, WEMRA)"
 
+    civilstate: {1: 'single', 2: 'married', 3: 'divored', 4: 'widow'}
+    civilstate: Enum(single=1, married=2, divorced=3, widow=4)
+    # this is shorter but is error-prone if we use external data for that
+    # field (which is usually the case)
+    civilstate: Enum('single', 'married', 'divored', 'widow')
+    ISSINGLE: civilstate.is('single')
+    ISSINGLE: civilstate == civilstate.single
+
 - numpy methods (min/max/...) on zero-length array
 - implement "log" action = show in a file
 - lastpresent(col[, condition]) -> returns the last value which is not missing
@@ -559,6 +568,7 @@ features I would like to implement (in no particular order)
 - make globals writeable
 - line numbers in error messages. It might be tricky because we loose the
   information after yaml parsed the file
+  
 - one filter, several actions.
   eg, when someone dies, you want to change more than one field, and it
   is a bit tedious to need to repeat the filter
