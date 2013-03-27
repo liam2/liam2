@@ -33,7 +33,10 @@ Miscellaneous improvements:
   after operations which use random numbers.
   
 * entities are loaded/stored for each period in alphabetical order instead of
-  randomly. This has no influence on the results except for nicer log files.  
+  randomly. This has no influence on the results except for nicer log files.
+
+* when importing an nd-array skip cells with only spaces in addition to empty
+  cells
 
 Fixes:
 ------

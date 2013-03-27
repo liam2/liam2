@@ -384,10 +384,10 @@ def skip_comment_cells(lines):
 
 def strip_rows(lines):
     '''
-    returns an iterator of lines with leading and trailing blank cells
-    removed
+    returns an iterator of lines with leading and trailing blank (empty or
+    which contain only space) cells.
     '''
-    isblank = lambda s: s == ''
+    isblank = lambda s: s == '' or s.isspace()
     for line in lines:
         leading_dropped = list(itertools.dropwhile(isblank, line))
         rev_line = list(itertools.dropwhile(isblank,

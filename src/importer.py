@@ -464,6 +464,7 @@ def load_ndarray(fpath, celltype=None):
 
     # handle last dimension header (horizontal values)
     last_d_header = str_table.pop(0)
+    # auto-detect type of values for the last d and convert them
     last_d_pvalues = convert_1darray(last_d_header)
 
     unique_last_d, dupe_last_d = unique_duplicate(last_d_pvalues)
