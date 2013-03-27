@@ -182,26 +182,57 @@ class LabeledArray(np.ndarray):
         # I am unsure under which conditions obj is not a LabeledArray, but
         # it *can* happen.
         if obj.ndim > 0 and isinstance(obj, LabeledArray):
-            if isinstance(key, tuple):
+            if isinstance(key, (tuple, list)):
                 # complete the key if needed
                 if len(key) < self.ndim:
                     key = key + (slice(None),) * (self.ndim - len(key))
-                # int keys => dimension disappear & pvalues are discarded
-                if self.pvalues is not None:
-                    obj.pvalues = [pv[dim_key]
-                                   for pv, dim_key in zip(self.pvalues, key)
-                                   if isinstance(dim_key, slice)]
-                if self.dim_names is not None:
-                    obj.dim_names = [name
-                                     for name, dim_key in zip(self.dim_names,
-                                                              key)
-                                     if isinstance(dim_key, slice)]
+
+                # handle fancy indexing (for an nd array)
+                if any(isinstance(dim_key, np.ndarray) and dim_key.shape
+                       for dim_key in key):
+                    obj.pvalues = None
+                    obj.dim_names = None
+                else:
+                    # int key => dimension disappears & pvalues are discarded
+                    # slice key => dimension (and pvalues) stays
+                    if self.pvalues is not None:
+                        pvalues = self.pvalues
+                        obj.pvalues = [pv[dim_key]
+                                       for pv, dim_key in zip(pvalues, key)
+                                       if isinstance(dim_key, slice)]
+                        # convert empty list to None (if all dim keys were int)
+                        if not obj.pvalues:
+                            obj.pvalues = None
+                    if self.dim_names is not None:
+                        names = self.dim_names
+                        obj.dim_names = [name
+                                         for name, dim_key in zip(names, key)
+                                         if isinstance(dim_key, slice)]
+                        # convert empty list to None (if all dim keys were int)
+                        if not obj.dim_names:
+                            obj.dim_names = None
             elif isinstance(key, slice):
                 obj.pvalues = [self.pvalues[0][key]] + [self.pvalues[1:]]
+            # handle fancy indexing (for a 1d array)
+            elif isinstance(key, np.ndarray):
+                obj.dim_names = None
+                obj.pvalues = None
             else:
+#                assert isinstance(key, int), \
+#                       "key: '%s' is of type %s" % (key, type(key))
                 # key is "int-like"
                 obj.dim_names = self.dim_names[1:]
                 obj.pvalues = self.pvalues[1:]
+
+            # sanity checks
+            if obj.dim_names is not None:
+                assert len(obj.dim_names) == obj.ndim, \
+                       "len(dim_names) (%d) != ndim (%d)" \
+                       % (len(obj.dim_names), obj.ndim)
+            if obj.pvalues is not None:
+                assert len(obj.pvalues) == obj.ndim, \
+                       "len(pvalues) (%d) != ndim (%d)" \
+                       % (len(obj.pvalues), obj.ndim)
         return obj
 
     # deprecated since Python 2.0 but we need to define it to catch "simple"
@@ -353,10 +384,10 @@ def skip_comment_cells(lines):
 
 def strip_rows(lines):
     '''
-    returns an iterator of lines with leading and trailing blank cells
-    removed
+    returns an iterator of lines with leading and trailing blank (empty or
+    which contain only space) cells.
     '''
-    isblank = lambda s: s == ''
+    isblank = lambda s: s == '' or s.isspace()
     for line in lines:
         leading_dropped = list(itertools.dropwhile(isblank, line))
         rev_line = list(itertools.dropwhile(isblank,
@@ -526,6 +557,11 @@ def split_columns_as_iterators(iterable):
 
 
 def merge_dicts(*args, **kwargs):
+    '''
+    Returns a new dictionary which is the result of recursively merging all
+    the dictionaries passed as arguments and the keyword arguments.
+    Later dictionaries overwrite earlier ones. kwargs overwrite all.
+    '''
     result = args[0].copy()
     for arg in args[1:] + (kwargs,):
         for k, v in arg.iteritems():
@@ -536,6 +572,11 @@ def merge_dicts(*args, **kwargs):
 
 
 def merge_items(*args):
+    '''
+    Returns a new list which is the result of merging all the lists of (key,
+    value) pairs passed as arguments. Earlier lists take precedence.
+    Order is preserved.
+    '''
     result = args[0][:]
     keys_seen = set(k for k, _ in args[0])
     for other_items in args[1:]:
@@ -592,6 +633,10 @@ def validate_list(l, target, context):
 
 
 def validate_dict(d, target, context=''):
+    assert isinstance(target, dict)
+    if not isinstance(d, dict):
+        raise Exception("invalid structure for '%s': it should be a map and "
+                        "it is a %s" % (context, type(d).__name__))
     targets = target.keys()
     required = set(k[1:] for k in targets if k.startswith('#'))
     optional = set(k for k in targets if not k.startswith('#'))

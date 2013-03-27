@@ -175,16 +175,21 @@ class Choice(EvaluableExpression):
         bins = np.array([0.0] + list(np.cumsum(weights)))
         error = abs(bins[-1] - 1.0)
         if 0.0 < error <= 1e-6:
-            # overshooting a bit is the lesser evil here (the last choice
-            # will be picked a tad less than its probability) but we can't
-            # easily "correct" that one to 1.0 because in that case, we
-            # would have the last bin boundary smaller than the second last
-            if str(1.0 - bins[-2]) != str(weights[-1]) and \
-               bins[-1] < 1.0:
+            # We correct the last bin in all cases, even though when the total
+            # is > 1.0, it does not change anything (since the random numbers
+            # will always be < 1, having a larger last bin -- with a total
+            # > 1 -- will not increase its probability). In short, correcting
+            # it just makes things explicit.
+            bins[-1] = 1.0
+
+            # only warn if the values are "visually different"
+            last_weight = str(weights[-1])
+            adjusted_last_weight = str(1.0 - bins[-2])
+            if adjusted_last_weight != last_weight:
                 print "Warning: last choice probability adjusted to %s " \
-                      "instead of %s !" % (1.0 - bins[-2],
-                                           weights[-1])
-                bins[-1] = 1.0
+                      "instead of %s !" % (adjusted_last_weight, last_weight)
+        elif error > 1e-6:
+            raise Exception("the cumulative sum of choice weights must be ~1")
         return bins
 
     def evaluate(self, context):
@@ -200,13 +205,13 @@ class Choice(EvaluableExpression):
                     weights = [expr_eval(expr, context) for expr in bins]
                     bins = self._weights_to_bins(weights)
                 u = np.random.uniform(size=num)
+                #XXX: np.choice uses searchsorted(bins, u) instead of digitize
                 choices_idx = np.digitize(u, bins) - 1
         else:
             choices_idx = []
 
         if any(isinstance(c, Expr) for c in choices):
             choices = np.array([expr_eval(expr, context) for expr in choices])
-
         return choices[choices_idx]
 
     def dtype(self, context):

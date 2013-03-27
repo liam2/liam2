@@ -135,13 +135,9 @@ entities:
             - m_id:         int
 
             - weight:       {type: int, initialdata: False}
-            - v1:           {type: float, initialdata: False}
-            - nch:          {type: int, initialdata: False}
             - eduach:       {type: int, initialdata: False}
             - agegroup:     {type: int, initialdata: False}
-            - ch_minage:    {type: int, initialdata: False}
-            - ch_maxage:    {type: int, initialdata: False}
-            - young_mother: {type: bool, initialdata: False}
+            - float_field1: {type: float, initialdata: False}
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -392,7 +388,7 @@ entities:
                 - assertEqual(nd_mul_nd.ndim, 3)
                 - assertEqual(nd_mul_nd.shape, (2, 121, 61))
                 - assertEqual(nd_mul_nd.dim_names, ['gender','age', 'period'])
-                
+
                 # let us take the 2d table for this period
                 # currently, we need to manually compute the index
                 - base_period: 2000
@@ -406,20 +402,16 @@ entities:
                 - need_by_sex_period: need.sum(axis=1)
                 - assertEqual(need_by_sex_period.ndim, 2)
                 - assertEqual(need_by_sex_period.shape, (2, 61))
-                # LabeledArray does not support reduction functions for now
+                # LabeledArray does not support reduction functions for now,
+                # so need_by_sex_period is not a LabeledArray
                 #- assertEqual(need_by_sex_period.dim_names, None)
 
                 # should be a 1d table: gender
                 - total_need_by_sex: need_by_sex_period.sum(axis=1)
                 - assertEqual(total_need_by_sex.ndim, 1)
                 - assertEqual(total_need_by_sex.shape, (2,))
-                - tmp: total_need_by_sex
-                
-                #TODO: compare arrays directly (assertEqual uses array_equal
-                #      if both instances are arrays)
 #fails since I changed mig.csv
-#                - assertEqual(tmp[0], 7818940)
-#                - assertEqual(tmp[1], 7692870)
+#                - assertEqual(total_need_by_sex, [7818940, 7692870])
                 
                 # for current period, a 1d table: gender
                 # currently, we need to manually compute the index
@@ -427,6 +419,54 @@ entities:
                 - assertEqual(need_by_sex.ndim, 1)
                 - assertEqual(need_by_sex.shape, (2,))
 #                - show(need_by_sex)
+
+                # produce a 1 dim LabeledArray
+                - need_by_sex20: MIG[:, 20, period - base_period]
+                - assertEqual(need_by_sex20.ndim, 1)
+                - assertEqual(need_by_sex20.shape, (2,))
+                - assertEqual(need_by_sex20.dim_names, ['gender'])
+
+                # vector indexes (should produce a non labeled vector)
+                # ----------------------------------------------------
+
+                # 1d array[int[:]]
+                # gender can't be used directly as indices (we need integers)
+                - need_per_person: need_by_sex20[gender * 1]
+                - assertEqual(need_per_person.ndim, 1)
+                - assertEqual(need_per_person.shape, (grpcount(),))
+                - assertEqual(need_per_person.dim_names, None)
+                - assertEqual(need_per_person.pvalues, None)
+                - remainder_per_person: 1 - need_per_person
+                
+                # 3d array[int[:], int[:], int]
+                - base_period: 2000
+                - percent_per_person: MIG[gender * 1, age, period - base_period]
+                - assertEqual(percent_per_person.ndim, 1)
+                - assertEqual(percent_per_person.shape, (grpcount(),))
+                - assertEqual(percent_per_person.dim_names, None)
+                - assertEqual(percent_per_person.pvalues, None)
+                - assertEqual(percent_per_person[0],
+                              MIG[gender[0] * 1, age[0], period - base_period])
+
+                # use the resulting vector in an expression
+
+                # using the temporary variable
+                - remainder_per_person: 1 - percent_per_person
+#                - assertIsClose(grpsum(remainder_per_person),
+#                                grpcount() - grpsum(percent_per_person))
+
+                # via a field: this forces a conversion to a normal
+                # (non-labeled) array
+                - float_field1: percent_per_person
+                - remainder_per_person: 1 - float_field1
+#                - assertIsClose(grpsum(remainder_per_person),
+#                                grpcount() - grpsum(percent_per_person))
+
+                # direct use
+                - remainder_per_person: 1 - MIG[gender * 1, age,
+                                                period - base_period]
+#                - assertIsClose(grpsum(remainder_per_person),
+#                                grpcount() - grpsum(percent_per_person))
 
             test_macro:
                 - ischild: age < 18
@@ -938,8 +978,7 @@ entities:
             test_clone:
                 - clone(filter = age == 95,
                         f_id = id,
-                        m_id = id,
-                        nch = household.get(countlink(persons)))
+                        m_id = id)
 
             marriage:
                 - married: partner_id != -1
@@ -1340,6 +1379,14 @@ entities:
                 - show(groupby(choice([zero, zero + 1.0], [p0, 1.0 - p0]),
                                choice([0, 1], [0.3, 0.7]),
                                choice([0, 1])))
+
+                # cases where choice should raise an exception
+#                - bad1: choice([0, 1, 2], [0.5, 0.2, 0.1]) # sum < 1 
+#                - bad2: choice([0, 1, 2], [0.5, 0.4, 0.3]) # sum > 1 
+
+                # cases where choice should print a warning
+                - warn1: choice([0, 1], [0.5, 0.499999])  # sum slightly < 1 
+                - warn2: choice([0, 1], [0.5, 0.5000009]) # sum slightly > 1 
 
             test_groupby:
                 # 1 dim
