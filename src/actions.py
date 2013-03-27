@@ -249,20 +249,26 @@ class AssertEqual(ComparisonAssert):
     inv_op = "!="
 
     def compare(self, r1, r2):
+        # even though np.array_equal also works on scalars, we don't use it
+        # systematically because it does not work on list of strings
         if isinstance(r1, np.ndarray) or isinstance(r2, np.ndarray):
-            return np.array_equiv(r1, r2)
+            return np.array_equal(r1, r2)
         else:
             return r1 == r2
+
+
+class AssertEquiv(ComparisonAssert):
+    inv_op = "is not equivalent to"
+
+    def compare(self, r1, r2):
+        return np.array_equiv(r1, r2)
 
 
 class AssertIsClose(ComparisonAssert):
-    inv_op = "is not close"
+    inv_op = "is not close to"
 
     def compare(self, r1, r2):
-        if isinstance(r1, np.ndarray) or isinstance(r2, np.ndarray):
-            return np.allclose(r1, r2)
-        else:
-            return r1 == r2
+        return np.allclose(r1, r2)
 
 
 functions = {
@@ -275,5 +281,6 @@ functions = {
     'breakpoint': Breakpoint,
     'assertTrue': AssertTrue,
     'assertEqual': AssertEqual,
+    'assertEquiv': AssertEquiv,
     'assertIsClose': AssertIsClose
 }
