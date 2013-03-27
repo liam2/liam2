@@ -2,10 +2,10 @@
 # environment, or run the following command in a console:
 # INSTALL PATH\liam2 run demo06.yml
 
-# In this final example, we will model the work state and education level of
-# people. To achieve that we need the following additional features: globals and
-# the logit_score and align functions as a more versatile alternative to
-# the logit_regr function.
+# In this example, we will model the work state and education level of people.
+# To achieve that we need the following additional features: globals and the
+# logit_score and align functions as a more versatile alternative to the
+# logit_regr function.
 globals:
     periodic:
         - WEMRA: int

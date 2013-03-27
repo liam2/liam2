@@ -1,4 +1,4 @@
-﻿.. index:: import
+﻿.. index:: importing data
 .. _import_data:
 
 Importing data

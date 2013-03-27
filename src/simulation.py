@@ -1,5 +1,5 @@
 import time
-import os
+import os.path
 import operator
 from collections import defaultdict
 import random
@@ -11,6 +11,8 @@ from data import H5Data, Void
 from entities import Entity
 from registry import entity_registry
 from utils import (time2str, timed, gettime, validate_dict,
+                   expand_wild, multi_get, multi_set,
+                   merge_dicts, merge_items,
                    field_str_to_type, fields_yaml_to_type)
 import console
 import config
@@ -37,8 +39,38 @@ def show_top_expr(count=None):
     show_top_times('expressions', expr.timings.most_common(count))
 
 
+def handle_imports(content, directory):
+    import_files = content.get('import', [])
+    if isinstance(import_files, basestring):
+        import_files = [import_files]
+    for fname in import_files[::-1]:
+        import_path = os.path.join(directory, fname)
+        print "importing: '%s'" % import_path
+        import_directory = os.path.dirname(import_path)
+        with open(import_path) as f:
+            import_content = handle_imports(yaml.load(f), import_directory)
+            for wild_key in ('globals/periodic', 'globals/*/fields',
+                             'entities/*/fields'):
+                multi_keys = expand_wild(wild_key, import_content)
+                for multi_key in multi_keys:
+                    import_fields = multi_get(import_content, multi_key)
+                    local_fields = multi_get(content, multi_key, [])
+                    # fields are in "yaml ordered dict" format and we want
+                    # simple list of items
+                    import_fields = [d.items()[0] for d in import_fields]
+                    local_fields = [d.items()[0] for d in local_fields]
+                    # merge the lists
+                    merged_fields = merge_items(import_fields, local_fields)
+                    # convert them back to "yaml ordered dict"
+                    merged_fields = [{k: v} for k, v in merged_fields]
+                    multi_set(content, multi_key, merged_fields)
+            content = merge_dicts(import_content, content)
+    return content
+
+
 class Simulation(object):
     yaml_layout = {
+        'import': None,
         'globals': {
             'periodic': [{
                 '*': str
@@ -90,6 +122,7 @@ class Simulation(object):
             '#periods': int,
             '#start_period': int,
             'skip_shows': bool,
+            'timings': bool,
             'assertions': str,
             'default_entity': str
         }
@@ -123,6 +156,8 @@ class Simulation(object):
         simulation_dir = os.path.dirname(simulation_path)
         with open(fpath) as f:
             content = yaml.load(f)
+
+        content = handle_imports(content, simulation_dir)
         validate_dict(content, cls.yaml_layout)
 
         # the goal is to get something like:
@@ -157,6 +192,7 @@ class Simulation(object):
         config.skip_shows = simulation_def.get('skip_shows', False)
         #TODO: check that the value is one of "raise", "skip", "warn"
         config.assertions = simulation_def.get('assertions', 'raise')
+        config.show_timings = simulation_def.get('timings', True)
 
         input_def = simulation_def['input']
         input_directory = input_dir if input_dir is not None \
@@ -170,6 +206,9 @@ class Simulation(object):
                                       else output_def.get('path', '')
         if not os.path.isabs(output_directory):
             output_directory = os.path.join(simulation_dir, output_directory)
+        if not os.path.exists(output_directory):
+            print "creating directory: '%s'" % output_directory
+            os.makedirs(output_directory)
         config.output_directory = output_directory
 
         if output_file is None:
@@ -196,10 +235,10 @@ class Simulation(object):
                                    for proc_name in proc_names])
 
         processes_def = [d.items()[0] for d in simulation_def['processes']]
-        processes, entities = [], set()
+        processes, entity_set = [], set()
         for ent_name, proc_defs in processes_def:
             entity = entity_registry[ent_name]
-            entities.add(entity)
+            entity_set.add(entity)
             for proc_def in proc_defs:
                 # proc_def is simply a process name
                 if isinstance(proc_def, basestring):
@@ -208,6 +247,7 @@ class Simulation(object):
                 else:
                     proc_name, periodicity = proc_def
                 processes.append((entity.processes[proc_name], periodicity))
+        entities = sorted(entity_set, key=lambda e: e.name)
 
         method = input_def.get('method', 'h5')
 
@@ -285,7 +325,7 @@ class Simulation(object):
                        and process.predictor != process.name:
                         print "(%s)" % process.predictor,
                     print "...",
-                    if period_idx % periodicity == 0: 
+                    if period_idx % periodicity == 0:
                         elapsed, _ = gettime(process.run_guarded, self,
                                              const_dict)
                     else:
@@ -325,8 +365,11 @@ class Simulation(object):
                 simulate_period(period_idx, period,
                                 self.processes, self.entities)
                 time_elapsed = time.time() - period_start_time
-                print "period %d done (%s elapsed)." % (period,
-                                                        time2str(time_elapsed))
+                print "period %d done" % period,
+                if config.show_timings:
+                    print "(%s elapsed)." % time2str(time_elapsed)
+                else:
+                    print
 
             total_objects = sum(period_objects[period] for period in periods)
             total_time = time.time() - main_start_time

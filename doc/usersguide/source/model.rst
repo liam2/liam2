@@ -8,11 +8,16 @@ their *fields*, the way they interact (*links*) and how they behave over time
 (*processes*). This is done in one file. We use the YAML-markup language.
 This format uses the level of indentation to specify objects and sub objects.
 
-In a LIAM 2 model file, all text following a # is considered to be comments, and
-is therefore ignored.
+In a LIAM 2 model file, all text following a # is considered to be comments,
+and is therefore ignored.
 
 A LIAM 2 model has the following structure: ::
 
+    # imports are optional (this section can be entirely omitted)
+    import:
+        ...
+
+    # globals are optional (this section can be entirely omitted)
     globals:
         ...
 
@@ -23,13 +28,24 @@ A LIAM 2 model has the following structure: ::
         ...
 
 
+import
+======
+
+A model file can (optionally) import (an)other model file(s).
+This can be used to simply split a large model file into smaller files,
+or (more interestingly) to create simulation variants without having to
+duplicate the common parts.
+
+For details, see the :ref:`import_models` section.
+
+
 .. index:: globals declaration 
 .. _globals_declaration:
 
 globals
 =======
 
-The *globals* are variables (aka. parameters) that do not relate to any 
+*globals* are variables (aka. parameters) that do not relate to any 
 particular *entity* defined in the model. They can be used in expressions
 in any entity.
 
@@ -73,7 +89,7 @@ entities
 Each entity has a unique identifier and a set of attributes (**fields**). You
 can use different entities in one model. You can define the interaction between
 members of the same entity (eg. between partners) or among different entities
-(eg. a person and its household) using *links*.
+(eg. a person and its household) using **links**.
 
 The **processes** section describe how the entities behave. The order in which
 they are declared is not important. In the **simulation** block you define if
@@ -85,16 +101,16 @@ LIAM 2 declares the entities as follows: ::
 
     entities:
         entity-name1:
-            fields:  
+            fields:
                 fields definition
             
-            links:   
+            links:
                 links definition
                 
             macros:
                 macros definition
                 
-            processes:   
+            processes:
                 processes definition
                 
         entity-name2:
@@ -102,6 +118,7 @@ LIAM 2 declares the entities as follows: ::
             
 As we use YAML as the description language, indentation and the use of ":" are
 important.
+
 
 .. index:: fields
 
@@ -225,7 +242,7 @@ processes
 
 Here you define the processes you will need in the model. 
 
-More detail, see :ref:`processes_label`.
+For details, see the :ref:`processes_label` section.
 
 
 simulation
@@ -310,7 +327,8 @@ entirely omitted).
 input
 -----
 
-The initial (observed) data is read from the file specified in the *input* entry. 
+The initial (observed) data is read from the file specified in the *input*
+entry. 
 
 Specifying the *path* is optional. If it is omitted, it defaults to the
 directory where the simulation file is located.
@@ -350,8 +368,9 @@ simulation use the same random numbers.
 skip_shows
 ----------
 
-If set to True, makes all show() functions do nothing. This can speed up
-simulations which include many shows (usually for debugging).
+If set to *True*, makes all show() functions do nothing. This can speed up
+simulations which include many shows (usually for debugging). Defaults to
+*False*.
 
 .. _assertions-label:
 
@@ -374,3 +393,10 @@ default_entity
 
 If set to the name of an entity, the interactive console will start in that
 entity.
+
+timings
+-------
+
+If set to *False*, hide all timings from the simulation log, so that two
+simulation log files are more easily comparable (for example with "diff"
+tools like WinMerge). Defaults to *True*.    

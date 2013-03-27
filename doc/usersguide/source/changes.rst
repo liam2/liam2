@@ -9,15 +9,31 @@ Version 0.7
 New features:
 -------------
 
-* added a new assert function: assertIsClose to check that two results are
-  "almost" equal tolerating small differences (usually due to rounding
-  differences).
+* implemented imports so that simulation files can be split and reused. 
+  This can be used to simply split a large model file into smaller files,
+  or (more interestingly) to create simulation variants without having to
+  duplicate the common parts.
+ 
+* added new assert functions: 
+  - assertIsClose to check that two results are "almost" equal tolerating
+    small value differences (for example due to rounding differences).
+  - assertEquiv to check that two results are equal tolerating differences in
+    shape (though they must be compatible).
+  
+* added a new "timings" option to hide timings from the simulation log, so
+  that two simulation logs are more easily comparable (for example with "diff"
+  tools like WinMerge).   
 
 Miscellaneous improvements:
 ---------------------------
 
+* when the output directory does not exist, Liam2 will now try to create it
+
 * when debug mode is on, print the position in the random sequence before and
   after operations which use random numbers.
+  
+* entities are loaded/stored for each period in alphabetical order instead of
+  randomly. This has no influence on the results except for nicer log files.  
 
 Fixes:
 ------

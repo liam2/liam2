@@ -1,0 +1,40 @@
+import: simulation.yml
+
+entities:
+    person:
+        fields:
+            - variant_field: {type: int, initialdata: False}
+
+        macros:
+            VARIANT_MACRO: variant_field == 1
+            # overridden macro 
+            ISCHILD: age < 15
+
+        processes:
+            # override process
+            agegroup: 
+                - show('this is agegroup from the variant')
+                - agegroup: 10 * trunc(age / 10)
+
+            # new processes
+            init_variant_field:
+                - variant_field: choice([0, 1, 2], [0.1, 0.8, 0.1])
+
+            check_macros:
+                # use a new macro
+                - assertEqual(grpcount(VARIANT_MACRO),
+                              grpcount(variant_field == 1))
+                # use an overridden macro
+                - assertEqual(grpcount(ISCHILD), grpcount(age < 15))
+                # use a macro not overridden
+                - assertEqual(grpcount(FEMALE), grpcount(not gender))
+
+simulation:
+    init:
+        - person: [init_variant_field]
+
+    processes:
+        - person: [agegroup, check_macros]
+
+    output:
+        file: variant.h5

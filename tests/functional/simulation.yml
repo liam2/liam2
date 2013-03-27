@@ -1,7 +1,10 @@
+import:
+    - imported1.yml
+    - imported2.yml
+
 globals:
     periodic:
         - MINR: float
-        - WEMRA: int
         - MIG_PERCENT: float
 
 #    MIG:
@@ -1521,6 +1524,10 @@ entities:
             show_weight: show("avg weight", grpavg(weight),
                               "total population", grpsum(weight))
 
+            test_imported_process:
+                - qshow(imported_field1)
+                - assertEquiv(imported_field1, -1)
+                - assertEqual(imported_field2, age + 2)
 
 simulation:
     init:
@@ -1613,17 +1620,16 @@ simulation:
                    test_groupby,
 #                   test_dump,
                    test_csv,
+                   
+                   imported_process,
+                   test_imported_process
         ]
         - household: [num_persons, nch, maxnch,
 #                      dump_csv_h
                      ]
 
-    input:
-        file: small.h5
     output:
         file: simulation.h5
 
     random_seed: 0
-    start_period: 2002   # first simulated period
     periods: 2
-    default_entity: person

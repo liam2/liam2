@@ -10,6 +10,7 @@ Welcome to LIAM 2 User Guide !
    model
    processes
    links
+   import_model
    import
 
 Indices and tables

@@ -1,0 +1,35 @@
+# This is a "simulation" file. To run the simulation, press F6 in liam2
+# environment, or run the following command in a console:
+# INSTALL PATH\liam2 run demo07.yml
+
+# This example demonstrates how to create a variant of a model by using imports.
+# We re-use demo06.yml and change an existing process.
+import: demo06.yml
+
+entities:
+    person:
+        fields:
+            # additional field not present in the base model (nor in the input
+            # in this case)
+            - study_years_failed: {type: int, initialdata: false}
+
+        processes:
+            # we override the ineducation process
+            ineducation:
+                # set study_years_failed if not set already
+                - study_years_failed: if(study_years_failed == -1,
+                                         choice([0, 1, 2, 3],
+                                                [0.55, 0.3, 0.1, 0.05]),
+                                         study_years_failed)
+                # theoretical age at which a person stops studying
+                - studies_end: if(IS_LOWER_SECONDARY_EDU, 15,
+                               if(IS_UPPER_SECONDARY_EDU, 18,
+                               if(IS_TERTIARY_EDU, 23, -1)))
+
+                # unemployed if left education
+                - workstate: if(ISSTUDENT and
+                                  age >= studies_end + study_years_failed,
+                                UNEMPLOYED,
+                                workstate)
+                - show('new unemployed (ex-students)',
+                       grpcount(ISUNEMPLOYED and lag(ISSTUDENT)))
