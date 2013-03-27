@@ -232,10 +232,6 @@ features I would like to implement (in no particular order)
     because they need to support different functionalities: enlarge, remove,
     add column, delete column for .array and only .append for .table
 
-- find a clean way to make variants, to avoid having 54 different files
-  with slight differences in MIDAS.
-  * includes might be enough
-
 - use numexpr.E and precompile expressions as soon as possible, instead of
   passing strings at evaluation time.
   The problem is that numexpr.E always creates nodes of kind "double".
@@ -525,8 +521,6 @@ features I would like to implement (in no particular order)
   lines of code from the traceback but doesn't change the last lines).
   Example: syntax error if there is a comment containing non-ascii chars inside
   an expression.
-
-- includes
 
 - watches in step by step mode (which are recomputed/displayed automatically
   after each step)
