@@ -100,9 +100,9 @@ class EntityContext(object):
 
 
 def new_context_like(context, length=None):
-    #FIXME: nan should come from somewhere else
     if length is None:
         length = context_length(context)
+    #FIXME: nan should come from somewhere else
     return {'period': context['period'],
             '__len__': length,
             '__entity__': context['__entity__'],
