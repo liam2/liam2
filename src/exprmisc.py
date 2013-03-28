@@ -34,7 +34,7 @@ class Min(CompoundExpression):
 #        Where(Where(expr1 < expr2, expr1, expr2) < expr3,
 #              Where(expr1 < expr2, expr1, expr2),
 #              expr3)
-#        3 where, 3 comparisons = 6 op (or 4 if optimized)
+#        3 where, 3 comparisons = 6 op (or 4 if optimised)
 #
 #        Where(Where(Where(expr1 < expr2, expr1, expr2) < expr3,
 #                    Where(expr1 < expr2, expr1, expr2),
@@ -43,7 +43,7 @@ class Min(CompoundExpression):
 #                    Where(expr1 < expr2, expr1, expr2),
 #                    expr3),
 #              expr4)
-#        7 where, 7 comp = 14 op (or 6 if optimized)
+#        7 where, 7 comp = 14 op (or 6 if optimised)
 
         # this version scales better in theory (but in practice, it will depend
         # if numexpr factorize the common subexpression in the above version
@@ -90,16 +90,47 @@ class Max(CompoundExpression):
         return 'max(%s)' % ', '.join(str(arg) for arg in self.args)
 
 
-class ZeroClip(CompoundExpression):
-    def __init__(self, expr1, expr2, expr3):
+class Logit(CompoundExpression):
+    def __init__(self, expr):
         CompoundExpression.__init__(self)
-        self.expr1 = expr1
-        self.expr2 = expr2
-        self.expr3 = expr3
+        self.expr = expr
 
     def build_expr(self):
-        return Where((self.expr1 >= self.expr2) & (self.expr1 <= self.expr3),
-                     self.expr1,
+        return Log(self.expr / (1.0 - self.expr))
+
+    def dtype(self, context):
+        return float
+
+    def __str__(self):
+        return 'logit(%s)' % self.expr
+
+
+class Logistic(CompoundExpression):
+    def __init__(self, expr):
+        CompoundExpression.__init__(self)
+        self.expr = expr
+
+    def build_expr(self):
+        return 1.0 / (1.0 + Exp(-self.expr))
+
+    def dtype(self, context):
+        return float
+
+    def __str__(self):
+        return 'logistic(%s)' % self.expr
+
+
+class ZeroClip(CompoundExpression):
+    def __init__(self, expr, expr_min, expr_max):
+        CompoundExpression.__init__(self)
+        self.expr = expr
+        self.expr_min = expr_min
+        self.expr_max = expr_max
+
+    def build_expr(self):
+        expr = self.expr
+        return Where((expr >= self.expr_min) & (expr <= self.expr_max),
+                     expr,
                      0)
 
     def dtype(self, context):
@@ -619,6 +650,8 @@ functions = {
     'trunc': Trunc,
     'exp': Exp,
     'log': Log,
+    'logit': Logit,
+    'logistic': Logistic,
     'where': Where,
     # misc
     'sort': Sort,

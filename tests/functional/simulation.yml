@@ -256,6 +256,17 @@ entities:
                 - show("age * (1 / 2):", age * (1 / 2))
                 - show("clip(age, 10, 50)", clip(age, 10, 50))
 
+            test_logit:
+                - float_field: age / 120.0
+                - assertEqual(logit(float_field),
+                              log(float_field / (1.0 - float_field)))
+
+            test_logistic:
+                - assertEqual(logistic(age), 1.0 / (1.0 + exp(-age)))
+                - float_field: age * 1.0
+                - assertEqual(logistic(float_field),
+                              1.0 / (1.0 + exp(-float_field)))
+
             test_attr:
                 - assertEqual(age.ndim, 1)
 
@@ -1575,6 +1586,9 @@ simulation:
                    show_temp_global,
 
                    test_expr,
+                   test_logit,
+                   test_logistic,
+
                    test_attr,
                    test_subscript,
                    test_call,

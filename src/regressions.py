@@ -1,22 +1,12 @@
 import numpy as np
 
+from alignment import Alignment
 import config
+from context import context_length
 from expr import (Expr, Variable, ShortLivedVariable, get_tmp_varname,
                   missing_values, dtype, expr_eval)
 from exprbases import CompoundExpression
-from exprmisc import Log, Exp, Normal, Max, Where
-from alignment import Alignment
-
-from context import context_length
-
-
-#TODO: make those available
-def logit(expr):
-    return Log(expr / (1.0 - expr))
-
-
-def logistic(expr):
-    return 1.0 / (1.0 + Exp(-expr))
+from exprmisc import Exp, Normal, Max, Where, Logit, Logistic
 
 
 class Regression(CompoundExpression):
@@ -79,8 +69,8 @@ class LogitScore(CompoundExpression):
         if not isinstance(expr, Expr) and not expr:
             expr = u
         else:
-            epsilon = logit(u)
-            expr = logistic(expr - epsilon)
+            epsilon = Logit(u)
+            expr = Logistic(expr - epsilon)
         return expr
 
     def __str__(self):

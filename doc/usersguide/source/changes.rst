@@ -13,6 +13,9 @@ New features:
   This can be used to simply split a large model file into smaller files,
   or (more interestingly) to create simulation variants without having to
   duplicate the common parts.
+
+* added new logit and logistic functions. They were previously used
+  internally but not available to modellers.  
  
 * added new assert functions: 
   - assertIsClose to check that two results are "almost" equal tolerating
@@ -35,8 +38,17 @@ Miscellaneous improvements:
 * entities are loaded/stored for each period in alphabetical order instead of
   randomly. This has no influence on the results except for nicer log files.
 
+
+Version 0.6.1
+=============
+
+Released on 2013-03-27.
+
+Miscellaneous improvements:
+---------------------------
+
 * when importing an nd-array skip cells with only spaces in addition to empty
-  cells
+  cells.
 
 Fixes:
 ------
@@ -45,8 +57,8 @@ Fixes:
   and generally made indexing n-dimensional arrays more robust.
   
 * fixed choice which did not refuse to run when the sum of probability is != 1
-  and the "error" is > 1e-6. This was the case in past versions but (the test
-  was accidentally removed in version 0.5).  
+  and the "error" is > 1e-6, as it should. This was the case in past versions
+  but the test was accidentally removed in version 0.5.
 
 * fixed choice to warn when the sum of probabilities is > 1 (and the error is 
   <= 1e-6). Previously, it only warned if the sum was < 1.
