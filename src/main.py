@@ -14,7 +14,7 @@ from utils import AutoflushFile
 import registry
 from data import populate_registry, H5Data
 
-__version__ = "0.7.0dev"
+__version__ = "0.7.0pre1"
 
 
 def eat_traceback(func, *args, **kwargs):

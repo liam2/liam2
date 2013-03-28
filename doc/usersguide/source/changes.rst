@@ -3,8 +3,10 @@
 Change log
 ##########
 
-Version 0.7
-===========
+Version 0.7pre1
+===============
+
+Released on 2013-03-28.
 
 New features:
 -------------
