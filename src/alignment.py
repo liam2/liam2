@@ -398,17 +398,6 @@ class AlignmentAbsoluteValues(FilteredExpression):
         return align_get_indices_nd(ctx_length, groups, need, filter_value,
                                     scores, take_filter, leave_filter)
 
-    #TODO: somehow merge these two functions with LinkExpression or move them
-    # to the Link class
-    def target_entity(self, context):
-        return entity_registry[self.link._target_entity]
-
-    def target_context(self, context):
-        target_entity = self.target_entity(context)
-        return EntityContext(target_entity,
-                             {'period': context['period'],
-                             '__globals__': context['__globals__']})
-
     def align_link(self, context):
         scores = expr_eval(self.expr, context)
 
@@ -434,7 +423,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                                 % (secondary_axis, need.ndim))
 
         # evaluate columns
-        target_context = self.target_context(context)
+        target_context = self.link._target_context(context)
         target_columns = [expr_eval(e, target_context) for e in expressions]
         # this is a one2many, so the link column is on the target side
         link_column = expr_eval(Variable(self.link._link_field),

@@ -185,7 +185,7 @@ class Entity(object):
 
     def check_links(self):
         for name, link in self.links.iteritems():
-            target_name = link._target_entity
+            target_name = link._target_entity_name
             if target_name not in entity_registry:
                 raise Exception("Target of '%s' link in entity '%s' is an "
                                 "unknown entity (%s)" % (name, self.name,
@@ -196,8 +196,7 @@ class Entity(object):
         cond_context = {}
         for name, link in self.links.iteritems():
             # we need both one2many and many2one links (for .get)
-            target_name = link._target_entity
-            target_entity = entity_registry[target_name]
+            target_entity = link._target_entity()
             if target_entity is not self:
                 cond_context[name] = target_entity.variables
         return cond_context
@@ -292,8 +291,7 @@ class Entity(object):
                         if not isinstance(v, GlobalVariable):
                             lag_vars.add(v.name)
                     for lv in node.allOf(LinkValue):
-                        link = lv.get_link({'__entity__': self})
-                        lag_vars.add(link._link_field)
+                        lag_vars.add(lv.link._link_field)
 
                         target_entity = lv.target_entity({'__entity__': self})
                         if target_entity == self:

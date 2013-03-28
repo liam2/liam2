@@ -30,6 +30,10 @@ New features:
 Miscellaneous improvements:
 ---------------------------
 
+* changed the syntax for all one2many link functions: xxxlink(link_name, ...)
+  should now be link_name.xxx(...). For example, countlink(persons) should be:
+  persons.count(). The old syntax is still valid but it is deprecated.
+
 * when the output directory does not exist, Liam2 will now try to create it.
 
 * when debug mode is on, print the position in the random sequence before and

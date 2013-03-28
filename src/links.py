@@ -1,5 +1,6 @@
 from itertools import izip, groupby
 from operator import itemgetter
+import warnings
 
 import numpy as np
 import numexpr as ne
@@ -11,15 +12,24 @@ from registry import entity_registry
 
 
 class Link(object):
-    def __init__(self, name, link_field, target_entity):
+    def __init__(self, name, link_field, target_entity_name):
         # the leading underscores are necessary to not collide with
         # user-defined fields via __getattr__.
         self._name = name
         self._link_field = link_field
-        self._target_entity = target_entity
+        self._target_entity_name = target_entity_name
 
     def __str__(self):
         return self._name
+
+    def _target_entity(self):
+        return entity_registry[self._target_entity_name]
+
+    def _target_context(self, context):
+        target_entity = self._target_entity()
+        return EntityContext(target_entity,
+                             {'period': context['period'],
+                             '__globals__': context['__globals__']})
 
 
 class Many2One(Link):
@@ -30,7 +40,20 @@ class Many2One(Link):
 
 
 class One2Many(Link):
-    pass
+    def count(self, target_filter=None):
+        return CountLink(self, target_filter)
+
+    def sum(self, target_expr, target_filter=None):
+        return SumLink(self, target_expr, target_filter)
+
+    def avg(self, target_expr, target_filter=None):
+        return AvgLink(self, target_expr, target_filter)
+
+    def min(self, target_expr, target_filter=None):
+        return MinLink(self, target_expr, target_filter)
+
+    def max(self, target_expr, target_filter=None):
+        return MaxLink(self, target_expr, target_filter)
 
 
 class PrefixingLink(object):
@@ -49,36 +72,21 @@ class PrefixingLink(object):
 #            return macro.rename_variables(renames)
         if key in self.links:
             link = self.links[key]
-            return Link(link._name,
-                        link._link_type,
-                        self.prefix + link._link_field,
-                        link._target_entity)
+            return link.__class__(link._name,
+                                  self.prefix + link._link_field,
+                                  link._target_entity_name)
         return Variable(self.prefix + key)
 
 
 class LinkExpression(EvaluableExpression):
     '''abstract base class for all function which handle links (both many2one
        and one2many'''
+
     def __init__(self, link):
         self.link = link
 
-    def get_link(self, context):
-        # use the context as the first entity, so that it works with subsets of
-        # the entity population
-        link = self.link
-        if isinstance(link, basestring):
-            link = context['__entity__'].links[link]
-        return link
-
-    def target_entity(self, context):
-        link = self.get_link(context)
-        return entity_registry[link._target_entity]
-
     def target_context(self, context):
-        target_entity = self.target_entity(context)
-        return EntityContext(target_entity,
-                             {'period': context['period'],
-                             '__globals__': context['__globals__']})
+        return self.link._target_context(context)
 
     #XXX: I think this is not enough. Implement Visitor pattern instead?
     def traverse(self, context):
@@ -93,37 +101,35 @@ class LinkValue(LinkExpression):
                           target rows)
         '''
         LinkExpression.__init__(self, link)
-
         if isinstance(target_expression, basestring):
             target_expression = Variable(target_expression)
         self.target_expression = target_expression
         self.missing_value = missing_value
 
     def collect_variables(self, context):
-        link = self.get_link(context)
         #XXX: don't we also need the fields within the target expression?
-        return set([link._link_field])
+        return set([self.link._link_field])
 
     def dtype(self, context):
         target_context = self.target_context(context)
         return dtype(self.target_expression, target_context)
 
     def get(self, key, missing_value=None):
-        # in this case, target_expression must be a Variable with a
-        # link name, however given that we have no context, we
-        # don't know the current entity and
-        # can't make a strong assertion here
+        # in this case, target_expression must be a Variable with a link name,
+        # however given that we have no context, we do not know the current
+        # entity and cannot make a strong assertion here.
+        #XXX: we could add an _entity fields to the Link class though
         # assert self.target_expression in entity.links
         assert isinstance(self.target_expression, Variable)
+        target_entity = self.link._target_entity()
+        target_link = target_entity.links[self.target_expression.name]
         return LinkValue(self.link,
-                         LinkValue(self.target_expression.name, key,
-                                   missing_value))
+                         LinkValue(target_link, key, missing_value))
 
     __getattr__ = get
 
     def evaluate(self, context):
-        link = self.get_link(context)
-        target_ids = expr_eval(Variable(link._link_field), context)
+        target_ids = expr_eval(Variable(self.link._link_field), context)
         target_context = self.target_context(context)
 
         id_to_rownum = target_context.id_to_rownum
@@ -157,7 +163,7 @@ class AggregateLink(LinkExpression):
     def evaluate(self, context):
         assert isinstance(context, EntityContext), \
                "one2many aggregates in groupby are currently not supported"
-        link = self.get_link(context)
+        link = self.link
         assert isinstance(link, One2Many)
 
         # eg (in household entity):
@@ -348,10 +354,31 @@ class MaxLink(MinLink):
     aggregate_func = max
 
 
+class UserDeprecationWarning(UserWarning):
+    pass
+
+
+def deprecated(class_):
+    func_name = class_.__name__.lower()
+    method_name = func_name[:-4]
+
+    def func(*args, **kwargs):
+        #TODO: when we will be able to link expressions to line numbers in the
+        # model, we should use warnings.warn_explicit instead
+        msg = "%s(link, ...) is deprecated, please use " \
+              "link.%s(...) instead" % (func_name, method_name)
+        warnings.warn(msg, UserDeprecationWarning)
+        expr = class_(*args, **kwargs)
+#        print "Warning: %s\n     at: %s" % (msg, expr)
+        return expr
+    func.__name__ = func_name
+    return func
+
+# all the these functions are deprecated
 functions = {
-    'countlink': CountLink,
-    'sumlink': SumLink,
-    'avglink': AvgLink,
-    'minlink': MinLink,
-    'maxlink': MaxLink,
+    'countlink': deprecated(CountLink),
+    'sumlink': deprecated(SumLink),
+    'avglink': deprecated(AvgLink),
+    'minlink': deprecated(MinLink),
+    'maxlink': deprecated(MinLink),
 }
