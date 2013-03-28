@@ -13,7 +13,7 @@ from expr import (Expr, Variable,
                   missing_values)
 from exprbases import FilteredExpression
 from groupby import GroupBy
-from links import Link, LinkValue
+from links import LinkValue, Many2One
 from partition import partition_nd, filter_to_indices
 from importer import load_ndarray
 from registry import entity_registry
@@ -442,8 +442,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         filter_expr = self._getfilter(context)
         if filter_expr is not None:
-            reverse_link = Link("reverse", "many2one", self.link._link_field,
-                                context['__entity__'].name)
+            reverse_link = Many2One("reverse", self.link._link_field,
+                                    context['__entity__'].name)
             target_filter = LinkValue(reverse_link, filter_expr, False)
             target_filter_value = expr_eval(target_filter, target_context)
 

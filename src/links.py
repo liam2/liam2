@@ -11,27 +11,26 @@ from registry import entity_registry
 
 
 class Link(object):
-    def __init__(self, name, link_type, link_field, target_entity):
+    def __init__(self, name, link_field, target_entity):
         # the leading underscores are necessary to not collide with
         # user-defined fields via __getattr__.
         self._name = name
-        assert link_type in ('many2one', 'one2many'), \
-               "link type should be either 'many2one' or 'one2many'"
-        self._link_type = link_type
         self._link_field = link_field
         self._target_entity = target_entity
 
+    def __str__(self):
+        return self._name
+
+
+class Many2One(Link):
     def get(self, key, missing_value=None):
-        if self._link_type == 'one2many':
-            raise SyntaxError("To use the '%s' link (which is a one2many "
-                              "link), you have to use link functions (e.g. "
-                              "countlink)" % self._name)
         return LinkValue(self, key, missing_value)
 
     __getattr__ = get
 
-    def __str__(self):
-        return self._name
+
+class One2Many(Link):
+    pass
 
 
 class PrefixingLink(object):
@@ -159,7 +158,7 @@ class AggregateLink(LinkExpression):
         assert isinstance(context, EntityContext), \
                "one2many aggregates in groupby are currently not supported"
         link = self.get_link(context)
-        assert link._link_type == 'one2many'
+        assert isinstance(link, One2Many)
 
         # eg (in household entity):
         # persons: {type: one2many, target: person, field: hh_id}
