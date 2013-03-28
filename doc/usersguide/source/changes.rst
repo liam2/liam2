@@ -14,7 +14,8 @@ New features:
 * implemented imports so that simulation files can be split and reused. 
   This can be used to simply split a large model file into smaller files,
   or (more interestingly) to create simulation variants without having to
-  duplicate the common parts.
+  duplicate the common parts. This feature was inspired by some code
+  from Alexis Eidelman.
 
 * added new logit and logistic functions. They were previously used
   internally but not available to modellers.  
