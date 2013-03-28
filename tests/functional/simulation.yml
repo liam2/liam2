@@ -57,17 +57,17 @@ entities:
             
             check:
                 - show('min/max weight:', grpmin(weight), grpmax(weight))
-                - show('total population:', grpsum(countlink(persons)),
-                       '/ expanded:', grpsum(weight * countlink(persons)))
+                - show('total population:', grpsum(persons.count()),
+                       '/ expanded:', grpsum(weight * persons.count()))
 
-            num_persons: countlink(persons)
-            nch: countlink(persons, age <= 18)
+            num_persons: persons.count()
+            nch: persons.count(age <= 18)
             maxnch: grpmax(nch)
             dump_csv_h: csv(dump())
             aligned: False
 
             test_align_link:
-                - num_persons: countlink(persons)
+                - num_persons: persons.count()
                 # kill empty households 
                 - remove(num_persons == 0)
                 
@@ -91,7 +91,7 @@ entities:
                 - assertTrue(abs(need.sum() - num_migrants) < 1e-4)
 
                 # without filter
-                - aligned_all: align_abs(countlink(persons), need,
+                - aligned_all: align_abs(persons.count(), need,
                                          link=persons, secondary_axis=gender)
                 - qshow(grpcount(aligned_all),
                         grpsum(num_persons, filter=aligned_all))
@@ -101,7 +101,7 @@ entities:
                 - qshow(grpcount(is_candidate),
                         grpsum(num_persons, filter=is_candidate))
 
-                - aligned: align_abs(countlink(persons), need,
+                - aligned: align_abs(persons.count(), need,
                                      link=persons, secondary_axis=gender,
                                      errors='carry',
                                      filter=is_candidate)
@@ -116,7 +116,7 @@ entities:
                 - weird_need: groupby(bchoice, weird_num, expr=10)
                 - show(weird_need)
                 - show('by sex', weird_need.sum(axis=1))
-                - aligned: align_abs(countlink(persons), weird_need,
+                - aligned: align_abs(persons.count(), weird_need,
                                      link=persons, secondary_axis=0,
                                      filter=is_candidate,
                                      expressions=[gender, 5 + trunc(age / 20) * 20])
@@ -940,6 +940,26 @@ entities:
                              -1)
 
             test_o2m:
+                # new style (link methods)
+                
+                # count
+                - nch: children.count()
+                - nch_012: children.count(age <= 12)
+                
+                # sumlink
+                - ch_012_age_sum: children.sum(age, age <= 12)
+                - ch_012_age2_sum: children.sum(age * 2, age <= 12)
+
+                # with a scalar
+                - assertEqual(children.sum(10), nch * 10)
+
+                - ch_012_age_avg: children.avg(age, age <= 12)
+                - ch_minage: children.min(age)
+                - ch_maxage: children.max(age)
+                - show(dump(nch, nch_012, ch_012_age_sum, ch_012_age2_sum,
+                            ch_012_age_avg, filter=(nch > 0) and (id < 100)))
+
+                # old style (link functions)
                 # countlink
                 - nch: countlink(children)
                 - nch_012: countlink(children, age <= 12)
@@ -960,15 +980,15 @@ entities:
             test_mixed_links:
                 - show('mother vs step-mother:', mother.age, partner.mother.age)
                 - show('other sex step-parent:',
-                        where(gender, partner.mother.age, partner.father.age))
+                       if(gender, partner.mother.age, partner.father.age))
                 - show('age vs age if married:', age, partner.partner.age)
                 - show('mother.partner.age:', mother.partner.age,
                        'father.age:', father.age)
                 - show('hh.id:', household.id,
                        'hh.id+1:', household.get(id + 1),
                        'edu:', eduach,
-                       'num persons:', household.get(countlink(persons)),
-                       'num high edu:', household.get(countlink(persons, eduach == 4)))
+                       'num persons:', household.get(persons.count()),
+                       'num high edu:', household.get(persons.count(eduach == 4)))
 
 #            test_extra_comma:
 #                - show('test extra colon'),
@@ -1003,10 +1023,6 @@ entities:
                                       abs(age - avg_age_men),
                                       nan)
                 - workless: not work
-# commented to make the test faster
-#                                      + 0.0015 * abs(household.num_persons - other.household.num_persons)
-#                                      - 0.0015 * abs(household.get(countlink(persons, age < 18))
-#                                                     - other.household.get(countlink(persons, age < 18)))
                 - partner_id:
                     if(to_marry,
                        matching(set1filter=not gender,
@@ -1024,7 +1040,8 @@ entities:
                                       - 1.4128 * ((other.eduach == 2) and TERTIARY_EDU)
                                       - 0.8984 * ((other.eduach == 4) and UPPER_SECONDARY_EDU)
                                       - 1.5530 * ((other.eduach == 4) and LOWER_SECONDARY_EDU)
-                                      - 0.5451 * ((other.eduach == 2) and LOWER_SECONDARY_EDU),
+                                      - 0.5451 * ((other.eduach == 2) and LOWER_SECONDARY_EDU)
+                                      + 0.0015 * abs(household.num_persons - other.household.num_persons),
                                 orderby=difficult_match),
                        partner_id)
 
@@ -1150,7 +1167,8 @@ entities:
 
             cleanup: remove(lag(dead))
 
-            test_o2m_aggregate: show(grpavg(countlink(children)))
+            test_o2m_aggregate:
+                - show(grpavg(children.count()))
 
             test_grpsum:
                 # simple
@@ -1495,8 +1513,6 @@ entities:
                 - agediff: show(groupby(agegroup, gender,
                                         expr=grpavg(age - if(partner.age == -1, nan, partner.age))))
 #                                        expr=grpavg(abs(age - if(partner.age == -1, nan, partner.age)))))
-#                                        expr=grpsum(countlink(children)) / grpsum(not dead)))
-#                                        expr=grpavg(nch)))
 #                - minmax_age: show(groupby(id / 100, gender, expr=grpmax(age) - grpmin(age)))
 
                 # groupby in expressions
