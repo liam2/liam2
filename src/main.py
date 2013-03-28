@@ -2,6 +2,7 @@ import argparse
 import os
 from os.path import splitext
 import platform
+import warnings
 
 import yaml
 
@@ -218,6 +219,7 @@ if __name__ == '__main__':
     print
 
     if config.debug:
+        warnings.simplefilter('default')
         main()
     else:
         eat_traceback(main)
