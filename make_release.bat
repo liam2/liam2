@@ -1,5 +1,6 @@
 @echo off
 
+rem usage is: make_release [version] [branch]
 set REPOSITORY=svn://filemail/liam2
 
 if "%1"=="" (
@@ -10,6 +11,12 @@ if "%1"=="" (
 ) else (
     set SVNPATH=tags/%1
     set VERSION=%1
+)
+
+if "%2"=="" (
+    set BRANCH=trunk
+) else (
+    set BRANCH=branches/%2
 )
 
 set /p ANSWER=Release version "%VERSION%" (y/N)?
@@ -23,7 +30,7 @@ if /i "%VERSION:~0,1%"=="r" goto :skiptag
 set /p ANSWER=tag release "%VERSION%" (Y/n)?
 if /i "%ANSWER:~0,1%" NEQ "y" goto :skiptag
 
-svn cp %REPOSITORY%/trunk %REPOSITORY%/tags/%VERSION%
+svn cp %REPOSITORY%/%BRANCH% %REPOSITORY%/%SVNPATH%
 if %ERRORLEVEL% GEQ 1 goto :failed
 :skiptag
 
