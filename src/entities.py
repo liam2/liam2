@@ -3,7 +3,7 @@ import numpy as np
 import tables
 
 from utils import safe_put, count_occurences, field_str_to_type
-from data import mergeArrays, get_fields
+from data import mergeArrays, get_fields, ColumnArray
 from registry import entity_registry
 from expr import (Variable, GlobalVariable, GlobalTable, GlobalArray,
                   expr_eval, get_missing_value)
@@ -21,7 +21,6 @@ from process import Assignment, Compute, Process, ProcessGroup
 #
 #def decompress_column(a):
 #    return a[:]
-
 
 class Entity(object):
     '''
@@ -292,8 +291,7 @@ class Entity(object):
                             lag_vars.add(v.name)
                     for lv in node.allOf(LinkValue):
                         lag_vars.add(lv.link._link_field)
-
-                        target_entity = lv.target_entity({'__entity__': self})
+                        target_entity = lv.link._target_entity()
                         if target_entity == self:
                             target_vars = lv.target_expression.allOf(Variable)
                             lag_vars.update(v.name for v in target_vars)
@@ -322,10 +320,15 @@ class Entity(object):
             return
 
         start, stop = rows
+
+        # It would be nice to use ColumnArray.from_table and adapt mergeArrays
+        # to produce a ColumnArray in all cases, but it is not a huge priority
+        # for now
         input_array = self.input_table.read(start, stop)
 
         self.array, self.id_to_rownum = \
             mergeArrays(self.array, input_array, result_fields='array1')
+        self.array = ColumnArray(self.array)
 
     def store_period_data(self, period):
 #        temp_mem = 0
@@ -346,7 +349,7 @@ class Entity(object):
             raise Exception("trying to modify already simulated rows")
         else:
             startrow = self.table.nrows
-            self.table.append(self.array)
+            self.array.append_to_table(self.table)
             self.output_rows[period] = (startrow, self.table.nrows)
             self.output_index[period] = self.id_to_rownum
         self.table.flush()

@@ -3,8 +3,179 @@ import time
 import tables
 import numpy as np
 
-from expr import normalize_type, get_missing_value, get_missing_record
+from expr import (normalize_type, get_missing_value, get_missing_record,
+                  get_missing_vector, gettype)
 from utils import loop_wh_progress, time2str, safe_put, LabeledArray
+
+
+class ColumnArray(object):
+    def __init__(self, array=None):
+        columns = {}
+        if array is not None:
+            for name in array.dtype.names:
+                columns[name] = array[name].copy()
+            #TODO: make a property instead
+            self.dtype = array.dtype
+        else:
+            self.dtype = None
+        self.columns = columns
+
+    def __getitem__(self, key):
+        if isinstance(key, basestring):
+            return self.columns[key]
+        elif isinstance(key, np.ndarray):
+            ca = ColumnArray()
+            for name, colvalue in self.columns.iteritems():
+                ca[name] = colvalue[key]
+            ca.dtype = self.dtype
+            return ca
+        else:
+            raise KeyError(key)
+
+    def __setitem__(self, key, value):
+        """does not copy value except if a type conversion is necessary"""
+        if isinstance(key, basestring):
+            if isinstance(value, np.ndarray) and value.shape:
+                column = value
+            else:
+                # expand scalars (like ndarray does) so that we don't have to
+                # check isinstance(x, ndarray) and x.shape everywhere
+                column = np.empty(len(self), dtype=gettype(value))
+                column.fill(value)
+
+            if key in self.columns:
+                # converting to existing dtype
+                if column.dtype != self.dtype[key]:
+                    column = column.astype(self.dtype[key])
+            else:
+                self._update_dtype()
+
+            self.columns[key] = column
+        else:
+            # int, slice, ndarray
+            for name, column in self.columns.iteritems():
+                column[key] = value[name]
+
+    def __delitem__(self, key):
+        del self.columns[key]
+        self._update_dtype()
+
+    def _update_dtype(self):
+        # handle fields already present (iterate over old dtype to preserve
+        # order)
+        if self.dtype is not None:
+            old_fields = self.dtype.names
+            fields = [(name, self.dtype[name])
+                      for name in old_fields
+                      if name in self.columns]
+        else:
+            old_fields = []
+            fields = []
+        # add new fields (not already handled)
+        old_fields = set(old_fields)
+        fields += [(name, column.dtype)
+                   for name, column in self.columns.iteritems()
+                   if name not in old_fields]
+        self.dtype = np.dtype(fields)
+
+    def __len__(self):
+        anycol = self.columns.itervalues().next()
+        return len(anycol)
+
+    def append(self, array):
+        assert array.dtype == self.dtype
+        for name, column in self.columns.iteritems():
+            self.columns[name] = np.concatenate((column, array[name]))
+
+    def append_to_table(self, table, buffersize=10 * 2 ** 20):
+        dtype = table.dtype
+        max_buffer_rows = buffersize // dtype.itemsize
+        numlines = len(self)
+        buffer_rows = min(numlines, max_buffer_rows)
+        chunk = np.empty(buffer_rows, dtype=dtype)
+        start, stop = 0, buffer_rows
+        while numlines > 0:
+            buffer_rows = min(numlines, max_buffer_rows)
+            if buffer_rows < len(chunk):
+                # last chunk is smaller
+                chunk = np.empty(buffer_rows, dtype=dtype)
+            for name in dtype.names:
+                chunk[name] = self[name][start:stop]
+            table.append(chunk)
+            numlines -= buffer_rows
+            start += buffer_rows
+            stop += buffer_rows
+        table.flush()
+
+    @classmethod
+    def empty(cls, length, dtype):
+        ca = cls()
+        for name in dtype.names:
+            ca.columns[name] = np.empty(length, dtype[name])
+        ca._update_dtype()
+        return ca
+
+    @classmethod
+    def from_table(cls, table, start, stop, buffersize=10 * 2 ** 20):
+        dtype = table.dtype
+        max_buffer_rows = buffersize // dtype.itemsize
+        numlines = stop - start
+        ca = cls.empty(numlines, dtype)
+        buffer_rows = min(numlines, max_buffer_rows)
+#        chunk = np.empty(buffer_rows, dtype=dtype)
+        array_start = 0
+        table_start = start
+        while numlines > 0:
+            buffer_rows = min(numlines, max_buffer_rows)
+#            if buffer_rows < len(chunk):
+                # last chunk is smaller
+#                chunk = np.empty(buffer_rows, dtype=dtype)
+# needs pytables3
+#            table.read(table_start, table_start + buffer_rows, out=chunk)
+            chunk = table.read(table_start, table_start + buffer_rows)
+            ca[array_start:array_start + buffer_rows] = chunk
+            table_start += buffer_rows
+            array_start += buffer_rows
+            numlines -= buffer_rows
+        return ca
+
+    @classmethod
+    def from_table_coords(cls, table, indices, buffersize=10 * 2 ** 20):
+        dtype = table.dtype
+        max_buffer_rows = buffersize // dtype.itemsize
+        numlines = len(indices)
+        ca = cls.empty(numlines, dtype)
+        buffer_rows = min(numlines, max_buffer_rows)
+#        chunk = np.empty(buffer_rows, dtype=dtype)
+        start, stop = 0, buffer_rows
+        while numlines > 0:
+            buffer_rows = min(numlines, max_buffer_rows)
+#            if buffer_rows < len(chunk):
+                # last chunk is smaller
+#                chunk = np.empty(buffer_rows, dtype=dtype)
+            chunk_indices = indices[start:stop]
+# needs pytables3
+#            table.readCoordinates(chunk_indices, out=chunk)
+            chunk = table.readCoordinates(chunk_indices)
+            ca[start:stop] = chunk
+            start += buffer_rows
+            stop += buffer_rows
+            numlines -= buffer_rows
+        return ca
+
+    def add_and_drop_fields(self, output_fields):
+        '''modify inplace'''
+
+        output_dtype = np.dtype(output_fields)
+        output_names = set(output_dtype.names)
+        input_names = set(self.dtype.names)
+        length = len(self)
+        # add missing fields
+        for name in output_names - input_names:
+            self[name] = get_missing_vector(length, output_dtype[name])
+        # delete extra fields
+        for name in input_names - output_names:
+            del self[name]
 
 
 def table_size(table):
@@ -280,9 +451,9 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
     # if all individuals are present in the target period, we are done already!
     if np.array_equal(present_in_period, is_present):
         start, stop = input_rows[target_period]
-        input_array = input_table.read(start=start, stop=stop)
-        return (add_and_drop_fields(input_array, output_fields),
-                period_id_to_rownum)
+        input_array = ColumnArray.from_table(input_table, start, stop)
+        input_array.add_and_drop_fields(output_fields)
+        return input_array, period_id_to_rownum
 
     # building id_to_rownum for the target period
     id_to_rownum = np.empty(max_id + 1, dtype=int)
@@ -326,9 +497,9 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
             break
 
     # reading data
-    output_array = input_table.readCoordinates(output_array_source_rows)
-    output_array = add_and_drop_fields(output_array, output_fields)
-
+    output_array = ColumnArray.from_table_coords(input_table,
+                                                 output_array_source_rows)
+    output_array.add_and_drop_fields(output_fields)
     return output_array, id_to_rownum
 
 
@@ -612,7 +783,7 @@ class Void(DataSource):
         output_entities = output_file.createGroup("/", "entities", "Entities")
         for entity in entities.itervalues():
             dtype = np.dtype(entity.fields)
-            entity.array = np.empty(0, dtype=dtype)
+            entity.array = ColumnArray.empty(0, dtype=dtype)
             entity.array_period = start_period
             entity.id_to_rownum = np.empty(0, dtype=int)
             output_table = output_file.createTable(

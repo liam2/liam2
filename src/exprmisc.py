@@ -335,7 +335,8 @@ def add_individuals(target_context, children):
     print "%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name,
                                        num_rows, num_rows + num_birth),
 
-    target_entity.array = np.concatenate((array, children))
+    target_entity.array.append(children)
+
     temp_variables = target_entity.temp_variables
     for name, temp_value in temp_variables.iteritems():
         #FIXME: OUCH, this is getting ugly, I'll need a better way to
