@@ -305,7 +305,7 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
     dtype = np.dtype(fields)
     table = h5file.createTable(node, name, dtype, title=title, filters=filters)
     # buffered load
-    max_buffer_rows = buffersize / dtype.itemsize
+    max_buffer_rows = buffersize // dtype.itemsize
     while True:
         dataslice = islice(datastream, max_buffer_rows)
         if numlines is not None:
