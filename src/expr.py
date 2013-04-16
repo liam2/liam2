@@ -734,7 +734,8 @@ class GlobalVariable(Variable):
         if isinstance(period, int):
             tmp_varname = '__%s_%s' % (self.name, period)
             if tmp_varname in context:
-                assert context[tmp_varname] == result
+                # should be consistent but nan != nan
+                assert result != result or context[tmp_varname] == result
             else:
                 context[tmp_varname] = result
         else:
