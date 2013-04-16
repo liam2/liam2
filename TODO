@@ -209,7 +209,7 @@ features I would like to implement (in no particular order)
 - improve examples:
   * comment each new stuff as it appears the first time
   ? kill logit_regr without expr (logit_regr(0.0, align='al_p_dead_m.csv'):
-    use align instead?
+    use align(uniform(), 'al_p_dead_m.csv') instead?
   * kill children link, use it or at least add a comment about it
     (it is declared but not used in any example)
 
@@ -286,14 +286,12 @@ features I would like to implement (in no particular order)
     (dict.__contains__(k) calls k.__eq__) so that I can store
     expressions in a dict to check whether they occur more than once
 
-  see ASTNode class in numexpr. Use it as is?
-
   Questions:
   * use ASTNode class in numexpr as is?
   * would an uniform interface make things cleaner for current
     functionalities (mainly as_string, collect_variables and simplify)?
 
-- somehow work around numexpr 2.0 limitation of 31 variables (create hidden
+- somehow work around numexpr 2.x limitation of 31 variables (create hidden
   temporary variables?)
 
 - better document csv format: -- for missing
@@ -311,7 +309,7 @@ features I would like to implement (in no particular order)
   * it would save some memory, possibly much of it in combination with
     reordering of processes.
 
-- compressing main "table" (ie the columns) with carray:
+? compressing main "table" (ie the columns) with carray:
   ac[indice_vector] is 1000x slower than a[indice_vector] !
   ac[bool_vector] is 4.5x slower than a[bool_vector]
   ac.sum() is 2.8x slower than np.sum(a) (np.sum(ac) doesn't work)
@@ -757,6 +755,9 @@ projects to keep an eye on
   nansum, nanmin, nanmax, nanmean, nanstd
   it will probably be integrated back into numpy/scipy at some point but it
   will probably take a while, so let's use this in the mean time
+  
+- pydap (http://www.pydap.org) 
+  access many kinds of data formats using a uniform interface
 
 - corepy
 
