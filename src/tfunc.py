@@ -15,7 +15,8 @@ class ValueForPeriod(FunctionExpression):
 
     def evaluate(self, context):
         entity = context['__entity__']
-        return entity.value_for_period(self.expr, self.period, context,
+        period = expr_eval(self.period, context)
+        return entity.value_for_period(self.expr, period, context,
                                        self.missing)
 
 

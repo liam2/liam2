@@ -1106,6 +1106,14 @@ entities:
 #                                 if(age >= 2, age - 2, -1),
 #                                 -1))
 
+            test_value_for_period:
+                # period is a constant
+                - assertEqual(value_for_period(MINR, 2005), 13620.2)
+                - assertEqual(value_for_period(age, 2001)[0], 24)
+
+                # period is a scalar expression
+                - assertEqual(value_for_period(age, period - 1), lag(age))
+
             test_duration:
                 - show("age > 10", duration(age > 10))
                 - show("max(d, 2)", max(duration(age > 10), 2))
@@ -1635,6 +1643,7 @@ simulation:
 
                    test_new,
                    test_lag,
+                   test_value_for_period,
                    test_duration,
 
                    test_o2m,

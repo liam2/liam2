@@ -30,6 +30,7 @@ New features:
   that two simulation logs are more easily comparable (for example with "diff"
   tools like WinMerge).
 
+
 Miscellaneous improvements:
 ---------------------------
 
@@ -37,6 +38,9 @@ Miscellaneous improvements:
   should now be link_name.xxx(...). For example, countlink(persons) should be:
   persons.count(). The old syntax is still valid but it is deprecated.
 
+* the "period" argument of value_for_period can now be a *scalar* expression
+  (it must have the same value for all individuals).
+  
 * when the output directory does not exist, Liam2 will now try to create it.
 
 * when debug mode is on, print the position in the random sequence before and
