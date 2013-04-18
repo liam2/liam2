@@ -131,13 +131,8 @@ class RemoveIndividuals(Process):
         entity = context['__entity__']
         len_before = len(entity.array)
 
-        #FIXME: this allocates a new (slightly smaller) array. The old
-        # array is only discarded when the gc does its job, effectively
-        # doubling the peak memory usage for the main array for a while.
-        # Seems like another good reason to store columns separately.
-
         # Shrink array & temporaries. 99% of the function time is spent here.
-        entity.array = entity.array[not_removed]
+        entity.array.keep(not_removed)
         temp_variables = entity.temp_variables
         for name, temp_value in temp_variables.iteritems():
             if isinstance(temp_value, np.ndarray) and temp_value.shape:
@@ -157,8 +152,8 @@ class RemoveIndividuals(Process):
                                         already_removed_indices_shifted,
                                         -1)
         # this version is cleaner and slightly faster but the result is also
-        # slightly different: it eliminates ids for dead/removed individuals
-        # and this cause bugs in time-related functions
+        # slightly wrong: it eliminates ids for dead/removed individuals at
+        # the end of the array and this cause bugs in time-related functions
 #        ids = entity.array['id']
 #        id_to_rownum = np.empty(np.max(ids) + 1, dtype=int)
 #        id_to_rownum.fill(-1)

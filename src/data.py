@@ -47,10 +47,11 @@ class ColumnArray(object):
                 # converting to existing dtype
                 if column.dtype != self.dtype[key]:
                     column = column.astype(self.dtype[key])
+                self.columns[key] = column
             else:
+                # adding a new column so we need to update the dtype
+                self.columns[key] = column
                 self._update_dtype()
-
-            self.columns[key] = column
         else:
             # int, slice, ndarray
             for name, column in self.columns.iteritems():
@@ -82,8 +83,16 @@ class ColumnArray(object):
         anycol = self.columns.itervalues().next()
         return len(anycol)
 
+    def keep(self, indices):
+        # using gc.collect() after each column update frees a bit of memory
+        # but slows things down significantly.
+        for name, column in self.columns.iteritems():
+            self.columns[name] = column[indices]
+
     def append(self, array):
         assert array.dtype == self.dtype
+        # using gc.collect() after each column update frees a bit of memory
+        # but slows things down significantly.
         for name, column in self.columns.iteritems():
             self.columns[name] = np.concatenate((column, array[name]))
 
