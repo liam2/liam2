@@ -410,6 +410,16 @@ temporal functions
 
 - value_for_period(expr, period[, missing=value]): value at a specific period
 
+  **expr**: any expression.
+  
+  **period**: the period used to evaluate the expression. This can be either a
+  constant or a scalar expression. 
+
+  **missing**: the value to return for individuals which were not present in
+  the period. By default, it returns the missing value corresponding to
+  the type of the expression: -1 for an integer expression, nan for a float
+  or False for a boolean.
+
   *example* ::
 
     value_for_period(inwork and not male, 2002)
