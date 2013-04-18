@@ -37,7 +37,7 @@ build_exe_options = {
         "_codecs_jp", "_codecs_kr", "_codecs_tw",
         # common modules
         "Tkconstants", "Tkinter", "Cython", "_ssl",
-        "base64", "bz2", "calendar", "compiler", "ctypes",
+        "base64", "bz2", "calendar", "compiler",
         "distutils", "doctest", "dummy_thread",
         "dummy_threading", "email", "ftplib", "io",
         "logging", "multiprocessing", "nose",
@@ -46,6 +46,7 @@ build_exe_options = {
         "posixpath", "pydoc", "pydoc_topics", "repr", "scipy",
         "select", "stringprep", "strptime",
         "tcl", "unicodedata", "xml"
+        # ctypes is required now
     ]
 }
 
