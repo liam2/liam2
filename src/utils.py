@@ -1,3 +1,4 @@
+#import os
 import re
 import sys
 import time
@@ -8,6 +9,7 @@ from textwrap import wrap
 from collections import defaultdict, deque
 
 import numpy as np
+#import psutil
 
 import config
 
@@ -43,12 +45,22 @@ def size2str(value):
     if value > 1024.0:
         value /= 1024.0
         unit = "Kb"
-        if value > 1024.0:
-            value /= 1024.0
-            unit = "Mb"
+#        if value > 1024.0:
+#            value /= 1024.0
+#            unit = "Mb"
         return "%.2f %s" % (value, unit)
     else:
         return "%d %s" % (value, unit)
+
+
+#def mem_usage():
+#    pid = os.getpid()
+#    proc = psutil.Process(pid)
+#    return proc.get_memory_info()[0]
+
+
+#def mem_usage_str():
+#    return size2str(mem_usage())
 
 
 def gettime(func, *args, **kwargs):
