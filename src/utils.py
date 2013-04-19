@@ -45,9 +45,9 @@ def size2str(value):
     if value > 1024.0:
         value /= 1024.0
         unit = "Kb"
-#        if value > 1024.0:
-#            value /= 1024.0
-#            unit = "Mb"
+        if value > 1024.0:
+            value /= 1024.0
+            unit = "Mb"
         return "%.2f %s" % (value, unit)
     else:
         return "%d %s" % (value, unit)
