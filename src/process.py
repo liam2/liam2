@@ -69,6 +69,8 @@ class Assignment(Process):
 
     def run(self, context):
         value = expr_eval(self.expr, context)
+        if isinstance(self.expr, Variable):
+            value = value.copy()
         self.store_result(value)
 
     def store_result(self, result):
