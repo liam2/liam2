@@ -2,14 +2,15 @@
 import numpy as np
 import tables
 
-from utils import safe_put, count_occurences, field_str_to_type
+import config
+from context import EntityContext, context_length
 from data import mergeArrays, get_fields, ColumnArray
-from registry import entity_registry
 from expr import (Variable, GlobalVariable, GlobalTable, GlobalArray,
                   expr_eval, get_missing_value)
 from exprparser import parse
-from context import EntityContext, context_length
 from process import Assignment, Compute, Process, ProcessGroup
+from registry import entity_registry
+from utils import safe_put, count_occurences, field_str_to_type, size2str
 
 
 #def compress_column(a, level):
@@ -331,19 +332,17 @@ class Entity(object):
         self.array = ColumnArray(self.array)
 
     def store_period_data(self, period):
-#        temp_mem = 0
-#        for v in self.temp_variables.itervalues():
-#            if isinstance(v, np.ndarray) and v.shape:
-#                temp_mem += v.dtype.itemsize * len(v)
+        if config.debug:
+            temp_mem = sum(v.nbytes for v in self.temp_variables.itervalues()
+                           if isinstance(v, np.ndarray))
+            main_mem = self.array.nbytes
+            print "mem used: %s (main: %s / temp: %s)" \
+                  % (size2str(temp_mem + main_mem),
+                     size2str(main_mem),
+                     size2str(temp_mem))
 
         # erase all temporary variables which have been computed this period
         self.temp_variables = {}
-
-#        main_mem = self.array.dtype.itemsize * len(self.array)
-#        print "mem used: %s (main: %s / temp: %s)" \
-#              % (size2str(temp_mem + main_mem),
-#                 size2str(main_mem),
-#                 size2str(temp_mem))
 
         if period in self.output_rows:
             raise Exception("trying to modify already simulated rows")
