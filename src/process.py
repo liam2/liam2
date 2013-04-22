@@ -1,6 +1,9 @@
+from __future__ import division
+
 import numpy as np
 
-from expr import Expr, type_to_idx, idx_to_type, expr_eval
+import config
+from expr import Expr, type_to_idx, idx_to_type, expr_eval, Variable
 from context import EntityContext
 import utils
 
@@ -69,6 +72,8 @@ class Assignment(Process):
 
     def run(self, context):
         value = expr_eval(self.expr, context)
+#        if isinstance(self.expr, Variable):
+#            value = value.copy()
         self.store_result(value)
 
     def store_result(self, result):
@@ -108,6 +113,9 @@ class Assignment(Process):
             yield self.expr
 
 
+max_vars = 0
+
+
 class ProcessGroup(Process):
     def __init__(self, name, subprocesses):
         super(ProcessGroup, self).__init__()
@@ -115,6 +123,8 @@ class ProcessGroup(Process):
         self.subprocesses = subprocesses
 
     def run_guarded(self, simulation, const_dict):
+        global max_vars
+
         print
         for k, v in self.subprocesses:
             print "    *",
@@ -127,8 +137,21 @@ class ProcessGroup(Process):
         # purge all local variables
         temp_vars = self.entity.temp_variables
         all_vars = self.entity.variables
-        local_vars = set(temp_vars.keys()) - set(all_vars.keys())
-        for var in local_vars:
+        local_var_names = set(temp_vars.keys()) - set(all_vars.keys())
+        num_locals = len(local_var_names)
+        if config.debug and num_locals:
+            local_vars = [v for k, v in temp_vars.iteritems()
+                          if k in local_var_names and
+                             isinstance(v, np.ndarray)]
+            max_vars = max(max_vars, num_locals)
+            temp_mem = sum(v.nbytes for v in local_vars)
+            avgsize = sum(v.dtype.itemsize for v in local_vars) / num_locals
+            print("purging {} variables (max {}), will free {} of memory "
+                  "(avg field size: {} b)".format(num_locals, max_vars,
+                                                  utils.size2str(temp_mem),
+                                                  avgsize))
+
+        for var in local_var_names:
             del temp_vars[var]
 
     def expressions(self):
