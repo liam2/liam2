@@ -157,6 +157,7 @@ class Simulation(object):
         config.skip_shows = simulation_def.get('skip_shows', False)
         #TODO: check that the value is one of "raise", "skip", "warn"
         config.assertions = simulation_def.get('assertions', 'raise')
+        config.show_timings = simulation_def.get('timings', True)
 
         input_def = simulation_def['input']
         input_directory = input_dir if input_dir is not None \
