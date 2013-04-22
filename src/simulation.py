@@ -90,6 +90,7 @@ class Simulation(object):
             '#periods': int,
             '#start_period': int,
             'skip_shows': bool,
+            'timings': bool,
             'assertions': str,
             'default_entity': str
         }
