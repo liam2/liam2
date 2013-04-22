@@ -256,6 +256,14 @@ entities:
                 - show("age * (1 / 2):", age * (1 / 2))
                 - show("clip(age, 10, 50)", clip(age, 10, 50))
 
+                # test we are not having aliases problems
+                - backup: age
+                # modify it. This occurs in place, because the field is stored
+                # in the main array.
+                - age: age + 1
+                - assertEqual(age, backup + 1)
+                - age: backup
+
             test_logit:
                 - float_field: age / 120.0
                 - assertEqual(logit(float_field),
