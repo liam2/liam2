@@ -52,10 +52,21 @@ class ColumnArray(object):
                 # adding a new column so we need to update the dtype
                 self.columns[key] = column
                 self._update_dtype()
+
+#            ids = {}
+#            for k, v in self.columns.iteritems():
+#                ids.setdefault(id(v), set()).add(k)
+#            dupes = [v for k, v in ids.iteritems() if len(v) > 1]
+#            if dupes:
+#                print "aliases", dupes
         else:
             # int, slice, ndarray
             for name, column in self.columns.iteritems():
                 column[key] = value[name]
+
+    @property
+    def nbytes(self):
+        return sum(v.nbytes for v in self.columns.itervalues())
 
     def __delitem__(self, key):
         del self.columns[key]
