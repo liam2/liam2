@@ -1,6 +1,6 @@
 import numpy as np
 
-from expr import Expr, type_to_idx, idx_to_type, expr_eval
+from expr import Expr, type_to_idx, idx_to_type, expr_eval, Variable
 from context import EntityContext
 import utils
 
