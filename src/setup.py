@@ -35,7 +35,7 @@ build_exe_options = {
         "_codecs_jp", "_codecs_kr", "_codecs_tw",
         # common modules
         "Tkconstants", "Tkinter", "Cython", "_ssl",
-        "base64", "bz2", "calendar", "compiler", "ctypes",
+        "base64", "bz2", "calendar", "compiler",
         "distutils", "doctest", "dummy_thread",
         "dummy_threading", "email", "ftplib", "io",
         "logging", "multiprocessing", "nose",
@@ -48,7 +48,7 @@ build_exe_options = {
 }
 
 setup(name="liam2",
-      version="0.6.1",
+      version="0.6.2",
       description="LIAM2",
 
       cmdclass={"build_ext": my_build_ext},
