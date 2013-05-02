@@ -81,6 +81,9 @@ class EntityContext(object):
             else:
                 return 0
 
+    def __len__(self):
+        return self.length()
+
     def list_periods(self):
         return self.entity.output_index.keys()
 
