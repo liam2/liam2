@@ -8,6 +8,24 @@ from context import context_length
 #from utils import nansum
 
 
+class All(NumpyAggregate):
+    func_name = 'all'
+    np_func = (np.all,)
+    arg_names = ('a', 'axis', 'out', 'keepdims')
+
+    def dtype(self, context):
+        return bool
+
+
+class Any(NumpyAggregate):
+    func_name = 'any'
+    np_func = (np.any,)
+    arg_names = ('a', 'axis', 'out', 'keepdims')
+
+    def dtype(self, context):
+        return bool
+
+
 #XXX: inherit from FilteredExpression instead?
 class GroupCount(EvaluableExpression):
     def __init__(self, filter=None):
@@ -246,6 +264,8 @@ class GroupGini(FilteredExpression):
 
 
 functions = {
+    'all': All,
+    'any': Any,
     'grpcount': GroupCount,
     'grpmin': GroupMin,
     'grpmax': GroupMax,
