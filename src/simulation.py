@@ -124,7 +124,9 @@ class Simulation(object):
             'skip_shows': bool,
             'timings': bool,
             'assertions': str,
-            'default_entity': str
+            'default_entity': str,
+            'autodump': None,
+            'autodiff': None,
         }
     }
 
@@ -193,6 +195,19 @@ class Simulation(object):
         #TODO: check that the value is one of "raise", "skip", "warn"
         config.assertions = simulation_def.get('assertions', 'raise')
         config.show_timings = simulation_def.get('timings', True)
+
+        autodump = simulation_def.get('autodump', None)
+        if autodump is True:
+            autodump = 'autodump.h5'
+        if isinstance(autodump, basestring):
+            # by default autodump will dump all rows
+            autodump = (autodump, None)
+        config.autodump = autodump
+
+        autodiff = simulation_def.get('autodiff', None)
+        if autodiff is True:
+            autodiff = 'autodump.h5'
+        config.autodiff = autodiff
 
         input_def = simulation_def['input']
         input_directory = input_dir if input_dir is not None \

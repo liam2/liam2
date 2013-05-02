@@ -1,8 +1,15 @@
 from __future__ import division
 
+import collections
+import os
+import time
+
 import numpy as np
+import tables
 
 import config
+from diff_h5 import diff_array
+from data import append_carray_to_table, ColumnArray
 from expr import Expr, type_to_idx, idx_to_type, expr_eval, Variable
 from context import EntityContext
 import utils
@@ -72,8 +79,6 @@ class Assignment(Process):
 
     def run(self, context):
         value = expr_eval(self.expr, context)
-#        if isinstance(self.expr, Variable):
-#            value = value.copy()
         self.store_result(value)
 
     def store_result(self, result):
@@ -107,6 +112,8 @@ class Assignment(Process):
 
         # the whole column is updated
         target[self.predictor] = result
+#        print "id(target[{}]) = {}".format(self.predictor,
+#                                           id(target[self.predictor]))
 
     def expressions(self):
         if isinstance(self.expr, Expr):
@@ -121,9 +128,80 @@ class ProcessGroup(Process):
         super(ProcessGroup, self).__init__()
         self.name = name
         self.subprocesses = subprocesses
+        self.calls = collections.Counter()
+
+    @property
+    def modified_fields(self):
+        fnames = [v.predictor for _, v in self.subprocesses
+                  if isinstance(v, Assignment)]
+        if not fnames:
+            return []
+
+        fnames.insert(0, 'id')
+        temp = self.entity.temp_variables
+        array = self.entity.array
+        alen = len(array)
+
+        fields = [(k, temp[k] if k in temp else array[k])
+                  for k in utils.unique(fnames)]
+        return [(k, v) for k, v in fields
+                if isinstance(v, np.ndarray) and v.shape == (alen,)]
+
+    def _get_auto(self, fname, period, mode='r'):
+        fields = self.modified_fields
+        if not fields:
+            return None, None, None
+        fnames = [k for k, _ in fields]
+        dtype = np.dtype([(k, v.dtype) for k, v in fields])
+
+        fpath = os.path.join(config.output_directory, fname)
+        h5file = tables.openFile(fpath, mode=mode)
+        root = h5file.root
+        period_node = getattr(root, str(period), None)
+        if mode == 'a' and period_node is None:
+            period_node = h5file.createGroup("/", str(period))
+
+        self.calls[(period, self.name)] += 1
+        num_calls = self.calls[(period, self.name)]
+        if num_calls > 1:
+            name = '{}_{}'.format(self.name, num_calls)
+        else:
+            name = self.name
+        table = getattr(period_node, name, None)
+        if mode == 'a':
+            if table is None:
+                table = h5file.createTable(period_node, name, dtype)
+            print "writing {} to {} / {} / {} ...".format(', '.join(fnames),
+                                                          fname,
+                                                          period,
+                                                          name),
+        else:
+            print "comparing with {} / {} / {} ...".format(fname, period,
+                                                           name)
+        return h5file, fields, table
+
+    def autodump(self, period):
+        fname, numrows = config.autodump
+        h5file, _, table = self._get_auto(fname, period, 'a')
+        if h5file is None:
+            return
+        context = EntityContext(self.entity, {'period': period})
+        append_carray_to_table(context, table, numrows)
+        h5file.close()
+        print "done."
+
+    def autodiff(self, period, numdiff=10):
+        h5file, fields, table = self._get_auto(config.autodiff, period, 'r')
+        if h5file is None:
+            return
+        disk_array = ColumnArray.from_table(table)
+        diff_array(disk_array, ColumnArray(fields), numdiff, raiseondiff=True)
+        h5file.close()
 
     def run_guarded(self, simulation, const_dict):
         global max_vars
+
+        period = const_dict['period']
 
         print
         for k, v in self.subprocesses:
@@ -132,8 +210,14 @@ class ProcessGroup(Process):
                 print k,
             utils.timed(v.run_guarded, simulation, const_dict)
 #            print "done."
-            simulation.start_console(v.entity, const_dict['period'],
+            simulation.start_console(v.entity, period,
                                      const_dict['__globals__'])
+        if config.autodump is not None:
+            self.autodump(period)
+
+        if config.autodiff is not None:
+            self.autodiff(period)
+
         # purge all local variables
         temp_vars = self.entity.temp_variables
         all_vars = self.entity.variables

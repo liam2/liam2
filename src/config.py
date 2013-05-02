@@ -6,3 +6,5 @@ output_directory = "."
 skip_shows = False
 assertions = "raise"
 show_timings = True
+autodump = None
+autodiff = None
