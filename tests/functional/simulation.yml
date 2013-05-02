@@ -568,6 +568,7 @@ entities:
 
                 # more than 10% women are "nan"
                 - morenan: grpcount(not gender and isnan) > num_women * 0.1
+                # we use grpmin as a lesser all()
                 - all_taken_nan: grpmin(isnan,
                                         filter=not gender and float_aligned)
                 - all_nan_taken: grpmin(float_aligned,
@@ -952,38 +953,55 @@ entities:
                 
                 # count
                 - nch: children.count()
+                #- assertEqual(m_id, mother.id)
+                - assertEqual(grpsum(nch), grpcount(mother.id != -1))
+
                 - nch_012: children.count(age <= 12)
+                - assertTrue(all(nch_012 <= nch))
                 
-                # sumlink
+                # sum
                 - ch_012_age_sum: children.sum(age, age <= 12)
                 - ch_012_age2_sum: children.sum(age * 2, age <= 12)
+                - assertEqual(ch_012_age2_sum, ch_012_age_sum * 2)
 
                 # with a scalar
                 - assertEqual(children.sum(10), nch * 10)
 
+                # avg
                 - ch_012_age_avg: children.avg(age, age <= 12)
+                - assertNanEqual(ch_012_age_avg, ch_012_age_sum / nch_012)  
+                
+                # min, max
                 - ch_minage: children.min(age)
                 - ch_maxage: children.max(age)
-                - show(dump(nch, nch_012, ch_012_age_sum, ch_012_age2_sum,
-                            ch_012_age_avg, filter=(nch > 0) and (id < 100)))
+                - assertTrue(all(ch_minage <= ch_maxage))
+                - assertTrue(grpsum(ch_minage) < grpsum(ch_maxage))
 
                 # old style (link functions)
                 # countlink
                 - nch: countlink(children)
+                - assertEqual(grpsum(nch), grpcount(mother.id != -1))
+
                 - nch_012: countlink(children, age <= 12)
+                - assertTrue(all(nch_012 <= nch))
                 
                 # sumlink
                 - ch_012_age_sum: sumlink(children, age, age <= 12)
                 - ch_012_age2_sum: sumlink(children, age * 2, age <= 12)
+                - assertEqual(ch_012_age2_sum, ch_012_age_sum * 2)
 
                 # with a scalar
                 - assertEqual(sumlink(children, 10), nch * 10)
 
+                # avglink
                 - ch_012_age_avg: avglink(children, age, age <= 12)
+                - assertNanEqual(ch_012_age_avg, ch_012_age_sum / nch_012)
+                  
+                # minlink, maxlink
                 - ch_minage: minlink(children, age)
                 - ch_maxage: maxlink(children, age)
-                - show(dump(nch, nch_012, ch_012_age_sum, ch_012_age2_sum,
-                            ch_012_age_avg, filter=(nch > 0) and (id < 100)))
+                - assertTrue(all(ch_minage <= ch_maxage))
+                - assertTrue(grpsum(ch_minage) < grpsum(ch_maxage))
 
             test_mixed_links:
                 - show('mother vs step-mother:', mother.age, partner.mother.age)
@@ -1685,6 +1703,8 @@ simulation:
 
     output:
         file: simulation.h5
+#    autodump: True
+#    autodiff: True
 
     random_seed: 0
     periods: 2

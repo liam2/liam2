@@ -380,5 +380,5 @@ functions = {
     'sumlink': deprecated(SumLink),
     'avglink': deprecated(AvgLink),
     'minlink': deprecated(MinLink),
-    'maxlink': deprecated(MinLink),
+    'maxlink': deprecated(MaxLink),
 }
