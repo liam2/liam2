@@ -66,6 +66,7 @@ class ColumnArray(object):
 
     def __setitem__(self, key, value):
         """does not copy value except if a type conversion is necessary"""
+
         if isinstance(key, basestring):
             if isinstance(value, np.ndarray) and value.shape:
                 column = value
@@ -147,7 +148,7 @@ class ColumnArray(object):
         ca = cls()
         for name in dtype.names:
             ca.columns[name] = np.empty(length, dtype[name])
-        ca._update_dtype()
+        ca.dtype = dtype
         return ca
 
     @classmethod
@@ -223,9 +224,7 @@ def table_size(table):
 
 def get_fields(array):
     dtype = array.dtype
-    field_types = dtype.fields
-    return [(name, normalize_type(field_types[name][0].type))
-            for name in dtype.names]
+    return [(name, normalize_type(dtype[name].type)) for name in dtype.names]
 
 
 def assertValidType(array, wanted_type, allowed_missing=None, context=None):

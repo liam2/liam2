@@ -1,8 +1,8 @@
 import numpy as np
 import tables
 
-from data import index_table_light
-from utils import PrettyTable
+from data import index_table_light, get_fields
+from utils import PrettyTable, merge_items
 
 __version__ = "0.2"
 
@@ -42,9 +42,12 @@ def diff_array(array1, array2, numdiff=10, raiseondiff=False):
                 print dupes
                 array2 = array2[uniques]
 
+    fields1 = get_fields(array1)
+    fields2 = get_fields(array2)
     fnames1 = set(array1.dtype.names)
     fnames2 = set(array2.dtype.names)
-    for fname in sorted(fnames1 | fnames2):
+    # use merge_items instead of fnames1 | fnames2 to preserve ordering
+    for fname, _ in merge_items(fields1, fields2):
         print "  - %s:" % fname,
         if fname not in fnames1:
             print "missing in file 1"
