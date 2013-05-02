@@ -5,6 +5,7 @@ from collections import defaultdict
 import random
 
 import numpy as np
+import tables
 import yaml
 
 from data import H5Data, Void
@@ -207,6 +208,9 @@ class Simulation(object):
         autodiff = simulation_def.get('autodiff', None)
         if autodiff is True:
             autodiff = 'autodump.h5'
+        if isinstance(autodiff, basestring):
+            # by default autodiff will compare all rows
+            autodiff = (autodiff, None)
         config.autodiff = autodiff
 
         input_def = simulation_def['input']
@@ -292,6 +296,20 @@ class Simulation(object):
                                           self.globals_def,
                                           entity_registry,
                                           self.start_period - 1)
+
+        if config.autodump or config.autodiff:
+            if config.autodump:
+                fname, _ = config.autodump
+                mode = 'w'
+            else:  # config.autodiff
+                fname, _ = config.autodiff
+                mode = 'r'
+            fpath = os.path.join(config.output_directory, fname)
+            h5_autodump = tables.openFile(fpath, mode=mode)
+            config.autodump_file = h5_autodump
+        else:
+            h5_autodump = None
+
 #        input_dataset = self.data_source.run(self.globals_def,
 #                                             entity_registry)
 #        output_dataset = self.data_sink.prepare(self.globals_def,
@@ -413,6 +431,8 @@ class Simulation(object):
             if h5in is not None:
                 h5in.close()
             h5out.close()
+            if h5_autodump is not None:
+                h5_autodump.close()
 
     @property
     def console_entity(self):

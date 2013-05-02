@@ -7,4 +7,5 @@ skip_shows = False
 assertions = "raise"
 show_timings = True
 autodump = None
+autodump_file = None
 autodiff = None
