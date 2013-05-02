@@ -8,17 +8,49 @@ from expr import (normalize_type, get_missing_value, get_missing_record,
 from utils import loop_wh_progress, time2str, safe_put, LabeledArray
 
 
+def append_carray_to_table(array, table, numlines=None,
+                           buffersize=10 * 2 ** 20):
+    dtype = table.dtype
+    max_buffer_rows = buffersize // dtype.itemsize
+    if numlines is None:
+        numlines = len(array)
+    buffer_rows = min(numlines, max_buffer_rows)
+    chunk = np.empty(buffer_rows, dtype=dtype)
+    start, stop = 0, buffer_rows
+    while numlines > 0:
+        buffer_rows = min(numlines, max_buffer_rows)
+        if buffer_rows < len(chunk):
+            # last chunk is smaller
+            chunk = np.empty(buffer_rows, dtype=dtype)
+        for name in dtype.names:
+            chunk[name] = array[name][start:stop]
+        table.append(chunk)
+        numlines -= buffer_rows
+        start += buffer_rows
+        stop += buffer_rows
+    table.flush()
+
+
 class ColumnArray(object):
     def __init__(self, array=None):
         columns = {}
         if array is not None:
-            for name in array.dtype.names:
-                columns[name] = array[name].copy()
+            if isinstance(array, np.ndarray):
+                for name in array.dtype.names:
+                    columns[name] = array[name].copy()
+                self.dtype = array.dtype
+                self.columns = columns
+            elif isinstance(array, list):
+                for k, v in array:
+                    columns[k] = v
+                self.dtype = None
+                self.columns = columns
+                #FIXME: keep column order in this case
+                self._update_dtype()
             #TODO: make a property instead
-            self.dtype = array.dtype
         else:
             self.dtype = None
-        self.columns = columns
+            self.columns = columns
 
     def __getitem__(self, key):
         if isinstance(key, basestring):
@@ -108,24 +140,7 @@ class ColumnArray(object):
             self.columns[name] = np.concatenate((column, array[name]))
 
     def append_to_table(self, table, buffersize=10 * 2 ** 20):
-        dtype = table.dtype
-        max_buffer_rows = buffersize // dtype.itemsize
-        numlines = len(self)
-        buffer_rows = min(numlines, max_buffer_rows)
-        chunk = np.empty(buffer_rows, dtype=dtype)
-        start, stop = 0, buffer_rows
-        while numlines > 0:
-            buffer_rows = min(numlines, max_buffer_rows)
-            if buffer_rows < len(chunk):
-                # last chunk is smaller
-                chunk = np.empty(buffer_rows, dtype=dtype)
-            for name in dtype.names:
-                chunk[name] = self[name][start:stop]
-            table.append(chunk)
-            numlines -= buffer_rows
-            start += buffer_rows
-            stop += buffer_rows
-        table.flush()
+        append_carray_to_table(self, table, buffersize=buffersize)
 
     @classmethod
     def empty(cls, length, dtype):
@@ -136,7 +151,11 @@ class ColumnArray(object):
         return ca
 
     @classmethod
-    def from_table(cls, table, start, stop, buffersize=10 * 2 ** 20):
+    def from_table(cls, table, start=0, stop=None, buffersize=10 * 2 ** 20):
+        # reading a table one column at a time is very slow, this is why this
+        # function is even necessary
+        if stop is None:
+            stop = len(table)
         dtype = table.dtype
         max_buffer_rows = buffersize // dtype.itemsize
         numlines = stop - start
