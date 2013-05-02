@@ -223,14 +223,14 @@ class ComparisonAssert(Assert):
         self.expr2 = expr2
 
     def eval_assertion(self, context):
-        r1 = expr_eval(self.expr1, context)
-        r2 = expr_eval(self.expr2, context)
-        if not self.compare(r1, r2):
+        v1 = expr_eval(self.expr1, context)
+        v2 = expr_eval(self.expr2, context)
+        if not self.compare(v1, v2):
             op = self.inv_op
             return "%s %s %s (%s %s %s)" % (self.expr1, op, self.expr2,
-                                            r1, op, r2)
+                                            v1, op, v2)
 
-    def compare(self, r1, r2):
+    def compare(self, v1, v2):
         raise NotImplementedError
 
     def expressions(self):
@@ -243,27 +243,35 @@ class ComparisonAssert(Assert):
 class AssertEqual(ComparisonAssert):
     inv_op = "!="
 
-    def compare(self, r1, r2):
+    def compare(self, v1, v2):
         # even though np.array_equal also works on scalars, we don't use it
         # systematically because it does not work on list of strings
-        if isinstance(r1, np.ndarray) or isinstance(r2, np.ndarray):
-            return np.array_equal(r1, r2)
+        if isinstance(v1, np.ndarray) or isinstance(v2, np.ndarray):
+            return np.array_equal(v1, v2)
         else:
-            return r1 == r2
+            return v1 == v2
+
+
+class AssertNanEqual(ComparisonAssert):
+    inv_op = "!="
+
+    def compare(self, v1, v2):
+        both_nan = np.isnan(v1) & np.isnan(v2)
+        return np.all(both_nan | (v1 == v2))
 
 
 class AssertEquiv(ComparisonAssert):
     inv_op = "is not equivalent to"
 
-    def compare(self, r1, r2):
-        return np.array_equiv(r1, r2)
+    def compare(self, v1, v2):
+        return np.array_equiv(v1, v2)
 
 
 class AssertIsClose(ComparisonAssert):
     inv_op = "is not close to"
 
-    def compare(self, r1, r2):
-        return np.allclose(r1, r2)
+    def compare(self, v1, v2):
+        return np.allclose(v1, v2)
 
 
 functions = {
@@ -276,6 +284,7 @@ functions = {
     'breakpoint': Breakpoint,
     'assertTrue': AssertTrue,
     'assertEqual': AssertEqual,
+    'assertNanEqual': AssertNanEqual,
     'assertEquiv': AssertEquiv,
     'assertIsClose': AssertIsClose
 }
