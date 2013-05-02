@@ -711,6 +711,8 @@ GUI
 - assess whether we can get inspiration (or even code) from spyke viewer:
   http://neuralensemble.blogspot.be/2012/11/spyke-viewer-020-released.html
 - try Kivy (kivy.org)
+- integrate with matplotlib for normal graphics
+? glumpy for "live" visualisation during the simulation
 
 non feature tasks
 =================
@@ -760,6 +762,9 @@ projects to keep an eye on
   access many kinds of data formats using a uniform interface
 
 - corepy
+
+- copperhead (targets NVIDIA GPUs & multi core CPUs) 
+  http://copperhead.github.io/
 
 - Theano (http://deeplearning.net/software/theano/)
   it seems to be a PITA to install though (no pre-built packages, needs a
