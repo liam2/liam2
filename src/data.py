@@ -47,6 +47,9 @@ class ColumnArray(object):
                 self.columns = columns
                 #FIXME: keep column order in this case
                 self._update_dtype()
+            else:
+                self.dtype = None
+                self.columns = columns
             #TODO: make a property instead
         else:
             self.dtype = None
@@ -124,8 +127,11 @@ class ColumnArray(object):
         self.dtype = np.dtype(fields)
 
     def __len__(self):
-        anycol = self.columns.itervalues().next()
-        return len(anycol)
+        if len(self.columns):
+            anycol = self.columns.itervalues().next()
+            return len(anycol)
+        else:
+            return 0
 
     def keep(self, indices):
         # using gc.collect() after each column update frees a bit of memory
@@ -326,8 +332,11 @@ def mergeSubsetInArray(output, id_to_rownum, subset, first=False):
 
 
 def mergeArrays(array1, array2, result_fields='union'):
+    """data in array2 overrides data in array1"""
+
     fields1 = get_fields(array1)
     fields2 = get_fields(array2)
+
     #TODO: check that common fields have the same type
     if result_fields == 'union':
         names1 = set(array1.dtype.names)
@@ -363,6 +372,8 @@ def mergeArrays(array1, array2, result_fields='union'):
     if output_is_arr2:
         output_array = array2
     elif output_is_arr1:
+        #XXX: this does not seem like a good idea, it will be modified in
+        # place, this should at least be an option
         output_array = array1
     elif arr1_complete or arr2_complete:
         output_array = np.empty(len(all_ids), dtype=output_dtype)
@@ -370,7 +381,7 @@ def mergeArrays(array1, array2, result_fields='union'):
         output_array = np.empty(len(all_ids), dtype=output_dtype)
         output_array[:] = get_missing_record(output_array)
 
-    # 2) copy data from array1
+    # 2) copy data from array1, if not useless (if it will not be overridden)
     if not arr2_complete:
         output_array = mergeSubsetInArray(output_array, id_to_rownum,
                                           array1, first=True)
