@@ -57,8 +57,11 @@ def diff_array(array1, array2, numdiff=10, raiseondiff=False):
             continue
         col1, col2 = array1[fname], array2[fname]
         if issubclass(col1.dtype.type, np.inexact):
-            both_nan = np.isnan(col1) & np.isnan(col2)
-            eq = np.all(both_nan | (col1 == col2))
+            if len(col1) == len(col2):
+                both_nan = np.isnan(col1) & np.isnan(col2)
+                eq = np.all(both_nan | (col1 == col2))
+            else:
+                eq = False
         else:
             eq = np.array_equal(col1, col2)
 
