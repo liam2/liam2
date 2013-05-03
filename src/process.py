@@ -176,15 +176,18 @@ class ProcessGroup(Process):
     def _autodiff(self, period, numdiff=10):
         fields = self._modified_fields
         if not fields:
-            return None
+            return
 
         fname, numrows = config.autodiff
         h5file = config.autodump_file
-        name = self._tablename(period)
-        table = h5file.getNode('/{}/{}'.format(period, name))
-        print "comparing with {}/{}/{} ...".format(fname, period, name)
-        disk_array = ColumnArray.from_table(table, stop=numrows)
-        diff_array(disk_array, ColumnArray(fields), numdiff, raiseondiff=True)
+        tablepath = '/{}/{}'.format(period, self._tablename(period))
+        print "comparing with {}{} ...".format(fname, tablepath)
+        if tablepath in h5file:
+            table = h5file.getNode(tablepath)
+            disk_array = ColumnArray.from_table(table, stop=numrows)
+            diff_array(disk_array, ColumnArray(fields), numdiff)
+        else:
+            print "  SKIPPED (could not find table)"
 
     def run_guarded(self, simulation, const_dict):
         global max_vars
