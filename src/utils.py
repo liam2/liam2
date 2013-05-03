@@ -83,11 +83,21 @@ def prod(values):
 
 
 def safe_put(a, ind, v):
+    """
+    np.put but where values corresponding to -1 indices are ignored,
+    instead of being copied to the last position
+    """
+    from data import ColumnArray
+
     if not len(a) or not len(ind):
         return
     # backup last value, in case it gets overwritten
     last_value = a[-1]
-    np.put(a, ind, v)
+    if isinstance(v, ColumnArray):
+        for fname in a.dtype.names:
+            safe_put(a[fname], ind, v[fname])
+    else:
+        np.put(a, ind, v)
     # if the last value was erroneously modified (because of a -1 in ind)
     # this assumes indices are sorted
     if ind[-1] != len(a) - 1:

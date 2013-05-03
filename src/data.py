@@ -7,9 +7,10 @@ from expr import (normalize_type, get_missing_value, get_missing_record,
                   get_missing_vector, gettype)
 from utils import loop_wh_progress, time2str, safe_put, LabeledArray
 
+MB = 2 ** 20
 
-def append_carray_to_table(array, table, numlines=None,
-                           buffersize=10 * 2 ** 20):
+
+def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
     dtype = table.dtype
     max_buffer_rows = buffersize // dtype.itemsize
     if numlines is None:
@@ -35,22 +36,21 @@ class ColumnArray(object):
     def __init__(self, array=None):
         columns = {}
         if array is not None:
-            if isinstance(array, np.ndarray):
+            if isinstance(array, (np.ndarray, ColumnArray)):
                 for name in array.dtype.names:
                     columns[name] = array[name].copy()
                 self.dtype = array.dtype
                 self.columns = columns
             elif isinstance(array, list):
-                for k, v in array:
-                    columns[k] = v
-                self.dtype = None
+                for name, column in array:
+                    columns[name] = column
+                self.dtype = np.dtype([(name, column.dtype)
+                                       for name, column in array])
                 self.columns = columns
-                #FIXME: keep column order in this case
-                self._update_dtype()
             else:
+                #TODO: make a property instead?
                 self.dtype = None
                 self.columns = columns
-            #TODO: make a property instead
         else:
             self.dtype = None
             self.columns = columns
@@ -58,14 +58,13 @@ class ColumnArray(object):
     def __getitem__(self, key):
         if isinstance(key, basestring):
             return self.columns[key]
-        elif isinstance(key, np.ndarray):
+        else:
+            # int, slice, ndarray
             ca = ColumnArray()
             for name, colvalue in self.columns.iteritems():
                 ca[name] = colvalue[key]
             ca.dtype = self.dtype
             return ca
-        else:
-            raise KeyError(key)
 
     def __setitem__(self, key, value):
         """does not copy value except if a type conversion is necessary"""
@@ -99,6 +98,10 @@ class ColumnArray(object):
             # int, slice, ndarray
             for name, column in self.columns.iteritems():
                 column[key] = value[name]
+
+    def put(self, indices, values, mode='raise'):
+        for name, column in self.columns.iteritems():
+            column.put(indices, values[name], mode)
 
     @property
     def nbytes(self):
@@ -372,8 +375,8 @@ def mergeArrays(array1, array2, result_fields='union'):
     if output_is_arr2:
         output_array = array2
     elif output_is_arr1:
-        #XXX: this does not seem like a good idea, it will be modified in
-        # place, this should at least be an option
+        #TODO: modifying array1 in-place suits our particular needs for now
+        # but it should really be a (non-default) option
         output_array = array1
     elif arr1_complete or arr2_complete:
         output_array = np.empty(len(all_ids), dtype=output_dtype)
@@ -381,7 +384,7 @@ def mergeArrays(array1, array2, result_fields='union'):
         output_array = np.empty(len(all_ids), dtype=output_dtype)
         output_array[:] = get_missing_record(output_array)
 
-    # 2) copy data from array1, if not useless (if it will not be overridden)
+    # 2) copy data from array1 (if it will not be overridden)
     if not arr2_complete:
         output_array = mergeSubsetInArray(output_array, id_to_rownum,
                                           array1, first=True)

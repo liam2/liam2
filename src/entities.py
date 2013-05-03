@@ -329,7 +329,11 @@ class Entity(object):
 
         self.array, self.id_to_rownum = \
             mergeArrays(self.array, input_array, result_fields='array1')
-        self.array = ColumnArray(self.array)
+        # this can happen, depending on the layout of columns in input_array,
+        # but the usual case (in retro) is that self.array is a superset of
+        # input_array, in which case mergeArrays returns a ColumnArray
+        if not isinstance(self.array, ColumnArray):
+            self.array = ColumnArray(self.array)
 
     def store_period_data(self, period):
         if config.debug:
