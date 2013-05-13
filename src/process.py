@@ -1,11 +1,8 @@
-from __future__ import division
+from __future__ import division, print_function
 
 import collections
-import os
-import time
 
 import numpy as np
-import tables
 
 import config
 from diff_h5 import diff_array
@@ -166,12 +163,12 @@ class ProcessGroup(Process):
                                    createparents=True)
 
         fnames = [k for k, _ in fields]
-        print "writing {} to {}/{}/{} ...".format(', '.join(fnames),
-                                                  fname, period, name)
+        print("writing {} to {}/{}/{} ...".format(', '.join(fnames),
+                                                  fname, period, name))
 
         context = EntityContext(self.entity, {'period': period})
         append_carray_to_table(context, table, numrows)
-        print "done."
+        print("done.")
 
     def _autodiff(self, period, numdiff=10):
         fields = self._modified_fields
@@ -181,24 +178,24 @@ class ProcessGroup(Process):
         fname, numrows = config.autodiff
         h5file = config.autodump_file
         tablepath = '/{}/{}'.format(period, self._tablename(period))
-        print "comparing with {}{} ...".format(fname, tablepath)
+        print("comparing with {}{} ...".format(fname, tablepath))
         if tablepath in h5file:
             table = h5file.getNode(tablepath)
             disk_array = ColumnArray.from_table(table, stop=numrows)
             diff_array(disk_array, ColumnArray(fields), numdiff)
         else:
-            print "  SKIPPED (could not find table)"
+            print("  SKIPPED (could not find table)")
 
     def run_guarded(self, simulation, const_dict):
         global max_vars
 
         period = const_dict['period']
 
-        print
+        print()
         for k, v in self.subprocesses:
-            print "    *",
+            print("    *", end=' ')
             if k is not None:
-                print k,
+                print(k, end=' ')
             utils.timed(v.run_guarded, simulation, const_dict)
 #            print "done."
             simulation.start_console(v.entity, period,
@@ -221,10 +218,10 @@ class ProcessGroup(Process):
             max_vars = max(max_vars, num_locals)
             temp_mem = sum(v.nbytes for v in local_vars)
             avgsize = sum(v.dtype.itemsize for v in local_vars) / num_locals
-            print("purging {} variables (max {}), will free {} of memory "
+            print(("purging {} variables (max {}), will free {} of memory "
                   "(avg field size: {} b)".format(num_locals, max_vars,
                                                   utils.size2str(temp_mem),
-                                                  avgsize))
+                                                  avgsize)))
 
         for var in local_var_names:
             del temp_vars[var]

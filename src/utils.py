@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 #import os
 import re
 import sys
@@ -72,9 +74,9 @@ def gettime(func, *args, **kwargs):
 def timed(func, *args, **kwargs):
     elapsed, res = gettime(func, *args, **kwargs)
     if config.show_timings:
-        print "done (%s elapsed)." % time2str(elapsed)
+        print("done (%s elapsed)." % time2str(elapsed))
     else:
-        print "done."
+        print("done.")
     return res
 
 

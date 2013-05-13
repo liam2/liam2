@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import csv
 import os.path
 import re
@@ -129,8 +131,8 @@ def detect_column_types(iterable):
     for i, colname in enumerate(header):
         coltype = coltypes[i]
         if coltype == 0:
-            print "Warning: column %s is all empty, assuming it is float" \
-                  % colname
+            print("Warning: column %s is all empty, assuming it is float" \
+                  % colname)
             coltypes[i] = 3
     num2type = [None, bool, int, float]
     return [(name, num2type[coltype])
@@ -242,7 +244,7 @@ class CSV(object):
            * columns can be in any order (they will be reordered if needed)
            * row order is preserved
         '''
-        print " - reading", self.fpath
+        print(" - reading", self.fpath)
         if fields is None:
             fields = self.fields
             positions = None
@@ -301,7 +303,7 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
     # np.array(l[:max_rows])
     datastream = iter(datastream)
     msg, filters = compression_str2filter(compression)
-    print " - storing %s..." % msg
+    print(" - storing %s..." % msg)
     dtype = np.dtype(fields)
     table = h5file.createTable(node, name, dtype, title=title, filters=filters)
     # buffered load
@@ -331,7 +333,7 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
 
 def array_to_disk_array(h5file, node, name, array, title='', compression=None):
     msg, filters = compression_str2filter(compression)
-    print " - storing %s..." % msg
+    print(" - storing %s..." % msg)
     if filters is not None:
         disk_array = h5file.createCArray(node, name, array, title,
                                          filters=filters)
@@ -359,7 +361,7 @@ def union1d(arrays):
 
 
 def interpolate(target, arrays, id_periods, fields):
-    print " * indexing..."
+    print(" * indexing...")
     periods = np.unique(id_periods['period'])
     max_id = np.max(id_periods['id'])
 
@@ -391,13 +393,13 @@ def interpolate(target, arrays, id_periods, fields):
     del lastrow_for_id
 
     size = sum(row_for_id[period].nbytes for period in periods)
-    print " * compressing index (%.2f Mb)..." % (size / MB),
+    print(" * compressing index (%.2f Mb)..." % (size / MB), end=' ')
     for period in periods:
         row_for_id[period] = ca.carray(row_for_id[period])
     csize = sum(row_for_id[period].cbytes for period in periods)
-    print "done. (%.2f Mb)" % (csize / MB)
+    print("done. (%.2f Mb)" % (csize / MB))
 
-    print " * interpolating..."
+    print(" * interpolating...")
     for values in arrays:
         # sort it by id, then period
         values.sort(order=('id', 'period'))
@@ -450,7 +452,7 @@ def interpolate(target, arrays, id_periods, fields):
 
 
 def load_ndarray(fpath, celltype=None):
-    print " - reading", fpath
+    print(" - reading", fpath)
     with open(fpath, "rb") as f:
         reader = csv.reader(f)
         line_stream = skip_comment_cells(strip_rows(reader))
@@ -469,9 +471,9 @@ def load_ndarray(fpath, celltype=None):
 
     unique_last_d, dupe_last_d = unique_duplicate(last_d_pvalues)
     if dupe_last_d:
-        print("Duplicate column header value(s) (for '%s') in '%s': %s"
+        print(("Duplicate column header value(s) (for '%s') in '%s': %s"
               % (header[-1], fpath,
-                 ", ".join(str(v) for v in dupe_last_d)))
+                 ", ".join(str(v) for v in dupe_last_d))))
         raise Exception("bad data in '%s': found %d "
                         "duplicate column header value(s)"
                         % (fpath, len(dupe_last_d)))
@@ -488,8 +490,8 @@ def load_ndarray(fpath, celltype=None):
         # combinations.
         dupe_combos = list(duplicates(zip(*headers)))
         if dupe_combos:
-            print("Duplicate row header value(s) in '%s':" % fpath)
-            print(PrettyTable(dupe_combos))
+            print(("Duplicate row header value(s) in '%s':" % fpath))
+            print((PrettyTable(dupe_combos)))
             raise Exception("bad alignment data in '%s': found %d "
                             "duplicate row header value(s)"
                             % (fpath, len(dupe_combos)))
@@ -578,7 +580,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         return 'table', (fields, csv_file.numlines, stream, csv_file)
     else:
         # we have to load all files, merge them and return a stream out of that
-        print " * computing number of rows..."
+        print(" * computing number of rows...")
 
         # 1) only load required fields
         default_args = dict(newnames=newnames, transpose=transpose)
@@ -607,7 +609,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
             files.append(f)
         id_periods = union1d(f.as_array(required_fields) for f in files)
 
-        print " * reading files..."
+        print(" * reading files...")
         # 2) load all fields
         if fields is None:
             target_fields = merge_items(*[f.fields for f in files])
@@ -720,19 +722,19 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
     h5_filename = content['output']
     compression = content.get('compression')
     h5_filepath = complete_path(localdir, h5_filename)
-    print "Importing in", h5_filepath
+    print("Importing in", h5_filepath)
     try:
         h5file = tables.openFile(h5_filepath, mode="w", title="CSV import")
 
         globals_def = content.get('globals', {})
         if globals_def:
-            print
-            print "globals"
-            print "-------"
+            print()
+            print("globals")
+            print("-------")
             const_node = h5file.createGroup("/", "globals", "Globals")
             for global_name, global_def in globals_def.iteritems():
-                print
-                print " %s" % global_name
+                print()
+                print(" %s" % global_name)
                 req_fields = ([('PERIOD', int)] if global_name == 'periodic'
                                                 else [])
 
@@ -753,13 +755,13 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
                     if csvfile is not None:
                         csvfile.close()
 
-        print
-        print "entities"
-        print "--------"
+        print()
+        print("entities")
+        print("--------")
         ent_node = h5file.createGroup("/", "entities", "Entities")
         for ent_name, entity_def in content['entities'].iteritems():
-            print
-            print " %s" % ent_name
+            print()
+            print(" %s" % ent_name)
             kind, info = load_def(localdir, ent_name,
                                   entity_def, [('period', int), ('id', int)])
             assert kind == "table"
@@ -774,5 +776,5 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
                 csvfile.close()
     finally:
         h5file.close()
-    print
-    print "done."
+    print()
+    print("done.")

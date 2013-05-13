@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import numpy as np
 
 from expr import (Variable, dtype, expr_eval,
@@ -255,8 +257,8 @@ class GroupGini(FilteredExpression):
         cumsum = np.cumsum(sorted_values, dtype=float)
         values_sum = cumsum[-1]
         if values_sum == 0:
-            print "grpgini(%s, filter=%s): expression is all zeros (or nan) " \
-                  "for filter" % (self.expr, filter_expr)
+            print("grpgini(%s, filter=%s): expression is all zeros (or nan) " \
+                  "for filter" % (self.expr, filter_expr))
         return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
 
     def dtype(self, context):

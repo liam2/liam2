@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import time
 
 import tables
@@ -644,7 +646,7 @@ class DataSet(object):
 
 
 def index_tables(globals_def, entities, fpath):
-    print "reading data from %s ..." % fpath
+    print("reading data from %s ..." % fpath)
 
     input_file = tables.openFile(fpath, mode="r")
     try:
@@ -692,9 +694,9 @@ def index_tables(globals_def, entities, fpath):
         input_entities = input_root.entities
 
         entities_tables = {}
-        print " * indexing tables"
+        print(" * indexing tables")
         for ent_name, entity in entities.iteritems():
-            print "    -", ent_name, "...",
+            print("    -", ent_name, "...", end=' ')
 
             table = getattr(input_entities, ent_name)
             assertValidType(table, entity.fields, entity.missing_fields)
@@ -704,7 +706,7 @@ def index_tables(globals_def, entities, fpath):
             indexed_table = IndexedTable(table, rows_per_period,
                                          id_to_rownum_per_period)
             entities_tables[ent_name] = indexed_table
-            print "done (%s elapsed)." % time2str(time.time() - start_time)
+            print("done (%s elapsed)." % time2str(time.time() - start_time))
     except:
         input_file.close()
         raise
@@ -764,9 +766,9 @@ class H5Data(DataSource):
             entities_tables = dataset['entities']
             output_entities = output_file.createGroup("/", "entities",
                                                       "Entities")
-            print " * copying tables"
+            print(" * copying tables")
             for ent_name, entity in entities.iteritems():
-                print ent_name, "..."
+                print(ent_name, "...")
 
                 # main table
 
@@ -783,7 +785,7 @@ class H5Data(DataSource):
 
                 #TODO: copying the table and generally preparing the output
                 # file should be a different method than indexing
-                print " * copying table..."
+                print(" * copying table...")
                 start_time = time.time()
                 input_rows = entity.input_rows
                 output_rows = dict((p, rows)
@@ -799,9 +801,9 @@ class H5Data(DataSource):
                                          entity.fields, stop=stoprow,
                                          show_progress=True)
                 entity.output_rows = output_rows
-                print "done (%s elapsed)." % time2str(time.time() - start_time)
+                print("done (%s elapsed)." % time2str(time.time() - start_time))
 
-                print " * building array for first simulated period...",
+                print(" * building array for first simulated period...", end=' ')
                 start_time = time.time()
 
                 #TODO: this whole process of merging all periods is very
@@ -816,7 +818,7 @@ class H5Data(DataSource):
                                         entity.input_rows,
                                         entity.input_index, start_period)
                 entity.array_period = start_period
-                print "done (%s elapsed)." % time2str(time.time() - start_time)
+                print("done (%s elapsed)." % time2str(time.time() - start_time))
                 entity.table = output_table
         except:
             input_file.close()

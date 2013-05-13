@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import sys
 
 import numpy as np
@@ -51,20 +53,20 @@ class Console(object):
 
     def list_entities(self):
         ent_names = [repr(k) for k in entity_registry.keys()]
-        print "available entities:", ', '.join(ent_names)
+        print("available entities:", ', '.join(ent_names))
 
     def get_entity(self, name):
         try:
             return entity_registry[name]
         except KeyError:
-            print "entity '%s' does not exist" % name
+            print("entity '%s' does not exist" % name)
             self.list_entities()
 
     def _display_entity(self):
         if self.entity is None:
-            print entity_required
+            print(entity_required)
         else:
-            print "current entity set to", self.entity.name
+            print("current entity set to", self.entity.name)
 
     def set_entity(self, name):
         entity = self.get_entity(name)
@@ -85,13 +87,13 @@ class Console(object):
             raise Exception(entity_required)
 
         periods = self._list_periods()
-        print "available periods: %s" % ', '.join(str(p) for p in periods)
+        print("available periods: %s" % ', '.join(str(p) for p in periods))
 
     def _display_period(self):
         if self.period is None:
-            print period_required
+            print(period_required)
         else:
-            print "current period set to", self.period
+            print("current period set to", self.period)
 
     def set_period(self, period):
         try:
@@ -104,7 +106,7 @@ class Console(object):
         except InvalidPeriod:
             raise
         except ValueError:
-            print "invalid period"
+            print("invalid period")
 
     def list_fields(self, ent_name=None):
         if ent_name is None:
@@ -115,16 +117,16 @@ class Console(object):
             entity = self.get_entity(ent_name)
             if entity is None:
                 return
-        print "fields:", ', '.join(name for name, _ in entity.fields)
+        print("fields:", ', '.join(name for name, _ in entity.fields))
 
     def list_globals(self):
-        print "globals:"
+        print("globals:")
         for k, v in self.globals_data.iteritems():
             if v.dtype.names:
                 details = ": " + ", ".join(v.dtype.names)
             else:
                 details = ""
-            print "* %s%s" % (k, details)
+            print("* %s%s" % (k, details))
 
     def execute(self, s):
         entity = self.entity
@@ -147,7 +149,7 @@ class Console(object):
                                      '__globals__': self.globals_data})
         if isinstance(expr, Process):
             expr.run(ctx)
-            print "done."
+            print("done.")
         else:
             return expr_eval(expr, ctx)
 
@@ -163,7 +165,7 @@ class Console(object):
                 "Welcome to LIAM2 interactive console.",
                 "")
         if not debugger:
-            print help_text
+            print(help_text)
         self._display_entity()
         self._display_period()
         while True:
@@ -172,7 +174,7 @@ class Console(object):
                 if s == '':
                     continue
                 elif s == 'help':
-                    print help_text
+                    print(help_text)
                 elif s == 'entity':
                     self._display_entity()
                 elif s.startswith('entity ') and s[7:]:
@@ -201,7 +203,7 @@ class Console(object):
                 else:
                     res = self.execute(s)
                     if res is not None:
-                        print res
+                        print(res)
             except Exception, e:
                 if config.debug:
                     import traceback
@@ -210,4 +212,4 @@ class Console(object):
                 lines = msg.splitlines()
                 if len(lines) > 1:
                     msg = '\n'.join(lines[1:])
-                print msg
+                print(msg)

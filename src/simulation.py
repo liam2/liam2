@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import time
 import os.path
 import operator
@@ -22,11 +24,11 @@ import expr
 
 def show_top_times(what, times):
     count = len(times)
-    print "top %d %s:" % (count, what)
+    print("top %d %s:" % (count, what))
     for name, timing in times:
-        print " - %s: %s" % (name, time2str(timing))
-    print "total for top %d %s:" % (count, what),
-    print time2str(sum(timing for name, timing in times))
+        print(" - %s: %s" % (name, time2str(timing)))
+    print("total for top %d %s:" % (count, what), end=' ')
+    print(time2str(sum(timing for name, timing in times)))
 
 
 def show_top_processes(process_time, count):
@@ -46,7 +48,7 @@ def handle_imports(content, directory):
         import_files = [import_files]
     for fname in import_files[::-1]:
         import_path = os.path.join(directory, fname)
-        print "importing: '%s'" % import_path
+        print("importing: '%s'" % import_path)
         import_directory = os.path.dirname(import_path)
         with open(import_path) as f:
             import_content = handle_imports(yaml.load(f), import_directory)
@@ -186,7 +188,7 @@ class Simulation(object):
         seed = simulation_def.get('random_seed')
         if seed is not None:
             seed = int(seed)
-            print "using fixed random seed: %d" % seed
+            print("using fixed random seed: %d" % seed)
             random.seed(seed)
             np.random.seed(seed)
 
@@ -226,7 +228,7 @@ class Simulation(object):
         if not os.path.isabs(output_directory):
             output_directory = os.path.join(simulation_dir, output_directory)
         if not os.path.exists(output_directory):
-            print "creating directory: '%s'" % output_directory
+            print("creating directory: '%s'" % output_directory)
             os.makedirs(output_directory)
         config.output_directory = output_directory
 
@@ -279,7 +281,7 @@ class Simulation(object):
             input_path = None
             data_source = Void(output_path)
         else:
-            print method, type(method)
+            print(method, type(method))
 
         default_entity = simulation_def.get('default_entity')
         return Simulation(globals_def, periods, start_period,
@@ -326,17 +328,17 @@ class Simulation(object):
 
         def simulate_period(period_idx, period, processes, entities,
                             init=False):
-            print "\nperiod", period
+            print("\nperiod", period)
             if init:
                 for entity in entities:
-                    print "  * %s: %d individuals" % (entity.name,
-                                                      len(entity.array))
+                    print("  * %s: %d individuals" % (entity.name,
+                                                      len(entity.array)))
             else:
-                print "- loading input data"
+                print("- loading input data")
                 for entity in entities:
-                    print "  *", entity.name, "...",
+                    print("  *", entity.name, "...", end=' ')
                     timed(entity.load_period_data, period)
-                    print "    -> %d individuals" % len(entity.array)
+                    print("    -> %d individuals" % len(entity.array))
             for entity in entities:
                 entity.array_period = period
                 entity.array['period'] = period
@@ -351,33 +353,33 @@ class Simulation(object):
                 for p_num, process_def in enumerate(processes, start=1):
                     process, periodicity = process_def
 
-                    print "- %d/%d" % (p_num, num_processes), process.name,
+                    print("- %d/%d" % (p_num, num_processes), process.name, end=' ')
                     #TODO: provide a custom __str__ method for Process &
                     # Assignment instead
                     if hasattr(process, 'predictor') and process.predictor \
                        and process.predictor != process.name:
-                        print "(%s)" % process.predictor,
-                    print "...",
+                        print("(%s)" % process.predictor, end=' ')
+                    print("...", end=' ')
                     if period_idx % periodicity == 0:
                         elapsed, _ = gettime(process.run_guarded, self,
                                              const_dict)
                     else:
                         elapsed = 0
-                        print "skipped (periodicity)"
+                        print("skipped (periodicity)")
 
                     process_time[process.name] += elapsed
                     if config.show_timings:
-                        print "done (%s elapsed)." % time2str(elapsed)
+                        print("done (%s elapsed)." % time2str(elapsed))
                     else:
-                        print "done."
+                        print("done.")
                     self.start_console(process.entity, period,
                                        globals_data)
 
-            print "- storing period data"
+            print("- storing period data")
             for entity in entities:
-                print "  *", entity.name, "...",
+                print("  *", entity.name, "...", end=' ')
                 timed(entity.store_period_data, period)
-                print "    -> %d individuals" % len(entity.array)
+                print("    -> %d individuals" % len(entity.array))
 #            print " - compressing period data"
 #            for entity in entities:
 #                print "  *", entity.name, "...",
@@ -398,15 +400,15 @@ class Simulation(object):
                 simulate_period(period_idx, period,
                                 self.processes, self.entities)
                 time_elapsed = time.time() - period_start_time
-                print "period %d done" % period,
+                print("period %d done" % period, end=' ')
                 if config.show_timings:
-                    print "(%s elapsed)." % time2str(time_elapsed)
+                    print("(%s elapsed)." % time2str(time_elapsed))
                 else:
-                    print
+                    print()
 
             total_objects = sum(period_objects[period] for period in periods)
             total_time = time.time() - main_start_time
-            print """
+            print("""
 ==========================================
  simulation done
 ==========================================
@@ -416,7 +418,7 @@ class Simulation(object):
 ==========================================
 """ % (time2str(time.time() - start_time),
        total_objects / self.periods,
-       total_objects / total_time)
+       total_objects / total_time))
 
             show_top_processes(process_time, 10)
 #            if config.debug:

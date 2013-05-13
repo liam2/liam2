@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 #import carray as ca
 import numpy as np
 import tables
@@ -340,10 +342,10 @@ class Entity(object):
             temp_mem = sum(v.nbytes for v in self.temp_variables.itervalues()
                            if isinstance(v, np.ndarray))
             main_mem = self.array.nbytes
-            print "mem used: %s (main: %s / temp: %s)" \
+            print("mem used: %s (main: %s / temp: %s)" \
                   % (size2str(temp_mem + main_mem),
                      size2str(main_mem),
-                     size2str(temp_mem))
+                     size2str(temp_mem)))
 
         # erase all temporary variables which have been computed this period
         self.temp_variables = {}
@@ -362,8 +364,11 @@ class Entity(object):
 #        print "%d -> %d (%f)" % compressed._get_stats()
 
     def fill_missing_values(self, ids, values, context, filler='auto'):
-        '''ids: ids present in past period
-           context: current period context'''
+        '''
+        ids: ids present in past period
+        context: current period context
+        '''
+
         if filler is 'auto':
             filler = get_missing_value(values)
         result = np.empty(context_length(context), dtype=values.dtype)
@@ -382,7 +387,7 @@ class Entity(object):
         return result
 
     def value_for_period(self, expr, period, context, fill='auto'):
-        sub_context = EntityContext(self, 
+        sub_context = EntityContext(self,
                                     {'period': period,
                                      '__globals__': context['__globals__']})
         result = expr_eval(expr, sub_context)

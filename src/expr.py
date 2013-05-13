@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import division, print_function
+
 from collections import Counter
 
 import numpy as np
@@ -509,7 +510,7 @@ class UnaryOp(Expr):
         return self
 
     def show(self, indent):
-        print indent, self.op
+        print(indent, self.op)
         self.expr.show(indent + '    ')
 
     def as_simple_expr(self, context):
@@ -597,15 +598,15 @@ class BinaryOp(Expr):
         return BinaryOp(self.op, expr1, expr2)
 
     def show(self, indent=''):
-        print indent, self.op
+        print(indent, self.op)
         if isinstance(self.expr1, Expr):
             self.expr1.show(indent=indent + '    ')
         else:
-            print indent + '    ', self.expr1
+            print(indent + '    ', self.expr1)
         if isinstance(self.expr2, Expr):
             self.expr2.show(indent=indent + '    ')
         else:
-            print indent + '    ', self.expr2
+            print(indent + '    ', self.expr2)
 
     def collect_variables(self, context):
         vars2 = collect_variables(self.expr2, context)
@@ -704,7 +705,7 @@ class Variable(Expr):
         return self
 
     def show(self, indent):
-        print indent, self.name
+        print(indent, self.name)
 
     def collect_variables(self, context):
         return set([self.name])

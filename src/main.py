@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import argparse
 import os
 from os.path import splitext
@@ -40,14 +42,14 @@ def eat_traceback(func, *args, **kwargs):
                     traceback.print_exc(file=f)
                 error_log_path = error_path
             except IOError, log_ex:
-                print "WARNING: %s on '%s'" % (log_ex.strerror,
-                                               log_ex.filename)
+                print("WARNING: %s on '%s'" % (log_ex.strerror,
+                                               log_ex.filename))
             except Exception, log_ex:
-                print log_ex
+                print(log_ex)
             raise e
     except yaml.parser.ParserError, e:
         # eg, inconsistent spacing, no space after a - in a list, ...
-        print "SYNTAX ERROR %s" % str(e.problem_mark).strip()
+        print("SYNTAX ERROR %s" % str(e.problem_mark).strip())
     except yaml.scanner.ScannerError, e:
         # eg, tabs, missing colon for mapping. The reported problem is
         # different when it happens on the first line (no context_mark) and
@@ -67,31 +69,31 @@ def eat_traceback(func, *args, **kwargs):
             mark = e.problem_mark
         if msg:
             msg = ": " + msg
-        print "SYNTAX ERROR %s%s" % (str(mark).strip(), msg)
+        print("SYNTAX ERROR %s%s" % (str(mark).strip(), msg))
     except yaml.reader.ReaderError, e:
         if e.encoding == 'utf8':
-            print "\nERROR in '%s': invalid character found, this probably " \
+            print("\nERROR in '%s': invalid character found, this probably " \
                   "means you have used non ASCII characters (accents and " \
                   "other non-english characters) and did not save your file " \
-                  "using the UTF8 encoding" % e.name
+                  "using the UTF8 encoding" % e.name)
         else:
             raise
     except SyntaxError, e:
-        print "SYNTAX ERROR:", e.msg.replace('EOF', 'end of block')
+        print("SYNTAX ERROR:", e.msg.replace('EOF', 'end of block'))
         if e.text is not None:
-            print e.text
+            print(e.text)
             offset_str = ' ' * (e.offset - 1) if e.offset > 0 else ''
-            print offset_str + '^'
+            print(offset_str + '^')
     except Exception, e:
-        print "\nERROR:", str(e)
+        print("\nERROR:", str(e))
 
     if error_log_path is not None:
-        print
-        print "the technical error log can be found at", error_log_path
+        print()
+        print("the technical error log can be found at", error_log_path)
 
 
 def simulate(args):
-    print "Using simulation file: '%s'" % args.file
+    print("Using simulation file: '%s'" % args.file)
 
     simulation = Simulation.from_yaml(args.file,
                                       input_dir=args.input_path,
@@ -111,7 +113,7 @@ def simulate(args):
 def explore(fpath):
     _, ext = splitext(fpath)
     ftype = 'data' if ext in ('.h5', '.hdf5') else 'simulation'
-    print "Using %s file: '%s'" % (ftype, fpath)
+    print("Using %s file: '%s'" % (ftype, fpath))
     if ftype == 'data':
         globals_def = populate_registry(fpath)
         data_source = H5Data(None, fpath)
@@ -146,11 +148,11 @@ class PrintVersionsAction(argparse.Action):
             cext = True
         except ImportError:
             cext = False
-        print "C extensions are" + (" NOT" if not cext else "") + " available"
+        print("C extensions are" + (" NOT" if not cext else "") + " available")
 
         py_version = '{} ({})'.format(platform.python_version(),
                                       platform.architecture()[0])
-        print '''
+        print('''
 python {py}
 numpy {np}
 numexpr {ne}
@@ -161,7 +163,7 @@ pyyaml {yml}'''.format(py=py_version,
                        ne=numexpr.__version__,
                        pt=tables.__version__,
                        ca=carray.__version__,
-                       yml=yaml.__version__)
+                       yml=yaml.__version__))
         parser.exit()
 
 
@@ -215,8 +217,8 @@ if __name__ == '__main__':
     sys.stdout = AutoflushFile(sys.stdout)
     sys.stderr = AutoflushFile(sys.stderr)
 
-    print "LIAM2 %s (%s)" % (__version__, platform.architecture()[0])
-    print
+    print("LIAM2 %s (%s)" % (__version__, platform.architecture()[0]))
+    print()
 
     if config.debug:
         warnings.simplefilter('default')

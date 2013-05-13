@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import numpy as np
 
 import config
@@ -199,11 +201,11 @@ class NumpyCreateArray(NumpyFunction):
 class NumpyRandom(NumpyCreateArray):
     def compute(self, *args, **kwargs):
         if config.debug:
-            print
-            print "random sequence position before:", np.random.get_state()[2]
+            print()
+            print("random sequence position before:", np.random.get_state()[2])
         res = super(NumpyRandom, self).compute(*args, **kwargs)
         if config.debug:
-            print "random sequence position after:", np.random.get_state()[2]
+            print("random sequence position after:", np.random.get_state()[2])
         return res
 
 

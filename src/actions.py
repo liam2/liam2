@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import csv
 
@@ -28,15 +30,15 @@ class Show(Process):
 
     def run(self, context):
         if config.skip_shows:
-            print "show skipped",
+            print("show skipped", end=' ')
         else:
             values = [expr_eval(expr, context) for expr in self.args]
             if self.print_exprs:
                 titles = [str(expr) for expr in self.args]
-                print '\n'.join('%s: %s' % (title, value)
-                                for title, value in zip(titles, values)),
+                print('\n'.join('%s: %s' % (title, value)
+                                for title, value in zip(titles, values)), end=' ')
             else:
-                print ' '.join(str(v) for v in values),
+                print(' '.join(str(v) for v in values), end=' ')
 
     def __str__(self):
         #TODO: the differentiation shouldn't be needed. I guess I should
@@ -95,7 +97,7 @@ class CSV(Process):
         entity = context['__entity__']
         period = context['period']
         fname = self.fname.format(entity=entity.name, period=period)
-        print "writing to", fname, "...",
+        print("writing to", fname, "...", end=' ')
         file_path = os.path.join(config.output_directory, fname)
 
         with open(file_path, self.mode + 'b') as f:
@@ -134,7 +136,7 @@ class RemoveIndividuals(Process):
         # Shrink array & temporaries. 99% of the function time is spent here.
         entity.array.keep(not_removed)
         temp_variables = entity.temp_variables
-        for name, temp_value in temp_variables.iteritems():
+        for name, temp_value in temp_variables.items():
             if isinstance(temp_value, np.ndarray) and temp_value.shape:
                 temp_variables[name] = temp_value[not_removed]
 
@@ -160,8 +162,8 @@ class RemoveIndividuals(Process):
 #        id_to_rownum[ids] = np.arange(len(ids), dtype=int)
 #        entity.id_to_rownum = id_to_rownum
 
-        print "%d %s(s) removed (%d -> %d)" % (filter_value.sum(), entity.name,
-                                               len_before, len(entity.array)),
+        print("%d %s(s) removed (%d -> %d)" % (filter_value.sum(), entity.name,
+                                               len_before, len(entity.array)), end=' ')
 
 
 class Breakpoint(Process):
@@ -189,17 +191,17 @@ class Assert(Process):
 
     def run(self, context):
         if config.assertions == "skip":
-            print "assertion skipped",
+            print("assertion skipped", end=' ')
         else:
-            print "assertion",
+            print("assertion", end=' ')
             failure = self.eval_assertion(context)
             if failure:
                 if config.assertions == "warn":
-                    print "FAILED:", failure,
+                    print("FAILED:", failure, end=' ')
                 else:
                     raise AssertionError(failure)
             else:
-                print "ok",
+                print("ok", end=' ')
 
 
 class AssertTrue(Assert):

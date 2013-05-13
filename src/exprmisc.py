@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from collections import Sequence
 from itertools import izip, chain
 
@@ -219,16 +221,16 @@ class Choice(EvaluableExpression):
             last_weight = str(weights[-1])
             adjusted_last_weight = str(1.0 - bins[-2])
             if adjusted_last_weight != last_weight:
-                print "Warning: last choice probability adjusted to %s " \
-                      "instead of %s !" % (adjusted_last_weight, last_weight)
+                print("Warning: last choice probability adjusted to %s " \
+                      "instead of %s !" % (adjusted_last_weight, last_weight))
         elif error > 1e-6:
             raise Exception("the cumulative sum of choice weights must be ~1")
         return bins
 
     def evaluate(self, context):
         if config.debug:
-            print
-            print "random sequence position before:", np.random.get_state()[2]
+            print()
+            print("random sequence position before:", np.random.get_state()[2])
         num = context_length(context)
         choices = self.choices
         if num:
@@ -247,7 +249,7 @@ class Choice(EvaluableExpression):
             choices_idx = []
 
         if config.debug:
-            print "random sequence position after:", np.random.get_state()[2]
+            print("random sequence position after:", np.random.get_state()[2])
 
         if any(isinstance(c, Expr) for c in choices):
             choices = np.array([expr_eval(expr, context) for expr in choices])
@@ -332,8 +334,8 @@ def add_individuals(target_context, children):
     array = target_entity.array
     num_rows = len(array)
     num_birth = len(children)
-    print "%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name,
-                                       num_rows, num_rows + num_birth),
+    print("%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name,
+                                       num_rows, num_rows + num_birth), end=' ')
 
     target_entity.array.append(children)
 

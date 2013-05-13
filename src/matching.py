@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import numpy as np
 
 from expr import expr_eval, collect_variables, traverse_expr
@@ -68,8 +70,8 @@ class Matching(EvaluableExpression):
         orderby = expr_eval(self.orderby, context)
         sorted_set1_indices = orderby[set1filter].argsort()[::-1]
 
-        print "matching with %d/%d individuals" % (set1filter.sum(),
-                                                   set2filter.sum())
+        print("matching with %d/%d individuals" % (set1filter.sum(),
+                                                   set2filter.sum()))
 
         #TODO: compute pk_names automatically: variables which are either
         # boolean, or have very few possible values and which are used more

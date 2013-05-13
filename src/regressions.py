@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import numpy as np
 
 from alignment import Alignment
@@ -54,12 +56,12 @@ class LogitScore(CompoundExpression):
 
     def build_context(self, context):
         if config.debug:
-            print
-            print "random sequence position before:", np.random.get_state()[2]
+            print()
+            print("random sequence position before:", np.random.get_state()[2])
         context[self.u_varname] = \
             np.random.uniform(size=context_length(context))
         if config.debug:
-            print "random sequence position after:", np.random.get_state()[2]
+            print("random sequence position after:", np.random.get_state()[2])
         return context
 
     def build_expr(self):

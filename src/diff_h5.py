@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import numpy as np
 import tables
 
@@ -16,30 +18,30 @@ def unique_dupes(a):
 
 def diff_array(array1, array2, numdiff=10, raiseondiff=False):
     if len(array1) != len(array2):
-        print "length is different: %d vs %d" % (len(array1),
-                                                 len(array2))
+        print("length is different: %d vs %d" % (len(array1),
+                                                 len(array2)))
         ids1 = array1['id']
         ids2 = array2['id']
         all_ids = np.union1d(ids1, ids2)
         notin1 = np.setdiff1d(ids1, all_ids)
         notin2 = np.setdiff1d(ids2, all_ids)
         if notin1:
-            print "the following ids are not present in file 1:", \
-                  notin1
+            print("the following ids are not present in file 1:", \
+                  notin1)
         elif notin2:
-            print "the following ids are not present in file 2:", \
-                  notin2
+            print("the following ids are not present in file 2:", \
+                  notin2)
         else:
             # some ids must be duplicated
             if len(ids1) > len(all_ids):
-                print "file 1 contain duplicate ids:",
+                print("file 1 contain duplicate ids:", end=' ')
                 uniques, dupes = unique_dupes(ids1)
-                print dupes
+                print(dupes)
                 array1 = array1[uniques]
             if len(ids2) > len(all_ids):
-                print "file 2 contain duplicate ids:",
+                print("file 2 contain duplicate ids:", end=' ')
                 uniques, dupes = unique_dupes(ids2)
-                print dupes
+                print(dupes)
                 array2 = array2[uniques]
 
     fields1 = get_fields(array1)
@@ -48,12 +50,12 @@ def diff_array(array1, array2, numdiff=10, raiseondiff=False):
     fnames2 = set(array2.dtype.names)
     # use merge_items instead of fnames1 | fnames2 to preserve ordering
     for fname, _ in merge_items(fields1, fields2):
-        print "  - %s:" % fname,
+        print("  - %s:" % fname, end=' ')
         if fname not in fnames1:
-            print "missing in file 1"
+            print("missing in file 1")
             continue
         elif fname not in fnames2:
-            print "missing in file 2"
+            print("missing in file 2")
             continue
         col1, col2 = array1[fname], array2[fname]
         if issubclass(col1.dtype.type, np.inexact):
@@ -66,22 +68,22 @@ def diff_array(array1, array2, numdiff=10, raiseondiff=False):
             eq = np.array_equal(col1, col2)
 
         if eq:
-            print "ok"
+            print("ok")
         else:
-            print "different",
+            print("different", end=' ')
             if len(col1) != len(col2):
-                print "(length)"
+                print("(length)")
             else:
                 diff = (col1 != col2).nonzero()[0]
-                print "(%d differences)" % len(diff)
+                print("(%d differences)" % len(diff))
                 ids = array1['id']
                 if len(diff) > numdiff:
                     diff = diff[:numdiff]
-                print PrettyTable([['id',
+                print(PrettyTable([['id',
                                     fname + ' (file1)',
                                     fname + ' (file2)']] +
                                   [[ids[idx], col1[idx], col2[idx]]
-                                   for idx in diff])
+                                   for idx in diff]))
             if raiseondiff:
                 raise Exception('different')
 
@@ -100,13 +102,13 @@ def diff_h5(input1_path, input2_path, numdiff=10):
     ent_names1 = set(table._v_name for table in input1_entities)
     ent_names2 = set(table._v_name for table in input2_entities)
     for ent_name in sorted(ent_names1 | ent_names2):
-        print
-        print ent_name
+        print()
+        print(ent_name)
         if ent_name not in ent_names1:
-            print "missing in file 1"
+            print("missing in file 1")
             continue
         elif ent_name not in ent_names2:
-            print "missing in file 2"
+            print("missing in file 2")
             continue
 
         table1 = getattr(input1_entities, ent_name)
@@ -118,10 +120,10 @@ def diff_h5(input1_path, input2_path, numdiff=10):
         input1_periods = input1_rows.keys()
         input2_periods = input2_rows.keys()
         if input1_periods != input2_periods:
-            print "periods are different in both files for '%s'" % ent_name
+            print("periods are different in both files for '%s'" % ent_name)
 
         for period in sorted(set(input1_periods) & set(input2_periods)):
-            print "* period:", period
+            print("* period:", period)
             start, stop = input1_rows.get(period, (0, 0))
             array1 = table1.read(start, stop)
 
@@ -138,12 +140,12 @@ if __name__ == '__main__':
     import sys
     import platform
 
-    print "LIAM HDF5 diff %s using Python %s (%s)\n" % \
-          (__version__, platform.python_version(), platform.architecture()[0])
+    print("LIAM HDF5 diff %s using Python %s (%s)\n" % \
+          (__version__, platform.python_version(), platform.architecture()[0]))
 
     args = sys.argv
     if len(args) < 3:
-        print "Usage: %s inputpath1 inputpath2 [numdiff]" % args[0]
+        print("Usage: %s inputpath1 inputpath2 [numdiff]" % args[0])
         sys.exit()
 
     if len(args) > 3:

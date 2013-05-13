@@ -23,7 +23,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
 
     if secondary_axis is not None:
         assert secondary_axis < need.ndim
-        other_axes = range(need.ndim)
+        other_axes = list(range(need.ndim))
         other_axes.pop(secondary_axis)
         other_axes = tuple(other_axes)
         # requires np 1.7+
@@ -34,7 +34,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
 
     still_needed_total = need.sum()
 
-    col_range = range(len(fcols_labels))
+    col_range = list(range(len(fcols_labels)))
     aligned = np.zeros(len(hh), dtype=bool)
     sorted_indices = scores.argsort()[::-1]
     for sorted_idx in sorted_indices:
@@ -51,7 +51,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
 
         persons_in_hh = tuple(np.empty(num_persons_in_hh, dtype=int)
                               for _ in col_range)
-        prange = range(num_persons_in_hh)
+        prange = list(range(num_persons_in_hh))
         for hh_col, fcol_labels in zip(persons_in_hh, fcols_labels):
             for i in prange:
                 hh_col[i] = fcol_labels[persons_in_hh_indices[i]]
