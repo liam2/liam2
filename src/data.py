@@ -486,7 +486,7 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
     periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
     if not periods_before:
         id_to_rownum = np.empty(0, dtype=int)
-        output_array = np.empty(0, np.dtype(output_fields))
+        output_array = ColumnArray.empty(0, np.dtype(output_fields))
         return output_array, id_to_rownum
 
     periods_before.sort()
@@ -817,6 +817,7 @@ class H5Data(DataSource):
                     buildArrayForPeriod(table.table, entity.fields,
                                         entity.input_rows,
                                         entity.input_index, start_period)
+                assert isinstance(entity.array, ColumnArray)
                 entity.array_period = start_period
                 print("done (%s elapsed)." % time2str(time.time() - start_time))
                 entity.table = output_table
