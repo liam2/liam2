@@ -353,7 +353,8 @@ class Simulation(object):
                 for p_num, process_def in enumerate(processes, start=1):
                     process, periodicity = process_def
 
-                    print("- %d/%d" % (p_num, num_processes), process.name, end=' ')
+                    print("- %d/%d" % (p_num, num_processes), process.name,
+                          end=' ')
                     #TODO: provide a custom __str__ method for Process &
                     # Assignment instead
                     if hasattr(process, 'predictor') and process.predictor \
