@@ -202,7 +202,7 @@ class AggregateLink(LinkExpression):
         return self.eval_rows(source_rows, target_filter, context)
 
     def eval_rows(self, source_rows, target_filter, context):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def collect_variables(self, context):
         # no variable at all because collect_variable is only interested in

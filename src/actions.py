@@ -233,7 +233,7 @@ class ComparisonAssert(Assert):
                                             v1, op, v2)
 
     def compare(self, v1, v2):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def expressions(self):
         if isinstance(self.expr1, Expr):

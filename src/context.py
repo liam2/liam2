@@ -48,6 +48,9 @@ class EntityContext(object):
     def __setitem__(self, key, value):
         self.extra[key] = value
 
+    def __delitem__(self, key):
+        del self.extra[key]
+
     def __contains__(self, key):
         entity = self.entity
         return (key in self.extra or

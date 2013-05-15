@@ -412,7 +412,7 @@ entities:
                 - assertEqual(nd_mul_nd.dim_names, ['gender','age', 'period'])
 
                 # let us take the 2d table for this period
-                # currently, we need to manually compute the index
+                # currently, we need to compute the index manually
                 - base_period: 2000
                 - mig_period: MIG[:,:,period - base_period]
                 - assertEqual(mig_period.ndim, 2)
@@ -458,8 +458,7 @@ entities:
                 - assertEqual(need_per_person.shape, (grpcount(),))
                 - assertEqual(need_per_person.dim_names, None)
                 - assertEqual(need_per_person.pvalues, None)
-                - remainder_per_person: 1 - need_per_person
-                
+
                 # 3d array[int[:], int[:], int]
                 - base_period: 2000
                 - percent_per_person: MIG[gender * 1, age, period - base_period]
@@ -489,6 +488,95 @@ entities:
                                                 period - base_period]
                 - assertIsClose(grpsum(remainder_per_person),
                                 grpcount() - grpsum(percent_per_person))
+
+
+                # test combination with if() filter, to test whether the
+                # contextual filter works properly, especially with bad indices
+                - true_: True
+                - false_: False
+
+                # scalar key
+                # ----------
+                - alltrue: age < 1000
+                - allfalse: age > 1000
+
+                # array filter
+                - test1: if(alltrue, need_by_sex20[0], -1)
+                - assertEquiv(test1, need_by_sex20[0])
+                - test2: if(allfalse, need_by_sex20[0], -1)
+                - assertEquiv(test2, -1)
+                # bad index
+                - test3: if(allfalse, need_by_sex20[2], -1)
+                - assertEquiv(test3, -1) 
+
+                # scalar filter
+                - test1: if(true_, need_by_sex20[0], -1)
+                - assertEqual(test1, need_by_sex20[0]) 
+                - test2: if(false_, need_by_sex20[0], -1)
+                - assertEqual(test2, -1)
+                # bad index
+                - test3: if(false_, need_by_sex20[2], -1)
+                - assertEqual(test3, -1)
+
+                # array key
+                # ---------
+                # 0 and 1 are the only valid indices for need_by_sex20
+                - good_idx: if(age < 2, age, 0)
+                - bad_idx: age
+                - good_res: need_by_sex20[good_idx]
+                - target: if(age < 2, good_res, 0)
+
+                # array filter
+                - test1: if(age < 2, need_by_sex20[good_idx], 0)
+                - assertEqual(test1, target)
+                - test2: if(age >= 2, 0, need_by_sex20[good_idx])
+                - assertEqual(test2, target)
+                # bad index
+                - test3: if(age < 2, need_by_sex20[bad_idx], 0)
+                - assertEqual(test3, target)
+                - test4: if(age >= 2, 0, need_by_sex20[bad_idx])
+                - assertEqual(test4, target)
+
+                # scalar filter
+                - test1: if(true_, need_by_sex20[good_idx], -1)
+                - assertEqual(test1, good_res) 
+                - test2: if(false_, need_by_sex20[good_idx], -1)
+                - assertEquiv(test2, -1)
+                # bad index
+                - test3: if(false_, need_by_sex20[bad_idx], -1)
+                - assertEquiv(test3, -1) 
+
+                # tuple key
+                # ---------
+                - gender_idx: gender * 1
+                - period_idx: period - base_period
+                - good_idx: gender_idx, if(age < 70, age + 20, -1), period_idx
+                - bad_idx1: gender_idx, age + 20, period_idx
+                - bad_idx2: gender_idx, age, period_idx + 100
+                - good_res: MIG[good_idx]
+                - target: if(age < 70, good_res, -1)
+
+                # array filter
+                - test1: if(age < 70, MIG[good_idx], -1)
+                - assertEqual(test1, target)
+                - test2: if(allfalse, MIG[good_idx], -1)
+                - assertEquiv(test2, -1)
+                # bad index
+                - test3: if(allfalse, MIG[bad_idx1], -1)
+                - assertEquiv(test3, -1) 
+                - test4: if(allfalse, MIG[bad_idx2], -1)
+                - assertEquiv(test4, -1) 
+
+                # scalar filter
+                - test1: if(true_, MIG[good_idx], -1)
+                - assertEqual(test1, good_res)
+                - test2: if(false_, MIG[good_idx], -1)
+                - assertEquiv(test2, -1)
+                # bad index
+                - test3: if(false_, MIG[bad_idx1], -1)
+                - assertEquiv(test3, -1) 
+                - test4: if(false_, MIG[bad_idx2], -1)
+                - assertEquiv(test4, -1) 
 
             test_macro:
                 - ischild: age < 18

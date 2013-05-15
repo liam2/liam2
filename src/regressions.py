@@ -23,7 +23,7 @@ class Regression(CompoundExpression):
         return context
 
     def build_expr(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def add_filter(self, expr, context):
         if self.filter is not None:

@@ -183,6 +183,10 @@ def expr_eval(expr, context):
         return [expr_eval(e, context) for e in expr]
     elif isinstance(expr, tuple) and any(isinstance(e, Expr) for e in expr):
         return tuple([expr_eval(e, context) for e in expr])
+    elif isinstance(expr, slice):
+        return slice(expr_eval(expr.start, context),
+                     expr_eval(expr.stop, context),
+                     expr_eval(expr.step, context))
     else:
         return expr
 
@@ -356,10 +360,10 @@ class Expr(object):
         evaluate any construct that is not supported by numexpr and
         create temporary variables for them
         '''
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def as_string(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def __getitem__(self, key):
         #TODO: we should be able to know at "compile" time if this is a
@@ -370,18 +374,22 @@ class Expr(object):
         return ExprAttribute(self, key)
 
     def collect_variables(self, context):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class EvaluableExpression(Expr):
     def evaluate(self, context):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def as_simple_expr(self, context):
         tmp_varname = get_tmp_varname()
         result = self.evaluate(context)
         context[tmp_varname] = result
         return Variable(tmp_varname, gettype(result))
+
+
+def non_scalar_array(a):
+    return isinstance(a, np.ndarray) and a.shape
 
 
 class SubscriptedExpr(EvaluableExpression):
@@ -401,18 +409,58 @@ class SubscriptedExpr(EvaluableExpression):
     __repr__ = __str__
 
     def evaluate(self, context):
-        expr = expr_eval(self.expr, context)
-        key = self.key
-        if isinstance(key, tuple):
-            key = tuple(expr_eval(k, context) for k in key)
-        elif isinstance(key, slice):
-            key = slice(expr_eval(key.start, context),
-                        expr_eval(key.stop, context),
-                        expr_eval(key.step, context))
-        else:
-            key = expr_eval(key, context)
-        #XXX: return -1 for out_of_bounds like for globals?
-        return expr[key]
+        expr_value = expr_eval(self.expr, context)
+        key = expr_eval(self.key, context)
+
+        filter_expr = context.get('__filter__')
+
+        # When there is a contextual filter, we modify the key to avoid
+        # crashes (IndexError).
+
+        # The value returned for individuals outside the filter is
+        # *undefined* ! We sometimes return missing and sometimes return the
+        # value of another individual (index -1). This should not pose a
+        # problem because those values should not be used anyway.
+        if filter_expr is not None:
+            # We need a context without __filter__ to evaluate the filter
+            # (to avoid an infinite recursion)
+            sub_context = context.copy()
+            del sub_context['__filter__']
+            filter_value = expr_eval(filter_expr, sub_context)
+
+            def fixkey(key, filter_value):
+                if non_scalar_array(key):
+                    newkey = key.copy()
+                else:
+                    newkey = np.empty(len(filter_value), dtype=int)
+                    newkey.fill(key)
+                newkey[~filter_value] = -1
+                return newkey
+
+            if non_scalar_array(filter_value):
+                if isinstance(key, tuple):
+                    key = tuple(fixkey(k, filter_value) for k in key)
+                elif isinstance(key, slice):
+                    raise NotImplementedError()
+                else:
+                    # scalar or array key
+                    key = fixkey(key, filter_value)
+            else:
+                if not filter_value:
+                    missing_value = get_missing_value(expr_value)
+                    if (non_scalar_array(key) or
+                        (isinstance(key, tuple) and
+                         any(non_scalar_array(k) for k in key))):
+                        # scalar filter, array or tuple key
+                        res = np.empty_like(expr_value)
+                        res.fill(missing_value)
+                        return res
+                    elif isinstance(key, slice):
+                        raise NotImplementedError()
+                    else:
+                        # scalar (or tuple of scalars) key
+                        return missing_value
+        return expr_value[key]
 
     def collect_variables(self, context):
         exprvars = collect_variables(self.expr, context)
