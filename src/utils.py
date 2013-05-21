@@ -1,6 +1,8 @@
 from __future__ import print_function
 
 #import os
+#import Tkinter as tk
+#import ttk
 import re
 import sys
 import time
@@ -371,27 +373,68 @@ class LabeledArray(np.ndarray):
         return res
 
 
-def loop_wh_progress(func, sequence):
-    len_todo = len(sequence)
-    write = sys.stdout.write
-    last_percent_done = 0
-    for i, value in enumerate(sequence, start=1):
-        try:
-            func(i, value)
-        except StopIteration:
-            break
+class ProgressBar(object):
+    def __init__(self):
+        pass
 
+    def update(self, value):
+        raise NotImplementedError()
+
+    def destroy(self):
+        pass
+
+
+class TextProgressBar(ProgressBar):
+    def __init__(self, maximum=100):
+        ProgressBar.__init__(self)
+        self.percent = 0
+        self.maximum = maximum
+
+    def update(self, value):
         # update progress bar
-        percent_done = (i * 100) / len_todo
-        to_display = percent_done - last_percent_done
+        percent_done = (value * 100) / self.maximum
+        to_display = percent_done - self.percent
         if to_display:
             chars_to_write = list("." * to_display)
-            offset = 9 - (last_percent_done % 10)
+            offset = 9 - (self.percent % 10)
             while offset < to_display:
                 chars_to_write[offset] = '|'
                 offset += 10
-            write(''.join(chars_to_write))
-        last_percent_done = percent_done
+            sys.stdout.write(''.join(chars_to_write))
+        self.percent = percent_done
+
+
+#class TkProgressBar(ProgressBar):
+#    def __init__(self, maximum=100):
+#        self.master = tk.Tk()
+#        self.progress = ttk.Progressbar(self.master, orient="horizontal",
+#                                        length=400, mode="determinate")
+#        self.progress.pack()
+#        self.progress["value"] = 0
+#        self.progress["maximum"] = maximum
+#
+#    def update(self, value):
+#        self.progress["value"] = value
+#        self.master.update()
+#
+#    def destroy(self):
+#        self.master.destroy()
+
+
+def loop_wh_progress(func, sequence, pbclass=TextProgressBar):
+    pb = pbclass(len(sequence))
+    for i, value in enumerate(sequence, start=1):
+        try:
+            func(i, value)
+            pb.update(i)
+        except StopIteration:
+            break
+    pb.destroy()
+
+
+#def loop_wh_progress(func, sequence):
+#    app = ProgressBar(func, sequence)
+#    app.mainloop()
 
 
 def count_occurences(seq):
