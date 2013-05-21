@@ -6,7 +6,7 @@ Change log
 Version 0.6.2
 =============
 
-Released on 2013-04-23.
+Released on 2013-05-21.
 
 Fixes:
 ------
@@ -16,7 +16,7 @@ Fixes:
   alias to the same data, so if the field was modified afterwards, the
   temporary variable was also modified implicitly.
   
-  As an example, the following code fails in earlier versions: ::
+  As an example, the following code failed before the fix: ::
 
     # age is a field
     - backup: age
@@ -40,7 +40,8 @@ Fixes:
     - backup: temp
     - temp: temp + 1
     - assertEqual(temp, backup + 1)
-    
+
+
 Version 0.6.1
 =============
 
