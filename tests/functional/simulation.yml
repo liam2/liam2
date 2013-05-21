@@ -266,8 +266,8 @@ entities:
 
             test_logit:
                 - float_field: age / 120.0
-                - assertEqual(logit(float_field),
-                              log(float_field / (1.0 - float_field)))
+                - assertNanEqual(logit(float_field),
+                                 log(float_field / (1.0 - float_field)))
 
             test_logistic:
                 - assertEqual(logistic(age), 1.0 / (1.0 + exp(-age)))
@@ -1303,13 +1303,29 @@ entities:
                 - assertEqual(females_age, grpsum(age * FEMALE))
                 - assertEqual(males_age + females_age, population_age)
                 
-                # implicit filter
+                # implicit/contextual filter
                 # assign to each man the sum of men ages and to each woman
                 # the sum of women ages
                 - filtered: if(MALE, grpsum(age), grpsum(age))
                 - assertEqual(grpcount(filtered == males_age),
                               grpcount(MALE))
                 - assertEqual(grpcount(filtered == females_age),
+                              grpcount(FEMALE))
+
+                # nested contextual filter (this is more of a test of nested
+                # contextual filters than grpsum but it makes more sense to
+                # have it here anyway)
+                - teen: age >= 10 and age < 20
+                - test: if(MALE,
+                           if(teen, grpsum(age), grpsum(age)),
+                           grpsum(age))
+                - male_teens_age: grpsum(age, MALE and teen)
+                - male_other_age: grpsum(age, MALE and not teen)
+                - assertEqual(grpcount(test == male_teens_age),
+                              grpcount(MALE and teen))
+                - assertEqual(grpcount(test == male_other_age),
+                              grpcount(MALE and not teen))
+                - assertEqual(grpcount(test == females_age),
                               grpcount(FEMALE))
                               
                 # with missing
@@ -1686,9 +1702,20 @@ entities:
                 - assertEquiv(imported_field1, -1)
                 - assertEqual(imported_field2, age + 2)
 
+            generate: new('person', number=10000000,
+                          age=randint(0, 98),
+                          dead=False,
+                          gender=choice([False, True]),
+                          work=choice([False, True]),
+                          partner_id=-1,
+                          f_id=-1,
+                          m_id=-1,
+                          hh_id=-1)
+
 simulation:
     init:
         - person: [
+#            generate,
             test_init,
             test_dump_init
         ]
@@ -1789,6 +1816,10 @@ simulation:
 #                      dump_csv_h
                      ]
 
+#    input:
+#        method: void
+#        file: none
+
     output:
         file: simulation.h5
 #    autodump: True
@@ -1796,3 +1827,4 @@ simulation:
 
     random_seed: 0
     periods: 2
+#    skip_shows: True

@@ -335,7 +335,8 @@ def add_individuals(target_context, children):
     num_rows = len(array)
     num_birth = len(children)
     print("%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name,
-                                       num_rows, num_rows + num_birth), end=' ')
+                                       num_rows, num_rows + num_birth),
+          end=' ')
 
     target_entity.array.append(children)
 
@@ -614,7 +615,14 @@ class Where(Expr):
             context['__filter__'] = filter_expr & ~self.cond
         iffalse = as_simple_expr(self.iffalse, context)
 
-        context['__filter__'] = None
+        # This is probably useless because the only situation I can think of
+        # where it could matter is inside the "iffalse" part of a nested if()
+        # and in that case the contextual filter is overwritten using the value
+        # of the filter at the *start* of the if() (see above), so it works
+        # regardless of what we do here. It should not hurt to be correct
+        # though.
+        context['__filter__'] = filter_expr
+
         return Where(cond, iftrue, iffalse)
 
     def as_string(self):
