@@ -345,7 +345,10 @@ class LabeledArray(np.ndarray):
         return result
 
     def __str__(self):
-        return '\n' + table2str(self.as_table(), 'nan') + '\n'
+        if not self.ndim:
+            return str(np.asscalar(self))
+        else:
+            return '\n' + table2str(self.as_table(), 'nan') + '\n'
 
 #    def __array_prepare__(self, arr, context=None):
 #        print 'In __array_prepare__:'

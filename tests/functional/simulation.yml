@@ -440,16 +440,19 @@ entities:
                 - need_by_sex: need_by_sex_period[:,period - base_period]
                 - assertEqual(need_by_sex.ndim, 1)
                 - assertEqual(need_by_sex.shape, (2,))
-#                - show(need_by_sex)
+                
+                - total_need: need_by_sex.sum()
+                - assertEqual(total_need.ndim, 0)
+                - qshow(total_need)
 
-                # produce a 1 dim LabeledArray
+                # vector indexes (should produce a non labeled vector)
+                # ----------------------------------------------------
+
+                # first, produce a 1 dim LabeledArray to test with
                 - need_by_sex20: MIG[:, 20, period - base_period]
                 - assertEqual(need_by_sex20.ndim, 1)
                 - assertEqual(need_by_sex20.shape, (2,))
                 - assertEqual(need_by_sex20.dim_names, ['gender'])
-
-                # vector indexes (should produce a non labeled vector)
-                # ----------------------------------------------------
 
                 # 1d array[int[:]]
                 # gender can't be used directly as indices (we need integers)
