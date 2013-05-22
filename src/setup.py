@@ -41,14 +41,14 @@ build_exe_options = {
         "Tkconstants", "Tkinter", "Cython", "_ssl",
         "base64", "bz2", "calendar", "compiler",
         "distutils", "doctest", "dummy_thread",
-        "dummy_threading", "email", "ftplib", "io",
+        "dummy_threading", "email", "ftplib",
         "logging", "multiprocessing", "nose",
         "numpy.distutils", "numpy.core._dotblas",
         "os2emxpath", "pdb", "pkg_resources",
         "posixpath", "pydoc", "pydoc_topics", "repr", "scipy",
         "select", "stringprep", "strptime",
         "tcl", "unicodedata", "xml"
-        # ctypes is required now
+        # ctypes, io are required now
     ]
 }
 
