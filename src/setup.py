@@ -37,7 +37,7 @@ build_exe_options = {
         "Tkconstants", "Tkinter", "Cython", "_ssl",
         "base64", "bz2", "calendar", "compiler",
         "distutils", "doctest", "dummy_thread",
-        "dummy_threading", "email", "ftplib", "io",
+        "dummy_threading", "email", "ftplib",
         "logging", "multiprocessing", "nose",
         "numpy.distutils", "numpy.core._dotblas",
         "os2emxpath", "pdb", "pkg_resources",
