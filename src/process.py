@@ -170,7 +170,7 @@ class ProcessGroup(Process):
         append_carray_to_table(context, table, numrows)
         print("done.")
 
-    def _autodiff(self, period, numdiff=10):
+    def _autodiff(self, period, numdiff=10, raiseondiff=False):
         fields = self._modified_fields
         if not fields:
             return
@@ -182,7 +182,7 @@ class ProcessGroup(Process):
         if tablepath in h5file:
             table = h5file.getNode(tablepath)
             disk_array = ColumnArray.from_table(table, stop=numrows)
-            diff_array(disk_array, ColumnArray(fields), numdiff)
+            diff_array(disk_array, ColumnArray(fields), numdiff, raiseondiff)
         else:
             print("  SKIPPED (could not find table)")
 
