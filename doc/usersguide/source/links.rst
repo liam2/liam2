@@ -29,8 +29,9 @@ LIAM 2 allows two types of links: many2one and one2many.
 many2one
 --------
 
-A **many2one** link the item of the entity to *one* other item in the same 
-(eg. a person to its mother) or another entity (eg. a person to its household).
+A **many2one link** links an individual of the entity to **one** other
+individual in the same (eg. a person to his/her mother) or another entity (eg. a
+person to its household).
 
 This allows the modeller to use information stored in the linked entities. ::
 
@@ -82,8 +83,8 @@ Another option to get values in the linked individual is to use the form: ::
 this syntax is a bit more verbose in the simple case, but is much more powerful
 as it allows to evaluate (almost) any expression on the linked individual. 
 
-For example, if you want to get the average age of both parents of the mother of
-each individual, you can do it so:
+For example, if you want to get the average age of both parents of the mother
+of each individual, you can do it so: ::
 
     mother.get((mother.age + father.age) / 2)
 
@@ -92,8 +93,9 @@ each individual, you can do it so:
 one2many
 --------
 
-A **one2many** links an item in an entity to at least one other item in the same 
-(eg. a person to its children) or other entity (a household to its members). ::
+A **one2many link** links an individual of the entity to at least one other
+individual in the same (eg. a person to his/her children) or another entity (a
+household to its members). ::
 
     entities:
         household:
@@ -110,15 +112,19 @@ A **one2many** links an item in an entity to at least one other item in the same
                 household: {type: many2one, target: household, field: household_id}
                 
 - *persons* is the link from the household to its members.
-- *household* is the link form a person to the household.
+- *household* is the link form a person to his/her household.
 
-To use information stored in the linked entities you have to use *aggregate functions*
+To access the information stored in the linked individuals through a one2many
+link, you have to use *aggregate methods* on the link: ::
 
-- countlink (eg. countlink(persons) gives the numbers of persons in the household)
-- sumlink (eg. sumlink(persons, income) sums up all incomes from the members in a household)
-- avglink (eg. avglink(persons, age) gives the average age of the members in a household)
-- minlink, maxlink (eg. minlink(persons, age) gives the age of the youngest member of the household)
+    link_name.method_name([arguments])
 
+For example: ::
+
+    persons.avg(age)
+    
+one2many links support the following methods: count(), sum(), avg(), min() and
+max(). See :ref:`link_methods` for details.
 
 *example* ::
 
@@ -132,7 +138,7 @@ To use information stored in the linked entities you have to use *aggregate func
                 persons: {type: one2many, target: person, field: household_id}
 
             processes:
-                num_children: countlink(persons, age < 18)
+                num_children: persons.count(age <= 17)
             
         person:
             fields:
@@ -148,9 +154,9 @@ To use information stored in the linked entities you have to use *aggregate func
                 num_kids_in_hh: household.num_children 
                 
                 
-The num_children process, once called will compute the number of persons aged 17
-or less in each household and store the result in the *num_children* field (of
-the **household**).
+The num_children process, once called will compute the number of persons aged
+17 or less in each household and store the result in the *num_children* field
+(of the **household**).
 Afterwards, that variable can be used like any other variable, for example
 through a many2one link, like in the *num_kids_in_hh* process. This process
 computes for each **person**, the number of children in the household of that
@@ -159,4 +165,4 @@ person.
 Note that the variable *num_kids_in_hh* could also have been
 simulated by just one process, on the "person" level, by using: ::
 
-    - num_kids_in_hh: household.get(countlink(persons, age < 18))
+    - num_kids_in_hh: household.get(persons.count(age <= 17))

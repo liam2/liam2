@@ -354,16 +354,18 @@ is a boolean variable (eg. grpcount(ISWIDOW) == grpsum(ISWIDOW)).
     processes:
         cnt_widows: show(grpcount(WIDOW))
 
-.. index:: countlink, sumlink, avglink, minlink, maxlink
+.. index:: link methods, count, sum, avg, min, max
+.. _link_methods:
 
-link functions
---------------
+link methods
+------------
 (one2many links)
 
-- countlink(link[, filter])
-- sumlink(link, expr[, filter])
-- avglink(link, expr[, filter])
-- minlink/maxlink(link, expr[, filter])
+- link.count([filter]) - counts the number of related individuals
+- link.sum(expr[, filter]) - compute the sum of an expression over the related individuals
+- link.avg(expr[, filter]) - compute the average of an expression over the related individuals
+- link.min(expr[, filter]) - compute the minimum of an expression over the related individuals
+- link.max(expr[, filter]) - compute the maximum of an expression over the related individuals
 
 *example* ::
 
@@ -377,10 +379,10 @@ link functions
 
             processes:
                 household_composition:
-                    - nb_persons: countlink(persons)
-                    - nb_students: countlink(persons, workstate == 1)
-                    - nch0_11: countlink(persons, age < 12)
-                    - nch12_15: countlink(persons, (age > 11) and (age < 16))
+                    - nb_persons: persons.count()
+                    - nb_students: persons.count(workstate == 1)
+                    - nb_children: persons.count(age <= 17)
+                    - avg_age: persons.avg(age)
 
 .. index:: temporal functions, lag, value_for_period, duration, tavg, tsum
 
@@ -401,12 +403,13 @@ temporal functions
 
   *example* ::
 
+    lag(age)            # the age each person had last year, -1 if newborn
+    lag(age, missing=0) # the age each person had last year, 0 if newborn
     grpavg(lag(age))    # average age that the current population had last year
     lag(grpavg(age))    # average age of the population of last year
     lag(age, 2)         # the age each person had two years ago (-1 for
                         # newborns)
     lag(lag(age))       # this is equivalent (but slightly less efficient)
-    lag(age, missing=0) # the age each person had last year, 0 if newborn
 
 - value_for_period(expr, period[, missing=value]): value at a specific period
 
@@ -870,7 +873,7 @@ Here is a description of the arguments specific to align_abs:
 
     test_align_link:
         # this is a procedure defined at the level of households
-        - num_persons: countlink(persons)
+        - num_persons: persons.count()
         - total_population: grpsum(num_persons)
 
         # MIG_PERCENT is a simple float periodic global
