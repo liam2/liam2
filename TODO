@@ -604,9 +604,6 @@ bug fixes
   I think the best way out of this is to ignore the contextual filter in all
   aggregate functions. But in that case, what about ctx filter in new(),
   matching(), ...?
-- fix matching() progress bar: we know we will only match
-  min(set1len, set2len), so it's a bit stupid to compute progress relative
-  to set1len 
 - fix test data ("small"): all men with 18 <= age <= 90 are married, making
   the matching test pointless in the first period
 
