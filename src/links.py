@@ -370,9 +370,7 @@ def deprecated(class_):
         msg = "%s(link, ...) is deprecated, please use " \
               "link.%s(...) instead" % (func_name, method_name)
         warnings.warn(msg, UserDeprecationWarning)
-        expr = class_(*args, **kwargs)
-#        print "Warning: %s\n     at: %s" % (msg, expr)
-        return expr
+        return class_(*args, **kwargs)
     func.__name__ = func_name
     return func
 
