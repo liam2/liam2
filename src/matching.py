@@ -68,10 +68,12 @@ class Matching(EvaluableExpression):
         set1 = context_subset(context, set1filter, used_variables1)
         set2 = context_subset(context, set2filter, used_variables2)
         orderby = expr_eval(self.orderby, context)
+        set1len = set1filter.sum()
+        set2len = set2filter.sum()
+        tomatch = min(set1len, set2len)
         sorted_set1_indices = orderby[set1filter].argsort()[::-1]
-
-        print("matching with %d/%d individuals" % (set1filter.sum(),
-                                                   set2filter.sum()))
+        set1tomatch = sorted_set1_indices[:tomatch]
+        print("matching with %d/%d individuals" % (set1len, set2len))
 
         #TODO: compute pk_names automatically: variables which are either
         # boolean, or have very few possible values and which are used more
@@ -115,7 +117,7 @@ class Matching(EvaluableExpression):
             result[id_to_rownum[id1]] = id2
             result[id_to_rownum[id2]] = id1
 
-        loop_wh_progress(match_one_set1_individual, sorted_set1_indices)
+        loop_wh_progress(match_one_set1_individual, set1tomatch)
         return result
 
     def dtype(self, context):
