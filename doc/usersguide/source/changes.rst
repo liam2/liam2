@@ -68,6 +68,9 @@ Miscellaneous improvements:
 * entities are loaded/stored for each period in alphabetical order instead of
   randomly. This has no influence on the results but produces nicer log files.
 
+* deprecated the "predictor" keyword. If you need several processes to write
+  to the same variable, you should use procedures instead.
+
 Fixes:
 ------
 
@@ -488,7 +491,7 @@ New features:
   - Each file can have different data points. eg if you have historical data
     for some fields data going back to 1950 for some individuals, and other
     fields going back to only 2000, the import mechanism will merge those data
-    sets. 
+    sets.
   - It can also optionally fill missing data points. Currently it only
     supports filling with the "previous value" (the value the individual had
     (if any) for that field in a previous period). In the future, we will add
