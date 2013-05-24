@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import warnings
+
 #import carray as ca
 import numpy as np
 import tables
@@ -12,7 +14,8 @@ from expr import (Variable, GlobalVariable, GlobalTable, GlobalArray,
 from exprparser import parse
 from process import Assignment, Compute, Process, ProcessGroup
 from registry import entity_registry
-from utils import safe_put, count_occurences, field_str_to_type, size2str
+from utils import (safe_put, count_occurences, field_str_to_type, size2str,
+                   UserDeprecationWarning)
 
 
 #def compress_column(a, level):
@@ -143,6 +146,7 @@ class Entity(object):
         for k, v in items:
             if k is None:
                 continue
+            # no need to test for bool since bool is a subclass of int
             if isinstance(v, (basestring, int, float)):
                 predictors.append(k)
             elif isinstance(v, dict):
@@ -230,7 +234,8 @@ class Entity(object):
                 else:
                     process = expr
             elif isinstance(v, list):
-                # v should be a list of dict
+                # v is a procedure
+                # it should be a list of dict (assignment) or string (action)
                 group_expressions = []
                 for element in v:
                     if isinstance(element, dict):
@@ -247,6 +252,11 @@ class Entity(object):
                                                        cond_context)
                 process = ProcessGroup(k, sub_processes)
             elif isinstance(v, dict):
+                warnings.warn("Using the 'predictor' keyword is deprecated. "
+                              "If you need several processes to "
+                              "write to the same variable, you should "
+                              "rather use procedures.",
+                              UserDeprecationWarning)
                 expr = parse(v['expr'], variables, cond_context)
                 process = Assignment(expr)
                 process.predictor = v['predictor']

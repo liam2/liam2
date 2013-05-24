@@ -11,6 +11,7 @@ from expr import Variable, dtype, expr_eval, missing_values, get_missing_value
 from exprbases import EvaluableExpression
 from context import EntityContext, context_length
 from registry import entity_registry
+from utils import UserDeprecationWarning
 
 
 class Link(object):
@@ -354,10 +355,6 @@ class MinLink(AggregateLink):
 class MaxLink(MinLink):
     func_name = 'maxlink'
     aggregate_func = max
-
-
-class UserDeprecationWarning(UserWarning):
-    pass
 
 
 def deprecated(class_):

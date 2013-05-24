@@ -18,6 +18,10 @@ import numpy as np
 import config
 
 
+class UserDeprecationWarning(UserWarning):
+    pass
+
+
 class AutoflushFile(object):
     def __init__(self, f):
         self.f = f
