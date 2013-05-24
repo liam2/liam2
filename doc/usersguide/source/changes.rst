@@ -19,24 +19,43 @@ New features:
 
 * added new logit and logistic functions. They were previously used
   internally but not available to modellers.  
- 
+
+* added two new debugging features: autodump and autodiff. autodump will dump
+  all (non-scalar) variables (including temporaries) at the end of each
+  procedure in a separate hdf5 file. It can be used stand-alone for debugging,
+  or in combination with autodiff. Autodiff will gather all variables at the
+  end of each procedure and compare them with the values stored previously by
+  autodump in another run of the model (or a variant of it). This can be used
+  to precisely compare two versions/variants of a model and see exactly
+  where they start to differ.
+
 * added new assert functions: 
   - assertIsClose to check that two results are "almost" equal tolerating
     small value differences (for example due to rounding differences).
   - assertEquiv to check that two results are equal tolerating differences in
     shape (though they must be compatible).
+  - assertNanEqual to check that two arrays are equal even in the presence of
+    nans (because normally nan != nan).
   
 * added a new "timings" option to hide timings from the simulation log, so
   that two simulation logs are more easily comparable (for example with "diff"
   tools like WinMerge).
 
+* added a menu entry in notepad++ to run a simulation in "debug mode".
 
 Miscellaneous improvements:
 ---------------------------
 
+* improved the performance and memory usage by changing the internal memory
+  layout. Most operations are now faster. new(), remove() and "merging data"
+  (for retrospective simulations) are now slower.
+  In our model, this translates to a peak memory usage 20% smaller and a
+  35% speed increase.
+
 * changed the syntax for all one2many link functions: xxxlink(link_name, ...)
   should now be link_name.xxx(...). For example, countlink(persons) should be:
-  persons.count(). The old syntax is still valid but it is deprecated.
+  persons.count(). The old syntax is still valid but it is deprecated (it will
+  be removed in a subsequent version).
 
 * the "period" argument of value_for_period can now be a *scalar* expression
   (it must have the same value for all individuals).
@@ -47,7 +66,25 @@ Miscellaneous improvements:
   after operations which use random numbers.
   
 * entities are loaded/stored for each period in alphabetical order instead of
-  randomly. This has no influence on the results except for nicer log files.
+  randomly. This has no influence on the results but produces nicer log files.
+
+Fixes:
+------
+
+* using invalid indexes in "global arrays" do not crash anymore if they are
+  properly enclosed in an if() expression. For example if you have an array
+  "by_age" with values for indices from 0 to 99, the following code will now
+  work as expected: ::
+  
+    if(age < 50, by_age[age + 50], 0.5)
+
+  Periodic globals are unaffected (they always return "missing" when out of
+  bounds)
+
+* fixed using show() on a scalar created by summing a "global array".
+
+* fixed the progress bar of matching() when the number of individuals is
+  different in the two sets.
 
 
 Version 0.6.2
