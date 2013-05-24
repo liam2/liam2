@@ -275,7 +275,7 @@ and composition is again used.
 *example* ::
 
     simulation: 
-        init:
+        init:                   # optional
             - household: [household_composition]
             - person: [agegroup]
     
