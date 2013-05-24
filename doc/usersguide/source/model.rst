@@ -295,11 +295,12 @@ and composition is again used.
             file: simulation.h5
         start_period: 2002
         periods: 10
-        skip_shows: True        # optional
+        skip_shows: False       # optional
         random_seed: 5235       # optional
         assertions: warn        # optional
         default_entity: person  # optional
-
+        autodump: False         # optional
+        autodiff: False         # optional
 
 
 processes
@@ -399,4 +400,25 @@ timings
 
 If set to *False*, hide all timings from the simulation log, so that two
 simulation log files are more easily comparable (for example with "diff"
-tools like WinMerge). Defaults to *True*.    
+tools like WinMerge). Defaults to *True*.
+
+autodump
+--------
+
+If this option is used, at the end of each procedure, all (non-scalar)
+variables changed during the procedure (including temporaries) will be dumped
+in an hdf5 file (named "autodump.h5" by default). This option can be used
+alone for debugging, or in combination with autodiff (in a later run).
+This option can take either a filename or a boolean (in which case
+"autodump.h5" is used as the filename). Defaults to *False*.
+
+autodiff
+--------
+
+If this option is used, at the end of each procedure, all (non-scalar)
+variables changed during the procedure (including temporaries) will be
+compared with the values stored previously by autodump in another run of
+the model (or a variant of it). This can be used to precisely compare two
+versions/variants of a model and see exactly where they start to differ.
+This option can take either a filename or a boolean (in which case
+"autodump.h5" is used as the filename). Defaults to *False*.
