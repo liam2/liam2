@@ -7,6 +7,7 @@ from expr import (Variable, dtype, expr_eval,
                   ispresent)
 from exprbases import EvaluableExpression, NumpyAggregate, FilteredExpression
 from context import context_length
+from utils import deprecated
 #from utils import nansum
 
 
@@ -29,7 +30,7 @@ class Any(NumpyAggregate):
 
 
 #XXX: inherit from FilteredExpression instead?
-class GroupCount(EvaluableExpression):
+class Count(EvaluableExpression):
     def __init__(self, filter=None):
         self.filter = filter
 
@@ -41,7 +42,7 @@ class GroupCount(EvaluableExpression):
             # that we need to know the type of all temporary variables
             # first
             if dtype(self.filter, context) is not bool:
-                raise Exception("grpcount filter must be a boolean expression")
+                raise Exception("count filter must be a boolean expression")
             return np.sum(expr_eval(self.filter, context))
 
     def dtype(self, context):
@@ -57,10 +58,10 @@ class GroupCount(EvaluableExpression):
 
     def __str__(self):
         filter_str = str(self.filter) if self.filter is not None else ''
-        return "grpcount(%s)" % filter_str
+        return "count(%s)" % filter_str
 
 
-class GroupMin(NumpyAggregate):
+class Min(NumpyAggregate):
     func_name = 'grpmin'
     np_func = (np.amin,)
     nan_func = (np.nanmin,)
@@ -70,7 +71,7 @@ class GroupMin(NumpyAggregate):
         return dtype(self.args[0], context)
 
 
-class GroupMax(NumpyAggregate):
+class Max(NumpyAggregate):
     func_name = 'grpmax'
     np_func = (np.amax,)
     nan_func = (np.nanmax,)
@@ -92,7 +93,7 @@ def na_sum(a, overwrite=False):
     return func(a)
 
 
-#class GroupSum(NumpyAggregate):
+#class Sum(NumpyAggregate):
 #    func_name = 'grpsum'
 #    np_func = (np.sum,)
 #    nan_func = (nansum,)
@@ -105,7 +106,7 @@ def na_sum(a, overwrite=False):
 
 
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
-class GroupSum(FilteredExpression):
+class Sum(FilteredExpression):
     func_name = 'grpsum'
 
     def __init__(self, expr, filter=None, skip_na=True):
@@ -132,7 +133,7 @@ class GroupSum(FilteredExpression):
         return typemap[dtype(self.args[0], context)]
 
 
-#class GroupAverage(NumpyAggregate):
+#class Average(NumpyAggregate):
 #    func_name = 'grpavg'
 #    np_func = (np.mean,)
 ##    nan_func = (nanmean,)
@@ -143,7 +144,7 @@ class GroupSum(FilteredExpression):
 
 
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
-class GroupAverage(FilteredExpression):
+class Average(FilteredExpression):
     func_name = 'grpavg'
 
     def __init__(self, expr, filter=None, skip_na=True):
@@ -193,7 +194,7 @@ class GroupAverage(FilteredExpression):
         return float
 
 
-class GroupStd(NumpyAggregate):
+class Std(NumpyAggregate):
     func_name = 'grpstd'
     np_func = (np.std,)
     arg_names = ('a', 'axis', 'dtype', 'out', 'ddof')
@@ -202,7 +203,7 @@ class GroupStd(NumpyAggregate):
         return float
 
 
-class GroupMedian(NumpyAggregate):
+class Median(NumpyAggregate):
     func_name = 'grpmedian'
     np_func = (np.median,)
     arg_names = ('a', 'axis', 'out', 'overwrite_input')
@@ -211,7 +212,7 @@ class GroupMedian(NumpyAggregate):
         return float
 
 
-class GroupPercentile(NumpyAggregate):
+class Percentile(NumpyAggregate):
     func_name = 'grppercentile'
     np_func = (np.percentile,)
     arg_names = ('a', 'q', 'axis', 'out', 'overwrite_input')
@@ -220,7 +221,7 @@ class GroupPercentile(NumpyAggregate):
         return float
 
 
-class GroupGini(FilteredExpression):
+class Gini(FilteredExpression):
     func_name = 'grpgini'
 
     def __init__(self, expr, filter=None, skip_na=True):
@@ -268,13 +269,17 @@ class GroupGini(FilteredExpression):
 functions = {
     'all': All,
     'any': Any,
-    'grpcount': GroupCount,
-    'grpmin': GroupMin,
-    'grpmax': GroupMax,
-    'grpsum': GroupSum,
-    'grpavg': GroupAverage,
-    'grpstd': GroupStd,
-    'grpmedian': GroupMedian,
-    'grppercentile': GroupPercentile,
-    'grpgini': GroupGini,
+    'count': Count,
+    'min': Min,
+    'max': Max,
+    'sum': Sum,
+    'avg': Average,
+    'std': Std,
+    'median': Median,
+    'percentile': Percentile,
+    'gini': Gini,
 }
+
+for k, v in functions.items():
+    functions['grp' + k] = deprecated(v, "%s is deprecated, please use %s "
+                                         "instead" % ('grp' + k, k))

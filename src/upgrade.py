@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import re
 
-__version__ = '0.1'
+__version__ = '0.2'
 
 
 def convert(inpath, outpath=None):
@@ -11,8 +11,13 @@ def convert(inpath, outpath=None):
     with open(inpath, "rb") as f:
         content = f.read()
     print("model read from: '%s'" % inpath)
+    # XXXlink(linkname, ...) -> linkname.XXX(...)
     content = re.sub("([a-zA-Z]+)link\s*\(\s*([a-zA-Z_][a-zA-Z_0-9]*)\s*,?\s*",
                      r"\2.\1(",
+                     content)
+    # grpXXX(...) -> XXX(...)
+    content = re.sub("grp([a-zA-Z]+)\s*\(",
+                     r"\1(",
                      content)
     with open(outpath, "wb") as f:
         f.write(content)

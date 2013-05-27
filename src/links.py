@@ -2,7 +2,6 @@ from __future__ import print_function
 
 from itertools import izip, groupby
 from operator import itemgetter
-import warnings
 
 import numpy as np
 import numexpr as ne
@@ -11,7 +10,7 @@ from expr import Variable, dtype, expr_eval, missing_values, get_missing_value
 from exprbases import EvaluableExpression
 from context import EntityContext, context_length
 from registry import entity_registry
-from utils import UserDeprecationWarning
+from utils import deprecated
 
 
 class Link(object):
@@ -357,25 +356,16 @@ class MaxLink(MinLink):
     aggregate_func = max
 
 
-def deprecated(class_):
-    func_name = class_.__name__.lower()
-    method_name = func_name[:-4]
-
-    def func(*args, **kwargs):
-        #TODO: when we will be able to link expressions to line numbers in the
-        # model, we should use warnings.warn_explicit instead
-        msg = "%s(link, ...) is deprecated, please use " \
-              "link.%s(...) instead" % (func_name, method_name)
-        warnings.warn(msg, UserDeprecationWarning)
-        return class_(*args, **kwargs)
-    func.__name__ = func_name
-    return func
-
-# all the these functions are deprecated
-functions = {
-    'countlink': deprecated(CountLink),
-    'sumlink': deprecated(SumLink),
-    'avglink': deprecated(AvgLink),
-    'minlink': deprecated(MinLink),
-    'maxlink': deprecated(MaxLink),
+# all these functions are deprecated
+deprecated_functions = {
+    'countlink': CountLink,
+    'sumlink': SumLink,
+    'avglink': AvgLink,
+    'minlink': MinLink,
+    'maxlink': MaxLink
 }
+
+functions = {}
+for k, v in deprecated_functions.items():
+    functions[k] = deprecated(v, "%s(link, ...) is deprecated, please use "
+                                 "link.%s(...) instead" % (k, k[:-4]))

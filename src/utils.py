@@ -11,6 +11,7 @@ import itertools
 from itertools import izip, product
 from textwrap import wrap
 from collections import defaultdict, deque
+import warnings
 
 import numpy as np
 #import psutil
@@ -20,6 +21,16 @@ import config
 
 class UserDeprecationWarning(UserWarning):
     pass
+
+
+def deprecated(f, msg):
+    def func(*args, **kwargs):
+        #TODO: when we will be able to link expressions to line numbers in the
+        # model, we should use warnings.warn_explicit instead
+        warnings.warn(msg, UserDeprecationWarning)
+        return f(*args, **kwargs)
+    func.__name__ = f.__name__
+    return func
 
 
 class AutoflushFile(object):

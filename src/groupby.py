@@ -6,7 +6,7 @@ from expr import expr_eval, collect_variables, traverse_expr
 from exprbases import TableExpression
 from context import context_subset
 from utils import prod, LabeledArray
-from aggregates import GroupCount
+from aggregates import Count
 from partition import partition_nd
 
 
@@ -29,7 +29,7 @@ class GroupBy(TableExpression):
         # On python 3, we could clean up this code (keyword only arguments).
         expr = kwargs.pop('expr', None)
         if expr is None:
-            expr = GroupCount()
+            expr = Count()
         self.expr = expr
 
 #        by = kwargs.pop('by', None)
@@ -125,7 +125,7 @@ class GroupBy(TableExpression):
         if self.percent:
             # convert to np.float64 to get +-inf if total_value is int(0)
             # instead of Python's built-in behaviour of raising an exception.
-            # This can happen at least when using the default expr (grpcount())
+            # This can happen at least when using the default expr (count())
             # and the filter yields empty groups
             total_value = np.float64(col_totals[-1])
             data = [100.0 * value / total_value for value in data]
