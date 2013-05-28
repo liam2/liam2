@@ -91,14 +91,14 @@ a new function:
        nothing (usually random functions).
      * NumpyChangeArray: subclass for functions which take an array as input
        and give another array as output (eg clip, round).
-     * NumpyAggregate: subclass for aggregate functions. eg. grpcount, grpmin,
-       grpmax, grpstd, grpmedian.
+     * NumpyAggregate: subclass for aggregate functions. eg. count, min,
+       max, std, median.
 
   b) FunctionExpression: subclass for functions (which take one expression as
      argument). eg. trunc, lag, duration, ...
 
      * FilteredExpression: subclass for functions which also take a filter
-       argument. eg. align, grpsum, grpavg, grpgini.
+       argument. eg. align, sum, avg, gini.
 
 Liam2 current expressions are implemented in the following files:
 

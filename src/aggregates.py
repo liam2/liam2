@@ -6,6 +6,7 @@ from expr import (Variable, dtype, expr_eval,
                   collect_variables, traverse_expr, get_tmp_varname,
                   ispresent)
 from exprbases import EvaluableExpression, NumpyAggregate, FilteredExpression
+import exprmisc
 from context import context_length
 from utils import deprecated
 #from utils import nansum
@@ -62,7 +63,7 @@ class Count(EvaluableExpression):
 
 
 class Min(NumpyAggregate):
-    func_name = 'grpmin'
+    func_name = 'min'
     np_func = (np.amin,)
     nan_func = (np.nanmin,)
     arg_names = ('a', 'axis', 'out')
@@ -72,7 +73,7 @@ class Min(NumpyAggregate):
 
 
 class Max(NumpyAggregate):
-    func_name = 'grpmax'
+    func_name = 'max'
     np_func = (np.amax,)
     nan_func = (np.nanmax,)
     arg_names = ('a', 'axis', 'out')
@@ -94,7 +95,7 @@ def na_sum(a, overwrite=False):
 
 
 #class Sum(NumpyAggregate):
-#    func_name = 'grpsum'
+#    func_name = 'sum'
 #    np_func = (np.sum,)
 #    nan_func = (nansum,)
 #    arg_names = ('a', 'axis')
@@ -107,7 +108,7 @@ def na_sum(a, overwrite=False):
 
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Sum(FilteredExpression):
-    func_name = 'grpsum'
+    func_name = 'sum'
 
     def __init__(self, expr, filter=None, skip_na=True):
         FilteredExpression.__init__(self, expr, filter)
@@ -134,7 +135,7 @@ class Sum(FilteredExpression):
 
 
 #class Average(NumpyAggregate):
-#    func_name = 'grpavg'
+#    func_name = 'avg'
 #    np_func = (np.mean,)
 ##    nan_func = (nanmean,)
 #    arg_names = ('a', 'axis')
@@ -145,7 +146,7 @@ class Sum(FilteredExpression):
 
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Average(FilteredExpression):
-    func_name = 'grpavg'
+    func_name = 'avg'
 
     def __init__(self, expr, filter=None, skip_na=True):
         FilteredExpression.__init__(self, expr, filter)
@@ -155,7 +156,7 @@ class Average(FilteredExpression):
         expr = self.expr
 
         #FIXME: either take "contextual filter" into account here (by using
-        # self._getfilter), or don't do it in grpsum & grpgini
+        # self._getfilter), or don't do it in sum & gini
         if self.filter is not None:
             filter_values = expr_eval(self.filter, context)
             tmp_varname = get_tmp_varname()
@@ -195,7 +196,7 @@ class Average(FilteredExpression):
 
 
 class Std(NumpyAggregate):
-    func_name = 'grpstd'
+    func_name = 'std'
     np_func = (np.std,)
     arg_names = ('a', 'axis', 'dtype', 'out', 'ddof')
 
@@ -204,7 +205,7 @@ class Std(NumpyAggregate):
 
 
 class Median(NumpyAggregate):
-    func_name = 'grpmedian'
+    func_name = 'median'
     np_func = (np.median,)
     arg_names = ('a', 'axis', 'out', 'overwrite_input')
 
@@ -213,7 +214,7 @@ class Median(NumpyAggregate):
 
 
 class Percentile(NumpyAggregate):
-    func_name = 'grppercentile'
+    func_name = 'percentile'
     np_func = (np.percentile,)
     arg_names = ('a', 'q', 'axis', 'out', 'overwrite_input')
 
@@ -222,7 +223,7 @@ class Percentile(NumpyAggregate):
 
 
 class Gini(FilteredExpression):
-    func_name = 'grpgini'
+    func_name = 'gini'
 
     def __init__(self, expr, filter=None, skip_na=True):
         FilteredExpression.__init__(self, expr, filter)
@@ -258,7 +259,7 @@ class Gini(FilteredExpression):
         cumsum = np.cumsum(sorted_values, dtype=float)
         values_sum = cumsum[-1]
         if values_sum == 0:
-            print("grpgini(%s, filter=%s): expression is all zeros (or nan) " \
+            print("gini(%s, filter=%s): expression is all zeros (or nan) " \
                   "for filter" % (self.expr, filter_expr))
         return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
 
@@ -266,12 +267,19 @@ class Gini(FilteredExpression):
         return float
 
 
+def make_dispatcher(agg_func, elem_func):
+    def dispatcher(*args, **kwargs):
+        func = agg_func if len(args) == 1 else elem_func
+        return func(*args, **kwargs)
+    return dispatcher
+
+
 functions = {
     'all': All,
     'any': Any,
     'count': Count,
-    'min': Min,
-    'max': Max,
+    'min': make_dispatcher(Min, exprmisc.Min),
+    'max': make_dispatcher(Max, exprmisc.Max),
     'sum': Sum,
     'avg': Average,
     'std': Std,

@@ -4,7 +4,7 @@
 
 # This example builds upon the previous ones and introduces the following
 # additional features: macros, lifecycle functions (new and remove), logit_regr,
-# aggregate functions (grpsum and grpavg) and the default_entity option. We use
+# aggregate functions (sum and avg) and the default_entity option. We use
 # the features we have introduced so far to add very simple birth and death
 # procedures to our model.
 entities:
@@ -75,8 +75,8 @@ entities:
                 - dead: if(ISMALE,
                            logit_regr(0.0, align='al_p_dead_m.csv'),
                            logit_regr(0.0, align='al_p_dead_f.csv'))
-                - show('Avg age of dead men', grpavg(age, filter=dead and ISMALE))
-                - show('Avg age of dead women', grpavg(age, filter=dead and ISFEMALE))
+                - show('Avg age of dead men', avg(age, filter=dead and ISMALE))
+                - show('Avg age of dead women', avg(age, filter=dead and ISFEMALE))
                 - remove(dead)
 
             dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,

@@ -84,7 +84,7 @@ as long as the combined model is valid. See the examples below.
               # adding a new process
               death:
                   - dead: logit_regr(0.0, align='al_p_dead.csv')
-                  - show('Avg age of death', grpavg(age, filter=dead))
+                  - show('Avg age of death', avg(age, filter=dead))
                   - remove(dead)
   
   simulation:

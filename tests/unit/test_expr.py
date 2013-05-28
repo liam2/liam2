@@ -30,9 +30,9 @@ class Test(StringTestCase):
     def test_where(self):
         self.assertEvalEqual("where(dead, 1, 2)", [2, 1, 2, 1])
 
-    def test_grpmin(self):        
-        self.assertEvalEqual("grpmin(age)", 10)
-        self.assertEvalEqual("grpmin(where(dead, age + 15, age))", 20)
+    def test_min(self):        
+        self.assertEvalEqual("min(age)", 10)
+        self.assertEvalEqual("min(where(dead, age + 15, age))", 20)
 
 
 class FakeEntity(object):

@@ -317,42 +317,42 @@ mathematical functions
 - min(x, a), max(x, a): the minimum or maximum of x and a.
 
 
-.. index:: grpcount, grpsum, grpavg, grpstd, grpmax, grpmedian, grppercentile,
-           grpgini, aggregate functions
+.. index:: count, sum, avg, std, min, max, median, percentile,
+           gini, aggregate functions
 
 aggregate functions
 -------------------
 
-- grpcount([condition]): count the objects in the entity. If filter is given,
+- count([condition]): count the objects in the entity. If filter is given,
                          only count the ones satisfying the filter.
-- grpsum(expr[, filter=condition][, skip_na=True]): sum the expression
-- grpavg(expr[, filter=condition][, skip_na=True]): average
-- grpstd(expr[, filter=condition][, skip_na=True]): standard deviation
-- grpmin(expr[, filter=condition][, skip_na=True]): min
-- grpmax(expr[, filter=condition][, skip_na=True]): max
-- grpmedian(expr[, filter=condition][, skip_na=True]): median
-- grppercentile(expr, percent[, filter=condition][, skip_na=True]): percentile
-- grpgini(expr[, filter=condition][, skip_na=True]): gini
+- sum(expr[, filter=condition][, skip_na=True]): sum the expression
+- avg(expr[, filter=condition][, skip_na=True]): average
+- std(expr[, filter=condition][, skip_na=True]): standard deviation
+- min(expr[, filter=condition][, skip_na=True]): min
+- max(expr[, filter=condition][, skip_na=True]): max
+- median(expr[, filter=condition][, skip_na=True]): median
+- percentile(expr, percent[, filter=condition][, skip_na=True]): percentile
+- gini(expr[, filter=condition][, skip_na=True]): gini
 
-**grpsum** sums any expression over all the individuals of the current entity.
-For example *grpsum(earnings)* will produce the sum of the earnings of all
+**sum** sums any expression over all the individuals of the current entity.
+For example *sum(earnings)* will produce the sum of the earnings of all
 persons in the sample.
 
-**grpcount** counts the number of individuals in the current entity, optionally
-satisfying a (boolean) condition. For example, *grpcount(gender)* will produce
-the total number of men in the sample. Contrary to **grpsum**, the grpcount
-does not require an argument: *grpcount()* will return the total number of
+**count** counts the number of individuals in the current entity, optionally
+satisfying a (boolean) condition. For example, *count(gender)* will produce
+the total number of men in the sample. Contrary to **sum**, the count
+does not require an argument: *count()* will return the total number of
 individuals in the sample.
 
-Note that, grpsum and grpcount are exactly equivalent if their only argument
-is a boolean variable (eg. grpcount(ISWIDOW) == grpsum(ISWIDOW)).
+Note that, sum and count are exactly equivalent if their only argument
+is a boolean variable (eg. count(ISWIDOW) == sum(ISWIDOW)).
 
 *example* ::
 
     macros:
         WIDOW: civilstate == 5
     processes:
-        cnt_widows: show(grpcount(WIDOW))
+        cnt_widows: show(count(WIDOW))
 
 .. index:: link methods, count, sum, avg, min, max
 .. _link_methods:
@@ -405,8 +405,8 @@ temporal functions
 
     lag(age)            # the age each person had last year, -1 if newborn
     lag(age, missing=0) # the age each person had last year, 0 if newborn
-    grpavg(lag(age))    # average age that the current population had last year
-    lag(grpavg(age))    # average age of the population of last year
+    avg(lag(age))    # average age that the current population had last year
+    lag(avg(age))    # average age of the population of last year
     lag(age, 2)         # the age each person had two years ago (-1 for
                         # newborns)
     lag(lag(age))       # this is equivalent (but slightly less efficient)
@@ -455,7 +455,7 @@ random functions
 *example* ::
 
     # a random variable with the stdev derived from errsal
-    normal(loc=0.0, scale=grpstd(errsal))
+    normal(loc=0.0, scale=std(errsal))
     randint(0, 10)
 
 .. index:: choice
@@ -874,7 +874,7 @@ Here is a description of the arguments specific to align_abs:
     test_align_link:
         # this is a procedure defined at the level of households
         - num_persons: persons.count()
-        - total_population: grpsum(num_persons)
+        - total_population: sum(num_persons)
 
         # MIG_PERCENT is a simple float periodic global
         - num_migrants: total_population * MIG_PERCENT
@@ -984,7 +984,7 @@ simply ignored.
 
     marriage:
         - to_couple: not in_couple and age >= 18 and age <= 90
-        - avg_age_males_to_couple: grpavg(age, filter=to_couple and MALE)
+        - avg_age_males_to_couple: avg(age, filter=to_couple and MALE)
         - difficult_match: if(to_couple and FEMALE,
                               abs(age - avg_age_males_to_couple),
                               nan)
@@ -1193,8 +1193,8 @@ do not need to use it. *show* has the following signature: ::
 
 *example 1* ::
 
-    show(grpcount(age >= 18))
-    show(grpcount(not dead), grpavg(age, filter=not dead))
+    show(count(age >= 18))
+    show(count(not dead), avg(age, filter=not dead))
 
 The first process will print out the number of persons of age 18 and older in
 the dataset. The second one displays the number of living people and their
@@ -1202,9 +1202,9 @@ average age.
 
 *example 2* ::
 
-    show("Count:", grpcount(),
-         "Average age:", grpavg(age),
-         "Age std dev:", grpstd(age))
+    show("Count:", count(),
+         "Average age:", avg(age),
+         "Age std dev:", std(age))
 
 gives ::
 
@@ -1215,9 +1215,9 @@ result on the next line.
 
 *example 3* ::
 
-    show("Count:", grpcount(),
-         "\nAverage age:", grpavg(age),
-         "\nAge std dev:", grpstd(age))
+    show("Count:", count(),
+         "\nAverage age:", avg(age),
+         "\nAge std dev:", std(age))
 
 gives ::
 
@@ -1237,13 +1237,13 @@ same than *show*.
 
 *example* ::
 
-    qshow(grpcount(), grpavg(age), grpstd(age))
+    qshow(count(), avg(age), std(age))
 
 will give: ::
 
-    grpcount(): 19944
-    grpavg(age): 42.7496991576
-    grpstd(a=age): 21.9815913417
+    count(): 19944
+    avg(age): 42.7496991576
+    std(a=age): 21.9815913417
 
 
 .. index:: csv
@@ -1262,7 +1262,7 @@ following pattern: "{entity}_{period}.csv".
 
 *example* ::
 
-    csv(grpavg(income))
+    csv(avg(income))
 
 will create one file for each simulated period. Assuming, start_period is
 2002 and periods is 2, it will create two files: "person_2002.csv" and
@@ -1277,7 +1277,7 @@ Arguments:
 
     *example* ::
 
-        csv(grpavg(income), suffix='income')
+        csv(avg(income), suffix='income')
 
     would create "person_2002_income.csv" and "person_2003_income.csv".
 
@@ -1287,7 +1287,7 @@ Arguments:
 
     *example* ::
 
-        csv(grpavg(income), fname='income{period}.csv')
+        csv(avg(income), fname='income{period}.csv')
     
     would create "income2002.csv" and "income2003.csv".
 
@@ -1298,7 +1298,7 @@ Arguments:
 
     *example* ::
 
-        csv(period, grpavg(income), fname='avg_income.csv', mode='a')
+        csv(period, avg(income), fname='avg_income.csv', mode='a')
 
     Note that unless you erase/overwrite the file one way or another between
     two runs of a simulation, you will append the data of the current
@@ -1462,7 +1462,7 @@ gives ::
 
 *example* ::
 
-    groupby(workstate, gender, expr=grpavg(age))
+    groupby(workstate, gender, expr=avg(age))
 
 gives the average age by workstate and gender ::
 
@@ -1478,13 +1478,13 @@ gives the average age by workstate and gender ::
 As of version 0.6, groupby can also be used in larger expressions. This can be
 used for example to compute alignment targets on the fly: ::
 
-    # see note below about expr=grpcount(condition) vs filter=condition
-    - men_by_age: groupby(age, expr=grpcount(gender))
+    # see note below about expr=count(condition) vs filter=condition
+    - men_by_age: groupby(age, expr=count(gender))
     - men_prop_by_age: men_by_age / groupby(age)
     - aligned: align(proportions=men_prop_by_age)
 
 Note that there is a subtle difference between using "filter=condition" and
-"expr=grpcount(condition))". The former will not take the filtered individuals
+"expr=count(condition))". The former will not take the filtered individuals
 into account at all, while the later will take them into account but not count
 them. This can make a difference on the output if there are some empty
 categories, and this can be important when using the result of a groupby
@@ -1499,7 +1499,7 @@ the same size. Compare : ::
          
 with ::
 
-  groupby(civilstate, expr=grpcount(age > 80))
+  groupby(civilstate, expr=count(age > 80))
 
   civilstate |   |     |    |      
            1 | 2 |   3 |  4 | total
@@ -1553,10 +1553,10 @@ file and have the result directly. Show is implicit for all operations.
 
 *examples* ::
 
-    >>> grpavg(age)
+    >>> avg(age)
     53.7131819615
 
-    >>> groupby(trunc(age / 20), gender, expr=grpcount(inwork))
+    >>> groupby(trunc(age / 20), gender, expr=count(inwork))
 
     trunc(age / 20) | gender |      |      
                     |  False | True | total

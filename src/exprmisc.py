@@ -651,9 +651,10 @@ functions = {
     'normal': Normal,
     'choice': Choice,
     'randint': RandInt,
+    # aggregates/per element combined functions
+#    'min': make_dispatcher(aggregates.Min, Min), should not ...!!!!!
+#    'max': make_dispatcher(aggregates.Max, Max),
     # per element
-    'min': Min,
-    'max': Max,
     'abs': Abs,
     'clip': Clip,
     'zeroclip': ZeroClip,

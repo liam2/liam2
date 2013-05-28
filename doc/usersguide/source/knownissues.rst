@@ -37,9 +37,9 @@ What is the inconsistency anyway?
 
 This contextual filter propagation is implemented for new(), align(),
 logit_regr(), matching() and **some** (but not all) aggregate functions.
-Specifically, it is implemented for grpsum and grpgini, but not for other
-aggregate functions (grpcount, grpavg, grpmin, grpmax, grpstd, grpmedian and
-grppercentile). This situation needs to be changed, but I am unsure in which
+Specifically, it is implemented for sum and gini, but not for other
+aggregate functions (count, avg, min, max, std, median and
+percentile). This situation needs to be changed, but I am unsure in which
 way: implementing it for all aggregate functions or not contextutal filter
 for any aggregate function (or any function at all)?
 
@@ -52,13 +52,13 @@ even if that is only one of two values?
 
 In an expression like the following: :: 
 
-  - age_sum: if(gender, grpsum(age), grpsum(age))
+  - age_sum: if(gender, sum(age), sum(age))
   
 do users realize they are assigning a different value for both branches? When I
 see an expression like this, I think: "it returns the same value whether the
 condition is True or not, let's simplify it by removing the condition": ::   
   
-  - age_sum: grpsum(age)
+  - age_sum: sum(age)
   
 which will not have the same result.
 
@@ -66,12 +66,12 @@ Another (smaller) point, is that implementing this contextual filter feature
 means one cannot "escape" the filter of an if function, so for example: ::
 
   - difficult_match: if(to_marry and not gender,
-                        abs(age - grpavg(age, filter=to_marry and gender)),
+                        abs(age - avg(age, filter=to_marry and gender)),
                         nan)
 
 would not work, and would need to be rewritten as: :: 
 
-  - avg_age_men: grpavg(age, filter=to_marry and gender)
+  - avg_age_men: avg(age, filter=to_marry and gender)
   - difficult_match: if(to_marry and not gender,
                         abs(age - avg_age_men),
                         nan)

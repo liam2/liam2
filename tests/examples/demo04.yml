@@ -89,9 +89,9 @@ entities:
                 # longer valid for the concerned individuals after this point.
                 - partner_id: if(partner.dead, UNSET, partner_id)
                 - show('Avg age of dead men',
-                       grpavg(age, filter=dead and ISMALE))
+                       avg(age, filter=dead and ISMALE))
                 - show('Avg age of dead women',
-                       grpavg(age, filter=dead and ISFEMALE))
+                       avg(age, filter=dead and ISFEMALE))
                 - show('Widows', grpcount(ISWIDOW))
                 - remove(dead)
 
@@ -115,7 +115,7 @@ entities:
                                    logit_regr(0.0, align='al_p_mmkt_f.csv')),
                                 False)
                 - difficult_match: if(to_couple and ISFEMALE,
-                                      abs(age - grpavg(age, filter=to_couple and ISMALE)),
+                                      abs(age - avg(age, filter=to_couple and ISMALE)),
                                       nan)
                 - partner_id: if(to_couple,
                                  matching(set1filter=ISFEMALE, set2filter=ISMALE,
