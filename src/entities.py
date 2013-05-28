@@ -15,7 +15,7 @@ from exprparser import parse
 from process import Assignment, Compute, Process, ProcessGroup
 from registry import entity_registry
 from utils import (safe_put, count_occurences, field_str_to_type, size2str,
-                   UserDeprecationWarning)
+                   merge_dicts, UserDeprecationWarning)
 
 
 #def compress_column(a, level):
@@ -197,15 +197,27 @@ class Entity(object):
                                 "unknown entity (%s)" % (name, self.name,
                                                          target_name))
 
-    @property
-    def conditional_context(self):
+    def get_conditional_context(self, entities_visited=None):
+        if entities_visited is None:
+            entities_visited = set()
+        entities_visited.add(self)
         cond_context = {}
         for name, link in self.links.iteritems():
             # we need both one2many and many2one links (for .get)
             target_entity = link._target_entity()
-            if target_entity is not self:
+            if target_entity not in entities_visited:
                 cond_context[name] = target_entity.variables
+                target_cond_context = \
+                    target_entity.get_conditional_context(entities_visited)
+                cond_context.update(target_cond_context)
+
+                # the further down the link chain, the less priority we get
+                # so that if we get a collision, it is less likely to be
+                # a problem. Of course this whole conditional context is
+                # a mess and should be rewritten. See comments in exprparser.
+                cond_context = merge_dicts(target_cond_context, cond_context)
         return cond_context
+    conditional_context = property(get_conditional_context)
 
     def all_variables(self, globals_def):
         from links import PrefixingLink
