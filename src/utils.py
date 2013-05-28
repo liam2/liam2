@@ -641,6 +641,14 @@ def split_columns_as_iterators(iterable):
     return tuple(gen(d) for d in deques)
 
 
+def countlines(filepath):
+    with open(filepath) as f:
+        return sum(1 for _ in f)
+
+
+# dict tools
+# ----------
+
 def merge_dicts(*args, **kwargs):
     '''
     Returns a new dictionary which is the result of recursively merging all
@@ -736,14 +744,8 @@ def invert_dict(d):
     return dict((v, k) for k, v in d.iteritems())
 
 
-def countlines(filepath):
-    with open(filepath) as f:
-        return sum(1 for _ in f)
-
-
-#--------------------#
-# validate functions #
-#--------------------#
+# validate functions
+# ------------------
 
 def validate_keys(d, required=(), optional=(), context='',
                   extra_allowed=False):
