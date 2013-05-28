@@ -34,7 +34,7 @@ entities:
                                 UNEMPLOYED,
                                 workstate)
                 - show('new unemployed (ex-students)',
-                       grpcount(ISUNEMPLOYED and lag(ISSTUDENT)))
+                       count(ISUNEMPLOYED and lag(ISSTUDENT)))
                        
 simulation:
     # use our new process

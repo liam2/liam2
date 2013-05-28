@@ -26,8 +26,8 @@ entities:
                 - region_id: choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
 
             household_composition:
-                - nb_persons: countlink(persons)
-                - nb_children: countlink(persons, age < 18)
+                - nb_persons: persons.count()
+                - nb_children: persons.count(age < 18)
 
             clean_empty: remove(nb_persons == 0)
 
@@ -115,7 +115,7 @@ entities:
                 - partner_id: if(partner.dead, UNSET, partner_id)
                 - show('Avg age of dead men', avg(age, filter=dead and ISMALE))
                 - show('Avg age of dead women', avg(age, filter=dead and ISFEMALE))
-                - show('Widows', grpcount(ISWIDOW))
+                - show('Widows', count(ISWIDOW))
                 - remove(dead)
 
             birth:
@@ -272,9 +272,9 @@ entities:
                 - workstate: if(not work and lag(ISINWORK), -1, workstate)
 
                 - show(groupby(workstate, lag(workstate)))
-                - show('have job', grpcount(work),
-                       '(kept:', grpcount(work and lag(ISINWORK)),
-                       '/ new:', grpcount(work and not lag(ISINWORK)), ')')
+                - show('have job', count(work),
+                       '(kept:', count(work and lag(ISINWORK)),
+                       '/ new:', count(work and not lag(ISINWORK)), ')')
 #                - csv(dump(id, agegroup_work, education_level,
 #                           work_score, workstate, lag(workstate)))
 

@@ -23,11 +23,11 @@ entities:
                 - region_id: choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
 
             household_composition:
-                - nb_persons: countlink(persons)
-                - nb_children: countlink(persons, age < 18)
+                - nb_persons: persons.count()
+                - nb_children: persons.count(age < 18)
 
             clean_empty: 
-                - show('empty hh', grpcount(nb_persons == 0))
+                - show('empty hh', count(nb_persons == 0))
                 - remove(nb_persons == 0)
 
     person:
@@ -92,7 +92,7 @@ entities:
                        avg(age, filter=dead and ISMALE))
                 - show('Avg age of dead women',
                        avg(age, filter=dead and ISFEMALE))
-                - show('Widows', grpcount(ISWIDOW))
+                - show('Widows', count(ISWIDOW))
                 - remove(dead)
 
             birth:
