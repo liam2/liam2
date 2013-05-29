@@ -52,10 +52,24 @@ Miscellaneous improvements:
   In our model, this translates to a peak memory usage 20% smaller and a
   35% speed increase.
 
+* changed the syntax for all aggregate functions: grpxxx(...) should now be
+  xxx(...). For example, grpsum(age) should now be: sum(age). The old syntax is
+  still valid but it is deprecated (it will be removed in a later version).
+  A special note for grpmin() and grpmax() which becomes min() and max() 
+  respectively even though those functions already existed. The meaning is 
+  deduced from the number of "non-keyword" arguments:
+   
+  - min(expr1, expr2)        -> minimum between expr1 and expr2 (for each
+                                individual)
+  - min(expr)                -> (aggregate) minimum value of "expr" over all
+                                individuals
+  - min(expr1, filter=expr2) -> (aggregate) minimum value of "expr" over
+                                individuals statisfying the filter 
+
 * changed the syntax for all one2many link functions: xxxlink(link_name, ...)
-  should now be link_name.xxx(...). For example, countlink(persons) should be:
-  persons.count(). The old syntax is still valid but it is deprecated (it will
-  be removed in a subsequent version).
+  should now be link_name.xxx(...). For example, countlink(persons) should now
+  be: persons.count(). The old syntax is still valid but it is deprecated (it
+  will be removed in a later version).
 
 * the "period" argument of value_for_period can now be a *scalar* expression
   (it must have the same value for all individuals).
