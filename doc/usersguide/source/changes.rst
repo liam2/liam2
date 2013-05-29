@@ -84,6 +84,8 @@ Fixes:
   Periodic globals are unaffected (they always return "missing" when out of
   bounds)
 
+* fixed link expressions which span 3 (or more) *different* entities.
+
 * fixed using show() on a scalar created by summing a "global array".
 
 * fixed the progress bar of matching() when the number of individuals is
