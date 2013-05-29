@@ -11,14 +11,26 @@ def convert(inpath, outpath=None):
     with open(inpath, "rb") as f:
         content = f.read()
     print("model read from: '%s'" % inpath)
+
     # XXXlink(linkname, ...) -> linkname.XXX(...)
     content = re.sub("([a-zA-Z]+)link\s*\(\s*([a-zA-Z_][a-zA-Z_0-9]*)\s*,?\s*",
                      r"\2.\1(",
                      content)
+
+    # grpmin(expr1, expr2, ...) -> min(expr1, filter=expr2, ...)
+    # grpmax(expr1, expr2, ...) -> max(expr1, filter=expr2, ...)
+    def repl(obj):
+        # the 4th group is optional, so we change it from None to ''
+        groups = [s or '' for s in obj.groups()]
+        return '{}({}, filter={}{})'.format(*groups)
+    pattern = "grp(max|min)\s*\(([^),]+),\s*([^,)=]+)(,\s*[^)]+\s*)?\)"
+    content = re.sub(pattern, repl, content)
+
     # grpXXX(...) -> XXX(...)
     content = re.sub("grp([a-zA-Z]+)\s*\(",
                      r"\1(",
                      content)
+
     with open(outpath, "wb") as f:
         f.write(content)
     print("model written to: '%s'" % outpath)
