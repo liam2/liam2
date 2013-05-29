@@ -25,6 +25,14 @@ entities:
 #        fields:
 #            - test_field: int
 
+    region:
+        links: 
+            households: {type: one2many, target: household, field: region_id}
+
+        processes:
+            # we need a dummy process so that the entity is loaded & indexed
+            dummy: True
+
     household:
         fields:
             - num_persons:  {type: int, initialdata: False}
@@ -32,15 +40,21 @@ entities:
             - start_period: {type: int, initialdata: False}
             - clone_id:     {type: int, initialdata: False}
             - weight:       {type: int, initialdata: False}
+            - region_id:    {type: int, initialdata: False}
+
             # period and id are usually implicit, but we include them here
             # anyway for the sake of testing
             - period: int
             - id: int
 
         links:
+            region: {type: many2one, target: region, field: region_id}
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
+            init_region:
+                - region_id: choice([0, 1, 2], [0.55, 0.35, 0.10])
+
             setweight: 
                 - weight: randint(2, 32)
                
@@ -1106,6 +1120,10 @@ entities:
                        'edu:', eduach,
                        'num persons:', household.get(persons.count()),
                        'num high edu:', household.get(persons.count(eduach == 4)))
+                - show('region',
+                       household.region_id,
+                       'num hh in region',
+                       household.region.get(households.count()))
 
 #            test_extra_comma:
 #                - show('test extra colon'),
@@ -1717,6 +1735,7 @@ entities:
 
 simulation:
     init:
+        - household: [init_region]
         - person: [
 #            generate,
             test_init,
@@ -1742,6 +1761,7 @@ simulation:
 #        - household: [check]
 
     processes:
+        - region: [dummy]
         - person: [
 #                   bp,
                    cleanup,

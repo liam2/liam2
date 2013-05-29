@@ -25,6 +25,9 @@ globals:
             - INTFIELD: int
 
 entities:
+    region:
+        path: param\region.csv
+
     household:
         path: param\household.csv
 
