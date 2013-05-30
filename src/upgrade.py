@@ -1,16 +1,25 @@
 from __future__ import print_function
 
+import os.path
 import re
 
 __version__ = '0.2'
 
 
-def convert(inpath, outpath=None):
+def upgrade(inpath, outpath=None):
     if outpath is None:
-        outpath = inpath + ".upgraded"
+        outpath = inpath
+
+    print("original model read from: '%s'" % inpath)
     with open(inpath, "rb") as f:
         content = f.read()
-    print("model read from: '%s'" % inpath)
+
+    if outpath == inpath:
+        filename, _ = os.path.splitext(inpath)
+        backup_path = filename + ".bak"
+        print("original model copied to: '%s'" % backup_path)
+        with open(backup_path, "wb") as f:
+            f.write(content)
 
     # XXXlink(linkname, ...) -> linkname.XXX(...)
     content = re.sub("([a-zA-Z]+)link\s*\(\s*([a-zA-Z_][a-zA-Z_0-9]*)\s*,?\s*",
@@ -33,7 +42,7 @@ def convert(inpath, outpath=None):
 
     with open(outpath, "wb") as f:
         f.write(content)
-    print("model written to: '%s'" % outpath)
+    print("upgraded model written to: '%s'" % outpath)
 
 if __name__ == '__main__':
     import sys
@@ -45,4 +54,4 @@ if __name__ == '__main__':
         print("Usage: %s inputfile [outputfile]" % args[0])
         sys.exit()
 
-    convert(args[1], args[2] if len(args) > 2 else None)
+    upgrade(args[1], args[2] if len(args) > 2 else None)
