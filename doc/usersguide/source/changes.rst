@@ -3,10 +3,10 @@
 Change log
 ##########
 
-Version 0.7pre1
-===============
+Version 0.7
+===========
 
-Released on 2013-03-28.
+Released on 2013-06-xx.
 
 New features:
 -------------
@@ -29,7 +29,8 @@ New features:
   to precisely compare two versions/variants of a model and see exactly
   where they start to differ.
 
-* added new assert functions: 
+* added new assert functions:
+
   - assertIsClose to check that two results are "almost" equal tolerating
     small value differences (for example due to rounding differences).
   - assertEquiv to check that two results are equal tolerating differences in
@@ -59,17 +60,30 @@ Miscellaneous improvements:
   respectively even though those functions already existed. The meaning is 
   deduced from the number of "non-keyword" arguments:
    
-  - min(expr1, expr2)        -> minimum between expr1 and expr2 (for each
-                                individual)
-  - min(expr)                -> (aggregate) minimum value of "expr" over all
-                                individuals
-  - min(expr1, filter=expr2) -> (aggregate) minimum value of "expr" over
-                                individuals statisfying the filter 
+  min(expr1, expr2)
+    minimum between expr1 and expr2 (for each individual)
+
+  min(expr)
+    (aggregate) minimum value of "expr" over all individuals
+
+  min(expr1, filter=expr2)
+    (aggregate) minimum value of "expr" over individuals satisfying the filter 
+  
+  A tool to automatically upgrade models to the new syntax is provided. In
+  notepad++, you should use the **Liam2: upgrade model** command in the
+  **Macro** menu. 
+  
+  You can also run it via the command line: ::
+  
+    main upgrade model.yml [output.yml]
+    
+  see main upgrade --help for details.
 
 * changed the syntax for all one2many link functions: xxxlink(link_name, ...)
   should now be link_name.xxx(...). For example, countlink(persons) should now
   be: persons.count(). The old syntax is still valid but it is deprecated (it
-  will be removed in a later version).
+  will be removed in a later version). As for aggregate functions, one can
+  upgrade its models automatically with the "upgrade" command.
 
 * the "period" argument of value_for_period can now be a *scalar* expression
   (it must have the same value for all individuals).
@@ -96,7 +110,7 @@ Fixes:
     if(age < 50, by_age[age + 50], 0.5)
 
   Periodic globals are unaffected (they always return "missing" when out of
-  bounds)
+  bounds).
 
 * fixed link expressions which span 3 (or more) *different* entities.
 

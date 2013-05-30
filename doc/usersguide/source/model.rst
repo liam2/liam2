@@ -422,3 +422,13 @@ the model (or a variant of it). This can be used to precisely compare two
 versions/variants of a model and see exactly where they start to differ.
 This option can take either a filename or a boolean (in which case
 "autodump.h5" is used as the filename). Defaults to *False*.
+
+Running a model/simulation
+##########################
+
+- If you are using the bundled editor, simply open the simulation file and
+  press F6.
+
+- If you are using the command line, use: ::
+
+    [LIAM2PATH]\main run <path_to_simulation_file>

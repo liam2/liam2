@@ -296,4 +296,4 @@ import your data.
 
 - If you are using the command line, use: ::
 
-    liam2 import <path_to_description_file>
+    [LIAM2PATH]\main import <path_to_description_file>
