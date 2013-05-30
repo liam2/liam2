@@ -15,6 +15,7 @@ from console import Console
 from utils import AutoflushFile
 import registry
 from data import populate_registry, H5Data
+from upgrade import upgrade
 
 __version__ = "0.7.0pre5"
 
@@ -194,22 +195,30 @@ def main():
     parser_import.add_argument('file', help='import file')
 
     # create the parser for the "explore" command
-    parser_import = subparsers.add_parser('explore', help='explore data of a '
+    parser_explore = subparsers.add_parser('explore', help='explore data of a '
                                           'past simulation')
-    parser_import.add_argument('file', help='explore file')
+    parser_explore.add_argument('file', help='explore file')
 
+    # create the parser for the "upgrade" command
+    parser_upgrade = subparsers.add_parser('upgrade',
+                                          help='upgrade a simulation file to '
+                                               'the latest syntax')
+    parser_upgrade.add_argument('input', help='input simulation file')
+    out_help = "output simulation file. If missing, the original file will " \
+               "be backed up (to filename.bak) and the upgrade will be " \
+               "done in-place."
+    parser_upgrade.add_argument('output', help=out_help, nargs='?')
     parsed_args = parser.parse_args()
-#   action_funcs = {'run': simulate, 'import': csv2h5, 'explore': explore}
-#   action_funcs[parsed_args.action](parsed_args)
 
     action = parsed_args.action
-    fpath = parsed_args.file
     if action == 'run':
         simulate(parsed_args)
     elif action == "import":
-        csv2h5(fpath)
+        csv2h5(parsed_args.file)
     elif action == "explore":
-        explore(fpath)
+        explore(parsed_args.file)
+    elif action == "upgrade":
+        upgrade(parsed_args.input, parsed_args.output)
 
 if __name__ == '__main__':
     import sys
