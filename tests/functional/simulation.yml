@@ -910,11 +910,6 @@ entities:
                 - assertEqual(count(by_gender and not gender), 30)
                 - assertEqual(count(by_gender and gender), 20)
 
-            check_align_link:
-                - show(groupby(age, gender, filter=household.aligned))
-#                - clone_id: clone(household.aligned,
-#                                  hh_id=household.clone_id)
-
             test_logit_regr:
                 # equivalent to uniform() > 0.5
                 - simple: logit_regr(0.0)
@@ -1124,6 +1119,7 @@ entities:
                        household.region_id,
                        'num hh in region',
                        household.region.get(households.count()))
+                - show(avg(children.count()))
 
 #            test_extra_comma:
 #                - show('test extra colon'),
@@ -1310,17 +1306,35 @@ entities:
 
             cleanup: remove(lag(dead))
 
-            test_o2m_aggregate:
-                - show(avg(children.count()))
+            test_count:
+                # simple
+                - population: count()
+                # not very useful but I could not think of something better
+                - assertTrue(population >= 0)
+                
+                # with a filter
+                - qshow(count(MALE))
+                - qshow(count(FEMALE))
+                - assertEqual(count(MALE) + count(FEMALE), population)
+                - assertEqual(count(MALE) + count(FEMALE), population)
+
+                # Old syntax
+                # ----------
+
+                - assertEqual(grpcount(), population)
+                - assertEqual(grpcount(MALE) + grpcount(FEMALE), population)
 
             test_sum:
                 # simple
                 - population_age: sum(age)
-                
                 # explicit filter
                 - males_age: sum(age, filter=MALE)
                 - assertEqual(males_age, sum(age * MALE))
                 - females_age: sum(age, filter=FEMALE)
+                - qshow(FEMALE)
+                - qshow(sum(FEMALE))
+                - qshow(age * FEMALE)
+                - qshow(sum(age * FEMALE))
                 - assertEqual(females_age, sum(age * FEMALE))
                 - assertEqual(males_age + females_age, population_age)
                 
@@ -1478,6 +1492,48 @@ entities:
                 - assertEqual(grpmin([2.0, 1.0, 3.0]), 1.0)
                 - assertEqual(grpmin(age, filter=age >= 10), 10)
                 - assertEqual(grpmin([3, -1, 2], skip_na=False), -1)
+
+            test_max:
+                # simple scalars
+                - assertEqual(max([2, 1, 3]), 3)
+                - assertEqual(max([2.0, 1.0, 3.0]), 3.0)
+
+                # simple column
+                - assertTrue(all(age <= max(age)))
+
+                # explicit filter
+                - assertEqual(max(age, filter=age <= 20), 20)
+
+                # with na
+                - assertEqual(max([3, -1, 2]), 3)
+                - assertEqual(max([-3, -1, -2]), -2)
+                - assertEqual(max([3.0, nan, 2.0]), 3.0)
+
+                # with na not skipping
+                - assertEqual(max([3, -1, 2], skip_na=False), 3)
+                - assertEqual(max([-3, -1, -2], skip_na=False), -1)
+                - whnan: max([3.0, nan, 2.0], skip_na=False)
+                - assertTrue(whnan != whnan)
+
+                # with na and filter
+                # this is just a way to save the gender variable
+                - gender_backup: gender and gender
+                - assertEqual(max(if(age < 10, -1, age), filter=gender),
+                              max(age, filter=age >= 10 and gender))
+                - f_age: age * 1.0
+                - assertEqual(max(if(age < 10, nan, f_age), filter=gender),
+                              max(f_age, filter=age >= 10 and gender))
+                # check that gender was not modified (used to be the case)
+                - assertEqual(gender, gender_backup)
+
+                # Old syntax
+                # ----------
+
+                - assertEqual(grpmax([2, 1, 3]), 3)
+                - assertEqual(grpmax([2.0, 1.0, 3.0]), 3.0)
+                - assertEqual(grpmax(age, filter=age <= 20), 20)
+                - assertEqual(grpmax([-3, -1, -2]), -2)
+                - assertEqual(grpmax([-3, -1, -2], skip_na=False), -1)
 
             test_median:
                 # simple without filter
@@ -1859,6 +1915,7 @@ simulation:
 #                   bp,
                    cleanup,
 
+                   # basic
                    temp_global,
                    show_temp_global,
                    temp_global_test1,
@@ -1867,6 +1924,7 @@ simulation:
                    show_temp_global,
 
                    test_expr,
+
                    test_logit,
                    test_logistic,
 
@@ -1882,54 +1940,59 @@ simulation:
                    test_compound,
                    agegroup,
 
-                   test_align,
-                   test_align_abs,
-                   ]
-        - household: [test_align_link]
-        - person: [
-                   check_align_link,
-                   test_logit_regr,
-                   test_cont_regr,
-                   test_log_regr,
-
-                   [marriage, 4],
-
-#                   test_extra_comma,
-
-#                   test_uninitialized_var,
-
-                   test_new,
-                   test_lag,
-                   test_value_for_period,
-                   test_duration,
-
-                   test_o2m,
-                   test_mixed_links,
-                   test_clone,
-
                    test_predictor1, test_predictor2, test_predictor3,
 
-                   test_o2m_aggregate,
+#                   test_extra_comma,
+#                   test_uninitialized_var,
+
+                   # lifecycle
+                   test_new,
+                   test_clone,
+
+                   # aggregates 
+                   test_count,
                    test_sum,
                    test_avg,
                    test_std,
                    test_min,
+                   test_max,
                    test_median,
                    test_percentile,
                    test_gini,
 
-                   test_choice,
+                   # regressions
+                   test_logit_regr,
+                   test_cont_regr,
+                   test_log_regr,
 
-                   show_weight,
+                   # temporal
+                   test_lag,
+                   test_value_for_period,
+                   test_duration,
+
+                   # links
+                   test_o2m,
+                   test_mixed_links,
+
+                   # output
                    test_groupby,
 #                   test_dump,
                    test_csv,
                    
                    imported_process,
-                   test_imported_process
+                   test_imported_process,
+                   
+                   # alignment
+                   test_align,
+                   test_align_abs,
+                   
+                   # misc
+                   test_choice,
+                   show_weight,
+                   [marriage, 4],
         ]
-        - household: [num_persons, nch, maxnch,
-#                      dump_csv_h
+        - household: [num_persons, nch, maxnch, test_align_link
+#                      dump_csv_h,
                      ]
 
 #    input:
