@@ -103,6 +103,7 @@ class CSV(Process):
         with open(file_path, self.mode + 'b') as f:
             dataWriter = csv.writer(f)
             for arg in self.args:
+                #XXX: use py3.4 singledispatch?
                 if isinstance(arg, TableExpression):
                     data = expr_eval(arg, context)
                     if isinstance(data, LabeledArray):
