@@ -229,10 +229,6 @@ class ColumnArray(object):
             del self[name]
 
 
-def table_size(table):
-    return (len(table) * table.dtype.itemsize) / 1024.0 / 1024.0
-
-
 def get_fields(array):
     dtype = array.dtype
     return [(name, normalize_type(dtype[name].type)) for name in dtype.names]
