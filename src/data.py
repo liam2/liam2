@@ -470,13 +470,6 @@ def copyTable(input_table, output_node, output_fields=None,
                        stop=stop, show_progress=show_progress)
 
 
-def copyNode(input_node, output_node, **kwargs):
-    if isinstance(input_node, tables.Table):
-        return copyTable(input_node, output_node, **kwargs)
-    else:
-        return input_node._f_copy(output_node)
-
-
 #XXX: should I make a generic n-way array merge out of this?
 # this is a special case though because:
 # 1) all arrays have the same columns
@@ -761,7 +754,7 @@ class H5Data(DataSource):
                 # index_tables already checks whether all tables exist and
                 # are coherent with globals_def
                 for name in globals_def:
-                    copyNode(getattr(globals_node, name), output_globals)
+                    getattr(globals_node, name)._f_copy(output_globals)
 
             entities_tables = dataset['entities']
             output_entities = output_file.createGroup("/", "entities",
