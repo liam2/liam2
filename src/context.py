@@ -53,10 +53,13 @@ class EntityContext(object):
 
     def __contains__(self, key):
         entity = self.entity
-        return (key in self.extra or
-                (self._is_array_period and key in entity.temp_variables) or
-                # use the fact that array fields should be = to table.fields
-                key in entity.array.dtype.fields)
+        # entity.array can be None! (eg. with "explore")
+        keyinarray = (self._is_array_period and
+                      (key in entity.temp_variables or
+                       key in entity.array.dtype.fields))
+        return (key in self.extra
+                or keyinarray
+                or key in entity.table.dtype.fields)
 
     def keys(self, extra=True):
         res = list(self.entity.array.dtype.names)
