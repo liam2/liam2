@@ -770,6 +770,8 @@ projects to keep an eye on
 - PyOpenCL: OpenCL seem pretty powerful and more standardised than CUDA
   (also works on some CPUs, not only GPUs).
 
+- Clyther: translates python/numpy code to OpenCL  
+
 - scipy.weave.blitz. It seems a bit limited in functionality but it uses
   blitz++ (http://www.oonumerics.org/blitz/) internally which seems to contain
   all I need and more, so adding the missing functionality might not be too
