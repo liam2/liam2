@@ -264,7 +264,6 @@ class Entity(object):
                 group_context = variables.copy()
                 group_context.update((name, Variable(name))
                                      for name in group_predictors)
-                print("cond context", cond_context)
                 sub_processes = self.parse_expressions(group_expressions,
                                                        group_context,
                                                        cond_context)
