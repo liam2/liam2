@@ -197,27 +197,32 @@ class Entity(object):
                                 "unknown entity (%s)" % (name, self.name,
                                                          target_name))
 
-    def get_conditional_context(self, entities_visited=None):
+    def get_cond_context(self, entities_visited=None):
+        '''returns the conditional context: {link: variables}'''
+
         if entities_visited is None:
             entities_visited = set()
+        else:
+            entities_visited = entities_visited.copy()
         entities_visited.add(self)
-        cond_context = {}
-        for name, link in self.links.iteritems():
-            # we need both one2many and many2one links (for .get)
-            target_entity = link._target_entity()
-            if target_entity not in entities_visited:
-                cond_context[name] = target_entity.variables
-                target_cond_context = \
-                    target_entity.get_conditional_context(entities_visited)
-                cond_context.update(target_cond_context)
 
-                # the further down the link chain, the less priority we get
-                # so that if we get a collision, it is less likely to be
-                # a problem. Of course this whole conditional context is
-                # a mess and should be rewritten. See comments in exprparser.
-                cond_context = merge_dicts(target_cond_context, cond_context)
+        linked_entities = {}
+        for k, link in self.links.items():
+            entity = link._target_entity()
+            if entity not in entities_visited:
+                linked_entities[k] = entity
+
+        cond_context = {}
+        # use a set of entities to compute the conditional context only once
+        # per target entity
+        for entity in set(linked_entities.values()):
+            cond_context.update(entity.get_cond_context(entities_visited))
+
+        # entities linked directly take priority over (override) farther ones
+        cond_context.update((k, entity.variables)
+                            for k, entity in linked_entities.items())
         return cond_context
-    conditional_context = property(get_conditional_context)
+    conditional_context = property(get_cond_context)
 
     def all_variables(self, globals_def):
         from links import PrefixingLink
@@ -259,6 +264,7 @@ class Entity(object):
                 group_context = variables.copy()
                 group_context.update((name, Variable(name))
                                      for name in group_predictors)
+                print("cond context", cond_context)
                 sub_processes = self.parse_expressions(group_expressions,
                                                        group_context,
                                                        cond_context)

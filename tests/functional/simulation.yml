@@ -159,6 +159,7 @@ entities:
         links:
             partner: {type: many2one, target: person, field: partner_id}
             household: {type: many2one, target: household, field: hh_id}
+            household_bis: {type: many2one, target: household, field: hh_id}
             father: {type: many2one, target: person, field: f_id}
             mother: {type: many2one, target: person, field: m_id}
             children: {type: one2many, target: person, field: m_id}
@@ -1120,6 +1121,9 @@ entities:
                        'num hh in region',
                        household.region.get(households.count()))
                 - show(avg(children.count()))
+                - hh_count: household.get(persons.count())
+                - hh2_count: household_bis.get(persons.count())
+                - assertEqual(hh_count, hh2_count)
 
 #            test_extra_comma:
 #                - show('test extra colon'),
@@ -1362,7 +1366,7 @@ entities:
                               count(MALE and not teen))
                 - assertEqual(count(test == females_age),
                               count(FEMALE))
-                              
+
                 # with missing
                 - assertEqual(sum([1, -1, 2]), 3)
                 - assertEqual(sum([1.0, nan, 2.0]), 3.0)
@@ -1370,7 +1374,9 @@ entities:
                 # with missing but skip_na=False
                 - assertEqual(sum([1, -1, 2], skip_na=False), 2)
                 - withnan: sum([1.0, nan, 2.0], skip_na=False)
-                - assertTrue(withnan != withnan)
+                # fails with numba
+#                - assertTrue(withnan != withnan)
+                - assertTrue(not (withnan == withnan))
 
                 # with missing and filter
                 - assertEqual(sum(if(age > 10, -1, age), filter=gender),
@@ -1382,7 +1388,7 @@ entities:
                 # bool expr
                 - sum_bool: sum([False, True, True])
                 - assertEqual(sum_bool, 2)
-                
+
                 # scalar
                 # currently fails
 #                - assertEqual(sum(2), 2 * count())
