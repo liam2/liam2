@@ -28,6 +28,12 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
         for name in dtype.names:
             chunk[name] = array[name][start:stop]
         table.append(chunk)
+        #TODO: try flushing after each chunk, this should reduce memory
+        # use on large models, and (hopefully) should not be much slower
+        # given our chunks are rather large
+        # >>> on our 300k sample, it does not seem to make any difference
+        #     either way. I'd like to test this on the 2000k sample, but
+        #     that will have to wait for 0.8
         numlines -= buffer_rows
         start += buffer_rows
         stop += buffer_rows
