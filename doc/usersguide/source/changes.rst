@@ -48,10 +48,12 @@ Miscellaneous improvements:
 ---------------------------
 
 * improved the performance and memory usage by changing the internal memory
-  layout. Most operations are now faster. new(), remove() and "merging data"
-  (for retrospective simulations) are now slower.
-  In our model, this translates to a peak memory usage 20% smaller and a
-  35% speed increase.
+  layout. Most operations are now faster. new(), remove(), "merging data"
+  (for retrospective simulations) and writing data at the end of each period
+  are now slower. In our model, this translates to a peak memory usage 20%
+  smaller and a 35% overall speed increase. However, if your model has a low
+  processes/variables ratio, it may very well be slower overall with this
+  version. If it is your case, please contact us.
 
 * changed the syntax for all aggregate functions: grpxxx(...) should now be
   xxx(...). For example, grpsum(age) should now be: sum(age). The old syntax is
