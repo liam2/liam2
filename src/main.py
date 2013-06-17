@@ -17,7 +17,7 @@ import registry
 from data import populate_registry, H5Data
 from upgrade import upgrade
 
-__version__ = "0.7.0rc2"
+__version__ = "0.7.0"
 
 
 def eat_traceback(func, *args, **kwargs):

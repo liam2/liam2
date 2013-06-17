@@ -6,7 +6,7 @@ Change log
 Version 0.7
 ===========
 
-Released on 2013-06-xx.
+Released on 2013-06-18.
 
 New features:
 -------------
