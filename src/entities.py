@@ -15,7 +15,7 @@ from exprparser import parse
 from process import Assignment, Compute, Process, ProcessGroup
 from registry import entity_registry
 from utils import (safe_put, count_occurences, field_str_to_type, size2str,
-                   merge_dicts, UserDeprecationWarning)
+                   UserDeprecationWarning)
 
 
 #def compress_column(a, level):
