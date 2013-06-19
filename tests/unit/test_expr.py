@@ -15,9 +15,9 @@ class ArrayTestCase(unittest.TestCase):
                                                                         other) 
 
 class StringTestCase(ArrayTestCase):
-    def assertEvalEqual(self, s, value):
+    def assertEvalEqual(self, s, result):
         e = parse(s, autovariables=True)
-        self.assertArrayEqual(e.eval(self.context), value)
+        self.assertArrayEqual(e.evaluate(self.context), result)
         
 class Test(StringTestCase):
     def setUp(self):
@@ -40,15 +40,16 @@ class FakeEntity(object):
         self.name = name
         self.links = links
         self.array = data
+        self.array_period = None
         self.temp_variables = {}
         self.id_to_rownum = array([0, 1, 2, 3])
 
 class TestLink(ArrayTestCase): 
     def setUp(self):
-        hh_link = links.Link('household', 'many2one', 'hh_id', 'household')
-        mother_link = links.Link('mother', 'many2one', 'mother_id', 'person')
-        child_link = links.Link('children', 'one2many', 'mother_id', 'person')
-        persons_link = links.Link('persons', 'one2many', 'hh_id', 'person')
+        hh_link = links.Many2One('household', 'hh_id', 'household')
+        mother_link = links.Many2One('mother', 'mother_id', 'person')
+        child_link = links.One2Many('children', 'mother_id', 'person')
+        persons_link = links.One2Many('persons', 'hh_id', 'person')
 
         dt = np.dtype([('period', int), ('id', int), ('age', int),
                        ('dead', bool),  ('mother_id', int), ('hh_id', int)])
@@ -101,26 +102,26 @@ class TestLink(ArrayTestCase):
 #                   'period': 2002,
 #                   '__entity__': person}
 #        e = parse("mother.age", person.links, autovariables=True)
-#        self.assertArrayEqual(e.eval(context), [-1, 55, 55, 22])
+#        self.assertArrayEqual(e.evaluate(context), [-1, 55, 55, 22])
         
     def test_many2one_from_entity_context(self):
         person = entity_registry['person']
         context = EntityContext(person, {'period': 2002})
         self.assertEqual(context_length(context), 5)
         e = parse("mother.age", person.links, autovariables=True)
-        self.assertArrayEqual(e.eval(context), [-1, 55, 55, -1, 22])
+        self.assertArrayEqual(e.evaluate(context), [-1, 55, 55, -1, 22])
 
     def test_one2many_from_entity_context(self):
         person = entity_registry['person']
         context = EntityContext(person, {'period': 2002})
         e = parse("countlink(children)", person.links, autovariables=True)
-        self.assertArrayEqual(e.eval(context), [2, 0, 1, 0, 0])
+        self.assertArrayEqual(e.evaluate(context), [2, 0, 1, 0, 0])
 
 #    def test_past_one2many(self):
 #        person = entity_registry['person']
 #        context = EntityContext(person, {'period': 2001})
 #        e = parse("countlink(children)", person.links, autovariables=True)
-#        self.assertArrayEqual(e.eval(context), [2, 0, 1, 0])
+#        self.assertArrayEqual(e.evaluate(context), [2, 0, 1, 0])
 
 #    def test_multi_entity_in_context_experiment(self):
 #        person = entity_registry['person']
@@ -139,13 +140,13 @@ class TestLink(ArrayTestCase):
 #        # this would be more or less equivalent to:
 #        # expr = parse(expr, person.links)
 #        # return AnnotedExpr(expr, self)
-#        self.assertArrayEqual(annoted_expr.eval(context), [2, 1, 2, 2, 2])
+#        self.assertArrayEqual(annoted_expr.evaluate(context), [2, 1, 2, 2, 2])
 
 #        OR
 
 #        context = {'data': data, 'period': 2002, 'entity': 'person'}
 #        expr = parse(expr, person.links)
-#        self.assertArrayEqual(expr.eval(context), [2, 1, 2, 2, 2])
+#        self.assertArrayEqual(expr.evaluate(context), [2, 1, 2, 2, 2])
 
 # pro: - I could pass the context around unmodified when changing from
 #        an entity to another
