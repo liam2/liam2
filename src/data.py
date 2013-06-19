@@ -144,11 +144,13 @@ class ColumnArray(object):
         else:
             return 0
 
-    def keep(self, indices):
+    def keep(self, key):
+        """key can be either a vector of int indices or boolean filter"""
+
         # using gc.collect() after each column update frees a bit of memory
         # but slows things down significantly.
         for name, column in self.columns.iteritems():
-            self.columns[name] = column[indices]
+            self.columns[name] = column[key]
 
     def append(self, array):
         assert array.dtype == self.dtype
@@ -226,6 +228,7 @@ class ColumnArray(object):
         output_dtype = np.dtype(output_fields)
         output_names = set(output_dtype.names)
         input_names = set(self.dtype.names)
+        
         length = len(self)
         # add missing fields
         for name in output_names - input_names:
@@ -285,6 +288,7 @@ def add_and_drop_fields(array, output_fields, output_array=None):
     output_dtype = np.dtype(output_fields)
     output_names = set(output_dtype.names)
     input_names = set(array.dtype.names)
+    
     common_fields = output_names & input_names
     missing_fields = output_names - input_names
     if output_array is None:
