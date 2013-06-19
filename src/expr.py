@@ -154,7 +154,7 @@ def collect_variables(expr, context):
 
 def expr_eval(expr, context):
     if isinstance(expr, Expr):
-        globals_data = context['__globals__']
+        globals_data = context.get('__globals__')
         if globals_data is not None:
             globals_names = set(globals_data.keys())
             if 'periodic' in globals_data:
