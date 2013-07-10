@@ -36,7 +36,8 @@ class Show(Process):
             if self.print_exprs:
                 titles = [str(expr) for expr in self.args]
                 print('\n'.join('%s: %s' % (title, value)
-                                for title, value in zip(titles, values)), end=' ')
+                                for title, value in zip(titles, values)),
+                      end=' ')
             else:
                 print(' '.join(str(v) for v in values), end=' ')
 
@@ -164,7 +165,8 @@ class RemoveIndividuals(Process):
 #        entity.id_to_rownum = id_to_rownum
 
         print("%d %s(s) removed (%d -> %d)" % (filter_value.sum(), entity.name,
-                                               len_before, len(entity.array)), end=' ')
+                                               len_before, len(entity.array)),
+                                               end=' ')
 
 
 class Breakpoint(Process):
