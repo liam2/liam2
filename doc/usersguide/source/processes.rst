@@ -617,7 +617,9 @@ category, the N individuals with the highest scores are selected.
 The score computation is not done internally by the align() function, but is
 rather computed by an expression given by the modeller. One will usually use
 logit_score() to compute it, but it can be computed in any other way a
-modeller choose.
+modeller choose. Note that it is usually a good idea to include a random
+component (like in logit_score) in the score expression because otherwise the
+individuals with the smaller scores will never be selected.
 
 To know more about the alignment process reading "Evaluating Alignment Methods
 in Dynamic Microsimulation Models", by Li and O'Donoghue is advised. 
