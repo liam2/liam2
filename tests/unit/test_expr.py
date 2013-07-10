@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 from numpy import array
 
+from entities import Entity
 from registry import entity_registry
 from context import EntityContext, context_length
 from exprparser import parse
@@ -70,11 +71,16 @@ class TestLink(ArrayTestCase):
                          (2002, 3, 45, False, -1, 0),
                          (2002, 4,  1, False,  2, 2)],
                         dtype=dt)
-        person = FakeEntity('person',
-                            links={'household': hh_link,
-                                   'mother': mother_link,
-                                   'children': child_link},
-                            data=persons)
+        person = Entity('person',
+                        links={'household': hh_link,
+                               'mother': mother_link,
+                               'children': child_link},
+                        array=persons)
+#         person = FakeEntity('person',
+#                             links={'household': hh_link,
+#                                    'mother': mother_link,
+#                                    'children': child_link},
+#                             data=persons)
 
         dt = np.dtype([('period', int), ('id', int)])
 #        households = array([(2000, 0),
@@ -90,9 +96,12 @@ class TestLink(ArrayTestCase):
                             (2002, 1),
                             (2002, 2)],
                            dtype=dt)
-        household = FakeEntity('household',
-                               links={'persons': persons_link},
-                               data=households)
+#         household = FakeEntity('household',
+#                                links={'persons': persons_link},
+#                                data=households)
+        household = Entity('household',
+                           links={'persons': persons_link},
+                           array=households)
         entity_registry.add(person)
         entity_registry.add(household)
 
@@ -136,7 +145,7 @@ class TestLink(ArrayTestCase):
 #                           '__entity__': person},
 #                'household': {'id': [0, 1, 2]}}
 #        
-#        annoted_expr = person.parse("household.get(countlink(persons))")
+#        annoted_expr = person.parse("household.get(persons.count())")
 #        # this would be more or less equivalent to:
 #        # expr = parse(expr, person.links)
 #        # return AnnotedExpr(expr, self)
@@ -148,20 +157,39 @@ class TestLink(ArrayTestCase):
 #        expr = parse(expr, person.links)
 #        self.assertArrayEqual(expr.evaluate(context), [2, 1, 2, 2, 2])
 
-# pro: - I could pass the context around unmodified when changing from
+# pro: - I could pass the context around almost unmodified when changing from
 #        an entity to another
 #      - easier testing 
 # con: - I can't pass the context as-is to numexpr
 
 
-#  data provider contract:
+# short-term data provider contract:
+
+#  data[entity][period][column] = vector
+#  examples:
+#  data['person'][2002]['period'] = [2002, 2002, 2002, 2002] 
+#  data['person'][2002]['id'] = [0, 1, 3, 5] 
+#  data['person'][2002]['age'] = [25, 45, 1, 37] 
+#  data['person'][2002]['age'][0] = 25 
+
+# mid-term 
+
+#  data[entity][period_start:period_end][colname] = vector
+#  data[entity][period_start:period_end][rownum] = row
+#  data[entity][period_start:period_end][rownum][colname] = value
+#  data[entity][period][column].get(id) = value
+
+# long-term
 
 #  data[entity][column == value][column] = vector
+#  data[entity][time_obj][column] = vector # < use pandas dataframes?
+#  data[entity][column][time_obj] = vector # < use pandas dataframes?
 #  examples:
-#  data['person'][period == 2002]['id'] = [0, 1, 3, 5] 
-#  data['person'][period == 2002]['age'] = [25, 45, 1, 37] 
-#  data['person'][period == 2002]['age'][0] = 25 
-#  data['person'][period == 2002]['age'].get(5) = 37  # age for id == 5 is 37
+#  data['person'][Person.period == 2002]['id'] = [0, 1, 3, 5] 
+#  data['person'][Person.period == 2002]['age'] = [25, 45, 1, 37] 
+#  data['person'][Person.period == 2002]['age'][0] = 25 
+#  data['person'][Person.period == 2002]['age'].get(5) = 37  # age for id == 5 is 37
+
 
 if __name__ == "__main__":
     from os import path
