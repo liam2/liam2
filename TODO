@@ -215,8 +215,6 @@ features I would like to implement (in no particular order)
 
 - implement all() and any()
 
-- countlink(persons) -> persons.count()
-
 - refactor/redesign the clunky parts
   * the goals are:
     - to make things testable by real unittests
@@ -300,14 +298,7 @@ features I would like to implement (in no particular order)
   another program). That should be easy. However, to be useful, we need
   to be able to load back the result in the middle of a simulation.
 
-- test the speed difference of loading & writing each column individually,
-  instead of all together
-  * both using a table (as is done currently) and storing columns individually
-  * if is not too bad, it would enable us to load fields as late as possible
-    and write/flush them to disk (removing them from memory) as early as
-    possible.
-  * it would save some memory, possibly much of it in combination with
-    reordering of processes.
+- try storing columns individually instead of in a table (as is done currently)
 
 ? compressing main "table" (ie the columns) with carray:
   ac[indice_vector] is 1000x slower than a[indice_vector] !
@@ -741,12 +732,17 @@ projects to keep an eye on
 
 - Numba: early tests seem very promising.
 
+- Parakeet: jit for a subset of python. very similar to numba, but more limited
+  in scope
+
 - Blaze (http://blaze.pydata.org/) is a generalisation of ndarray with more
   data layouts -- potentially distributed), a delayed-evaluation system
   (like I have done in liam2) and a built-in code generation framework based
   on LLVM (using Numba I think). Documentation is a bit scarce at this point,
   but from my quick glance at it, it seems to be exactly what I have been
   dreaming for but would have been unable to achieve by myself.
+  
+- Odin (equivalent of Blaze from Enthought)
 
 - SymPy. They use mpmath and I wonder how fast it is.
 
@@ -845,7 +841,7 @@ undecided
   After some thought, I think having:
   grpcount()            -> count()
   countlink(persons)    -> persons.count()
-  makes for sense.
+  makes more sense.
 ? at the start of each period, wipe out the array (set all to missing)
   => need to use lag explicitly
 ? allow processes to be run only at specific periodicity: eg. some monthly,
