@@ -32,10 +32,18 @@ class Entity(object):
     '''
     fields is a list of tuple (name, type, options)
     '''
-    def __init__(self, name, fields, missing_fields=None, links=None,
+    def __init__(self, name, fields=None, missing_fields=None, links=None,
                  macro_strings=None, process_strings=None,
-                 on_align_overflow='carry'):
+                 array=None):
         self.name = name
+
+        # we should have exactly one of either array or fields defined
+        assert ((fields is None and array is not None) or
+                (fields is not None and array is None))
+
+        if array is not None:
+            fields = get_fields(array)
+            array_period = np.min(array['period'])
 
         duplicate_names = [name
                            for name, num
@@ -66,8 +74,6 @@ class Entity(object):
         self.missing_fields = missing_fields
         self.period_individual_fnames = [name for name, _ in fields]
         self.links = links
-
-        self.on_align_overflow = on_align_overflow
 
         self.macro_strings = macro_strings
         self.process_strings = process_strings
@@ -130,7 +136,6 @@ class Entity(object):
                       str2class[l['type']](name, l['field'], l['target']))
                      for name, l in link_defs.iteritems())
 
-        #TODO: add option for on_align_overflow
         return Entity(ent_name, fields, missing_fields, links,
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}))
@@ -339,6 +344,8 @@ class Entity(object):
 
     def load_period_data(self, period):
         if self.lag_fields:
+            #TODO: use ColumnArray here
+            #XXX: do we need np.empty? (but watch for alias problems)
             self.array_lag = np.empty(len(self.array),
                                       dtype=np.dtype(self.lag_fields))
             for field, _ in self.lag_fields:
