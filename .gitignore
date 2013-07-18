@@ -1,4 +1,6 @@
 *.pyc
+*.pyd
+doc/usersguide/build/
 src/build
 tests/functional/error.log
 tests/functional/person_*.csv
