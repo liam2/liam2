@@ -1,1 +1,5 @@
 *.pyc
+src/build
+tests/functional/error.log
+tests/functional/person_*.csv
+tests/functional/*.h5
