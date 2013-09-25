@@ -613,7 +613,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         # 2) load all fields
         if fields is None:
             target_fields = merge_items(*[f.fields for f in files])
-            fields_per_file = [None for f in files]
+            fields_per_file = [None for _ in files]
         else:
             target_fields = required_fields + fields
             fields_per_file = [[(name, type_) for name, type_ in target_fields

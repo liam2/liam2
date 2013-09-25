@@ -44,9 +44,9 @@ class AutoflushFile(object):
 
 def time2str(seconds):
     minutes = seconds // 60
-    seconds = seconds % 60
     hours = minutes // 60
-    minutes = minutes % 60
+    seconds %= 60
+    minutes %= 60
     l = []
     if hours > 0:
         l.append("%d hour%s" % (hours, 's' if hours > 1 else ''))
@@ -346,7 +346,7 @@ class LabeledArray(np.ndarray):
         if self.pvalues is not None:
             categ_values = list(product(*self.pvalues[:-1]))
         else:
-            categ_values = [[] for y in range(height)]
+            categ_values = [[] for _ in range(height)]
         row_totals = self.row_totals
         for y in range(height):
             # this is a bit wasteful because it creates LabeledArrays for each

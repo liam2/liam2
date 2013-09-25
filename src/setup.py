@@ -12,7 +12,7 @@ import numpy as np
 
 # Add the output directory of cython build_ext to sys.path so that build_exe
 # finds and copies C extensions
-class my_build_ext(build_ext):
+class MyBuildExt(build_ext):
     def finalize_options(self):
         build_ext.finalize_options(self)
         sys.path.insert(0, self.build_lib)
@@ -56,9 +56,10 @@ setup(name="liam2",
       version="0.7.0pre1",
       description="LIAM2",
 
-      cmdclass={"build_ext": my_build_ext},
+      cmdclass={"build_ext": MyBuildExt},
       ext_modules=ext_modules,
 
       options={"build_ext": build_ext_options,
                "build_exe": build_exe_options},
-      executables=[Executable("main.py")])
+      executables=[Executable("main.py")],
+      requires=['numpy', 'numexpr'])

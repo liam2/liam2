@@ -26,10 +26,10 @@ def diff_array(array1, array2, numdiff=10, raiseondiff=False):
         notin1 = np.setdiff1d(ids1, all_ids)
         notin2 = np.setdiff1d(ids2, all_ids)
         if notin1:
-            print("the following ids are not present in file 1:", \
+            print("the following ids are not present in file 1:",
                   notin1)
         elif notin2:
-            print("the following ids are not present in file 2:", \
+            print("the following ids are not present in file 2:",
                   notin2)
         else:
             # some ids must be duplicated

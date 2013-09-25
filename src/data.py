@@ -180,7 +180,7 @@ class ColumnArray(object):
         max_buffer_rows = buffersize // dtype.itemsize
         numlines = stop - start
         ca = cls.empty(numlines, dtype)
-        buffer_rows = min(numlines, max_buffer_rows)
+#        buffer_rows = min(numlines, max_buffer_rows)
 #        chunk = np.empty(buffer_rows, dtype=dtype)
         array_start = 0
         table_start = start

@@ -110,7 +110,7 @@ class LinkValue(LinkExpression):
 
     def collect_variables(self, context):
         #XXX: don't we also need the fields within the target expression?
-        return set([self.link._link_field])
+        return {self.link._link_field}
 
     def dtype(self, context):
         target_context = self.target_context(context)
@@ -274,13 +274,13 @@ class SumLink(CountLink):
             # is used.
             return res.astype(value_column.dtype)
         else:
-            # suming a scalar value
+            # summing a scalar value
             return np.bincount(source_rows) * value_column
 
     def dtype(self, context):
         target_context = self.target_context(context)
         expr_dype = dtype(self.target_expr, target_context)
-        #TODO: merge this typemap with tsum's
+        #TODO: merge this typemap with the one in tsum
         typemap = {bool: int, int: int, float: float}
         return typemap[expr_dype]
 
@@ -356,16 +356,21 @@ class MaxLink(MinLink):
     aggregate_func = max
 
 
-# all these functions are deprecated
-deprecated_functions = {
-    'countlink': CountLink,
-    'sumlink': SumLink,
-    'avglink': AvgLink,
-    'minlink': MinLink,
-    'maxlink': MaxLink
-}
+def deprecated_functions():
+    # all these functions are deprecated
+    to_deprecate = [
+        ('countlink', CountLink),
+        ('sumlink', SumLink),
+        ('avglink', AvgLink),
+        ('minlink', MinLink),
+        ('maxlink', MaxLink)
+    ]
+    funcs = {}
+    for name, func in to_deprecate:
+        funcs[name] = deprecated(func,
+                                 "%s(link, ...) is deprecated, please "
+                                 "use link.%s(...) instead"
+                                 % (name, name[:-4]))
+    return funcs
 
-functions = {}
-for k, v in deprecated_functions.items():
-    functions[k] = deprecated(v, "%s(link, ...) is deprecated, please use "
-                                 "link.%s(...) instead" % (k, k[:-4]))
+functions = deprecated_functions()

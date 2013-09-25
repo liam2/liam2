@@ -102,7 +102,7 @@ class CSV(Process):
         file_path = os.path.join(config.output_directory, fname)
 
         with open(file_path, self.mode + 'b') as f:
-            dataWriter = csv.writer(f)
+            writer = csv.writer(f)
             for arg in self.args:
                 #XXX: use py3.4 singledispatch?
                 if isinstance(arg, TableExpression):
@@ -113,7 +113,7 @@ class CSV(Process):
                     data = [[expr_eval(expr, context) for expr in arg]]
                 else:
                     data = [[expr_eval(arg, context)]]
-                dataWriter.writerows(data)
+                writer.writerows(data)
 
 
 class RemoveIndividuals(Process):

@@ -352,7 +352,7 @@ class Expr(object):
             return res
         except KeyError, e:
             raise add_context(e, s)
-        except Exception, e:
+        except Exception:
             raise
 
     def as_simple_expr(self, context):
