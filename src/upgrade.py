@@ -21,7 +21,7 @@ def upgrade(inpath, outpath=None):
         with open(backup_path, "wb") as f:
             f.write(content)
 
-    # XXXlink(linkname, ...) -> linkname.XXX(...)
+    # transform *link(linkname, ...) -> linkname.*(...)
     content = re.sub("([a-zA-Z]+)link\s*\(\s*([a-zA-Z_][a-zA-Z_0-9]*)\s*,?\s*",
                      r"\2.\1(",
                      content)

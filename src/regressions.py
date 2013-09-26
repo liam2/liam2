@@ -6,13 +6,13 @@ from alignment import Alignment
 import config
 from context import context_length
 from expr import (Expr, Variable, ShortLivedVariable, get_tmp_varname,
-                  missing_values, dtype, expr_eval)
+                  missing_values, getdtype, expr_eval)
 from exprbases import CompoundExpression
 from exprmisc import Exp, Normal, Max, Where, Logit, Logistic
 
 
 class Regression(CompoundExpression):
-    '''abstract base class for all regressions'''
+    """abstract base class for all regressions"""
 
     def __init__(self, expr, filter=None):
         CompoundExpression.__init__(self)
@@ -27,7 +27,7 @@ class Regression(CompoundExpression):
 
     def add_filter(self, expr, context):
         if self.filter is not None:
-            missing_value = missing_values[dtype(expr, context)]
+            missing_value = missing_values[getdtype(expr, context)]
             return Where(self.filter, expr, missing_value)
         else:
             return expr
@@ -78,6 +78,7 @@ class LogitScore(CompoundExpression):
     def __str__(self):
         return '%s(%s)' % (self.func_name, self.expr)
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return float
 

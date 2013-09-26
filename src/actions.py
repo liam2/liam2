@@ -58,6 +58,7 @@ class QuickShow(Show):
 
 
 class CSV(Process):
+    #noinspection PyNoneFunctionAssignment
     def __init__(self, *args, **kwargs):
         Process.__init__(self)
         if (len(args) > 1 and
@@ -222,6 +223,8 @@ class AssertTrue(Assert):
 
 
 class ComparisonAssert(Assert):
+    inv_op = None
+
     def __init__(self, expr1, expr2):
         Process.__init__(self)
         self.expr1 = expr1

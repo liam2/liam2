@@ -12,7 +12,7 @@ import config
 from simulation import Simulation
 from importer import csv2h5
 from console import Console
-from utils import AutoflushFile
+from utils import AutoFlushFile
 import registry
 from data import populate_registry, H5Data
 from upgrade import upgrade
@@ -145,7 +145,8 @@ class PrintVersionsAction(argparse.Action):
         import tables
 
         try:
-            from cpartition import filter_to_indices, group_indices_nd
+            from cpartition import filter_to_indices
+            del filter_to_indices
             cext = True
         except ImportError:
             cext = False
@@ -153,13 +154,13 @@ class PrintVersionsAction(argparse.Action):
 
         py_version = '{} ({})'.format(platform.python_version(),
                                       platform.architecture()[0])
-        print('''
+        print("""
 python {py}
 numpy {np}
 numexpr {ne}
 pytables {pt}
 carray {ca}
-pyyaml {yml}'''.format(py=py_version,
+pyyaml {yml}""".format(py=py_version,
                        np=numpy.__version__,
                        ne=numexpr.__version__,
                        pt=tables.__version__,
@@ -223,8 +224,8 @@ def main():
 if __name__ == '__main__':
     import sys
 
-    sys.stdout = AutoflushFile(sys.stdout)
-    sys.stderr = AutoflushFile(sys.stderr)
+    sys.stdout = AutoFlushFile(sys.stdout)
+    sys.stderr = AutoFlushFile(sys.stderr)
 
     print("LIAM2 %s (%s)" % (__version__, platform.architecture()[0]))
     print()

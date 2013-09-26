@@ -5,6 +5,7 @@ import random
 import numpy as np
 
 
+#noinspection PyNoneFunctionAssignment
 def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
                   secondary_axis=None):
     # need and num_candidates are LabeledArray, but we don't need the extra
@@ -60,25 +61,25 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
         hh_rel_need = np.nanmax(rel_need[persons_in_hh])
 
         # count number of objects in the family belonging to over-filled bins
-        num_excedent = overfilled_bins[persons_in_hh].sum()
-        if secondary_axis is not None and num_excedent == 0:
+        surplus = overfilled_bins[persons_in_hh].sum()
+        if secondary_axis is not None and surplus == 0:
             hh_axis_values = persons_in_hh[secondary_axis]
             axis_num_pvalues = len(still_needed_by_sec_axis)
             hh_counts_by_sec_axis = np.bincount(hh_axis_values,
                                                 minlength=axis_num_pvalues)
             if np.any(hh_counts_by_sec_axis >= still_needed_by_sec_axis):
-                num_excedent = 1
+                surplus = 1
 
         # count number of objects in the family belonging to unfillable bins
         num_unfillable = unfillable_bins[persons_in_hh].sum()
 
-        # if either excedent or unfillable are not zero, adjust rel_need:
-        if (num_excedent != 0) or (num_unfillable != 0):
-            if num_unfillable > num_excedent:
+        # if either surplus or unfillable are not zero, adjust rel_need:
+        if (surplus != 0) or (num_unfillable != 0):
+            if num_unfillable > surplus:
                 hh_rel_need = 1.0
-            elif num_unfillable == num_excedent:
+            elif num_unfillable == surplus:
                 hh_rel_need = 0.5
-            else:  # num_unfillable < num_excedent
+            else:  # num_unfillable < surplus
                 hh_rel_need = 0.0
 
         # Run through the random selection process, using rel_need as the

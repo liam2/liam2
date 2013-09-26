@@ -3,7 +3,7 @@ from __future__ import print_function
 import numpy as np
 
 from utils import safe_put
-from expr import expr_eval, dtype, hasvalue
+from expr import expr_eval, getdtype, hasvalue
 from exprbases import FunctionExpression
 
 
@@ -37,7 +37,7 @@ class Lag(FunctionExpression):
                                        self.missing)
 
     def dtype(self, context):
-        return dtype(self.expr, context)
+        return getdtype(self.expr, context)
 
 
 class Duration(FunctionExpression):
@@ -78,7 +78,7 @@ class Duration(FunctionExpression):
         return result
 
     def dtype(self, context):
-        assert dtype(self.expr, context) == bool
+        assert getdtype(self.expr, context) == bool
         return int
 
 
@@ -137,7 +137,7 @@ class TimeSum(FunctionExpression):
         expr = self.expr
 
         typemap = {bool: int, int: int, float: float}
-        res_type = typemap[dtype(expr, context)]
+        res_type = typemap[getdtype(expr, context)]
         res_size = len(entity.array)
 
         sum_values = np.zeros(res_size, dtype=res_type)

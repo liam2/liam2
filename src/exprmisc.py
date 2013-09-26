@@ -7,7 +7,7 @@ import numpy as np
 
 import config
 from expr import (Expr, Variable,
-                  dtype, coerce_types, expr_eval,
+                  getdtype, coerce_types, expr_eval,
                   as_simple_expr, as_string,
                   collect_variables, traverse_expr,
                   get_missing_record, get_missing_vector)
@@ -100,6 +100,7 @@ class Logit(CompoundExpression):
     def build_expr(self):
         return Log(self.expr / (1.0 - self.expr))
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return float
 
@@ -115,6 +116,7 @@ class Logistic(CompoundExpression):
     def build_expr(self):
         return 1.0 / (1.0 + Exp(-self.expr))
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return float
 
@@ -136,7 +138,7 @@ class ZeroClip(CompoundExpression):
                      0)
 
     def dtype(self, context):
-        return dtype(self.expr1, context)
+        return getdtype(self.expr1, context)
 
 
 # >>> mi = 1
@@ -175,6 +177,7 @@ class RandInt(NumpyRandom):
     np_func = (np.random.randint,)
     arg_names = ('low', 'high', 'size')
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return int
 
@@ -255,6 +258,7 @@ class Choice(EvaluableExpression):
             choices = np.array([expr_eval(expr, context) for expr in choices])
         return choices[choices_idx]
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return self.choices.dtype
 
@@ -289,7 +293,7 @@ class Round(NumpyChangeArray):
 
     def dtype(self, context):
         # result dtype is the same as the input dtype
-        res = dtype(self.args[0], context)
+        res = getdtype(self.args[0], context)
         assert res == float
         return res
 
@@ -301,7 +305,7 @@ class Trunc(FunctionExpression):
         return expr_eval(self.expr, context).astype(int)
 
     def dtype(self, context):
-        assert dtype(self.expr, context) == float
+        assert getdtype(self.expr, context) == float
         return int
 
 #------------------------------------
@@ -310,6 +314,7 @@ class Trunc(FunctionExpression):
 class Abs(NumexprFunction):
     func_name = 'abs'
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return float
 
@@ -317,6 +322,7 @@ class Abs(NumexprFunction):
 class Log(NumexprFunction):
     func_name = 'log'
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return float
 
@@ -324,6 +330,7 @@ class Log(NumexprFunction):
 class Exp(NumexprFunction):
     func_name = 'exp'
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return float
 
@@ -473,6 +480,7 @@ class CreateIndividual(EvaluableExpression):
         else:
             return None
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return int
 
@@ -486,6 +494,7 @@ class Clone(CreateIndividual):
 
 
 class Dump(TableExpression):
+    #noinspection PyNoneFunctionAssignment
     def __init__(self, *args, **kwargs):
         self.expressions = args
         if len(args):
@@ -577,6 +586,7 @@ class Dump(TableExpression):
         variables |= collect_variables(self.filter, context)
         return variables
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return None
 
@@ -635,7 +645,7 @@ class Where(Expr):
     __repr__ = __str__
 
     def dtype(self, context):
-        assert dtype(self.cond, context) == bool
+        assert getdtype(self.cond, context) == bool
         return coerce_types(context, self.iftrue, self.iffalse)
 
     def collect_variables(self, context):

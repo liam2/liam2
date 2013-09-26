@@ -725,7 +725,7 @@ def group_indices_nd(list columns, object filter_value):
         ids, labels32, counts = _group_labels(values, filter_value)
 
     # allocate a list of pointers: for each "group", we will store the direct
-    # pointer to the "data" of its corresponding indice ndarray
+    # pointer to the "data" of its corresponding indices ndarray
     cdef int32_t **vecs = <int32_t **> malloc(len(ids) * sizeof(int32_t*))
 
     # preallocate all indices ndarrays, link to them in the "result" dict and

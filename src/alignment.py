@@ -20,7 +20,7 @@ from utils import PrettyTable, LabeledArray
 
 
 def kill_axis(axis_name, value, expressions, possible_values, need):
-    '''possible_values is a list of ndarrays'''
+    """possible_values is a list of ndarrays"""
 
     str_expressions = [str(e) for e in expressions]
     axis_num = str_expressions.index(axis_name)
@@ -136,7 +136,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
             elif affected < num_always:
                 total_overflow += num_always - affected
 
-    num_aligned = np.sum(aligned)
+    num_aligned = int(np.sum(aligned))
     # this assertion is only valid in the non weighted case
     assert num_aligned == total_affected + total_overflow - total_underflow
     num_partitioned = sum(len(g) for g in groups)
@@ -151,6 +151,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
     return aligned
 
 
+#noinspection PyProtectedMember
 class AlignmentAbsoluteValues(FilteredExpression):
     func_name = 'align_abs'
 
@@ -374,6 +375,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
             else:
                 groups = partition_nd(columns, True, possible_values)
         else:
+            columns = []
             if filter_value is not None:
                 groups = [filter_to_indices(filter_value)]
             else:
@@ -390,6 +392,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
             self._display_unaligned(expressions, context['id'], columns,
                                     unaligned)
 
+        #noinspection PyAugmentAssignment
         need = need * self._get_need_correction(groups, possible_values)
         need = self._handle_frac_need(need)
         need = self._add_past_error(need, context)
@@ -535,6 +538,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
     def _get_need_correction(self, groups, possible_values):
         return 1
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return bool
 

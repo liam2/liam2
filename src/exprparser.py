@@ -37,6 +37,7 @@ for module in (actions, aggregates, alignment, groupby, links, matching,
 #        self.attr = key
 
 
+#noinspection PyPep8Naming
 class BoolToBitTransformer(ast.NodeTransformer):
     def visit_BoolOp(self, node):
         # first transform children of the node
@@ -55,11 +56,12 @@ class BoolToBitTransformer(ast.NodeTransformer):
             right = ast.copy_location(ast.BinOp(left, new_op, right), node)
         return right
 
+    #noinspection PyUnusedLocal
     def visit_Not(self, node):
         return ast.Invert()
 
 
-def parse(s, globals=None, conditional_context=None, interactive=False,
+def parse(s, globals_dict=None, conditional_context=None, interactive=False,
           autovariables=False):
     if not isinstance(s, basestring):
         return s
@@ -75,8 +77,7 @@ def parse(s, globals=None, conditional_context=None, interactive=False,
     # * Expr.__setitem__
     # * keep the same context across several expressions in the interactive
     #   console
-#    if interactive:
-    if False:
+    if False and interactive:
         if len(body) == 0:
             to_compile = []
         else:
@@ -136,8 +137,8 @@ def parse(s, globals=None, conditional_context=None, interactive=False,
                     context.update(conditional_context[var])
 
     context.update(functions)
-    if globals is not None:
-        context.update(globals)
+    if globals_dict is not None:
+        context.update(globals_dict)
 
     context['__builtins__'] = None
     for mode, compiled_code in to_eval:

@@ -3,13 +3,14 @@ from __future__ import print_function
 import numpy as np
 import tables
 
-from data import mergeArrays, get_fields, index_table_light
+from data import merge_arrays, get_fields, index_table_light
 from utils import timed, loop_wh_progress, merge_items
 
 __version__ = "0.3"
 
 
 def get_h5_fields(input_file):
+    #noinspection PyProtectedMember
     return dict((table._v_name, get_fields(table))
                 for table in input_file.iterNodes(input_file.root.entities))
 
@@ -21,6 +22,7 @@ def merge_h5(input1_path, input2_path, output_path):
     output_file = tables.openFile(output_path, mode="w")
 
     print("copying globals from", input1_path, end=' ')
+    #noinspection PyProtectedMember
     input1_file.root.globals._f_copy(output_file.root, recursive=True)
     print("done.")
 
@@ -66,6 +68,7 @@ def merge_h5(input1_path, input2_path, output_path):
         input2_periods = input2_rows.keys()
         output_periods = sorted(set(input1_periods) | set(input2_periods))
 
+        #noinspection PyUnusedLocal
         def merge_period(period_idx, period):
             if ent_name in ent_names1:
                 start, stop = input1_rows.get(period, (0, 0))
@@ -80,7 +83,7 @@ def merge_h5(input1_path, input2_path, output_path):
                 input2_array = None
 
             if ent_name in ent_names1 and ent_name in ent_names2:
-                output_array, _ = mergeArrays(input1_array, input2_array)
+                output_array, _ = merge_arrays(input1_array, input2_array)
             elif ent_name in ent_names1:
                 output_array = input1_array
             elif ent_name in ent_names2:

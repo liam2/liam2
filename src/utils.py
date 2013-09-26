@@ -33,7 +33,7 @@ def deprecated(f, msg):
     return func
 
 
-class AutoflushFile(object):
+class AutoFlushFile(object):
     def __init__(self, f):
         self.f = f
 
@@ -183,6 +183,7 @@ def isconstant(a, filter_value=None):
 
 
 class LabeledArray(np.ndarray):
+    #noinspection PyNoneFunctionAssignment
     def __new__(cls, input_array, dim_names=None, pvalues=None,
                 row_totals=None, col_totals=None):
         obj = np.asarray(input_array).view(cls)
@@ -286,6 +287,7 @@ class LabeledArray(np.ndarray):
         obj.row_totals = None
         return obj
 
+    #noinspection PyAttributeOutsideInit
     def __array_finalize__(self, obj):
         # We are in the middle of the LabeledArray.__new__ constructor,
         # and our special attributes will be set when we return to that
@@ -452,7 +454,7 @@ def loop_wh_progress(func, sequence, pbclass=TextProgressBar):
 #    app.mainloop()
 
 
-def count_occurences(seq):
+def count_occurrences(seq):
     counter = defaultdict(int)
     for e in seq:
         counter[e] += 1
@@ -468,10 +470,10 @@ def skip_comment_cells(lines):
 
 
 def strip_rows(lines):
-    '''
+    """
     returns an iterator of lines with leading and trailing blank (empty or
     which contain only space) cells.
-    '''
+    """
     isblank = lambda s: s == '' or s.isspace()
     for line in lines:
         leading_dropped = list(itertools.dropwhile(isblank, line))
@@ -488,7 +490,7 @@ def format_value(value, missing):
         else:
             return '%.2f' % value
     elif isinstance(value, np.ndarray) and value.shape:
-        # prevent numpy's default wrapping
+        # prevent numpy default wrapping
         return str(list(value)).replace(',', '')
     else:
         return str(value)
@@ -507,22 +509,22 @@ def get_min_width(table, index):
 
 
 def table2str(table, missing):
-    '''table is a list of lists'''
+    """table is a list of lists"""
     if not table:
         return ''
-    numcol = max(len(row) for row in table)
+    numcols = max(len(row) for row in table)
     # pad rows that have too few columns
     for row in table:
-        if len(row) < numcol:
-            row.extend([''] * (numcol - len(row)))
+        if len(row) < numcols:
+            row.extend([''] * (numcols - len(row)))
     formatted = [[format_value(value, missing) for value in row]
                   for row in table]
-    colwidths = [get_col_width(formatted, i) for i in xrange(numcol)]
+    colwidths = [get_col_width(formatted, i) for i in xrange(numcols)]
 
     total_width = sum(colwidths)
     sep_width = (len(colwidths) - 1) * 3
     if total_width + sep_width > 80:
-        minwidths = [get_min_width(formatted, i) for i in xrange(numcol)]
+        minwidths = [get_min_width(formatted, i) for i in xrange(numcols)]
         available_width = 80.0 - sep_width - sum(minwidths)
         ratio = available_width / total_width
         colwidths = [minw + max(int(width * ratio), 0)
@@ -532,10 +534,10 @@ def table2str(table, missing):
     for row in formatted:
         wrapped_row = [wrap(value, width)
                        for value, width in izip(row, colwidths)]
-        maxlines = max(len(value) for value in wrapped_row)
-        newlines = [[] for _ in range(maxlines)]
+        maxheight = max(len(value) for value in wrapped_row)
+        newlines = [[] for _ in range(maxheight)]
         for value, width in izip(wrapped_row, colwidths):
-            for i in range(maxlines):
+            for i in range(maxheight):
                 chunk = value[i] if i < len(value) else ''
                 newlines[i].append(chunk.rjust(width))
         lines.extend(newlines)
@@ -627,9 +629,9 @@ def split_columns_as_iterators(iterable):
     # consumption can be high.
     deques = [deque() for _ in range(numcolumns)]
 
-    def gen(mydeque):
+    def gen(deq):
         while True:
-            if not mydeque:                # when the local queue is empty
+            if not deq:                # when the local queue is empty
                 row = next(iterator)       # fetch a new row and
                 if len(row) != numcolumns:
                     raise Exception("all rows do not have the same number of "
@@ -637,7 +639,7 @@ def split_columns_as_iterators(iterable):
                 # dispatch it to the other queues
                 for queue, value in zip(deques, row):
                     queue.append(value)
-            yield mydeque.popleft()
+            yield deq.popleft()
     return tuple(gen(d) for d in deques)
 
 
@@ -650,11 +652,11 @@ def countlines(filepath):
 # ----------
 
 def merge_dicts(*args, **kwargs):
-    '''
+    """
     Returns a new dictionary which is the result of recursively merging all
     the dictionaries passed as arguments and the keyword arguments.
     Later dictionaries overwrite earlier ones. kwargs overwrite all.
-    '''
+    """
     result = args[0].copy()
     for arg in args[1:] + (kwargs,):
         for k, v in arg.iteritems():
@@ -665,11 +667,11 @@ def merge_dicts(*args, **kwargs):
 
 
 def merge_items(*args):
-    '''
+    """
     Returns a new list which is the result of merging all the lists of (key,
     value) pairs passed as arguments. Earlier lists take precedence.
     Order is preserved.
-    '''
+    """
     result = args[0][:]
     keys_seen = set(k for k, _ in args[0])
     for other_items in args[1:]:
@@ -680,10 +682,10 @@ def merge_items(*args):
 
 
 def expand_wild_tuple(keys, d):
-    '''
+    """
     expands a multi-level tuple key containing wildcards (*) with the keys
     actually present in a multi-level dictionary. See expand_wild.
-    '''
+    """
     assert isinstance(keys, (tuple, list))
     if not keys:
         return [()]
@@ -701,7 +703,7 @@ def expand_wild_tuple(keys, d):
 
 
 def expand_wild(wild_key, d):
-    '''
+    """
     expands a multi-level string key (separated by '/') containing wildcards
     (*) with the keys actually present in a multi-level dictionary.
 
@@ -710,14 +712,14 @@ def expand_wild(wild_key, d):
 
     >>> expand_wild('a/*/*', {'a': {'one': {'c': 0}, 'two': {'d': 0}}})
     ['a/one/c', 'a/two/d']
-    '''
+    """
     return ['/'.join(r) for r in expand_wild_tuple(wild_key.split('/'), d)]
 
 
 def multi_get(d, key, default=None):
-    '''
+    """
     equivalent to dict.get, but d and key can be multi-level (separated by '/')
-    '''
+    """
     keys = key.split('/')
     for k in keys:
         if k in d:
@@ -728,10 +730,10 @@ def multi_get(d, key, default=None):
 
 
 def multi_set(d, key, value):
-    '''
+    """
     equivalent to d[key] = value, but d and key can be multi-level
     (separated by '/'). Creates dictionaries on missing keys.
-    '''
+    """
     keys = key.split('/')
     for k in keys[:-1]:
         if k not in d:
@@ -854,10 +856,10 @@ def fields_str_to_type(str_fields_list):
 
 
 def fields_yaml_to_type(dict_fields_list):
-    '''
+    """
     Transform a list of (one item) dict with str types to a list of tuple with
     Python types
-    '''
+    """
     return fields_str_to_type([d.items()[0] for d in dict_fields_list])
 
 
@@ -876,6 +878,7 @@ def add_context(exception, s):
 class ExplainTypeError(type):
     def __call__(cls, *args, **kwargs):
         try:
+            #noinspection PyArgumentList
             return type.__call__(cls, *args, **kwargs)
         except TypeError, e:
             if hasattr(cls, 'func_name'):

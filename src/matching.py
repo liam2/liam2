@@ -88,6 +88,7 @@ class Matching(EvaluableExpression):
         local_ctx = dict(('__other_' + k if k in used_variables2 else k, v)
                          for k, v in set2.iteritems())
 
+        #noinspection PyUnusedLocal
         def match_one_set1_individual(idx, sorted_idx):
             global local_ctx
 
@@ -120,6 +121,7 @@ class Matching(EvaluableExpression):
         loop_wh_progress(match_one_set1_individual, set1tomatch)
         return result
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return int
 

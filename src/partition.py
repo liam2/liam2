@@ -30,6 +30,8 @@ try:
         # version (and I am not eager to diverge too much).
         return [d.get(pv, empty_list) for pv in pvalues]
 except ImportError:
+    group_indices_nd = None
+
     #TODO: make possible_values a list of combinations of value. In some cases,
     # (eg GroupBy), we are not interested in all possible combinations.
     def partition_nd(columns, filter_value, possible_values):

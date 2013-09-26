@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import tables
 
-from data import copyTable, get_fields
+from data import copy_table, get_fields
 from utils import timed
 
 __version__ = "0.1"
@@ -16,7 +16,7 @@ def dropfields(input_path, output_path, todrop):
     output_globals = output_file.createGroup("/", "globals", "Globals")
 
     print(" * copying globals ...", end=' ')
-    copyTable(input_root.globals.periodic, output_globals)
+    copy_table(input_root.globals.periodic, output_globals)
     print("done.")
 
     output_entities = output_file.createGroup("/", "entities", "Entities")
@@ -25,9 +25,10 @@ def dropfields(input_path, output_path, todrop):
         table_fields = [(fname, ftype) for fname, ftype in table_fields
                         if fname not in todrop]
         size = (len(table) * table.dtype.itemsize) / 1024.0 / 1024.0
+        #noinspection PyProtectedMember
         print(" * copying table %s (%.2f Mb) ..." % (table._v_name, size),
               end=' ')
-        copyTable(table, output_entities, table_fields)
+        copy_table(table, output_entities, table_fields)
         print("done.")
 
     input_file.close()

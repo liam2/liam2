@@ -12,19 +12,25 @@ try:
 #    numexpr.set_num_threads(1)
     evaluate = numexpr.evaluate
 except ImportError:
-    eval_context = [(name, getattr(np, name))
-                    for name in ('where', 'exp', 'log', 'abs')]
-    eval_context.extend([('False', False), ('True', True)])
+    numexpr = None
 
-    def evaluate(expr, globals, locals=None, **kwargs):
+    def make_global_context():
+        context = dict((name, getattr(np, name))
+                       for name in ('where', 'exp', 'log', 'abs'))
+        context.update([('False', False), ('True', True)])
+        return context
+    eval_context = make_global_context()
+
+    #noinspection PyUnusedLocal
+    def evaluate(expr, globals_dict, locals_dict=None, **kwargs):
         complete_globals = {}
-        complete_globals.update(globals)
-        if locals is not None:
-            if isinstance(locals, np.ndarray):
-                for fname in locals.dtype.fields:
-                    complete_globals[fname] = locals[fname]
+        complete_globals.update(globals_dict)
+        if locals_dict is not None:
+            if isinstance(locals_dict, np.ndarray):
+                for fname in locals_dict.dtype.fields:
+                    complete_globals[fname] = locals_dict[fname]
             else:
-                complete_globals.update(locals)
+                complete_globals.update(locals_dict)
         complete_globals.update(eval_context)
         return eval(expr, complete_globals, {})
 
@@ -86,7 +92,7 @@ def hasvalue(column):
 
 
 def coerce_types(context, *args):
-    dtype_indices = [type_to_idx[dtype(arg, context)] for arg in args]
+    dtype_indices = [type_to_idx[getdtype(arg, context)] for arg in args]
     return idx_to_type[max(dtype_indices)]
 
 
@@ -121,7 +127,7 @@ def gettype(value):
     return normalize_type(type_)
 
 
-def dtype(expr, context):
+def getdtype(expr, context):
     if isinstance(expr, Expr):
         return expr.dtype(context)
     else:
@@ -197,12 +203,12 @@ class Expr(object):
     def traverse(self, context):
         raise NotImplementedError()
 
-    def allOf(self, node_type, context=None):
+    def all_of(self, node_type, context=None):
         for node in self.traverse(context):
             if isinstance(node, node_type):
                 yield node
 
-    # makes sure we dont use "normal" python logical operators
+    # makes sure we do not use "normal" python logical operators
     # (and, or, not)
     def __nonzero__(self):
         raise Exception("Improper use of boolean operators, you probably "
@@ -319,7 +325,7 @@ class Expr(object):
         # supports ndarrays and LabeledArray so that I can get the dtype from
         # the expression instead of from actual values.
         labels = None
-        if isinstance(context, EntityContext) and context._is_array_period:
+        if isinstance(context, EntityContext) and context.is_array_period:
             for var_name in simple_expr.collect_variables(context):
                 # var_name should always be in the context at this point
                 # because missing temporaries should have been already caught
@@ -356,10 +362,10 @@ class Expr(object):
             raise
 
     def as_simple_expr(self, context):
-        '''
+        """
         evaluate any construct that is not supported by numexpr and
         create temporary variables for them
-        '''
+        """
         raise NotImplementedError()
 
     def as_string(self):
@@ -428,12 +434,12 @@ class SubscriptedExpr(EvaluableExpression):
             del sub_context['__filter__']
             filter_value = expr_eval(filter_expr, sub_context)
 
-            def fixkey(key, filter_value):
-                if non_scalar_array(key):
-                    newkey = key.copy()
+            def fixkey(orig_key, filter_value):
+                if non_scalar_array(orig_key):
+                    newkey = orig_key.copy()
                 else:
                     newkey = np.empty(len(filter_value), dtype=int)
-                    newkey.fill(key)
+                    newkey.fill(orig_key)
                 newkey[~filter_value] = -1
                 return newkey
 
@@ -575,7 +581,7 @@ class UnaryOp(Expr):
         return self.expr.collect_variables(context)
 
     def dtype(self, context):
-        return dtype(self.expr, context)
+        return getdtype(self.expr, context)
 
     def traverse(self, context):
         for node in traverse_expr(self.expr, context):
@@ -681,7 +687,7 @@ class ComparisonOp(BinaryOp):
 class LogicalOp(BinaryOp):
     def dtype(self, context):
         def assertbool(expr):
-            dt = dtype(expr, context)
+            dt = getdtype(expr, context)
             if dt is not bool:
                 raise Exception("operands to logical operators need to be "
                                 "boolean but %s is %s" % (expr, dt))
@@ -756,7 +762,7 @@ class Variable(Expr):
         print(indent, self.name)
 
     def collect_variables(self, context):
-        return set([self.name])
+        return {self.name}
 
     def dtype(self, context):
         if self._dtype is None and self.name in context:
@@ -867,7 +873,7 @@ class GlobalArray(Variable):
 
 class GlobalTable(object):
     def __init__(self, name, fields):
-        '''fields is a list of tuples (name, type)'''
+        """fields is a list of tuples (name, type)"""
 
         self.name = name
         self.fields = fields
@@ -876,6 +882,7 @@ class GlobalTable(object):
     def __getattr__(self, key):
         return GlobalVariable(self.name, key, self.fields_map[key])
 
+    #noinspection PyUnusedLocal
     def traverse(self, context):
         yield self
 

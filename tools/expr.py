@@ -194,10 +194,10 @@ class Expr(object):
     __repr__ = __str__
 
     def flatten(self):
-        '''
+        """
         converts to a flat list of object that are comparable.
         see numexpr.expressionToAST(ex) for inspiration
-        '''
+        """
         raise NotImplementedError()
 
     

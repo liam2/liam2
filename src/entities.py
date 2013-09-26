@@ -8,13 +8,13 @@ import tables
 
 import config
 from context import EntityContext, context_length
-from data import mergeArrays, get_fields, ColumnArray
+from data import merge_arrays, get_fields, ColumnArray
 from expr import (Variable, GlobalVariable, GlobalTable, GlobalArray,
                   expr_eval, get_missing_value)
 from exprparser import parse
 from process import Assignment, Compute, Process, ProcessGroup
 from registry import entity_registry
-from utils import (safe_put, count_occurences, field_str_to_type, size2str,
+from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
                    UserDeprecationWarning)
 
 
@@ -28,10 +28,30 @@ from utils import (safe_put, count_occurences, field_str_to_type, size2str,
 #def decompress_column(a):
 #    return a[:]
 
+def global_variables(globals_def):
+    #FIXME: these should be computed once somewhere else, not for each
+    # entity. I guess they should have a class of their own
+    variables = {}
+    for name, global_type in globals_def.iteritems():
+        if isinstance(global_type, list):
+            # add namespace for table
+            variables[name] = GlobalTable(name, global_type)
+            if name == 'periodic':
+                # special case to add periodic variables in the global
+                # namespace
+                variables.update(
+                    (name, GlobalVariable('periodic', name, type_))
+                    for name, type_ in global_type)
+        else:
+            assert isinstance(global_type, type)
+            variables[name] = GlobalArray(name, global_type)
+    return variables
+
+
 class Entity(object):
-    '''
+    """
     fields is a list of tuple (name, type, options)
-    '''
+    """
     def __init__(self, name, fields=None, missing_fields=None, links=None,
                  macro_strings=None, process_strings=None,
                  array=None):
@@ -42,12 +62,15 @@ class Entity(object):
                 (fields is not None and array is None))
 
         if array is not None:
-            fields = get_fields(array)
+            if fields is None:
+                fields = get_fields(array)
             array_period = np.min(array['period'])
+        else:
+            array_period = None
 
         duplicate_names = [name
                            for name, num
-                           in count_occurences(fname for fname, _ in fields)
+                           in count_occurrences(fname for fname, _ in fields)
                            if num > 1]
         if duplicate_names:
             raise Exception("duplicate fields in entity '%s': %s"
@@ -77,6 +100,7 @@ class Entity(object):
 
         self.macro_strings = macro_strings
         self.process_strings = process_strings
+        self.processes = None
 
         self.expectedrows = tables.parameters.EXPECTED_ROWS_TABLE
         self.table = None
@@ -97,7 +121,7 @@ class Entity(object):
         self.base_period = None
         # we need a separate field, instead of using array['period'] to be able
         # to get the period even when the array is empty.
-        self.array_period = None
+        self.array_period = array_period
         self.array = None
 
         self.lag_fields = []
@@ -175,27 +199,9 @@ class Entity(object):
             self._variables = variables
         return self._variables
 
-    def global_variables(self, globals_def):
-        #FIXME: these should be computed once somewhere else, not for each
-        # entity. I guess they should have a class of their own
-        variables = {}
-        for name, global_type in globals_def.iteritems():
-            if isinstance(global_type, list):
-                # add namespace for table
-                variables[name] = GlobalTable(name, global_type)
-                if name == 'periodic':
-                    # special case to add periodic variables in the global
-                    # namespace
-                    variables.update(
-                        (name, GlobalVariable('periodic', name, type_))
-                        for name, type_ in global_type)
-            else:
-                assert isinstance(global_type, type)
-                variables[name] = GlobalArray(name, global_type)
-        return variables
-
     def check_links(self):
         for name, link in self.links.iteritems():
+            #noinspection PyProtectedMember
             target_name = link._target_entity_name
             if target_name not in entity_registry:
                 raise Exception("Target of '%s' link in entity '%s' is an "
@@ -203,7 +209,7 @@ class Entity(object):
                                                          target_name))
 
     def get_cond_context(self, entities_visited=None):
-        '''returns the conditional context: {link: variables}'''
+        """returns the conditional context: {link: variables}"""
 
         if entities_visited is None:
             entities_visited = set()
@@ -213,6 +219,7 @@ class Entity(object):
 
         linked_entities = {}
         for k, link in self.links.items():
+            #noinspection PyProtectedMember
             entity = link._target_entity()
             if entity not in entities_visited:
                 linked_entities[k] = entity
@@ -232,7 +239,7 @@ class Entity(object):
     def all_variables(self, globals_def):
         from links import PrefixingLink
 
-        variables = self.global_variables(globals_def).copy()
+        variables = global_variables(globals_def).copy()
         variables.update(self.variables)
         cond_context = self.conditional_context
         macros = dict((k, parse(v, variables, cond_context))
@@ -320,15 +327,17 @@ class Entity(object):
         lag_vars = set()
         for p in self.processes.itervalues():
             for expr in p.expressions():
-                for node in expr.allOf(Lag):
-                    for v in node.allOf(Variable):
+                for node in expr.all_of(Lag):
+                    for v in node.all_of(Variable):
                         if not isinstance(v, GlobalVariable):
                             lag_vars.add(v.name)
-                    for lv in node.allOf(LinkValue):
+                    for lv in node.all_of(LinkValue):
+                        #noinspection PyProtectedMember
                         lag_vars.add(lv.link._link_field)
+                        #noinspection PyProtectedMember
                         target_entity = lv.link._target_entity()
                         if target_entity == self:
-                            target_vars = lv.target_expression.allOf(Variable)
+                            target_vars = lv.target_expression.all_of(Variable)
                             lag_vars.update(v.name for v in target_vars)
 
         if lag_vars:
@@ -358,16 +367,16 @@ class Entity(object):
 
         start, stop = rows
 
-        # It would be nice to use ColumnArray.from_table and adapt mergeArrays
+        # It would be nice to use ColumnArray.from_table and adapt merge_arrays
         # to produce a ColumnArray in all cases, but it is not a huge priority
         # for now
         input_array = self.input_table.read(start, stop)
 
         self.array, self.id_to_rownum = \
-            mergeArrays(self.array, input_array, result_fields='array1')
+            merge_arrays(self.array, input_array, result_fields='array1')
         # this can happen, depending on the layout of columns in input_array,
         # but the usual case (in retro) is that self.array is a superset of
-        # input_array, in which case mergeArrays returns a ColumnArray
+        # input_array, in which case merge_arrays returns a ColumnArray
         if not isinstance(self.array, ColumnArray):
             self.array = ColumnArray(self.array)
 
@@ -397,11 +406,12 @@ class Entity(object):
 #        compressed = ca.ctable(self.array, cparams=ca.cparams(level))
 #        print "%d -> %d (%f)" % compressed._get_stats()
 
-    def fill_missing_values(self, ids, values, context, filler='auto'):
-        '''
+    @staticmethod
+    def fill_missing_values(ids, values, context, filler='auto'):
+        """
         ids: ids present in past period
         context: current period context
-        '''
+        """
 
         if filler is 'auto':
             filler = get_missing_value(values)
@@ -437,3 +447,5 @@ class Entity(object):
 
     def __repr__(self):
         return "<Entity '%s'>" % self.name
+
+

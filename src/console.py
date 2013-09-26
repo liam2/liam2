@@ -209,6 +209,7 @@ class Console(object):
                     import traceback
                     traceback.print_exc()
                 msg = str(e)
+                #noinspection PyArgumentList
                 lines = msg.splitlines()
                 if len(lines) > 1:
                     msg = '\n'.join(lines[1:])

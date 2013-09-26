@@ -223,7 +223,7 @@ class ColumnArray(object):
         return ca
 
     def add_and_drop_fields(self, output_fields):
-        '''modify inplace'''
+        """modify inplace"""
 
         output_dtype = np.dtype(output_fields)
         output_names = set(output_dtype.names)
@@ -243,7 +243,7 @@ def get_fields(array):
     return [(name, normalize_type(dtype[name].type)) for name in dtype.names]
 
 
-def assertValidType(array, wanted_type, allowed_missing=None, context=None):
+def assert_valid_type(array, wanted_type, allowed_missing=None, context=None):
     if isinstance(wanted_type, list):
         wanted_fields = wanted_type
         # extract types from field description and normalise to python types
@@ -302,7 +302,7 @@ def add_and_drop_fields(array, output_fields, output_array=None):
     return output_array
 
 
-def mergeSubsetInArray(output, id_to_rownum, subset, first=False):
+def merge_subset_in_array(output, id_to_rownum, subset, first=False):
     if subset.dtype == output.dtype and len(subset) == len(output):
         return subset
     elif subset.dtype == output.dtype:
@@ -342,7 +342,7 @@ def mergeSubsetInArray(output, id_to_rownum, subset, first=False):
         return output
 
 
-def mergeArrays(array1, array2, result_fields='union'):
+def merge_arrays(array1, array2, result_fields='union'):
     """data in array2 overrides data in array1"""
 
     fields1 = get_fields(array1)
@@ -394,17 +394,17 @@ def mergeArrays(array1, array2, result_fields='union'):
 
     # 2) copy data from array1 (if it will not be overridden)
     if not arr2_complete:
-        output_array = mergeSubsetInArray(output_array, id_to_rownum,
+        output_array = merge_subset_in_array(output_array, id_to_rownum,
                                           array1, first=True)
 
     # 3) copy data from array2
     if not output_is_arr2:
-        output_array = mergeSubsetInArray(output_array, id_to_rownum, array2)
+        output_array = merge_subset_in_array(output_array, id_to_rownum, array2)
 
     return output_array, id_to_rownum
 
 
-def appendTable(input_table, output_table, chunksize=10000, condition=None,
+def append_table(input_table, output_table, chunksize=10000, condition=None,
                 stop=None, show_progress=False):
     if input_table.dtype != output_table.dtype:
         output_fields = get_fields(output_table)
@@ -427,14 +427,15 @@ def appendTable(input_table, output_table, chunksize=10000, condition=None,
         expanded_data = np.empty(chunksize, dtype=np.dtype(output_fields))
         expanded_data[:] = get_missing_record(expanded_data)
 
-    def copyChunk(chunk_idx, chunk_num):
-        start = chunk_num * chunksize
-        stop = min(start + chunksize, numrows)
+    #noinspection PyUnusedLocal
+    def copy_chunk(chunk_idx, chunk_num):
+        chunk_start = chunk_num * chunksize
+        chunk_stop = min(chunk_start + chunksize, numrows)
         if condition is not None:
-            input_data = input_table.readWhere(condition,
-                                               start=start, stop=stop)
+            input_data = input_table.readWhere(condition, start=chunk_start,
+                                               stop=chunk_stop)
         else:
-            input_data = input_table.read(start, stop)
+            input_data = input_table.read(chunk_start, chunk_stop)
 
         if output_fields is not None:
             # use our pre-allocated buffer (except for the last chunk)
@@ -450,15 +451,16 @@ def appendTable(input_table, output_table, chunksize=10000, condition=None,
         output_table.flush()
 
     if show_progress:
-        loop_wh_progress(copyChunk, range(num_chunks))
+        loop_wh_progress(copy_chunk, range(num_chunks))
     else:
         for chunk in range(num_chunks):
-            copyChunk(chunk, chunk)
+            copy_chunk(chunk, chunk)
 
     return output_table
 
 
-def copyTable(input_table, output_node, output_fields=None,
+#noinspection PyProtectedMember
+def copy_table(input_table, output_node, output_fields=None,
               chunksize=10000, condition=None, stop=None, show_progress=False,
               **kwargs):
     complete_kwargs = {'title': input_table._v_title,
@@ -472,7 +474,7 @@ def copyTable(input_table, output_node, output_fields=None,
         output_dtype = np.dtype(output_fields)
     output_table = output_file.createTable(output_node, input_table.name,
                                            output_dtype, **complete_kwargs)
-    return appendTable(input_table, output_table, chunksize, condition,
+    return append_table(input_table, output_table, chunksize, condition,
                        stop=stop, show_progress=show_progress)
 
 
@@ -480,8 +482,8 @@ def copyTable(input_table, output_node, output_fields=None,
 # this is a special case though because:
 # 1) all arrays have the same columns
 # 2) we have id_to_rownum already computed for each array
-def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
-                        start_period):
+def build_period_array(input_table, output_fields, input_rows, input_index,
+                       start_period):
     periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
     if not periods_before:
         id_to_rownum = np.empty(0, dtype=int)
@@ -494,6 +496,8 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
 
     # computing is present
     max_id = len(input_index[target_period]) - 1
+    period_id_to_rownum = None
+    present_in_period = None
     is_present = np.zeros(max_id + 1, dtype=bool)
     for period in periods_before:
         period_id_to_rownum = input_index[period]
@@ -557,11 +561,11 @@ def buildArrayForPeriod(input_table, output_fields, input_rows, input_index,
 
 
 def index_table(table):
-    '''
+    """
     table is an iterable of rows, each row is a mapping (name -> value).
     Rows must contain at least 'period' and 'id' columns and must be sorted
     by period.
-    '''
+    """
     rows_per_period = {}
     id_to_rownum_per_period = {}
     temp_id_to_rownum = []
@@ -594,10 +598,10 @@ def index_table(table):
 
 
 def index_table_light(table):
-    '''
+    """
     table is an iterable of rows, each row is a mapping (name -> value)
     Rows must contain at least a 'period' column and must be sorted by period.
-    '''
+    """
     rows_per_period = {}
     current_period = None
     start_row = None
@@ -675,7 +679,7 @@ def index_tables(globals_def, entities, fpath):
                     allowed_missing = ('period', 'PERIOD')
                 else:
                     allowed_missing = None
-                assertValidType(global_data, global_type, allowed_missing,
+                assert_valid_type(global_data, global_type, allowed_missing,
                                 name)
                 array = global_data.read()
                 attrs = global_data.attrs
@@ -698,7 +702,7 @@ def index_tables(globals_def, entities, fpath):
             print("    -", ent_name, "...", end=' ')
 
             table = getattr(input_entities, ent_name)
-            assertValidType(table, entity.fields, entity.missing_fields)
+            assert_valid_type(table, entity.fields, entity.missing_fields)
 
             start_time = time.time()
             rows_per_period, id_to_rownum_per_period = index_table(table)
@@ -760,6 +764,7 @@ class H5Data(DataSource):
                 # index_tables already checks whether all tables exist and
                 # are coherent with globals_def
                 for name in globals_def:
+                    #noinspection PyProtectedMember
                     getattr(globals_node, name)._f_copy(output_globals)
 
             entities_tables = dataset['entities']
@@ -796,7 +801,7 @@ class H5Data(DataSource):
                 else:
                     stoprow = 0
 
-                output_table = copyTable(table.table, output_entities,
+                output_table = copy_table(table.table, output_entities,
                                          entity.fields, stop=stoprow,
                                          show_progress=True)
                 entity.output_rows = output_rows
@@ -813,7 +818,7 @@ class H5Data(DataSource):
                 # would be brought back to life. In conclusion, it should be
                 # optional.
                 entity.array, entity.id_to_rownum = \
-                    buildArrayForPeriod(table.table, entity.fields,
+                    build_period_array(table.table, entity.fields,
                                         entity.input_rows,
                                         entity.input_index, start_period)
                 assert isinstance(entity.array, ColumnArray)

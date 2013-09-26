@@ -42,7 +42,7 @@ class EntityContext(object):
 
     # is the current array period the same as the context period?
     @property
-    def _is_array_period(self):
+    def is_array_period(self):
         return self.entity.array_period == self.extra['period']
 
     def __setitem__(self, key, value):
@@ -54,7 +54,7 @@ class EntityContext(object):
     def __contains__(self, key):
         entity = self.entity
         # entity.array can be None! (eg. with "explore")
-        keyinarray = (self._is_array_period and
+        keyinarray = (self.is_array_period and
                       (key in entity.temp_variables or
                        key in entity.array.dtype.fields))
         return (key in self.extra
@@ -78,7 +78,7 @@ class EntityContext(object):
         return EntityContext(self.entity, self.extra.copy())
 
     def length(self):
-        if self._is_array_period:
+        if self.is_array_period:
             return len(self.entity.array)
         else:
             period = self.extra['period']
@@ -98,7 +98,7 @@ class EntityContext(object):
     @property
     def id_to_rownum(self):
         period = self.extra['period']
-        if self._is_array_period:
+        if self.is_array_period:
             return self.entity.id_to_rownum
         elif period in self.entity.output_index:
             return self.entity.output_index[period]

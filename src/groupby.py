@@ -13,6 +13,7 @@ from partition import partition_nd
 class GroupBy(TableExpression):
 #    func_name = 'groupby'
 
+    #noinspection PyNoneFunctionAssignment
     def __init__(self, *args, **kwargs):
         assert len(args), "groupby needs at least one expression"
         #TODO: allow lists/tuples of arguments to group by the combinations
@@ -115,12 +116,12 @@ class GroupBy(TableExpression):
         cols_indices.append(np.concatenate(cols_indices))
 
         # evaluate the expression on each "combined" group (ie compute totals)
-        row_totals = [expr_eval(expr, context_subset(filtered_context, inds,
+        row_totals = [expr_eval(expr, context_subset(filtered_context, indices,
                                                      expr_vars))
-                      for inds in rows_indices]
-        col_totals = [expr_eval(expr, context_subset(filtered_context, inds,
+                      for indices in rows_indices]
+        col_totals = [expr_eval(expr, context_subset(filtered_context, indices,
                                                      expr_vars))
-                      for inds in cols_indices]
+                      for indices in cols_indices]
 
         if self.percent:
             # convert to np.float64 to get +-inf if total_value is int(0)

@@ -672,10 +672,10 @@ def links2yaml(links):
         # ('hp', {'desttype': 'p', 'prefix': 'p',
         #         'origintype': 'h', 'keyorig': 'pid'})]
         sep = '\n            '
-        return '''
+        return """
 
         links:
-            %s''' % sep.join("%s: {type: many2one, target: %s, field: %s}" %
+            %s""" % sep.join("%s: {type: many2one, target: %s, field: %s}" %
                              (name, l['desttype'], l['keyorig'])
                              for name, l in links)
     else:
@@ -691,18 +691,18 @@ def process2yaml(processes):
                 # + 2 is for ": "
                 indent = '\n' + ' ' * (16 + len(expr['predictor']) + 2)
                 expr_str = indent.join(expr_lines)
-                process_str = '''%s:
-                %s: %s''' % (name, expr['predictor'], expr_str)
+                process_str = """%s:
+                %s: %s""" % (name, expr['predictor'], expr_str)
             else:
                 expr_lines = expr.splitlines()
                 indent = '\n' + ' ' * (12 + len(name) + 2) # + 2 is for ": "
                 expr = indent.join(expr_lines)
                 process_str = '%s: %s' % (name, expr)
             processes_str.append(process_str)
-        return '''
+        return """
 
         processes:
-            %s''' % sep.join(processes_str)
+            %s""" % sep.join(processes_str)
     else:
         return ''
 

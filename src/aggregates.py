@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import numpy as np
 
-from expr import (Variable, dtype, expr_eval,
+from expr import (Variable, getdtype, expr_eval,
                   collect_variables, traverse_expr, get_tmp_varname,
                   ispresent)
 from exprbases import EvaluableExpression, NumpyAggregate, FilteredExpression
@@ -17,6 +17,7 @@ class All(NumpyAggregate):
     np_func = (np.all,)
     arg_names = ('a', 'axis', 'out', 'keepdims')
 
+    #noinspection PyMethodMayBeStatic,PyUnusedLocal
     def dtype(self, context):
         return bool
 
@@ -26,6 +27,7 @@ class Any(NumpyAggregate):
     np_func = (np.any,)
     arg_names = ('a', 'axis', 'out', 'keepdims')
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return bool
 
@@ -42,10 +44,11 @@ class Count(EvaluableExpression):
             #TODO: check this at "compile" time (in __init__), though for
             # that we need to know the type of all temporary variables
             # first
-            if dtype(self.filter, context) is not bool:
+            if getdtype(self.filter, context) is not bool:
                 raise Exception("count filter must be a boolean expression")
             return np.sum(expr_eval(self.filter, context))
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return int
 
@@ -69,7 +72,7 @@ class Min(NumpyAggregate):
     arg_names = ('a', 'axis', 'out')
 
     def dtype(self, context):
-        return dtype(self.args[0], context)
+        return getdtype(self.args[0], context)
 
 
 class Max(NumpyAggregate):
@@ -79,7 +82,7 @@ class Max(NumpyAggregate):
     arg_names = ('a', 'axis', 'out')
 
     def dtype(self, context):
-        return dtype(self.args[0], context)
+        return getdtype(self.args[0], context)
 
 
 def na_sum(a, overwrite=False):
@@ -131,7 +134,7 @@ class Sum(FilteredExpression):
     def dtype(self, context):
         #TODO: merge this typemap with tsum's
         typemap = {bool: int, int: int, float: float}
-        return typemap[dtype(self.args[0], context)]
+        return typemap[getdtype(self.args[0], context)]
 
 
 #class Average(NumpyAggregate):
@@ -162,7 +165,7 @@ class Average(FilteredExpression):
             tmp_varname = get_tmp_varname()
             context = context.copy()
             context[tmp_varname] = filter_values
-            if dtype(expr, context) is bool:
+            if getdtype(expr, context) is bool:
                 # convert expr to int because mul_bbb is not implemented in
                 # numexpr
                 expr *= 1
@@ -191,6 +194,7 @@ class Average(FilteredExpression):
         else:
             return float('nan')
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return float
 
@@ -200,6 +204,7 @@ class Std(NumpyAggregate):
     np_func = (np.std,)
     arg_names = ('a', 'axis', 'dtype', 'out', 'ddof')
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return float
 
@@ -209,6 +214,7 @@ class Median(NumpyAggregate):
     np_func = (np.median,)
     arg_names = ('a', 'axis', 'out', 'overwrite_input')
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return float
 
@@ -218,6 +224,7 @@ class Percentile(NumpyAggregate):
     np_func = (np.percentile,)
     arg_names = ('a', 'q', 'axis', 'out', 'overwrite_input')
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return float
 
@@ -263,6 +270,7 @@ class Gini(FilteredExpression):
                   "for filter" % (self.expr, filter_expr))
         return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return float
 

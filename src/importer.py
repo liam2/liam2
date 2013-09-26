@@ -69,14 +69,14 @@ def convert(iterable, fields, positions=None):
 
 
 def convert_2darray(iterable, celltype):
-    """homogenous 2d array"""
+    """homogeneous 2d array"""
 
     func = converters[celltype]
     return [tuple(func(value) for value in row) for row in iterable]
 
 
 def convert_1darray(iterable, celltype=None):
-    """homogenous 1d array"""
+    """homogeneous 1d array"""
     if celltype is None:
         celltype = detect_column_type(iterable)
     func = converters[celltype]
@@ -240,10 +240,10 @@ class CSV(object):
         return self._numlines
 
     def read(self, fields=None):
-        '''imports one Xsv file with all columns
+        """imports one Xsv file with all columns
            * columns can be in any order (they will be reordered if needed)
            * row order is preserved
-        '''
+        """
         print(" - reading", self.fpath)
         if fields is None:
             fields = self.fields
@@ -272,7 +272,7 @@ class CSV(object):
 
 
 def complete_path(prefix, path):
-    '''make a path absolute by prefixing it if necessary'''
+    """make a path absolute by prefixing it if necessary"""
     if os.path.isabs(path):
         return path
     else:
@@ -353,7 +353,7 @@ def array_to_disk_array(h5file, node, name, array, title='', compression=None):
 
 
 def union1d(arrays):
-    '''arrays is an iterable returning arrays'''
+    """arrays is an iterable returning arrays"""
     result = arrays.next()
     for array in arrays:
         result = np.union1d(result, array)
@@ -723,6 +723,7 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
     compression = content.get('compression')
     h5_filepath = complete_path(localdir, h5_filename)
     print("Importing in", h5_filepath)
+    h5file = None
     try:
         h5file = tables.openFile(h5_filepath, mode="w", title="CSV import")
 
@@ -775,6 +776,7 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
             if csvfile is not None:
                 csvfile.close()
     finally:
-        h5file.close()
+        if h5file is not None:
+            h5file.close()
     print()
     print("done.")

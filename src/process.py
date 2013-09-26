@@ -7,7 +7,7 @@ import numpy as np
 import config
 from diff_h5 import diff_array
 from data import append_carray_to_table, ColumnArray
-from expr import Expr, type_to_idx, idx_to_type, expr_eval, Variable
+from expr import Expr, type_to_idx, idx_to_type, expr_eval
 from context import EntityContext
 import utils
 
@@ -43,11 +43,11 @@ class Process(object):
 
 
 class Compute(Process):
-    '''these processes only compute an expression and do not store their
+    """these processes only compute an expression and do not store their
        result (but they usually have side-effects). No class inherits from
        this but we use it when a user does not store anywhere the result of
        an expression (with a side effect) which *does* return a value.
-       new() is a good example for this'''
+       new() is a good example for this"""
 
     def __init__(self, expr):
         super(Compute, self).__init__()
@@ -135,12 +135,12 @@ class ProcessGroup(Process):
         fnames.insert(0, 'id')
         temp = self.entity.temp_variables
         array = self.entity.array
-        alen = len(array)
+        length = len(array)
 
         fields = [(k, temp[k] if k in temp else array[k])
                   for k in utils.unique(fnames)]
         return [(k, v) for k, v in fields
-                if isinstance(v, np.ndarray) and v.shape == (alen,)]
+                if isinstance(v, np.ndarray) and v.shape == (length,)]
 
     def _tablename(self, period):
         self.calls[(period, self.name)] += 1

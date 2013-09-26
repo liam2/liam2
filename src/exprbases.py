@@ -5,13 +5,13 @@ import numpy as np
 import config
 from context import context_length
 from expr import (Expr, EvaluableExpression, expr_eval,
-                  traverse_expr, collect_variables, dtype,
+                  traverse_expr, collect_variables, getdtype,
                   as_simple_expr, as_string,
                   get_missing_value, ispresent)
 
 
 class CompoundExpression(Expr):
-    '''expression written in terms of other expressions'''
+    """expression written in terms of other expressions"""
 
     def __init__(self):
         self._complete_expr = None
@@ -85,7 +85,7 @@ class FilteredExpression(FunctionExpression):
             filter_expr = ctx_filter
         else:
             filter_expr = None
-        if filter_expr is not None and dtype(filter_expr, context) is not bool:
+        if filter_expr is not None and getdtype(filter_expr, context) is not bool:
             raise Exception("filter must be a boolean expression")
         return filter_expr
 
@@ -116,6 +116,7 @@ class NumpyFunction(EvaluableExpression):
             raise TypeError("takes at most %d arguments (%d given)" %
                             (len(self.arg_names) + 1, len(args) + 1))
         if self.allow_filter:
+            #noinspection PyNoneFunctionAssignment
             self.filter_expr = kwargs.pop("filter", None)
         else:
             self.filter_expr = None
@@ -246,7 +247,7 @@ class NumpyAggregate(NumpyFunction):
 
 
 class NumexprFunction(Expr):
-    '''For functions which are present as-is in numexpr'''
+    """For functions which are present as-is in numexpr"""
     func_name = None
 
     def __init__(self, expr):

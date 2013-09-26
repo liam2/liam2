@@ -29,7 +29,7 @@ build_ext_options = {}
 build_exe_options = {
     # compress zip archive
     "compressed": True,
-    # optimze pyc files (strip docstrings and asserts)
+    # optimize pyc files (strip docstrings and asserts)
     "optimize": 2,
     # strip paths in __file__ attributes
     "replace_paths": [("*", "")],
@@ -62,4 +62,4 @@ setup(name="liam2",
       options={"build_ext": build_ext_options,
                "build_exe": build_exe_options},
       executables=[Executable("main.py")],
-      requires=['numpy', 'numexpr'])
+      requires=['numpy', 'numexpr', 'tables', 'carray'])

@@ -6,7 +6,7 @@ from operator import itemgetter
 import numpy as np
 import numexpr as ne
 
-from expr import Variable, dtype, expr_eval, missing_values, get_missing_value
+from expr import Variable, getdtype, expr_eval, missing_values, get_missing_value
 from exprbases import EvaluableExpression
 from context import EntityContext, context_length
 from registry import entity_registry
@@ -74,6 +74,7 @@ class PrefixingLink(object):
 #            return macro.rename_variables(renames)
         if key in self.links:
             link = self.links[key]
+            #noinspection PyProtectedMember
             return link.__class__(link._name,
                                   self.prefix + link._link_field,
                                   link._target_entity_name)
@@ -81,13 +82,14 @@ class PrefixingLink(object):
 
 
 class LinkExpression(EvaluableExpression):
-    '''abstract base class for all function which handle links (both many2one
-       and one2many'''
+    """abstract base class for all function which handle links (both many2one
+       and one2many"""
 
     def __init__(self, link):
         self.link = link
 
     def target_context(self, context):
+        #noinspection PyProtectedMember
         return self.link._target_context(context)
 
     #XXX: I think this is not enough. Implement Visitor pattern instead?
@@ -97,11 +99,11 @@ class LinkExpression(EvaluableExpression):
 
 class LinkValue(LinkExpression):
     def __init__(self, link, target_expression, missing_value=None):
-        '''
+        """
         links can be either a Link instance, a string, or a list of either
         target_expression can be any expression (it will be evaluated on the
                           target rows)
-        '''
+        """
         LinkExpression.__init__(self, link)
         if isinstance(target_expression, basestring):
             target_expression = Variable(target_expression)
@@ -110,11 +112,12 @@ class LinkValue(LinkExpression):
 
     def collect_variables(self, context):
         #XXX: don't we also need the fields within the target expression?
+        #noinspection PyProtectedMember
         return {self.link._link_field}
 
     def dtype(self, context):
         target_context = self.target_context(context)
-        return dtype(self.target_expression, target_context)
+        return getdtype(self.target_expression, target_context)
 
     def get(self, key, missing_value=None):
         # in this case, target_expression must be a Variable with a link name,
@@ -123,6 +126,7 @@ class LinkValue(LinkExpression):
         #XXX: we could add an _entity fields to the Link class though
         # assert self.target_expression in entity.links
         assert isinstance(self.target_expression, Variable)
+        #noinspection PyProtectedMember
         target_entity = self.link._target_entity()
         target_link = target_entity.links[self.target_expression.name]
         return LinkValue(self.link,
@@ -131,6 +135,7 @@ class LinkValue(LinkExpression):
     __getattr__ = get
 
     def evaluate(self, context):
+        #noinspection PyProtectedMember
         target_ids = expr_eval(Variable(self.link._link_field), context)
         target_context = self.target_context(context)
 
@@ -173,6 +178,7 @@ class AggregateLink(LinkExpression):
         target_context = self.target_context(context)
 
         # this is a one2many, so the link column is on the target side
+        #noinspection PyProtectedMember
         link_column = expr_eval(Variable(link._link_field), target_context)
 
         missing_int = missing_values[int]
@@ -248,6 +254,7 @@ class CountLink(AggregateLink):
             target_filter = ", target_filter=%s" % self.target_filter
         else:
             target_filter = ""
+        #noinspection PyProtectedMember
         return '%s(%s%s)' % (self.func_name, self.link._name, target_filter)
 
 
@@ -279,7 +286,7 @@ class SumLink(CountLink):
 
     def dtype(self, context):
         target_context = self.target_context(context)
-        expr_dype = dtype(self.target_expr, target_context)
+        expr_dype = getdtype(self.target_expr, target_context)
         #TODO: merge this typemap with the one in tsum
         typemap = {bool: int, int: int, float: float}
         return typemap[expr_dype]
@@ -289,6 +296,7 @@ class SumLink(CountLink):
             target_filter = ", target_filter=%s" % self.target_filter
         else:
             target_filter = ""
+        #noinspection PyProtectedMember
         return '%s(%s, %s%s)' % (self.func_name, self.link._name,
                                  self.target_expr, target_filter)
 
@@ -318,7 +326,7 @@ class MinLink(AggregateLink):
 
     def dtype(self, context):
         target_context = self.target_context(context)
-        return dtype(self.target_expr, target_context)
+        return getdtype(self.target_expr, target_context)
 
     def eval_rows(self, source_rows, target_filter, context):
         target_context = self.target_context(context)
@@ -347,6 +355,7 @@ class MinLink(AggregateLink):
             target_filter = ", target_filter=%s" % self.target_filter
         else:
             target_filter = ""
+        #noinspection PyProtectedMember
         return '%s(%s, %s%s)' % (self.func_name, self.link._name,
                                  self.target_expr, target_filter)
 

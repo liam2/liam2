@@ -278,10 +278,10 @@ class Simulation(object):
             input_path = os.path.join(input_directory, input_file)
             data_source = H5Data(input_path, output_path)
         elif method == 'void':
-            input_path = None
             data_source = Void(output_path)
         else:
-            print(method, type(method))
+            raise ValueError("'%s' is an invalid value for 'method'. It should "
+                             "be either 'h5' or 'void'")
 
         default_entity = simulation_def.get('default_entity')
         return Simulation(globals_def, periods, start_period,
@@ -318,7 +318,7 @@ class Simulation(object):
 #                                                entity_registry)
 #        output_dataset.copy(input_dataset, self.start_period - 1)
 #        for entity in input_dataset:
-#            indexed_array = buildArrayForPeriod(entity)
+#            indexed_array = build_period_array(entity)
 
         # tell numpy we do not want warnings for x/0 and 0/0
         np.seterr(divide='ignore', invalid='ignore')
@@ -439,7 +439,7 @@ class Simulation(object):
 
     @property
     def console_entity(self):
-        '''compute the entity the console should start in (if any)'''
+        """compute the entity the console should start in (if any)"""
 
         return entity_registry[self.default_entity] \
                if self.default_entity is not None \
