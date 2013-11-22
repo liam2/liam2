@@ -33,6 +33,31 @@ def deprecated(f, msg):
     return func
 
 
+def find_first(char, s, depth=0):
+    """
+    returns the position of the first occurrence of the 'ch' character at
+    'depth' depth in the 's' string.
+    returns -1 if not found
+    raises ValueError if the string contains imbalanced parentheses or brackets
+    """
+    match = {'(': ')', '[': ']'}
+    opening, closing = set(match), set(match.values())
+    stack = []
+    for i, c in enumerate(s):
+        if c == char and len(stack) == depth:
+            return i
+        if c in opening:
+            stack.append(match[c])
+        elif c in closing:
+            if not stack or c != stack.pop():
+                raise ValueError("syntax error: imbalanced parentheses or "
+                                 "brackets in string: %s" % s)
+    if stack:
+        raise ValueError("syntax error: missing parenthesis or "
+                         "bracket in string: %s" % s)
+    return -1
+
+
 class AutoFlushFile(object):
     def __init__(self, f):
         self.f = f
