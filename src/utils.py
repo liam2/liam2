@@ -892,6 +892,13 @@ def fields_yaml_to_type(dict_fields_list):
 # -------------------
 
 def add_context(exception, s):
+    if isinstance(exception, SyntaxError) and exception.offset is not None:
+        # most SyntaxError are clearer if left unmodified since they already
+        # contain the faulty string but some do not (eg non-keyword arg after
+        # keyword arg).
+        # SyntaxeError instances have 'filename', 'lineno', 'offset' and 'text'
+        # attributes.
+        return exception
     msg = exception.args[0] if exception.args else ''
     encoding = sys.getdefaultencoding()
     expr_str = s.encode(encoding, 'replace')
