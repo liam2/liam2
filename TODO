@@ -549,8 +549,8 @@ features I would like to implement (in no particular order)
 - initialdata: s/false/value
 - allow setting/creating temporary variables in interactive console
 - make globals writeable
-- line numbers in error messages. It might be tricky because we loose the
-  information after yaml parsed the file
+- line numbers in error messages.
+  http://stackoverflow.com/questions/13319067/parsing-yaml-return-with-line-number
   
 - one filter, several actions.
   eg, when someone dies, you want to change more than one field, and it
