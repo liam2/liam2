@@ -63,7 +63,7 @@ def eat_traceback(func, *args, **kwargs):
             mark = e.context_mark
         else:
             if (e.problem ==
-                    "found character '\\t' that cannot start any token"):
+                "found character '\\t' that cannot start any token"):
                 msg = "found a TAB character instead of spaces"
             else:
                 msg = ""
@@ -73,9 +73,9 @@ def eat_traceback(func, *args, **kwargs):
         print("SYNTAX ERROR %s%s" % (str(mark).strip(), msg))
     except yaml.reader.ReaderError, e:
         if e.encoding == 'utf8':
-            print("\nERROR in '%s': invalid character found, this probably "
-                  "means you have used non ASCII characters (accents and "
-                  "other non-english characters) and did not save your file "
+            print("\nERROR in '%s': invalid character found, this probably " \
+                  "means you have used non ASCII characters (accents and " \
+                  "other non-english characters) and did not save your file " \
                   "using the UTF8 encoding" % e.name)
         else:
             raise
@@ -135,6 +135,19 @@ def explore(fpath):
         h5in.close()
         if h5out is not None:
             h5out.close()
+
+
+def display(fpath):
+    import view
+    print("Launching ViTables...")
+    _, ext = splitext(fpath)
+    if ext in ('.h5', '.hdf5'):
+        files = [fpath]
+    else:
+        ds = Simulation.from_yaml(fpath).data_source
+        files = [ds.input_path, ds.output_path]
+    print("Trying to open:", ",".join(str(f) for f in files))
+    view.open(files)
 
 
 class PrintVersionsAction(argparse.Action):
@@ -197,18 +210,24 @@ def main():
 
     # create the parser for the "explore" command
     parser_explore = subparsers.add_parser('explore', help='explore data of a '
-                                           'past simulation')
+                                          'past simulation')
     parser_explore.add_argument('file', help='explore file')
 
     # create the parser for the "upgrade" command
     parser_upgrade = subparsers.add_parser('upgrade',
-                                           help='upgrade a simulation file to '
-                                                'the latest syntax')
+                                          help='upgrade a simulation file to '
+                                               'the latest syntax')
     parser_upgrade.add_argument('input', help='input simulation file')
     out_help = "output simulation file. If missing, the original file will " \
                "be backed up (to filename.bak) and the upgrade will be " \
                "done in-place."
     parser_upgrade.add_argument('output', help=out_help, nargs='?')
+
+
+    # create the parser for the "view" command
+    parser_import = subparsers.add_parser('view', help='view data')
+    parser_import.add_argument('file', help='data file')
+
     parsed_args = parser.parse_args()
 
     action = parsed_args.action
@@ -220,6 +239,8 @@ def main():
         explore(parsed_args.file)
     elif action == "upgrade":
         upgrade(parsed_args.input, parsed_args.output)
+    elif action == "view":
+        display(parsed_args.file)
 
 if __name__ == '__main__':
     import sys
