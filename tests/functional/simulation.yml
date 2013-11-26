@@ -210,11 +210,11 @@ entities:
 #            test_small_function:
 #                args: a, b
 #                return: a + b
-#            
+#
 #            test_call:
 #                - aplusb: test_function(age, 1)
 #                - show("age", age, "aplusb", aplusb)
-#                
+#
 #            test_loop:
 #                variables: a, b
 #                sequence: age[age < 10]
@@ -228,7 +228,7 @@ entities:
 #                    - show("age", age)
 #                    - age: age + 1
 #
-#            #XXX: embed python code instead?                    
+#            #XXX: embed python code instead?
 #            while_in_proc:
 #                - done: False
 #                # => while is a reserved keyword and can't be used as a
@@ -239,13 +239,24 @@ entities:
 #                        - age: age + 1
 #                        - show("age", age)
 #                        - done: gtpmin(age) >= 10
-            
+
 #            embbeded_python:
 #                done = False
 #                while not done:
 #                    age += 1
 #                    done = min(age) >= 10
-                
+
+            test_charts:
+                - byage: groupby(age, percent=True)
+#                - barchart(byage)
+#                - barchart(groupby(agegroup + 1))
+                # mig_period_women
+#                - barchart(MIG[0,:,period - 2001])
+#                - barchart(groupby(eduach, agegroup))
+#                - barchart3d(groupby(eduach, agegroup))
+#                - barchart3d(groupby(eduach, agegroup, gender))
+#                - piechart(groupby(eduach))
+
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
                 - weight: randint(1, 11)
@@ -1863,12 +1874,11 @@ entities:
                 - assertEqual(min_count_by_gender.row_totals, None)
                 - assertEqual(min_count_by_gender.col_totals, None)
 
-                - min_count_by_agegroup: min(by_agegroup_gender, axis=1)  
+                - min_count_by_agegroup: min(by_agegroup_gender, axis=1)
                 - assertEqual(min_count_by_agegroup.shape, (16,))
                 - assertEqual(min_count_by_agegroup.dim_names, None)
                 - assertEqual(min_count_by_gender.row_totals, None)
                 - assertEqual(min_count_by_gender.col_totals, None)
-
 
             show_weight: show("avg weight", avg(weight),
                               "total population", sum(weight))
@@ -1930,6 +1940,7 @@ simulation:
                    show_temp_global,
 
                    test_expr,
+                   agegroup,
 
                    test_logit,
                    test_logistic,
@@ -1944,7 +1955,6 @@ simulation:
 
                    test_macro,
                    test_compound,
-                   agegroup,
 
                    test_predictor1, test_predictor2, test_predictor3,
 
@@ -1996,6 +2006,9 @@ simulation:
                    test_choice,
                    show_weight,
                    [marriage, 4],
+
+                   # charts
+                   test_charts,
         ]
         - household: [num_persons, nch, maxnch, test_align_link
 #                      dump_csv_h,
@@ -2011,5 +2024,5 @@ simulation:
 #    autodiff: True
 
     random_seed: 0
-    periods: 2
+    periods: 1
 #    skip_shows: True

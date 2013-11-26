@@ -9,6 +9,7 @@ from utils import add_context
 import actions
 import aggregates
 import alignment
+import charts
 import groupby
 import links
 import matching
@@ -17,7 +18,7 @@ import regressions
 import tfunc
 
 functions = {}
-for module in (actions, aggregates, alignment, groupby, links, matching,
+for module in (actions, aggregates, alignment, charts, groupby, links, matching,
                exprmisc, regressions, tfunc):
     functions.update(module.functions)
 
