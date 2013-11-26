@@ -53,7 +53,7 @@ build_exe_options = {
 }
 
 setup(name="liam2",
-      version="0.7.0pre1",
+      version="0.8.0",
       description="LIAM2",
 
       cmdclass={"build_ext": MyBuildExt},
