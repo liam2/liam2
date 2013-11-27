@@ -12,11 +12,30 @@ from itertools import izip, product
 from textwrap import wrap
 from collections import defaultdict, deque
 import warnings
+from importlib import import_module
 
 import numpy as np
 #import psutil
 
 import config
+
+
+class DelayedImportModule(object):
+    """
+    DelayedImportModule can be used to delay importing modules until their
+    functionality is actually used (by accessing any of their attributes).
+    It makes optional dependencies easier to implement as it removes the
+    need to (re)import the module in each function using it.
+    """
+    def __init__(self, path):
+        self.path = path
+        self.module = None
+
+    def __getattr__(self, key):
+        module = self.module
+        if module is None:
+            module = self.module = import_module(self.path)
+        return getattr(module, key)
 
 
 class UserDeprecationWarning(UserWarning):
@@ -207,6 +226,15 @@ def isconstant(a, filter_value=None):
         return np.all(filter_value & (a == value))
 
 
+class Axis(object):
+    def __init__(self, name, labels):
+        self.name = name
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.labels)
+
+
 class LabeledArray(np.ndarray):
     #noinspection PyNoneFunctionAssignment
     def __new__(cls, input_array, dim_names=None, pvalues=None,
@@ -243,6 +271,14 @@ class LabeledArray(np.ndarray):
         obj.row_totals = row_totals
         obj.col_totals = col_totals
         return obj
+
+    @property
+    def axes(self):
+        if self.dim_names is None or self.pvalues is None:
+            return []
+        else:
+            return [Axis(name, labels)
+                    for name, labels in zip(self.dim_names, self.pvalues)]
 
     def __getitem__(self, key):
         obj = np.ndarray.__getitem__(self, key)
@@ -413,6 +449,23 @@ class LabeledArray(np.ndarray):
         res.row_totals = None
 #        print '   result is %s' % repr(res)
         return res
+
+
+def aslabeledarray(data):
+    sequence = (tuple, list)
+    if isinstance(data, LabeledArray):
+        return data
+    elif isinstance(data, sequence) and isinstance(data[0], LabeledArray):
+        arraydata = np.asarray(data)
+        #TODO: check that all arrays have the same axes
+        dim_names = [None] + data[0].dim_names
+        dim_labels = [range(len(data))] + data[0].pvalues
+        return LabeledArray(arraydata, dim_names, dim_labels)
+    else:
+        arraydata = np.asarray(data)
+        dim_names = [None for _ in arraydata.shape]
+        dim_labels = [range(d) for d in arraydata.shape]
+        return LabeledArray(arraydata, dim_names, dim_labels)
 
 
 class ProgressBar(object):
