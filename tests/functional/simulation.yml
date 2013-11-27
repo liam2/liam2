@@ -251,6 +251,7 @@ entities:
                 - boxplot((age[gender], age[not gender]))
                 - boxplot(groupby(eduach, expr=age, filter=eduach != -1))
                 - plot(age)
+                - plot(groupby(eduach))
                 - plot((lag(avg(work), 5), lag(avg(work), 4),
                         lag(avg(work), 3), lag(avg(work), 2),
                         lag(avg(work)), avg(work)))
@@ -258,6 +259,8 @@ entities:
                 - plot(groupby(age),
                        groupby(age, filter=not gender),
                        groupby(age, filter=gender))
+                - stackplot(groupby(eduach))
+                - stackplot(groupby(gender, eduach))
                 - stackplot(groupby(gender, age))
                 - stackplot(groupby(age, filter=not gender),
                             groupby(age, filter=gender))

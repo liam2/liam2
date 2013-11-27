@@ -115,11 +115,12 @@ class Plot(Chart):
                                  "have compatible axes")
 
         #TODO: make maxticks as an argument
+        x = np.arange(len(args[0])) + 1
         colors = self.set_axes_and_legend(args, maxticks=10)
         for array, color in zip(args, colors):
             # use np.asarray to work around missing "newaxis" implementation
             # in LabeledArray
-            plt.plot(np.asarray(array), color=color, **self.kwargs)
+            plt.plot(x, np.asarray(array), color=color, **self.kwargs)
 
 
 class StackPlot(Chart):
@@ -133,9 +134,8 @@ class StackPlot(Chart):
             raise ValueError("stackplot only works with a 2D array (MxN) or "
                              "M 1D arrays (each of dimension 1xN)")
 
-        x = np.arange(length)
-
-        colors = self.set_axes_and_legend(args, stackthreshold=1)
+        x = np.arange(length) + 1
+        colors = self.set_axes_and_legend(args)
         # use np.asarray to work around missing "newaxis" implementation
         # in LabeledArray
         plt.stackplot(x, np.asarray(args), colors=colors, **self.kwargs)
