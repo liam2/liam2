@@ -6,12 +6,30 @@ import numpy as np
 
 from expr import Expr, expr_eval
 from process import Process
-from utils import Axis, LabeledArray, DelayedImportModule, aslabeledarray
+from utils import Axis, LabeledArray, aslabeledarray, ExceptionOnGetAttr
 
-plt = DelayedImportModule('matplotlib.pyplot')
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = ExceptionOnGetAttr(ImportError('no module named matplotlib.pyplot'))
+    print("Warning: could not import matplotlib.pyplot, plots "
+          "will not be available.")
+
+try:
+    from mpl_toolkits.mplot3d import Axes3D
+except ImportError:
+    if not isinstance(plt, ExceptionOnGetAttr):
+        print("Warning: could not import mpl_toolkits.mplot3d.Axes3D, 3D plots "
+              "will not be available.")
 
 
 class Chart(Process):
+    axes = True
+    legend = True
+    maxticks = 20
+    projection = None
+    stackthreshold = 2
+
     def __init__(self, *args, **kwargs):
         Process.__init__(self)
         self.args = args
@@ -35,15 +53,30 @@ class Chart(Process):
         args = [expr_eval(arg, context) for arg in self.args]
         kwargs = dict((k, expr_eval(v, context))
                       for k, v in self.kwargs.iteritems())
-        self._draw(*args, **kwargs)
+
+        maxticks = kwargs.pop('maxticks', self.maxticks)
+        projection = self.projection
+        stackthreshold = self.stackthreshold
+        if self.legend and self.axes:
+            colors = self.set_axes_and_legend(args, maxticks=maxticks,
+                                              stackthreshold=stackthreshold,
+                                              projection=projection,
+                                              kwargs=kwargs)
+        elif self.axes:
+            self.set_axes(args, maxticks=maxticks, projection=projection,
+                          kwargs=kwargs)
+            colors = None
+        else:
+            colors = None
+        self._draw(colors, *args, **kwargs)
         plt.show()
 
-    def _draw(self, *args, **kwargs):
+    def _draw(self, colors, *args, **kwargs):
         raise NotImplementedError()
 
     def set_axis_method(name):
-        def set_axis(self, axis, maxticks=20):
-            ax = plt.gca()
+        def set_axis(self, axis, maxticks=20, projection=None):
+            ax = plt.gca(projection=projection)
             numvalues = len(axis)
             numticks = min(maxticks, numvalues)
             step = int(math.ceil(numvalues / float(numticks)))
@@ -66,19 +99,25 @@ class Chart(Process):
         proxies = [plt.Rectangle((0, 0), 1, 1, fc=color) for color in colors]
         plt.legend(proxies, axis.labels, title=axis.name, **kwargs)
 
-    def set_axes(self, data, maxticks=20, skip_axes=0):
+    def set_axes(self, data, maxticks=20, skip_axes=0, projection=None,
+                 kwargs=None):
+        if len(data) == 1:
+            data = data[0]
         array = aslabeledarray(data)
         axes = array.axes
         if skip_axes:
             axes = axes[skip_axes:]
         ndim = len(axes)
-        self.set_xaxis(axes[0], maxticks)
+        self.set_xaxis(axes[0], maxticks, projection)
         if ndim > 1:
-            self.set_yaxis(axes[1], maxticks)
+            self.set_yaxis(axes[1], maxticks, projection)
         if ndim > 2:
-            self.set_zaxis(axes[2], maxticks)
+            self.set_zaxis(axes[2], maxticks, projection)
 
-    def set_axes_and_legend(self, data, maxticks=20, stackthreshold=2):
+    def set_axes_and_legend(self, data, maxticks=20, stackthreshold=2,
+                            projection=None, kwargs=None):
+        if len(data) == 1:
+            data = data[0]
         array = aslabeledarray(data)
         if array.ndim >= stackthreshold:
             colors = self.get_colors(len(array))
@@ -87,20 +126,19 @@ class Chart(Process):
         else:
             colors = self.get_colors(1)
             skip_axes = 0
-        self.set_axes(array, maxticks, skip_axes=skip_axes)
+        self.set_axes(array, maxticks, skip_axes, projection, kwargs)
         return colors
 
 
 class BoxPlot(Chart):
-    def _draw(self, *args, **kwargs):
-        plt.boxplot(*args, **self.kwargs)
-        if len(args) == 1:
-            args = args[0]
-        self.set_axes(args)
+    legend = False
+
+    def _draw(self, colors, *args, **kwargs):
+        plt.boxplot(*args, **kwargs)
 
 
 class Plot(Chart):
-    def _draw(self, *args, **kwargs):
+    def _draw(self, colors, *args, **kwargs):
         if (len(args) == 1 and isinstance(args[0], np.ndarray) and
                 args[0].ndim == 2):
             args = args[0]
@@ -114,17 +152,15 @@ class Plot(Chart):
                 raise ValueError("when plotting multiple arrays, they should "
                                  "have compatible axes")
 
-        #TODO: make maxticks as an argument
         x = np.arange(len(args[0])) + 1
-        colors = self.set_axes_and_legend(args, maxticks=10)
         for array, color in zip(args, colors):
             # use np.asarray to work around missing "newaxis" implementation
             # in LabeledArray
-            plt.plot(x, np.asarray(array), color=color, **self.kwargs)
+            plt.plot(x, np.asarray(array), color=color, **kwargs)
 
 
 class StackPlot(Chart):
-    def _draw(self, *args, **kwargs):
+    def _draw(self, colors, *args, **kwargs):
         if len(args) == 1 and args[0].ndim == 2:
             args = args[0]
             length = args.shape[-1]
@@ -135,14 +171,13 @@ class StackPlot(Chart):
                              "M 1D arrays (each of dimension 1xN)")
 
         x = np.arange(length) + 1
-        colors = self.set_axes_and_legend(args)
         # use np.asarray to work around missing "newaxis" implementation
         # in LabeledArray
-        plt.stackplot(x, np.asarray(args), colors=colors, **self.kwargs)
+        plt.stackplot(x, np.asarray(args), colors=colors, **kwargs)
 
 
 class BarChart(Chart):
-    def _draw(self, *args, **kwargs):
+    def _draw(self, colors, *args, **kwargs):
         data = args[0]
         if data.ndim == 1:
             if isinstance(data, LabeledArray):
@@ -156,7 +191,6 @@ class BarChart(Chart):
             raise ValueError("barchart only works on 1 or 2 dimensional data")
 
         plt.grid(True)
-        colors = self.set_axes_and_legend(data)
         numvalues = data.shape[1]
 
         # plots with the left of the first bar in a negative position look
@@ -165,13 +199,16 @@ class BarChart(Chart):
         bottom = np.zeros(numvalues, dtype=data.dtype)
         for row, color in zip(data, colors):
             plt.bar(left=x, height=row, width=0.5, bottom=bottom,
-                    color=color, **self.kwargs)
+                    color=color, **kwargs)
             bottom += row
 
 
 class BarChart3D(Chart):
-    def _draw(self, *args, **kwargs):
-        from mpl_toolkits.mplot3d import Axes3D
+    maxticks = 10
+    projection = '3d'
+    stackthreshold = 3
+
+    def _draw(self, colors, *args, **kwargs):
 
         data = args[0]
         if data.ndim == 2:
@@ -189,19 +226,22 @@ class BarChart3D(Chart):
         _, xlen, ylen = data.shape
 
         ax = plt.gca(projection='3d')
-        colors = self.set_axes_and_legend(data, maxticks=10, stackthreshold=3)
         size = xlen * ylen
         positions = np.mgrid[:xlen, :ylen] + 0.75
         xpos, ypos = positions.reshape(2, size)
         zpos = np.zeros(size)
         for array, color in zip(data, colors):
             dz = array.flatten()
-            ax.bar3d(xpos, ypos, zpos, dx=0.5, dy=0.5, dz=dz, color=color)
+            ax.bar3d(xpos, ypos, zpos, dx=0.5, dy=0.5, dz=dz, color=color,
+                     **kwargs)
             zpos += dz
 
 
 class PieChart(Chart):
-    def _draw(self, *args, **kwargs):
+    axes = False
+    legend = False
+
+    def _draw(self, colors, *args, **kwargs):
         data = args[0]
         if data.ndim != 1:
             raise ValueError("piechart only works on 1 dimensional data")

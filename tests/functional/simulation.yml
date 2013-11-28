@@ -269,7 +269,7 @@ entities:
                 # mig_period_women
                 - barchart(MIG[0,:,period - 2001])
                 - barchart(groupby(eduach, agegroup))
-                - barchart3d(groupby(eduach, agegroup))
+                - barchart3d(groupby(eduach, agegroup), maxticks=4)
                 - barchart3d(groupby(eduach, agegroup, gender))
                 - piechart(groupby(eduach * 2))
                 - piechart(groupby(eduach),

@@ -20,22 +20,16 @@ import numpy as np
 import config
 
 
-class DelayedImportModule(object):
+class ExceptionOnGetAttr(object):
     """
-    DelayedImportModule can be used to delay importing modules until their
-    functionality is actually used (by accessing any of their attributes).
-    It makes optional dependencies easier to implement as it removes the
-    need to (re)import the module in each function using it.
+    ExceptionOnGetAttr can be used when an optional part is missing
+    so that an exception is only raised if the object is actually used.
     """
-    def __init__(self, path):
-        self.path = path
-        self.module = None
+    def __init__(self, exception):
+        self.exception = exception
 
     def __getattr__(self, key):
-        module = self.module
-        if module is None:
-            module = self.module = import_module(self.path)
-        return getattr(module, key)
+        raise self.exception
 
 
 class UserDeprecationWarning(UserWarning):
