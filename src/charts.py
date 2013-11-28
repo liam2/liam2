@@ -225,15 +225,19 @@ class BarChart3D(Chart):
 
         _, xlen, ylen = data.shape
 
+        kw = dict(dx=0.5, dy=0.5)
+        kw.update(kwargs)
         ax = plt.gca(projection='3d')
         size = xlen * ylen
-        positions = np.mgrid[:xlen, :ylen] + 0.75
+        positions = np.mgrid[:xlen, :ylen] + 1.0
         xpos, ypos = positions.reshape(2, size)
+        xpos -= kw['dx'] / 2
+        ypos -= kw['dy'] / 2
         zpos = np.zeros(size)
         for array, color in zip(data, colors):
             dz = array.flatten()
-            ax.bar3d(xpos, ypos, zpos, dx=0.5, dy=0.5, dz=dz, color=color,
-                     **kwargs)
+            ax.bar3d(xpos, ypos, zpos, dz=dz, color=color,
+                     **kw)
             zpos += dz
 
 

@@ -247,35 +247,36 @@ entities:
 #                    done = min(age) >= 10
 
             test_charts:
-                - byage: groupby(age, percent=True)
-                - boxplot((age[gender], age[not gender]))
+#                - byage: groupby(age, percent=True)
+#                - boxplot((age[gender], age[not gender]))
                 - boxplot(groupby(eduach, expr=age, filter=eduach != -1))
-                - plot(age)
-                - plot(groupby(eduach))
-                - plot((lag(avg(work), 5), lag(avg(work), 4),
-                        lag(avg(work), 3), lag(avg(work), 2),
-                        lag(avg(work)), avg(work)))
-                - plot(groupby(gender, age))
-                - plot(groupby(age),
-                       groupby(age, filter=not gender),
-                       groupby(age, filter=gender))
-                - stackplot(groupby(eduach))
-                - stackplot(groupby(gender, eduach))
-                - stackplot(groupby(gender, age))
-                - stackplot(groupby(age, filter=not gender),
-                            groupby(age, filter=gender))
-                - barchart(byage)
-                - barchart(groupby(agegroup + 1))
-                # mig_period_women
-                - barchart(MIG[0,:,period - 2001])
-                - barchart(groupby(eduach, agegroup))
-                - barchart3d(groupby(eduach, agegroup), maxticks=4)
-                - barchart3d(groupby(eduach, agegroup, gender))
-                - piechart(groupby(eduach * 2))
-                - piechart(groupby(eduach),
-                           explode=[0, 0.1, 0, 0],
-                           labels=['a', 'b', 'c', 'd'],
-                           shadow=False)
+#                - plot(age)
+#                - plot(groupby(eduach))
+#                - plot((lag(avg(work), 5), lag(avg(work), 4),
+#                        lag(avg(work), 3), lag(avg(work), 2),
+#                        lag(avg(work)), avg(work)))
+#                - plot(groupby(gender, age))
+#                - plot(groupby(age),
+#                       groupby(age, filter=not gender),
+#                       groupby(age, filter=gender))
+#                - stackplot(groupby(eduach))
+#                - stackplot(groupby(gender, eduach))
+#                - stackplot(groupby(gender, age))
+#                - stackplot(groupby(age, filter=not gender),
+#                            groupby(age, filter=gender))
+#                - barchart(byage)
+#                - barchart(groupby(agegroup + 1))
+#                # mig_period_women
+#                - barchart(MIG[0,:,period - 2001])
+#                - barchart(groupby(eduach, agegroup))
+#                - barchart3d(groupby(eduach, agegroup))
+#                - barchart3d(groupby(eduach, agegroup), dx=0.2, dy=0.8, maxticks=4)
+#                - barchart3d(groupby(eduach, agegroup, gender))
+#                - piechart(groupby(eduach * 2))
+#                - piechart(groupby(eduach),
+#                           explode=[0, 0.1, 0, 0],
+#                           labels=['a', 'b', 'c', 'd'],
+#                           shadow=False)
 
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
