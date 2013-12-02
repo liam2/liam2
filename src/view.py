@@ -20,6 +20,7 @@ from __future__ import print_function
 #       Author:  Vicent Mas - vmas@vitables.org
 
 import locale
+import warnings
 
 from utils import ExceptionOnGetAttr
 
@@ -35,7 +36,12 @@ def viewhdf(filepaths):
     app = QtGui.QApplication(filepaths)
 
     # These imports must be done after the QApplication has been instantiated
-    from vitables.vtapp import VTApp
+
+    with warnings.catch_warnings():
+        # ignore deprecation warnings just for this import
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        from vitables.vtapp import VTApp
+
     from vitables.preferences import vtconfig
 
     # Specify the organization's Internet domain. When the Internet

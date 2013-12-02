@@ -146,7 +146,7 @@ def display(fpath):
     else:
         ds = Simulation.from_yaml(fpath).data_source
         files = [ds.input_path, ds.output_path]
-    print("Trying to open:", ",".join(str(f) for f in files))
+    print("Trying to open:", " and ".join(str(f) for f in files))
     viewhdf(files)
 
 

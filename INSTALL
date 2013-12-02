@@ -40,6 +40,7 @@ Third party packages:
   http://carray.pytables.org/download/
 
 Optional dependencies:
+- matplotlib & python-dateutil & pyparsing
 
 - Cython 0.16 or later (needed to build the C extensions, see below).
   http://www.cython.org/
