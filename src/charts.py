@@ -23,7 +23,7 @@ try:
 except ImportError, e:
     if not isinstance(plt, ExceptionOnGetAttr):
         print("Warning: 3D charts are not available because "
-              "'mpl_toolkits.mplot3d.AxesED' could not be imported (%s).")
+              "'mpl_toolkits.mplot3d.AxesED' could not be imported (%s)." % e)
 
 
 class Chart(Process):
