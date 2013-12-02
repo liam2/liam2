@@ -40,12 +40,21 @@ Third party packages:
   http://carray.pytables.org/download/
 
 Optional dependencies:
-- matplotlib & python-dateutil & pyparsing
+- to view hdf5 files: vitables 2.0 (and its dependency PyQt)
+  WARNING: liam2 currently does NOT support vitables 2.1 !
+  http://vitables.org
+  http://www.riverbankcomputing.com/software/pyqt/download
 
-- Cython 0.16 or later (needed to build the C extensions, see below).
+- to generate plots and charts: matplotlib (and its dependencies:
+  python-dateutil and pyparsing at the minimum)
+  http://matplotlib.org/
+  http://pypi.python.org/pypi/python-dateutil
+  http://pyparsing.wikispaces.com/
+
+- to build the C extensions (see below): Cython 0.16 or later
   http://www.cython.org/
-  
-- Sphinx 1.0 or later (to "build" the documentation to html, or pdf) 
+
+- to build the documentation to html or pdf: sphinx 1.0 or later
   http://www.sphinx-doc.org/
 
 Building the C extensions
