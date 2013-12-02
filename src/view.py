@@ -20,17 +20,18 @@ from __future__ import print_function
 #       Author:  Vicent Mas - vmas@vitables.org
 
 import locale
-import warnings
-warnings.simplefilter('ignore')
 
-import sip
-sip.setapi('QString', 2)
-sip.setapi('QVariant', 2)
+from utils import ExceptionOnGetAttr
 
-from PyQt4 import QtGui
+try:
+    from PyQt4 import QtGui
+except ImportError, e:
+    QtGui = ExceptionOnGetAttr(e)
+    print("Warning: the 'view' command is not available because 'PyQt4.QtGui' "
+          "could not be imported (%s)." % e)
 
 
-def open(filepaths):
+def viewhdf(filepaths):
     app = QtGui.QApplication(filepaths)
 
     # These imports must be done after the QApplication has been instantiated
@@ -54,5 +55,5 @@ def open(filepaths):
 
     # Start the application
     vtapp = VTApp(mode='a', h5files=filepaths)
-    vtapp.gui.show()
+    vtapp.show()
     app.exec_()

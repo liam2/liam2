@@ -16,8 +16,9 @@ from utils import AutoFlushFile
 import registry
 from data import populate_registry, H5Data
 from upgrade import upgrade
+from view import viewhdf
 
-__version__ = "0.7.0"
+__version__ = "0.8.0pre1"
 
 
 def eat_traceback(func, *args, **kwargs):
@@ -138,7 +139,6 @@ def explore(fpath):
 
 
 def display(fpath):
-    import view
     print("Launching ViTables...")
     _, ext = splitext(fpath)
     if ext in ('.h5', '.hdf5'):
@@ -147,7 +147,7 @@ def display(fpath):
         ds = Simulation.from_yaml(fpath).data_source
         files = [ds.input_path, ds.output_path]
     print("Trying to open:", ",".join(str(f) for f in files))
-    view.open(files)
+    viewhdf(files)
 
 
 class PrintVersionsAction(argparse.Action):
