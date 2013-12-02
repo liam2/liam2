@@ -6,21 +6,24 @@ import numpy as np
 
 from expr import Expr, expr_eval
 from process import Process
-from utils import Axis, LabeledArray, aslabeledarray, ExceptionOnGetAttr
+from utils import LabeledArray, aslabeledarray, ExceptionOnGetAttr
 
 try:
+    import matplotlib
+    matplotlib.use('Qt4Agg')
+    del matplotlib
     import matplotlib.pyplot as plt
-except ImportError:
-    plt = ExceptionOnGetAttr(ImportError('no module named matplotlib.pyplot'))
-    print("Warning: could not import matplotlib.pyplot, plots "
-          "will not be available.")
+except ImportError, e:
+    plt = ExceptionOnGetAttr(e)
+    print("Warning: charts functionality is not available because "
+          "'matplotlib.pyplot' could not be imported (%s)." % e)
 
 try:
     from mpl_toolkits.mplot3d import Axes3D
-except ImportError:
+except ImportError, e:
     if not isinstance(plt, ExceptionOnGetAttr):
-        print("Warning: could not import mpl_toolkits.mplot3d.Axes3D, 3D plots "
-              "will not be available.")
+        print("Warning: 3D charts are not available because "
+              "'mpl_toolkits.mplot3d.AxesED' could not be imported (%s).")
 
 
 class Chart(Process):
@@ -49,7 +52,7 @@ class Chart(Process):
             return [cmap(float(i) / n) for i in range(n)]
 
     def run(self, context):
-        plt.figure()
+        fig = plt.figure()
         args = [expr_eval(arg, context) for arg in self.args]
         kwargs = dict((k, expr_eval(v, context))
                       for k, v in self.kwargs.iteritems())
@@ -70,6 +73,8 @@ class Chart(Process):
             colors = None
         self._draw(colors, *args, **kwargs)
         plt.show()
+        # explicit close is needed for Qt4 backend
+        plt.close(fig)
 
     def _draw(self, colors, *args, **kwargs):
         raise NotImplementedError()
