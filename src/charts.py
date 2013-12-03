@@ -46,13 +46,21 @@ class Chart(Process):
             if isinstance(arg, Expr):
                 yield arg
 
-    def get_colors(self, n):
+    def get_colors(self, n, outline=False):
+        from matplotlib import cm
+
+        # compute a range which includes the end (1.0)
         if n == 1:
-            return ['#ff4422']
+            ratios = [0.0]
         else:
-            from matplotlib import cm
-            cmap = cm.get_cmap('OrRd')
-            return [cmap(float(i) / n) for i in range(n)]
+            ratios = [float(i) / (n - 1) for i in range(n)]
+        # shrink to [0.2, 0.7]
+        ratios = [0.2 + r * 0.5 for r in ratios]
+        # start from end
+        ratios = [1.0 - r for r in ratios]
+
+        cmap = cm.get_cmap('OrRd')
+        return [cmap(f) for f in ratios]
 
     def run(self, context):
         fig = plt.figure()
