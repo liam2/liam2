@@ -12,7 +12,6 @@ from itertools import izip, product
 from textwrap import wrap
 from collections import defaultdict, deque
 import warnings
-from importlib import import_module
 
 import numpy as np
 #import psutil
@@ -328,7 +327,7 @@ class LabeledArray(np.ndarray):
                        % (len(obj.dim_names), obj.ndim)
             if obj.pvalues is not None:
                 assert len(obj.pvalues) == obj.ndim, \
-                       "len(pvalues) (%d) != ndim (%d)" \
+                        "len(pvalues) (%d) != ndim (%d)" \
                        % (len(obj.pvalues), obj.ndim)
         return obj
 

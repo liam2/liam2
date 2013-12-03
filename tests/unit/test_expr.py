@@ -15,11 +15,15 @@ class ArrayTestCase(unittest.TestCase):
         assert np.array_equal(first, other), "got: %s\nexpected: %s" % (first, 
                                                                         other) 
 
+
 class StringTestCase(ArrayTestCase):
+    context = None
+
     def assertEvalEqual(self, s, result):
         e = parse(s, autovariables=True)
         self.assertArrayEqual(e.evaluate(self.context), result)
-        
+
+
 class Test(StringTestCase):
     def setUp(self):
         self.context = {'age': array([20, 10, 35, 55]),
@@ -44,6 +48,7 @@ class FakeEntity(object):
         self.array_period = None
         self.temp_variables = {}
         self.id_to_rownum = array([0, 1, 2, 3])
+
 
 class TestLink(ArrayTestCase): 
     def setUp(self):
@@ -187,8 +192,9 @@ class TestLink(ArrayTestCase):
 #  examples:
 #  data['person'][Person.period == 2002]['id'] = [0, 1, 3, 5] 
 #  data['person'][Person.period == 2002]['age'] = [25, 45, 1, 37] 
-#  data['person'][Person.period == 2002]['age'][0] = 25 
-#  data['person'][Person.period == 2002]['age'].get(5) = 37  # age for id == 5 is 37
+#  data['person'][Person.period == 2002]['age'][0] = 25
+#  age for id == 5 is 37
+#  data['person'][Person.period == 2002]['age'].get(5) = 37
 
 
 if __name__ == "__main__":

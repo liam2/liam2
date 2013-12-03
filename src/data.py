@@ -395,7 +395,7 @@ def merge_arrays(array1, array2, result_fields='union'):
     # 2) copy data from array1 (if it will not be overridden)
     if not arr2_complete:
         output_array = merge_subset_in_array(output_array, id_to_rownum,
-                                          array1, first=True)
+                                             array1, first=True)
 
     # 3) copy data from array2
     if not output_is_arr2:
@@ -405,7 +405,7 @@ def merge_arrays(array1, array2, result_fields='union'):
 
 
 def append_table(input_table, output_table, chunksize=10000, condition=None,
-                stop=None, show_progress=False):
+                 stop=None, show_progress=False):
     if input_table.dtype != output_table.dtype:
         output_fields = get_fields(output_table)
     else:
@@ -461,10 +461,9 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
 
 #noinspection PyProtectedMember
 def copy_table(input_table, output_node, output_fields=None,
-              chunksize=10000, condition=None, stop=None, show_progress=False,
-              **kwargs):
-    complete_kwargs = {'title': input_table._v_title,
-                      }
+               chunksize=10000, condition=None, stop=None, show_progress=False,
+               **kwargs):
+    complete_kwargs = {'title': input_table._v_title}
 #                       'filters': input_table.filters}
     output_file = output_node._v_file
     complete_kwargs.update(kwargs)
@@ -475,7 +474,7 @@ def copy_table(input_table, output_node, output_fields=None,
     output_table = output_file.createTable(output_node, input_table.name,
                                            output_dtype, **complete_kwargs)
     return append_table(input_table, output_table, chunksize, condition,
-                       stop=stop, show_progress=show_progress)
+                        stop=stop, show_progress=show_progress)
 
 
 #XXX: should I make a generic n-way array merge out of this?
@@ -680,7 +679,7 @@ def index_tables(globals_def, entities, fpath):
                 else:
                     allowed_missing = None
                 assert_valid_type(global_data, global_type, allowed_missing,
-                                name)
+                                  name)
                 array = global_data.read()
                 attrs = global_data.attrs
                 dim_names = getattr(attrs, 'dimensions', None)
@@ -802,12 +801,13 @@ class H5Data(DataSource):
                     stoprow = 0
 
                 output_table = copy_table(table.table, output_entities,
-                                         entity.fields, stop=stoprow,
-                                         show_progress=True)
+                                          entity.fields, stop=stoprow,
+                                          show_progress=True)
                 entity.output_rows = output_rows
                 print("done (%s elapsed)." % time2str(time.time() - start_time))
 
-                print(" * building array for first simulated period...", end=' ')
+                print(" * building array for first simulated period...",
+                      end=' ')
                 start_time = time.time()
 
                 #TODO: this whole process of merging all periods is very
@@ -819,8 +819,8 @@ class H5Data(DataSource):
                 # optional.
                 entity.array, entity.id_to_rownum = \
                     build_period_array(table.table, entity.fields,
-                                        entity.input_rows,
-                                        entity.input_index, start_period)
+                                       entity.input_rows,
+                                       entity.input_index, start_period)
                 assert isinstance(entity.array, ColumnArray)
                 entity.array_period = start_period
                 print("done (%s elapsed)." % time2str(time.time() - start_time))

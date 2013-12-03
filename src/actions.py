@@ -146,8 +146,8 @@ class RemoveIndividuals(Process):
         # update id_to_rownum
         already_removed = entity.id_to_rownum == -1
         already_removed_indices = filter_to_indices(already_removed)
-        already_removed_indices_shifted = already_removed_indices - \
-                                  np.arange(len(already_removed_indices))
+        already_removed_indices_shifted = \
+            already_removed_indices - np.arange(len(already_removed_indices))
 
         id_to_rownum = np.arange(len_before)
         id_to_rownum -= filter_value.cumsum()
@@ -283,9 +283,8 @@ class AssertIsClose(ComparisonAssert):
 
 
 functions = {
-    # can't use "print" in python 2.x because it's a keyword, not a function
-#    'print': Print,
     'csv': CSV,
+    # can't use "print" in python 2.x because it's a keyword, not a function
     'show': Show,
     'qshow': QuickShow,
     'remove': RemoveIndividuals,
