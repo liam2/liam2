@@ -23,6 +23,7 @@ except ImportError, e:
 try:
     from mpl_toolkits.mplot3d import Axes3D
 except ImportError, e:
+    Axes3D = None
     if not isinstance(plt, ExceptionOnGetAttr):
         print("Warning: 3D charts are not available because "
               "'mpl_toolkits.mplot3d.AxesED' could not be imported (%s)." % e)
@@ -81,7 +82,7 @@ class Chart(Process):
     def _draw(self, colors, *args, **kwargs):
         raise NotImplementedError()
 
-    def set_axis_method(name):
+    def _set_axis_method(name):
         def set_axis(self, axis, maxticks=20, projection=None):
             ax = plt.gca(projection=projection)
             numvalues = len(axis)
@@ -95,9 +96,9 @@ class Chart(Process):
                 set_axis_label(axis.name)
             set_axis_ticklabels(axis.labels[::step])
         return set_axis
-    set_xaxis = set_axis_method('x')
-    set_yaxis = set_axis_method('y')
-    set_zaxis = set_axis_method('z')
+    set_xaxis = _set_axis_method('x')
+    set_yaxis = _set_axis_method('y')
+    set_zaxis = _set_axis_method('z')
 
     def set_legend(self, axis, colors, **kwargs):
         # we don't want a legend when there is only one item
