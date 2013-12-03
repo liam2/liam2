@@ -36,7 +36,6 @@ def viewhdf(filepaths):
     app = QtGui.QApplication(filepaths)
 
     # These imports must be done after the QApplication has been instantiated
-
     with warnings.catch_warnings():
         # ignore deprecation warnings just for this import
         warnings.filterwarnings("ignore", category=DeprecationWarning)
