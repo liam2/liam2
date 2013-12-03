@@ -3,6 +3,21 @@
 Change log
 ##########
 
+Version 0.8
+===========
+
+Not released yet.
+
+New features:
+-------------
+
+Miscellaneous improvements:
+---------------------------
+
+Fixes:
+------
+
+
 Version 0.7
 ===========
 
