@@ -222,6 +222,12 @@ class AssertTrue(Assert):
             yield self.expr
 
 
+class AssertFalse(AssertTrue):
+    def eval_assertion(self, context):
+        if expr_eval(self.expr, context):
+            return str(self.expr)
+
+
 class ComparisonAssert(Assert):
     inv_op = None
 
@@ -290,6 +296,7 @@ functions = {
     'remove': RemoveIndividuals,
     'breakpoint': Breakpoint,
     'assertTrue': AssertTrue,
+    'assertFalse': AssertFalse,
     'assertEqual': AssertEqual,
     'assertNanEqual': AssertNanEqual,
     'assertEquiv': AssertEquiv,
