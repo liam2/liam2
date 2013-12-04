@@ -157,4 +157,3 @@ def parse(s, globals_dict=None, conditional_context=None, interactive=False,
                 raise
             except Exception, e:
                 raise add_context(e, s)
-
