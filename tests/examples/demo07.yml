@@ -1,6 +1,6 @@
 # This is a "simulation" file. To run the simulation, press F6 in liam2
 # environment, or run the following command in a console:
-# INSTALL PATH\liam2 run demo07.yml
+# INSTALL PATH\main run demo07.yml
 
 # This example demonstrates how to create a variant of a model by using imports.
 # We re-use demo06.yml and change an existing process.
