@@ -707,10 +707,9 @@ entities:
                 # more than 10% women are "nan"
                 - morenan: count(not gender and isnan) > num_women * 0.1
                 # we use min as a lesser all()
-                - all_taken_nan: min(isnan,
-                                        filter=not gender and float_aligned)
+                - all_taken_nan: min(isnan, filter=not gender and float_aligned)
                 - all_nan_taken: min(float_aligned,
-                                        filter=not gender and isnan)
+                                     filter=not gender and isnan)
                 - assertTrue(if(morenan, all_taken_nan, all_nan_taken))
 
                 # men
@@ -1341,6 +1340,36 @@ entities:
                 - csv(groupby(gender, filter=age > 200))
 
             cleanup: remove(lag(dead))
+
+            test_all:
+                # scalars
+                - assertTrue(all(True))
+                - assertFalse(all(False))
+                # vectors
+                - assertTrue(all(id >= 0))
+                - assertFalse(all(id < 0))
+                - assertFalse(all(id > 100))
+                # with a filter
+                - assertTrue(all(id >= 0, filter=MALE))
+                - assertFalse(all(id < 0, filter=MALE))
+                - assertFalse(all(id > 100, filter=MALE))
+                - assertTrue(all(MALE, filter=MALE))
+                - assertFalse(all(FEMALE, filter=MALE))
+
+            test_any:
+                # scalars
+                - assertTrue(any(True))
+                - assertFalse(any(False))
+                # vectors
+                - assertTrue(any(id >= 0))
+                - assertFalse(any(id < 0))
+                - assertTrue(any(id > 100))
+                # with a filter
+                - assertTrue(any(id >= 0, filter=MALE))
+                - assertFalse(any(id < 0, filter=MALE))
+                - assertTrue(any(id > 100, filter=MALE))
+                - assertTrue(any(MALE, filter=MALE))
+                - assertFalse(any(FEMALE, filter=MALE))
 
             test_count:
                 # simple
@@ -1986,7 +2015,9 @@ simulation:
                    test_new,
                    test_clone,
 
-                   # aggregates 
+                   # aggregates
+                   test_all,
+                   test_any,
                    test_count,
                    test_sum,
                    test_avg,
