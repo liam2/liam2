@@ -10,11 +10,7 @@ import stat
 from os import chdir, makedirs
 from os.path import exists
 from shutil import copytree, copy2, rmtree as _rmtree
-from subprocess import check_output as call
-
-
-def shell(*args):
-    return call(*args, shell=True)
+from subprocess import check_output, STDOUT
 
 
 def _remove_readonly(function, path, excinfo):
@@ -31,6 +27,10 @@ def rmtree(path):
     _rmtree(path, onerror=_remove_readonly)
 
 
+def call(*args, **kwargs):
+    return check_output(*args, stderr=STDOUT, **kwargs)
+
+
 def git_remote_last_rev(url, branch=None):
     """
     url of the remote repository
@@ -43,6 +43,67 @@ def git_remote_last_rev(url, branch=None):
         if line.endswith(branch):
             return line.split()[0]
     raise Exception("Could not determine revision number")
+
+
+def yes(msg, default='y'):
+    choices = ' (%s/%s) ' % tuple(c.capitalize() if c == default else c
+                                  for c in ('y', 'n'))
+    answer = None
+    while answer not in ('', 'y', 'n'):
+        if answer is not None:
+            print("answer should be 'y', 'n', or <return>")
+        answer = raw_input(msg + choices).lower()
+    return (default if answer == '' else answer) == 'y'
+
+
+def no(msg, default='n'):
+    return not yes(msg, default)
+
+
+def do(description, func, *args, **kwargs):
+    print(description, end=' ')
+    func(*args, **kwargs)
+    print("done.")
+
+
+def copy_release(release_name):
+    chdir('..')
+    copytree(r'build\bundle\editor', r'win32\editor')
+    copytree(r'build\bundle\editor', r'win64\editor')
+    copytree(r'build\tests\examples', r'win32\examples')
+    copytree(r'build\tests\examples', r'win64\examples')
+    copytree(r'build\src\build\exe.win32-2.7', r'win32\liam2')
+    copytree(r'build\src\build\exe.win-amd64-2.7', r'win64\liam2')
+    copytree(r'build\doc\usersguide\build\html',
+             r'win32\documentation\html')
+    copytree(r'build\doc\usersguide\build\html',
+             r'win64\documentation\html')
+    copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
+          r'win32\documentation')
+    copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
+          r'win64\documentation')
+    # standalone docs
+    copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
+          'LIAM2UserGuide-%s.pdf' % release_name)
+    copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
+          'LIAM2UserGuide-%s.chm' % release_name)
+    copytree(r'build\doc\usersguide\build\html',
+             'html\\%s' % release_name)
+
+
+def create_bundles(release_name):
+    chdir('win32')
+    call('7z a -tzip ..\Liam2Suite-%s-win32.zip *' % release_name)
+    chdir('..')
+    chdir('win64')
+    call('7z a -tzip ..\Liam2Suite-%s-win64.zip *' % release_name)
+    chdir('..')
+
+
+def cleanup():
+    rmtree('win32')
+    rmtree('win64')
+    rmtree('build')
 
 
 def make_release(release_name=None, branch=None):
@@ -65,20 +126,16 @@ def make_release(release_name=None, branch=None):
         print('Warning: there are %d files with uncommitted changes '
               'and %d untracked files:' % (uncommited, untracked))
         print(status)
-        yn = raw_input('Do you want to abort? (Y/n)')
-        if not yn.lower().startswith('n'):
+        if no('Do you want to continue?'):
             exit(1)
 
     ahead = call('git log --format=format:%%H origin/%s..%s' % (branch, branch))
     num_ahead = len(ahead.splitlines())
-    print('%s is %d commits ahead of origin/%s' % (branch, num_ahead, branch),
-          end='')
+    print("Branch '%s' is %d commits ahead of 'origin/%s'"
+          % (branch, num_ahead, branch), end='')
     if num_ahead:
-        yn = raw_input(', do you want to push? (Y/n)')
-        if not yn.lower().startswith('n'):
-            print('pushing changes...')
-            call('git push')
-            print('done.')
+        if yes(', do you want to push?'):
+            do('Pushing changes...', call, 'git push')
     else:
         print()
 
@@ -88,8 +145,7 @@ def make_release(release_name=None, branch=None):
         # take first 7 digits of commit hash
         release_name = rev[:7]
 
-    yn = raw_input("Release version %s (%s)? (y/N)" % (release_name, rev))
-    if not yn.lower().startswith('y'):
+    if no('Release version %s (%s)?' % (release_name, rev)):
         exit(1)
 
     chdir('c:\\tmp')
@@ -98,9 +154,7 @@ def make_release(release_name=None, branch=None):
     makedirs('liam2_new_release')
     chdir('liam2_new_release')
 
-    print()
-    call('git clone -b %s %s build' % (branch, repository))
-    print()
+    do('Cloning...', call, 'git clone -b %s %s build' % (branch, repository))
 
     chdir('build')
 
@@ -108,68 +162,27 @@ def make_release(release_name=None, branch=None):
     print(call('git log -1').decode('utf8'))
     print()
 
-    yn = raw_input("does that last commit look right? (y/N)")
-    if not yn.lower().startswith('y'):
+    if no('Does that last commit look right?'):
         exit(1)
 
-    call('git archive --format zip --output liam2-%s-src.zip %s'
-         % (release_name, rev))
-    call('buildall.bat')
-
-    print("moving stuff around...")
-    chdir('..')
-
-    copytree('build\\bundle\\editor', 'win32\\editor')
-    copytree('build\\bundle\\editor', 'win64\\editor')
-
-    copytree('build\\tests\\examples', 'win32\\examples')
-    copytree('build\\tests\\examples', 'win64\\examples')
-
-    copytree('build\\src\\build\\exe.win32-2.7', 'win32\\liam2')
-    copytree('build\\src\\build\\exe.win-amd64-2.7', 'win64\\liam2')
-
-    copytree('build\\doc\\usersguide\\build\\html',
-             'win32\\documentation\\html')
-    copytree('build\\doc\\usersguide\\build\\html',
-             'win64\\documentation\\html')
-    copytree('build\\doc\\usersguide\\build\\html', 'html\\%s' % release_name)
-
-    copy2('build\doc\usersguide\build\LIAM2UserGuide.pdf',
-          'win32\documentation')
-    copy2('build\doc\usersguide\build\LIAM2UserGuide.pdf',
-          'win64\documentation')
-    copy2('build\doc\usersguide\build\LIAM2UserGuide.pdf',
-          'LIAM2UserGuide-%s.pdf' % release_name)
-    copy2('build\doc\usersguide\build\LIAM2UserGuide.chm',
-          'LIAM2UserGuide-%s.chm' % release_name)
-    print("done.")
-
-    chdir('win32')
-    call('7z a -tzip ..\Liam2Suite-%s-win32.zip *' % release_name)
-    chdir('..')
-    chdir('win64')
-    call('7z a -tzip ..\Liam2Suite-%s-win64.zip *' % release_name)
-    chdir('..')
-
-    rmtree('win32')
-    rmtree('win64')
+    do('Creating source archive...', call,
+       'git archive --format zip --output liam2-%s-src.zip %s'
+       % (release_name, rev))
+    do('Building everything...', call, 'buildall.bat')
+    do('Moving stuff around...', copy_release, release_name)
+    do('Creating bundles...', create_bundles, release_name)
 
     if release_name != rev[:7]:
-        yn = raw_input("is the release looking good (if so, the tag will be "
-                       "created and pushed)? (y/N)")
-        if not yn.lower().startswith('y'):
+        if no('Is the release looking good (if so, the tag will be '
+              'created and pushed)?'):
             exit(1)
 
-        print("tagging release...", end=' ')
-        call('git tag -a %{name}s -m "tag release %{name}s"'
-             % {'name': release_name})
-        print("done")
+        do('Tagging release...', call,
+           'git tag -a %{name}s -m "tag release %{name}s"'
+           % {'name': release_name})
+        do('Pushing tag...', call, 'git push')
 
-        print('pushing tag...', end=' ')
-        call('git push')
-        print("done")
-
-    rmtree('build')
+    do('Cleaning up...', cleanup)
 
 
 if __name__=='__main__':
