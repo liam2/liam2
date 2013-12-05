@@ -21,18 +21,17 @@ def get_git_local_last_rev(path):
     lines = output.splitlines()
     for line in lines:
         if line.startswith('commit'):
-            x = line[6:]
-            print 'rev:', repr(x)
-            return x
-            # return line[6:]
+            return line[7:]
     raise Exception("Could not determine revision number")
 
 
-def get_git_remote_last_rev(url, branch='refs/heads/master'):
+def get_git_remote_last_rev(url, branch=None):
     """
     url of the remote repository
     branch is an optional branch (defaults to 'refs/heads/master')
     """
+    if branch is None:
+        branch = 'refs/heads/master'
     output = subprocess.check_output('git ls-remote %s %s' % (url, branch))
     lines = output.splitlines()
     for line in lines:
@@ -44,7 +43,6 @@ if __name__ == '__main__':
     from sys import argv, exit
     
     if len(argv) < 2:
-        print "Usage: %s repository" % (argv[0],)
+        print "Usage: %s repository [branch]" % (argv[0],)
         exit(2)
-
-    print get_git_remote_last_rev(argv[1])
+    print get_git_remote_last_rev(argv[1], argv[2] if len(argv) > 2 else None)
