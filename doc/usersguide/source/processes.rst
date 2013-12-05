@@ -317,44 +317,85 @@ mathematical functions
 - min(x, a), max(x, a): the minimum or maximum of x and a.
 
 
-.. index:: count, sum, avg, std, min, max, median, percentile,
-           gini, aggregate functions
+.. index:: aggregate functions
 
 aggregate functions
 -------------------
 
-- count([condition]): count the objects in the entity. If filter is given,
-                         only count the ones satisfying the filter.
-- sum(expr[, filter=condition][, skip_na=True]): sum the expression
-- avg(expr[, filter=condition][, skip_na=True]): average
-- std(expr[, filter=condition][, skip_na=True]): standard deviation
-- min(expr[, filter=condition][, skip_na=True]): min
-- max(expr[, filter=condition][, skip_na=True]): max
-- median(expr[, filter=condition][, skip_na=True]): median
-- percentile(expr, percent[, filter=condition][, skip_na=True]): percentile
-- gini(expr[, filter=condition][, skip_na=True]): gini
+.. index:: count
 
-**sum** sums any expression over all the individuals of the current entity.
-For example *sum(earnings)* will produce the sum of the earnings of all
-persons in the sample.
+- **count([condition])**: count individuals
 
-**count** counts the number of individuals in the current entity, optionally
-satisfying a (boolean) condition. For example, *count(gender)* will produce
-the total number of men in the sample. Contrary to **sum**, the count
-does not require an argument: *count()* will return the total number of
-individuals in the sample.
+It counts the individuals in the current entity. If a (boolean) condition is
+given, it only counts the ones satisfying that condition. For example,
+*count(male and age >= 18)* will produce the number of men in the sample who
+are eighteen years old or older.
+
+Note that count() does not require an argument: *count()* will return the total
+number of individuals in the sample for the current entity.
+
+.. index:: sum
+
+- **sum(expr[, filter=condition][, skip_na=True])**: sum of an expression
+
+It computes the sum of any expression over all individuals of the current
+entity. If a **filter** (boolean condition) is given,
+it only takes into account
+the individuals satisfying the filter. For example *sum(earnings)* will
+produce the sum of the earnings of all persons in the sample,
+while *sum(earnings, age >= 30)* will produce the sum of the earnings
+of all persons in the sample who are 30 or older. **skip_na** determines
+whether missing values (nan) are discarded before the computation or not. It
+defaults to *True*.
 
 Note that, sum and count are exactly equivalent if their only argument
-is a boolean variable (eg. count(ISWIDOW) == sum(ISWIDOW)).
+is a boolean variable (eg. count(age >= 18) == sum(age >= 18)).
 
-*example* ::
+.. index:: avg
 
-    macros:
-        WIDOW: civilstate == 5
-    processes:
-        cnt_widows: show(count(WIDOW))
+- **avg(expr[, filter=condition][, skip_na=True])**: average
 
-.. index:: link methods, count, sum, avg, min, max
+.. index:: std
+
+- **std(expr[, filter=condition][, skip_na=True])**: standard deviation
+
+.. index:: min
+
+- **min(expr[, filter=condition][, skip_na=True])**: min
+
+.. index:: max
+
+- **max(expr[, filter=condition][, skip_na=True])**: max
+
+.. index:: median
+
+- **median(expr[, filter=condition][, skip_na=True])**: median
+
+.. index:: percentile
+
+- **percentile(expr, percent[, filter=condition][, skip_na=True])**: percentile
+
+.. index:: gini
+
+- **gini(expr[, filter=condition][, skip_na=True])**: gini
+
+.. index:: all
+
+- **all(condition1[, filter=condition2])**: is condition True for all?
+
+Returns True if all individuals who satisfy the optional condition2
+also satisfy condition1, False otherwise. Note that *all(condition1,
+filter=condition2)* is equivalent to *all(condition1 and condition2)*.
+
+.. index:: any
+
+- **any(condition1[, filter=condition2])**: is condition True for any?
+
+Returns True if any individual who satisfy the optional condition2
+also satisfy condition1, False otherwise. Note that *any(condition1,
+filter=condition2)* is equivalent to *any(condition1 and condition2)*.
+
+.. index:: link methods, link.count, link.sum, link.avg, link.min, link.max
 .. _link_methods:
 
 link methods
@@ -405,8 +446,8 @@ temporal functions
 
     lag(age)            # the age each person had last year, -1 if newborn
     lag(age, missing=0) # the age each person had last year, 0 if newborn
-    avg(lag(age))    # average age that the current population had last year
-    lag(avg(age))    # average age of the population of last year
+    avg(lag(age))       # average age that the current population had last year
+    lag(avg(age))       # average age of the population of last year
     lag(age, 2)         # the age each person had two years ago (-1 for
                         # newborns)
     lag(lag(age))       # this is equivalent (but slightly less efficient)

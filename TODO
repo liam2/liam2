@@ -26,8 +26,6 @@ features I would like to implement (in no particular order)
 - groupby on a variable with nans gives awful results because each nan is
   considered as a different value, which means an awful lot of them.
 
-- document all() and any()
-
 - use a different "random sequence" for each random number "user" (each
   alignment with frac_need=uniform, explicit call to a random number generator
   like uniform(), or logit_score/logit_regr), so that divergences of two
