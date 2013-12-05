@@ -8,7 +8,12 @@ rem to someone, and for that I need network access anyway.
 rem Furthermore, cloning from the remote repository makes sure we do not
 rem include any untracked file
 
+rem make all environment variables we define local to this batch file and
+rem reset ERRORLEVEL
+setlocal
+
 set REPOSITORY=https://github.com/liam2/liam2.git
+rem git config --get remote.origin.url
 
 if "%2"=="" (
     set BRANCH=master
@@ -16,9 +21,13 @@ if "%2"=="" (
     set BRANCH=%2
 )
 
-rem this is a hack to retrieve the command output in a variable
-set REV=
+git log --format=format:%H origin/master..master | wc -l
+
+set /p DOCONTINUE=do you want to push?es that last commit look right (ie. did
+you push everything) (y/N)?
+
 set GETREV=python get_rev.py %REPOSITORY% refs/heads/%BRANCH%
+rem this is a hack to retrieve the output of a command in a variable
 for /f "usebackq delims=" %%a in (`%GETREV%`) do set REV=%%a
 if %ERRORLEVEL% GEQ 1 goto :failed
 
@@ -29,9 +38,9 @@ if "%1"=="" (
     set RELEASENAME=%1
 )
 
-set /p ANSWER=Release version "%RELEASENAME%" (y/N)?
-if "%ANSWER%"=="" goto :canceled
-if /i "%ANSWER:~0,1%" NEQ "y" goto :canceled
+set /p DORELEASE=Release version "%RELEASENAME%" (%REV%) (y/N)?
+if "%DORELEASE%"=="" goto :canceled
+if /i "%DORELEASE:~0,1%" NEQ "y" goto :canceled
 
 pushd %~dp0
 
@@ -40,27 +49,33 @@ cd c:\tmp\
 mkdir liam2_new_release
 cd liam2_new_release
 
-git clone %REPOSITORY% build
+git clone -b %BRANCH% %REPOSITORY% build
 if %ERRORLEVEL% GEQ 1 goto :failed
+
+cd build
+
+echo.
+git log -1
+echo.
+
+set /p DOCONTINUE=does that last commit look right (ie. did you push everything) (y/N)?
+if "%DOCONTINUE%"=="" goto :canceled
+if /i "%DOCONTINUE:~0,1%" NEQ "y" goto :canceled
 
 if /i "%RELEASENAME%"=="%REV:~0,7%" goto :skiptag
 
-set /p ANSWER=tag release "%RELEASENAME%" (%REV) (Y/n)?
-if /i "%ANSWER:~0,1%" NEQ "y" goto :skiptag
-
-git tag -a %RELEASENAME%
-if %ERRORLEVEL% GEQ 1 goto :failed
-git push
+set TAGMSG=tag release %RELEASENAME%
+git tag -a %RELEASENAME% -m "%TAGMSG%"
 if %ERRORLEVEL% GEQ 1 goto :failed
 
 :skiptag
 
-cd build
 git archive --format zip --output liam2-%RELEASENAME%-src.zip %REV%
 if %ERRORLEVEL% GEQ 1 goto :failed
-call buildall
-cd ..
 
+rem call buildall
+
+cd ..
 mkdir html\%RELEASENAME%
 
 mkdir win32\documentation\html
@@ -101,8 +116,19 @@ cd ..
 
 rmdir /s /q win32
 rmdir /s /q win64
+
+if "%TAGMSG%"=="" goto :nopush
+
+set /p DOPUSH=is the release looking good (if so, the tag will be pushed) (y/N)?
+if "%DOPUSH%"=="" goto :canceled
+if /i "%DOPUSH:~0,1%" NEQ "y" goto :canceled
+
+echo pushing tag...
+rem git push
+rem if %ERRORLEVEL% GEQ 1 goto :failed
+
+:nopush
 rmdir /s /q build
-popd
 goto :end
 
 :canceled
@@ -110,7 +136,11 @@ echo Aborted...
 goto :end
 
 :failed
+echo Failed...
+endlocal
 popd
 exit /b 1
 
 :end
+endlocal
+popd
