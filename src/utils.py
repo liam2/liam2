@@ -448,7 +448,8 @@ def aslabeledarray(data):
     sequence = (tuple, list)
     if isinstance(data, LabeledArray):
         return data
-    elif isinstance(data, sequence) and isinstance(data[0], LabeledArray):
+    elif (isinstance(data, sequence) and len(data) and
+          isinstance(data[0], LabeledArray)):
         arraydata = np.asarray(data)
         #TODO: check that all arrays have the same axes
         dim_names = [None] + data[0].dim_names

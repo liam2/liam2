@@ -30,6 +30,7 @@ except ImportError, e:
 
 
 class Chart(Process):
+    grid = False
     axes = True
     legend = True
     maxticks = 20
@@ -67,6 +68,7 @@ class Chart(Process):
         args = [expr_eval(arg, context) for arg in self.args]
         kwargs = dict((k, expr_eval(v, context))
                       for k, v in self.kwargs.iteritems())
+        grid = kwargs.pop('grid', self.grid)
 
         maxticks = kwargs.pop('maxticks', self.maxticks)
         projection = self.projection
@@ -83,6 +85,7 @@ class Chart(Process):
         else:
             colors = None
         self._draw(colors, *args, **kwargs)
+        plt.grid(grid)
         plt.show()
         # explicit close is needed for Qt4 backend
         plt.close(fig)
@@ -132,15 +135,21 @@ class Chart(Process):
 
     def set_axes_and_legend(self, data, maxticks=20, stackthreshold=2,
                             projection=None, kwargs=None):
+        """
+        kwargs are modified inplace (colors is popped)
+        """
+        colors = kwargs.pop('colors', None) if kwargs is not None else None
         if len(data) == 1:
             data = data[0]
         array = aslabeledarray(data)
         if array.ndim >= stackthreshold:
-            colors = self.get_colors(len(array))
+            if colors is None:
+                colors = self.get_colors(len(array))
             self.set_legend(array.axes[0], colors)
             skip_axes = 1
         else:
-            colors = self.get_colors(1)
+            if colors is None:
+                colors = self.get_colors(1)
             skip_axes = 0
         self.set_axes(array, maxticks, skip_axes, projection, kwargs)
         return colors
@@ -170,9 +179,12 @@ class Plot(Chart):
 
         x = np.arange(len(args[0])) + 1
         for array, color in zip(args, colors):
+            kw = dict(color=color)
+            kw.update(kwargs)
+
             # use np.asarray to work around missing "newaxis" implementation
             # in LabeledArray
-            plt.plot(x, np.asarray(array), color=color, **kwargs)
+            plt.plot(x, np.asarray(array), **kw)
 
 
 class StackPlot(Chart):
@@ -192,9 +204,10 @@ class StackPlot(Chart):
         plt.stackplot(x, np.asarray(args), colors=colors, **kwargs)
 
 
-class BarChart(Chart):
-    def _draw(self, colors, *args, **kwargs):
-        data = args[0]
+class Bar(Chart):
+    grid = True
+
+    def prepare(self, data):
         if data.ndim == 1:
             if isinstance(data, LabeledArray):
                 #TODO: implement np.newaxis in LabeledArray.__getitem__
@@ -204,28 +217,56 @@ class BarChart(Chart):
             else:
                 data = data[np.newaxis, :]
         elif data.ndim != 2:
-            raise ValueError("barchart only works on 1 or 2 dimensional data")
+            raise ValueError("(h)bar only works on 1 or 2 dimensional data")
+        return data
 
-        plt.grid(True)
+    def _draw(self, colors, *args, **kwargs):
+        data = self.prepare(args[0])
         numvalues = data.shape[1]
 
         # plots with the left of the first bar in a negative position look
         # ugly, so we shift ticks by 1 and left coordinates of bars by 0.75
-        x = np.arange(numvalues) + 0.75
+        width = kwargs.get('width', 0.5)
+        left = np.arange(numvalues) + 1.0
+        left -= width / 2
+        kw = dict(left=left, width=width)
+        kw.update(kwargs)
         bottom = np.zeros(numvalues, dtype=data.dtype)
         for row, color in zip(data, colors):
-            plt.bar(left=x, height=row, width=0.5, bottom=bottom,
-                    color=color, **kwargs)
+            if 'color' not in kwargs:
+                kw['color'] = color
+            plt.bar(height=row, bottom=bottom, **kw)
             bottom += row
 
 
-class BarChart3D(Chart):
+class BarH(Bar):
+    grid = True
+
+    def _draw(self, colors, *args, **kwargs):
+        data = self.prepare(args[0])
+        numvalues = data.shape[1]
+
+        # plots with the left of the first bar in a negative position look
+        # ugly, so we shift ticks by 1 and left coordinates of bars by 0.75
+        height = kwargs.get('height', 0.5)
+        bottom = np.arange(numvalues) + 1.0
+        bottom -= height / 2
+        kw = dict(bottom=bottom, height=height)
+        kw.update(kwargs)
+        left = np.zeros(numvalues, dtype=data.dtype)
+        for row, color in zip(data, colors):
+            if 'color' not in kwargs:
+                kw['color'] = color
+            plt.barh(width=row, left=left, **kw)
+            left += row
+
+
+class Bar3D(Chart):
     maxticks = 10
     projection = '3d'
     stackthreshold = 3
 
     def _draw(self, colors, *args, **kwargs):
-
         data = args[0]
         if data.ndim == 2:
             if isinstance(data, LabeledArray):
@@ -252,12 +293,13 @@ class BarChart3D(Chart):
         zpos = np.zeros(size)
         for array, color in zip(data, colors):
             dz = array.flatten()
-            ax.bar3d(xpos, ypos, zpos, dz=dz, color=color,
-                     **kw)
+            if 'color' not in kwargs:
+                kw['color'] = color
+            ax.bar3d(xpos, ypos, zpos, dz=dz, **kw)
             zpos += dz
 
 
-class PieChart(Chart):
+class Pie(Chart):
     axes = False
     legend = False
 
@@ -283,7 +325,8 @@ functions = {
     'boxplot': BoxPlot,
     'plot': Plot,
     'stackplot': StackPlot,
-    'barchart': BarChart,
-    'barchart3d': BarChart3D,
-    'piechart': PieChart,
+    'bar': Bar,
+    'barh': BarH,
+    'bar3d': Bar3D,
+    'pie': Pie,
 }
