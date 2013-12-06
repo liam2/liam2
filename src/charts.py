@@ -325,11 +325,6 @@ class Pie(Chart):
     stackthreshold = 1
 
     def _draw(self, data, colors, styles, **kwargs):
-        # data = self.prepare(args, 'pie', 1)
-        # data = args[0]
-        # if data.ndim != 1:
-        #     raise ValueError("piechart only works on 1 dimensional data")
-
         if isinstance(data, LabeledArray) and data.pvalues:
             labels = data.pvalues[0]
             title = data.dim_names[0]
