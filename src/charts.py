@@ -76,48 +76,47 @@ class Chart(Process):
         cmap = cm.get_cmap('OrRd')
         return [cmap(f) for f in ratios]
 
-    def prepare(self, args, func_name, ndim_req):
-        sequence = (tuple, list, np.ndarray)
+    def prepare(self, args, kwargs):
+        #TODO: move styles stuff to plot.prepare
+        styles = kwargs.pop('styles', None)
+        func_name = self.__class__.__name__.lower()
+        ndim_req = self.stackthreshold
+        dimerror = ValueError("%s only works on %d or %d dimensional data"
+                              % (func_name, ndim_req - 1, ndim_req))
         if len(args) > 1:
             if all(np.isscalar(a) for a in args):
                 args = [np.asarray(args)]
             else:
+                # every odd is a string => we have styles, yeah !
+                if all(isinstance(a, basestring) for a in args[1::2]):
+                    styles = args[1::2]
+                    args = args[::2]
+
                 length = len(args[0])
-                # this leaves the door open for mixed types like in plot()
-                if any(isinstance(a, sequence) and len(a) != length
-                       for a in args):
+                if any(len(a) != length for a in args):
                     raise ValueError("when plotting multiple arrays, they must "
                                      "have compatible axes")
-                # args = [np.asarray(args)]
-
         if len(args) == 1:
             data = args[0]
             if not isinstance(data, np.ndarray):
                 data = np.asarray(data)
             if data.ndim == ndim_req:
-                return data
+                return data, styles
             elif data.ndim == ndim_req - 1:
                 if isinstance(data, LabeledArray):
                     #TODO: implement np.newaxis in LabeledArray.__getitem__
-                    return LabeledArray(np.asarray(data)[np.newaxis],
-                                        dim_names=['dummy'] + data.dim_names,
-                                        pvalues=[[0]] + data.pvalues)
+                    la = LabeledArray(np.asarray(data)[np.newaxis],
+                                      dim_names=['dummy'] + data.dim_names,
+                                      pvalues=[[0]] + data.pvalues)
+                    return la, styles
                 else:
-                    return data[np.newaxis]
+                    return data[np.newaxis], styles
             else:
-                raise ValueError("%s only works on %d or %d dimensional data"
-                                 % (func_name, ndim_req - 1,
-                                    ndim_req))
+                raise dimerror
         elif all(ndim(a) == ndim_req - 1 for a in args):
-            return args
+            return args, styles
         else:
-            # raise ValueError("stackplot only works with a 2D array (MxN) or "
-            #                  "M 1D arrays (each of dimension 1xN)")
-            raise ValueError("%s only works on %d or %d dimensional data"
-                             % (func_name, ndim_req - 1, ndim_req))
-        # if any(isinstance(a, np.ndarray) and a.ndim > 1 for a in args):
-        #     raise ValueError("too many dimensions to plot")
-        #
+            raise dimerror
 
     def run(self, context):
         fig = plt.figure()
@@ -125,28 +124,28 @@ class Chart(Process):
         kwargs = dict((k, expr_eval(v, context))
                       for k, v in self.kwargs.iteritems())
         grid = kwargs.pop('grid', self.grid)
-
         maxticks = kwargs.pop('maxticks', self.maxticks)
         projection = self.projection
         stackthreshold = self.stackthreshold
+        data, styles = self.prepare(args, kwargs)
         if self.legend and self.axes:
-            colors = self.set_axes_and_legend(args, maxticks=maxticks,
+            colors = self.set_axes_and_legend(data, maxticks=maxticks,
                                               stackthreshold=stackthreshold,
                                               projection=projection,
                                               kwargs=kwargs)
         elif self.axes:
-            self.set_axes(args, maxticks=maxticks, projection=projection,
+            self.set_axes(data, maxticks=maxticks, projection=projection,
                           kwargs=kwargs)
             colors = None
         else:
             colors = None
-        self._draw(colors, *args, **kwargs)
+        self._draw(data, colors, styles, **kwargs)
         plt.grid(grid)
         plt.show()
         # explicit close is needed for Qt4 backend
         plt.close(fig)
 
-    def _draw(self, colors, *args, **kwargs):
+    def _draw(self, data, colors, styles, **kwargs):
         raise NotImplementedError()
 
     def _set_axis_method(name):
@@ -214,28 +213,35 @@ class Chart(Process):
 class BoxPlot(Chart):
     legend = False
 
-    def _draw(self, colors, *args, **kwargs):
-        # data = self.prepare(args, 'boxplot', 2)
-        # plt.boxplot(data, **kwargs)
-        plt.boxplot(*args, **kwargs)
+    def prepare(self, args, kwargs):
+        return args, None
+
+    def _draw(self, data, colors, styles, **kwargs):
+        plt.boxplot(*data, **kwargs)
 
 
 class Plot(Chart):
-    def _draw(self, colors, *args, **kwargs):
-        data = self.prepare(args, 'plot', 2)
-        x = np.arange(len(data[0])) + 1
-        for array, color in zip(data, colors):
-            kw = dict(color=color)
-            kw.update(kwargs)
+    def _draw(self, data, colors, styles, **kwargs):
+        # "inline" styles have priority over kwarg styles
 
-            # use np.asarray to work around missing "newaxis" implementation
-            # in LabeledArray
-            plt.plot(x, np.asarray(array), **kw)
+        x = np.arange(len(data[0])) + 1
+
+        # we use np.asarray to work around missing "newaxis" implementation
+        # in LabeledArray
+        if styles is None:
+            for array, color in zip(data, colors):
+                kw = dict(color=color)
+                kw.update(kwargs)
+                plt.plot(x, np.asarray(array), **kw)
+        else:
+            for array, style, color in zip(data, styles, colors):
+                kw = dict(color=color)
+                kw.update(kwargs)
+                plt.plot(x, np.asarray(array), style, **kw)
 
 
 class StackPlot(Chart):
-    def _draw(self, colors, *args, **kwargs):
-        data = self.prepare(args, 'stackplot', 2)
+    def _draw(self, data, colors, styles, **kwargs):
         x = np.arange(len(data[0])) + 1
         # use np.asarray to work around missing "newaxis" implementation
         # in LabeledArray
@@ -245,8 +251,7 @@ class StackPlot(Chart):
 class Bar(Chart):
     grid = True
 
-    def _draw(self, colors, *args, **kwargs):
-        data = self.prepare(args, 'bar', 2)
+    def _draw(self, data, colors, styles, **kwargs):
         numvalues = len(data[0])
 
         # plots with the left of the first bar in a negative position look
@@ -268,8 +273,7 @@ class Bar(Chart):
 class BarH(Bar):
     grid = True
 
-    def _draw(self, colors, *args, **kwargs):
-        data = self.prepare(args, 'barh', 2)
+    def _draw(self, data, colors, styles, **kwargs):
         numvalues = len(data[0])
 
         # plots with the bottom of the first bar in a negative position look
@@ -293,8 +297,8 @@ class Bar3D(Bar):
     projection = '3d'
     stackthreshold = 3
 
-    def _draw(self, colors, *args, **kwargs):
-        data = self.prepare(args, 'bar3d', 3)
+    def _draw(self, data, colors, styles, **kwargs):
+        # data = self.prepare(args, 'bar3d', 3)
 
         _, xlen, ylen = data.shape
 
@@ -318,12 +322,13 @@ class Bar3D(Bar):
 class Pie(Chart):
     axes = False
     legend = False
+    stackthreshold = 1
 
-    def _draw(self, colors, *args, **kwargs):
+    def _draw(self, data, colors, styles, **kwargs):
         # data = self.prepare(args, 'pie', 1)
-        data = args[0]
-        if data.ndim != 1:
-            raise ValueError("piechart only works on 1 dimensional data")
+        # data = args[0]
+        # if data.ndim != 1:
+        #     raise ValueError("piechart only works on 1 dimensional data")
 
         if isinstance(data, LabeledArray) and data.pvalues:
             labels = data.pvalues[0]

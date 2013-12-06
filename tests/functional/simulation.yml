@@ -252,16 +252,18 @@ entities:
                 - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
                           notch=True)
                 - plot(age)
-                - plot(age, color='g')
-                # does not work yet (mixed type is not understood)
-                # - plot(groupby(age), 'bo', groupby(age * 2), 'sb')
-                - plot(groupby(eduach))
+                - plot(age, 'o')
+                - plot(groupby(agegroup, expr=count(not gender)), 'o--',
+                       groupby(agegroup, expr=count(gender)), 's-.',
+                       groupby(agegroup), '*-', colors=['r', 'g', 'b'])
+                - plot(groupby(eduach), 's--')
+                - plot(groupby(eduach), 's--', color='g')
                 - plot((lag(avg(work), 5), lag(avg(work), 4),
                         lag(avg(work), 3), lag(avg(work), 2),
                         lag(avg(work)), avg(work)))
                 - plot(groupby(gender, age))
                 - plot(groupby(gender, age), colors=['g', 'b'])
-                - plot(groupby(gender, agegroup))
+                - plot(groupby(gender, agegroup), styles=['--', '-'])
                 - plot(groupby(gender, agegroup),
                        grid=True, linestyle='dashed', marker='o', linewidth=5)
                 - plot(groupby(age),
@@ -278,12 +280,18 @@ entities:
                 - bar(groupby(agegroup + 1))
                 # mig_period_women
                 - bar(MIG[0,:,period - 2001])
+                - bar(groupby(gender, agegroup))
+                - bar(groupby(agegroup, filter=not gender),
+                      groupby(agegroup, filter=gender))
                 - bar(groupby(eduach, agegroup))
                 - bar(groupby(eduach, agegroup), width=0.8)
                 # axes are currently messed up
                 # - barh(groupby(eduach, agegroup))
                 # - barh(groupby(eduach, agegroup), height=0.7)
-                - bar3d(groupby(eduach, agegroup))
+                - bar3d(groupby(gender, agegroup))
+#FIXME: this does not work
+#                - bar3d(groupby(agegroup, filter=not gender),
+#                        groupby(agegroup, filter=gender))
                 - bar3d(groupby(eduach, agegroup), color='g')
                 - bar3d(groupby(eduach, agegroup), dx=0.2, dy=0.8, maxticks=4)
                 - bar3d(groupby(eduach, agegroup, gender))
@@ -291,7 +299,7 @@ entities:
                 - pie(groupby(eduach),
                       explode=[0, 0.1, 0, 0],
                       labels=['a', 'b', 'c', 'd'],
-                      shadow=False)
+                      shadow=True)
 
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
