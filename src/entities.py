@@ -321,6 +321,11 @@ class Entity(object):
 
         self.processes = processes
 
+    def ssa(self):
+        for p in self.processes.itervalues():
+            if isinstance(p, Assignment):
+                p.predictor
+
     def compute_lagged_fields(self):
         from tfunc import Lag
         from links import LinkValue

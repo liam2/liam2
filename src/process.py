@@ -226,6 +226,12 @@ class ProcessGroup(Process):
         for var in local_var_names:
             del temp_vars[var]
 
+    def ssa(self):
+        self.versions = {}
+        for k, p in self.subprocesses:
+            if isinstance(p, Assignment):
+                p.predictor
+
     def expressions(self):
         for _, p in self.subprocesses:
             for e in p.expressions():
