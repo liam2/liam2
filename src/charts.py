@@ -77,8 +77,6 @@ class Chart(Process):
         return [cmap(f) for f in ratios]
 
     def prepare(self, args, kwargs):
-        #TODO: move styles stuff to plot.prepare
-        styles = kwargs.pop('styles', None)
         func_name = self.__class__.__name__.lower()
         ndim_req = self.stackthreshold
         dimerror = ValueError("%s only works on %d or %d dimensional data"
@@ -87,11 +85,6 @@ class Chart(Process):
             if all(np.isscalar(a) for a in args):
                 args = [np.asarray(args)]
             else:
-                # every odd is a string => we have styles, yeah !
-                if all(isinstance(a, basestring) for a in args[1::2]):
-                    styles = args[1::2]
-                    args = args[::2]
-
                 length = len(args[0])
                 if any(len(a) != length for a in args):
                     raise ValueError("when plotting multiple arrays, they must "
@@ -101,20 +94,20 @@ class Chart(Process):
             if not isinstance(data, np.ndarray):
                 data = np.asarray(data)
             if data.ndim == ndim_req:
-                return data, styles
+                return data
             elif data.ndim == ndim_req - 1:
                 if isinstance(data, LabeledArray):
                     #TODO: implement np.newaxis in LabeledArray.__getitem__
                     la = LabeledArray(np.asarray(data)[np.newaxis],
                                       dim_names=['dummy'] + data.dim_names,
                                       pvalues=[[0]] + data.pvalues)
-                    return la, styles
+                    return la
                 else:
-                    return data[np.newaxis], styles
+                    return data[np.newaxis]
             else:
                 raise dimerror
         elif all(ndim(a) == ndim_req - 1 for a in args):
-            return args, styles
+            return args
         else:
             raise dimerror
 
@@ -127,7 +120,7 @@ class Chart(Process):
         maxticks = kwargs.pop('maxticks', self.maxticks)
         projection = self.projection
         stackthreshold = self.stackthreshold
-        data, styles = self.prepare(args, kwargs)
+        data = self.prepare(args, kwargs)
         if self.legend and self.axes:
             colors = self.set_axes_and_legend(data, maxticks=maxticks,
                                               stackthreshold=stackthreshold,
@@ -139,13 +132,13 @@ class Chart(Process):
             colors = None
         else:
             colors = None
-        self._draw(data, colors, styles, **kwargs)
+        self._draw(data, colors, **kwargs)
         plt.grid(grid)
         plt.show()
         # explicit close is needed for Qt4 backend
         plt.close(fig)
 
-    def _draw(self, data, colors, styles, **kwargs):
+    def _draw(self, data, colors, **kwargs):
         raise NotImplementedError()
 
     def _set_axis_method(name):
@@ -214,34 +207,47 @@ class BoxPlot(Chart):
     legend = False
 
     def prepare(self, args, kwargs):
-        return args, None
+        return args
 
-    def _draw(self, data, colors, styles, **kwargs):
+    def _draw(self, data, colors, **kwargs):
         plt.boxplot(*data, **kwargs)
 
 
 class Plot(Chart):
-    def _draw(self, data, colors, styles, **kwargs):
-        # "inline" styles have priority over kwarg styles
+    def __init__(self, *args, **kwargs):
+        Chart.__init__(self, *args, **kwargs)
+        self.styles = None
 
+    def prepare(self, args, kwargs):
+        # "inline" styles have priority over kwarg styles
+        styles = kwargs.pop('styles', None)
+        if len(args) > 1:
+            # every odd is a string => we have styles, yeah !
+            if all(isinstance(a, basestring) for a in args[1::2]):
+                styles = args[1::2]
+                args = args[::2]
+        self.styles = styles
+        return super(Plot, self).prepare(args, kwargs)
+
+    def _draw(self, data, colors, **kwargs):
         x = np.arange(len(data[0])) + 1
 
         # we use np.asarray to work around missing "newaxis" implementation
         # in LabeledArray
-        if styles is None:
+        if self.styles is None:
             for array, color in zip(data, colors):
                 kw = dict(color=color)
                 kw.update(kwargs)
                 plt.plot(x, np.asarray(array), **kw)
         else:
-            for array, style, color in zip(data, styles, colors):
+            for array, style, color in zip(data, self.styles, colors):
                 kw = dict(color=color)
                 kw.update(kwargs)
                 plt.plot(x, np.asarray(array), style, **kw)
 
 
 class StackPlot(Chart):
-    def _draw(self, data, colors, styles, **kwargs):
+    def _draw(self, data, colors, **kwargs):
         x = np.arange(len(data[0])) + 1
         # use np.asarray to work around missing "newaxis" implementation
         # in LabeledArray
@@ -251,7 +257,7 @@ class StackPlot(Chart):
 class Bar(Chart):
     grid = True
 
-    def _draw(self, data, colors, styles, **kwargs):
+    def _draw(self, data, colors, **kwargs):
         numvalues = len(data[0])
 
         # plots with the left of the first bar in a negative position look
@@ -273,7 +279,7 @@ class Bar(Chart):
 class BarH(Bar):
     grid = True
 
-    def _draw(self, data, colors, styles, **kwargs):
+    def _draw(self, data, colors, **kwargs):
         numvalues = len(data[0])
 
         # plots with the bottom of the first bar in a negative position look
@@ -297,7 +303,7 @@ class Bar3D(Bar):
     projection = '3d'
     stackthreshold = 3
 
-    def _draw(self, data, colors, styles, **kwargs):
+    def _draw(self, data, colors, **kwargs):
         # data = self.prepare(args, 'bar3d', 3)
 
         _, xlen, ylen = data.shape
@@ -324,7 +330,7 @@ class Pie(Chart):
     legend = False
     stackthreshold = 1
 
-    def _draw(self, data, colors, styles, **kwargs):
+    def _draw(self, data, colors, **kwargs):
         if isinstance(data, LabeledArray) and data.pvalues:
             labels = data.pvalues[0]
             title = data.dim_names[0]
