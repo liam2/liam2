@@ -247,59 +247,71 @@ entities:
 #                    done = min(age) >= 10
 
             test_charts:
-                - boxplot((age[gender], age[not gender]))
-                - boxplot(groupby(eduach, expr=age, filter=eduach != -1))
+                - boxplot((age[gender], age[not gender]), fname='bbox1.png')
                 - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
-                          notch=True)
-                - plot(age)
-                - plot(age, 'o')
+                          fname='bbox2.png')
+                - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
+                          notch=True, fname='bbox3.png')
+                - plot(age, fname='plot01_{entity}_{period}.png')
+                - plot(age, 'o', fname='plot02.png')
                 - plot(groupby(agegroup, expr=count(not gender)), 'o--',
                        groupby(agegroup, expr=count(gender)), 's-.',
-                       groupby(agegroup), '*-', colors=['r', 'g', 'b'])
-                - plot(groupby(eduach), 's--')
-                - plot(groupby(eduach), 's--', color='g')
+                       groupby(agegroup), '*-', colors=['r', 'g', 'b'],
+                       fname='plot03.png')
+                - plot(groupby(eduach), 's--', fname='plot04.png')
+                - plot(groupby(eduach), 's--', color='g', fname='plot05.png')
                 - plot((lag(avg(work), 5), lag(avg(work), 4),
                         lag(avg(work), 3), lag(avg(work), 2),
-                        lag(avg(work)), avg(work)))
-                - plot(groupby(gender, age))
-                - plot(groupby(gender, age), colors=['g', 'b'])
-                - plot(groupby(gender, agegroup), styles=['--', '-'])
+                        lag(avg(work)), avg(work)), fname='plot06.png')
+                - plot(groupby(gender, age), fname='plot07.png')
+                - plot(groupby(gender, age), colors=['g', 'b'],
+                       fname='plot08.png')
+                - plot(groupby(gender, agegroup), styles=['--', '-'],
+                       fname='plot09.png')
                 - plot(groupby(gender, agegroup),
-                       grid=True, linestyle='dashed', marker='o', linewidth=5)
+                       grid=True, linestyle='dashed', marker='o', linewidth=5,
+                       fname='plot10.png')
                 - plot(groupby(age),
                        groupby(age, filter=not gender),
-                       groupby(age, filter=gender))
-                - stackplot(groupby(eduach))
-                - stackplot(groupby(gender, eduach))
+                       groupby(age, filter=gender),
+                       fname='plot11.png')
+                - stackplot(groupby(eduach), fname='stackplot1.png')
+                - stackplot(groupby(gender, eduach), fname='stackplot2.png')
                 - stackplot(groupby(gender, eduach),
-                            colors=['g', 'b'], baseline='sym')
+                            colors=['g', 'b'], baseline='sym',
+                            fname='stackplot3.png')
                 - stackplot(groupby(age, filter=not gender),
-                            groupby(age, filter=gender))
+                            groupby(age, filter=gender),
+                            fname='stackplot4.png')
                 - byage: groupby(age, percent=True)
-                - bar(byage)
-                - bar(groupby(agegroup + 1))
+                - bar(byage, fname='bar1.png')
+                - bar(groupby(agegroup + 1), fname='bar2.png')
                 # mig_period_women
-                - bar(MIG[0,:,period - 2001])
-                - bar(groupby(gender, agegroup))
+                - bar(MIG[0,:,period - 2001], fname='bar3.png')
+                - bar(groupby(gender, agegroup), fname='bar4.png')
                 - bar(groupby(agegroup, filter=not gender),
-                      groupby(agegroup, filter=gender))
-                - bar(groupby(eduach, agegroup))
-                - bar(groupby(eduach, agegroup), width=0.8)
+                      groupby(agegroup, filter=gender),
+                      fname='bar5.png')
+                - bar(groupby(eduach, agegroup), fname='bar6.png')
+                - bar(groupby(eduach, agegroup), width=0.8, fname='bar7.png')
                 # axes are currently messed up
                 # - barh(groupby(eduach, agegroup))
                 # - barh(groupby(eduach, agegroup), height=0.7)
-                - bar3d(groupby(gender, agegroup))
+                - bar3d(groupby(gender, agegroup), fname='bar3d1.png')
 #FIXME: this does not work
 #                - bar3d(groupby(agegroup, filter=not gender),
 #                        groupby(agegroup, filter=gender))
-                - bar3d(groupby(eduach, agegroup), color='g')
-                - bar3d(groupby(eduach, agegroup), dx=0.2, dy=0.8, maxticks=4)
-                - bar3d(groupby(eduach, agegroup, gender))
-                - pie(groupby(eduach * 2))
+                - bar3d(groupby(eduach, agegroup),
+                        color='g', fname='bar3d2.png')
+                - bar3d(groupby(eduach, agegroup),
+                        dx=0.2, dy=0.8, maxticks=4, fname='bar3d3.png')
+                - bar3d(groupby(eduach, agegroup, gender), fname='bar3d4.png')
+                - pie(groupby(eduach * 2), fname='pie1.png', shadow=True)
                 - pie(groupby(eduach),
                       explode=[0, 0.1, 0, 0],
-                      labels=['a', 'b', 'c', 'd'],
-                      shadow=True)
+                      labels=['Not set', 'Lower secondary', 'Upper secondary',
+                              'Tertiary'],
+                      fname='pie2.png')
 
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])

@@ -1,9 +1,11 @@
 from __future__ import print_function
 
+import os
 import math
 
 import numpy as np
 
+import config
 from expr import Expr, expr_eval
 from process import Process
 from utils import LabeledArray, aslabeledarray, ExceptionOnGetAttr
@@ -112,10 +114,14 @@ class Chart(Process):
             raise dimerror
 
     def run(self, context):
+        entity = context['__entity__']
+        period = context['period']
+
         fig = plt.figure()
         args = [expr_eval(arg, context) for arg in self.args]
         kwargs = dict((k, expr_eval(v, context))
                       for k, v in self.kwargs.iteritems())
+        fname = kwargs.pop('fname', None)
         grid = kwargs.pop('grid', self.grid)
         maxticks = kwargs.pop('maxticks', self.maxticks)
         projection = self.projection
@@ -134,7 +140,13 @@ class Chart(Process):
             colors = None
         self._draw(data, colors, **kwargs)
         plt.grid(grid)
-        plt.show()
+        if fname is None:
+            plt.show(block=True)
+        else:
+            fname = fname.format(entity=entity.name, period=period)
+            print("writing to", fname, "...", end=' ')
+            plt.savefig(os.path.join(config.output_directory, fname))
+
         # explicit close is needed for Qt4 backend
         plt.close(fig)
 
