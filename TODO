@@ -23,6 +23,11 @@ implementation that I am aware of.
 features I would like to implement (in no particular order)
 ===========================================================
 
+- integrate with Ipython interactive func: it rocks!
+  eg. interactive(func, arg0=rangeofvalues_for_that_arg, ...) and
+  it produces sliders/checkboxes/... for each argument.
+  see http://vimeo.com/79832657 (from 30 minutes onward)
+
 - groupby on a variable with nans gives awful results because each nan is
   considered as a different value, which means an awful lot of them.
 
