@@ -202,29 +202,34 @@ The name of the process is *age* and what it does is increasing the variable
 
 - Arithmetic operators: +, -, \*, /, \** (exponent), % (modulo)
 
-Note that an integer divided by an integer returns a float. For example "1 / 2"
-will evaluate to 0.5 instead of 0 as in many programming languages. If you are
-only interested in the integer part of that result (for example, if you know the
-result has no decimal part), you can use the *trunc* function: ::
+.. note::
 
-    agegroup5: 5 * trunc(age / 5)
+   An integer divided by an integer returns a float. For example "1 / 2"
+   will evaluate to 0.5 instead of 0 as in many programming languages. If you
+   are only interested in the integer part of that result (for example,
+   if you know the result has no decimal part), you can use the *trunc*
+   function: ::
+
+     agegroup5: 5 * trunc(age / 5)
 
 - Comparison operators: <, <=, ==, !=, >=, >
 - Boolean operators: and, or, not
 
-Note that starting with version 0.6, you do not need to use parentheses when
-you mix *boolean operators* with other operators. ::
+.. note::
 
-    inwork: workstate > 0 and workstate < 5
-    to_give_birth: not gender and age >= 15 and age <= 50
+   Starting with version 0.6, you do not need to use parentheses when
+   you mix *boolean operators* with other operators. ::
+
+     inwork: workstate > 0 and workstate < 5
+     to_give_birth: not gender and age >= 15 and age <= 50
     
-is now equivalent to:
+   is now equivalent to: ::
 
-    inwork: (workstate > 0) and (workstate < 5)
-    to_give_birth: not gender and (age >= 15) and (age <= 50)
+     inwork: (workstate > 0) and (workstate < 5)
+     to_give_birth: not gender and (age >= 15) and (age <= 50)
 
-- Conditional expressions:
-    if(condition, expression_if_true, expression_if_false)
+- Conditional expressions: if(condition, expression_if_true,
+  expression_if_false)
 
 *example* ::
 
@@ -232,12 +237,14 @@ is now equivalent to:
                             5 * trunc(age / 5),
                             10 * trunc(age / 10))
 
-Note that the *if* functions always requires three arguments. If you want to
-leave a variable unchanged if a condition is not met, use the variable in the
-*expression_if_false* ::
+.. note::
 
-    # retire people (set workstate = 9) when aged 65 or more
-    workstate: if(age >= 65, 9, workstate)
+   The *if* function always requires three arguments. If you want to leave a
+   variable unchanged if a condition is not met, use the variable in the
+   *expression_if_false*: ::
+
+      # retire people (set workstate = 9) when aged 65 or more
+      workstate: if(age >= 65, 9, workstate)
 
 You can nest if-statements. The example below retires men (gender = True) over
 64 and women over 61. ::
@@ -331,8 +338,10 @@ given, it only counts the ones satisfying that condition. For example,
 *count(male and age >= 18)* will produce the number of men in the sample who
 are eighteen years old or older.
 
-Note that count() does not require an argument: *count()* will return the total
-number of individuals in the sample for the current entity.
+.. note::
+
+   count() can be used without any argument: *count()* will return
+   the total number of individuals in the sample for the current entity.
 
 .. index:: sum
 
@@ -348,8 +357,10 @@ of all persons in the sample who are 30 or older. **skip_na** determines
 whether missing values (nan) are discarded before the computation or not. It
 defaults to *True*.
 
-Note that, sum and count are exactly equivalent if their only argument
-is a boolean variable (eg. count(age >= 18) == sum(age >= 18)).
+.. note::
+
+   sum and count are exactly equivalent if their only argument is a boolean
+   variable (eg. count(age >= 18) == sum(age >= 18)).
 
 .. index:: avg
 
@@ -658,9 +669,13 @@ category, the N individuals with the highest scores are selected.
 The score computation is not done internally by the align() function, but is
 rather computed by an expression given by the modeller. One will usually use
 logit_score() to compute it, but it can be computed in any other way a
-modeller choose. Note that it is usually a good idea to include a random
-component (like in logit_score) in the score expression because otherwise the
-individuals with the smaller scores will never be selected.
+modeller choose.
+
+.. note::
+
+   It is usually a good idea to include a random component (like in
+   logit_score) in the score expression because otherwise the individuals with
+   the smaller scores will never be selected.
 
 To know more about the alignment process reading "Evaluating Alignment Methods
 in Dynamic Microsimulation Models", by Li and O'Donoghue is advised. 
@@ -720,7 +735,7 @@ Now let us examine each argument in turn:
       with the prefix *al_* followed by the name of the endogenous variable
       and a suffix *_m* or *_f*, depending on gender.
 
- * **filter**: an expression specifying which individuals to taken into account
+ * **filter**: an expression specifying which individuals to take into account
    for the alignment. Note that if the align() function is used inside an
    *if()* expression, its filter is adjusted accordingly ("anded" with the
    filter of the if() expression). For example: ::
@@ -757,10 +772,12 @@ Now let us examine each argument in turn:
    A "softer" alternative can be easily achieved by setting a very low score
    for individuals to be taken last.
 
-   Note that even if the score for an individual is -1 (or any other negative
-   number), it *can* still be selected by the alignment expression. This
-   happens when there are not enough candidates (selected by the filter) to
-   meet the alignment needs.
+   .. note::
+
+      Note that even if the score for an individual is -1 (or any other
+      negative number), it *can* still be selected by the alignment expression.
+      This happens when there are not enough candidates (selected by the filter)
+      to meet the alignment needs.
  
  * **expressions**: specify the expressions used to partition the individuals
    into the different alignment categories. If proportions is a file name, the
@@ -1343,11 +1360,13 @@ Arguments:
 
         csv(period, avg(income), fname='avg_income.csv', mode='a')
 
-    Note that unless you erase/overwrite the file one way or another between
-    two runs of a simulation, you will append the data of the current
-    simulation to that of the previous one. One way to do overwrite the file
-    automatically at the start of a simulation is to have a procedure in the
-    init section without mode='a'.
+    .. note::
+
+       Unless you erase/overwrite the file one way or another between
+       two runs of a simulation, you will append the data of the current
+       simulation to that of the previous one. One way to do overwrite the file
+       automatically at the start of a simulation is to have a procedure in the
+       init section without mode='a'.
     
     If you want that file to start empty, you can do so this way: ::
 
@@ -1575,7 +1594,101 @@ or ::
            2 |          [47] |          [45 46] |                   [47 45 46]
            4 |          [46] |               [] |                         [46]
        total | [46 47 47 46] | [46 47 47 45 46] | [46 47 47 46 46 47 47 45 46]
-  
+
+.. index:: charts
+
+charts
+-------
+
+Version 0.8 introduced some charting capabilities, courtesy of [matplotlib
+http://matplotlib.org]. Each of the following functions is designed around
+the function of the same name in matplotlib. Even though we have tried to
+stay as close as possible to their API, their implementation in Liam2 has a
+few differences, in particular we added a few arguments which are available
+in most functions.
+
+common arguments
+~~~~~~~~~~~~~~~~
+
+* fname: name
+* colors (all except boxplot)
+* grid (all but no effect on piechart)
+* maxticks (all but no effect on piechart)
+
+
+.. index:: bar, bar charts
+
+bar charts
+~~~~~~~~~~
+
+    - bar(groupby(agegroup), fname='bar2.png')
+    - bar(groupby(eduach, agegroup), fname='bar6.png')
+
+.. image:: /charts/bar2.*
+.. image:: /charts/bar6.*
+
+.. versionadded:: 0.8
+
+.. index:: plot
+
+plot
+~~~~
+
+    - plot(groupby(gender, age), fname='plot07.png')
+    - plot(groupby(gender, agegroup), styles=['--', '-'],
+           fname='plot09.png')
+    - plot(groupby(gender, agegroup),
+           grid=True, linestyle='dashed', marker='o', linewidth=5,
+           fname='plot10.png')
+
+.. image:: /charts/plot07.*
+.. image:: /charts/plot09.*
+.. image:: /charts/plot10.*
+
+.. versionadded:: 0.8
+
+.. index:: stackplot
+
+stackplot
+~~~~~~~~~
+
+- stackplot(groupby(gender, eduach), fname='stackplot2.png')
+
+.. image:: /charts/stackplot2.*
+
+.. index:: pie, pie charts
+
+pie charts
+~~~~~~~~~~
+
+- pie(groupby(eduach),
+      explode=[0, 0.1, 0, 0],
+      labels=['Not set', 'Lower secondary', 'Upper secondary',
+              'Tertiary'],
+      fname='pie2.png')
+
+.. image:: /charts/pie2.*
+
+.. index:: boxplot
+
+boxplot
+~~~~~~~
+
+- boxplot(groupby(eduach, expr=age, filter=eduach != -1),
+          grid=True, fname='bbox2.png')
+
+.. image:: /charts/bbox2.*
+
+.. index:: bar3d
+
+3D bar charts
+~~~~~~~~~~~~~
+
+- bar3d(groupby(eduach, agegroup),
+        dx=0.2, dy=0.8, maxticks=4, fname='bar3d3.png')
+
+.. image:: /charts/bar3d3.*
+
 
 .. index:: interactive console, debugging
 
