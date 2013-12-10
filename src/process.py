@@ -7,7 +7,7 @@ import numpy as np
 import config
 from diff_h5 import diff_array
 from data import append_carray_to_table, ColumnArray
-from expr import Expr, type_to_idx, idx_to_type, expr_eval
+from expr import Expr, Variable, type_to_idx, idx_to_type, expr_eval
 from context import EntityContext
 import utils
 
@@ -227,10 +227,31 @@ class ProcessGroup(Process):
             del temp_vars[var]
 
     def ssa(self):
-        self.versions = {}
+        #FIXME: this is buggy in this case (we are not at the end of the
+        # procedure)
+        temp_vars = self.entity.temp_variables
+        all_vars = self.entity.variables
+        local_var_names = set(temp_vars.keys()) - set(all_vars.keys())
+
+        from collections import defaultdict
+        self.versions = defaultdict(int)
         for k, p in self.subprocesses:
+            for expr in p.expressions():
+                for node in expr.all_of(Variable):
+                    if node.name not in local_var_names:
+                        continue
+                    node.version = self.versions[node.name]
             if isinstance(p, Assignment):
-                p.predictor
+                # is this always == k?
+                target = p.predictor
+                if target not in local_var_names:
+                    continue
+                version = self.versions[target]
+                print("%s version %d" % (target, version))
+                self.versions[target] = version + 1
+
+    def toAst(self):
+        pass
 
     def expressions(self):
         for _, p in self.subprocesses:

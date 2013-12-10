@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 
 from collections import Counter
+import types
 
 import numpy as np
 
@@ -197,6 +198,16 @@ def expr_eval(expr, context):
         return expr
 
 
+def binop(opname, dtype=None, reversed=False):
+    if reversed:
+        def op(self, other):
+            return BinaryOp(opname, other, self, dtype=dtype)
+    else:
+        def op(self, other):
+            return BinaryOp(opname, self, other, dtype=dtype)
+    return op
+
+
 class Expr(object):
     __metaclass__ = ExplainTypeError
 
@@ -216,79 +227,67 @@ class Expr(object):
                         "'or' expression. The complete expression cannot be "
                         "displayed but it contains: '%s'." % str(self))
 
-    def __lt__(self, other):
-        return ComparisonOp('<', self, other)
-    def __le__(self, other):
-        return ComparisonOp('<=', self, other)
-    def __eq__(self, other):
-        return ComparisonOp('==', self, other)
-    def __ne__(self, other):
-        return ComparisonOp('!=', self, other)
-    def __gt__(self, other):
-        return ComparisonOp('>', self, other)
-    def __ge__(self, other):
-        return ComparisonOp('>=', self, other)
+    def cmp_dtype(self, context):
+        if coerce_types(context, self.expr1, self.expr2) is None:
+            raise TypeError("operands to comparison operators need to be of "
+                            "compatible types")
+        return bool
 
-    def __add__(self, other):
-        return Addition('+', self, other)
-    def __sub__(self, other):
-        return Subtraction('-', self, other)
-    def __mul__(self, other):
-        return Multiplication('*', self, other)
-    def __div__(self, other):
-        return Division('/', self, other)
-    def __truediv__(self, other):
-        return Division('/', self, other)
-    def __floordiv__(self, other):
-        return Division('//', self, other)
-    def __mod__(self, other):
-        return BinaryOp('%', self, other)
-    def __divmod__(self, other):
-        #FIXME
-        return BinaryOp('divmod', self, other)
-    def __pow__(self, other, modulo=None):
-        return BinaryOp('**', self, other)
-    def __lshift__(self, other):
-        return BinaryOp('<<', self, other)
-    def __rshift__(self, other):
-        return BinaryOp('>>', self, other)
+    __lt__ = binop('<', cmp_dtype)
+    __le__ = binop('<=', cmp_dtype)
+    __eq__ = binop('==', cmp_dtype)
+    __ne__ = binop('!=', cmp_dtype)
+    __gt__ = binop('>', cmp_dtype)
+    __ge__ = binop('>=', cmp_dtype)
 
-    def __and__(self, other):
-        return And('&', self, other)
-    def __xor__(self, other):
-        return BinaryOp('^', self, other)
-    def __or__(self, other):
-        return Or('|', self, other)
+    __add__ = binop('+')
+    __radd__ = binop('+', reversed=True)
+    __sub__ = binop('-')
+    __rsub__ = binop('-', reversed=True)
+    __mul__ = binop('*')
+    __rmul__ = binop('*', reversed=True)
 
-    def __radd__(self, other):
-        return Addition('+', other, self)
-    def __rsub__(self, other):
-        return Subtraction('-', other, self)
-    def __rmul__(self, other):
-        return Multiplication('*', other, self)
-    def __rdiv__(self, other):
-        return Division('/', other, self)
-    def __rtruediv__(self, other):
-        return Division('/', other, self)
-    def __rfloordiv__(self, other):
-        return Division('//', other, self)
-    def __rmod__(self, other):
-        return BinaryOp('%', other, self)
-    def __rdivmod__(self, other):
-        return BinaryOp('divmod', other, self)
-    def __rpow__(self, other):
-        return BinaryOp('**', other, self)
-    def __rlshift__(self, other):
-        return BinaryOp('<<', other, self)
-    def __rrshift__(self, other):
-        return BinaryOp('>>', other, self)
+    #XXX: normal div is never called? (since we import __future__.division)
+    def alwaysfloat(self, context):
+        return float
 
-    def __rand__(self, other):
-        return And('&', other, self)
-    def __rxor__(self, other):
-        return BinaryOp('^', other, self)
-    def __ror__(self, other):
-        return Or('|', other, self)
+    __div__ = binop('/', alwaysfloat)
+    __rdiv__ = binop('/', alwaysfloat, reversed=True)
+    __truediv__ = binop('/', alwaysfloat)
+    __rtruediv__ = binop('/', alwaysfloat, reversed=True)
+    __floordiv__ = binop('//')
+    __rfloordiv__ = binop('//', reversed=True)
+
+    __mod__ = binop('%')
+    __rmod__ = binop('%', reversed=True)
+    #FIXME
+    __divmod__ = binop('divmod')
+    __rdivmod__ = binop('divmod', reversed=True)
+    __pow__ = binop('**')
+    __rpow__ = binop('**', reversed=True)
+
+    __lshift__ = binop('<<')
+    __rlshift__ = binop('<<', reversed=True)
+    __rshift__ = binop('>>')
+    __rrshift__ = binop('>>', reversed=True)
+
+    def assertbool(self, expr, context):
+        dt = getdtype(expr, context)
+        if dt is not bool:
+            raise Exception("operands to logical operators need to be "
+                            "boolean but %s is %s" % (expr, dt))
+
+    def logical_dtype(self, context):
+        self.assertbool(self.expr1, context)
+        self.assertbool(self.expr2, context)
+        return bool
+
+    __and__ = binop('&', logical_dtype)
+    __rand__ = binop('&', logical_dtype, reversed=True)
+    __xor__ = binop('^', logical_dtype)
+    __rxor__ = binop('^', logical_dtype, reversed=True)
+    __or__ = binop('|', logical_dtype)
+    __ror__ = binop('|', logical_dtype, reversed=True)
 
     def __neg__(self):
         return UnaryOp('-', self)
@@ -563,10 +562,6 @@ class UnaryOp(Expr):
             return eval('%s%s' % (self.op, self.expr))
         return self
 
-    def show(self, indent):
-        print(indent, self.op)
-        self.expr.show(indent + '    ')
-
     def as_simple_expr(self, context):
         return self.__class__(self.op, self.expr.as_simple_expr(context))
 
@@ -598,13 +593,14 @@ class Not(UnaryOp):
 
 
 class BinaryOp(Expr):
-    neutral_value = None
-    overpowering_value = None
-
-    def __init__(self, op, expr1, expr2):
+    def __init__(self, op, expr1, expr2, dtype=None):
         self.op = op
         self.expr1 = expr1
         self.expr2 = expr2
+        if dtype is not None:
+            # override default dtype method (which simply coerce its args)
+            # for this instance (not for the whole class, which is more usual)
+            self.dtype = types.MethodType(dtype, self)
 
     def traverse(self, context):
         for c in traverse_expr(self.expr1, context):
@@ -631,37 +627,6 @@ class BinaryOp(Expr):
         return "(%s %s %s)" % (self.expr1, self.op, self.expr2)
     __repr__ = __str__
 
-    def simplify(self):
-        expr1 = self.expr1.simplify()
-        if isinstance(self.expr2, Expr):
-            expr2 = self.expr2.simplify()
-        else:
-            expr2 = self.expr2
-
-        if self.neutral_value is not None:
-            if isinstance(expr2, self.accepted_types) and \
-               expr2 == self.neutral_value:
-                return expr1
-
-        if self.overpowering_value is not None:
-            if isinstance(expr2, self.accepted_types) and \
-               expr2 == self.overpowering_value:
-                return self.overpowering_value
-        if not isinstance(expr1, Expr) and not isinstance(expr2, Expr):
-            return eval('%s %s %s' % (expr1, self.op, expr2))
-        return BinaryOp(self.op, expr1, expr2)
-
-    def show(self, indent=''):
-        print(indent, self.op)
-        if isinstance(self.expr1, Expr):
-            self.expr1.show(indent=indent + '    ')
-        else:
-            print(indent + '    ', self.expr1)
-        if isinstance(self.expr2, Expr):
-            self.expr2.show(indent=indent + '    ')
-        else:
-            print(indent + '    ', self.expr2)
-
     def collect_variables(self, context):
         vars2 = collect_variables(self.expr2, context)
         return collect_variables(self.expr1, context).union(vars2)
@@ -676,63 +641,6 @@ class BinaryOp(Expr):
 #                         missingvalue[dtype])
 
 
-class ComparisonOp(BinaryOp):
-    def dtype(self, context):
-        assert coerce_types(context, self.expr1, self.expr2) is not None, \
-               "operands to comparison operators need to be of compatible " \
-               "types"
-        return bool
-
-
-class LogicalOp(BinaryOp):
-    def dtype(self, context):
-        def assertbool(expr):
-            dt = getdtype(expr, context)
-            if dt is not bool:
-                raise Exception("operands to logical operators need to be "
-                                "boolean but %s is %s" % (expr, dt))
-        assertbool(self.expr1)
-        assertbool(self.expr2)
-        return bool
-
-
-class And(LogicalOp):
-    neutral_value = True
-    overpowering_value = False
-    accepted_types = (bool, np.bool_)
-
-
-class Or(LogicalOp):
-    neutral_value = False
-    overpowering_value = True
-    accepted_types = (bool, np.bool_)
-
-
-class Subtraction(BinaryOp):
-    neutral_value = 0.0
-    overpowering_value = None
-    accepted_types = (float,)
-
-
-class Addition(BinaryOp):
-    neutral_value = 0.0
-    overpowering_value = None
-    accepted_types = (float,)
-
-
-class Multiplication(BinaryOp):
-    neutral_value = 1.0
-    overpowering_value = 0.0
-    accepted_types = (float,)
-
-
-class Division(BinaryOp):
-    neutral_value = 1.0
-    overpowering_value = None
-    accepted_types = (float,)
-
-    def dtype(self, context):
-        return float
 
 
 #############
@@ -743,6 +651,7 @@ class Variable(Expr):
     def __init__(self, name, dtype=None):
         self.name = name
         self._dtype = dtype
+        self.version = 0
 
     def traverse(self, context):
         yield self
@@ -757,9 +666,6 @@ class Variable(Expr):
 
     def simplify(self):
         return self
-
-    def show(self, indent):
-        print(indent, self.name)
 
     def collect_variables(self, context):
         return {self.name}

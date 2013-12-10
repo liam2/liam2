@@ -318,13 +318,13 @@ class Entity(object):
                 else:
                     v.attach(k, self)
         attach_processes(processes.iteritems())
-
         self.processes = processes
+        self.ssa()
 
     def ssa(self):
         for p in self.processes.itervalues():
-            if isinstance(p, Assignment):
-                p.predictor
+            if isinstance(p, ProcessGroup):
+                p.ssa()
 
     def compute_lagged_fields(self):
         from tfunc import Lag

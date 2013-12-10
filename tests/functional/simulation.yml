@@ -2083,7 +2083,7 @@ simulation:
                    [marriage, 4],
 
                    # charts
-                   test_charts,
+#                   test_charts,
         ]
         - household: [num_persons, nch, maxnch, test_align_link
 #                      dump_csv_h,
