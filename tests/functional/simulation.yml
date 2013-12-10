@@ -247,36 +247,41 @@ entities:
 #                    done = min(age) >= 10
 
             test_charts:
-                - boxplot((age[gender], age[not gender]), fname='bbox1.png')
+                - boxplot((age[gender], age[not gender]),
+                          fname='bbox1.png')
                 - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
-                          fname='bbox2.png')
+                          fname='bbox2.png&pdf')
                 - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
                           notch=True, fname='bbox3.png')
+
                 - plot(age, fname='plot01_{entity}_{period}.png')
                 - plot(age, 'o', fname='plot02.png')
-                - plot(groupby(agegroup, expr=count(not gender)), 'o--',
-                       groupby(agegroup, expr=count(gender)), 's-.',
-                       groupby(agegroup), '*-', colors=['r', 'g', 'b'],
-                       fname='plot03.png')
-                - plot(groupby(eduach), 's--', fname='plot04.png')
-                - plot(groupby(eduach), 's--', color='g', fname='plot05.png')
-                - plot((lag(avg(work), 5), lag(avg(work), 4),
-                        lag(avg(work), 3), lag(avg(work), 2),
-                        lag(avg(work)), avg(work)), fname='plot06.png')
-                - plot(groupby(gender, age), fname='plot07.png')
-                - plot(groupby(gender, age), colors=['g', 'b'],
-                       fname='plot08.png')
-                - plot(groupby(gender, agegroup), styles=['--', '-'],
-                       fname='plot09.png')
-                - plot(groupby(gender, agegroup),
-                       grid=True, linestyle='dashed', marker='o', linewidth=5,
-                       fname='plot10.png')
+                - plot(groupby(age), fname='plot03.png&pdf')
                 - plot(groupby(age),
                        groupby(age, filter=not gender),
                        groupby(age, filter=gender),
+                       fname='plot04.png&pdf')
+                - plot((lag(avg(work), 5), lag(avg(work), 4),
+                        lag(avg(work), 3), lag(avg(work), 2),
+                        lag(avg(work)), avg(work)), fname='plot05.png')
+                - plot(groupby(gender, age), fname='plot06.png&pdf')
+                - plot(groupby(gender, age), colors=['g', 'b'],
+                       fname='plot07.png')
+                - plot(groupby(gender, agegroup), styles=['--', '-'],
+                       fname='plot08.png')
+                - plot(groupby(gender, agegroup),
+                       grid=True, linestyle='dashed', marker='o', linewidth=5,
+                       fname='plot09.png&pdf')
+                - plot(groupby(eduach), 's--', fname='plot10.png')
+                - plot(groupby(eduach), 's--', color='g',
                        fname='plot11.png')
+                - plot(groupby(agegroup, expr=count(not gender)), 'o--',
+                       groupby(agegroup, expr=count(gender)), 's-.',
+                       groupby(agegroup), '*-', colors=['r', 'g', 'b'],
+                       fname='plot12.png&pdf')
+
                 - stackplot(groupby(eduach), fname='stackplot1.png')
-                - stackplot(groupby(gender, eduach), fname='stackplot2.png')
+                - stackplot(groupby(gender, eduach), fname='stackplot2.png&pdf')
                 - stackplot(groupby(gender, eduach),
                             colors=['g', 'b'], baseline='sym',
                             fname='stackplot3.png')
@@ -297,21 +302,24 @@ entities:
                 # axes are currently messed up
                 # - barh(groupby(eduach, agegroup))
                 # - barh(groupby(eduach, agegroup), height=0.7)
-                - bar3d(groupby(gender, agegroup), fname='bar3d1.png')
+                - bar3d(groupby(gender, agegroup), fname='bar3d1.png&pdf')
 #FIXME: this does not work
 #                - bar3d(groupby(agegroup, filter=not gender),
 #                        groupby(agegroup, filter=gender))
                 - bar3d(groupby(eduach, agegroup),
                         color='g', fname='bar3d2.png')
+                #TODO: for some obscure reason, the pdf backend seem
+                # to keep some state from previous writes and writing this one
+                # breaks. It is *not* related to dx, dy or maxticks.
                 - bar3d(groupby(eduach, agegroup),
                         dx=0.2, dy=0.8, maxticks=4, fname='bar3d3.png')
                 - bar3d(groupby(eduach, agegroup, gender), fname='bar3d4.png')
-                - pie(groupby(eduach * 2), fname='pie1.png', shadow=True)
+                - pie(groupby(eduach), fname='pie1.png&pdf')
                 - pie(groupby(eduach),
                       explode=[0, 0.1, 0, 0],
                       labels=['Not set', 'Lower secondary', 'Upper secondary',
                               'Tertiary'],
-                      fname='pie2.png')
+                      fname='pie2.png&pdf')
 
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])

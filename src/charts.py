@@ -143,9 +143,14 @@ class Chart(Process):
         if fname is None:
             plt.show(block=True)
         else:
-            fname = fname.format(entity=entity.name, period=period)
-            print("writing to", fname, "...", end=' ')
-            plt.savefig(os.path.join(config.output_directory, fname))
+            root, exts = os.path.splitext(fname)
+            exts = exts.split('&')
+            # the first extension already contains a ".", but not the others
+            exts = [exts[0]] + ['.' + ext for ext in exts[1:]]
+            for ext in exts:
+                fname = (root + ext).format(entity=entity.name, period=period)
+                print("writing to", fname, "...", end=' ')
+                plt.savefig(os.path.join(config.output_directory, fname))
 
         # explicit close is needed for Qt4 backend
         plt.close(fig)
