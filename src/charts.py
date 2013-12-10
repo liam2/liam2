@@ -13,10 +13,12 @@ from utils import LabeledArray, aslabeledarray, ExceptionOnGetAttr
 try:
     # we do not use the qt backend because when the python script is run
     # by nppexec (in notepad++), the qt window does not open :(
-    #import matplotlib
-    #matplotlib.use('Qt4Agg')
-    #del matplotlib
+    # import matplotlib
+    # matplotlib.use('Qt4Agg')
+    # del matplotlib
     import matplotlib.pyplot as plt
+    # set interactive mode
+    # plt.ion()
 except ImportError, e:
     plt = ExceptionOnGetAttr(e)
     print("Warning: charts functionality is not available because "
@@ -141,7 +143,7 @@ class Chart(Process):
         self._draw(data, colors, **kwargs)
         plt.grid(grid)
         if fname is None:
-            plt.show(block=True)
+            plt.show() #block=True)
         else:
             root, exts = os.path.splitext(fname)
             exts = exts.split('&')
