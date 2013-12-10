@@ -1600,17 +1600,25 @@ or ::
 charts
 -------
 
-Version 0.8 introduced some charting capabilities, courtesy of [matplotlib
-http://matplotlib.org]. Each of the following functions is designed around
-the function of the same name in matplotlib. Even though we have tried to
-stay as close as possible to their API, their implementation in Liam2 has a
-few differences, in particular we added a few arguments which are available
-in most functions.
+Version 0.8 introduced some charting capabilities, courtesy of
+`matplotlib <http://matplotlib.org>`_. Each of the following functions is
+designed around the function of the same name in matplotlib. Even though we
+have tried to stay as close as possible to their API, their implementation in
+Liam2 has a few differences, in particular we added a few arguments which
+are available in most functions.
 
-common arguments
-~~~~~~~~~~~~~~~~
+* *fname*: name of the file to save the chart to. The file format is
+  automatically deduced from the file extension. You can save the same chart
+  to several formats at once by using '&' in the extension. For
+  example: ``plot(expr, fname='plot03.png&pdf')`` will write the chart to both
+  ``plot03.png`` and ``plot03.pdf``. If the *fname* argument is not used,
+  a window will open to view and interact with the figure. See
+  `this page <http://matplotlib.org/users/navigation_toolbar.html>`_ for more
+  details.
 
-* fname: name
+  .. note::
+     Keyboard shortcuts mentioned on that page currently do not work
+
 * colors (all except boxplot)
 * grid (all but no effect on piechart)
 * maxticks (all but no effect on piechart)
@@ -1621,73 +1629,169 @@ common arguments
 bar charts
 ~~~~~~~~~~
 
+.. versionadded:: 0.8
+
+**bar** can be used to draw bar charts. It uses `matplotlib.pyplot.bar
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.bar>`_  and
+inherits all of its keyword arguments.
+
+    bar(1d_expr, ...)
+    bar(1d_expr1, 1d_expr2, ...)
+    bar(2d_expr, ...)
+
     - bar(groupby(agegroup), fname='bar2.png')
     - bar(groupby(eduach, agegroup), fname='bar6.png')
 
 .. image:: /charts/bar2.*
 .. image:: /charts/bar6.*
 
-.. versionadded:: 0.8
 
 .. index:: plot
 
 plot
 ~~~~
 
-    - plot(groupby(gender, age), fname='plot07.png')
-    - plot(groupby(gender, agegroup), styles=['--', '-'],
-           fname='plot09.png')
-    - plot(groupby(gender, agegroup),
-           grid=True, linestyle='dashed', marker='o', linewidth=5,
-           fname='plot10.png')
-
-.. image:: /charts/plot07.*
-.. image:: /charts/plot09.*
-.. image:: /charts/plot10.*
-
 .. versionadded:: 0.8
+
+**plot** can be used to draw (line) plots. It uses
+`matplotlib.pyplot.plot <http://matplotlib.org/api/pyplot_api.html#matplotlib
+.pyplot.plot>`_ and inherits all of its keyword arguments to customize the
+appearance. There are 4 ways to use it: ::
+
+    plot(1d_expr, ...)
+    plot(1d_expr1, 1d_expr2, ...)
+    plot(2d_expr, ...)
+    plot(1d_expr1, style_str1, 1d_expr2, style_str2, ...)
+
+The first two are quite straightforward: *1d_expr* is any expression returning
+a one-dimensional array (for example an entity field or a groupby expression
+with only one dimension). For example: ::
+
+   plot(groupby(age))
+
+.. image:: /charts/plot03.*
+
+One can pass several expressions, in which case each expression will be
+plotted as a different line. ::
+
+   plot(groupby(age),
+        groupby(age, filter=not gender),
+        groupby(age, filter=gender))
+
+.. image:: /charts/plot04.*
+
+The third option is to pass one expression returning a two-dimensional
+array (``plot(2d_expr, ...)``) in which case, there will be one line for each
+possible value of the first dimension and the second dimension will be
+plotted along the x axis. For example: ::
+
+    plot(groupby(gender, age))
+
+.. image:: /charts/plot06.*
+
+and, using a few of the many possible options to customize the appearance: ::
+
+    plot(groupby(gender, agegroup),
+         grid=True, linestyle='dashed', marker='o', linewidth=5)
+
+.. image:: /charts/plot09.*
+
+And the fourth and last option is to alternate expressions returning
+one-dimensional arrays with *styles strings*
+(``plot(1d_expr1, style_str1, 1d_expr2, style_str2, ...)``) which allows each
+line/array to be plotted with a different style. See `plot documentation
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.plot>`_ for a
+description of possible styles strings.
+
+.. note:: Styles including a color (as explained in the matplotlib
+          documentation -- eg 'bo') are **not** supported by our
+          implementation. Colors should rather be set using the *colors*
+          argument (as explained above and shown in the example below).
+
+Example: ::
+
+    plot(groupby(agegroup, expr=count(not gender)), 'o--',
+         groupby(agegroup, expr=count(gender)), 's-.',
+         groupby(agegroup), '*-'
+         colors=['r', 'g', 'b'])
+
+.. image:: /charts/plot12.*
+
 
 .. index:: stackplot
 
 stackplot
 ~~~~~~~~~
 
+.. versionadded:: 0.8
+
+`stackplot <http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot
+.stackplot>`_
+
 - stackplot(groupby(gender, eduach), fname='stackplot2.png')
 
 .. image:: /charts/stackplot2.*
+   :width: 60%
 
 .. index:: pie, pie charts
 
 pie charts
 ~~~~~~~~~~
 
-- pie(groupby(eduach),
+.. versionadded:: 0.8
+
+`pie <http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.pie>`_
+
+::
+
+  pie(groupby(eduach), fname='pie1.png&pdf')
+  pie(groupby(eduach),
       explode=[0, 0.1, 0, 0],
       labels=['Not set', 'Lower secondary', 'Upper secondary',
               'Tertiary'],
       fname='pie2.png')
 
+.. image:: /charts/pie1.*
+   :width: 60%
 .. image:: /charts/pie2.*
+   :width: 60%
 
 .. index:: boxplot
 
 boxplot
 ~~~~~~~
 
+.. versionadded:: 0.8
+
+`boxplot <http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot
+.boxplot>`_
+
 - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
-          grid=True, fname='bbox2.png')
+          fname='bbox2.png')
 
 .. image:: /charts/bbox2.*
+   :width: 60%
 
 .. index:: bar3d
 
 3D bar charts
 ~~~~~~~~~~~~~
 
+.. versionadded:: 0.8
+
+`bar3d <http://matplotlib.org/mpl_toolkits/mplot3d/api.html#mpl_toolkits
+.mplot3d.axes3d.Axes3D.bar3d>`_
+
+- bar3d(groupby(eduach, agegroup), fname='bar3d1.png')
+
+.. image:: /charts/bar3d1.*
+   :width: 60%
+
 - bar3d(groupby(eduach, agegroup),
         dx=0.2, dy=0.8, maxticks=4, fname='bar3d3.png')
 
 .. image:: /charts/bar3d3.*
+   :width: 60%
 
 
 .. index:: interactive console, debugging

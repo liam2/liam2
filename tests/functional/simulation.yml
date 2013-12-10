@@ -247,6 +247,8 @@ entities:
 #                    done = min(age) >= 10
 
             test_charts:
+                - plot(groupby(age))
+
                 - boxplot((age[gender], age[not gender]),
                           fname='bbox1.png')
                 - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
@@ -290,25 +292,26 @@ entities:
                             fname='stackplot4.png')
                 - byage: groupby(age, percent=True)
                 - bar(byage, fname='bar1.png')
-                - bar(groupby(agegroup + 1), fname='bar2.png')
-                # mig_period_women
-                - bar(MIG[0,:,period - 2001], fname='bar3.png')
+                - bar(groupby(agegroup), fname='bar2.png&pdf')
+                - bar(groupby(agegroup + 1), fname='bar3.png')
                 - bar(groupby(gender, agegroup), fname='bar4.png')
                 - bar(groupby(agegroup, filter=not gender),
                       groupby(agegroup, filter=gender),
                       fname='bar5.png')
-                - bar(groupby(eduach, agegroup), fname='bar6.png')
+                - bar(groupby(eduach, agegroup), fname='bar6.png&pdf')
                 - bar(groupby(eduach, agegroup), width=0.8, fname='bar7.png')
+                # mig_period_women
+                - bar(MIG[0,:,period - 2001], fname='bar8.png')
                 # axes are currently messed up
                 # - barh(groupby(eduach, agegroup))
                 # - barh(groupby(eduach, agegroup), height=0.7)
-                - bar3d(groupby(gender, agegroup), fname='bar3d1.png&pdf')
 #FIXME: this does not work
 #                - bar3d(groupby(agegroup, filter=not gender),
 #                        groupby(agegroup, filter=gender))
+                - bar3d(groupby(eduach, agegroup), fname='bar3d1.png')
                 - bar3d(groupby(eduach, agegroup),
                         color='g', fname='bar3d2.png')
-                #TODO: for some obscure reason, the pdf backend seem
+                #FIXME: for some obscure reason, the pdf backend seem
                 # to keep some state from previous writes and writing this one
                 # breaks. It is *not* related to dx, dy or maxticks.
                 - bar3d(groupby(eduach, agegroup),
