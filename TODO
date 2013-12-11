@@ -23,6 +23,9 @@ implementation that I am aware of.
 features I would like to implement (in no particular order)
 ===========================================================
 
+- F9 should also work on an "import file", so that you can check what you just
+  imported.
+
 - groupby on a variable with nans gives awful results because each nan is
   considered as a different value, which means an awful lot of them.
 
@@ -139,8 +142,8 @@ features I would like to implement (in no particular order)
   declaration of the globals in the simulation file (effectively allowing to
   bypass the import step for time series and other csv files)
 
-- change dtype method on expr to return (shape, dtype) or something like that
-  the immediate goal is to be able to distinguish between arrays and scalars
+- change dtype method on expr to return (shape, dtype) or (ndim, dtype)?
+  The immediate goal is to be able to distinguish between arrays and scalars
   in advance in methods like Variable.__getitem__
 
 - when trying to "import" a simulation file or trying to "run" an import file,
