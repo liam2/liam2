@@ -138,6 +138,21 @@ def prod(values):
     return reduce(operator.mul, values, 1)
 
 
+def ndim(arraylike):
+    """
+    Computes the number of dimensions of arbitrary structures, including
+    sequence of arrays and array of sequences.
+    """
+    n = 0
+    while isinstance(arraylike, (list, tuple, np.ndarray)):
+        if len(arraylike) == 0:
+            raise ValueError('Cannot compute ndim of array with empty dim')
+        #XXX: check that other elements have the same length?
+        arraylike = arraylike[0]
+        n += 1
+    return n
+
+
 def safe_put(a, ind, v):
     """
     np.put but where values corresponding to -1 indices are ignored,
