@@ -34,6 +34,10 @@ except ImportError, e:
 
 
 def ndim(arraylike):
+    """
+    Computes the number of dimensions of arbitrary structures, including
+    sequence of arrays and array of sequences.
+    """
     n = 0
     while isinstance(arraylike, (list, tuple, np.ndarray)):
         if len(arraylike) == 0:
@@ -41,8 +45,6 @@ def ndim(arraylike):
         #XXX: check that other elements have the same length?
         arraylike = arraylike[0]
         n += 1
-    # if isinstance(arraylike, np.ndarray):
-    #     n += arraylike.ndim
     return n
 
 
