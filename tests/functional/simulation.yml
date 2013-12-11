@@ -307,17 +307,6 @@ entities:
                 # axes are currently messed up
                 # - barh(groupby(eduach, agegroup))
                 # - barh(groupby(eduach, agegroup), height=0.7)
-#FIXME: this does not work
-#                - bar3d(groupby(agegroup, filter=not gender),
-#                        groupby(agegroup, filter=gender))
-                - bar3d(groupby(eduach, agegroup), fname='bar3d1.png')
-                - bar3d(groupby(eduach, agegroup),
-                        color='g', fname='bar3d2.png')
-                #FIXME: for some obscure reason, the pdf backend seem
-                # to keep some state from previous writes and writing this one
-                # breaks. It is *not* related to dx, dy or maxticks.
-                - bar3d(groupby(eduach, agegroup),
-                        dx=0.2, dy=0.8, maxticks=4, fname='bar3d3.png')
                 - pie(groupby(eduach), fname='pie1.png&pdf')
                 - pie(groupby(eduach),
                       explode=[0.1, 0, 0],

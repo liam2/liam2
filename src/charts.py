@@ -24,14 +24,6 @@ except ImportError, e:
     print("Warning: charts functionality is not available because "
           "'matplotlib.pyplot' could not be imported (%s)." % e)
 
-try:
-    from mpl_toolkits.mplot3d import Axes3D
-except ImportError, e:
-    Axes3D = None
-    if not isinstance(plt, ExceptionOnGetAttr):
-        print("Warning: 3D charts are not available because "
-              "'mpl_toolkits.mplot3d.AxesED' could not be imported (%s)." % e)
-
 
 def ndim(arraylike):
     """
@@ -299,25 +291,6 @@ class BarH(Bar):
             left += row
 
 
-class Bar3D(Bar):
-    maxticks = 10
-    projection = '3d'
-    legend = False
-
-    def _draw(self, data, colors, **kwargs):
-        kw = dict(dx=0.5, dy=0.5, color=colors[0], dz=data.flatten())
-        kw.update(kwargs)
-        ax = plt.gca(projection='3d')
-        xlen, ylen = data.shape
-        size = xlen * ylen
-        positions = np.mgrid[:xlen, :ylen] + 1.0
-        xpos, ypos = positions.reshape(2, size)
-        xpos -= kw['dx'] / 2
-        ypos -= kw['dy'] / 2
-        zpos = np.zeros(size)
-        ax.bar3d(xpos, ypos, zpos, **kw)
-
-
 class Pie(Chart):
     axes = False
     legend = False
@@ -348,6 +321,5 @@ functions = {
     'stackplot': StackPlot,
     'bar': Bar,
     'barh': BarH,
-    'bar3d': Bar3D,
     'pie': Pie,
 }

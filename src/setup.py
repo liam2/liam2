@@ -35,7 +35,6 @@ build_exe_options = {
     "replace_paths": [("*", "")],
     #"includes": ["matplotlib.backends.backend_qt4agg"],
     "includes": ["matplotlib.backends.backend_tkagg"],
-    "namespace_packages": ["mpl_toolkits"],
     "excludes": [
         # linux-specific modules
         "_codecs", "_codecs_cn", "_codecs_hk", "_codecs_iso2022",
