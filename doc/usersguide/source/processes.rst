@@ -1774,7 +1774,7 @@ inherits all of its keyword arguments. There are two ways to use it: ::
 
 Example: ::
 
-    stackplot(groupby(gender, eduach))
+    stackplot(groupby(eduach, age))
 
 .. image:: /charts/stackplot2.*
 
@@ -1798,8 +1798,8 @@ dimension). Examples: ::
 
   pie(groupby(eduach))
   pie(groupby(eduach),
-      explode=[0, 0.1, 0, 0],
-      labels=['Not set', 'Lower secondary', 'Upper secondary', 'Tertiary'])
+      explode=[0.1, 0, 0],
+      labels=['Lower secondary', 'Upper secondary', 'Tertiary'])
 
 .. image:: /charts/pie1.*
 .. image:: /charts/pie2.*
@@ -1811,13 +1811,22 @@ boxplot
 
 .. versionadded:: 0.8
 
-`boxplot <http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot
-.boxplot>`_
+**boxplot** can be used to draw `box plots
+<http://en.wikipedia.org/wiki/Box_plot>`_. It uses
+`matplotlib.pyplot.boxplot
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.boxplot>`_ and
+inherits all of its keyword arguments. There are two ways to use it: ::
 
-- boxplot(groupby(eduach, expr=age, filter=eduach != -1),
-          fname='bbox2.png')
+    boxplot(1d_expr1, 1d_expr2, ...)
+    boxplot(2d_expr, ...)
 
-.. image:: /charts/bbox2.*
+Examples: ::
+
+    - boxplot(age[gender], age[not gender])
+    - boxplot(groupby(eduach, expr=age, filter=eduach != -1))
+
+.. image:: /charts/bplot1.*
+.. image:: /charts/bplot2.*
 
 .. index:: bar3d
 

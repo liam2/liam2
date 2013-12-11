@@ -249,14 +249,14 @@ entities:
             test_charts:
                 - plot(groupby(age))
 
-                - boxplot((age[gender], age[not gender]),
-                          fname='bbox1.png')
                 - boxplot(age[gender], age[not gender],
-                          fname='bbox1bis.png')
+                          fname='bplot1.png&pdf')
+                - boxplot((age[gender], age[not gender]),
+                          fname='bplot1bis.png')
                 - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
-                          fname='bbox2.png&pdf')
+                          fname='bplot2.png&pdf')
                 - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
-                          notch=True, fname='bbox3.png')
+                          notch=True, fname='bplot3.png')
 
                 - plot(age, fname='plot01_{entity}_{period}.png')
                 - plot(age, 'o', fname='plot02.png')
@@ -285,7 +285,7 @@ entities:
                        fname='plot12.png&pdf')
 
                 - stackplot(groupby(eduach), fname='stackplot1.png')
-                - stackplot(groupby(gender, eduach), fname='stackplot2.png&pdf')
+                - stackplot(groupby(eduach, age), fname='stackplot2.png&pdf')
                 - stackplot(groupby(gender, eduach),
                             colors=['g', 'b'], baseline='sym',
                             fname='stackplot3.png')
@@ -320,9 +320,8 @@ entities:
                         dx=0.2, dy=0.8, maxticks=4, fname='bar3d3.png')
                 - pie(groupby(eduach), fname='pie1.png&pdf')
                 - pie(groupby(eduach),
-                      explode=[0, 0.1, 0, 0],
-                      labels=['Not set', 'Lower secondary', 'Upper secondary',
-                              'Tertiary'],
+                      explode=[0.1, 0, 0],
+                      labels=['Lower secondary', 'Upper secondary', 'Tertiary'],
                       fname='pie2.png&pdf')
 
             test_init:
@@ -2039,6 +2038,10 @@ simulation:
                    test_expr,
                    agegroup,
 
+                   # test the charts before test_new messes the demography
+                   test_charts,
+
+                   # ...
                    test_logit,
                    test_logistic,
 
@@ -2105,9 +2108,6 @@ simulation:
                    test_choice,
                    show_weight,
                    [marriage, 4],
-
-                   # charts
-                   test_charts,
         ]
         - household: [num_persons, nch, maxnch, test_align_link
 #                      dump_csv_h,
