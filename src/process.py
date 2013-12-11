@@ -227,24 +227,22 @@ class ProcessGroup(Process):
             del temp_vars[var]
 
     def ssa(self):
-        #FIXME: this is buggy in this case (we are not at the end of the
-        # procedure)
-        temp_vars = self.entity.temp_variables
-        all_vars = self.entity.variables
-        local_var_names = set(temp_vars.keys()) - set(all_vars.keys())
+        procedure_vars = set(k for k, p in self.subprocesses if k is not None)
+        global_vars = set(self.entity.variables.keys())
+        local_vars = procedure_vars - global_vars
 
         from collections import defaultdict
         self.versions = defaultdict(int)
         for k, p in self.subprocesses:
             for expr in p.expressions():
                 for node in expr.all_of(Variable):
-                    if node.name not in local_var_names:
+                    if node.name not in local_vars:
                         continue
                     node.version = self.versions[node.name]
             if isinstance(p, Assignment):
                 # is this always == k?
                 target = p.predictor
-                if target not in local_var_names:
+                if target not in local_vars:
                     continue
                 version = self.versions[target]
                 print("%s version %d" % (target, version))
