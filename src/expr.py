@@ -209,7 +209,18 @@ def binop(opname, dtype=None, reversed=False):
 
 
 class Expr(object):
-    __metaclass__ = ExplainTypeError
+    # __metaclass__ = ExplainTypeError
+
+    def __init__(self, value=None, kind=None, children=None):
+        object.__init__(self)
+        self.value = value
+        if kind is None:
+            kind = 'none'
+        self.kind = kind
+        if children is None:
+            self.children = ()
+        else:
+            self.children = tuple(children)
 
     def traverse(self, context):
         raise NotImplementedError()
@@ -228,7 +239,8 @@ class Expr(object):
                         "displayed but it contains: '%s'." % str(self))
 
     def cmp_dtype(self, context):
-        if coerce_types(context, self.expr1, self.expr2) is None:
+        expr1, expr2 = self.children
+        if coerce_types(context, expr1, expr2) is None:
             raise TypeError("operands to comparison operators need to be of "
                             "compatible types")
         return bool
@@ -278,8 +290,9 @@ class Expr(object):
                             "boolean but %s is %s" % (expr, dt))
 
     def logical_dtype(self, context):
-        self.assertbool(self.expr1, context)
-        self.assertbool(self.expr2, context)
+        expr1, expr2 = self.children
+        self.assertbool(expr1, context)
+        self.assertbool(expr2, context)
         return bool
 
     __and__ = binop('&', logical_dtype)
@@ -296,7 +309,7 @@ class Expr(object):
     def __abs__(self):
         return UnaryOp('abs', self)
     def __invert__(self):
-        return Not('~', self)
+        return UnaryOp('~', self)
 
     def evaluate(self, context):
 #        FIXME: this cannot work, because dict.__contains__(k) calls k.__eq__
@@ -379,7 +392,15 @@ class Expr(object):
         return ExprAttribute(self, key)
 
     def collect_variables(self, context):
-        raise NotImplementedError()
+        return set.union(collect_variables(c, context) for c in self.children)
+
+    def traverse(self, context):
+        print("traverse", self)
+        for child in self.children:
+            print("traverse child", child)
+            for node in traverse_expr(child, context):
+                yield node
+        yield self
 
 
 class EvaluableExpression(Expr):
@@ -399,23 +420,21 @@ def non_scalar_array(a):
 
 class SubscriptedExpr(EvaluableExpression):
     def __init__(self, expr, key):
-        self.expr = expr
-        self.key = key
+        Expr.__init__(self, 'subscript', children=(expr, key))
 
     def __str__(self):
-        key = self.key
+        expr, key = self.children
         if isinstance(key, slice):
             key_str = '%s:%s' % (key.start, key.stop)
             if key.step is not None:
                 key_str += ':%s' % key.step
         else:
             key_str = str(key)
-        return '%s[%s]' % (self.expr, key_str)
+        return '%s[%s]' % (expr, key_str)
     __repr__ = __str__
 
     def evaluate(self, context):
-        expr_value = expr_eval(self.expr, context)
-        key = expr_eval(self.key, context)
+        expr_value, key = [expr_eval(c, context) for c in self.children]
 
         filter_expr = context.get('__filter__')
 
@@ -467,84 +486,40 @@ class SubscriptedExpr(EvaluableExpression):
                         return missing_value
         return expr_value[key]
 
-    def collect_variables(self, context):
-        exprvars = collect_variables(self.expr, context)
-        return exprvars | collect_variables(self.key, context)
-
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
-        for node in traverse_expr(self.key, context):
-            yield node
-        yield self
 
 
 class ExprAttribute(EvaluableExpression):
     def __init__(self, expr, key):
-        self.expr = expr
-        self.key = key
+        Expr.__init__(self, 'attr', children=(expr, key))
 
     def __str__(self):
-        return '%s.%s' % (self.expr, self.key)
+        return '%s.%s' % self.children
     __repr__ = __str__
 
     def evaluate(self, context):
-        # currently key can only be a string but if I ever expose getattr,
-        # it could be an expr too
-        return getattr(expr_eval(self.expr, context),
-                       expr_eval(self.key, context))
+        expr, key = expr_eval(self.children, context)
+        return getattr(expr, key)
 
     def __call__(self, *args, **kwargs):
-        return ExprCall(self, args, kwargs)
-
-    def collect_variables(self, context):
-        exprvars = collect_variables(self.expr, context)
-        return exprvars | collect_variables(self.key, context)
-
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
-        for node in traverse_expr(self.key, context):
-            yield node
-        yield self
+        return ExprCall(self, args, sorted(kwargs.items()))
 
 
 #TODO: factorize with NumpyFunction & FunctionExpression
 class ExprCall(EvaluableExpression):
     def __init__(self, expr, args, kwargs):
-        self.expr = expr
-        self.args = args
-        self.kwargs = kwargs
+        Expr.__init__(self, 'call', children=(expr, args, kwargs))
+        assert isinstance(kwargs, list)
 
     def evaluate(self, context):
-        expr = expr_eval(self.expr, context)
-        args = [expr_eval(arg, context) for arg in self.args]
-        kwargs = dict((k, expr_eval(v, context))
-                      for k, v in self.kwargs.iteritems())
-        return expr(*args, **kwargs)
+        expr, args, kwargs = expr_eval(self.children, context)
+        return expr(*args, **dict(kwargs))
 
     def __str__(self):
-        args = [repr(a) for a in self.args]
-        kwargs = ['%s=%r' % (k, v) for k, v in self.kwargs.iteritems()]
-        return '%s(%s)' % (self.expr, ', '.join(args + kwargs))
+        expr, args, kwargs = self.children
+        args = [repr(a) for a in args]
+        kwargs = ['%s=%r' % (k, v) for k, v in kwargs]
+        return '%s(%s)' % (expr, ', '.join(args + kwargs))
     __repr__ = __str__
-
-    def collect_variables(self, context):
-        args_vars = [collect_variables(arg, context) for arg in self.args]
-        args_vars.extend(collect_variables(v, context)
-                         for v in self.kwargs.itervalues())
-        return set.union(*args_vars) if args_vars else set()
-
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
-        for arg in self.args:
-            for node in traverse_expr(arg, context):
-                yield node
-        for kwarg in self.kwargs.itervalues():
-            for node in traverse_expr(kwarg, context):
-                yield node
-        yield self
 
 
 #############
@@ -553,94 +528,50 @@ class ExprCall(EvaluableExpression):
 
 class UnaryOp(Expr):
     def __init__(self, op, expr):
-        self.op = op
-        self.expr = expr
-
-    def simplify(self):
-        expr = self.expr.simplify()
-        if not isinstance(expr, Expr):
-            return eval('%s%s' % (self.op, self.expr))
-        return self
+        Expr.__init__(self, op, children=(expr,))
 
     def as_simple_expr(self, context):
-        return self.__class__(self.op, self.expr.as_simple_expr(context))
+        child = self.children[0].as_simple_expr(context)
+        return self.__class__(self.value, child)
 
     def as_string(self):
-        return "(%s%s)" % (self.op, self.expr.as_string())
+        return "(%s%s)" % (self.value, self.children[0].as_string())
 
     def __str__(self):
-        return "(%s%s)" % (self.op, self.expr)
+        return "(%s%s)" % (self.value, self.children[0])
     __repr__ = __str__
 
-    def collect_variables(self, context):
-        return self.expr.collect_variables(context)
-
     def dtype(self, context):
-        return getdtype(self.expr, context)
-
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
-        yield self
-
-
-class Not(UnaryOp):
-    def simplify(self):
-        expr = self.expr.simplify()
-        if not isinstance(expr, Expr):
-            return not expr
-        return self
+        return getdtype(self.children[0], context)
 
 
 class BinaryOp(Expr):
     def __init__(self, op, expr1, expr2, dtype=None):
-        self.op = op
-        self.expr1 = expr1
-        self.expr2 = expr2
+        Expr.__init__(self, op, children=(expr1, expr2))
         if dtype is not None:
             # override default dtype method (which simply coerce its args)
             # for this instance (not for the whole class, which is more usual)
             self.dtype = types.MethodType(dtype, self)
 
-    def traverse(self, context):
-        for c in traverse_expr(self.expr1, context):
-            yield c
-        for c in traverse_expr(self.expr2, context):
-            yield c
-        yield self
-
     def as_simple_expr(self, context):
-        expr1 = as_simple_expr(self.expr1, context)
-        expr2 = as_simple_expr(self.expr2, context)
-        return self.__class__(self.op, expr1, expr2)
+        expr1, expr2 = self.children
+        expr1 = as_simple_expr(expr1, context)
+        expr2 = as_simple_expr(expr2, context)
+        return self.__class__(self.value, expr1, expr2)
 
     # We can't simply use __str__ because of where vs if
     def as_string(self):
-        return "(%s %s %s)" % (as_string(self.expr1),
-                               self.op,
-                               as_string(self.expr2))
+        expr1, expr2 = [as_string(c) for c in self.children]
+        return "(%s %s %s)" % (expr1, self.value, expr2)
 
     def dtype(self, context):
-        return coerce_types(context, self.expr1, self.expr2)
+        expr1, expr2 = self.children
+        return coerce_types(context, expr1, expr2)
 
     def __str__(self):
-        return "(%s %s %s)" % (self.expr1, self.op, self.expr2)
+        expr1, expr2 = self.children
+        return "(%s %s %s)" % (expr1, self.value, expr2)
     __repr__ = __str__
-
-    def collect_variables(self, context):
-        vars2 = collect_variables(self.expr2, context)
-        return collect_variables(self.expr1, context).union(vars2)
-
-#    def guard_missing(self):
-#        dtype = self.dtype()
-#        if dtype is float:
-#            return self
-#        else:
-#            return Where(ispresent(self.expr1) & ispresent(self.expr2),
-#                         self,
-#                         missingvalue[dtype])
-
-
 
 
 #############
@@ -649,30 +580,25 @@ class BinaryOp(Expr):
 
 class Variable(Expr):
     def __init__(self, name, dtype=None):
-        self.name = name
+        Expr.__init__(self, name)
+
         self._dtype = dtype
         self.version = 0
 
-    def traverse(self, context):
-        yield self
-
     def __str__(self):
-        return self.name
+        return self.value
     __repr__ = __str__
     as_string = __str__
 
     def as_simple_expr(self, context):
         return self
 
-    def simplify(self):
-        return self
-
     def collect_variables(self, context):
-        return {self.name}
+        return {self.value}
 
     def dtype(self, context):
-        if self._dtype is None and self.name in context:
-            type_ = context[self.name].dtype.type
+        if self._dtype is None and self.value in context:
+            type_ = context[self.value].dtype.type
             return normalize_type(type_)
         else:
             return self._dtype
@@ -693,7 +619,7 @@ class GlobalVariable(Variable):
         result = self.evaluate(context)
         period = self._eval_key(context)
         if isinstance(period, int):
-            tmp_varname = '__%s_%s' % (self.name, period)
+            tmp_varname = '__%s_%s' % (self.value, period)
             if tmp_varname in context:
                 # should be consistent but nan != nan
                 assert result != result or context[tmp_varname] == result
@@ -724,9 +650,9 @@ class GlobalVariable(Variable):
             row = key - base_period
         else:
             row = key
-        if self.name not in globals_table.dtype.fields:
+        if self.value not in globals_table.dtype.fields:
             raise Exception("Unknown global: %s" % self.name)
-        column = globals_table[self.name]
+        column = globals_table[self.value]
         numrows = len(column)
         missing_value = get_missing_value(column)
         if isinstance(row, np.ndarray) and row.shape:
@@ -738,7 +664,7 @@ class GlobalVariable(Variable):
             return column[row] if not out_of_bounds else missing_value
 
     def __getitem__(self, key):
-        return SubscriptedGlobal(self.tablename, self.name, self._dtype, key)
+        return SubscriptedGlobal(self.tablename, self.value, self._dtype, key)
 
     def collect_variables(self, context):
         #FIXME: this is a quick hack to make "othertable" work.

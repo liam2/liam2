@@ -86,6 +86,8 @@ class LinkExpression(EvaluableExpression):
        and one2many"""
 
     def __init__(self, link):
+        FIXME: call Expr.__init__(self, ...) and/or do that in
+        EvaluableExpression?
         self.link = link
 
     def target_context(self, context):
