@@ -1828,26 +1828,6 @@ Examples: ::
 .. image:: /charts/bplot1.*
 .. image:: /charts/bplot2.*
 
-.. index:: bar3d
-
-3D bar charts
-~~~~~~~~~~~~~
-
-.. versionadded:: 0.8
-
-`bar3d <http://matplotlib.org/mpl_toolkits/mplot3d/api.html#mpl_toolkits
-.mplot3d.axes3d.Axes3D.bar3d>`_
-
-- bar3d(groupby(eduach, agegroup), fname='bar3d1.png')
-
-.. image:: /charts/bar3d1.*
-
-- bar3d(groupby(eduach, agegroup),
-        dx=0.2, dy=0.8, maxticks=4, fname='bar3d3.png')
-
-.. image:: /charts/bar3d3.*
-
-
 .. index:: interactive console, debugging
 
 Debugging and the interactive console
