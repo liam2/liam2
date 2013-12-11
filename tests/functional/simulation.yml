@@ -272,7 +272,7 @@ entities:
                 - plot(groupby(gender, agegroup), styles=['--', '-'],
                        fname='plot08.png')
                 - plot(groupby(gender, agegroup),
-                       grid=True, linestyle='dashed', marker='o', linewidth=5,
+                       grid=False, linestyle='dashed', marker='o', linewidth=5,
                        fname='plot09.png&pdf')
                 - plot(groupby(eduach), 's--', fname='plot10.png')
                 - plot(groupby(eduach), 's--', color='g',

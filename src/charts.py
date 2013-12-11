@@ -233,6 +233,8 @@ class BoxPlot(Chart):
 
 
 class Plot(Chart):
+    grid = True
+
     def __init__(self, *args, **kwargs):
         Chart.__init__(self, *args, **kwargs)
         self.styles = None
