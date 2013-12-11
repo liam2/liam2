@@ -1598,10 +1598,13 @@ or ::
 .. index:: charts
 
 charts
--------
+------
 
-Version 0.8 introduced some charting capabilities, courtesy of
-`matplotlib <http://matplotlib.org>`_. Each of the following functions is
+.. versionadded:: 0.8
+
+Liam2 has some charting capabilities, courtesy of `matplotlib
+<http://matplotlib.org>`_. They are available both during a simulation
+and in the interactive console. Each of the following functions is
 designed around the function of the same name in matplotlib. Even though we
 have tried to stay as close as possible to their API, their implementation in
 Liam2 has a few differences, in particular we added a few arguments which
@@ -1612,16 +1615,33 @@ are available in most functions.
   to several formats at once by using '&' in the extension. For
   example: ``plot(expr, fname='plot03.png&pdf')`` will write the chart to both
   ``plot03.png`` and ``plot03.pdf``. If the *fname* argument is not used,
-  a window will open to view and interact with the figure. See
-  `this page <http://matplotlib.org/users/navigation_toolbar.html>`_ for more
-  details.
+  a window will open to view and interact with the figure using a navigation
+  toolbar. See `matplotlib navigation toolbar documentation
+  <http://matplotlib.org/users/navigation_toolbar.html>`_ for more details.
 
   .. note::
-     Keyboard shortcuts mentioned on that page currently do not work
+     Keyboard shortcuts mentioned on that page currently do not work.
 
-* colors (all except boxplot)
-* grid (all but no effect on piechart)
-* maxticks (all but no effect on piechart)
+* *colors*: a list of the colors to be used for the chart. See `matplotlib
+  colors documentation <http://matplotlib.org/api/colors_api.html>`_
+  for the different ways you can specify colors. For example: ::
+
+     bar(expr, colors=['r', 'g', 'b'])
+
+  will make a bar chart with red, green and blue bars.
+
+  .. note:: *boxplot()* does not support the *colors* argument.
+
+* *grid* (False|True): determine whether to display a grid (in addition to
+  axes ticks). It defaults to *True* for *bar()* and *plot()* and to *False*
+  for *boxplot()* and *stackplot()*.
+
+  .. note:: *pie()* does not support the *grid* argument.
+
+* *maxticks*: limit the number of axes ticks. It defaults to 20 for all
+  charts except bar3d where it defaults to 10.
+
+  .. note:: *pie()* does not support the *maxticks* argument.
 
 
 .. index:: bar, bar charts
@@ -1633,16 +1653,36 @@ bar charts
 
 **bar** can be used to draw bar charts. It uses `matplotlib.pyplot.bar
 <http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.bar>`_  and
-inherits all of its keyword arguments.
+inherits all of its keyword arguments. There are 3 ways to use it: ::
 
     bar(1d_expr, ...)
     bar(1d_expr1, 1d_expr2, ...)
     bar(2d_expr, ...)
 
-    - bar(groupby(agegroup), fname='bar2.png')
-    - bar(groupby(eduach, agegroup), fname='bar6.png')
+In the first two *1d_expr* is (an expression returning) a one-dimensional
+array (for example an entity field or a groupby expression with only one
+dimension). For example: ::
+
+   bar(groupby(agegroup))
+
+would produce:
 
 .. image:: /charts/bar2.*
+
+If one passes several arrays/expressions, they will be stacked on each
+other. ::
+
+   bar(groupby(agegroup, filter=not gender),
+       groupby(agegroup, filter=gender))
+
+.. image:: /charts/bar5.*
+
+Alternatively, one can pass (an expression returning) a two-dimensional array,
+in which case, the first dimension will be "stacked": for each possible value
+of the first dimension, there will be a bar "part" with a different color. ::
+
+    - bar(groupby(eduach, agegroup))
+
 .. image:: /charts/bar6.*
 
 
@@ -1655,24 +1695,23 @@ plot
 
 **plot** can be used to draw (line) plots. It uses
 `matplotlib.pyplot.plot <http://matplotlib.org/api/pyplot_api.html#matplotlib
-.pyplot.plot>`_ and inherits all of its keyword arguments to customize the
-appearance. There are 4 ways to use it: ::
+.pyplot.plot>`_ and inherits all of its keyword arguments. There are 4 ways to
+use it: ::
 
     plot(1d_expr, ...)
     plot(1d_expr1, 1d_expr2, ...)
     plot(2d_expr, ...)
     plot(1d_expr1, style_str1, 1d_expr2, style_str2, ...)
 
-The first two are quite straightforward: *1d_expr* is any expression returning
-a one-dimensional array (for example an entity field or a groupby expression
-with only one dimension). For example: ::
+In the first two *1d_expr* is (an expression returning) a one-dimensional
+array (for example an entity field or a groupby expression with only one
+dimension). For example: ::
 
    plot(groupby(age))
 
 .. image:: /charts/plot03.*
 
-One can pass several expressions, in which case each expression will be
-plotted as a different line. ::
+If one passes several expressions, each will be plotted as a different line. ::
 
    plot(groupby(age),
         groupby(age, filter=not gender),
@@ -1680,7 +1719,7 @@ plotted as a different line. ::
 
 .. image:: /charts/plot04.*
 
-The third option is to pass one expression returning a two-dimensional
+The third option is to pass (an expression returning) a two-dimensional
 array (``plot(2d_expr, ...)``) in which case, there will be one line for each
 possible value of the first dimension and the second dimension will be
 plotted along the x axis. For example: ::
@@ -1692,7 +1731,7 @@ plotted along the x axis. For example: ::
 and, using a few of the many possible options to customize the appearance: ::
 
     plot(groupby(gender, agegroup),
-         grid=True, linestyle='dashed', marker='o', linewidth=5)
+         grid=False, linestyle='dashed', marker='o', linewidth=5)
 
 .. image:: /charts/plot09.*
 
@@ -1725,13 +1764,19 @@ stackplot
 
 .. versionadded:: 0.8
 
-`stackplot <http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot
-.stackplot>`_
+**stackplot** can be used to draw stacked (line) plots. It uses
+`matplotlib.pyplot.stackplot
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.stackplot>`_ and
+inherits all of its keyword arguments. There are two ways to use it: ::
 
-- stackplot(groupby(gender, eduach), fname='stackplot2.png')
+    stackplot(1d_expr1, 1d_expr2, ...)
+    stackplot(2d_expr, ...)
+
+Example: ::
+
+    stackplot(groupby(gender, eduach))
 
 .. image:: /charts/stackplot2.*
-   :width: 60%
 
 .. index:: pie, pie charts
 
@@ -1740,21 +1785,24 @@ pie charts
 
 .. versionadded:: 0.8
 
-`pie <http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.pie>`_
+**pie** can be used to draw pie charts. It uses
+`matplotlib.pyplot.pie
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.pie>`_ and
+inherits all of its keyword arguments. It should be used like this: ::
 
-::
+    pie(1d_expr1, ...)
 
-  pie(groupby(eduach), fname='pie1.png&pdf')
+Where *1d_expr* is (an expression returning) a one-dimensional
+array (for example an entity field or a groupby expression with only one
+dimension). Examples: ::
+
+  pie(groupby(eduach))
   pie(groupby(eduach),
       explode=[0, 0.1, 0, 0],
-      labels=['Not set', 'Lower secondary', 'Upper secondary',
-              'Tertiary'],
-      fname='pie2.png')
+      labels=['Not set', 'Lower secondary', 'Upper secondary', 'Tertiary'])
 
 .. image:: /charts/pie1.*
-   :width: 60%
 .. image:: /charts/pie2.*
-   :width: 60%
 
 .. index:: boxplot
 
@@ -1770,7 +1818,6 @@ boxplot
           fname='bbox2.png')
 
 .. image:: /charts/bbox2.*
-   :width: 60%
 
 .. index:: bar3d
 
@@ -1785,13 +1832,11 @@ boxplot
 - bar3d(groupby(eduach, agegroup), fname='bar3d1.png')
 
 .. image:: /charts/bar3d1.*
-   :width: 60%
 
 - bar3d(groupby(eduach, agegroup),
         dx=0.2, dy=0.8, maxticks=4, fname='bar3d3.png')
 
 .. image:: /charts/bar3d3.*
-   :width: 60%
 
 
 .. index:: interactive console, debugging
