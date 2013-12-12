@@ -226,30 +226,53 @@ class ProcessGroup(Process):
         for var in local_var_names:
             del temp_vars[var]
 
-    def ssa(self):
+    def ssa(self, fields_versions):
         procedure_vars = set(k for k, p in self.subprocesses if k is not None)
         global_vars = set(self.entity.variables.keys())
         local_vars = procedure_vars - global_vars
 
-        from collections import defaultdict
-        self.versions = defaultdict(int)
+        local_versions = collections.defaultdict(int)
         for k, p in self.subprocesses:
+            # mark all variables in the expression with their current version
             for expr in p.expressions():
                 for node in expr.all_of(Variable):
-                    if node.name not in local_vars:
-                        continue
-                    node.version = self.versions[node.name]
+                    versions = (local_versions if node.name in local_vars
+                                else fields_versions)
+                    #FIXME: for .version to be meaningful, I need to have
+                    # a different variable instance each time the variable
+                    # is used.
+                    #>>> the best solution AFAIK is to parse the expressions
+                    # in the same order as the "agespine".
+                    That way we will be able to type all temporary variables
+                    directly, and it would also solve the conditional
+                    context hack. There is no problem with temporary variables
+                    having different types over their lifetimes as these
+                    will actually be different variables (because their
+                    version will be different). There is no problem with
+                    a variable being different in two control flow
+                    "branches", because we do not have that case: if() coerce
+                    types.
+                    note that even if a branch is never "taken" (an if
+                    condition that is always True or always False or a forloop
+                    without any iteration), the type of the expressions
+                    that variables are assigned to in that branch will
+                    influence the type of the variable in subsequent code.
+                    XXX: what if I have a user-defined function/procedure that
+                    I call from two different places with an argument of a
+                    different type? ideally, it should generate two distinct
+                    procedures, but I am not there yet. Having a check on the
+                    second call that the argument passed is of the same type
+                    than the signature type (which was inferred from the
+                    first call) seems enough for now.
+                    node.version = versions[node.name]
+                    node.used += 1
+            # on assignment, increase the variable version
             if isinstance(p, Assignment):
-                # is this always == k?
+                #XXX: is this always == k?
                 target = p.predictor
-                if target not in local_vars:
-                    continue
-                version = self.versions[target]
-                print("%s version %d" % (target, version))
-                self.versions[target] = version + 1
-
-    def toAst(self):
-        pass
+                versions = (local_versions if target in local_vars
+                            else fields_versions)
+                versions[target] += 1
 
     def expressions(self):
         for _, p in self.subprocesses:

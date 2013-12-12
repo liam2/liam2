@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import collections
 import warnings
 
 #import carray as ca
@@ -322,9 +323,10 @@ class Entity(object):
         self.ssa()
 
     def ssa(self):
+        fields_versions = collections.defaultdict(int)
         for p in self.processes.itervalues():
             if isinstance(p, ProcessGroup):
-                p.ssa()
+                p.ssa(fields_versions)
 
     def compute_lagged_fields(self):
         from tfunc import Lag
