@@ -186,9 +186,9 @@ def expr_eval(expr, context):
 #        time, res = gettime(expr.evaluate, context)
 #        timings[expr.__class__.__name__] += time
 #        return res
-    elif isinstance(expr, list) and any(isinstance(e, Expr) for e in expr):
+    elif isinstance(expr, list): # and any(isinstance(e, Expr) for e in expr):
         return [expr_eval(e, context) for e in expr]
-    elif isinstance(expr, tuple) and any(isinstance(e, Expr) for e in expr):
+    elif isinstance(expr, tuple): # and any(isinstance(e, Expr) for e in expr):
         return tuple([expr_eval(e, context) for e in expr])
     elif isinstance(expr, slice):
         return slice(expr_eval(expr.start, context),
@@ -392,18 +392,20 @@ class Expr(object):
         return ExprAttribute(self, key)
 
     def collect_variables(self, context):
-        return set.union(collect_variables(c, context) for c in self.children)
+        return set.union(*[collect_variables(c, context)
+                           for c in self.children])
 
     def traverse(self, context):
-        print("traverse", self)
         for child in self.children:
-            print("traverse child", child)
             for node in traverse_expr(child, context):
                 yield node
         yield self
 
 
 class EvaluableExpression(Expr):
+    def __init__(self):
+        Expr.__init__(self)
+
     def evaluate(self, context):
         raise NotImplementedError()
 
@@ -582,8 +584,14 @@ class Variable(Expr):
     def __init__(self, name, dtype=None):
         Expr.__init__(self, name)
 
+        # this would be more efficient but we risk behind inconsistent
+        # self.name = self.value
         self._dtype = dtype
         self.version = 0
+
+    @property
+    def name(self):
+        return self.value
 
     def __str__(self):
         return self.value
