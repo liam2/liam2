@@ -3,19 +3,47 @@
 Change log
 ##########
 
-Version 0.8
-===========
+Version 0.8.pre1
+================
 
-Not released yet.
+Released on 2013-12-12.
 
 New features:
 -------------
 
+* added a few functions to create charts (courtesy of `matplotlib
+  <http://matplotlib.org>`_): bar, plot, pie, stackplot and boxplot. As with
+  all other functions in liam2, they are available both during a simulation
+  and in the interactive console. The charts can either be visualized directly
+  or saved to a file. See the :ref:`charts section <charts>` for details.
+
+* added a "view" command line option to Liam2 to open ViTables (an hdf5
+  viewer) as well as a corresponding menu entry and keyboard shortcut (F9) in
+  Notepad++. It is meant to be used when editing a *model* file, and it will
+  open both the input dataset and the result file (if any).
+
+* added new boolean aggregate functions: all() and any(). In fact they were
+  added in 0.7 but were not yet documented.
+
+* added *assertFalse* assert function.
+
 Miscellaneous improvements:
 ---------------------------
 
+* added precisions in the documentation of align() based on Alexis Eidelman
+  suggestions.
+
+* made a few more error messages a bit more useful by displaying the line
+  where the error occurred.
+
+* adapted the release script since our move to git and converted it to Python.
+
 Fixes:
 ------
+
+* fixed the upgrade script by removing a special case for grpmin and grpmax as
+  it was in fact not needed and caused problems when the expression being
+  aggregated contained parentheses.
 
 
 Version 0.7
@@ -30,7 +58,7 @@ New features:
   This can be used to simply split a large model file into smaller files,
   or (more interestingly) to create simulation variants without having to
   duplicate the common parts. This feature was inspired by some code
-  from Alexis Eidelman.
+  from Alexis Eidelman. For details see the :ref:`import_models` section.
 
 * added new logit and logistic functions. They were previously used
   internally but not available to modellers.  
