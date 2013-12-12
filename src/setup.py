@@ -58,7 +58,7 @@ build_exe_options = {
 }
 
 setup(name="liam2",
-      version="0.8.0",
+      version="0.7.99.1",  # 0.8-pre1 but cx_freeze wants only ints and .
       description="LIAM2",
 
       cmdclass={"build_ext": MyBuildExt},
