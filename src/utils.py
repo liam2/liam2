@@ -6,6 +6,7 @@ from __future__ import print_function
 import re
 import sys
 import time
+import datetime as dt
 import operator
 import itertools
 from itertools import izip, product
@@ -17,7 +18,6 @@ import numpy as np
 #import psutil
 
 import config
-
 
 class ExceptionOnGetAttr(object):
     """
@@ -31,6 +31,9 @@ class ExceptionOnGetAttr(object):
         raise self.exception
 
 
+# [a,b]: a is number per year and b is the digit in the tens place to identify unit
+time_period = {'month':1, 'bimonth':2, 'quarter':3, 'triannual':4, 'semester':6, 'year':12, 'year0':1}
+
 class UserDeprecationWarning(UserWarning):
     pass
 
@@ -43,7 +46,6 @@ def deprecated(f, msg):
         return f(*args, **kwargs)
     func.__name__ = f.__name__
     return func
-
 
 def find_first(char, s, depth=0):
     """
@@ -70,7 +72,7 @@ def find_first(char, s, depth=0):
     return -1
 
 
-class AutoFlushFile(object):
+class AutoflushFile(object):
     def __init__(self, f):
         self.f = f
 
@@ -136,7 +138,6 @@ def timed(func, *args, **kwargs):
 
 def prod(values):
     return reduce(operator.mul, values, 1)
-
 
 def ndim(arraylike):
     """
@@ -242,6 +243,17 @@ class Axis(object):
     def __len__(self):
         return len(self.labels)
 
+    
+def addmonth(a,b):
+    assert isinstance(a,int) #should be a special type
+    assert isinstance(b,int)
+    if b >= 0:
+        change_year = (a % 100) + b >= 12
+        value = a + b*(1-change_year) + (100-12+b)*(change_year)
+    if b < 0:
+        change_year = (a % 100) + b < 1
+        value = a + b*(1-change_year) + (-100+12+b)*(change_year)
+    return value
 
 class LabeledArray(np.ndarray):
     #noinspection PyNoneFunctionAssignment

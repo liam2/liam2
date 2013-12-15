@@ -7,9 +7,11 @@ import numpy as np
 import config
 from diff_h5 import diff_array
 from data import append_carray_to_table, ColumnArray
-from expr import Expr, type_to_idx, idx_to_type, expr_eval
+from expr import Expr, type_to_idx, idx_to_type, expr_eval, Variable
 from context import EntityContext
 import utils
+import importlib
+from links import Many2One
 
 
 class BreakpointException(Exception):
@@ -60,6 +62,41 @@ class Compute(Process):
         if isinstance(self.expr, Expr):
             yield self.expr
 
+class ExtProcess(Process):
+    """these processes are not real Liam2 processes
+    The file containing the function should be in the path and
+    the function itself must be named "main". 
+    """
+
+    def __init__(self, name, arg):
+        super(ExtProcess, self).__init__()
+        self.name = name
+        self.args = arg
+
+    def run_guarded(self, simulation, const_dict):
+        context = EntityContext(self.entity, const_dict.copy())
+        self.run(simulation, context['period'])  
+            
+    def run(self, simulation, period):
+        module = importlib.import_module(self.name)
+        if self.args is not None:
+            arg_bis = list(self.args)
+            for index, arg in enumerate(self.args):
+                if arg == 'period':
+                    arg_bis[index] = int(period/100)
+                elif arg == 'simulation':
+                    arg_bis[index] = simulation
+                else:
+                    arg_bis[index]= arg        
+            arg_bis = tuple(arg_bis)    
+            module.main(*arg_bis)
+        else:
+            module.main()
+
+    def expressions(self):
+        if isinstance(self.expr, Expr):
+            yield self.expr
+
 
 class Assignment(Process):
     def __init__(self, expr):
@@ -76,9 +113,9 @@ class Assignment(Process):
 
     def run(self, context):
         value = expr_eval(self.expr, context)
-        self.store_result(value)
+        self.store_result(value, context) # add context to enable link
 
-    def store_result(self, result):
+    def store_result(self, result, context):
         if result is None:
             return
         if self.name is None:
@@ -96,19 +133,51 @@ class Assignment(Process):
         else:
             target = self.entity.temp_variables
 
-        #TODO: assert type for temporary variables too
-        if self.kind is not None:
-            target_type_idx = type_to_idx[target[self.predictor].dtype.type]
-            res_type_idx = type_to_idx[res_type]
-            if res_type_idx > target_type_idx:
-                raise Exception(
-                    "trying to store %s value into '%s' field which is of "
-                    "type %s" % (idx_to_type[res_type_idx].__name__,
-                                 self.predictor,
-                                 idx_to_type[target_type_idx].__name__))
+        if '.' not in self.predictor:
+            #TODO: assert type for temporary variables too
+            if self.kind is not None:
+                target_type_idx = type_to_idx[target[self.predictor].dtype.type]
+                res_type_idx = type_to_idx[res_type]
+                if res_type_idx > target_type_idx:
+                    raise Exception(
+                        "trying to store %s value into '%s' field which is of "
+                        "type %s" % (idx_to_type[res_type_idx].__name__,
+                                     self.predictor,
+                                     idx_to_type[target_type_idx].__name__))
 
-        # the whole column is updated
-        target[self.predictor] = result
+            # the whole column is updated
+            target[self.predictor] = result
+
+        elif '.' in self.predictor:
+            predictor_split = self.predictor.split('.')
+
+            #initialisation
+            target_entity = self.entity
+            source_context = context
+            #add index
+            for link_name in predictor_split[:-1]:
+                link = target_entity.links[link_name]
+                if isinstance(link,Many2One): 
+                    target_context = link._target_context(source_context)
+    
+                    ids = expr_eval( Variable(link._link_field) , source_context)
+                    target_ids = target_context.id_to_rownum    
+                    target_ids = target_ids[ids] 
+                    
+                    source_context = target_context
+                    target_entity = link._target_entity()  
+                else: 
+                    raise Exception("Only Many2One link "
+                                    " can be used. '%s' is %s" % (target_entity, type(target_entity)))
+            target_array = target_entity.array
+            
+            # on ne doit pas avoir de temp_variable, encore qu'on pourrait
+            try: 
+                target_array[predictor_split[-1]][target_ids] = result
+            except:
+                import pdb
+                print(predictor_split)
+                pdb.set_trace() 
 
     def expressions(self):
         if isinstance(self.expr, Expr):
@@ -135,12 +204,12 @@ class ProcessGroup(Process):
         fnames.insert(0, 'id')
         temp = self.entity.temp_variables
         array = self.entity.array
-        length = len(array)
+        alen = len(array)
 
         fields = [(k, temp[k] if k in temp else array[k])
                   for k in utils.unique(fnames)]
         return [(k, v) for k, v in fields
-                if isinstance(v, np.ndarray) and v.shape == (length,)]
+                if isinstance(v, np.ndarray) and v.shape == (alen,)]
 
     def _tablename(self, period):
         self.calls[(period, self.name)] += 1
@@ -188,12 +257,14 @@ class ProcessGroup(Process):
 
     def run_guarded(self, simulation, const_dict):
         global max_vars
-
-        period = const_dict['period']
-
+        
+        periods = const_dict['periods']
+        idx = const_dict['period_idx']
+        period =  periods[idx]
+        
         print()
         for k, v in self.subprocesses:
-            print("    *", end=' ')
+#             print("    *", end=' ')
             if k is not None:
                 print(k, end=' ')
             utils.timed(v.run_guarded, simulation, const_dict)

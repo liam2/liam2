@@ -10,12 +10,12 @@ import config
 from context import EntityContext, context_length
 from data import merge_arrays, get_fields, ColumnArray
 from expr import (Variable, GlobalVariable, GlobalTable, GlobalArray,
-                  expr_eval, get_missing_value)
+                  expr_eval, missing_values, get_missing_value)
 from exprparser import parse
 from process import Assignment, Compute, Process, ProcessGroup
 from registry import entity_registry
 from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
-                   UserDeprecationWarning)
+                   merge_dicts, UserDeprecationWarning)
 
 
 #def compress_column(a, level):
@@ -52,21 +52,10 @@ class Entity(object):
     """
     fields is a list of tuple (name, type, options)
     """
-    def __init__(self, name, fields=None, missing_fields=None, links=None,
+    def __init__(self, name, fields, missing_fields=None, default_values={}, links=None,
                  macro_strings=None, process_strings=None,
-                 array=None):
+                 on_align_overflow='carry'):
         self.name = name
-
-        # we should have exactly one of either array or fields defined
-        assert ((fields is None and array is not None) or
-                (fields is not None and array is None))
-
-        if array is not None:
-            if fields is None:
-                fields = get_fields(array)
-            array_period = np.min(array['period'])
-        else:
-            array_period = None
 
         duplicate_names = [name
                            for name, num
@@ -95,12 +84,14 @@ class Entity(object):
         # another solution is to use a Field class
         # seems like the better long term solution
         self.missing_fields = missing_fields
+        self.default_values = default_values
         self.period_individual_fnames = [name for name, _ in fields]
         self.links = links
 
+        self.on_align_overflow = on_align_overflow
+
         self.macro_strings = macro_strings
         self.process_strings = process_strings
-        self.processes = None
 
         self.expectedrows = tables.parameters.EXPECTED_ROWS_TABLE
         self.table = None
@@ -121,7 +112,7 @@ class Entity(object):
         self.base_period = None
         # we need a separate field, instead of using array['period'] to be able
         # to get the period even when the array is empty.
-        self.array_period = array_period
+        self.array_period = None
         self.array = None
 
         self.lag_fields = []
@@ -144,15 +135,28 @@ class Entity(object):
 
         fields = []
         missing_fields = []
+        default_values = {}
         for name, fielddef in fields_def:
             if isinstance(fielddef, dict):
                 strtype = fielddef['type']
                 if not fielddef.get('initialdata', True):
                     missing_fields.append(name)
+                    
+                fieldtype = field_str_to_type(strtype, "field '%s'" % name)
+                dflt_type = missing_values[fieldtype]
+                default = fielddef.get('default', dflt_type)              
+                if fieldtype != type(default):
+                    raise Exception("The default value given to %s is %s"
+                    " but %s was expected" %(name, type(default), strtype) )
+                    
             else:
                 strtype = fielddef
-            fields.append((name,
-                           field_str_to_type(strtype, "field '%s'" % name)))
+                fieldtype = field_str_to_type(strtype, "field '%s'" % name)
+                default = missing_values[fieldtype]
+                
+            fields.append((name, fieldtype))
+            default_values[name] = default
+            
 
         link_defs = entity_def.get('links', {})
         str2class = {'one2many': One2Many, 'many2one': Many2One}
@@ -160,13 +164,14 @@ class Entity(object):
                       str2class[l['type']](name, l['field'], l['target']))
                      for name, l in link_defs.iteritems())
 
-        return Entity(ent_name, fields, missing_fields, links,
+        #TODO: add option for on_align_overflow
+        return Entity(ent_name, fields, missing_fields, default_values, links,
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}))
 
     @classmethod
     def from_table(cls, table):
-        return Entity(table.name, get_fields(table), missing_fields=[],
+        return Entity(table.name, get_fields(table), missing_fields=[], default_values={}, 
                       links={}, macro_strings={}, process_strings={})
 
     @staticmethod
@@ -229,7 +234,7 @@ class Entity(object):
         # per target entity
         for entity in set(linked_entities.values()):
             cond_context.update(entity.get_cond_context(entities_visited))
-
+                
         # entities linked directly take priority over (override) farther ones
         cond_context.update((k, entity.variables)
                             for k, entity in linked_entities.items())
@@ -432,7 +437,9 @@ class Entity(object):
 
     def value_for_period(self, expr, period, context, fill='auto'):
         sub_context = EntityContext(self,
-                                    {'period': period,
+                                    {'periods': [period],
+                                     'period_idx': 0,
+                                     'format_date': context['format_date'],
                                      '__globals__': context['__globals__']})
         result = expr_eval(expr, sub_context)
         if isinstance(result, np.ndarray) and result.shape:

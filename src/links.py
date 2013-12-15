@@ -30,7 +30,8 @@ class Link(object):
     def _target_context(self, context):
         target_entity = self._target_entity()
         return EntityContext(target_entity,
-                             {'period': context['period'],
+                             {'periods': context['periods'],
+                              'period_idx': context['period_idx'],
                              '__globals__': context['__globals__']})
 
 
@@ -176,7 +177,7 @@ class AggregateLink(LinkExpression):
         # eg (in household entity):
         # persons: {type: one2many, target: person, field: hh_id}
         target_context = self.target_context(context)
-
+        
         # this is a one2many, so the link column is on the target side
         #noinspection PyProtectedMember
         link_column = expr_eval(Variable(link._link_field), target_context)

@@ -12,25 +12,19 @@ try:
 #    numexpr.set_num_threads(1)
     evaluate = numexpr.evaluate
 except ImportError:
-    numexpr = None
+    eval_context = [(name, getattr(np, name))
+                    for name in ('where', 'exp', 'log', 'abs')]
+    eval_context.extend([('False', False), ('True', True)])
 
-    def make_global_context():
-        context = dict((name, getattr(np, name))
-                       for name in ('where', 'exp', 'log', 'abs'))
-        context.update([('False', False), ('True', True)])
-        return context
-    eval_context = make_global_context()
-
-    #noinspection PyUnusedLocal
-    def evaluate(expr, globals_dict, locals_dict=None, **kwargs):
+    def evaluate(expr, globals, locals=None, **kwargs):
         complete_globals = {}
-        complete_globals.update(globals_dict)
-        if locals_dict is not None:
-            if isinstance(locals_dict, np.ndarray):
-                for fname in locals_dict.dtype.fields:
-                    complete_globals[fname] = locals_dict[fname]
+        complete_globals.update(globals)
+        if locals is not None:
+            if isinstance(locals, np.ndarray):
+                for fname in locals.dtype.fields:
+                    complete_globals[fname] = locals[fname]
             else:
-                complete_globals.update(locals_dict)
+                complete_globals.update(locals)
         complete_globals.update(eval_context)
         return eval(expr, complete_globals, {})
 
@@ -46,7 +40,7 @@ def get_tmp_varname():
     return tmp_varname
 
 type_to_idx = {bool: 0, np.bool_: 0,
-               int: 1, np.int32: 1, np.intc: 1, np.int64: 1, np.longlong: 1,
+               int: 1, np.int32: 1, np.intc: 1, np.int8: 1, np.int16: 1, np.int32: 1, np.int64: 1, np.longlong: 1,
                float: 2, np.float64: 2}
 idx_to_type = [bool, int, float]
 
@@ -78,8 +72,13 @@ def get_missing_vector(num, dtype):
 
 def get_missing_record(array):
     row = np.empty(1, dtype=array.dtype)
+    # isinstance(array, ColumnArray) impossible because of ImportError
+    # from data import ColumnArray : cannot import name ColumnArray
     for fname in array.dtype.names:
-        row[fname] = get_missing_value(row[fname])
+        try:
+            row[fname] = array.dval[fname]
+        except:
+            row[fname] = get_missing_value(row[fname])
     return row
 
 
@@ -160,7 +159,7 @@ def collect_variables(expr, context):
 
 def expr_eval(expr, context):
     if isinstance(expr, Expr):
-        globals_data = context.get('__globals__')
+        globals_data = context['__globals__']
         if globals_data is not None:
             globals_names = set(globals_data.keys())
             if 'periodic' in globals_data:
@@ -325,7 +324,7 @@ class Expr(object):
         # supports ndarrays and LabeledArray so that I can get the dtype from
         # the expression instead of from actual values.
         labels = None
-        if isinstance(context, EntityContext) and context.is_array_period:
+        if isinstance(context, EntityContext) and context._is_array_period:
             for var_name in simple_expr.collect_variables(context):
                 # var_name should always be in the context at this point
                 # because missing temporaries should have been already caught
@@ -358,7 +357,7 @@ class Expr(object):
             return res
         except KeyError, e:
             raise add_context(e, s)
-        except Exception:
+        except Exception, e:
             raise
 
     def as_simple_expr(self, context):
@@ -798,14 +797,14 @@ class GlobalVariable(Variable):
             context[tmp_varname] = result
         return Variable(tmp_varname)
 
-    def _eval_key(self, context):
+    def _eval_key(self, context):        
         return context['period']
 
     def evaluate(self, context):
         key = self._eval_key(context)
         globals_data = context['__globals__']
         globals_table = globals_data[self.tablename]
-
+        
         #TODO: this row computation should be encapsulated in the
         # globals_table object and the index column should be configurable
         colnames = globals_table.dtype.names
@@ -814,8 +813,10 @@ class GlobalVariable(Variable):
                 globals_periods = globals_table['PERIOD']
             except ValueError:
                 globals_periods = globals_table['period']
-            base_period = globals_periods[0]
-            row = key - base_period
+            if context['format_date'] != 'year0':
+                if max(globals_periods) < 9999:
+                    globals_periods = [100* x +1 for x in globals_periods]         
+            row = np.searchsorted(globals_periods, key, side='left')
         else:
             row = key
         if self.name not in globals_table.dtype.fields:
