@@ -10,6 +10,11 @@ import carray as ca
 import tables
 import yaml
 
+from pandas import HDFStore
+import pdb
+import pandas.rpy.common as com 
+import rpy2.rpy_classic as rpy
+
 from utils import (validate_dict, merge_dicts, merge_items, invert_dict,
                    countlines, skip_comment_cells, strip_rows, PrettyTable,
                    unique, duplicates, unique_duplicate, prod,
@@ -36,13 +41,19 @@ def to_float(v):
     else:
         return float(v)
 
-
 def to_bool(v):
     return v.lower() in ('1', 'true')
 
+def to_time(v):
+    if isinstance(v,np.int32):
+        return v
+    if isinstance(v,int):
+        return np.int32(v)  
+
 converters = {bool: to_bool,
               int: to_int,
-              float: to_float}
+              float: to_float,
+              np.int32: to_time}
 
 
 def convert(iterable, fields, positions=None):
@@ -69,14 +80,14 @@ def convert(iterable, fields, positions=None):
 
 
 def convert_2darray(iterable, celltype):
-    """homogeneous 2d array"""
+    """homogenous 2d array"""
 
     func = converters[celltype]
     return [tuple(func(value) for value in row) for row in iterable]
 
 
 def convert_1darray(iterable, celltype=None):
-    """homogeneous 1d array"""
+    """homogenous 1d array"""
     if celltype is None:
         celltype = detect_column_type(iterable)
     func = converters[celltype]
@@ -613,7 +624,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         # 2) load all fields
         if fields is None:
             target_fields = merge_items(*[f.fields for f in files])
-            fields_per_file = [None for _ in files]
+            fields_per_file = [None for f in files]
         else:
             target_fields = required_fields + fields
             fields_per_file = [[(name, type_) for name, type_ in target_fields
@@ -659,7 +670,8 @@ def load_def(localdir, ent_name, section_def, required_fields):
         return 'table', (target_fields, total_lines, iter(target), None)
 
 
-def csv2h5(fpath, buffersize=10 * 2 ** 20):
+def file2h5(fpath, input_dir='',  
+                  buffersize=10 * 2 ** 20):
     with open(fpath) as f:
         content = yaml.load(f)
 
@@ -715,7 +727,7 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
             }
         }
     }
-
+                                    
     validate_dict(content, yaml_layout)
     localdir = os.path.dirname(os.path.abspath(fpath))
 
@@ -723,7 +735,6 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
     compression = content.get('compression')
     h5_filepath = complete_path(localdir, h5_filename)
     print("Importing in", h5_filepath)
-    h5file = None
     try:
         h5file = tables.openFile(h5_filepath, mode="w", title="CSV import")
 
@@ -763,20 +774,60 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
         for ent_name, entity_def in content['entities'].iteritems():
             print()
             print(" %s" % ent_name)
-            kind, info = load_def(localdir, ent_name,
-                                  entity_def, [('period', int), ('id', int)])
-            assert kind == "table"
-            fields, numlines, datastream, csvfile = info
+            input_filename = entity_def.get('path', input_dir + ent_name + ".csv")
+            if input_filename[-4:]=='.csv': 
+                kind, info = load_def(localdir, ent_name,
+                                      entity_def, [('period', int), ('id', int)])
+                assert kind == "table"
+                fields, numlines, datastream, csvfile = info
+                
+                stream_to_table(h5file, ent_node, ent_name, fields,
+                                datastream, numlines,
+                                title="%s table" % ent_name,
+                                invert=entity_def.get('invert', []),
+                                buffersize=buffersize, compression=compression)
+                if csvfile is not None:
+                    csvfile.close()
+                        
+            if input_filename[-6:]=='.Rdata': 
+                
+                files_def = entity_def.get('files')
+                if files_def is None:
+                    files_def = ent_name               
+                print(" - reading", input_filename, ",file", files_def)
+                rpy.set_default_mode(rpy.NO_CONVERSION)
+                msg, filters = compression_str2filter(compression)
 
-            stream_to_table(h5file, ent_node, ent_name, fields,
-                            datastream, numlines,
-                            title="%s table" % ent_name,
-                            invert=entity_def.get('invert', []),
-                            buffersize=buffersize, compression=compression)
-            if csvfile is not None:
-                csvfile.close()
+                try: 
+                    rpy.r.load(input_dir + input_filename)
+                except:
+                    rpy.r.load(input_filename)
+                print(" - storing %s..." % msg)
+
+                array_pandas = com.load_data(files_def)
+                fields_def = entity_def.get('fields')
+                if fields_def is not None:
+                    for fdef in fields_def:
+                        if isinstance(fdef, basestring):
+                            raise SyntaxError("invalid field declaration: '%s', you are "
+                                  "probably missing a ':'" % fdef)
+                    fields = fields_yaml_to_type(fields_def)
+                    columns = [col[0] for col in fields] +['id','period']
+                else:
+                    fields = None
+                    columns = array_pandas.columns
+                
+                array_pandas = array_pandas.loc[:,columns]
+                dtype = np.dtype(fields)
+                #TODO: gerer les conflits
+                
+                dtype = array_pandas.to_records(index=False).dtype
+                filters=None
+                table = h5file.createTable(ent_node, ent_name, dtype, 
+                                           title="%s table" % ent_name, filters=filters)                     
+                table.append(array_pandas.to_records(index=False))
+                table.flush()
     finally:
-        if h5file is not None:
-            h5file.close()
+        h5file.close()
     print()
     print("done.")

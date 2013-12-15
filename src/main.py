@@ -10,7 +10,7 @@ import yaml
 
 import config
 from simulation import Simulation
-from importer import csv2h5
+from importer import file2h5
 from console import Console
 from utils import AutoFlushFile
 import registry
@@ -233,7 +233,7 @@ def main():
     if action == 'run':
         simulate(parsed_args)
     elif action == "import":
-        csv2h5(parsed_args.file)
+        file2h5(parsed_args.file)
     elif action == "explore":
         explore(parsed_args.file)
     elif action == "upgrade":
