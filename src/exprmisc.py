@@ -90,7 +90,7 @@ class Max(CompoundExpression):
 
     def __str__(self):
         return 'max(%s)' % ', '.join(str(arg) for arg in self.args)
-
+    
 
 class Logit(CompoundExpression):
     def __init__(self, expr):
@@ -306,6 +306,51 @@ class Trunc(FunctionExpression):
 
     def dtype(self, context):
         assert getdtype(self.expr, context) == float
+        return int
+
+class TimeScale(FunctionExpression):
+    func_name = 'period'
+
+    def evaluate(self, context):
+        return expr_eval(self.expr, context) + context['periodicity']
+
+    def dtype(self, context):
+        return int
+    
+class Year(FunctionExpression):
+    func_name = 'year'
+
+    def evaluate(self, context):
+        return int(expr_eval(self.expr, context)/100)
+
+    def dtype(self, context):
+        return int
+    
+class Month(FunctionExpression):
+    func_name = 'month'
+
+    def evaluate(self, context):
+        return (expr_eval(self.expr, context) % 100)
+
+    def dtype(self, context):
+        return int
+    
+class AddTime(FunctionExpression):
+    func_name = 'add_time'
+
+    def evaluate(self, context):
+        periodicity = context['periodicity']
+        init_value = expr_eval(self.expr, context)
+        #TODO: be more general with periodicity > 12
+        if periodicity > 0:
+            change_year = (init_value % 100) + periodicity >= 12
+            value = init_value + periodicity*(1-change_year) + (100-12+periodicity)*(change_year)
+        if periodicity < 0:
+            change_year = (init_value % 100) + periodicity < 1
+            value = init_value + periodicity*(1-change_year) + (-100+12+periodicity)*(change_year)
+        return value
+
+    def dtype(self, context):
         return int
 
 #------------------------------------
@@ -664,6 +709,10 @@ functions = {
     # aggregates/per element combined functions
 #    'min': make_dispatcher(aggregates.Min, Min), should not ...!!!!!
 #    'max': make_dispatcher(aggregates.Max, Max),
+    'add_time_scale': TimeScale,
+    'add_time': AddTime,
+    'year': Year,
+    'month': Month,    
     # per element
     'abs': Abs,
     'clip': Clip,
