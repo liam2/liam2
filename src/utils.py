@@ -14,6 +14,7 @@ from collections import defaultdict, deque
 import warnings
 
 import numpy as np
+import numexpr as ne
 #import psutil
 
 import config
@@ -168,12 +169,24 @@ def safe_put(a, ind, v):
         for fname in a.dtype.names:
             safe_put(a[fname], ind, v[fname])
     else:
+        #XXX: a.put(ind, v) seem to be a bit faster (but does not work if a is
+        # not an ndarray, is it a problem?)
         np.put(a, ind, v)
     # if the last value was erroneously modified (because of a -1 in ind)
     # this assumes indices are sorted
     if ind[-1] != len(a) - 1:
         # restore its previous value
         a[-1] = last_value
+
+
+def safe_take(a, indices, missing_value):
+    """
+    like np.take but out-of-bounds indices return the missing value
+    """
+    indexed = a.take(indices, mode='wrap')
+    return ne.evaluate('where((idx < 0) | (idx >= maxidx), missing, indexed)',
+                       {'idx': indices, 'maxidx': len(a),
+                        'missing': missing_value, 'indexed': indexed})
 
 
 # we provide our own version of fromiter because it swallows any exception
@@ -232,6 +245,37 @@ def isconstant(a, filter_value=None):
     else:
         value = a[0]
         return np.all(filter_value & (a == value))
+
+
+class IrregularNDArray(object):
+    """
+    A wrapper for collections of arrays (eg list of arrays or arrays of
+    arrays) to make them act somewhat like a 2D (numpy) array. This makes it
+    possible to have irregular lengths in the second dimension.
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def make_aggregate(func):
+        def method(self, axis=None):
+            if axis == 1:
+                result = np.empty(len(self.data), dtype=self.data[0].dtype)
+                for i, a in enumerate(self.data):
+                    result[i] = func(a)
+                return result
+            else:
+                raise NotImplementedError("axis != 1")
+        return  method
+    prod = make_aggregate(np.prod)
+    sum = make_aggregate(np.sum)
+    min = make_aggregate(np.min)
+    max = make_aggregate(np.max)
+
+    def __getattr__(self, key):
+        return getattr(self.data, key)
+
+    def __getitem__(self, key):
+        return self.data[key]
 
 
 class Axis(object):

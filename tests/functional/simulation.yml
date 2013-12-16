@@ -435,13 +435,30 @@ entities:
                 - assertEqual(sliced_global,
                               MINR[period] + MINR[period + 1])
 
-                - yob: randint(1900, period)
-                - yop: yob + 65
-                - vector_idx_globals_in_expr: 1.0 + MINR[yob + 65]
-                - show("yob", yob, "yop", yop, "v", vector_idx_globals_in_expr)
-                - yop2: yob + if(gender, 65, WEMRA)
-                - global_in_idx: show("real yop", yop2,
-                                      "minr", MINR[yob + if(gender, 65, WEMRA)])
+                # index by a vector
+                - yearofbirth: period - age
+                - yearofpension: yearofbirth + 65
+                - result: MINR[yearofpension]
+                - assertEqual(result[0], MINR[yearofpension[0]])
+
+                # index by a slice with a vector bound but a constant length
+                # (ie. all(stop - start == stop[0] - start[0]))
+                # result is a 2D array: num_individuals x slice_length
+                - result: MINR[yearofbirth:yearofpension]
+                - assertNanEqual(result[0],
+                                 MINR[yearofbirth[0]:yearofpension[0]])
+
+                # index by a slice with a vector bound and a varying length
+                # (ie. any(stop - start != stop[0] - start[0]))
+                # result is an IrregularNDArray: num_individuals x slice lengths
+                - yearofpension: yearofbirth + if(gender, 65, WEMRA)
+                - result: MINR[yearofbirth:yearofpension]
+                - assertNanEqual(result[0],
+                                 MINR[yearofbirth[0]:yearofpension[0]])
+
+                # test IrregularNDArray
+                - assertEqual(result.prod(axis=1).__len__(), count())
+                - assertEqual(result.sum(axis=1).__len__(), count())
 
                 # explicit "periodic" namespace
                 # -----------------------------
@@ -451,7 +468,7 @@ entities:
                 - assertEqual(periodic.MINR[2005], 13620.2)
                 # expr_index
                 - assertEqual(periodic.WEMRA[period - 1], fake_wemra_pm1)
-                - vector_idx: periodic.MINR[yob + 65]
+                - vector_idx: periodic.MINR[yearofbirth + 65]
 
             test_other_globals:
                 # with a PERIOD column 
