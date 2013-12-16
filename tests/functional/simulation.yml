@@ -431,9 +431,9 @@ entities:
                 - globals_in_expr: 1.0 + MINR
                 - idx_globals_in_expr: 1.0 + MINR[2002]
                 - expr_idx_globals_in_expr: 1.0 + MINR[period - 1]
-                - sliced_global: MINR[period:period + 3].sum()
+                - sliced_global: MINR[period:period + 2].sum()
                 - assertEqual(sliced_global,
-                              MINR[period], MINR[period + 1], MINR[period + 2])
+                              MINR[period] + MINR[period + 1])
 
                 - yob: randint(1900, period)
                 - yop: yob + 65
@@ -2032,7 +2032,7 @@ simulation:
                    agegroup,
 
                    # test the charts before test_new messes the demography
-                   test_charts,
+#                   test_charts,
 
                    # ...
                    test_logit,

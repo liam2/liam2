@@ -815,21 +815,39 @@ class GlobalVariable(Variable):
             except ValueError:
                 globals_periods = globals_table['period']
             base_period = globals_periods[0]
-            row = key - base_period
+            if isinstance(key, slice):
+                translated_key = slice(key.start - base_period,
+                                       key.stop - base_period,
+                                       key.step)
+            else:
+                translated_key = key - base_period
         else:
-            row = key
+            translated_key = key
         if self.name not in globals_table.dtype.fields:
             raise Exception("Unknown global: %s" % self.name)
         column = globals_table[self.name]
         numrows = len(column)
         missing_value = get_missing_value(column)
-        if isinstance(row, np.ndarray) and row.shape:
-            out_of_bounds = (row < 0) | (row >= numrows)
-            row[out_of_bounds] = -1
-            return np.where(out_of_bounds, missing_value, column[row])
+        if isinstance(translated_key, np.ndarray) and translated_key.shape:
+            #TODO: use numexpr for this
+            out_of_bounds = (translated_key < 0) | (translated_key >= numrows)
+            # this is necessary because for an array of, for example, length
+            # 10, array[-11] or array[10] throw "IndexError: index X is out
+            # of bounds for axis 0 with size 10" and array[-1] is surprising...
+            translated_key[out_of_bounds] = 0
+            return np.where(out_of_bounds, missing_value,
+                            column[translated_key])
+        elif isinstance(translated_key, slice):
+            # out of bounds slices bounds are "dropped" silently (like in
+            # python) -- ie the length of the slice returned can be smaller
+            # than the one asked. We could return "missing_value" for indices
+            # out of bounds but I do not know if it would be better. Since
+            # this version is easier to implement, lets go for it for now.
+            return column[translated_key]
         else:
-            out_of_bounds = (row < 0) or (row >= numrows)
-            return column[row] if not out_of_bounds else missing_value
+            out_of_bounds = (translated_key < 0) or (translated_key >= numrows)
+            return column[translated_key] if not out_of_bounds \
+                else missing_value
 
     def __getitem__(self, key):
         return SubscriptedGlobal(self.tablename, self.name, self._dtype, key)
