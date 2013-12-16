@@ -260,7 +260,7 @@ class Choice(EvaluableExpression):
 
     #noinspection PyUnusedLocal
     def dtype(self, context):
-        return self.choices.dtype
+        return getdtype(self.choices, context)
 
     def traverse(self, context):
         #FIXME: add choices & prob if they are expr
