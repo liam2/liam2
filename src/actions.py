@@ -215,7 +215,7 @@ class AssertTrue(Assert):
 
     def eval_assertion(self, context):
         if not expr_eval(self.expr, context):
-            return str(self.expr)
+            return str(self.expr) + " is not True"
 
     def expressions(self):
         if isinstance(self.expr, Expr):
@@ -225,7 +225,7 @@ class AssertTrue(Assert):
 class AssertFalse(AssertTrue):
     def eval_assertion(self, context):
         if expr_eval(self.expr, context):
-            return str(self.expr)
+            return str(self.expr) + " is not False"
 
 
 class ComparisonAssert(Assert):
@@ -239,10 +239,15 @@ class ComparisonAssert(Assert):
     def eval_assertion(self, context):
         v1 = expr_eval(self.expr1, context)
         v2 = expr_eval(self.expr2, context)
-        if not self.compare(v1, v2):
+        result = self.compare(v1, v2)
+        if isinstance(result, tuple):
+            result, details = result
+        else:
+            details = ''
+        if not result:
             op = self.inv_op
-            return "%s %s %s (%s %s %s)" % (self.expr1, op, self.expr2,
-                                            v1, op, v2)
+            return "%s %s %s (%s %s %s)%s" % (self.expr1, op, self.expr2,
+                                              v1, op, v2, details)
 
     def compare(self, v1, v2):
         raise NotImplementedError()
@@ -261,7 +266,14 @@ class AssertEqual(ComparisonAssert):
         # even though np.array_equal also works on scalars, we don't use it
         # systematically because it does not work on list of strings
         if isinstance(v1, np.ndarray) or isinstance(v2, np.ndarray):
-            return np.array_equal(v1, v2)
+            result = np.array_equal(v1, v2)
+            nan_v1, nan_v2 = np.isnan(v1), np.isnan(v2)
+            if (not result and np.any(nan_v1 | nan_v2) and
+                np.array_equal(nan_v1, nan_v2)):
+                return False, ' but arrays contain NaNs, did you meant to ' \
+                              'use assertNanEqual instead?'
+            else:
+                return result
         else:
             return v1 == v2
 
