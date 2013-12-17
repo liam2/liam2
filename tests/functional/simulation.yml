@@ -431,9 +431,6 @@ entities:
                 - globals_in_expr: 1.0 + MINR
                 - idx_globals_in_expr: 1.0 + MINR[2002]
                 - expr_idx_globals_in_expr: 1.0 + MINR[period - 1]
-                - sliced_global: MINR[period:period + 2].sum()
-                - assertEqual(sliced_global,
-                              MINR[period] + MINR[period + 1])
 
                 # index by a vector
                 - yearofbirth: period - age
@@ -441,24 +438,54 @@ entities:
                 - result: MINR[yearofpension]
                 - assertEqual(result[0], MINR[yearofpension[0]])
 
-                # index by a slice with a vector bound but a constant length
-                # (ie. all(stop - start == stop[0] - start[0]))
-                # result is a 2D array: num_individuals x slice_length
-                - result: MINR[yearofbirth:yearofpension]
-                - assertNanEqual(result[0],
+                # test slices
+
+                # a) slices of constant lengths
+                #    (ie. all(stop - start == stop[0] - start[0]))
+                #    result is a 2D array: num_individuals x slice_length
+
+                #    1) scalar bounds
+                - scalar_bounds: MINR[period:period + 2].sum()
+                - assertEqual(scalar_bounds, MINR[period] + MINR[period + 1])
+
+                #    2) scalar start, vector stop
+                - scalar_start: MINR[period:age - age + period + 10]
+                - assertNanEqual(scalar_start[0][0], MINR[period])
+                - assertNanEqual(scalar_start[0][9], MINR[period + 9])
+
+                #    3) vector start, scalar stop
+                - scalar_stop: MINR[age - age + period:period + 10]
+                - assertNanEqual(scalar_stop[0][0], MINR[period])
+                - assertNanEqual(scalar_stop[0][9], MINR[period + 9])
+
+                #    4) vector start, vector stop
+                - vector_bounds: MINR[yearofbirth:yearofpension]
+                - assertNanEqual(vector_bounds[0],
                                  MINR[yearofbirth[0]:yearofpension[0]])
 
-                # index by a slice with a vector bound and a varying length
-                # (ie. any(stop - start != stop[0] - start[0]))
-                # result is an IrregularNDArray: num_individuals x slice lengths
+                # b) slices of varying length
+                #    (ie. any(stop - start != stop[0] - start[0]))
+                #    result is an IrregularNDArray:
+                #    num_individuals x slice lengths
                 - yearofpension: yearofbirth + if(gender, 65, WEMRA)
-                - result: MINR[yearofbirth:yearofpension]
-                - assertNanEqual(result[0],
-                                 MINR[yearofbirth[0]:yearofpension[0]])
 
+                #    1) scalar start, vector stop
+                - scalar_start: MINR[period:yearofpension]
+                - assertNanEqual(scalar_start[0], MINR[period:yearofpension[0]])
+
+                #    2) vector start, scalar stop
+                # + 1 to not get all nan the first period
+                - scalar_stop: MINR[yearofbirth:period + 1]
+                - assertNanEqual(scalar_stop[0],
+                                 MINR[yearofbirth[0]:period + 1])
+
+                #    3) vector start, vector stop
+                - vector_bounds: MINR[yearofbirth:yearofpension]
+                - assertNanEqual(vector_bounds[0],
+                                 MINR[yearofbirth[0]:yearofpension[0]])
                 # test IrregularNDArray
-                - assertEqual(result.prod(axis=1).__len__(), count())
-                - assertEqual(result.sum(axis=1).__len__(), count())
+                - assertEqual(vector_bounds.prod(axis=1).__len__(), count())
+                - assertEqual(vector_bounds.sum(axis=1).__len__(), count())
 
                 # explicit "periodic" namespace
                 # -----------------------------

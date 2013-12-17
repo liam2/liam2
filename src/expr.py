@@ -841,6 +841,8 @@ class GlobalVariable(Variable):
                 isinstance(stop, np.ndarray) and stop.shape):
                 lengths = stop - start
                 length0 = lengths[0]
+                if not isinstance(start, np.ndarray) or not start.shape:
+                    start = np.repeat(start, len(lengths))
                 if np.all(lengths == length0):
                     # constant length => result is a 2D array:
                     # num_individuals x slice_length
@@ -860,6 +862,8 @@ class GlobalVariable(Variable):
                     # each "item" of the result is a view, so we pay "only" for
                     # all the arrays overhead, not for the data itself.
                     result = np.empty(len(lengths), dtype=list)
+                    if not isinstance(stop, np.ndarray) or not stop.shape:
+                        stop = np.repeat(stop, len(lengths))
                     for i in range(len(lengths)):
                         result[i] = column[start[i]:stop[i]]
                     return IrregularNDArray(result)
