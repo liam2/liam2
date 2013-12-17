@@ -3,10 +3,10 @@
 Change log
 ##########
 
-Version 0.8.pre1
+Version 0.8-pre1
 ================
 
-Released on 2013-12-12.
+Released on 2013-12-17.
 
 New features:
 -------------
