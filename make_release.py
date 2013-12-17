@@ -4,15 +4,15 @@
 from __future__ import print_function
 
 import errno
-import glob
+import fnmatch
 import os
 import stat
 import zipfile
 
-from os import chdir, makedirs
+from os import chdir, makedirs, getcwd
 from os.path import exists
 from shutil import copytree, copy2, rmtree as _rmtree
-from subprocess import check_output, STDOUT
+from subprocess import check_output, STDOUT, CalledProcessError
 
 
 def _remove_readonly(function, path, excinfo):
@@ -30,7 +30,11 @@ def rmtree(path):
 
 
 def call(*args, **kwargs):
-    return check_output(*args, stderr=STDOUT, **kwargs)
+    try:
+        return check_output(*args, stderr=STDOUT, **kwargs)
+    except CalledProcessError, e:
+        print(e.output)
+        raise e
 
 
 def git_remote_last_rev(url, branch=None):
@@ -93,9 +97,18 @@ def copy_release(release_name):
              'html\\%s' % release_name)
 
 
+def allfiles(pattern, path='.'):
+    """
+    like glob.glob(pattern) but also include files in subdirectories
+    """
+    return (os.path.join(dirpath, f)
+            for dirpath, dirnames, files in os.walk(path)
+            for f in fnmatch.filter(files, pattern))
+
+
 def zip_pack(archivefname, filepattern):
     with zipfile.ZipFile(archivefname, 'w', zipfile.ZIP_DEFLATED) as f:
-        for fname in glob.glob(filepattern):
+        for fname in allfiles(filepattern):
             f.write(fname)
 
 
@@ -106,12 +119,42 @@ def zip_unpack(archivefname, dest=None):
 
 def create_bundles(release_name):
     chdir('win32')
-    # call('7z a -tzip ..\Liam2Suite-%s-win32.zip *' % release_name)
-    zip_pack('..\Liam2Suite-%s-win32.zip' % release_name, '*')
+    zip_pack(r'..\Liam2Suite-%s-win32.zip' % release_name, '*')
     chdir('..')
     chdir('win64')
-    # call('7z a -tzip ..\Liam2Suite-%s-win64.zip *' % release_name)
-    zip_pack('..\Liam2Suite-%s-win64.zip' % release_name, '*')
+    zip_pack(r'..\Liam2Suite-%s-win64.zip' % release_name, '*')
+    chdir('..')
+
+
+def test_bundle(archivefname, dest):
+    zip_unpack(archivefname, dest)
+    # we use --debug so that errorlevel is set
+    call(dest + r'\liam2\main --debug run src\tests\functional\generate.yml')
+    call(dest + r'\liam2\main --debug import src\tests\functional\import.yml')
+    call(dest + r'\liam2\main --debug run src\tests\functional\simulation.yml')
+    call(dest + r'\liam2\main --debug run src\tests\functional\variant.yml')
+    try:
+        chdir(dest)
+        call(r'liam2\main --debug run examples\demo01.yml')
+        call(r'liam2\main --debug import examples\demo_import.yml')
+        call(r'liam2\main --debug run examples\demo01.yml')
+        call(r'liam2\main --debug run examples\demo02.yml')
+        call(r'liam2\main --debug run examples\demo03.yml')
+        call(r'liam2\main --debug run examples\demo04.yml')
+        call(r'liam2\main --debug run examples\demo05.yml')
+        call(r'liam2\main --debug run examples\demo06.yml')
+        call(r'liam2\main --debug run examples\demo07.yml')
+        call(r'liam2\main --debug run examples\demo08.yml')
+    finally:
+        chdir('..')
+
+
+def test_bundles(release_name):
+    makedirs('test')
+    chdir('test')
+    zip_unpack(r'..\liam2-%s-src.zip' % release_name, 'src')
+    for arch in ('win32', 'win64'):
+        test_bundle(r'..\Liam2Suite-%s-%s.zip' % (release_name, arch), arch)
     chdir('..')
 
 
@@ -119,31 +162,7 @@ def cleanup():
     rmtree('win32')
     rmtree('win64')
     rmtree('build')
-
-
-def test_bundle(archivefname, tmppath):
-    zip_unpack(archivefname, tmppath)
-    chdir(tmppath)
-    # use debug flag so that errorlevel is set
-    call('liam2\main --debug run examples\demo01.yml')
-    call('liam2\main --debug import examples\demo_import.yml')
-    call('liam2\main --debug run examples\demo01.yml')
-    call('liam2\main --debug run examples\demo02.yml')
-    call('liam2\main --debug run examples\demo03.yml')
-    call('liam2\main --debug run examples\demo04.yml')
-    call('liam2\main --debug run examples\demo05.yml')
-    call('liam2\main --debug run examples\demo06.yml')
-    call('liam2\main --debug run examples\demo07.yml')
-    call('liam2\main --debug run examples\demo08.yml')
-    chdir('..')
-
-
-def test_bundles(release_name):
-    makedirs('test')
-    chdir('test')
-    for arch in ('win32', 'win64'):
-        test_bundle('..\Liam2Suite-%s-%s.zip' % (release_name, arch), arch)
-    chdir('..')
+    rmtree('test')
 
 
 def make_release(release_name=None, branch=None):
@@ -152,6 +171,10 @@ def make_release(release_name=None, branch=None):
     # it to someone, and for that I need network access anyway.
     # Furthermore, cloning from the remote repository makes sure we do not
     # include any untracked file
+    # Note, that it is exactly the same syntax, except that repository is a path
+    # instead of an URL 'git clone -b %s %s build' % (branch, repository)
+    # the only drawback I see is that I could miss changes from others, but
+    # we are not there yet :)
 
     # git config --get remote.origin.url
     repository = 'https://github.com/liam2/liam2.git'
@@ -205,13 +228,14 @@ def make_release(release_name=None, branch=None):
     if no('Does that last commit look right?'):
         exit(1)
 
+    test_release = yes('Do you want to test the bundles once they are created?')
     do('Creating source archive', call,
-       'git archive --format zip --output liam2-%s-src.zip %s'
+       r'git archive --format zip --output ..\liam2-%s-src.zip %s'
        % (release_name, rev))
     do('Building everything', call, 'buildall.bat')
     do('Moving stuff around', copy_release, release_name)
     do('Creating bundles', create_bundles, release_name)
-    if yes('Do you want to test the bundles?'):
+    if test_release:
         do('Testing bundles', test_bundles, release_name)
 
     if release_name != rev[:7]:
@@ -229,10 +253,6 @@ def make_release(release_name=None, branch=None):
 
 if __name__=='__main__':
     from sys import argv
-
-    # if len(argv) < 2:
-    #     print "Usage: %s [version] [branch]" % (argv[0],)
-    #     exit(2)
 
     make_release(*argv[1:])
 
