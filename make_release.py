@@ -204,6 +204,7 @@ def make_release(release_name=None, branch=None):
 
     rev = git_remote_last_rev(repository, 'refs/heads/%s' % branch)
 
+    public_release = release_name is not None
     if release_name is None:
         # take first 7 digits of commit hash
         release_name = rev[:7]
@@ -228,7 +229,12 @@ def make_release(release_name=None, branch=None):
     if no('Does that last commit look right?'):
         exit(1)
 
-    test_release = yes('Do you want to test the bundles once they are created?')
+    if public_release:
+        test_release = True
+    else:
+        test_release = yes('Do you want to test the bundles after they are '
+                           'created?')
+
     do('Creating source archive', call,
        r'git archive --format zip --output ..\liam2-%s-src.zip %s'
        % (release_name, rev))
@@ -238,7 +244,7 @@ def make_release(release_name=None, branch=None):
     if test_release:
         do('Testing bundles', test_bundles, release_name)
 
-    if release_name != rev[:7]:
+    if public_release:
         if no('Is the release looking good (if so, the tag will be '
               'created and pushed)?'):
             exit(1)
