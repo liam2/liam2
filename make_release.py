@@ -4,8 +4,10 @@
 from __future__ import print_function
 
 import errno
+import glob
 import os
 import stat
+import zipfile
 
 from os import chdir, makedirs
 from os.path import exists
@@ -61,7 +63,7 @@ def no(msg, default='n'):
 
 
 def do(description, func, *args, **kwargs):
-    print(description, end=' ')
+    print(description + '...', end=' ')
     func(*args, **kwargs)
     print("done.")
 
@@ -91,12 +93,25 @@ def copy_release(release_name):
              'html\\%s' % release_name)
 
 
+def zip_pack(archivefname, filepattern):
+    with zipfile.ZipFile(archivefname, 'w', zipfile.ZIP_DEFLATED) as f:
+        for fname in glob.glob(filepattern):
+            f.write(fname)
+
+
+def zip_unpack(archivefname, dest=None):
+    with zipfile.ZipFile(archivefname, 'r') as f:
+        f.extractall(dest)
+
+
 def create_bundles(release_name):
     chdir('win32')
-    call('7z a -tzip ..\Liam2Suite-%s-win32.zip *' % release_name)
+    # call('7z a -tzip ..\Liam2Suite-%s-win32.zip *' % release_name)
+    zip_pack('..\Liam2Suite-%s-win32.zip' % release_name, '*')
     chdir('..')
     chdir('win64')
-    call('7z a -tzip ..\Liam2Suite-%s-win64.zip *' % release_name)
+    # call('7z a -tzip ..\Liam2Suite-%s-win64.zip *' % release_name)
+    zip_pack('..\Liam2Suite-%s-win64.zip' % release_name, '*')
     chdir('..')
 
 
@@ -104,6 +119,31 @@ def cleanup():
     rmtree('win32')
     rmtree('win64')
     rmtree('build')
+
+
+def test_bundle(archivefname, tmppath):
+    zip_unpack(archivefname, tmppath)
+    chdir(tmppath)
+    # use debug flag so that errorlevel is set
+    call('liam2\main --debug run examples\demo01.yml')
+    call('liam2\main --debug import examples\demo_import.yml')
+    call('liam2\main --debug run examples\demo01.yml')
+    call('liam2\main --debug run examples\demo02.yml')
+    call('liam2\main --debug run examples\demo03.yml')
+    call('liam2\main --debug run examples\demo04.yml')
+    call('liam2\main --debug run examples\demo05.yml')
+    call('liam2\main --debug run examples\demo06.yml')
+    call('liam2\main --debug run examples\demo07.yml')
+    call('liam2\main --debug run examples\demo08.yml')
+    chdir('..')
+
+
+def test_bundles(release_name):
+    makedirs('test')
+    chdir('test')
+    for arch in ('win32', 'win64'):
+        test_bundle('..\Liam2Suite-%s-%s.zip' % (release_name, arch), arch)
+    chdir('..')
 
 
 def make_release(release_name=None, branch=None):
@@ -154,7 +194,7 @@ def make_release(release_name=None, branch=None):
     makedirs('liam2_new_release')
     chdir('liam2_new_release')
 
-    do('Cloning...', call, 'git clone -b %s %s build' % (branch, repository))
+    do('Cloning', call, 'git clone -b %s %s build' % (branch, repository))
 
     chdir('build')
 
@@ -165,24 +205,26 @@ def make_release(release_name=None, branch=None):
     if no('Does that last commit look right?'):
         exit(1)
 
-    do('Creating source archive...', call,
+    do('Creating source archive', call,
        'git archive --format zip --output liam2-%s-src.zip %s'
        % (release_name, rev))
-    do('Building everything...', call, 'buildall.bat')
-    do('Moving stuff around...', copy_release, release_name)
-    do('Creating bundles...', create_bundles, release_name)
+    do('Building everything', call, 'buildall.bat')
+    do('Moving stuff around', copy_release, release_name)
+    do('Creating bundles', create_bundles, release_name)
+    if yes('Do you want to test the bundles?'):
+        do('Testing bundles', test_bundles, release_name)
 
     if release_name != rev[:7]:
         if no('Is the release looking good (if so, the tag will be '
               'created and pushed)?'):
             exit(1)
 
-        do('Tagging release...', call,
+        do('Tagging release', call,
            'git tag -a %{name}s -m "tag release %{name}s"'
            % {'name': release_name})
-        do('Pushing tag...', call, 'git push')
+        do('Pushing tag', call, 'git push')
 
-    do('Cleaning up...', cleanup)
+    do('Cleaning up', cleanup)
 
 
 if __name__=='__main__':
