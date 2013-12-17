@@ -73,7 +73,6 @@ def do(description, func, *args, **kwargs):
 
 
 def copy_release(release_name):
-    chdir('..')
     copytree(r'build\bundle\editor', r'win32\editor')
     copytree(r'build\bundle\editor', r'win64\editor')
     copytree(r'build\tests\examples', r'win32\examples')
@@ -239,6 +238,7 @@ def make_release(release_name=None, branch=None):
        r'git archive --format zip --output ..\liam2-%s-src.zip %s'
        % (release_name, rev))
     do('Building everything', call, 'buildall.bat')
+    chdir('..')
     do('Moving stuff around', copy_release, release_name)
     do('Creating bundles', create_bundles, release_name)
     if test_release:
@@ -249,10 +249,12 @@ def make_release(release_name=None, branch=None):
               'created and pushed)?'):
             exit(1)
 
+        chdir('build')
         do('Tagging release', call,
            'git tag -a %(name)s -m "tag release %(name)s"'
            % {'name': release_name})
-        do('Pushing tag', call, 'git push')
+        do('Pushing tag', call, 'git push origin --tags')
+        chdir('..')
 
     do('Cleaning up', cleanup)
 
