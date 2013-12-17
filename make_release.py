@@ -198,7 +198,7 @@ def make_release(release_name=None, branch=None):
           % (branch, num_ahead, branch), end='')
     if num_ahead:
         if yes(', do you want to push?'):
-            do('Pushing changes...', call, 'git push')
+            do('Pushing changes', call, 'git push')
     else:
         print()
 
