@@ -30,3 +30,7 @@ Contact
 -------
 
 Please don't hesitate to contact us at liam2 (at) plan (dot) be if you have any question or suggestion.
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/liam2/liam2/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
