@@ -253,7 +253,7 @@ def make_release(release_name=None, branch=None):
         do('Tagging release', call,
            'git tag -a %(name)s -m "tag release %(name)s"'
            % {'name': release_name})
-        do('Pushing tag', call, 'git push origin --tags')
+        do('Pushing tag', call, 'git push origin %s' % release_name)
         chdir('..')
 
     do('Cleaning up', cleanup)
