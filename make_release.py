@@ -244,7 +244,7 @@ def make_release(release_name=None, branch=None):
             exit(1)
 
         do('Tagging release', call,
-           'git tag -a %{name}s -m "tag release %{name}s"'
+           'git tag -a %(name)s -m "tag release %(name)s"'
            % {'name': release_name})
         do('Pushing tag', call, 'git push')
 
@@ -255,4 +255,3 @@ if __name__=='__main__':
     from sys import argv
 
     make_release(*argv[1:])
-
