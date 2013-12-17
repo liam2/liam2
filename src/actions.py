@@ -259,6 +259,17 @@ class ComparisonAssert(Assert):
             yield self.expr2
 
 
+def isnan(a):
+    """
+    isnan is equivalent to np.isnan, except that it returns False instead of
+    raising a TypeError if the argument is an array of non-numeric.
+    """
+    if isinstance(a, np.ndarray):
+        return np.issubsctype(a, np.floating) and np.isnan(a)
+    else:
+        return np.isnan(a)
+
+
 class AssertEqual(ComparisonAssert):
     inv_op = "!="
 
@@ -267,7 +278,7 @@ class AssertEqual(ComparisonAssert):
         # systematically because it does not work on list of strings
         if isinstance(v1, np.ndarray) or isinstance(v2, np.ndarray):
             result = np.array_equal(v1, v2)
-            nan_v1, nan_v2 = np.isnan(v1), np.isnan(v2)
+            nan_v1, nan_v2 = isnan(v1), isnan(v2)
             if (not result and np.any(nan_v1 | nan_v2) and
                 np.array_equal(nan_v1, nan_v2)):
                 return False, ' but arrays contain NaNs, did you meant to ' \
