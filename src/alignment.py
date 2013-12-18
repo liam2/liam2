@@ -523,7 +523,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # for align_other (0.2s vs 4.26), so I shouldn't care too much about
         # it for now.
 
-        # target_row is an index valid for *filtered/label* columns !
+        # target_row (row of person) is an index valid for *filtered/label*
+        # columns !
         for target_row, source_row in enumerate(source_rows):
             if source_row == -1:
                 continue
