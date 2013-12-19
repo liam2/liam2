@@ -474,7 +474,7 @@ class CreateIndividual(EvaluableExpression):
                 to_give_birth = np.concatenate((to_give_birth, extra_bools))
             # Note that np.place is a bit faster, but is currently buggy when
             # working with columns of structured arrays.
-            # See http://projects.scipy.org/numpy/ticket/1869
+            # See https://github.com/numpy/numpy/issues/2462
             result[to_give_birth] = children['id']
             return result
         else:
