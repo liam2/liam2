@@ -138,7 +138,7 @@ class Console(object):
             raise Exception(period_required)
 
         cond_context = entity.conditional_context
-        variables = entity.all_variables(self.globals_def)
+        variables = entity.all_symbols(self.globals_def)
         # add all currently defined temp_variables because otherwise
         # local variables (defined within a procedure) wouldn't be available
         variables.update((name, Variable(name))

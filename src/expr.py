@@ -866,7 +866,7 @@ class GlobalArray(Variable):
         #XXX: maybe I should just use self.name?
         tmp_varname = '__%s' % self.name
         if tmp_varname in context:
-            assert context[tmp_varname] == result
+            assert context[tmp_varname] is result
         context[tmp_varname] = result
         return Variable(tmp_varname)
 

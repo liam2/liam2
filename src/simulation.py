@@ -355,11 +355,6 @@ class Simulation(object):
 
                     print("- %d/%d" % (p_num, num_processes), process.name,
                           end=' ')
-                    #TODO: provide a custom __str__ method for Process &
-                    # Assignment instead
-                    if hasattr(process, 'predictor') and process.predictor \
-                       and process.predictor != process.name:
-                        print("(%s)" % process.predictor, end=' ')
                     print("...", end=' ')
                     if period_idx % periodicity == 0:
                         elapsed, _ = gettime(process.run_guarded, self,

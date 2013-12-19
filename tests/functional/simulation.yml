@@ -200,47 +200,54 @@ entities:
 #                code:
 #                    - toto: 10
 #
-#            test_function:
+#            func_wh_code:
 #                args: a, b
 #                code: 
 #                    - result: a + b
 #                    - result: result * 2
 #                return: result * 2
 #
-#            test_small_function:
+#            func_no_code:
 #                args: a, b
 #                return: a + b
 #            
+#            func_no_args:
+#                return: 42
+#
 #            test_call:
 #                - aplusb: test_function(age, 1)
 #                - show("age", age, "aplusb", aplusb)
-#                
-#            test_loop:
-#                variables: a, b
-#                sequence: age[age < 10]
-#                #sequence: zip(range(10), range(10))
-#                code:
-#                    - show("a", a, "b", b)
 #
-#            test_while:
-#                while: min(age) < 10
-#                code:
-#                    - show("age", age)
-#                    - age: age + 1
-#
-#            #XXX: embed python code instead?                    
-#            while_in_proc:
-#                - done: False
-#                # => while is a reserved keyword and can't be used as a
+            test_while:
+                - values: age
+                # => while is a reserved keyword and can't be used as a
+                #    variable name
+                - while:
+                    cond: min(values) < 5
+                    code:
+                        - values: values + 1
+
+#            test_for:
+#                - n: 42
+#                # => for is a reserved keyword and can't be used as a
 #                #    variable name
-#                - while:
-#                    cond: not done
+#                - for:
+#                    variables: i
+#                    in: [0, 1, 2, 3]
 #                    code:
-#                        - age: age + 1
-#                        - show("age", age)
-#                        - done: gtpmin(age) >= 10
-            
-#            embbeded_python:
+#                        - show("i:", i, "/ n + i:", n + i)
+#                        - show("age:", age)
+
+                 # two variables
+#                - for:
+#                    variables: index, letter
+#                    in: zip([0, 1, 2], ["a", "b", "c"])
+#                    code:
+#                        - show("index", index, "letter", letter)
+
+             # this will need to be represented by special objects anyway,
+             # so let us first do the ugly but easier (to implement) syntax
+#            embedded_python:
 #                done = False
 #                while not done:
 #                    age += 1
@@ -306,10 +313,10 @@ entities:
                 - assertEqual(age[0:1], [age[0]])
                 
                 # with expr slice
-                - indice: trunc(count() / 2)
-                - ages: age[indice:indice+10:2]
+                - index: trunc(count() / 2)
+                - ages: age[index:index+10:2]
                 - assertEqual(ages.__len__(), 5)
-                - assertEqual(ages[0], age[indice])
+                - assertEqual(ages[0], age[index])
 
             test_call:
                 # without argument
@@ -1128,21 +1135,10 @@ entities:
 #            test_extra_comma:
 #                - show('test extra colon'),
 
-            test_predictor1:
-                predictor: plop
-                expr: if(age < 10, age ** 3, age ** 2)
-            test_predictor2:
-                predictor: plop
-                expr: if(age >= 10, 100, plop)
-
-            test_predictor3:
-                - a:
-                    predictor: plop2
-                    expr: if(age < 10, age ** 3, age ** 2)
-                - b:
-                    predictor: plop2
-                    expr: if(age >= 50, 100, plop2)
-                - show(plop2)
+             # commented because it raises an exception
+#            test_predictor:
+#                predictor: plop
+#                expr: age
 
             test_clone:
                 - clone(filter = age == 95,
@@ -1944,9 +1940,10 @@ simulation:
 
                    test_macro,
                    test_compound,
-                   agegroup,
 
-                   test_predictor1, test_predictor2, test_predictor3,
+                   test_while,
+
+                   agegroup,
 
 #                   test_extra_comma,
 #                   test_uninitialized_var,
