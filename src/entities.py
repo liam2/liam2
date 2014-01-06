@@ -1,7 +1,5 @@
 from __future__ import print_function
 
-import warnings
-
 #import carray as ca
 import numpy as np
 import tables
@@ -14,8 +12,7 @@ from expr import (Variable, GlobalVariable, GlobalTable, GlobalArray,
 from exprparser import parse
 from process import Assignment, Compute, Process, ProcessGroup, While
 from registry import entity_registry
-from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
-                   UserDeprecationWarning)
+from utils import safe_put, count_occurrences, field_str_to_type, size2str
 
 
 #def compress_column(a, level):
@@ -28,9 +25,11 @@ from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
 #def decompress_column(a):
 #    return a[:]
 
+# TODO: rename to global_symbols
 def global_variables(globals_def):
     #FIXME: these should be computed once somewhere else, not for each
     # entity. I guess they should have a class of their own
+    # TODO: rename to symbols
     variables = {}
     for name, global_type in globals_def.iteritems():
         if isinstance(global_type, list):
@@ -50,7 +49,7 @@ def global_variables(globals_def):
 
 class Entity(object):
     """
-    fields is a list of tuple (name, type, options)
+    fields is a list of tuple (name, type)
     """
     def __init__(self, name, fields=None, missing_fields=None, links=None,
                  macro_strings=None, process_strings=None,
@@ -316,6 +315,8 @@ class Entity(object):
                                            self.all_symbols(globals_def),
                                            self.conditional_context)
         # attach processes
+        # TODO: make actions inherit from Expr instead of Process, and wrap
+        # them in a Compute process so that I can kill attach
         for k, v in processes:
             v.attach(k, self)
 
