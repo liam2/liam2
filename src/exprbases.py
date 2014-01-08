@@ -4,7 +4,7 @@ import numpy as np
 
 import config
 from context import context_length
-from expr import (Expr, EvaluableExpression, expr_eval,
+from expr import (Expr, ExprCall, EvaluableExpression, expr_eval,
                   traverse_expr, collect_variables, getdtype,
                   as_simple_expr, as_string,
                   get_missing_value, ispresent)
@@ -99,7 +99,7 @@ class FilteredExpression(FunctionExpression):
         return expr_vars
 
 
-class NumpyFunction(EvaluableExpression):
+class NumpyFunction(ExprCall):
     func_name = None  # optional (for display)
     np_func = (None,)
     # arg_names can be set automatically by using inspect.getargspec,
@@ -107,90 +107,48 @@ class NumpyFunction(EvaluableExpression):
     # because when you add a function, it is hard to know whether it is
     # implemented in C or not.
     arg_names = None
-    allow_filter = True
+    # all subclasses support a filter keyword-only argument
+    kwargs_names = ('filter',)
 
     def __init__(self, *args, **kwargs):
-        EvaluableExpression.__init__(self)
         if len(args) > len(self.arg_names):
             # + 1 to be consistent with Python (to account for self)
             raise TypeError("takes at most %d arguments (%d given)" %
                             (len(self.arg_names) + 1, len(args) + 1))
-        if self.allow_filter:
-            #noinspection PyNoneFunctionAssignment
-            self.filter_expr = kwargs.pop("filter", None)
-        else:
-            self.filter_expr = None
-        extra_kwargs = set(kwargs.keys()) - set(self.arg_names)
+        allowed_kwargs = set(self.arg_names) | set(self.kwargs_names)
+        extra_kwargs = set(kwargs.keys()) - allowed_kwargs
         if extra_kwargs:
             extra_kwargs = [repr(arg) for arg in extra_kwargs]
             raise TypeError("got an unexpected keyword argument %s" %
                             extra_kwargs[0])
-        self.args = args
-        self.kwargs = kwargs
+        ExprCall.__init__(self, self.np_func[0], *args, **kwargs)
 
-    def evaluate(self, context):
-        args = [expr_eval(arg, context) for arg in self.args]
-        kwargs = dict((k, expr_eval(v, context))
-                      for k, v in self.kwargs.iteritems())
-        if 'size' in self.arg_names and 'size' not in kwargs:
-            kwargs['size'] = context_length(context)
-        #XXX: use _getfilter?
-        if self.filter_expr is None:
-            filter_value = None
-        else:
-            filter_value = expr_eval(self.filter_expr, context)
-        func = self.np_func[0]
-        return self.compute(func, args, kwargs, filter_value)
-
-    def compute(self, func, args, kwargs, filter_value=None):
-        raise NotImplementedError()
-
-    def __str__(self):
-        func_name = self.func_name
-        if func_name is None:
-            func_name = self.np_func[0].__name__
-        kwargs = self.kwargs
-        values = zip(self.arg_names, self.args)
-        for name in self.arg_names[len(self.args):]:
-            if name in kwargs:
-                values.append((name, kwargs[name]))
-        str_args = ', '.join('%s=%s' % (name, value) for name, value in values)
-        return '%s(%s)' % (func_name, str_args)
-
-    def traverse(self, context):
-        for arg in self.args:
-            for node in traverse_expr(arg, context):
-                yield node
-        for kwarg in self.kwargs.itervalues():
-            for node in traverse_expr(kwarg, context):
-                yield node
-        yield self
-
-    def collect_variables(self, context):
-        args_vars = [collect_variables(arg, context) for arg in self.args]
-        args_vars.extend(collect_variables(v, context)
-                         for v in self.kwargs.itervalues())
-        return set.union(*args_vars) if args_vars else set()
+    @property
+    def func_name(self):
+        return self.np_func[0].__name__
 
 
 class NumpyChangeArray(NumpyFunction):
-    def compute(self, func, args, kwargs, filter_value=None):
+    def _compute(self, func, *args, **kwargs):
         # the first argument should be the array to work on ('a')
         assert self.arg_names[0] == 'a'
-        old_values = args[0]
+
+        filter_value = kwargs.pop('filter', None)
         new_values = func(*args, **kwargs)
 
-        # we cannot do this yet because dtype() currently requires context
-        # (and I don't want to change the signature of compute just for that)
-#        assert dtype(old_values) == dtype(new_values)
         if filter_value is None:
             return new_values
         else:
+            # we cannot do this yet because dtype() currently requires context
+            # (and I don't want to change the signature of compute just for that)
+            # assert dtype(old_values) == dtype(new_values)
+            old_values = args[0]
             return np.where(filter_value, new_values, old_values)
 
 
 class NumpyCreateArray(NumpyFunction):
-    def compute(self, func, args, kwargs, filter_value=None):
+    def _compute(self, func, *args, **kwargs):
+        filter_value = kwargs.pop('filter', None)
         values = func(*args, **kwargs)
         if filter_value is None:
             return values
@@ -200,11 +158,17 @@ class NumpyCreateArray(NumpyFunction):
 
 
 class NumpyRandom(NumpyCreateArray):
-    def compute(self, *args, **kwargs):
+    def _eval_args(self, context):
+        func, args, kwargs = NumpyCreateArray._eval_args(self, context)
+        if 'size' in self.arg_names and 'size' not in kwargs:
+            kwargs['size'] = context_length(context)
+        return func, args, kwargs
+
+    def _compute(self, func, *args, **kwargs):
         if config.debug:
             print()
             print("random sequence position before:", np.random.get_state()[2])
-        res = super(NumpyRandom, self).compute(*args, **kwargs)
+        res = super(NumpyRandom, self)._compute(func, *args, **kwargs)
         if config.debug:
             print("random sequence position after:", np.random.get_state()[2])
         return res
@@ -212,26 +176,28 @@ class NumpyRandom(NumpyCreateArray):
 
 class NumpyAggregate(NumpyFunction):
     nan_func = (None,)
+    kwargs_names = ('filter', 'skip_na')
 
-    def __init__(self, *args, **kwargs):
-        self.skip_na = kwargs.pop("skip_na", True)
-        NumpyFunction.__init__(self, *args, **kwargs)
-
-    def compute(self, func, args, kwargs, filter_value=None):
+    def _eval_args(self, context):
         # the first argument should be the array to work on ('a')
         assert self.arg_names[0] == 'a'
+
+        func, args, kwargs = super(NumpyAggregate, self)._eval_args(context)
+        filter_value = kwargs.pop('filter', None)
+        skip_na = kwargs.pop('skip_na', True)
 
         values, args = args[0], args[1:]
         values = np.asanyarray(values)
 
         usenanfunc = False
-        if (self.skip_na and issubclass(values.dtype.type, np.inexact) and
-            self.nan_func[0] is not None):
+        if (skip_na and issubclass(values.dtype.type, np.inexact) and
+                self.nan_func[0] is not None):
             usenanfunc = True
             func = self.nan_func[0]
+
         if values.shape:
             if values.ndim == 1:
-                if self.skip_na and not usenanfunc:
+                if skip_na and not usenanfunc:
                     if filter_value is not None:
                         # we should *not* use an inplace operation because
                         # filter_value can be a simple variable
@@ -243,7 +209,8 @@ class NumpyAggregate(NumpyFunction):
             elif values.ndim > 1 and filter_value is not None:
                 raise Exception("filter argument is not supported on arrays "
                                 "with more than 1 dimension")
-        return func(values, *args, **kwargs)
+        args = (values,) + args
+        return func, args, kwargs
 
 
 class NumexprFunction(Expr):

@@ -155,6 +155,9 @@ def ispresent(values):
 def collect_variables(expr, context):
     if isinstance(expr, Expr):
         return expr.collect_variables(context)
+    elif isinstance(expr, (tuple, list)):
+        all_vars = [collect_variables(e, context) for e in expr]
+        return set.union(*all_vars) if all_vars else set()
     else:
         return set()
 
@@ -400,9 +403,6 @@ class Expr(object):
 
 
 class EvaluableExpression(Expr):
-    def __init__(self):
-        Expr.__init__(self)
-
     def evaluate(self, context):
         raise NotImplementedError()
 
@@ -486,7 +486,6 @@ class SubscriptedExpr(EvaluableExpression):
         return expr_value[key]
 
 
-
 class ExprAttribute(EvaluableExpression):
     def __init__(self, expr, key):
         Expr.__init__(self, 'attr', children=(expr, key))
@@ -500,24 +499,35 @@ class ExprAttribute(EvaluableExpression):
         return getattr(expr, key)
 
     def __call__(self, *args, **kwargs):
-        return ExprCall(self, args, sorted(kwargs.items()))
+        return ExprCall(self, *args, **kwargs)
 
 
 #TODO: factorize with NumpyFunction & FunctionExpression
 class ExprCall(EvaluableExpression):
-    def __init__(self, expr, args, kwargs):
-        Expr.__init__(self, 'call', children=(expr, args, kwargs))
-        assert isinstance(kwargs, list)
+    def __init__(self, func, *args, **kwargs):
+        Expr.__init__(self, 'call',
+                      children=(func, args, sorted(kwargs.items())))
+
+    def _eval_args(self, context):
+        func, args, kwargs = expr_eval(self.children, context)
+        return func, args, dict(kwargs)
+
+    def _compute(self, func, *args, **kwargs):
+        return func(*args, **kwargs)
 
     def evaluate(self, context):
-        expr, args, kwargs = expr_eval(self.children, context)
-        return expr(*args, **dict(kwargs))
+        func, args, kwargs = self._eval_args(context)
+        return self._compute(func, *args, **kwargs)
+
+    @property
+    def funcname(self):
+        return str(self.children[0])
 
     def __str__(self):
-        expr, args, kwargs = self.children
+        _, args, kwargs = self.children
         args = [repr(a) for a in args]
         kwargs = ['%s=%r' % (k, v) for k, v in kwargs]
-        return '%s(%s)' % (expr, ', '.join(args + kwargs))
+        return '%s(%s)' % (self.funcname, ', '.join(args + kwargs))
     __repr__ = __str__
 
 

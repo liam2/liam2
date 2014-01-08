@@ -319,7 +319,7 @@ class Entity(object):
                     v.attach(k, self)
         attach_processes(processes.iteritems())
         self.processes = processes
-        self.ssa()
+        # self.ssa()
 
     def ssa(self):
         for p in self.processes.itervalues():
