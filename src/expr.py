@@ -222,14 +222,6 @@ class Expr(object):
         else:
             self.children = tuple(children)
 
-    def traverse(self, context):
-        raise NotImplementedError()
-
-    def all_of(self, node_type, context=None):
-        for node in self.traverse(context):
-            if isinstance(node, node_type):
-                yield node
-
     # makes sure we do not use "normal" python logical operators
     # (and, or, not)
     def __nonzero__(self):
@@ -400,6 +392,11 @@ class Expr(object):
             for node in traverse_expr(child, context):
                 yield node
         yield self
+
+    def all_of(self, node_type, context=None):
+        for node in self.traverse(context):
+            if isinstance(node, node_type):
+                yield node
 
 
 class EvaluableExpression(Expr):
