@@ -23,6 +23,11 @@ implementation that I am aware of.
 features I would like to implement (in no particular order)
 ===========================================================
 
+- replace breakpoint(period) by breakpoint(condition)
+
+- add option to insert a conditional breakpoint for asserts (ie failed
+  assert start the console)
+
 - F9 should also work on an "import file", so that you can check what you just
   imported.
 
