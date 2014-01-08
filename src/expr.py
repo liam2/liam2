@@ -4,7 +4,8 @@ from collections import Counter
 
 import numpy as np
 
-from utils import LabeledArray, ExplainTypeError, add_context
+from utils import (LabeledArray, ExplainTypeError, add_context, safe_take,
+                   IrregularNDArray)
 from context import EntityContext
 
 try:
@@ -815,21 +816,68 @@ class GlobalVariable(Variable):
             except ValueError:
                 globals_periods = globals_table['period']
             base_period = globals_periods[0]
-            row = key - base_period
+            if isinstance(key, slice):
+                translated_key = slice(key.start - base_period,
+                                       key.stop - base_period,
+                                       key.step)
+            else:
+                translated_key = key - base_period
         else:
-            row = key
+            translated_key = key
         if self.name not in globals_table.dtype.fields:
             raise Exception("Unknown global: %s" % self.name)
         column = globals_table[self.name]
         numrows = len(column)
         missing_value = get_missing_value(column)
-        if isinstance(row, np.ndarray) and row.shape:
-            out_of_bounds = (row < 0) | (row >= numrows)
-            row[out_of_bounds] = -1
-            return np.where(out_of_bounds, missing_value, column[row])
+
+        if isinstance(translated_key, np.ndarray) and translated_key.shape:
+            return safe_take(column, translated_key, missing_value)
+        elif isinstance(translated_key, slice):
+            start, stop = translated_key.start, translated_key.stop
+            step = translated_key.step
+            if step is not None and step != 1:
+                raise NotImplementedError("step != 1 (%d)" % step)
+            if (isinstance(start, np.ndarray) and start.shape or
+                isinstance(stop, np.ndarray) and stop.shape):
+                lengths = stop - start
+                length0 = lengths[0]
+                if not isinstance(start, np.ndarray) or not start.shape:
+                    start = np.repeat(start, len(lengths))
+                if np.all(lengths == length0):
+                    # constant length => result is a 2D array:
+                    # num_individuals x slice_length
+                    result = np.empty((len(lengths), length0),
+                                      dtype=column.dtype)
+                    # we assume there are more individuals than there are
+                    # "periods" (or other ticks) in the table.
+                    #XXX: We might want to actually test that it is true and
+                    # loop on the individuals instead if that is not the case
+                    for i in range(length0):
+                        result[:, i] = safe_take(column, start + i,
+                                                 missing_value)
+                    return result
+                else:
+                    # varying length => result is an array (num_individuals) of
+                    # 1D arrays (slice lengths)
+                    # each "item" of the result is a view, so we pay "only" for
+                    # all the arrays overhead, not for the data itself.
+                    result = np.empty(len(lengths), dtype=list)
+                    if not isinstance(stop, np.ndarray) or not stop.shape:
+                        stop = np.repeat(stop, len(lengths))
+                    for i in range(len(lengths)):
+                        result[i] = column[start[i]:stop[i]]
+                    return IrregularNDArray(result)
+            else:
+                # out of bounds slices bounds are "dropped" silently (like in
+                # python) -- ie the length of the slice returned can be smaller
+                # than the one asked. We could return "missing_value" for indices
+                # out of bounds but I do not know if it would be better. Since
+                # this version is easier to implement, lets go for it for now.
+                return column[translated_key]
         else:
-            out_of_bounds = (row < 0) or (row >= numrows)
-            return column[row] if not out_of_bounds else missing_value
+            out_of_bounds = (translated_key < 0) or (translated_key >= numrows)
+            return column[translated_key] if not out_of_bounds \
+                else missing_value
 
     def __getitem__(self, key):
         return SubscriptedGlobal(self.tablename, self.name, self._dtype, key)

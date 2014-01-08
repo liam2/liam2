@@ -395,7 +395,7 @@ def merge_arrays(array1, array2, result_fields='union'):
     # 2) copy data from array1 (if it will not be overridden)
     if not arr2_complete:
         output_array = merge_subset_in_array(output_array, id_to_rownum,
-                                          array1, first=True)
+                                             array1, first=True)
 
     # 3) copy data from array2
     if not output_is_arr2:
@@ -405,7 +405,7 @@ def merge_arrays(array1, array2, result_fields='union'):
 
 
 def append_table(input_table, output_table, chunksize=10000, condition=None,
-                stop=None, show_progress=False):
+                 stop=None, show_progress=False):
     if input_table.dtype != output_table.dtype:
         output_fields = get_fields(output_table)
     else:
@@ -463,8 +463,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
 def copy_table(input_table, output_node, output_fields=None,
                chunksize=10000, condition=None, stop=None, show_progress=False,
                **kwargs):
-    complete_kwargs = {'title': input_table._v_title,
-                      }
+    complete_kwargs = {'title': input_table._v_title}
 #                       'filters': input_table.filters}
     output_file = output_node._v_file
     complete_kwargs.update(kwargs)
@@ -802,8 +801,8 @@ class H5Data(DataSource):
                     stoprow = 0
 
                 output_table = copy_table(table.table, output_entities,
-                                         entity.fields, stop=stoprow,
-                                         show_progress=True)
+                                          entity.fields, stop=stoprow,
+                                          show_progress=True)
                 entity.output_rows = output_rows
                 print("done (%s elapsed)." % time2str(time.time() - start_time))
 

@@ -12,6 +12,7 @@
         <PluginCommand moduleName="NppExec.dll" internalID="0" Ctrl="no" Alt="no" Shift="yes" Key="117" />
         <PluginCommand moduleName="NppExec.dll" internalID="23" Ctrl="no" Alt="no" Shift="no" Key="0" />
         <PluginCommand moduleName="NppExec.dll" internalID="24" Ctrl="no" Alt="no" Shift="no" Key="118" />
+        <PluginCommand moduleName="NppExec.dll" internalID="26" Ctrl="no" Alt="no" Shift="no" Key="120" />
     </PluginCommands>
     <ScintillaKeys />
 </NotepadPlus>

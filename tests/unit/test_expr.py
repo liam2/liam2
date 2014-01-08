@@ -17,6 +17,8 @@ class ArrayTestCase(unittest.TestCase):
 
 
 class StringTestCase(ArrayTestCase):
+    context = None
+
     def assertEvalEqual(self, s, result):
         e = parse(s, autovariables=True)
         self.assertArrayEqual(e.evaluate(self.context), result)
@@ -279,8 +281,9 @@ class TestLink(ArrayTestCase):
 #  examples:
 #  data['person'][Person.period == 2002]['id'] = [0, 1, 3, 5] 
 #  data['person'][Person.period == 2002]['age'] = [25, 45, 1, 37] 
-#  data['person'][Person.period == 2002]['age'][0] = 25 
-#  data['person'][Person.period == 2002]['age'].get(5) = 37  # age for id == 5 is 37
+#  data['person'][Person.period == 2002]['age'][0] = 25
+#  age for id == 5 is 37
+#  data['person'][Person.period == 2002]['age'].get(5) = 37
 
 
 if __name__ == "__main__":

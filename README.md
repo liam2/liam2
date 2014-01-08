@@ -24,9 +24,13 @@ http://liam2.plan.be
 Credits
 -------
 
-The software is being developed at the Federal Planning Bureau (Belgium), with funding and testing by CEPS/INSTEAD (Luxembourg) and IGSS (Luxembourg), and funding from the European Community. It is the spiritual successor of LIAM 1, developed by Cathal O’Donoghue. See the CREDITS file for details.
+The software is being developed at the Federal Planning Bureau (Belgium), with funding and testing by CEPS/INSTEAD (Luxembourg) and IGSS (Luxembourg), and funding from the European Community. It is the spiritual successor of LIAM 1, developed by Cathal O'Donoghue. See the CREDITS file for details.
 
 Contact
 -------
 
 Please don't hesitate to contact us at liam2 (at) plan (dot) be if you have any question or suggestion.
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/liam2/liam2/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+

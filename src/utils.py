@@ -14,9 +14,22 @@ from collections import defaultdict, deque
 import warnings
 
 import numpy as np
+import numexpr as ne
 #import psutil
 
 import config
+
+
+class ExceptionOnGetAttr(object):
+    """
+    ExceptionOnGetAttr can be used when an optional part is missing
+    so that an exception is only raised if the object is actually used.
+    """
+    def __init__(self, exception):
+        self.exception = exception
+
+    def __getattr__(self, key):
+        raise self.exception
 
 
 class UserDeprecationWarning(UserWarning):
@@ -31,6 +44,31 @@ def deprecated(f, msg):
         return f(*args, **kwargs)
     func.__name__ = f.__name__
     return func
+
+
+def find_first(char, s, depth=0):
+    """
+    returns the position of the first occurrence of the 'ch' character at
+    'depth' depth in the 's' string.
+    returns -1 if not found
+    raises ValueError if the string contains imbalanced parentheses or brackets
+    """
+    match = {'(': ')', '[': ']'}
+    opening, closing = set(match), set(match.values())
+    stack = []
+    for i, c in enumerate(s):
+        if c == char and len(stack) == depth:
+            return i
+        if c in opening:
+            stack.append(match[c])
+        elif c in closing:
+            if not stack or c != stack.pop():
+                raise ValueError("syntax error: imbalanced parentheses or "
+                                 "brackets in string: %s" % s)
+    if stack:
+        raise ValueError("syntax error: missing parenthesis or "
+                         "bracket in string: %s" % s)
+    return -1
 
 
 class AutoFlushFile(object):
@@ -101,6 +139,21 @@ def prod(values):
     return reduce(operator.mul, values, 1)
 
 
+def ndim(arraylike):
+    """
+    Computes the number of dimensions of arbitrary structures, including
+    sequence of arrays and array of sequences.
+    """
+    n = 0
+    while isinstance(arraylike, (list, tuple, np.ndarray)):
+        if len(arraylike) == 0:
+            raise ValueError('Cannot compute ndim of array with empty dim')
+        #XXX: check that other elements have the same length?
+        arraylike = arraylike[0]
+        n += 1
+    return n
+
+
 def safe_put(a, ind, v):
     """
     np.put but where values corresponding to -1 indices are ignored,
@@ -116,12 +169,24 @@ def safe_put(a, ind, v):
         for fname in a.dtype.names:
             safe_put(a[fname], ind, v[fname])
     else:
+        #XXX: a.put(ind, v) seem to be a bit faster (but does not work if a is
+        # not an ndarray, is it a problem?)
         np.put(a, ind, v)
     # if the last value was erroneously modified (because of a -1 in ind)
     # this assumes indices are sorted
     if ind[-1] != len(a) - 1:
         # restore its previous value
         a[-1] = last_value
+
+
+def safe_take(a, indices, missing_value):
+    """
+    like np.take but out-of-bounds indices return the missing value
+    """
+    indexed = a.take(indices, mode='wrap')
+    return ne.evaluate('where((idx < 0) | (idx >= maxidx), missing, indexed)',
+                       {'idx': indices, 'maxidx': len(a),
+                        'missing': missing_value, 'indexed': indexed})
 
 
 # we provide our own version of fromiter because it swallows any exception
@@ -182,6 +247,46 @@ def isconstant(a, filter_value=None):
         return np.all(filter_value & (a == value))
 
 
+class IrregularNDArray(object):
+    """
+    A wrapper for collections of arrays (eg list of arrays or arrays of
+    arrays) to make them act somewhat like a 2D (numpy) array. This makes it
+    possible to have irregular lengths in the second dimension.
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def make_aggregate(func):
+        def method(self, axis=None):
+            if axis == 1:
+                result = np.empty(len(self.data), dtype=self.data[0].dtype)
+                for i, a in enumerate(self.data):
+                    result[i] = func(a)
+                return result
+            else:
+                raise NotImplementedError("axis != 1")
+        return  method
+    prod = make_aggregate(np.prod)
+    sum = make_aggregate(np.sum)
+    min = make_aggregate(np.min)
+    max = make_aggregate(np.max)
+
+    def __getattr__(self, key):
+        return getattr(self.data, key)
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+
+class Axis(object):
+    def __init__(self, name, labels):
+        self.name = name
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.labels)
+
+
 class LabeledArray(np.ndarray):
     #noinspection PyNoneFunctionAssignment
     def __new__(cls, input_array, dim_names=None, pvalues=None,
@@ -218,6 +323,14 @@ class LabeledArray(np.ndarray):
         obj.row_totals = row_totals
         obj.col_totals = col_totals
         return obj
+
+    @property
+    def axes(self):
+        if self.dim_names is None or self.pvalues is None:
+            return []
+        else:
+            return [Axis(name, labels)
+                    for name, labels in zip(self.dim_names, self.pvalues)]
 
     def __getitem__(self, key):
         obj = np.ndarray.__getitem__(self, key)
@@ -273,7 +386,7 @@ class LabeledArray(np.ndarray):
                        % (len(obj.dim_names), obj.ndim)
             if obj.pvalues is not None:
                 assert len(obj.pvalues) == obj.ndim, \
-                       "len(pvalues) (%d) != ndim (%d)" \
+                        "len(pvalues) (%d) != ndim (%d)" \
                        % (len(obj.pvalues), obj.ndim)
         return obj
 
@@ -388,6 +501,24 @@ class LabeledArray(np.ndarray):
         res.row_totals = None
 #        print '   result is %s' % repr(res)
         return res
+
+
+def aslabeledarray(data):
+    sequence = (tuple, list)
+    if isinstance(data, LabeledArray):
+        return data
+    elif (isinstance(data, sequence) and len(data) and
+          isinstance(data[0], LabeledArray)):
+        arraydata = np.asarray(data)
+        #TODO: check that all arrays have the same axes
+        dim_names = [None] + data[0].dim_names
+        dim_labels = [range(len(data))] + data[0].pvalues
+        return LabeledArray(arraydata, dim_names, dim_labels)
+    else:
+        arraydata = np.asarray(data)
+        dim_names = [None for _ in arraydata.shape]
+        dim_labels = [range(d) for d in arraydata.shape]
+        return LabeledArray(arraydata, dim_names, dim_labels)
 
 
 class ProgressBar(object):
@@ -867,6 +998,13 @@ def fields_yaml_to_type(dict_fields_list):
 # -------------------
 
 def add_context(exception, s):
+    if isinstance(exception, SyntaxError) and exception.offset is not None:
+        # most SyntaxError are clearer if left unmodified since they already
+        # contain the faulty string but some do not (eg non-keyword arg after
+        # keyword arg).
+        # SyntaxeError instances have 'filename', 'lineno', 'offset' and 'text'
+        # attributes.
+        return exception
     msg = exception.args[0] if exception.args else ''
     encoding = sys.getdefaultencoding()
     expr_str = s.encode(encoding, 'replace')

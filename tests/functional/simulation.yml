@@ -215,7 +215,7 @@ entities:
 #                return: 42
 #
 #            test_call:
-#                - aplusb: test_function(age, 1)
+#                - aplusb: func_wh_code(age, 1)
 #                - show("age", age, "aplusb", aplusb)
 #
             test_while:
@@ -252,7 +252,74 @@ entities:
 #                while not done:
 #                    age += 1
 #                    done = min(age) >= 10
-                
+
+            test_charts:
+                - plot(groupby(age))
+
+                - boxplot(age[gender], age[not gender],
+                          fname='bplot1.png&pdf')
+                - boxplot((age[gender], age[not gender]),
+                          fname='bplot1bis.png')
+                - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
+                          fname='bplot2.png&pdf')
+                - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
+                          notch=True, fname='bplot3.png')
+
+                - plot(age, fname='plot01_{entity}_{period}.png')
+                - plot(age, 'o', fname='plot02.png')
+                - plot(groupby(age), fname='plot03.png&pdf')
+                - plot(groupby(age),
+                       groupby(age, filter=not gender),
+                       groupby(age, filter=gender),
+                       fname='plot04.png&pdf')
+                - plot((lag(avg(work), 5), lag(avg(work), 4),
+                        lag(avg(work), 3), lag(avg(work), 2),
+                        lag(avg(work)), avg(work)), fname='plot05.png')
+                - plot(groupby(gender, age), fname='plot06.png&pdf')
+                - plot(groupby(gender, age), colors=['g', 'b'],
+                       fname='plot07.png')
+                - plot(groupby(gender, agegroup), styles=['--', '-'],
+                       fname='plot08.png')
+                - plot(groupby(gender, agegroup),
+                       grid=False, linestyle='dashed', marker='o', linewidth=5,
+                       fname='plot09.png&pdf')
+                - plot(groupby(eduach), 's--', fname='plot10.png')
+                - plot(groupby(eduach), 's--', color='g',
+                       fname='plot11.png')
+                - plot(groupby(agegroup, expr=count(not gender)), 'o--',
+                       groupby(agegroup, expr=count(gender)), 's-.',
+                       groupby(agegroup), '*-', colors=['r', 'g', 'b'],
+                       fname='plot12.png&pdf')
+
+                - stackplot(groupby(eduach), fname='stackplot1.png')
+                - stackplot(groupby(eduach, age), fname='stackplot2.png&pdf')
+                - stackplot(groupby(gender, eduach),
+                            colors=['g', 'b'], baseline='sym',
+                            fname='stackplot3.png')
+                - stackplot(groupby(age, filter=not gender),
+                            groupby(age, filter=gender),
+                            fname='stackplot4.png')
+                - byage: groupby(age, percent=True)
+                - bar(byage, fname='bar1.png')
+                - bar(groupby(agegroup), fname='bar2.png&pdf')
+                - bar(groupby(agegroup + 1), fname='bar3.png')
+                - bar(groupby(gender, agegroup), fname='bar4.png')
+                - bar(groupby(agegroup, filter=not gender),
+                      groupby(agegroup, filter=gender),
+                      fname='bar5.png&pdf')
+                - bar(groupby(eduach, agegroup), fname='bar6.png&pdf')
+                - bar(groupby(eduach, agegroup), width=0.8, fname='bar7.png')
+                # mig_period_women
+                - bar(MIG[0,:,period - 2001], fname='bar8.png')
+                # axes are currently messed up
+                # - barh(groupby(eduach, agegroup))
+                # - barh(groupby(eduach, agegroup), height=0.7)
+                - pie(groupby(eduach), fname='pie1.png&pdf')
+                - pie(groupby(eduach),
+                      explode=[0.1, 0, 0],
+                      labels=['Lower secondary', 'Upper secondary', 'Tertiary'],
+                      fname='pie2.png&pdf')
+
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
                 - weight: randint(1, 11)
@@ -371,13 +438,61 @@ entities:
                 - globals_in_expr: 1.0 + MINR
                 - idx_globals_in_expr: 1.0 + MINR[2002]
                 - expr_idx_globals_in_expr: 1.0 + MINR[period - 1]
-                - yob: randint(1900, period)
-                - yop: yob + 65
-                - vector_idx_globals_in_expr: 1.0 + MINR[yob + 65]
-                - show("yob", yob, "yop", yop, "v", vector_idx_globals_in_expr)
-                - yop2: yob + if(gender, 65, WEMRA)
-                - global_in_idx: show("real yop", yop2,
-                                      "minr", MINR[yob + if(gender, 65, WEMRA)])
+
+                # index by a vector
+                - yearofbirth: period - age
+                - yearofpension: yearofbirth + 65
+                - result: MINR[yearofpension]
+                - assertEqual(result[0], MINR[yearofpension[0]])
+
+                # test slices
+
+                # a) slices of constant lengths
+                #    (ie. all(stop - start == stop[0] - start[0]))
+                #    result is a 2D array: num_individuals x slice_length
+
+                #    1) scalar bounds
+                - scalar_bounds: MINR[period:period + 2].sum()
+                - assertEqual(scalar_bounds, MINR[period] + MINR[period + 1])
+
+                #    2) scalar start, vector stop
+                - scalar_start: MINR[period:age - age + period + 10]
+                - assertNanEqual(scalar_start[0][0], MINR[period])
+                - assertNanEqual(scalar_start[0][9], MINR[period + 9])
+
+                #    3) vector start, scalar stop
+                - scalar_stop: MINR[age - age + period:period + 10]
+                - assertNanEqual(scalar_stop[0][0], MINR[period])
+                - assertNanEqual(scalar_stop[0][9], MINR[period + 9])
+
+                #    4) vector start, vector stop
+                - vector_bounds: MINR[yearofbirth:yearofpension]
+                - assertNanEqual(vector_bounds[0],
+                                 MINR[yearofbirth[0]:yearofpension[0]])
+
+                # b) slices of varying length
+                #    (ie. any(stop - start != stop[0] - start[0]))
+                #    result is an IrregularNDArray:
+                #    num_individuals x slice lengths
+                - yearofpension: yearofbirth + if(gender, 65, WEMRA)
+
+                #    1) scalar start, vector stop
+                - scalar_start: MINR[period:yearofpension]
+                - assertNanEqual(scalar_start[0], MINR[period:yearofpension[0]])
+
+                #    2) vector start, scalar stop
+                # + 1 to not get all nan the first period
+                - scalar_stop: MINR[yearofbirth:period + 1]
+                - assertNanEqual(scalar_stop[0],
+                                 MINR[yearofbirth[0]:period + 1])
+
+                #    3) vector start, vector stop
+                - vector_bounds: MINR[yearofbirth:yearofpension]
+                - assertNanEqual(vector_bounds[0],
+                                 MINR[yearofbirth[0]:yearofpension[0]])
+                # test IrregularNDArray
+                - assertEqual(vector_bounds.prod(axis=1).__len__(), count())
+                - assertEqual(vector_bounds.sum(axis=1).__len__(), count())
 
                 # explicit "periodic" namespace
                 # -----------------------------
@@ -387,7 +502,7 @@ entities:
                 - assertEqual(periodic.MINR[2005], 13620.2)
                 # expr_index
                 - assertEqual(periodic.WEMRA[period - 1], fake_wemra_pm1)
-                - vector_idx: periodic.MINR[yob + 65]
+                - vector_idx: periodic.MINR[yearofbirth + 65]
 
             test_other_globals:
                 # with a PERIOD column 
@@ -682,10 +797,9 @@ entities:
                 # more than 10% women are "nan"
                 - morenan: count(not gender and isnan) > num_women * 0.1
                 # we use min as a lesser all()
-                - all_taken_nan: min(isnan,
-                                        filter=not gender and float_aligned)
+                - all_taken_nan: min(isnan, filter=not gender and float_aligned)
                 - all_nan_taken: min(float_aligned,
-                                        filter=not gender and isnan)
+                                     filter=not gender and isnan)
                 - assertTrue(if(morenan, all_taken_nan, all_nan_taken))
 
                 # men
@@ -1135,10 +1249,21 @@ entities:
 #            test_extra_comma:
 #                - show('test extra colon'),
 
-             # commented because it raises an exception
-#            test_predictor:
-#                predictor: plop
-#                expr: age
+            test_predictor1:
+                predictor: plop
+                expr: if(age < 10, age ** 3, age ** 2)
+            test_predictor2:
+                predictor: plop
+                expr: if(age >= 10, 100, plop)
+
+            test_predictor3:
+                - a:
+                    predictor: plop2
+                    expr: if(age < 10, age ** 3, age ** 2)
+                - b:
+                    predictor: plop2
+                    expr: if(age >= 50, 100, plop2)
+                - show(plop2)
 
             test_clone:
                 - clone(filter = age == 95,
@@ -1305,6 +1430,36 @@ entities:
                 - csv(groupby(gender, filter=age > 200))
 
             cleanup: remove(lag(dead))
+
+            test_all:
+                # scalars
+                - assertTrue(all(True))
+                - assertFalse(all(False))
+                # vectors
+                - assertTrue(all(id >= 0))
+                - assertFalse(all(id < 0))
+                - assertFalse(all(id > 100))
+                # with a filter
+                - assertTrue(all(id >= 0, filter=MALE))
+                - assertFalse(all(id < 0, filter=MALE))
+                - assertFalse(all(id > 100, filter=MALE))
+                - assertTrue(all(MALE, filter=MALE))
+                - assertFalse(all(FEMALE, filter=MALE))
+
+            test_any:
+                # scalars
+                - assertTrue(any(True))
+                - assertFalse(any(False))
+                # vectors
+                - assertTrue(any(id >= 0))
+                - assertFalse(any(id < 0))
+                - assertTrue(any(id > 100))
+                # with a filter
+                - assertTrue(any(id >= 0, filter=MALE))
+                - assertFalse(any(id < 0, filter=MALE))
+                - assertTrue(any(id > 100, filter=MALE))
+                - assertTrue(any(MALE, filter=MALE))
+                - assertFalse(any(FEMALE, filter=MALE))
 
             test_count:
                 # simple
@@ -1859,12 +2014,11 @@ entities:
                 - assertEqual(min_count_by_gender.row_totals, None)
                 - assertEqual(min_count_by_gender.col_totals, None)
 
-                - min_count_by_agegroup: min(by_agegroup_gender, axis=1)  
+                - min_count_by_agegroup: min(by_agegroup_gender, axis=1)
                 - assertEqual(min_count_by_agegroup.shape, (16,))
                 - assertEqual(min_count_by_agegroup.dim_names, None)
                 - assertEqual(min_count_by_gender.row_totals, None)
                 - assertEqual(min_count_by_gender.col_totals, None)
-
 
             show_weight: show("avg weight", avg(weight),
                               "total population", sum(weight))
@@ -1926,7 +2080,12 @@ simulation:
                    show_temp_global,
 
                    test_expr,
+                   agegroup,
 
+                   # test the charts before test_new messes the demography
+#                   test_charts,
+
+                   # ...
                    test_logit,
                    test_logistic,
 
@@ -1941,9 +2100,7 @@ simulation:
                    test_macro,
                    test_compound,
 
-                   test_while,
-
-                   agegroup,
+                   test_predictor1, test_predictor2, test_predictor3,
 
 #                   test_extra_comma,
 #                   test_uninitialized_var,
@@ -1952,7 +2109,9 @@ simulation:
                    test_new,
                    test_clone,
 
-                   # aggregates 
+                   # aggregates
+                   test_all,
+                   test_any,
                    test_count,
                    test_sum,
                    test_avg,
@@ -2008,5 +2167,5 @@ simulation:
 #    autodiff: True
 
     random_seed: 0
-    periods: 2
+    periods: 1
 #    skip_shows: True

@@ -3,7 +3,8 @@
 REM Command file for Sphinx documentation
 
 if "%SPHINXBUILD%" == "" (
-	set SPHINXBUILD=sphinx-build
+rem	set SPHINXBUILD=sphinx-build
+    set SPHINXBUILD=python c:\soft\Python27-32b\Scripts\sphinx-build-script.py
 )
 set BUILDDIR=build
 set ALLSPHINXOPTS=-d %BUILDDIR%/doctrees %SPHINXOPTS% source

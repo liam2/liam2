@@ -9,6 +9,7 @@ from utils import add_context
 import actions
 import aggregates
 import alignment
+import charts
 import groupby
 import links
 import matching
@@ -17,7 +18,7 @@ import regressions
 import tfunc
 
 functions = {}
-for module in (actions, aggregates, alignment, groupby, links, matching,
+for module in (actions, aggregates, alignment, charts, groupby, links, matching,
                exprmisc, regressions, tfunc):
     functions.update(module.functions)
 
@@ -68,7 +69,10 @@ def parse(s, globals_dict=None, conditional_context=None, interactive=False,
 
     # this prevents any function named something ending in "if"
     str_to_parse = s.replace('if(', 'where(')
-    tree = ast.parse(str_to_parse)
+    try:
+        tree = ast.parse(str_to_parse)
+    except Exception, e:
+        raise add_context(e, s)
     tree = BoolToBitTransformer().visit(tree)
     body = tree.body
 
@@ -95,14 +99,6 @@ def parse(s, globals_dict=None, conditional_context=None, interactive=False,
     try:
         to_eval = [(mode, compile(code, '<expr>', mode))
                    for mode, code in to_compile]
-    except SyntaxError:
-        # SyntaxError are clearer if left unmodified since they already contain
-        # the faulty string
-
-        # Instances of this class have attributes filename, lineno, offset and
-        # text for easier access to the details. str() of the exception
-        # instance returns only the message.
-        raise
     except Exception, e:
         raise add_context(e, s)
 
@@ -161,4 +157,3 @@ def parse(s, globals_dict=None, conditional_context=None, interactive=False,
                 raise
             except Exception, e:
                 raise add_context(e, s)
-

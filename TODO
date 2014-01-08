@@ -23,6 +23,12 @@ implementation that I am aware of.
 features I would like to implement (in no particular order)
 ===========================================================
 
+- F9 should also work on an "import file", so that you can check what you just
+  imported.
+
+- groupby on a variable with nans gives awful results because each nan is
+  considered as a different value, which means an awful lot of them.
+
 - use a different "random sequence" for each random number "user" (each
   alignment with frac_need=uniform, explicit call to a random number generator
   like uniform(), or logit_score/logit_regr), so that divergences of two
@@ -47,9 +53,6 @@ features I would like to implement (in no particular order)
       an explicit name, so that we can set explicit names only for the
       "inserted" expressions (which is not present in both variants)
   
-- add an option to disable (sub)process timings, so that a diff between two
-  simulation logs is more meaningful  
-
 - implement aggregates with filter argument on array with 2+ dimensions
   for grpmin, grpmax & grpsum, we could specify "ignore values" for each
   function and dtype and do values[filter_value] = ignore_value.
@@ -72,8 +75,6 @@ features I would like to implement (in no particular order)
 
 - make examples work out-of-the-box on Linux:
   use "/" in the examples and use os.path.normpath(path)?
-
-- try to create output directory if it does not exist 
 
 - allow to load datasets inline because I want to be consistent between align
   & select_link and having to import all alignment files would be a pain
@@ -104,8 +105,6 @@ features I would like to implement (in no particular order)
   # >>> in that case, declaring an explicit dataset would probably be simpler
 
 - check/prevent duplicate ids during import
-
-- switch to py3 syntax for prints everywhere
 
 - add command to console to list macros
 
@@ -143,8 +142,8 @@ features I would like to implement (in no particular order)
   declaration of the globals in the simulation file (effectively allowing to
   bypass the import step for time series and other csv files)
 
-- change dtype method on expr to return (shape, dtype) or something like that
-  the immediate goal is to be able to distinguish between arrays and scalars
+- change dtype method on expr to return (shape, dtype) or (ndim, dtype)?
+  The immediate goal is to be able to distinguish between arrays and scalars
   in advance in methods like Variable.__getitem__
 
 - when trying to "import" a simulation file or trying to "run" an import file,
@@ -212,8 +211,6 @@ features I would like to implement (in no particular order)
     use align(uniform(), 'al_p_dead_m.csv') instead?
   * kill children link, use it or at least add a comment about it
     (it is declared but not used in any example)
-
-- implement all() and any()
 
 - refactor/redesign the clunky parts
   * the goals are:
@@ -549,8 +546,8 @@ features I would like to implement (in no particular order)
 - initialdata: s/false/value
 - allow setting/creating temporary variables in interactive console
 - make globals writeable
-- line numbers in error messages. It might be tricky because we loose the
-  information after yaml parsed the file
+- line numbers in error messages.
+  http://stackoverflow.com/questions/13319067/parsing-yaml-return-with-line-number
   
 - one filter, several actions.
   eg, when someone dies, you want to change more than one field, and it

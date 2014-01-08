@@ -146,8 +146,8 @@ class RemoveIndividuals(Process):
         # update id_to_rownum
         already_removed = entity.id_to_rownum == -1
         already_removed_indices = filter_to_indices(already_removed)
-        already_removed_indices_shifted = already_removed_indices - \
-                                  np.arange(len(already_removed_indices))
+        already_removed_indices_shifted = \
+            already_removed_indices - np.arange(len(already_removed_indices))
 
         id_to_rownum = np.arange(len_before)
         id_to_rownum -= filter_value.cumsum()
@@ -215,11 +215,17 @@ class AssertTrue(Assert):
 
     def eval_assertion(self, context):
         if not expr_eval(self.expr, context):
-            return str(self.expr)
+            return str(self.expr) + " is not True"
 
     def expressions(self):
         if isinstance(self.expr, Expr):
             yield self.expr
+
+
+class AssertFalse(AssertTrue):
+    def eval_assertion(self, context):
+        if expr_eval(self.expr, context):
+            return str(self.expr) + " is not False"
 
 
 class ComparisonAssert(Assert):
@@ -233,10 +239,15 @@ class ComparisonAssert(Assert):
     def eval_assertion(self, context):
         v1 = expr_eval(self.expr1, context)
         v2 = expr_eval(self.expr2, context)
-        if not self.compare(v1, v2):
+        result = self.compare(v1, v2)
+        if isinstance(result, tuple):
+            result, details = result
+        else:
+            details = ''
+        if not result:
             op = self.inv_op
-            return "%s %s %s (%s %s %s)" % (self.expr1, op, self.expr2,
-                                            v1, op, v2)
+            return "%s %s %s (%s %s %s)%s" % (self.expr1, op, self.expr2,
+                                              v1, op, v2, details)
 
     def compare(self, v1, v2):
         raise NotImplementedError()
@@ -248,6 +259,17 @@ class ComparisonAssert(Assert):
             yield self.expr2
 
 
+def isnan(a):
+    """
+    isnan is equivalent to np.isnan, except that it returns False instead of
+    raising a TypeError if the argument is an array of non-numeric.
+    """
+    if isinstance(a, np.ndarray):
+        return np.issubsctype(a, np.floating) and np.isnan(a)
+    else:
+        return np.isnan(a)
+
+
 class AssertEqual(ComparisonAssert):
     inv_op = "!="
 
@@ -255,7 +277,14 @@ class AssertEqual(ComparisonAssert):
         # even though np.array_equal also works on scalars, we don't use it
         # systematically because it does not work on list of strings
         if isinstance(v1, np.ndarray) or isinstance(v2, np.ndarray):
-            return np.array_equal(v1, v2)
+            result = np.array_equal(v1, v2)
+            nan_v1, nan_v2 = isnan(v1), isnan(v2)
+            if (not result and np.any(nan_v1 | nan_v2) and
+                np.array_equal(nan_v1, nan_v2)):
+                return False, ' but arrays contain NaNs, did you meant to ' \
+                              'use assertNanEqual instead?'
+            else:
+                return result
         else:
             return v1 == v2
 
@@ -283,14 +312,14 @@ class AssertIsClose(ComparisonAssert):
 
 
 functions = {
-    # can't use "print" in python 2.x because it's a keyword, not a function
-#    'print': Print,
     'csv': CSV,
+    # can't use "print" in python 2.x because it's a keyword, not a function
     'show': Show,
     'qshow': QuickShow,
     'remove': RemoveIndividuals,
     'breakpoint': Breakpoint,
     'assertTrue': AssertTrue,
+    'assertFalse': AssertFalse,
     'assertEqual': AssertEqual,
     'assertNanEqual': AssertNanEqual,
     'assertEquiv': AssertEquiv,

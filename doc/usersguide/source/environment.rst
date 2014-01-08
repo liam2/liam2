@@ -19,7 +19,7 @@ The bundle includes:
     directly from within the editor by simply pressing F5 or F6 respectively.
     See below for more information.
     
-- The documentation in html, pdf and chm (windows help) format.
+- The documentation in html and pdf formats.
 
 - A demonstration model with a synthetic data set of 20,200 persons grouped in
   14,700 households.
@@ -39,7 +39,13 @@ Getting Started
   display the status of the simulation. After the simulation completes, the
   console window becomes interactive.
 
-- Use this console to explore the results.
+- Use this console to explore the results. If you already quit the
+  interactive console and want to explore the results with interactive
+  console again without (re)simulating the model, you can press F7.
+
+- Alternatively, you can explore the results "graphically" by pressing F9.
+  This will open both the input dataset and the result file with an hdf5
+  viewer (ViTables).
 
 Using your own data
 -------------------

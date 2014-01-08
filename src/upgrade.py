@@ -6,6 +6,27 @@ import re
 __version__ = '0.2'
 
 
+def upgrade_str(content):
+    # transform *link(linkname, ...) -> linkname.*(...)
+    content = re.sub("([a-zA-Z]+)link\s*\(\s*([a-zA-Z_][a-zA-Z_0-9]*)\s*,?\s*",
+                     r"\2.\1(",
+                     content)
+
+    # Even though, min/max(xxx) can now have two meanings we do not need a
+    # special case for them, ie we do not need to explicitly convert:
+    # grpmin(expr1, expr2, ...) -> min(expr1, filter=expr2, ...)
+    # grpmax(expr1, expr2, ...) -> max(expr1, filter=expr2, ...)
+    # because ever since grpmin and grpmax accepted a filter argument, it has
+    # always been a keyword only argument. There still might be a problem
+    # if people used: grpmin(expr1, 0) where 0 is the axis number but since
+    # this is undocumented it is very unlikely to have been used by anyone.
+
+    # grpXXX(...) -> XXX(...)
+    return re.sub("grp([a-zA-Z]+)\s*\(",
+                  r"\1(",
+                  content)
+
+
 def upgrade(inpath, outpath=None):
     if outpath is None:
         outpath = inpath
@@ -21,27 +42,8 @@ def upgrade(inpath, outpath=None):
         with open(backup_path, "wb") as f:
             f.write(content)
 
-    # transform *link(linkname, ...) -> linkname.*(...)
-    content = re.sub("([a-zA-Z]+)link\s*\(\s*([a-zA-Z_][a-zA-Z_0-9]*)\s*,?\s*",
-                     r"\2.\1(",
-                     content)
-
-    # grpmin(expr1, expr2, ...) -> min(expr1, filter=expr2, ...)
-    # grpmax(expr1, expr2, ...) -> max(expr1, filter=expr2, ...)
-    def repl(obj):
-        # the 4th group is optional, so we change it from None to ''
-        groups = [s or '' for s in obj.groups()]
-        return '{}({}, filter={}{})'.format(*groups)
-    pattern = "grp(max|min)\s*\(([^),]+),\s*([^,)=]+)(,\s*[^)]+\s*)?\)"
-    content = re.sub(pattern, repl, content)
-
-    # grpXXX(...) -> XXX(...)
-    content = re.sub("grp([a-zA-Z]+)\s*\(",
-                     r"\1(",
-                     content)
-
     with open(outpath, "wb") as f:
-        f.write(content)
+        f.write(upgrade_str(content))
     print("upgraded model written to: '%s'" % outpath)
 
 if __name__ == '__main__':

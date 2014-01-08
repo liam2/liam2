@@ -16,8 +16,9 @@ from utils import AutoFlushFile
 import registry
 from data import populate_registry, H5Data
 from upgrade import upgrade
+from view import viewhdf
 
-__version__ = "0.7.0"
+__version__ = "0.8-pre1"
 
 
 def eat_traceback(func, *args, **kwargs):
@@ -63,7 +64,7 @@ def eat_traceback(func, *args, **kwargs):
             mark = e.context_mark
         else:
             if (e.problem ==
-                "found character '\\t' that cannot start any token"):
+                    "found character '\\t' that cannot start any token"):
                 msg = "found a TAB character instead of spaces"
             else:
                 msg = ""
@@ -73,9 +74,9 @@ def eat_traceback(func, *args, **kwargs):
         print("SYNTAX ERROR %s%s" % (str(mark).strip(), msg))
     except yaml.reader.ReaderError, e:
         if e.encoding == 'utf8':
-            print("\nERROR in '%s': invalid character found, this probably " \
-                  "means you have used non ASCII characters (accents and " \
-                  "other non-english characters) and did not save your file " \
+            print("\nERROR in '%s': invalid character found, this probably "
+                  "means you have used non ASCII characters (accents and "
+                  "other non-english characters) and did not save your file "
                   "using the UTF8 encoding" % e.name)
         else:
             raise
@@ -137,6 +138,18 @@ def explore(fpath):
             h5out.close()
 
 
+def display(fpath):
+    print("Launching ViTables...")
+    _, ext = splitext(fpath)
+    if ext in ('.h5', '.hdf5'):
+        files = [fpath]
+    else:
+        ds = Simulation.from_yaml(fpath).data_source
+        files = [ds.input_path, ds.output_path]
+    print("Trying to open:", " and ".join(str(f) for f in files))
+    viewhdf(files)
+
+
 class PrintVersionsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         import numpy
@@ -173,6 +186,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--versions', action=PrintVersionsAction, nargs=0,
                         help="display versions of dependencies")
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help="run in debug mode")
     parser.add_argument('--input-path', dest='input_path',
                         help='override the input path')
     parser.add_argument('--input-file', dest='input_file',
@@ -202,24 +217,41 @@ def main():
 
     # create the parser for the "upgrade" command
     parser_upgrade = subparsers.add_parser('upgrade',
-                                          help='upgrade a simulation file to '
-                                               'the latest syntax')
+                                           help='upgrade a simulation file to '
+                                                'the latest syntax')
     parser_upgrade.add_argument('input', help='input simulation file')
     out_help = "output simulation file. If missing, the original file will " \
                "be backed up (to filename.bak) and the upgrade will be " \
                "done in-place."
     parser_upgrade.add_argument('output', help=out_help, nargs='?')
+
+    # create the parser for the "view" command
+    parser_import = subparsers.add_parser('view', help='view data')
+    parser_import.add_argument('file', help='data file')
+
     parsed_args = parser.parse_args()
+    if parsed_args.debug:
+        config.debug = True
+
+    # this can happen via the environment variable too!
+    if config.debug:
+        warnings.simplefilter('default')
+        wrapper = lambda func, *args, **kwargs: func(*args, **kwargs)
+    else:
+        wrapper = eat_traceback
 
     action = parsed_args.action
     if action == 'run':
-        simulate(parsed_args)
+        args = simulate, parsed_args
     elif action == "import":
-        csv2h5(parsed_args.file)
+        args = csv2h5, parsed_args.file
     elif action == "explore":
-        explore(parsed_args.file)
+        args = explore, parsed_args.file
     elif action == "upgrade":
-        upgrade(parsed_args.input, parsed_args.output)
+        args = upgrade, parsed_args.input, parsed_args.output
+    elif action == "view":
+        args = display, parsed_args.file
+    wrapper(*args)
 
 if __name__ == '__main__':
     import sys
@@ -230,8 +262,4 @@ if __name__ == '__main__':
     print("LIAM2 %s (%s)" % (__version__, platform.architecture()[0]))
     print()
 
-    if config.debug:
-        warnings.simplefilter('default')
-        main()
-    else:
-        eat_traceback(main)
+    main()
