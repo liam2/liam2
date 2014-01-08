@@ -243,27 +243,27 @@ class ProcessGroup(Process):
                     # is used.
                     #>>> the best solution AFAIK is to parse the expressions
                     # in the same order as the "agespine".
-                    That way we will be able to type all temporary variables
-                    directly, and it would also solve the conditional
-                    context hack. There is no problem with temporary variables
-                    having different types over their lifetimes as these
-                    will actually be different variables (because their
-                    version will be different). There is no problem with
-                    a variable being different in two control flow
-                    "branches", because we do not have that case: if() coerce
-                    types.
-                    note that even if a branch is never "taken" (an if
-                    condition that is always True or always False or a forloop
-                    without any iteration), the type of the expressions
-                    that variables are assigned to in that branch will
-                    influence the type of the variable in subsequent code.
-                    XXX: what if I have a user-defined function/procedure that
-                    I call from two different places with an argument of a
-                    different type? ideally, it should generate two distinct
-                    procedures, but I am not there yet. Having a check on the
-                    second call that the argument passed is of the same type
-                    than the signature type (which was inferred from the
-                    first call) seems enough for now.
+                    # That way we will be able to type all temporary variables
+                    # directly, and it would also solve the conditional
+                    # context hack. There is no problem with temporary variables
+                    # having different types over their lifetimes as these
+                    # will actually be different variables (because their
+                    # version will be different). There is no problem with
+                    # a variable being different in two control flow
+                    # "branches", because we do not have that case: if() coerce
+                    # types.
+                    # note that even if a branch is never "taken" (an if
+                    # condition that is always True or always False or a forloop
+                    # without any iteration), the type of the expressions
+                    # that variables are assigned to in that branch will
+                    # influence the type of the variable in subsequent code.
+                    # XXX: what if I have a user-defined function/procedure that
+                    # I call from two different places with an argument of a
+                    # different type? ideally, it should generate two distinct
+                    # procedures, but I am not there yet. Having a check on the
+                    # second call that the argument passed is of the same type
+                    # than the signature type (which was inferred from the
+                    # first call) seems enough for now.
                     node.version = versions[node.name]
                     node.used += 1
             # on assignment, increase the variable version
