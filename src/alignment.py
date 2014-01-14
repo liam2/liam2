@@ -204,7 +204,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
                             "combination with the 'link' argument")
         if not isinstance(secondary_axis, (type(None), int, Variable)):
             raise Exception("'secondary_axis' should be either an integer or "
-                            "an axis name")
+                            "an axis name (but got '%s' which is of type '%s')"
+                            % (secondary_axis, type(secondary_axis)))
         self.secondary_axis = secondary_axis
 
     def traverse(self, context):
