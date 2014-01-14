@@ -121,17 +121,39 @@ class LinkValue(LinkExpression):
         return getdtype(self.target_expression, target_context)
 
     def get(self, key, missing_value=None):
-        # in this case, target_expression must be a Variable with a link name,
+        # partner.mother.household.region.get(households.count()))
+
+        # partner is
+        #   ManyToOne
+        # partner.mother is (after __init__)
+        #   LinkValue(Link('partner'), Variable('mother'))
+        # partner.mother.household is
+        #   LinkValue(Link('partner'),
+        #             LinkValue(Link('mother'), Variable('household')))
+        # partner.mother.household.region is
+        #   LinkValue(Link('partner'),
+        #             LinkValue(Link('mother'),
+        #                       LinkValue(Link('household'),
+        #                                 Variable('region'))))
+        lv = self
+
+        # find the deepest LinkValue
+        while isinstance(lv.target_expression, LinkValue):
+            lv = lv.target_expression
+        expr = lv.target_expression
+
+        # at this point, expr must be a Variable with a link name,
         # however given that we have no context, we do not know the current
         # entity and cannot make a strong assertion here.
         #XXX: we could add an _entity fields to the Link class though
-        # assert self.target_expression in entity.links
-        assert isinstance(self.target_expression, Variable)
+        # assert expr.name in entity.links
+        assert isinstance(expr, Variable)
         #noinspection PyProtectedMember
-        target_entity = self.link._target_entity()
-        target_link = target_entity.links[self.target_expression.name]
-        return LinkValue(self.link,
-                         LinkValue(target_link, key, missing_value))
+        target_entity = lv.link._target_entity()
+        deepest_link = target_entity.links[expr.name]
+        # add one more link to the chain
+        lv.target_expression = LinkValue(deepest_link, key, missing_value)
+        return self
 
     __getattr__ = get
 
