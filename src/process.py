@@ -248,9 +248,6 @@ class ProcessGroup(Process):
                 print("%s version %d" % (target, version))
                 self.versions[target] = version + 1
 
-    def toAst(self):
-        pass
-
     def expressions(self):
         for _, p in self.subprocesses:
             for e in p.expressions():
