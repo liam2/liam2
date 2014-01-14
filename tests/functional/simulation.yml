@@ -1174,6 +1174,8 @@ entities:
                        household.region_id,
                        'num hh in region',
                        household.region.get(households.count()))
+                - show('long link chain',
+                       partner.partner.household.region.get(households.count()))
                 - show(avg(children.count()))
                 - hh_count: household.get(persons.count())
                 - hh2_count: household_bis.get(persons.count())
