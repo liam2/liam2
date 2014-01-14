@@ -661,10 +661,8 @@ functions = {
     'normal': Normal,
     'choice': Choice,
     'randint': RandInt,
-    # aggregates/per element combined functions
-#    'min': make_dispatcher(aggregates.Min, Min), should not ...!!!!!
-#    'max': make_dispatcher(aggregates.Max, Max),
-    # per element
+    # element-wise functions
+    # Min and Max are in aggregates.py.functions (because of the dispatcher)
     'abs': Abs,
     'clip': Clip,
     'zeroclip': ZeroClip,
