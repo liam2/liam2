@@ -33,13 +33,14 @@ build_exe_options = {
     "optimize": 2,
     # strip paths in __file__ attributes
     "replace_paths": [("*", "")],
-    #"includes": ["matplotlib.backends.backend_qt4agg"],
-    "includes": ["matplotlib.backends.backend_tkagg"],
+    "includes": ["matplotlib.backends.backend_qt4agg"],
+    # "includes": ["matplotlib.backends.backend_tkagg"],
     "excludes": [
         # linux-specific modules
         "_codecs", "_codecs_cn", "_codecs_hk", "_codecs_iso2022",
         "_codecs_jp", "_codecs_kr", "_codecs_tw",
         # common modules
+        "Tkconstants", "Tkinter",
         "Cython", "_ssl",
         "base64", "bz2", "compiler",
         "doctest", "dummy_thread",
@@ -50,7 +51,6 @@ build_exe_options = {
         "posixpath", "pydoc", "pydoc_topics", "repr", "scipy",
         "select", "stringprep", "strptime",
         "tcl", "xml"
-
         # matplotlib => calendar, distutils, unicodedata
         # matplotlib.backends.backend_tkagg => Tkconstants, Tkinter
         # ctypes, io are required now

@@ -11,11 +11,9 @@ from process import Process
 from utils import LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim
 
 try:
-    # we do not use the qt backend because when the python script is run
-    # by nppexec (in notepad++), the qt window does not open :(
-    # import matplotlib
-    # matplotlib.use('Qt4Agg')
-    # del matplotlib
+    import matplotlib
+    matplotlib.use('Qt4Agg')
+    del matplotlib
     import matplotlib.pyplot as plt
     # set interactive mode
     # plt.ion()
