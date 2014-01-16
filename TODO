@@ -16,9 +16,27 @@ implementation that I am aware of.
 - all arguments to all functions should accept expressions automatically
   (there should be a base class handling this)
 - expose all numpy functionalities
-- pure Python mode
 - use proper logging & warnings (use logging and warnings modules)
 - full test coverage, including unit tests (this presuppose pure Python mode)
+- pure Python mode. Something like this?
+    class Person(Entity):
+        age = Field(Int)
+
+        def ageing(self):
+            # self.age = self.age + 1
+            self.age += 1
+            self.agegroup = (self.age // 10) * 10
+
+    def main():
+        registry = EntityRegistry((Person, Household))
+        for e in registry:
+            e.load()
+        p = Person()
+        for period in range(start_period, periods):
+            p.ageing()
+
+    s = Simulation((Person, Household), 2010, 10)
+    s.run()
 
 features I would like to implement (in no particular order)
 ===========================================================
