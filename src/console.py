@@ -5,8 +5,9 @@ import sys
 import numpy as np
 
 import config
+from entities import global_variables
 from expr import expr_eval, Variable
-from exprparser import parse
+from exprtools import parse
 from context import EntityContext
 from registry import entity_registry
 from process import Process
@@ -51,6 +52,13 @@ class Console(object):
         self.globals_def = globals_def
         self.globals_data = globals_data
 
+        global_context = {'__globals__': global_variables(globals_def)}
+        parsing_context = global_context.copy()
+        parsing_context.update((entity.name, entity.all_symbols(global_context))
+                               for entity in entity_registry.itervalues())
+        parsing_context['__entity__'] = entity.name
+        self.parsing_context = parsing_context
+
     def list_entities(self):
         ent_names = [repr(k) for k in entity_registry.keys()]
         print("available entities:", ', '.join(ent_names))
@@ -61,6 +69,7 @@ class Console(object):
         except KeyError:
             print("entity '%s' does not exist" % name)
             self.list_entities()
+            return None
 
     def _display_entity(self):
         if self.entity is None:
@@ -71,6 +80,7 @@ class Console(object):
     def set_entity(self, name):
         entity = self.get_entity(name)
         if entity is not None:
+            self.parsing_context['__entity__'] = entity.name
             self.entity = entity
             self._display_entity()
             if self.period is not None:
@@ -137,13 +147,14 @@ class Console(object):
         if period is None:
             raise Exception(period_required)
 
-        cond_context = entity.conditional_context
-        variables = entity.all_variables(self.globals_def)
+        parsing_context = self.parsing_context
+        entity_context = parsing_context[parsing_context['__entity__']]
+
         # add all currently defined temp_variables because otherwise
         # local variables (defined within a procedure) wouldn't be available
-        variables.update((name, Variable(name))
-                         for name in entity.temp_variables.keys())
-        expr = parse(s, variables, cond_context, interactive=True)
+        entity_context.update((name, Variable(name))
+                              for name in entity.temp_variables.keys())
+        expr = parse(s, parsing_context, interactive=True)
         ctx = EntityContext(entity, {'period': period,
                                      'nan': np.nan,
                                      '__globals__': self.globals_data})

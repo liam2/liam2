@@ -3,11 +3,12 @@ import unittest
 import numpy as np
 from numpy import array
 
-from entities import Entity
-from registry import entity_registry
 from context import EntityContext, context_length
-from exprparser import parse
-import links 
+from entities import Entity
+from expr import Variable
+from exprtools import parse
+import links
+from registry import entity_registry
 
 
 class ArrayTestCase(unittest.TestCase):
@@ -18,9 +19,10 @@ class ArrayTestCase(unittest.TestCase):
 
 class StringTestCase(ArrayTestCase):
     context = None
+    parsing_context = None
 
     def assertEvalEqual(self, s, result):
-        e = parse(s, autovariables=True)
+        e = parse(s, self.parsing_context)
         self.assertArrayEqual(e.evaluate(self.context), result)
 
 
@@ -28,6 +30,10 @@ class Test(StringTestCase):
     def setUp(self):
         self.context = {'age': array([20, 10, 35, 55]),
                         'dead': array([False, True, False, True])}
+        self.parsing_context = {
+            'person': {'age': Variable('age'), 'dead': Variable('dead')},
+            '__entity__': 'person'
+        }
 
     def tearDown(self):
         pass

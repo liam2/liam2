@@ -7,6 +7,7 @@ import numpy as np
 
 import config
 from expr import (Expr, Variable,
+                  UnaryOp, BinaryOp, ComparisonOp, DivisionOp, LogicalOp,
                   getdtype, coerce_types, expr_eval,
                   as_simple_expr, as_string,
                   collect_variables, traverse_expr,
@@ -29,9 +30,29 @@ class Min(CompoundExpression):
 
     def build_expr(self):
         expr1, expr2 = self.args[:2]
-        expr = Where(expr1 < expr2, expr1, expr2)
+        expr = Where(ComparisonOp('<', expr1, expr2), expr1, expr2)
         for arg in self.args[2:]:
-            expr = Where(expr < arg, expr, arg)
+            expr = Where(ComparisonOp('<', expr, arg), expr, arg)
+
+        # args = [Symbol('x%d' % i) for i in range(len(self.args))]
+        # ctx = {'__entity__': 'x',
+        #        'x': {'x%d' % i: a for i, a in enumerate(self.args)}}
+        # where = Symbol('where')
+        # expr = where(a < b, a, b)
+        # for arg in self.args[2:]:
+        #     expr = where(expr < arg, expr, arg)
+        # expr = expr.to_ast(ctx)
+
+        # expr1, expr2 = self.args[:2]
+        # expr = parse('if(a < b, a, b)',
+        #              {'__entity__': 'x', 'x': {'a': expr1, 'b': expr2}})
+        # for arg in self.args[2:]:
+        #     expr = parse('if(a < b, a, b)',
+        #                  {'__entity__': 'x', 'x': {'a': expr, 'b': arg}})
+
+        # expr = Where(expr1 < expr2, expr1, expr2)
+        # for arg in self.args[2:]:
+        #     expr = Where(expr < arg, expr, arg)
 
 #        Where(Where(expr1 < expr2, expr1, expr2) < expr3,
 #              Where(expr1 < expr2, expr1, expr2),
@@ -65,9 +86,6 @@ class Min(CompoundExpression):
 #        3 where, 6 comp, 3 and = 12 op
         return expr
 
-    def dtype(self, context):
-        return coerce_types(context, *self.args)
-
     def __str__(self):
         return 'min(%s)' % ', '.join(str(arg) for arg in self.args)
 
@@ -80,13 +98,12 @@ class Max(CompoundExpression):
 
     def build_expr(self):
         expr1, expr2 = self.args[:2]
-        expr = Where(expr1 > expr2, expr1, expr2)
+        # if(x > y, x, y)
+        expr = Where(ComparisonOp('>', expr1, expr2), expr1, expr2)
         for arg in self.args[2:]:
-            expr = Where(expr > arg, expr, arg)
+            # if(e > z, e, z)
+            expr = Where(ComparisonOp('>', expr, arg), expr, arg)
         return expr
-
-    def dtype(self, context):
-        return coerce_types(context, *self.args)
 
     def __str__(self):
         return 'max(%s)' % ', '.join(str(arg) for arg in self.args)
@@ -98,11 +115,8 @@ class Logit(CompoundExpression):
         self.expr = expr
 
     def build_expr(self):
-        return Log(self.expr / (1.0 - self.expr))
-
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return float
+        # log(x / (1 - x))
+        return Log(DivisionOp('/', self.expr, BinaryOp('-', 1.0, self.expr)))
 
     def __str__(self):
         return 'logit(%s)' % self.expr
@@ -114,14 +128,12 @@ class Logistic(CompoundExpression):
         self.expr = expr
 
     def build_expr(self):
-        return 1.0 / (1.0 + Exp(-self.expr))
+        # 1 / (1 + exp(-x))
+        return DivisionOp('/', 1.0,
+                          BinaryOp('+', 1.0, Exp(UnaryOp('-', self.expr))))
 
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return float
-
-    def __str__(self):
-        return 'logistic(%s)' % self.expr
+        def __str__(self):
+            return 'logistic(%s)' % self.expr
 
 
 class ZeroClip(CompoundExpression):
@@ -133,12 +145,15 @@ class ZeroClip(CompoundExpression):
 
     def build_expr(self):
         expr = self.expr
-        return Where((expr >= self.expr_min) & (expr <= self.expr_max),
+        # if(minv <= x <= maxv, x, 0)
+        return Where(LogicalOp('&',
+                         ComparisonOp('>=', expr, self.expr_min),
+                         ComparisonOp('<=', expr, self.expr_max)),
                      expr,
                      0)
 
     def dtype(self, context):
-        return getdtype(self.expr1, context)
+        return getdtype(self.expr, context)
 
 
 # >>> mi = 1
@@ -616,13 +631,17 @@ class Where(Expr):
         if filter_expr is None:
             context['__filter__'] = self.cond
         else:
-            context['__filter__'] = filter_expr & self.cond
+            # filter = filter and cond
+            context['__filter__'] = LogicalOp('&', filter_expr, self.cond)
         iftrue = as_simple_expr(self.iftrue, context)
 
         if filter_expr is None:
-            context['__filter__'] = ~self.cond
+            context['__filter__'] = UnaryOp('~', self.cond)
         else:
-            context['__filter__'] = filter_expr & ~self.cond
+            # filter = filter and not cond
+            context['__filter__'] = LogicalOp('&',
+                                              filter_expr,
+                                              UnaryOp('~', self.cond))
         iffalse = as_simple_expr(self.iffalse, context)
 
         # This is probably useless because the only situation I can think of

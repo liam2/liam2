@@ -5,8 +5,8 @@ import numpy as np
 from alignment import Alignment
 import config
 from context import context_length
-from expr import (Expr, Variable, ShortLivedVariable, get_tmp_varname,
-                  missing_values, getdtype, expr_eval)
+from expr import (Expr, Variable, ShortLivedVariable, BinaryOp, ComparisonOp,
+                  get_tmp_varname, missing_values, getdtype, expr_eval)
 from exprbases import CompoundExpression
 from exprmisc import Exp, Normal, Max, Where, Logit, Logistic
 
@@ -72,7 +72,8 @@ class LogitScore(CompoundExpression):
             expr = u
         else:
             epsilon = Logit(u)
-            expr = Logistic(expr - epsilon)
+            # expr = logistic(expr - epsilon)
+            expr = Logistic(BinaryOp('-', expr, epsilon))
         return expr
 
     def __str__(self):
@@ -98,7 +99,7 @@ class LogitRegr(Regression):
         if self.align is not None:
             return Alignment(score_expr, self.align, filter=self.filter)
         else:
-            return score_expr > 0.5
+            return ComparisonOp('>', score_expr, 0.5)
 
     # this is an optimisation: Alignment already handles the filter
     def add_filter(self, expr, context):
@@ -122,9 +123,11 @@ class ContRegr(Regression):
     def build_expr(self):
         expr = self.expr
         if self.error_var is not None:
-            expr += Variable(self.error_var)
+            # expr += error_var
+            expr = BinaryOp('+', expr, Variable(self.error_var))
         if self.mult:
-            expr += Normal(0, 1) * self.mult
+            # expr += normal(0, 1) * mult
+            expr = BinaryOp('+', expr, BinaryOp('*', Normal(0, 1), self.mult))
         return expr
 
 

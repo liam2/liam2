@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import numpy as np
 
-from expr import (Variable, getdtype, expr_eval,
+from expr import (Variable, BinaryOp, getdtype, expr_eval,
                   collect_variables, traverse_expr, get_tmp_varname,
                   ispresent)
 from exprbases import EvaluableExpression, NumpyAggregate, FilteredExpression
@@ -121,7 +121,7 @@ class Sum(FilteredExpression):
         expr = self.expr
         filter_expr = self._getfilter(context)
         if filter_expr is not None:
-            expr *= filter_expr
+            expr = BinaryOp('*', expr, filter_expr)
 
         values = expr_eval(expr, context)
         values = np.asarray(values)
@@ -168,8 +168,10 @@ class Average(FilteredExpression):
             if getdtype(expr, context) is bool:
                 # convert expr to int because mul_bbb is not implemented in
                 # numexpr
-                expr *= 1
-            expr *= Variable(tmp_varname)
+                # expr *= 1
+                expr = BinaryOp('*', expr, 1)
+            # expr *= filter_values
+            expr = BinaryOp('*', expr, Variable(tmp_varname))
         else:
             filter_values = True
 

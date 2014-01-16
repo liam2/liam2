@@ -11,7 +11,7 @@ from context import EntityContext, context_length
 from data import merge_arrays, get_fields, ColumnArray
 from expr import (Variable, GlobalVariable, GlobalTable, GlobalArray,
                   expr_eval, get_missing_value)
-from exprparser import parse
+from exprtools import parse
 from process import Assignment, Compute, Process, ProcessGroup
 from registry import entity_registry
 from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
@@ -236,25 +236,27 @@ class Entity(object):
         return cond_context
     conditional_context = property(get_cond_context)
 
-    def all_variables(self, globals_def):
+    def all_symbols(self, global_context):
         from links import PrefixingLink
 
-        variables = global_variables(globals_def).copy()
-        variables.update(self.variables)
-        cond_context = self.conditional_context
-        macros = dict((k, parse(v, variables, cond_context))
+        variables = self.variables.copy()
+        local_context = global_context.copy()
+        local_context[self.name] = variables
+        local_context['__entity__'] = self.name
+
+        macros = dict((k, parse(v, local_context))
                       for k, v in self.macro_strings.iteritems())
         variables.update(macros)
         variables['other'] = PrefixingLink(macros, self.links, '__other_')
         return variables
 
-    def parse_expressions(self, items, variables, cond_context):
+    def parse_expressions(self, items, context):
         processes = []
         for k, v in items:
             if isinstance(v, (bool, int, float)):
                 process = Assignment(v)
             elif isinstance(v, basestring):
-                expr = parse(v, variables, cond_context)
+                expr = parse(v, context)
                 if not isinstance(expr, Process):
                     if k is None:
                         process = Compute(expr)
@@ -273,12 +275,14 @@ class Entity(object):
                         group_expressions.append((None, element))
                 group_predictors = \
                     self.collect_predictors(group_expressions)
-                group_context = variables.copy()
-                group_context.update((name, Variable(name))
-                                     for name in group_predictors)
+                func_context = context.copy()
+                cur_entity = func_context['__entity__']
+                func_context[cur_entity] = func_context[cur_entity].copy()
+                entity_context = func_context[cur_entity]
+                entity_context.update((name, Variable(name))
+                                      for name in group_predictors)
                 sub_processes = self.parse_expressions(group_expressions,
-                                                       group_context,
-                                                       cond_context)
+                                                       func_context)
                 process = ProcessGroup(k, sub_processes)
             elif isinstance(v, dict):
                 warnings.warn("Using the 'predictor' keyword is deprecated. "
@@ -286,7 +290,7 @@ class Entity(object):
                               "write to the same variable, you should "
                               "rather use procedures.",
                               UserDeprecationWarning)
-                expr = parse(v['expr'], variables, cond_context)
+                expr = parse(v['expr'], context)
                 process = Assignment(expr)
                 process.predictor = v['predictor']
             else:
@@ -295,10 +299,9 @@ class Entity(object):
             processes.append((k, process))
         return processes
 
-    def parse_processes(self, globals_def):
+    def parse_processes(self, context):
         processes = self.parse_expressions(self.process_strings.iteritems(),
-                                           self.all_variables(globals_def),
-                                           self.conditional_context)
+                                           context)
         processes = dict(processes)
 
         fnames = set(self.period_individual_fnames)

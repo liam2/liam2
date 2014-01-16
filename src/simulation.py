@@ -11,7 +11,7 @@ import tables
 import yaml
 
 from data import H5Data, Void
-from entities import Entity
+from entities import Entity, global_variables
 from registry import entity_registry
 from utils import (time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
@@ -239,9 +239,14 @@ class Simulation(object):
         for k, v in content['entities'].iteritems():
             entity_registry.add(Entity.from_yaml(k, v))
 
+        global_context = {'__globals__': global_variables(globals_def)}
+        parsing_context = global_context.copy()
+        parsing_context.update((entity.name, entity.all_symbols(global_context))
+                               for entity in entity_registry.itervalues())
         for entity in entity_registry.itervalues():
+            parsing_context['__entity__'] = entity.name
             entity.check_links()
-            entity.parse_processes(globals_def)
+            entity.parse_processes(parsing_context)
             entity.compute_lagged_fields()
 
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]

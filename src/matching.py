@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import numpy as np
 
-from expr import expr_eval, collect_variables, traverse_expr
+from expr import expr_eval, collect_variables, traverse_expr, LogicalOp
 from exprbases import EvaluableExpression
 from context import context_length, context_subset, context_delete
 from utils import loop_wh_progress
@@ -51,8 +51,10 @@ class Matching(EvaluableExpression):
         # at some point ctx_filter will be cached automatically, so we don't
         # need to take care of it manually here
         if ctx_filter is not None:
-            set1filter = expr_eval(ctx_filter & self.set1filter, context)
-            set2filter = expr_eval(ctx_filter & self.set2filter, context)
+            set1filter = expr_eval(LogicalOp('&', ctx_filter, self.set1filter),
+                                   context)
+            set2filter = expr_eval(LogicalOp('&', ctx_filter, self.set2filter),
+                                   context)
         else:
             set1filter = expr_eval(self.set1filter, context)
             set2filter = expr_eval(self.set2filter, context)

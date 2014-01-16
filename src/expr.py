@@ -201,29 +201,26 @@ def expr_eval(expr, context):
         return expr
 
 
-def binop(opname, dtype=None, reversed=False):
-    if reversed:
-        def op(self, other):
-            return BinaryOp(opname, other, self, dtype=dtype)
-    else:
-        def op(self, other):
-            return BinaryOp(opname, self, other, dtype=dtype)
+def binop(opname, kind='binary', reversed=False):
+    def op(self, other):
+        classes = {'binary': BinaryOp,
+                   'division': DivisionOp,
+                   'logical': LogicalOp,
+                   'comparison': ComparisonOp}
+        class_ = classes[kind]
+        return class_(opname, other, self) if reversed \
+                                           else class_(opname, self, other)
     return op
 
 
 class Expr(object):
     # __metaclass__ = ExplainTypeError
+    kind = 'generic'
 
-    def __init__(self, value=None, kind=None, children=None):
+    def __init__(self, value=None, children=None):
         object.__init__(self)
         self.value = value
-        if kind is None:
-            kind = 'none'
-        self.kind = kind
-        if children is None:
-            self.children = ()
-        else:
-            self.children = tuple(children)
+        self.children = tuple(children) if children is not None else ()
 
     # makes sure we do not use "normal" python logical operators
     # (and, or, not)
@@ -232,79 +229,6 @@ class Expr(object):
                         "forgot parenthesis around operands of an 'and' or "
                         "'or' expression. The complete expression cannot be "
                         "displayed but it contains: '%s'." % str(self))
-
-    def cmp_dtype(self, context):
-        expr1, expr2 = self.children
-        if coerce_types(context, expr1, expr2) is None:
-            raise TypeError("operands to comparison operators need to be of "
-                            "compatible types")
-        return bool
-
-    __lt__ = binop('<', cmp_dtype)
-    __le__ = binop('<=', cmp_dtype)
-    __eq__ = binop('==', cmp_dtype)
-    __ne__ = binop('!=', cmp_dtype)
-    __gt__ = binop('>', cmp_dtype)
-    __ge__ = binop('>=', cmp_dtype)
-
-    __add__ = binop('+')
-    __radd__ = binop('+', reversed=True)
-    __sub__ = binop('-')
-    __rsub__ = binop('-', reversed=True)
-    __mul__ = binop('*')
-    __rmul__ = binop('*', reversed=True)
-
-    #XXX: normal div is never called? (since we import __future__.division)
-    def alwaysfloat(self, context):
-        return float
-
-    __div__ = binop('/', alwaysfloat)
-    __rdiv__ = binop('/', alwaysfloat, reversed=True)
-    __truediv__ = binop('/', alwaysfloat)
-    __rtruediv__ = binop('/', alwaysfloat, reversed=True)
-    __floordiv__ = binop('//')
-    __rfloordiv__ = binop('//', reversed=True)
-
-    __mod__ = binop('%')
-    __rmod__ = binop('%', reversed=True)
-    #FIXME
-    __divmod__ = binop('divmod')
-    __rdivmod__ = binop('divmod', reversed=True)
-    __pow__ = binop('**')
-    __rpow__ = binop('**', reversed=True)
-
-    __lshift__ = binop('<<')
-    __rlshift__ = binop('<<', reversed=True)
-    __rshift__ = binop('>>')
-    __rrshift__ = binop('>>', reversed=True)
-
-    def assertbool(self, expr, context):
-        dt = getdtype(expr, context)
-        if dt is not bool:
-            raise Exception("operands to logical operators need to be "
-                            "boolean but %s is %s" % (expr, dt))
-
-    def logical_dtype(self, context):
-        expr1, expr2 = self.children
-        self.assertbool(expr1, context)
-        self.assertbool(expr2, context)
-        return bool
-
-    __and__ = binop('&', logical_dtype)
-    __rand__ = binop('&', logical_dtype, reversed=True)
-    __xor__ = binop('^', logical_dtype)
-    __rxor__ = binop('^', logical_dtype, reversed=True)
-    __or__ = binop('|', logical_dtype)
-    __ror__ = binop('|', logical_dtype, reversed=True)
-
-    def __neg__(self):
-        return UnaryOp('-', self)
-    def __pos__(self):
-        return UnaryOp('+', self)
-    def __abs__(self):
-        return UnaryOp('abs', self)
-    def __invert__(self):
-        return UnaryOp('~', self)
 
     def evaluate(self, context):
 #        FIXME: this cannot work, because dict.__contains__(k) calls k.__eq__
@@ -536,6 +460,8 @@ class ExprCall(EvaluableExpression):
 #############
 
 class UnaryOp(Expr):
+    kind = 'op'
+
     def __init__(self, op, expr):
         Expr.__init__(self, op, children=(expr,))
 
@@ -555,12 +481,10 @@ class UnaryOp(Expr):
 
 
 class BinaryOp(Expr):
-    def __init__(self, op, expr1, expr2, dtype=None):
+    kind = 'op'
+
+    def __init__(self, op, expr1, expr2):
         Expr.__init__(self, op, children=(expr1, expr2))
-        if dtype is not None:
-            # override default dtype method (which simply coerce its args)
-            # for this instance (not for the whole class, which is more usual)
-            self.dtype = types.MethodType(dtype, self)
 
     def as_simple_expr(self, context):
         expr1, expr2 = self.children
@@ -583,11 +507,41 @@ class BinaryOp(Expr):
     __repr__ = __str__
 
 
+class DivisionOp(BinaryOp):
+    def dtype(self, context):
+        return float
+
+
+class LogicalOp(BinaryOp):
+    def assertbool(self, expr, context):
+        dt = getdtype(expr, context)
+        if dt is not bool:
+            raise Exception("operands to logical operators need to be "
+                            "boolean but %s is %s" % (expr, dt))
+
+    def dtype(self, context):
+        expr1, expr2 = self.children
+        self.assertbool(expr1, context)
+        self.assertbool(expr2, context)
+        return bool
+
+
+class ComparisonOp(BinaryOp):
+    def dtype(self, context):
+        expr1, expr2 = self.children
+        if coerce_types(context, expr1, expr2) is None:
+            raise TypeError("operands to comparison operators need to be of "
+                            "compatible types")
+        return bool
+
+
 #############
 # Variables #
 #############
 
 class Variable(Expr):
+    kind = 'variable'
+
     def __init__(self, name, dtype=None):
         Expr.__init__(self, name)
 
