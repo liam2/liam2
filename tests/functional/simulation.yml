@@ -211,13 +211,15 @@ entities:
 #                args: a, b
 #                return: a + b
 #
+#            
 #            func_no_args:
 #                return: 42
 #
 #            test_call:
-#                - aplusb: test_function(age, 1)
+#                - aplusb: func_wh_code(age, 1)
 #                - show("age", age, "aplusb", aplusb)
 
+#
             test_while:
                 - values: age
                 # => while is a reserved keyword and can't be used as a
@@ -2090,8 +2092,6 @@ simulation:
                    test_compound,
 
                    test_while,
-
-                   agegroup,
 
 #                   test_extra_comma,
 #                   test_uninitialized_var,
