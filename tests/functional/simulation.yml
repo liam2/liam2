@@ -211,7 +211,6 @@ entities:
 #                args: a, b
 #                return: a + b
 #
-#            
 #            func_no_args:
 #                return: 42
 #
@@ -219,7 +218,6 @@ entities:
 #                - aplusb: func_wh_code(age, 1)
 #                - show("age", age, "aplusb", aplusb)
 
-#
             test_while:
                 - values: age
                 # => while is a reserved keyword and can't be used as a
