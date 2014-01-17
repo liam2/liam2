@@ -3,6 +3,16 @@
 Change log
 ##########
 
+Version 0.8-rc1
+===============
+
+* fixed "view" action (ViTables) on some computers when used in notepad++.
+
+* implemented scatter charts.
+
+* use Qt as the backend for charts instead of Tk so that we do not need
+  to include the latter in Liam2 anymore.
+
 Version 0.8-pre1
 ================
 
@@ -23,7 +33,9 @@ New features:
   Notepad++. It is meant to be used when editing a *model* file, and it will
   open both the input dataset and the result file (if any).
 
-* added new boolean aggregate functions: all() and any(). In fact they were
+* implemented "while" loops.
+
+* document boolean aggregate functions: all() and any() which were
   added in 0.7 but were not yet documented.
 
 * added *assertFalse* assert function.
@@ -38,6 +50,20 @@ Miscellaneous improvements:
   where the error occurred.
 
 * adapted the release script since our move to git and converted it to Python.
+
+* give a hint to use assertNanEqual when it would make a failing assertEqual
+  pass.
+
+* removed the predictor keyword support (it now raises an exception instead
+  of a warning).
+
+* sped up global[array_expr].
+
+* implemented global[slice_expr] (eg. MINR[period: period+2]). When the
+  slice bounds are arrays (different for each individual) and the slice
+  length is not constant (not the same for all individals),
+  it returns a special array with an extremely limited set of supported
+  operations: only aggregates on axis=1 are implemented.
 
 Fixes:
 ------
