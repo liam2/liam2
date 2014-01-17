@@ -1805,6 +1805,44 @@ dimension). Examples: ::
 .. image:: /charts/pie1.*
 .. image:: /charts/pie2.*
 
+.. index:: scatter, scatter plots
+
+scatter plots
+~~~~~~~~~~~~~
+
+.. versionadded:: 0.8
+
+**scatter** can be used to draw scatter plots. It uses
+`matplotlib.pyplot.scatter
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.scatter>`_ and
+inherits all of its keyword arguments. It should be used like this: ::
+
+    scatter(x_expr, y_expr, ...)
+
+Where both *x_expr* and *y_expr* are (expressions returning) one-dimensional
+arrays (for example an entity field or a groupby expression with only one
+dimension).
+
+Optional keyword arguments include (among others, see above link):
+
+* *c*: to set the color of each circle. A color will be assigned for
+       each different value of this argument.
+* *s*: to set the surface of each circle (mutually exclusive with the *r*
+       argument).
+* *r*: to set the radius of each circle (`r=expr` is equivalent to
+       `s=pi * expr ** 2`). It is mutually exclusive with the *s* argument.
+       The *r* argument is specific to liam2.
+
+Examples: ::
+
+    - salary: 10000 + uniform() * 50000
+    - area: 3.1415 * (4 + 1.5 * children.count()) ** 2
+    - scatter(age, salary, c=eduach, s=area, alpha=0.5s, grid=True)
+    - scatter(normal(), normal(), c=age, r=2 ** eduach)
+
+.. image:: /charts/scatter1.*
+.. image:: /charts/scatter2.*
+
 .. index:: boxplot
 
 boxplot

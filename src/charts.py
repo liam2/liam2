@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, division
 
 import os
 import math
@@ -8,7 +8,7 @@ import numpy as np
 import config
 from expr import Expr, expr_eval
 from process import Process
-from utils import LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim
+from utils import LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim, Axis
 
 try:
     import matplotlib
@@ -30,7 +30,7 @@ class Chart(Process):
     maxticks = 20
     projection = None
     ndim_req = 2
-    check_length = False
+    check_length = True
 
     def __init__(self, *args, **kwargs):
         Process.__init__(self)
@@ -42,7 +42,7 @@ class Chart(Process):
             if isinstance(arg, Expr):
                 yield arg
 
-    def get_colors(self, n, outline=False):
+    def get_colors(self, n):
         from matplotlib import cm
 
         # compute a range which includes the end (1.0)
@@ -76,22 +76,22 @@ class Chart(Process):
             if not isinstance(data, np.ndarray):
                 data = np.asarray(data)
             if ndim(data) == ndim_req:
-                return data
+                pass
             elif ndim(data) == ndim_req - 1:
                 if isinstance(data, LabeledArray):
                     #TODO: implement np.newaxis in LabeledArray.__getitem__
-                    la = LabeledArray(np.asarray(data)[np.newaxis],
-                                      dim_names=['dummy'] + data.dim_names,
-                                      pvalues=[[0]] + data.pvalues)
-                    return la
+                    data = LabeledArray(np.asarray(data)[np.newaxis],
+                                        dim_names=['dummy'] + data.dim_names,
+                                        pvalues=[[0]] + data.pvalues)
                 else:
-                    return data[np.newaxis]
+                    data = data[np.newaxis]
             else:
                 raise dimerror
         elif all(ndim(a) == ndim_req - 1 for a in args):
-            return args
+            data = args
         else:
             raise dimerror
+        return data, aslabeledarray(data).axes
 
     def run(self, context):
         entity = context['__entity__']
@@ -102,21 +102,17 @@ class Chart(Process):
         kwargs = dict((k, expr_eval(v, context))
                       for k, v in self.kwargs.iteritems())
 
-        data = self.prepare(args, kwargs)
-        array = aslabeledarray(data)
-
+        data, axes = self.prepare(args, kwargs)
         colors = kwargs.pop('colors', None)
         if colors is None:
-            colors = self.get_colors(len(array))
+            colors = self.get_colors(len(axes[0]))
         fname = kwargs.pop('fname', None)
         grid = kwargs.pop('grid', self.grid)
         maxticks = kwargs.pop('maxticks', self.maxticks)
         projection = self.projection
 
-        axes = array.axes
         if self.legend:
-            if len(array) > 1:
-                self.set_legend(axes[0], colors)
+            self.set_legend(axes[0], colors)
             axes = axes[1:]
         if self.axes:
             self.set_axes(axes, maxticks, projection)
@@ -185,6 +181,39 @@ class BoxPlot(Chart):
         # boxplot does not support varargs, so if we want several boxes,
         # we must pass a tuple instead of unpacking it (ie. no * on data)
         plt.boxplot(data, **kwargs)
+
+
+class Scatter(Chart):
+    # our code does not handle nicely axes with floating point ticks and
+    # mpl handles them fine
+    axes = False
+    colorbar_threshold = 10
+
+    def prepare(self, args, kwargs):
+        axes = [Axis(None, np.unique(arg)) for arg in args]
+        c = kwargs.get('c', 'b')
+        unq_colors = np.unique(c)
+        if len(unq_colors) >= self.colorbar_threshold:
+            # we will add a colorbar in this case, so we do not need a legend
+            self.legend = False
+        else:
+            # add a fake axis that will be used to make a legend
+            axes = [Axis(None, unq_colors)] + axes
+        return args, axes
+
+    def _draw(self, data, colors, **kwargs):
+        from matplotlib.colors import ListedColormap
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = ListedColormap(colors)
+        r = kwargs.pop('r', None)
+        if r is not None:
+            if kwargs.get('s') is not None:
+                raise Exception('cannot specify both r and s arguments to '
+                                'scatter')
+            kwargs['s'] = np.pi * np.asarray(r) ** 2
+        sc = plt.scatter(*data, **kwargs)
+        if len(colors) >= self.colorbar_threshold:
+            plt.colorbar(sc)
 
 
 class Plot(Chart):
@@ -299,6 +328,7 @@ class Pie(Chart):
 
 
 functions = {
+    'scatter': Scatter,
     'boxplot': BoxPlot,
     'plot': Plot,
     'stackplot': StackPlot,

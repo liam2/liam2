@@ -115,6 +115,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                     group_maybe_indices = members_indices
                 if isinstance(score, np.ndarray):
                     maybe_members_rank_value = score[group_maybe_indices]
+                    #TODO: use np.partition (np1.8+)
                     sorted_local_indices = np.argsort(maybe_members_rank_value)
                     sorted_global_indices = \
                         group_maybe_indices[sorted_local_indices]

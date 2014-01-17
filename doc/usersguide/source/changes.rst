@@ -12,10 +12,11 @@ New features:
 -------------
 
 * added a few functions to create charts (courtesy of `matplotlib
-  <http://matplotlib.org>`_): bar, plot, pie, stackplot and boxplot. As with
-  all other functions in liam2, they are available both during a simulation
-  and in the interactive console. The charts can either be visualized directly
-  or saved to a file. See the :ref:`charts section <charts>` for details.
+  <http://matplotlib.org>`_): bar, plot, pie, stackplot, boxplot and scatter.
+  As with all other functions in liam2, they are available both during a
+  simulation and in the interactive console. The charts can either be
+  visualized directly or saved to a file. See the
+  :ref:`charts section <charts>` for details.
 
 * added a "view" command line option to Liam2 to open ViTables (an hdf5
   viewer) as well as a corresponding menu entry and keyboard shortcut (F9) in

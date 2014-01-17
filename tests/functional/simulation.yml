@@ -299,6 +299,7 @@ entities:
                 - stackplot(groupby(age, filter=not gender),
                             groupby(age, filter=gender),
                             fname='stackplot4.png')
+
                 - byage: groupby(age, percent=True)
                 - bar(byage, fname='bar1.png')
                 - bar(groupby(agegroup), fname='bar2.png&pdf')
@@ -311,14 +312,27 @@ entities:
                 - bar(groupby(eduach, agegroup), width=0.8, fname='bar7.png')
                 # mig_period_women
                 - bar(MIG[0,:,period - 2001], fname='bar8.png')
+
                 # axes are currently messed up
                 # - barh(groupby(eduach, agegroup))
                 # - barh(groupby(eduach, agegroup), height=0.7)
+
                 - pie(groupby(eduach), fname='pie1.png&pdf')
                 - pie(groupby(eduach),
                       explode=[0.1, 0, 0],
                       labels=['Lower secondary', 'Upper secondary', 'Tertiary'],
                       fname='pie2.png&pdf')
+
+                # limit number of individuals to get smaller .pdf files
+                - num: 200
+                - salary: 10000 + uniform(size=num) * 50000
+                - area: 3.1415 * (4 + 1.5 * children.count()[:200]) ** 2
+                - scatter(age[:num], salary, c=eduach[:num], s=area, grid=True,
+                          fname='scatter1.png&pdf')
+                # r=expr is equivalent to s=pi * expr ** 2
+                - scatter(normal(size=num), normal(size=num), c=age[:num],
+                          r=2 ** eduach[:num], alpha=0.8,
+                          fname='scatter2.png&pdf')
 
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
@@ -2072,7 +2086,7 @@ simulation:
                    agegroup,
 
                    # test the charts before test_new messes the demography
-#                   test_charts,
+                   test_charts,
 
                    # ...
                    test_logit,
