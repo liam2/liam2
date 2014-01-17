@@ -345,7 +345,8 @@ class Simulation(object):
 
             if processes:
                 # build context for this period:
-                const_dict = {'period': period,
+                const_dict = {'__simulation__': self,
+                              'period': period,
                               'nan': float('nan'),
                               '__globals__': globals_data}
 

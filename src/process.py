@@ -1,13 +1,14 @@
 from __future__ import division, print_function
 
 import collections
+from types import NoneType
 
 import numpy as np
 
 import config
 from diff_h5 import diff_array
 from data import append_carray_to_table, ColumnArray
-from expr import Expr, type_to_idx, idx_to_type, expr_eval
+from expr import Expr, type_to_idx, idx_to_type, expr_eval, Variable
 from context import EntityContext
 import utils
 
@@ -111,9 +112,6 @@ class Assignment(Process):
             yield self.expr
 
 
-max_vars = 0
-
-
 class While(Process):
     """this class implements while loops"""
 
@@ -142,13 +140,29 @@ class While(Process):
             self.code.run_guarded(simulation, const_dict)
 
     def expressions(self):
-        for e in self.code.expressions():
-            yield e
         if isinstance(self.cond, Expr):
             yield self.cond
+        for e in self.code.expressions():
+            yield e
 
 
-class ProcessGroup(Process):
+class AbstractProcessGroup(Process):
+    def backup_and_purge_locals(self):
+        # backup and purge local variables
+        backup = {}
+        for name in self.entity.local_var_names:
+            backup[name] = self.entity.temp_variables.pop(name)
+        return backup
+
+    def purge_and_restore_locals(self, backup):
+        # purge the local from the function we just ran
+        self.entity.purge_locals()
+        # restore local variables for our caller
+        for k, v in backup.iteritems():
+            self.entity.temp_variables[k] = v
+
+
+class ProcessGroup(AbstractProcessGroup):
     def __init__(self, name, subprocesses, purge=True):
         super(ProcessGroup, self).__init__()
         self.name = name
@@ -161,27 +175,6 @@ class ProcessGroup(Process):
         Process.attach(self, name, entity)
         for k, v in self.subprocesses:
             v.attach(k, entity)
-
-    def _purge_locals(self):
-        global max_vars
-
-        # purge all local variables
-        temp_vars = self.entity.temp_variables
-        all_vars = self.entity.variables
-        local_var_names = set(temp_vars.keys()) - set(all_vars.keys())
-        num_locals = len(local_var_names)
-        if config.debug and num_locals:
-            local_vars = [v for k, v in temp_vars.iteritems()
-                          if k in local_var_names and isinstance(v, np.ndarray)]
-            max_vars = max(max_vars, num_locals)
-            temp_mem = sum(v.nbytes for v in local_vars)
-            avgsize = sum(v.dtype.itemsize for v in local_vars) / num_locals
-            print(("purging {} variables (max {}), will free {} of memory "
-                   "(avg field size: {} b)".format(num_locals, max_vars,
-                                                   utils.size2str(temp_mem),
-                                                   avgsize)))
-        for var in local_var_names:
-            del temp_vars[var]
 
     def run_guarded(self, simulation, const_dict):
         period = const_dict['period']
@@ -202,7 +195,7 @@ class ProcessGroup(Process):
             self._autodiff(period)
 
         if self.purge:
-            self._purge_locals()
+            self.entity.purge_locals()
 
     @property
     def _modified_fields(self):
@@ -269,3 +262,54 @@ class ProcessGroup(Process):
         for _, p in self.subprocesses:
             for e in p.expressions():
                 yield e
+
+
+class Function(AbstractProcessGroup):
+    """this class implements user-defined functions"""
+
+    def __init__(self, args=None, code=None, result=None):
+        """
+        args -- a Variable or a tuple of Variables
+        code -- a ProcessGroup
+        result -- an Expr
+        """
+        Process.__init__(self)
+        assert (isinstance(args, NoneType) or
+                isinstance(args, Variable) or
+                isinstance(args, tuple) and all(isinstance(a, Variable)
+                                                for a in args))
+        self.args = args
+        assert isinstance(code, (NoneType, ProcessGroup))
+        self.code = code
+        assert isinstance(result, (NoneType, Expr))
+        self.result = result
+
+    def attach(self, name, entity):
+        Process.attach(self, name, entity)
+        self.code.attach('func:code', entity)
+
+    def run_guarded(self, simulation, const_dict, *args, **kwargs):
+        #XXX: wouldn't some form of cascading context make all this junk much
+        # cleaner? Context(globalvars, localvars) (globalvars contain both
+        # entity fields and global temporaries)
+
+        backup = self.backup_and_purge_locals()
+
+        if config.debug:
+            temp_mem = sum(v.nbytes for v in backup.itervalues()
+                           if isinstance(v, np.ndarray))
+            print("added %d temporary variables to the stack (%s)"
+                  % (len(backup), utils.size2str(temp_mem)))
+
+        #TODO: add args to the context
+        self.code.run_guarded(simulation, const_dict)
+        context = EntityContext(self.entity, const_dict.copy())
+        result = expr_eval(self.result, context)
+
+        self.purge_and_restore_locals(backup)
+        return result
+
+    def expressions(self):
+        #XXX: not sure what to put here as I don't remember what it is used for
+        for e in self.code.expressions():
+            yield e

@@ -155,6 +155,7 @@ entities:
             - eduach:       {type: int, initialdata: False}
             - agegroup:     {type: int, initialdata: False}
             - float_field1: {type: float, initialdata: False}
+            - int_field1:   {type: int, initialdata: False}
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -196,9 +197,20 @@ entities:
                 - f_id: if(is_clone, father.clone_id, f_id)
                 - partner_id: if(is_clone, partner.clone_id, partner_id)
 
-#            test_proc:
+            test_proc1:
+                # same name than in the caller procedure, but should be local
+                - temp_var: age * 1
+                - local_var: temp_var * 2
+                - assertEqual(local_var, age * 2)
+                # update global variable
+                - int_field1: age + 1
+
+#            test_proc2:
 #                code:
-#                    - toto: 10
+#                    - int_field1: age + 1
+
+#            func_no_args:
+#                return: age + 1
 #
 #            func_wh_code:
 #                args: a, b
@@ -210,13 +222,36 @@ entities:
 #            func_no_code:
 #                args: a, b
 #                return: a + b
-#
-#            func_no_args:
-#                return: 42
-#
-#            test_call:
+
+            test_call:
+                - temp_var: age * 42
+                - int_field1: age + 42
+                - assertEqual(int_field1, age + 42)
+                - test_proc1()
+                - assertEqual(int_field1, age + 1)
+                # make sure the local variable did not change
+                - assertEqual(temp_var, age * 42)
+
+#                - int_field1: age + 42
+#                - assertEqual(int_field1, age + 42)
+#                - test_proc2()
+#                - assertEqual(int_field1, age + 1)
+
 #                - aplusb: func_wh_code(age, 1)
 #                - show("age", age, "aplusb", aplusb)
+
+                # without argument
+                - assertEqual(age.sum(), sum(age))
+                - assertEqual(age.std(), std(age))
+                - assertEqual(age.max(), max(age))
+                - assertEqual(age.min(), min(age))
+
+                # with constant argument
+                - assertEqual(age.min(axis=-1), min(age))
+
+                # with expr argument
+                - axis: 0
+                - assertEqual(age.min(axis=axis), min(age))
 
             test_while:
                 - values: age
@@ -389,29 +424,15 @@ entities:
                 # with expr argument
                 - newborn: age[age == 0]
                 - assertEqual(newborn[0], 0)
-                
+
                 # with slice
                 - assertEqual(age[0:1], [age[0]])
-                
+
                 # with expr slice
                 - index: trunc(count() / 2)
                 - ages: age[index:index+10:2]
                 - assertEqual(ages.__len__(), 5)
                 - assertEqual(ages[0], age[index])
-
-            test_call:
-                # without argument
-                - assertEqual(age.sum(), sum(age))
-                - assertEqual(age.std(), std(age))
-                - assertEqual(age.max(), max(age))
-                - assertEqual(age.min(), min(age))
-
-                # with constant argument
-                - assertEqual(age.min(axis=-1), min(age))
-
-                # with expr argument
-                - axis: 0
-                - assertEqual(age.min(axis=axis), min(age))
 
             test_periodic_globals:
                 # implicit global namespace
@@ -2086,7 +2107,7 @@ simulation:
                    agegroup,
 
                    # test the charts before test_new messes the demography
-                   test_charts,
+#                   test_charts,
 
                    # ...
                    test_logit,

@@ -938,3 +938,60 @@ class GlobalTable(object):
         #XXX: print (a subset of) data instead?
         return 'Table(%s)' % ', '.join([name for name, _ in self.fields])
     __repr__ = __str__
+
+
+class MethodCall(EvaluableExpression):
+    def __init__(self, entity, name, args, kwargs):
+        self.entity = entity
+        self.name = name
+        self.args = args
+        self.kwargs = kwargs
+
+    def evaluate(self, context):
+        from process import ProcessGroup, Function
+        entity_processes = self.entity.processes
+        method = entity_processes[self.name]
+        assert isinstance(method, (ProcessGroup, Function))
+        args = [expr_eval(arg, context) for arg in self.args]
+        kwargs = dict((k, expr_eval(v, context))
+                      for k, v in self.kwargs.iteritems())
+        print("args and kwargs are ignored")
+        fields = '__simulation__', 'period', 'nan', '__globals__'
+        const_dict = {k: context[k] for k in fields}
+        print('MethodCall', self.name, method)
+        return method.run_guarded(const_dict['__simulation__'], const_dict,
+                                  *args, **kwargs)
+
+    def __str__(self):
+        args = [repr(a) for a in self.args]
+        kwargs = ['%s=%r' % (k, v) for k, v in self.kwargs.iteritems()]
+        return '%s(%s)' % (self.expr, ', '.join(args + kwargs))
+    __repr__ = __str__
+
+    def collect_variables(self, context):
+        args_vars = [collect_variables(arg, context) for arg in self.args]
+        args_vars.extend(collect_variables(v, context)
+                         for v in self.kwargs.itervalues())
+        return set.union(*args_vars) if args_vars else set()
+
+    def traverse(self, context):
+        # for node in traverse_expr(self.expr, context):
+        #     yield node
+        for arg in self.args:
+            for node in traverse_expr(arg, context):
+                yield node
+        for kwarg in self.kwargs.itervalues():
+            for node in traverse_expr(kwarg, context):
+                yield node
+        yield self
+
+
+class MethodSymbol(object):
+    def __init__(self, name, entity):
+        self.name = name
+        self.entity = entity
+
+    def __call__(self, *args, **kwargs):
+        return MethodCall(self.entity, self.name, args, kwargs)
+
+

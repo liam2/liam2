@@ -8,11 +8,14 @@ import config
 from context import EntityContext, context_length
 from data import merge_arrays, get_fields, ColumnArray
 from expr import (Variable, GlobalVariable, GlobalTable, GlobalArray,
-                  expr_eval, get_missing_value, Expr)
+                  expr_eval, get_missing_value, Expr, MethodSymbol)
 from exprparser import parse
-from process import Assignment, Compute, Process, ProcessGroup, While
+from process import Assignment, Compute, Process, ProcessGroup, While, Function
 from registry import entity_registry
 from utils import safe_put, count_occurrences, field_str_to_type, size2str
+
+
+max_vars = 0
 
 
 #def compress_column(a, level):
@@ -130,6 +133,7 @@ class Entity(object):
         self.temp_variables = {}
         self.id_to_rownum = None
         self._variables = None
+        self._methods = None
 
     @classmethod
     def from_yaml(cls, ent_name, entity_def):
@@ -163,6 +167,10 @@ class Entity(object):
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}))
 
+    @property
+    def local_var_names(self):
+        return set(self.temp_variables.keys()) - set(self.variables.keys())
+
     @classmethod
     def from_table(cls, table):
         return Entity(table.name, get_fields(table), missing_fields=[],
@@ -190,6 +198,19 @@ class Entity(object):
             variables.update(self.links)
             self._variables = variables
         return self._variables
+
+    @staticmethod
+    def ismethod(v):
+        return (isinstance(v, list) or
+                isinstance(v, dict) and ('code' in v or 'return' in v))
+
+    @property
+    def methods(self):
+        if self._methods is None:
+            self._methods = [(key, MethodSymbol(key, self))
+                             for key, value in self.process_strings.iteritems()
+                             if self.ismethod(value)]
+        return self._methods
 
     def check_links(self):
         for name, link in self.links.iteritems():
@@ -231,14 +252,15 @@ class Entity(object):
     def all_symbols(self, globals_def):
         from links import PrefixingLink
 
-        variables = global_variables(globals_def).copy()
-        variables.update(self.variables)
+        symbols = global_variables(globals_def).copy()
+        symbols.update(self.variables)
         cond_context = self.conditional_context
-        macros = dict((k, parse(v, variables, cond_context))
+        macros = dict((k, parse(v, symbols, cond_context))
                       for k, v in self.macro_strings.iteritems())
-        variables.update(macros)
-        variables['other'] = PrefixingLink(macros, self.links, '__other_')
-        return variables
+        symbols.update(macros)
+        symbols['other'] = PrefixingLink(macros, self.links, '__other_')
+        symbols.update(self.methods)
+        return symbols
 
     def parse_expr(self, k, v, variables, cond_context):
         if isinstance(v, (bool, int, float)):
@@ -292,12 +314,21 @@ class Entity(object):
             else:
                 process = self.parse_expr(k, v, context, cond_context)
                 if process is None:
-                    if isinstance(v, list):
-                        # v is a procedure
-                        # it should be a list of dict (assignments) or string
-                        # (action)
-                        process = self.parse_process_group(k, v, context,
-                                                           cond_context)
+                    if self.ismethod(v):
+                        if isinstance(v, list):
+                            # v should be a list of dicts (assignments) or
+                            # strings (actions)
+                            code_def, args, result = v, None, None
+                        else:
+                            assert isinstance(v, dict)
+                            code_def = v.get('code', []),
+                            args = parse(v.get('args'), context, cond_context)
+                            result = parse(v.get('return'), context, cond_context)
+                            assert result is None or isinstance(result, Expr)
+                        code = self.parse_process_group("func:code", code_def,
+                                                        context, cond_context,
+                                                        purge=False)
+                        process = Function(args, code, result)
                     elif isinstance(v, dict) and 'predictor' in v:
                         raise ValueError("Using the 'predictor' keyword is "
                                          "not supported anymore. "
@@ -381,12 +412,32 @@ class Entity(object):
         if not isinstance(self.array, ColumnArray):
             self.array = ColumnArray(self.array)
 
+    def purge_locals(self):
+        """purge all local variables"""
+        global max_vars
+
+        temp_vars = self.temp_variables
+        local_var_names = self.local_var_names
+        num_locals = len(local_var_names)
+        if config.debug and num_locals:
+            local_vars = [v for k, v in temp_vars.iteritems()
+                          if k in local_var_names and isinstance(v, np.ndarray)]
+            max_vars = max(max_vars, num_locals)
+            temp_mem = sum(v.nbytes for v in local_vars)
+            avgsize = sum(v.dtype.itemsize for v in local_vars) / num_locals
+            print(("purging {} variables (max {}), will free {} of memory "
+                   "(avg field size: {} b)".format(num_locals, max_vars,
+                                                   size2str(temp_mem),
+                                                   avgsize)))
+        for var in local_var_names:
+            del temp_vars[var]
+
     def store_period_data(self, period):
         if config.debug:
             temp_mem = sum(v.nbytes for v in self.temp_variables.itervalues()
                            if isinstance(v, np.ndarray))
             main_mem = self.array.nbytes
-            print("mem used: %s (main: %s / temp: %s)" \
+            print("mem used: %s (main: %s / temp: %s)"
                   % (size2str(temp_mem + main_mem),
                      size2str(main_mem),
                      size2str(temp_mem)))
@@ -448,5 +499,3 @@ class Entity(object):
 
     def __repr__(self):
         return "<Entity '%s'>" % self.name
-
-
