@@ -3,8 +3,8 @@
 Change log
 ##########
 
-Version 0.8-rc1
-===============
+Version 0.8-pre2
+================
 
 * fixed "view" action (ViTables) on some computers when used in notepad++.
 
