@@ -603,8 +603,8 @@ bug fixes
 optimisation
 ============
 
-- try to compress data using google snappy, quicklz or lz4 (they seem even
-  faster than fastLZ on which blosc is based)
+- try to compress data using google snappy, quicklz or (especially) lz4 (they
+  seem even faster than fastLZ on which blosc is based)
 
 - improve numexpr caching algorithm (LRU), and/or increase its size and/or
   cache expressions ourselves. Some long expressions take a lot longer to
