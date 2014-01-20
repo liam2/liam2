@@ -197,7 +197,7 @@ entities:
                 - f_id: if(is_clone, father.clone_id, f_id)
                 - partner_id: if(is_clone, partner.clone_id, partner_id)
 
-            test_proc1:
+            test_proc:
                 # same name than in the caller procedure, but should be local
                 - temp_var: age * 1
                 - local_var: temp_var * 2
@@ -205,41 +205,92 @@ entities:
                 # update global variable
                 - int_field1: age + 1
 
-#            test_proc2:
-#                code:
-#                    - int_field1: age + 1
+            # should raise a warning because it does not make sense
+            func_only_args:
+                args: a, b
 
-#            func_no_args:
-#                return: age + 1
-#
-#            func_wh_code:
-#                args: a, b
-#                code: 
-#                    - result: a + b
-#                    - result: result * 2
-#                return: result * 2
-#
-#            func_no_code:
-#                args: a, b
-#                return: a + b
+            func_only_code:
+                code:
+                    # same name than in the caller procedure, but should be local
+                    - temp_var: age
+                    - local_var: temp_var * 2
+                    - assertEqual(local_var, age * 2)
+                    # update global variable
+                    - int_field1: age + 1
+
+            func_only_return:
+                return: age + 1
+
+            func_no_args:
+                code:
+                    # same name than in the caller procedure, but should be local
+                    - temp_var: age
+                    - local_var: temp_var * 2
+                return: local_var * 2
+
+            func_no_code:
+                args: a, b
+                return: a + b
+
+            func_no_return:
+                args: a, b
+                code:
+                    # same name than in the caller procedure, but should be local
+                    - temp_var: age * 1
+                    - local_var: temp_var * 2
+                    - assertEqual(local_var, age * 2)
+                    # update global variable
+                    - int_field1: age + 1
+
+            func_args_code_result:
+                args: a, b
+                code:
+                    - result: a + b
+                    - result: result * 2
+                return: result * 2
+
+            # this is an awful hack since we do not have an if control flow
+            # keyword yet
+            factorial:
+                args: n
+                code:
+                    - r: 0
+                    - while:
+                        cond: n > 1
+                        code:
+                            - r: n * factorial(n - 1)
+                            - n: 0
+                    - while:
+                        cond: n == 1
+                        code:
+                            - r: 1
+                            - n: 0
+                return: r
 
             test_call:
+                # 1) no args and no result (concise/old style)
                 - temp_var: age * 42
                 - int_field1: age + 42
                 - assertEqual(int_field1, age + 42)
-                - test_proc1()
+                - test_proc()
                 - assertEqual(int_field1, age + 1)
                 # make sure the local variable did not change
                 - assertEqual(temp_var, age * 42)
 
-#                - int_field1: age + 42
-#                - assertEqual(int_field1, age + 42)
-#                - test_proc2()
-#                - assertEqual(int_field1, age + 1)
+                # 2) no args and no result (verbose/new style)
+                - int_field1: age + 42
+                - assertEqual(int_field1, age + 42)
+                - func_only_code()
+                - assertEqual(int_field1, age + 1)
+                # make sure the local variable did not change
+                - assertEqual(temp_var, age * 42)
 
-#                - aplusb: func_wh_code(age, 1)
-#                - show("age", age, "aplusb", aplusb)
+#                - assertEqual(factorial(1), 1)
+#                - assertEqual(factorial(2), 2)
+#                - assertEqual(factorial(3), 6)
+#                - assertEqual(factorial(4), 24)
 
+                # generic call (ndarray methods)
                 # without argument
                 - assertEqual(age.sum(), sum(age))
                 - assertEqual(age.std(), std(age))

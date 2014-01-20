@@ -201,8 +201,9 @@ class Entity(object):
 
     @staticmethod
     def ismethod(v):
+        keys = ('args', 'code', 'return')
         return (isinstance(v, list) or
-                isinstance(v, dict) and ('code' in v or 'return' in v))
+                isinstance(v, dict) and any(key in v for key in keys))
 
     @property
     def methods(self):
@@ -318,17 +319,35 @@ class Entity(object):
                         if isinstance(v, list):
                             # v should be a list of dicts (assignments) or
                             # strings (actions)
-                            code_def, args, result = v, None, None
+                            argnames, code_def, result_def = [], v, None
                         else:
                             assert isinstance(v, dict)
-                            code_def = v.get('code', []),
-                            args = parse(v.get('args'), context, cond_context)
-                            result = parse(v.get('return'), context, cond_context)
-                            assert result is None or isinstance(result, Expr)
+                            args_def = v.get('args', '')
+                            argnames = [a.strip()
+                                        for a in args_def.split(',')
+                                        if a != '']
+                            code_def = v.get('code', [])
+                            result_def = v.get('return')
+                        method_context = context.copy()
+                        method_context.update((name, Variable(name))
+                                              for name in argnames)
                         code = self.parse_process_group("func:code", code_def,
-                                                        context, cond_context,
+                                                        method_context,
+                                                        cond_context,
                                                         purge=False)
-                        process = Function(args, code, result)
+                        #TODO: use code.predictors instead (but it currently
+                        # fails for some reason)
+                        group_expressions = [elem.items()[0] if isinstance(elem, dict)
+                                             else (None, elem)
+                                             for elem in code_def]
+                        group_predictors = \
+                            self.collect_predictors(group_expressions)
+                        method_context.update((name, Variable(name))
+                                              for name in group_predictors)
+                        result = parse(result_def, method_context,
+                                       cond_context)
+                        assert result is None or isinstance(result, Expr)
+                        process = Function(argnames, code, result)
                     elif isinstance(v, dict) and 'predictor' in v:
                         raise ValueError("Using the 'predictor' keyword is "
                                          "not supported anymore. "

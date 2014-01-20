@@ -198,9 +198,13 @@ class ProcessGroup(AbstractProcessGroup):
             self.entity.purge_locals()
 
     @property
+    def predictors(self):
+        return [v.name for _, v in self.subprocesses
+                if isinstance(v, Assignment)]
+
+    @property
     def _modified_fields(self):
-        fnames = [v.predictor for _, v in self.subprocesses
-                  if isinstance(v, Assignment)]
+        fnames = self.predictors
         if not fnames:
             return []
 
@@ -267,21 +271,22 @@ class ProcessGroup(AbstractProcessGroup):
 class Function(AbstractProcessGroup):
     """this class implements user-defined functions"""
 
-    def __init__(self, args=None, code=None, result=None):
+    def __init__(self, argnames, code=None, result=None):
         """
-        args -- a Variable or a tuple of Variables
-        code -- a ProcessGroup
-        result -- an Expr
+        args -- a list of strings
+        code -- a ProcessGroup (or None)
+        result -- an Expr (or None)
         """
         Process.__init__(self)
-        assert (isinstance(args, NoneType) or
-                isinstance(args, Variable) or
-                isinstance(args, tuple) and all(isinstance(a, Variable)
-                                                for a in args))
-        self.args = args
-        assert isinstance(code, (NoneType, ProcessGroup))
+
+        assert isinstance(argnames, list)
+        assert all(isinstance(a, basestring) for a in argnames)
+        self.argnames = argnames
+
+        assert code is None or isinstance(code, ProcessGroup)
         self.code = code
-        assert isinstance(result, (NoneType, Expr))
+
+        assert result is None or isinstance(result, Expr)
         self.result = result
 
     def attach(self, name, entity):
@@ -295,15 +300,16 @@ class Function(AbstractProcessGroup):
 
         backup = self.backup_and_purge_locals()
 
-        if config.debug:
-            temp_mem = sum(v.nbytes for v in backup.itervalues()
-                           if isinstance(v, np.ndarray))
-            print("added %d temporary variables to the stack (%s)"
-                  % (len(backup), utils.size2str(temp_mem)))
+        if len(args) != len(self.argnames):
+            print(self.argnames)
+            raise TypeError("takes exactly %d arguments (%d given)" %
+                            (len(self.argnames), len(args)))
 
-        #TODO: add args to the context
+        const_dict = const_dict.copy()
+        for name, value in zip(self.argnames, args):
+            const_dict[name] = value
         self.code.run_guarded(simulation, const_dict)
-        context = EntityContext(self.entity, const_dict.copy())
+        context = EntityContext(self.entity, const_dict)
         result = expr_eval(self.result, context)
 
         self.purge_and_restore_locals(backup)

@@ -955,10 +955,8 @@ class MethodCall(EvaluableExpression):
         args = [expr_eval(arg, context) for arg in self.args]
         kwargs = dict((k, expr_eval(v, context))
                       for k, v in self.kwargs.iteritems())
-        print("args and kwargs are ignored")
         fields = '__simulation__', 'period', 'nan', '__globals__'
         const_dict = {k: context[k] for k in fields}
-        print('MethodCall', self.name, method)
         return method.run_guarded(const_dict['__simulation__'], const_dict,
                                   *args, **kwargs)
 
