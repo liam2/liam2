@@ -23,6 +23,10 @@ implementation that I am aware of.
 features I would like to implement (in no particular order)
 ===========================================================
 
+- when the move away from the conditional context is done,
+  I should make macros available via links. Maybe also merge
+  entity.all_symbols and entity.variables?
+
 - replace breakpoint(period) by breakpoint(condition)
 
 - add option to insert a conditional breakpoint for asserts (ie failed
