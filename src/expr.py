@@ -948,10 +948,11 @@ class MethodCall(EvaluableExpression):
         self.kwargs = kwargs
 
     def evaluate(self, context):
-        from process import ProcessGroup, Function
+        from process import Assignment, Function
         entity_processes = self.entity.processes
         method = entity_processes[self.name]
-        assert isinstance(method, (ProcessGroup, Function))
+        # hybrid (method & variable) assignment can be called
+        assert isinstance(method, (Assignment, Function))
         args = [expr_eval(arg, context) for arg in self.args]
         kwargs = dict((k, expr_eval(v, context))
                       for k, v in self.kwargs.iteritems())
@@ -982,6 +983,15 @@ class MethodCall(EvaluableExpression):
             for node in traverse_expr(kwarg, context):
                 yield node
         yield self
+
+
+class VariableMethodHybrid(Variable):
+    def __init__(self, name, entity, dtype=None):
+        Variable.__init__(self, name, dtype)
+        self.entity = entity
+
+    def __call__(self, *args, **kwargs):
+        return MethodCall(self.entity, self.name, args, kwargs)
 
 
 class MethodSymbol(object):

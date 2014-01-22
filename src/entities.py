@@ -7,12 +7,13 @@ import tables
 import config
 from context import EntityContext, context_length
 from data import merge_arrays, get_fields, ColumnArray
-from expr import (Variable, GlobalVariable, GlobalTable, GlobalArray,
-                  expr_eval, get_missing_value, Expr, MethodSymbol)
+from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
+                  GlobalArray, expr_eval, get_missing_value, Expr, MethodSymbol)
 from exprparser import parse
 from process import Assignment, Compute, Process, ProcessGroup, While, Function
 from registry import entity_registry
-from utils import safe_put, count_occurrences, field_str_to_type, size2str
+from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
+                   WarnOverrideDict)
 
 
 max_vars = 0
@@ -185,16 +186,28 @@ class Entity(object):
     @property
     def variables(self):
         if self._variables is None:
-            global_predictors = \
-                self.collect_predictors(self.process_strings.iteritems())
-            all_fields = set(global_predictors)
-            stored_fields = set(self.stored_fields)
-            temporary_fields = all_fields - stored_fields
+            processes = self.process_strings.items()
 
+            # names of all processes (hybrid or not) of the entity
+            process_names = set(k for k, v in processes if k is not None)
+
+            # names of all entity variables (temporary or not) which are set
+            # globally
+            all_predictors = set(self.collect_predictors(processes))
+
+            stored_fields = self.stored_fields
+
+            # non-callable fields (no variable-procedure for them)
             variables = dict((name, Variable(name, type_))
-                             for name, type_ in self.fields)
-            variables.update((name, Variable(name))
-                             for name in temporary_fields)
+                             for name, type_ in self.fields
+                             if name in stored_fields - process_names)
+            # callable fields
+            variables.update((name, VariableMethodHybrid(name, self, type_))
+                             for name, type_ in self.fields
+                             if stored_fields & process_names)
+            # temporary fields (they are all callable)
+            variables.update((name, VariableMethodHybrid(name, self))
+                             for name in all_predictors - stored_fields)
             variables.update(self.links)
             self._variables = variables
         return self._variables
@@ -208,9 +221,11 @@ class Entity(object):
     @property
     def methods(self):
         if self._methods is None:
+            # variable-method hybrids are handled by the self.variable property
             self._methods = [(key, MethodSymbol(key, self))
                              for key, value in self.process_strings.iteritems()
-                             if self.ismethod(value)]
+                             if self.ismethod(value) and
+                                key not in self.stored_fields]
         return self._methods
 
     def check_links(self):
@@ -254,6 +269,7 @@ class Entity(object):
         from links import PrefixingLink
 
         symbols = global_variables(globals_def).copy()
+        symbols = WarnOverrideDict(symbols)
         symbols.update(self.variables)
         cond_context = self.conditional_context
         macros = dict((k, parse(v, symbols, cond_context))

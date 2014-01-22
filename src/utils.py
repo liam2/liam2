@@ -782,6 +782,27 @@ def countlines(filepath):
 # dict tools
 # ----------
 
+class WarnOverrideDict(dict):
+    def update(self, other=None, **kwargs):
+        # copy the items to not lose them in case it is an exhaustable
+        # iterable
+        # also converts list and tuple to dict
+        if not isinstance(other, dict):
+            other = dict(other)
+        self._intersect_warn(self, other)
+        self._intersect_warn(self, kwargs)
+        self._intersect_warn(other, kwargs)
+        dict.update(self, other, **kwargs)
+
+    @staticmethod
+    def _intersect_warn(d1, d2):
+        intersect = set(d1.keys()) & set(d2.keys())
+        if intersect:
+            print("Warning: name collision for:",
+                  ",".join("%s (%s vs %s)" % (k, type(d1[k]), d2[k])
+                           for k in sorted(intersect)))
+
+
 def merge_dicts(*args, **kwargs):
     """
     Returns a new dictionary which is the result of recursively merging all

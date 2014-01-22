@@ -76,6 +76,10 @@ entities:
 
             num_persons: persons.count()
             nch: persons.count(age <= 18)
+
+            #TODO: make this work
+            #nch_macro: persons.count(ISCHILD)
+
             maxnch: max(nch)
             dump_csv_h: csv(dump())
             aligned: False
@@ -156,6 +160,7 @@ entities:
             - agegroup:     {type: int, initialdata: False}
             - float_field1: {type: float, initialdata: False}
             - int_field1:   {type: int, initialdata: False}
+            - hybrid_test:  {type: int, initialdata: False}
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -304,6 +309,36 @@ entities:
                 - axis: 0
                 - assertEqual(age.min(axis=axis), min(age))
 
+            hybrid_test:
+                - hybrid_test: age + 1
+                - assertEqual(hybrid_test, age + 1)
+
+            test_hybrids:
+                # hybrid = both a variable and a method
+                # stored = in fields
+
+                # temporary global (single-expr process) => hybrid
+                # * manual call
+                - temp_global()
+                # * in agespine (tested before)
+                # * used in expr
+                - assertEqual(temp_global, age + 10)
+
+                # stored + single-expr process => hybrid
+                # * manual call
+                - agegroup()
+                # * in agespine (tested before)
+                # * used in expr (tested in many tests but lets do it here too)
+                - local: agegroup * 10
+                - assertEqual(local, agegroup * 10)
+
+                # stored + procedure => hybrid (+ warn?)
+                # * manual call
+                - hybrid_test()
+                # * in agespine (tested before)
+                # * used in expr
+                - assertEqual(hybrid_test - 1, age)
+
             test_while:
                 - values: age
                 # => while is a reserved keyword and can't be used as a
@@ -430,11 +465,10 @@ entities:
 #                      partner_id=1)
 
             temp_global: age + 10
-            temp_global_test1:
+            temp_global_modify:
                 - temp_global: temp_global * 2
-            temp_global_test2:
-                - temp_global: temp_global - 10
-            show_temp_global: show(temp_global)
+            temp_global_check:
+                - assertEqual(temp_global, (age + 10) * 2)
 
             test_expr:
                 - show("count:", count())
@@ -2148,11 +2182,8 @@ simulation:
 
                    # basic
                    temp_global,
-                   show_temp_global,
-                   temp_global_test1,
-                   show_temp_global,
-                   temp_global_test2,
-                   show_temp_global,
+                   temp_global_modify,
+                   temp_global_check,
 
                    test_expr,
                    agegroup,
@@ -2167,6 +2198,8 @@ simulation:
                    test_attr,
                    test_subscript,
                    test_call,
+                   hybrid_test,
+                   test_hybrids,
 
                    test_periodic_globals,
                    test_other_globals,
