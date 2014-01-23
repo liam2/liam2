@@ -400,6 +400,12 @@ class LabeledArray(np.ndarray):
         obj.row_totals = None
         return obj
 
+    def transpose(self, *args):
+        res_data = np.asarray(self).transpose(args)
+        res_dim_names = [self.dim_names[i] for i in args]
+        res_pvalues = [self.pvalues[i] for i in args]
+        return LabeledArray(res_data, res_dim_names, res_pvalues)
+
     #noinspection PyAttributeOutsideInit
     def __array_finalize__(self, obj):
         # We are in the middle of the LabeledArray.__new__ constructor,
