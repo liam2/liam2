@@ -24,9 +24,9 @@ except ImportError, e:
 
 
 class Chart(Process):
-    grid = False
-    axes = True
-    legend = True
+    show_grid = False
+    show_axes = True
+    show_legend = True
     maxticks = 20
     projection = None
     ndim_req = 2
@@ -107,14 +107,14 @@ class Chart(Process):
         if colors is None:
             colors = self.get_colors(len(axes[0]))
         fname = kwargs.pop('fname', None)
-        grid = kwargs.pop('grid', self.grid)
+        grid = kwargs.pop('grid', self.show_grid)
         maxticks = kwargs.pop('maxticks', self.maxticks)
         projection = self.projection
 
-        if self.legend:
+        if self.show_legend:
             self.set_legend(axes[0], colors)
             axes = axes[1:]
-        if self.axes:
+        if self.show_axes:
             self.set_axes(axes, maxticks, projection)
 
         self._draw(data, colors, **kwargs)
@@ -173,7 +173,7 @@ class Chart(Process):
 
 
 class BoxPlot(Chart):
-    legend = False
+    show_legend = False
     # boxplot works fine with several arrays of different lengths
     check_length = False
 
@@ -186,7 +186,7 @@ class BoxPlot(Chart):
 class Scatter(Chart):
     # our code does not handle nicely axes with floating point ticks and
     # mpl handles them fine
-    axes = False
+    show_axes = False
     colorbar_threshold = 10
 
     def prepare(self, args, kwargs):
@@ -195,9 +195,9 @@ class Scatter(Chart):
         unq_colors = np.unique(c)
         if len(unq_colors) >= self.colorbar_threshold:
             # we will add a colorbar in this case, so we do not need a legend
-            self.legend = False
+            self.show_legend = False
         else:
-            # add a fake axis that will be used to make a legend
+            # prepend a fake axis that will be used to make a legend
             axes = [Axis(None, unq_colors)] + axes
         return args, axes
 
@@ -217,7 +217,7 @@ class Scatter(Chart):
 
 
 class Plot(Chart):
-    grid = True
+    show_grid = True
 
     def __init__(self, *args, **kwargs):
         Chart.__init__(self, *args, **kwargs)
@@ -260,7 +260,7 @@ class StackPlot(Chart):
 
 
 class Bar(Chart):
-    grid = True
+    show_grid = True
 
     def _draw(self, data, colors, **kwargs):
         numvalues = len(data[0])
@@ -282,7 +282,7 @@ class Bar(Chart):
 
 
 class BarH(Bar):
-    grid = True
+    show_grid = True
 
     def _draw(self, data, colors, **kwargs):
         numvalues = len(data[0])
@@ -304,8 +304,8 @@ class BarH(Bar):
 
 
 class Pie(Chart):
-    axes = False
-    legend = False
+    show_axes = False
+    show_legend = False
     ndim_req = 1
 
     def _draw(self, data, colors, **kwargs):
