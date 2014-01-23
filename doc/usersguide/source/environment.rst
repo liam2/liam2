@@ -28,19 +28,19 @@ Getting Started
 ---------------
 
 - Copy the contents of the bundle in a directory on your disk (let us call it 
-  *[LIAM2PATH]*).
+  *[BUNDLEPATH]*).
 
-- Run the "Notepad++Portable.exe" from the *[LIAM2PATH]\\editor* 
+- Run the "Notepad++Portable.exe" from the *[BUNDLEPATH]\\editor* 
   directory.
 
-- Open a model (eg. *[LIAM2PATH]\\examples\\demo01.yml*)
+- Open a model (eg. *[BUNDLEPATH]\\examples\\demo01.yml*)
 
 - Press F6 to run the model. A console window will open within the editor and
   display the status of the simulation. After the simulation completes, the
   console window becomes interactive.
 
 - Use this console to explore the results. If you already quit the
-  interactive console and want to explore the results with interactive
+  interactive console and want to explore the results with the interactive
   console again without (re)simulating the model, you can press F7.
 
 - Alternatively, you can explore the results "graphically" by pressing F9.
@@ -55,7 +55,7 @@ Using your own data
   do not necessarily need to be named like that in the csv file).
 
 - Create an import file, as described in the :ref:`import_data` section. You
-  can use *[LIAM2PATH]\\examples\\demo_import.yml* as an example.
+  can use *[BUNDLEPATH]\\examples\\demo_import.yml* as an example.
 
 - Press F5 to convert your CSV files to hdf5.
 

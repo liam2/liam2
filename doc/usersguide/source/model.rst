@@ -431,4 +431,4 @@ Running a model/simulation
 
 - If you are using the command line, use: ::
 
-    [LIAM2PATH]\main run <path_to_simulation_file>
+    [BUNDLEPATH]\liam2\main run <path_to_simulation_file>
