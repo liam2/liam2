@@ -76,7 +76,9 @@ class Chart(Process):
             if not isinstance(data, np.ndarray):
                 data = np.asarray(data)
             if ndim(data) == ndim_req:
-                pass
+                # move the last axis first so that the last dimension is stacked
+                axes = range(data.ndim)
+                data = data.transpose(axes[-1], *axes[:-1])
             elif ndim(data) == ndim_req - 1:
                 if isinstance(data, LabeledArray):
                     #TODO: implement np.newaxis in LabeledArray.__getitem__

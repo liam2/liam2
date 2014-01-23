@@ -396,12 +396,12 @@ entities:
                 - plot((lag(avg(work), 5), lag(avg(work), 4),
                         lag(avg(work), 3), lag(avg(work), 2),
                         lag(avg(work)), avg(work)), fname='plot05.png')
-                - plot(groupby(gender, age), fname='plot06.png&pdf')
-                - plot(groupby(gender, age), colors=['g', 'b'],
+                - plot(groupby(age, gender), fname='plot06.png&pdf')
+                - plot(groupby(age, gender), colors=['g', 'b'],
                        fname='plot07.png')
-                - plot(groupby(gender, agegroup), styles=['--', '-'],
+                - plot(groupby(agegroup, gender), styles=['--', '-'],
                        fname='plot08.png')
-                - plot(groupby(gender, agegroup),
+                - plot(groupby(agegroup, gender),
                        grid=False, linestyle='dashed', marker='o', linewidth=5,
                        fname='plot09.png&pdf')
                 - plot(groupby(eduach), 's--', fname='plot10.png')
@@ -413,8 +413,8 @@ entities:
                        fname='plot12.png&pdf')
 
                 - stackplot(groupby(eduach), fname='stackplot1.png')
-                - stackplot(groupby(eduach, age), fname='stackplot2.png&pdf')
-                - stackplot(groupby(gender, eduach),
+                - stackplot(groupby(age, eduach), fname='stackplot2.png&pdf')
+                - stackplot(groupby(eduach, gender),
                             colors=['g', 'b'], baseline='sym',
                             fname='stackplot3.png')
                 - stackplot(groupby(age, filter=not gender),
@@ -425,18 +425,18 @@ entities:
                 - bar(byage, fname='bar1.png')
                 - bar(groupby(agegroup), fname='bar2.png&pdf')
                 - bar(groupby(agegroup + 1), fname='bar3.png')
-                - bar(groupby(gender, agegroup), fname='bar4.png')
+                - bar(groupby(agegroup, gender), fname='bar4.png')
                 - bar(groupby(agegroup, filter=not gender),
                       groupby(agegroup, filter=gender),
                       fname='bar5.png&pdf')
-                - bar(groupby(eduach, agegroup), fname='bar6.png&pdf')
-                - bar(groupby(eduach, agegroup), width=0.8, fname='bar7.png')
+                - bar(groupby(agegroup, eduach), fname='bar6.png&pdf')
+                - bar(groupby(agegroup, eduach), width=0.8, fname='bar7.png')
                 # mig_period_women
                 - bar(MIG[0,:,period - 2001], fname='bar8.png')
 
                 # axes are currently messed up
-                # - barh(groupby(eduach, agegroup))
-                # - barh(groupby(eduach, agegroup), height=0.7)
+                # - barh(groupby(agegroup, eduach))
+                # - barh(groupby(agegroup, eduach), height=0.7)
 
                 - pie(groupby(eduach), fname='pie1.png&pdf')
                 - pie(groupby(eduach),
@@ -2189,7 +2189,7 @@ simulation:
                    agegroup,
 
                    # test the charts before test_new messes the demography
-#                   test_charts,
+                   test_charts,
 
                    # ...
                    test_logit,
