@@ -1,6 +1,6 @@
-# This is a "simulation" file. To run the simulation, press F6 in liam2
-# environment, or run the following command in a console:
-# INSTALL PATH\main run demo06.yml
+# This is a LIAM2 simulation file. To run the simulation, press F6 if you are
+# using the editor bundled with LIAM2, otherwise run the following command in a
+# console: [BUNDLEPATH]\liam2\main run demo06.yml
 
 # In this example, we will model the work state and education level of people.
 # To achieve that we need the following additional features: globals and the
@@ -97,8 +97,7 @@ entities:
             RETIREMENTAGE: if(gender, 65, WEMRA)
             ACTIVEAGE: (age > 15) and (age < if(gender, 65, WEMRA))
 
-        # possible transitions and regressions. The actual list used in the
-        # simulation must be defined below
+        # possible transitions and regressions
         processes:
             ageing:
                 - age: age + 1

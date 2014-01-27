@@ -1,6 +1,6 @@
-# This is a "simulation" file. To run the simulation, press F6 in liam2
-# environment, or run the following command in a console:
-# INSTALL PATH\main run demo05.yml
+# This is a LIAM2 simulation file. To run the simulation, press F6 if you are
+# using the editor bundled with LIAM2, otherwise run the following command in a
+# console: [BUNDLEPATH]\liam2\main run demo05.yml
 
 # In this example, we will model young adults leaving their parents household
 # and some couples divorcing. For that we will show how to break existing links,
@@ -68,8 +68,7 @@ entities:
             ISDIVORCED: civilstate == 3
             ISWIDOW: civilstate == 4
 
-        # possible transitions and regressions. The actual list used in the
-        # simulation must be defined below
+        # possible transitions and regressions
         processes:
             ageing:
                 - age: age + 1

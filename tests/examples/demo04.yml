@@ -1,6 +1,6 @@
-# This is a "simulation" file. To run the simulation, press F6 in liam2
-# environment, or run the following command in a console:
-# INSTALL PATH\main run demo04.yml
+# This is a LIAM2 simulation file. To run the simulation, press F6 if you are
+# using the editor bundled with LIAM2, otherwise run the following command in a
+# console: [BUNDLEPATH]\liam2\main run demo04.yml
 
 # In this example, we will add a simple marriage process to our model and model
 # the civil status of persons. We also demonstrate the following additional
@@ -70,8 +70,7 @@ entities:
             ISDIVORCED: civilstate == 3
             ISWIDOW: civilstate == 4
 
-        # possible transitions and regressions. The actual list used in the
-        # simulation must be defined below
+        # possible transitions and regressions
         processes:
             ageing:
                 - age: age + 1

@@ -1,11 +1,11 @@
-# This is a "simulation" file. To run the simulation, press F6 in liam2
-# environment, or run the following command in a console:
-# INSTALL PATH\main run demo02.yml
+# This is a LIAM2 simulation file. To run the simulation, press F6 if you are
+# using the editor bundled with LIAM2, otherwise run the following command in a
+# console: [BUNDLEPATH]\liam2\main run demo02.yml
 
-# This example builds upon the first one and introduces a few additional
-# features: a second entity, links and one of their associated functions
-# (countlink), procedures with local variables, an init procedure and the choice
-# function.
+# This example builds upon the first two and introduces a few additional
+# features: a second entity, links and one of their associated methods
+# (linkname.count()), procedures with local variables, an init procedure, the
+# choice function and a few new arguments to functions we have already seen.
 entities:
     household:
         fields:
@@ -25,7 +25,10 @@ entities:
                 - region_id: choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
 
             household_composition:
+                # count the number of persons in each household
                 - nb_persons: persons.count()
+
+                # count the number of children (age < 18) in each household
                 - nb_children: persons.count(age < 18)
 
     person:
@@ -42,41 +45,60 @@ entities:
             - agegroup: {type: int, initialdata: false}
 
         links:
+            # we define here all the links between individuals of the same
+            # entity...
             mother: {type: many2one, target: person, field: mother_id}
             children: {type: one2many, target: person, field: mother_id}
+
+            # ... or of a different entity
             household: {type: many2one, target: household, field: hh_id}
 
-        # possible transitions and regressions. The actual list used in the
-        # simulation must be defined below
+        # possible transitions and regressions
         processes:
             ageing:
                 - age: age + 1
 
-                # juniors and plus50 are local variables. This means they are
-                # only useable within the ageing procedure. As we have seen
-                # in the first example this could just as well be written using
-                # a single process (without using local variables).
+                # juniors and plus50 are *local* variables. This means they are
+                # only usable within the ageing procedure. As we have seen
+                # in the first example, the agegroup process below could just
+                # as well be written using a single process (without using
+                # local variables).
                 - juniors: 5 * trunc(age / 5)
                 - plus50: 10 * trunc(age / 10)
                 - agegroup: if(age < 50, juniors, plus50)
 
             # * dump is not limited to simple columns, it can evaluate any
-            #   expression in place
+            #   expression in-place
             # * one can easily get the value of a linked object by using
             #   "linkname.variable_name"
             # * the suffix argument can be used to customize the name of the
             #   csv file. It uses this pattern: <entity>_<period>_<suffix>.csv
             dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
                                 mother.age), suffix='info')
-            show_demography: show(groupby(agegroup, gender))
+
+            # * groupby can also be saved to a csv file
+            # * you can customize the filename more precisely (than with
+            #   'suffix') by using the 'fname' argument, with the optional
+            #   {entity} and {period} keywords. They are respectively replaced
+            #   by the name of the entity and the current period
+            csv_demography: csv(groupby(agegroup, gender),
+                                fname='demography_{period}.csv')
+            
+            # * charts can be saved to files instead of being displayed
+            #   interactively. The 'fname' and 'suffix' arguments of csv() also
+            #   apply to all charting functions.
+            chart_demography: bar(groupby(agegroup, gender),
+                                  fname='demography_{period}.png')
 
 simulation:
+    # the processes listed in this section are only executed once in
+    # start_period - 1 (that is 2001 in this case), instead of once per period.
     init:
         - household: [init_region_id]
 
     processes:
         - household: [household_composition]
-        - person: [ageing, dump_info, show_demography]
+        - person: [ageing, dump_info, csv_demography, chart_demography]
 
     input:
         file: simple2001.h5

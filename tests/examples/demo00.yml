@@ -1,0 +1,104 @@
+# This is a LIAM2 simulation file. In this first example, we will see how to
+# define an extremely simple simulation, how to run it and explore the results.
+
+# Please note that any line starting with a # sign is a comment and is ignored.
+
+# First, we define all our entities, their fields and processes. In this case,
+# we define only one 'person' entity, but LIAM2 can work with any kind of entity
+# and any number of them.
+entities:
+    person:
+        fields:
+            # All entities have two implicit integer fields: period and id.
+            # You do not need to define them.
+            - age:    int
+            - gender: bool
+
+        # Here is a list of possible transitions and regressions for this
+        # entity. The actual list of processes that will be executed in the
+        # simulation and in which order is defined later.
+        processes:
+            # Simply increment the age of all persons by one.
+            age: age + 1
+
+simulation:
+    # Here comes the list of processes that will actually be executed (once
+    # per simulated period). Processes execute sequentially (the first process
+    # for all individuals, then the second process, etc.). The same process may
+    # appear several times in this list.
+    processes:
+        - person: [age]
+
+    input:
+        file: simple2001.h5
+    output:
+        file: simulation.h5
+
+    # We will simulate from 2002 to 2011 (10 periods). Note that even though
+    # periods correspond to years in this example, you can use any other time
+    # step (days, weeks, months, ...) as long as it is an integer value. In
+    # other words, you are free to interpret the period in any way you like.
+    start_period: 2002
+    periods: 10
+
+# Now that we have defined our little simulation, we want to run it. If you are
+# using the editor bundled with LIAM2, you can do so now by pressing F6.
+
+# Note that LIAM2 can also be run from your system shell, by executing the
+# following command line: [BUNDLEPATH]\liam2\main run demo01.yml
+# However, in the rest of this tutorial (demonstration models), we will assume
+# you are using the bundled editor.
+
+# As you have seen, when a simulation is run, a console window opens within the
+# editor and displays the status of the simulation. After the simulation
+# completes, some statistics about the simulation are displayed and the console
+# window becomes interactive. Any expression or command that can be used during
+# the simulation can also be used in that interactive console.
+
+# Let us use it to explore the results of our little simulation. 
+# For example, enter the following command (without the ">>>"): 
+#
+# >>> age
+#
+# it should display:
+#
+# [ 10  10  10 ..., 107 110 110]
+#
+# which means that our first 3 individuals are ten years old and our last three
+# are 107, 110 and 110 years old respectively at the end of our simulation
+# (in 2011). There are too many persons in our sampe (20200), to display them
+# all on the screen, hence this abbreviated form. The result of any
+# expression can be computed:
+#
+# >>> age + 5
+# [ 15  15  15 ..., 112 115 115]
+#
+# and we can also go back in time to any simulated period:
+
+# >>> period 2005
+# current period set to 2005
+# >>> age
+# [  4   4   4 ..., 101 104 104]
+# >>> age + 2
+# [  6   6   6 ..., 103 106 106]
+#
+# Feel free to play with it a bit more and when you are done, terminate the
+# program by using the "q" command. If you want to explore the results again,
+# without (re)simulating the model, you can press F7.
+
+# Another way to explore the input dataset and/or the results of the simulation
+# is to use an hdf5 viewer. We have bundled one (ViTables) with LIAM2. Please
+# run it now by pressing F9.
+
+# In ViTables, you should look at the "Tree of databases" column on the left,
+# and expand the file you would like to inspect (eg output.h5),
+# then expand the "entities" node, and finally double-click on the "person"
+# table. This should open a sub-window in ViTables with all the data for all
+# individuals for all simulated periods. After resizing that window to a more
+# useful size, you can explore your data as much as you want. One very handy
+# feature of ViTables that you should not miss is its ability to display
+# only rows matching a particular filter (query condition). Use the "Query"
+# menu, or the funnel icon on the toolbar to access it. This feature has many
+# uses, from finding individuals with odd values in some fields to tracking
+# particular individuals across all the periods of a simulation (e.g. with
+# a "id == 42" query condition).

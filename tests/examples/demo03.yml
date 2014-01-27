@@ -1,6 +1,6 @@
-# This is a "simulation" file. To run the simulation, press F6 in liam2
-# environment, or run the following command in a console:
-# INSTALL PATH\main run demo03.yml
+# This is a LIAM2 simulation file. To run the simulation, press F6 if you are
+# using the editor bundled with LIAM2, otherwise run the following command in a
+# console: [BUNDLEPATH]\liam2\main run demo03.yml
 
 # This example builds upon the previous ones and introduces the following
 # additional features: macros, lifecycle functions (new and remove), logit_regr,
@@ -52,8 +52,7 @@ entities:
             ISMALE: gender
             ISFEMALE: not gender
 
-        # possible transitions and regressions. The actual list used in the
-        # simulation must be defined below
+        # possible transitions and regressions
         processes:
             ageing:
                 - age: age + 1
@@ -81,14 +80,18 @@ entities:
 
             dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
                                 mother.age), suffix='info')
+
             show_demography: show(groupby(agegroup, gender))
+
+            chart_demography: bar(groupby(agegroup, gender),
+                                  fname='demography_{period}.png')
 
 simulation:
     init:
         - household: [init_region_id]
 
     processes:
-        - person: [ageing, birth, death, show_demography]
+        - person: [ageing, birth, death, show_demography, chart_demography]
         - household: [household_composition, clean_empty]
 #        - person: [dump_info, show_demography]
 
