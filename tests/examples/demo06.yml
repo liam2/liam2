@@ -1,6 +1,6 @@
 # This is a LIAM2 simulation file. To run the simulation, press F6 if you are
 # using the editor bundled with LIAM2, otherwise run the following command in a
-# console: [BUNDLEPATH]\liam2\main run demo05.yml
+# console: [BUNDLEPATH]\liam2\main run demo06.yml
 
 # In this example, we will model young adults leaving their parents household
 # and some couples divorcing. For that we will show how to break existing links,

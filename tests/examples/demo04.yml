@@ -1,6 +1,6 @@
 # This is a LIAM2 simulation file. To run the simulation, press F6 if you are
 # using the editor bundled with LIAM2, otherwise run the following command in a
-# console: [BUNDLEPATH]\liam2\main run demo03.yml
+# console: [BUNDLEPATH]\liam2\main run demo04.yml
 
 # This example builds upon the previous ones and introduces the following
 # additional features: macros, lifecycle functions (new and remove), logit_regr,
