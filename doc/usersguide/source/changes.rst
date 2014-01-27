@@ -3,19 +3,28 @@
 Change log
 ##########
 
-Version 0.8-pre2
-================
+Version 0.8-rc1
+===============
 
-* implemented scatter charts.
+Released on 2013-01-27.
+
+* implemented scatter plots.
 
 * implemented "suffix" argument for charts.
 
-* fixed "view" action (ViTables) on some computers when used in notepad++.
+* improved the first few demonstration models quite a bit. A recommended read
+  for all users.
 
-* use Qt as the backend for charts instead of Tk so that we do not need
-  to include the latter in LIAM2 anymore.
+* fixed the "view" action (ViTables) which did not work on some computers when
+  launched from within the bundled editor (notepad++).
 
-* improved the demo models to slowly turn them into a tutorial
+* made the archive smaller by using Qt as the backend for charts instead of Tk
+  so that we do not need to include the latter in LIAM2 anymore.
+
+* include the documentation only in HTML Help format (.chm) in the bundle.
+  .pdf and "normal" html are still available as separate downloads on the
+  website.
+
 
 Version 0.8-pre1
 ================

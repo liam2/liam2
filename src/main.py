@@ -18,7 +18,7 @@ from data import populate_registry, H5Data
 from upgrade import upgrade
 from view import viewhdf
 
-__version__ = "0.8-pre2"
+__version__ = "0.8-rc1"
 
 
 def eat_traceback(func, *args, **kwargs):
