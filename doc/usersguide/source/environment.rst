@@ -3,8 +3,8 @@
 Environment
 ###########
 
-LIAM 2 bundle
--------------
+LIAM2 bundle
+------------
 
 The bundle includes:
 
@@ -19,7 +19,8 @@ The bundle includes:
     directly from within the editor by simply pressing F5 or F6 respectively.
     See below for more information.
     
-- The documentation in html and pdf formats.
+- The documentation in HTML Help format (.chm). You can find .pdf and .html
+  versions on our website.
 
 - A demonstration model with a synthetic data set of 20,200 persons grouped in
   14,700 households.

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Release script for Liam2
+# Release script for LIAM2
 # Licence: GPLv3
 from __future__ import print_function
 
@@ -9,7 +9,7 @@ import os
 import stat
 import zipfile
 
-from os import chdir, makedirs, getcwd
+from os import chdir, makedirs
 from os.path import exists
 from shutil import copytree, copy2, rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
@@ -79,21 +79,19 @@ def copy_release(release_name):
     copytree(r'build\tests\examples', r'win64\examples')
     copytree(r'build\src\build\exe.win32-2.7', r'win32\liam2')
     copytree(r'build\src\build\exe.win-amd64-2.7', r'win64\liam2')
-    copytree(r'build\doc\usersguide\build\html',
-             r'win32\documentation\html')
-    copytree(r'build\doc\usersguide\build\html',
-             r'win64\documentation\html')
-    copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
-          r'win32\documentation')
-    copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
-          r'win64\documentation')
+    makedirs(r'win32\documentation')
+    makedirs(r'win64\documentation')
+    copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
+          r'win32\documentation\LIAM2UserGuide.chm')
+    copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
+          r'win64\documentation\LIAM2UserGuide.chm')
     # standalone docs
     copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
-          'LIAM2UserGuide-%s.pdf' % release_name)
+          r'LIAM2UserGuide-%s.pdf' % release_name)
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
-          'LIAM2UserGuide-%s.chm' % release_name)
+          r'LIAM2UserGuide-%s.chm' % release_name)
     copytree(r'build\doc\usersguide\build\html',
-             'html\\%s' % release_name)
+             r'html\%s' % release_name)
 
 
 def allfiles(pattern, path='.'):
@@ -118,11 +116,14 @@ def zip_unpack(archivefname, dest=None):
 
 def create_bundles(release_name):
     chdir('win32')
-    zip_pack(r'..\Liam2Suite-%s-win32.zip' % release_name, '*')
+    zip_pack(r'..\LIAM2Suite-%s-win32.zip' % release_name, '*')
     chdir('..')
     chdir('win64')
-    zip_pack(r'..\Liam2Suite-%s-win64.zip' % release_name, '*')
+    zip_pack(r'..\LIAM2Suite-%s-win64.zip' % release_name, '*')
     chdir('..')
+    chdir(r'html\%s' % release_name)
+    zip_pack(r'..\..\LIAM2UserGuide-%s-html.zip' % release_name, '*')
+    chdir(r'..\..')
 
 
 def test_bundle(archivefname, dest):
@@ -151,17 +152,17 @@ def test_bundle(archivefname, dest):
 def test_bundles(release_name):
     makedirs('test')
     chdir('test')
-    zip_unpack(r'..\liam2-%s-src.zip' % release_name, 'src')
+    zip_unpack(r'..\LIAM2-%s-src.zip' % release_name, 'src')
     for arch in ('win32', 'win64'):
-        test_bundle(r'..\Liam2Suite-%s-%s.zip' % (release_name, arch), arch)
+        test_bundle(r'..\LIAM2Suite-%s-%s.zip' % (release_name, arch), arch)
     chdir('..')
+    rmtree('test')
 
 
 def cleanup():
     rmtree('win32')
     rmtree('win64')
     rmtree('build')
-    rmtree('test')
 
 
 def make_release(release_name=None, branch=None):
@@ -211,7 +212,7 @@ def make_release(release_name=None, branch=None):
     if no('Release version %s (%s)?' % (release_name, rev)):
         exit(1)
 
-    chdir('c:\\tmp')
+    chdir(r'c:\tmp')
     if exists('liam2_new_release'):
         rmtree('liam2_new_release')
     makedirs('liam2_new_release')
@@ -235,7 +236,7 @@ def make_release(release_name=None, branch=None):
                            'created?')
 
     do('Creating source archive', call,
-       r'git archive --format zip --output ..\liam2-%s-src.zip %s'
+       r'git archive --format zip --output ..\LIAM2-%s-src.zip %s'
        % (release_name, rev))
     do('Building everything', call, 'buildall.bat')
     chdir('..')

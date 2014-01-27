@@ -163,7 +163,7 @@ the **fields** section.
 
 In this example, *isold* and *backfromoldage* are local variables. They can only
 be used in the procedure where they are defined. Because we are trying
-to use the local variable *isold* in another procedure in this example, LIAM 2
+to use the local variable *isold* in another procedure in this example, LIAM2
 will refuse to run, complaining that *isold* is not defined.
 
 Actions
@@ -527,7 +527,7 @@ The expected occurrences of x after, say, 100 runs is then P(x=1) * 100 and
 the expected value is 1xP(1)+0xP(0)=P(1). This type of simulation hinges on the
 confrontation between a random variable and an exogenous probability.
 
-In LIAM 2, such a probabilistic simulation is called a **choice** process.
+In LIAM2, such a probabilistic simulation is called a **choice** process.
 Suppose i=1..n choice options, each with a probability prob_option_i. A
 choice expression then has the following form: ::
 
@@ -542,7 +542,7 @@ the gender of newborns (51% males and 49% females), as such: ::
 
     gender: choice([True, False], [0.51, 0.49])
 
-In the current version of LIAM 2, it is not possible to combine a choice with
+In the current version of LIAM2, it is not possible to combine a choice with
 alignment.
 
 Here is a more complex example of a process using choice. Suppose we want to
@@ -663,7 +663,7 @@ to use alignment so the number of events occuring per category matches a
 proportion defined externaly. 
 
 There are different ways to choose which individuals are taken. The methodology
-used for now by LIAM 2 is called "alignment by sorting", that is, for each
+used for now by LIAM2 is called "alignment by sorting", that is, for each
 category, the N individuals with the highest scores are selected.
 
 The score computation is not done internally by the align() function, but is
@@ -1227,7 +1227,7 @@ simulation dataset.
 Output
 ======
 
-LIAM 2 produces simulation output in three ways. First of all, by default, the
+LIAM2 produces simulation output in three ways. First of all, by default, the
 simulated datasets are stored in hdf5 format. These can be accessed at the end
 of the run. You can use several tools to inspect the data.
 
@@ -1872,7 +1872,7 @@ Examples: ::
 Debugging and the interactive console
 =====================================
 
-LIAM 2 features an interactive console which allows you to interactively
+LIAM2 features an interactive console which allows you to interactively
 explore the state of the memory either during or after a simulation completed.
 
 You can reach it in two ways. You can either pass "-i" as the last argument
