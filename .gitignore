@@ -10,3 +10,6 @@ tests/functional/*.h5
 /tests/functional/empty_file.csv
 /src/*.c
 /.idea
+/.settings
+/.pydevproject
+/.project
