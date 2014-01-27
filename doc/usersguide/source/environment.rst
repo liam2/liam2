@@ -45,8 +45,8 @@ Getting Started
   console again without (re)simulating the model, you can press F7.
 
 - Alternatively, you can explore the results "graphically" by pressing F9.
-  This will open both the input dataset and the result file with an hdf5
-  viewer (ViTables).
+  This will open both the input dataset and the result file (if any) with an
+  hdf5 viewer (ViTables).
 
 Using your own data
 -------------------
