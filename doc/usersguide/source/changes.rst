@@ -6,12 +6,16 @@ Change log
 Version 0.8-pre2
 ================
 
-* fixed "view" action (ViTables) on some computers when used in notepad++.
-
 * implemented scatter charts.
+
+* implemented "suffix" argument for charts.
+
+* fixed "view" action (ViTables) on some computers when used in notepad++.
 
 * use Qt as the backend for charts instead of Tk so that we do not need
   to include the latter in LIAM2 anymore.
+
+* improved the demo models to slowly turn them into a tutorial
 
 Version 0.8-pre1
 ================
@@ -32,8 +36,6 @@ New features:
   viewer) as well as a corresponding menu entry and keyboard shortcut (F9) in
   Notepad++. It is meant to be used when editing a *model* file, and it will
   open both the input dataset and the result file (if any).
-
-* implemented "while" loops.
 
 * document boolean aggregate functions: all() and any() which were
   added in 0.7 but were not yet documented.
