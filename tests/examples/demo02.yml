@@ -75,35 +75,3 @@ simulation:
     # first simulated period
     start_period: 2002
     periods: 2
-
-# If you have made it this far without running the simulation,
-# congratulations, you are very patient. Now, we invite you to do so by
-# pressing F6 and playing with the interactive console after the simulation is
-# done.
-
-# Exercise ideas (solutions below)
-# --------------------------------
-
-# 1) create a csv file with the gender and agegroup of each person
-# 2) create a csv file with a table of person counts per age and gender
-# 3) create a bar chart per 10-years slices (ie how many people are 0-9
-#    years old, how many are 10-19, etc...)
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Solutions
-# ---------
-
-# 1) csv(dump(gender, agegroup))
-# 2) csv(groupby(age, gender))
-# 3) bar(groupby(trunc(age / 10)))
