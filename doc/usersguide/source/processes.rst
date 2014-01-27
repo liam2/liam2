@@ -1612,8 +1612,9 @@ LIAM2 has a few differences, in particular we added a few arguments which
 are available in most functions.
 
 * *fname*: name of the file to save the chart to. The file format is
-  automatically deduced from the file extension. You can save the same chart
-  to several formats at once by using '&' in the extension. For
+  automatically deduced from the file extension. You can optionally use the
+  '{entity}' and '{period}' key words to customize the name. You can save the
+  same chart to several formats at once by using '&' in the extension. For
   example: ``plot(expr, fname='plot03.png&pdf')`` will write the chart to both
   ``plot03.png`` and ``plot03.pdf``. If the *fname* argument is not used,
   a window will open to view and interact with the figure using a navigation
@@ -1623,11 +1624,19 @@ are available in most functions.
   .. note::
      Keyboard shortcuts mentioned on that page currently do not work.
 
+* *suffix*: a more concise alternative to set the name of the file the chart
+  will be saved to. When it is used, the files are named using the following
+  pattern: ``{entity}_{period}_{suffix}.png``. For example: ::
+
+    bar(expr, suffix='income')
+
+  would create "person_2002_income.png", "person_2003_income.png", etc.
+
 * *colors*: a list of the colors to be used for the chart. See `matplotlib
   colors documentation <http://matplotlib.org/api/colors_api.html>`_
   for the different ways you can specify colors. For example: ::
 
-     bar(expr, colors=['r', 'g', 'b'])
+    bar(expr, colors=['r', 'g', 'b'])
 
   will make a bar chart with red, green and blue bars.
 

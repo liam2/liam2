@@ -8,7 +8,8 @@ import numpy as np
 import config
 from expr import Expr, expr_eval
 from process import Process
-from utils import LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim, Axis
+from utils import (LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim,
+                   Axis, FileProducer)
 
 try:
     import matplotlib
@@ -23,7 +24,8 @@ except ImportError, e:
           "'matplotlib.pyplot' could not be imported (%s)." % e)
 
 
-class Chart(Process):
+class Chart(Process, FileProducer):
+    ext = '.png'
     show_grid = False
     show_axes = True
     show_legend = True
@@ -108,7 +110,7 @@ class Chart(Process):
         colors = kwargs.pop('colors', None)
         if colors is None:
             colors = self.get_colors(len(axes[0]))
-        fname = kwargs.pop('fname', None)
+        fname = self._get_fname(kwargs)
         grid = kwargs.pop('grid', self.show_grid)
         maxticks = kwargs.pop('maxticks', self.maxticks)
         projection = self.projection

@@ -376,6 +376,7 @@ entities:
 
             test_charts:
                 - plot(groupby(age))
+                - plot(groupby(age), suffix='test')
 
                 - boxplot(age[gender], age[not gender],
                           fname='bplot1.png&pdf')

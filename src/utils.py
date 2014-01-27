@@ -1060,3 +1060,26 @@ class ExplainTypeError(type):
                 return "%d arguments (%d given)" % (needed - 1, given - 1)
             msg = re.sub('(\d+) arguments \((\d+) given\)', repl, msg)
             raise TypeError(msg)
+
+
+class FileProducer(object):
+    # default extension if only suffix is defined
+    ext = None
+    # do we need to return a file name if neither suffix nor fname are defined?
+    fname_required = False
+
+    def _get_fname(self, kwargs):
+        """
+        Returns a filename depending on the given kwargs.
+        Note that kwargs are **pop'ed in-place** !
+        """
+        suffix = kwargs.pop('suffix', '')
+        fname = kwargs.pop('fname', None)
+
+        if fname is not None and suffix:
+            raise ValueError("%s() can't have both 'suffix' and 'fname' "
+                             "arguments" % self.__class__.__name__.lower())
+        if fname is None and (suffix or self.fname_required):
+            suffix = "_" + suffix if suffix else ""
+            fname = "{entity}_{period}" + suffix + self.ext
+        return fname

@@ -10,7 +10,7 @@ from expr import Expr, expr_eval
 from exprbases import TableExpression
 from process import Process, BreakpointException
 from partition import filter_to_indices
-from utils import LabeledArray
+from utils import LabeledArray, FileProducer
 
 
 class Show(Process):
@@ -57,8 +57,11 @@ class QuickShow(Show):
         return Show.__str__(self).replace('show(', 'qshow(')
 
 
-class CSV(Process):
+class CSV(Process, FileProducer):
     #noinspection PyNoneFunctionAssignment
+    ext = '.csv'
+    fname_required = True
+
     def __init__(self, *args, **kwargs):
         Process.__init__(self)
         if (len(args) > 1 and
@@ -66,25 +69,18 @@ class CSV(Process):
                     for arg in args)):
             args = (args,)
         self.args = args
-        suffix = kwargs.pop('suffix', '')
-        fname = kwargs.pop('fname', None)
-        mode = kwargs.pop('mode', 'w')
-        if kwargs:
-            kwarg, _ = kwargs.popitem()
-            raise TypeError("'%s' is an invalid keyword argument for csv()"
-                            % kwarg)
 
-        if fname is not None and suffix:
-            raise ValueError("csv() can't have both 'suffix' and 'fname' "
-                             "arguments")
-        if fname is None:
-            suffix = "_" + suffix if suffix else ""
-            fname = "{entity}_{period}" + suffix + ".csv"
-        self.fname = fname
+        mode = kwargs.pop('mode', 'w')
         if mode not in ('w', 'a'):
             raise ValueError("csv() mode argument must be either "
                              "'w' (overwrite) or 'a' (append)")
         self.mode = mode
+
+        self.fname = self._get_fname(kwargs)
+        if kwargs:
+            kwarg, _ = kwargs.popitem()
+            raise TypeError("'%s' is an invalid keyword argument for csv()"
+                            % kwarg)
 
     def expressions(self):
         for arg in self.args:
