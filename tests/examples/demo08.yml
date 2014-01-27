@@ -3,8 +3,8 @@
 # console: [BUNDLEPATH]\liam2\main run demo08.yml
 
 # This example demonstrates how to create a variant of a model by using imports.
-# We re-use demo06.yml and change an existing process (ineducation).
-import: demo06.yml
+# We re-use demo07.yml and change an existing process (ineducation).
+import: demo07.yml
 
 entities:
     person:
