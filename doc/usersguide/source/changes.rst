@@ -11,7 +11,7 @@ Version 0.8-pre2
 * implemented scatter charts.
 
 * use Qt as the backend for charts instead of Tk so that we do not need
-  to include the latter in Liam2 anymore.
+  to include the latter in LIAM2 anymore.
 
 Version 0.8-pre1
 ================
@@ -28,7 +28,7 @@ New features:
   visualized directly or saved to a file. See the
   :ref:`charts section <charts>` for details.
 
-* added a "view" command line option to Liam2 to open ViTables (an hdf5
+* added a "view" command line option to LIAM2 to open ViTables (an hdf5
   viewer) as well as a corresponding menu entry and keyboard shortcut (F9) in
   Notepad++. It is meant to be used when editing a *model* file, and it will
   open both the input dataset and the result file (if any).
@@ -142,7 +142,7 @@ Miscellaneous improvements:
     (aggregate) minimum value of "expr" over individuals satisfying the filter 
   
   A tool to automatically upgrade models to the new syntax is provided. In
-  notepad++, you should use the **Liam2: upgrade model** command in the
+  notepad++, you should use the **LIAM2: upgrade model** command in the
   **Macro** menu. 
   
   You can also run it via the command line: ::
@@ -160,7 +160,7 @@ Miscellaneous improvements:
 * the "period" argument of value_for_period can now be a *scalar* expression
   (it must have the same value for all individuals).
   
-* when the output directory does not exist, Liam2 will now try to create it.
+* when the output directory does not exist, LIAM2 will now try to create it.
 
 * when debug mode is on, print the position in the random sequence before and
   after operations which use random numbers.

@@ -1603,12 +1603,12 @@ charts
 
 .. versionadded:: 0.8
 
-Liam2 has some charting capabilities, courtesy of `matplotlib
+LIAM2 has some charting capabilities, courtesy of `matplotlib
 <http://matplotlib.org>`_. They are available both during a simulation
 and in the interactive console. Each of the following functions is
 designed around the function of the same name in matplotlib. Even though we
 have tried to stay as close as possible to their API, their implementation in
-Liam2 has a few differences, in particular we added a few arguments which
+LIAM2 has a few differences, in particular we added a few arguments which
 are available in most functions.
 
 * *fname*: name of the file to save the chart to. The file format is
