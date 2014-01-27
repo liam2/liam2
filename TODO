@@ -23,6 +23,8 @@ implementation that I am aware of.
 features I would like to implement (in no particular order)
 ===========================================================
 
+- upgrade carray to blz
+
 - when the move away from the conditional context is done,
   I should make macros available via links. Maybe also merge
   entity.all_symbols and entity.variables?
