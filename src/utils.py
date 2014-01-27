@@ -265,7 +265,7 @@ class IrregularNDArray(object):
                 return result
             else:
                 raise NotImplementedError("axis != 1")
-        return  method
+        return method
     prod = make_aggregate(np.prod)
     sum = make_aggregate(np.sum)
     min = make_aggregate(np.min)
@@ -386,7 +386,7 @@ class LabeledArray(np.ndarray):
                        % (len(obj.dim_names), obj.ndim)
             if obj.pvalues is not None:
                 assert len(obj.pvalues) == obj.ndim, \
-                        "len(pvalues) (%d) != ndim (%d)" \
+                       "len(pvalues) (%d) != ndim (%d)" \
                        % (len(obj.pvalues), obj.ndim)
         return obj
 
@@ -655,7 +655,7 @@ def table2str(table, missing):
         if len(row) < numcols:
             row.extend([''] * (numcols - len(row)))
     formatted = [[format_value(value, missing) for value in row]
-                  for row in table]
+                 for row in table]
     colwidths = [get_col_width(formatted, i) for i in xrange(numcols)]
 
     total_width = sum(colwidths)
