@@ -196,7 +196,7 @@ data.py
     uniform interface from different data sources but it is a work in
     progress. 
 
-exprparser.py
+exprtools.py
     parsing code for expressions
 
 importer.py
