@@ -10,7 +10,7 @@ from data import merge_arrays, get_fields, ColumnArray
 from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
                   GlobalArray, expr_eval, get_missing_value, Expr, MethodSymbol)
 from exprtools import parse
-from process import Assignment, Compute, Process, ProcessGroup, While, Function
+from process import Assignment, Compute, ProcessGroup, While, Function
 from registry import entity_registry
 from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
                    WarnOverrideDict)
@@ -257,13 +257,10 @@ class Entity(object):
             return Assignment(v)
         elif isinstance(v, basestring):
             expr = parse(v, context)
-            if isinstance(expr, Process):
-                return expr
+            if k is None:
+                return Compute(expr)
             else:
-                if k is None:
-                    return Compute(expr)
-                else:
-                    return Assignment(expr)
+                return Assignment(expr)
         else:
             # lets be explicit about it
             return None

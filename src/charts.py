@@ -6,8 +6,7 @@ import math
 import numpy as np
 
 import config
-from expr import Expr, expr_eval
-from process import Process
+from expr import Expr, expr_eval, traverse_expr
 from utils import (LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim,
                    Axis, FileProducer)
 
@@ -24,7 +23,7 @@ except ImportError, e:
           "'matplotlib.pyplot' could not be imported (%s)." % e)
 
 
-class Chart(Process, FileProducer):
+class Chart(Expr, FileProducer):
     ext = '.png'
     show_grid = False
     show_axes = True
@@ -35,14 +34,15 @@ class Chart(Process, FileProducer):
     check_length = True
 
     def __init__(self, *args, **kwargs):
-        Process.__init__(self)
+        Expr.__init__(self)
         self.args = args
         self.kwargs = kwargs
 
-    def expressions(self):
+    def traverse(self, context):
         for arg in self.args:
-            if isinstance(arg, Expr):
-                yield arg
+            for node in traverse_expr(arg, context):
+                yield node
+        yield self
 
     def get_colors(self, n):
         from matplotlib import cm
@@ -97,7 +97,7 @@ class Chart(Process, FileProducer):
             raise dimerror
         return data, aslabeledarray(data).axes
 
-    def run(self, context):
+    def evaluate(self, context):
         entity = context['__entity__']
         period = context['period']
 

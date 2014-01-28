@@ -6,16 +6,16 @@ import csv
 import numpy as np
 
 import config
-from expr import Expr, expr_eval
+from expr import Expr, expr_eval, traverse_expr
 from exprbases import TableExpression
-from process import Process, BreakpointException
+from process import BreakpointException
 from partition import filter_to_indices
 from utils import LabeledArray, FileProducer
 
 
-class Show(Process):
+class Show(Expr):
     def __init__(self, *args, **kwargs):
-        Process.__init__(self)
+        Expr.__init__(self)
         self.args = args
         self.print_exprs = kwargs.pop('print_exprs', False)
         if kwargs:
@@ -23,12 +23,12 @@ class Show(Process):
             raise TypeError("'%s' is an invalid keyword argument for show()"
                             % kwarg)
 
-    def expressions(self):
+    def traverse(self, context):
         for arg in self.args:
-            if isinstance(arg, Expr):
-                yield arg
+            for node in traverse_expr(arg, context):
+                yield node
 
-    def run(self, context):
+    def evaluate(self, context):
         if config.skip_shows:
             print("show skipped", end=' ')
         else:
@@ -57,13 +57,13 @@ class QuickShow(Show):
         return Show.__str__(self).replace('show(', 'qshow(')
 
 
-class CSV(Process, FileProducer):
-    #noinspection PyNoneFunctionAssignment
+class CSV(Expr, FileProducer):
     ext = '.csv'
     fname_required = True
 
+    #noinspection PyNoneFunctionAssignment
     def __init__(self, *args, **kwargs):
-        Process.__init__(self)
+        Expr.__init__(self)
         if (len(args) > 1 and
             not any(isinstance(arg, (TableExpression, list, tuple))
                     for arg in args)):
@@ -82,16 +82,12 @@ class CSV(Process, FileProducer):
             raise TypeError("'%s' is an invalid keyword argument for csv()"
                             % kwarg)
 
-    def expressions(self):
+    def traverse(self, context):
         for arg in self.args:
-            if isinstance(arg, (list, tuple)):
-                for expr in arg:
-                    if isinstance(expr, Expr):
-                        yield expr
-            elif isinstance(arg, Expr):
-                yield arg
+            for node in traverse_expr(arg, context):
+                yield node
 
-    def run(self, context):
+    def evaluate(self, context):
         entity = context['__entity__']
         period = context['period']
         fname = self.fname.format(entity=entity.name, period=period)
@@ -113,15 +109,16 @@ class CSV(Process, FileProducer):
                 writer.writerows(data)
 
 
-class RemoveIndividuals(Process):
+class RemoveIndividuals(Expr):
     def __init__(self, filter):
-        Process.__init__(self)
+        Expr.__init__(self)
         self.filter = filter
 
-    def expressions(self):
-        yield self.filter
+    def traverse(self, context):
+        for node in traverse_expr(self.filter, context):
+            yield node
 
-    def run(self, context):
+    def evaluate(self, context):
         filter_value = expr_eval(self.filter, context)
 
         if not np.any(filter_value):
@@ -166,12 +163,12 @@ class RemoveIndividuals(Process):
                                                end=' ')
 
 
-class Breakpoint(Process):
+class Breakpoint(Expr):
     def __init__(self, period=None):
-        Process.__init__(self)
+        Expr.__init__(self)
         self.period = period
 
-    def run(self, context):
+    def evaluate(self, context):
         if self.period is None or self.period == context['period']:
             raise BreakpointException()
 
@@ -181,15 +178,16 @@ class Breakpoint(Process):
         else:
             return ''
 
-    def expressions(self):
-        return ()
+    def traverse(self, context):
+        for _ in ():
+            yield None
 
 
-class Assert(Process):
+class Assert(Expr):
     def eval_assertion(self, context):
         raise NotImplementedError()
 
-    def run(self, context):
+    def evaluate(self, context):
         if config.assertions == "skip":
             print("assertion skipped", end=' ')
         else:
@@ -206,16 +204,16 @@ class Assert(Process):
 
 class AssertTrue(Assert):
     def __init__(self, expr):
-        Process.__init__(self)
+        Expr.__init__(self)
         self.expr = expr
 
     def eval_assertion(self, context):
         if not expr_eval(self.expr, context):
             return str(self.expr) + " is not True"
 
-    def expressions(self):
-        if isinstance(self.expr, Expr):
-            yield self.expr
+    def traverse(self, context):
+        for node in traverse_expr(self.expr, context):
+            yield node
 
 
 class AssertFalse(AssertTrue):
@@ -228,7 +226,7 @@ class ComparisonAssert(Assert):
     inv_op = None
 
     def __init__(self, expr1, expr2):
-        Process.__init__(self)
+        Expr.__init__(self)
         self.expr1 = expr1
         self.expr2 = expr2
 
@@ -248,11 +246,11 @@ class ComparisonAssert(Assert):
     def compare(self, v1, v2):
         raise NotImplementedError()
 
-    def expressions(self):
-        if isinstance(self.expr1, Expr):
-            yield self.expr1
-        if isinstance(self.expr2, Expr):
-            yield self.expr2
+    def traverse(self, context):
+        for node in traverse_expr(self.expr1, context):
+            yield node
+        for node in traverse_expr(self.expr2, context):
+            yield node
 
 
 def isnan(a):

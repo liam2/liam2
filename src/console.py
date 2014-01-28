@@ -10,7 +10,6 @@ from expr import expr_eval, Variable
 from exprtools import parse
 from context import EntityContext
 from registry import entity_registry
-from process import Process
 
 entity_required = \
     "current entity is not set. It is required to set one using " \
@@ -158,11 +157,10 @@ class Console(object):
         ctx = EntityContext(entity, {'period': period,
                                      'nan': np.nan,
                                      '__globals__': self.globals_data})
-        if isinstance(expr, Process):
-            expr.run(ctx)
+        result = expr_eval(expr, ctx)
+        if result is None:
             print("done.")
-        else:
-            return expr_eval(expr, ctx)
+        return result
 
     def run(self, debugger=False):
         if debugger:
