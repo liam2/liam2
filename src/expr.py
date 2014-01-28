@@ -312,8 +312,8 @@ class Expr(object):
         return ExprAttribute(self, key)
 
     def collect_variables(self, context):
-        return set.union(*[collect_variables(c, context)
-                           for c in self.children])
+        child_vars = [collect_variables(c, context) for c in self.children]
+        return set.union(*child_vars) if child_vars else set()
 
     def traverse(self, context):
         for child in self.children:
