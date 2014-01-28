@@ -1,7 +1,6 @@
 from __future__ import division, print_function
 
 import collections
-from types import NoneType
 
 import numpy as np
 
