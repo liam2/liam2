@@ -76,6 +76,10 @@ entities:
 
             num_persons: persons.count()
             nch: persons.count(age <= 18)
+
+            #TODO: make this work
+            #nch_macro: persons.count(ISCHILD)
+
             maxnch: max(nch)
             dump_csv_h: csv(dump())
             aligned: False
@@ -155,6 +159,8 @@ entities:
             - eduach:       {type: int, initialdata: False}
             - agegroup:     {type: int, initialdata: False}
             - float_field1: {type: float, initialdata: False}
+            - int_field1:   {type: int, initialdata: False}
+            - hybrid_test:  {type: int, initialdata: False}
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -196,110 +202,259 @@ entities:
                 - f_id: if(is_clone, father.clone_id, f_id)
                 - partner_id: if(is_clone, partner.clone_id, partner_id)
 
-#            test_proc:
-#                code:
-#                    - toto: 10
-#
-#            test_function:
-#                args: a, b
-#                code: 
-#                    - result: a + b
-#                    - result: result * 2
-#                return: result * 2
-#
-#            test_small_function:
-#                args: a, b
-#                return: a + b
-#
-#            test_call:
-#                - aplusb: test_function(age, 1)
-#                - show("age", age, "aplusb", aplusb)
-#
-#            test_loop:
-#                variables: a, b
-#                sequence: age[age < 10]
-#                #sequence: zip(range(10), range(10))
-#                code:
-#                    - show("a", a, "b", b)
-#
-#            test_while:
-#                while: min(age) < 10
-#                code:
-#                    - show("age", age)
-#                    - age: age + 1
-#
-#            #XXX: embed python code instead?
-#            while_in_proc:
-#                - done: False
-#                # => while is a reserved keyword and can't be used as a
-#                #    variable name
-#                - while:
-#                    cond: not done
-#                    code:
-#                        - age: age + 1
-#                        - show("age", age)
-#                        - done: gtpmin(age) >= 10
+            test_proc:
+                # same name than in the caller procedure, but should be local
+                - temp_var: age * 1
+                - local_var: temp_var * 2
+                - assertEqual(local_var, age * 2)
+                # update global variable
+                - int_field1: age + 1
 
-#            embbeded_python:
+            # should raise a warning because it does not make sense
+            func_only_args:
+                args: a, b
+
+            func_only_code:
+                code:
+                    # same name than in the caller procedure, but should be local
+                    - temp_var: age
+                    - local_var: temp_var * 2
+                    - assertEqual(local_var, age * 2)
+                    # update global variable
+                    - int_field1: age + 1
+
+            func_only_return:
+                return: age + 1
+
+            func_no_args:
+                code:
+                    # same name than in the caller procedure, but should be local
+                    - temp_var: age
+                    - local_var: temp_var * 2
+                return: local_var * 2
+
+            func_no_code:
+                args: a, b
+                return: a + b
+
+            func_no_return:
+                args: a, b
+                code:
+                    # same name than in the caller procedure, but should be local
+                    - temp_var: age * 1
+                    - local_var: temp_var * 2
+                    - assertEqual(local_var, age * 2)
+                    # update global variable
+                    - int_field1: age + 1
+
+            func_args_code_result:
+                args: a, b
+                code:
+                    - result: a + b
+                    - result: result * 2
+                return: result * 2
+
+            # this is an awful hack since we do not have an if control flow
+            # keyword yet
+            factorial:
+                args: n
+                code:
+                    - r: 0
+                    - while:
+                        cond: n > 1
+                        code:
+                            - r: n * factorial(n - 1)
+                            - n: 0
+                    - while:
+                        cond: n == 1
+                        code:
+                            - r: 1
+                            - n: 0
+                return: r
+
+            test_call:
+                # 1) no args and no result (concise/old style)
+                - temp_var: age * 42
+                - int_field1: age + 42
+                - assertEqual(int_field1, age + 42)
+                - test_proc()
+                - assertEqual(int_field1, age + 1)
+                # make sure the local variable did not change
+                - assertEqual(temp_var, age * 42)
+
+                # 2) no args and no result (verbose/new style)
+                - int_field1: age + 42
+                - assertEqual(int_field1, age + 42)
+                - func_only_code()
+                - assertEqual(int_field1, age + 1)
+                # make sure the local variable did not change
+                - assertEqual(temp_var, age * 42)
+
+#                - assertEqual(factorial(1), 1)
+#                - assertEqual(factorial(2), 2)
+#                - assertEqual(factorial(3), 6)
+#                - assertEqual(factorial(4), 24)
+
+                # generic call (ndarray methods)
+                # without argument
+                - assertEqual(age.sum(), sum(age))
+                - assertEqual(age.std(), std(age))
+                - assertEqual(age.max(), max(age))
+                - assertEqual(age.min(), min(age))
+
+                # with constant argument
+                - assertEqual(age.min(axis=-1), min(age))
+
+                # with expr argument
+                - axis: 0
+                - assertEqual(age.min(axis=axis), min(age))
+
+            hybrid_test:
+                - hybrid_test: age + 1
+                - assertEqual(hybrid_test, age + 1)
+
+            test_hybrids:
+                # hybrid = both a variable and a method
+                # stored = in fields
+
+                # temporary global (single-expr process) => hybrid
+                # * manual call
+                - temp_global()
+                # * in agespine (tested before)
+                # * used in expr
+                - assertEqual(temp_global, age + 10)
+
+                # stored + single-expr process => hybrid
+                # * manual call
+                - agegroup()
+                # * in agespine (tested before)
+                # * used in expr (tested in many tests but lets do it here too)
+                - local: agegroup * 10
+                - assertEqual(local, agegroup * 10)
+
+                # stored + procedure => hybrid (+ warn?)
+                # * manual call
+                - hybrid_test()
+                # * in agespine (tested before)
+                # * used in expr
+                - assertEqual(hybrid_test - 1, age)
+
+            test_while:
+                - values: age
+                # => while is a reserved keyword and can't be used as a
+                #    variable name
+                - while:
+                    cond: min(values) < 5
+                    code:
+                        - values: values + 1
+
+#            test_for:
+#                - n: 42
+#                # => for is a reserved keyword and can't be used as a
+#                #    variable name
+#                - for:
+#                    variables: i
+#                    in: [0, 1, 2, 3]
+#                    code:
+#                        - show("i:", i, "/ n + i:", n + i)
+#                        - show("age:", age)
+
+                 # two variables
+#                - for:
+#                    variables: index, letter
+#                    in: zip([0, 1, 2], ["a", "b", "c"])
+#                    code:
+#                        - show("index", index, "letter", letter)
+
+             # this will need to be represented by special objects anyway,
+             # so let us first do the ugly but easier (to implement) syntax
+#            embedded_python:
 #                done = False
 #                while not done:
 #                    age += 1
 #                    done = min(age) >= 10
 
             test_charts:
-                - boxplot((age[gender], age[not gender]))
-                - boxplot(groupby(eduach, expr=age, filter=eduach != -1))
+                - plot(groupby(age))
+                - plot(groupby(age), suffix='test')
+
+                - boxplot(age[gender], age[not gender],
+                          fname='bplot1.png&pdf')
+                - boxplot((age[gender], age[not gender]),
+                          fname='bplot1bis.png')
                 - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
-                          notch=True)
-                - plot(age)
-                - plot(age, 'o')
-                - plot(groupby(agegroup, expr=count(not gender)), 'o--',
-                       groupby(agegroup, expr=count(gender)), 's-.',
-                       groupby(agegroup), '*-', colors=['r', 'g', 'b'])
-                - plot(groupby(eduach), 's--')
-                - plot(groupby(eduach), 's--', color='g')
-                - plot((lag(avg(work), 5), lag(avg(work), 4),
-                        lag(avg(work), 3), lag(avg(work), 2),
-                        lag(avg(work)), avg(work)))
-                - plot(groupby(gender, age))
-                - plot(groupby(gender, age), colors=['g', 'b'])
-                - plot(groupby(gender, agegroup), styles=['--', '-'])
-                - plot(groupby(gender, agegroup),
-                       grid=True, linestyle='dashed', marker='o', linewidth=5)
+                          fname='bplot2.png&pdf')
+                - boxplot(groupby(eduach, expr=age, filter=eduach != -1),
+                          notch=True, fname='bplot3.png')
+
+                - plot(age, fname='plot01_{entity}_{period}.png')
+                - plot(age, 'o', fname='plot02.png')
+                - plot(groupby(age), fname='plot03.png&pdf')
                 - plot(groupby(age),
                        groupby(age, filter=not gender),
-                       groupby(age, filter=gender))
-                - stackplot(groupby(eduach))
-                - stackplot(groupby(gender, eduach))
-                - stackplot(groupby(gender, eduach),
-                            colors=['g', 'b'], baseline='sym')
+                       groupby(age, filter=gender),
+                       fname='plot04.png&pdf')
+                - plot((lag(avg(work), 5), lag(avg(work), 4),
+                        lag(avg(work), 3), lag(avg(work), 2),
+                        lag(avg(work)), avg(work)), fname='plot05.png')
+                - plot(groupby(age, gender), fname='plot06.png&pdf')
+                - plot(groupby(age, gender), colors=['g', 'b'],
+                       fname='plot07.png')
+                - plot(groupby(agegroup, gender), styles=['--', '-'],
+                       fname='plot08.png')
+                - plot(groupby(agegroup, gender),
+                       grid=False, linestyle='dashed', marker='o', linewidth=5,
+                       fname='plot09.png&pdf')
+                - plot(groupby(eduach), 's--', fname='plot10.png')
+                - plot(groupby(eduach), 's--', color='g',
+                       fname='plot11.png')
+                - plot(groupby(agegroup, expr=count(not gender)), 'o--',
+                       groupby(agegroup, expr=count(gender)), 's-.',
+                       groupby(agegroup), '*-', colors=['r', 'g', 'b'],
+                       fname='plot12.png&pdf')
+
+                - stackplot(groupby(eduach), fname='stackplot1.png')
+                - stackplot(groupby(age, eduach), fname='stackplot2.png&pdf')
+                - stackplot(groupby(eduach, gender),
+                            colors=['g', 'b'], baseline='sym',
+                            fname='stackplot3.png')
                 - stackplot(groupby(age, filter=not gender),
-                            groupby(age, filter=gender))
+                            groupby(age, filter=gender),
+                            fname='stackplot4.png')
+
                 - byage: groupby(age, percent=True)
-                - bar(byage)
-                - bar(groupby(agegroup + 1))
-                # mig_period_women
-                - bar(MIG[0,:,period - 2001])
-                - bar(groupby(gender, agegroup))
+                - bar(byage, fname='bar1.png')
+                - bar(groupby(agegroup), fname='bar2.png&pdf')
+                - bar(groupby(agegroup + 1), fname='bar3.png')
+                - bar(groupby(agegroup, gender), fname='bar4.png')
                 - bar(groupby(agegroup, filter=not gender),
-                      groupby(agegroup, filter=gender))
-                - bar(groupby(eduach, agegroup))
-                - bar(groupby(eduach, agegroup), width=0.8)
+                      groupby(agegroup, filter=gender),
+                      fname='bar5.png&pdf')
+                - bar(groupby(agegroup, eduach), fname='bar6.png&pdf')
+                - bar(groupby(agegroup, eduach), width=0.8, fname='bar7.png')
+                # mig_period_women
+                - bar(MIG[0,:,period - 2001], fname='bar8.png')
+
                 # axes are currently messed up
-                # - barh(groupby(eduach, agegroup))
-                # - barh(groupby(eduach, agegroup), height=0.7)
-                - bar3d(groupby(gender, agegroup))
-#FIXME: this does not work
-#                - bar3d(groupby(agegroup, filter=not gender),
-#                        groupby(agegroup, filter=gender))
-                - bar3d(groupby(eduach, agegroup), color='g')
-                - bar3d(groupby(eduach, agegroup), dx=0.2, dy=0.8, maxticks=4)
-                - bar3d(groupby(eduach, agegroup, gender))
-                - pie(groupby(eduach * 2))
+                # - barh(groupby(agegroup, eduach))
+                # - barh(groupby(agegroup, eduach), height=0.7)
+
+                - pie(groupby(eduach), fname='pie1.png&pdf')
                 - pie(groupby(eduach),
-                      explode=[0, 0.1, 0, 0],
-                      labels=['a', 'b', 'c', 'd'],
-                      shadow=True)
+                      explode=[0.1, 0, 0],
+                      labels=['Lower secondary', 'Upper secondary', 'Tertiary'],
+                      fname='pie2.png&pdf')
+
+                # limit number of individuals to get smaller .pdf files
+                - num: 200
+                - salary: 10000 + uniform(size=num) * 50000
+                - area: 3.1415 * (4 + 1.5 * children.count()[:200]) ** 2
+                - scatter(age[:num], salary, c=eduach[:num], s=area, grid=True,
+                          fname='scatter1.png&pdf')
+                # r=expr is equivalent to s=pi * expr ** 2
+                - scatter(normal(size=num), normal(size=num), c=age[:num],
+                          r=2 ** eduach[:num], alpha=0.8,
+                          fname='scatter2.png&pdf')
 
             test_init:
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
@@ -311,11 +466,10 @@ entities:
 #                      partner_id=1)
 
             temp_global: age + 10
-            temp_global_test1:
+            temp_global_modify:
                 - temp_global: temp_global * 2
-            temp_global_test2:
-                - temp_global: temp_global - 10
-            show_temp_global: show(temp_global)
+            temp_global_check:
+                - assertEqual(temp_global, (age + 10) * 2)
 
             test_expr:
                 - show("count:", count())
@@ -356,29 +510,15 @@ entities:
                 # with expr argument
                 - newborn: age[age == 0]
                 - assertEqual(newborn[0], 0)
-                
+
                 # with slice
                 - assertEqual(age[0:1], [age[0]])
-                
+
                 # with expr slice
-                - indice: trunc(count() / 2)
-                - ages: age[indice:indice+10:2]
+                - index: trunc(count() / 2)
+                - ages: age[index:index+10:2]
                 - assertEqual(ages.__len__(), 5)
-                - assertEqual(ages[0], age[indice])
-
-            test_call:
-                # without argument
-                - assertEqual(age.sum(), sum(age))
-                - assertEqual(age.std(), std(age))
-                - assertEqual(age.max(), max(age))
-                - assertEqual(age.min(), min(age))
-
-                # with constant argument
-                - assertEqual(age.min(axis=-1), min(age))
-
-                # with expr argument
-                - axis: 0
-                - assertEqual(age.min(axis=axis), min(age))
+                - assertEqual(ages[0], age[index])
 
             test_periodic_globals:
                 # implicit global namespace
@@ -419,13 +559,61 @@ entities:
                 - globals_in_expr: 1.0 + MINR
                 - idx_globals_in_expr: 1.0 + MINR[2002]
                 - expr_idx_globals_in_expr: 1.0 + MINR[period - 1]
-                - yob: randint(1900, period)
-                - yop: yob + 65
-                - vector_idx_globals_in_expr: 1.0 + MINR[yob + 65]
-                - show("yob", yob, "yop", yop, "v", vector_idx_globals_in_expr)
-                - yop2: yob + if(gender, 65, WEMRA)
-                - global_in_idx: show("real yop", yop2,
-                                      "minr", MINR[yob + if(gender, 65, WEMRA)])
+
+                # index by a vector
+                - yearofbirth: period - age
+                - yearofpension: yearofbirth + 65
+                - result: MINR[yearofpension]
+                - assertEqual(result[0], MINR[yearofpension[0]])
+
+                # test slices
+
+                # a) slices of constant lengths
+                #    (ie. all(stop - start == stop[0] - start[0]))
+                #    result is a 2D array: num_individuals x slice_length
+
+                #    1) scalar bounds
+                - scalar_bounds: MINR[period:period + 2].sum()
+                - assertEqual(scalar_bounds, MINR[period] + MINR[period + 1])
+
+                #    2) scalar start, vector stop
+                - scalar_start: MINR[period:age - age + period + 10]
+                - assertNanEqual(scalar_start[0][0], MINR[period])
+                - assertNanEqual(scalar_start[0][9], MINR[period + 9])
+
+                #    3) vector start, scalar stop
+                - scalar_stop: MINR[age - age + period:period + 10]
+                - assertNanEqual(scalar_stop[0][0], MINR[period])
+                - assertNanEqual(scalar_stop[0][9], MINR[period + 9])
+
+                #    4) vector start, vector stop
+                - vector_bounds: MINR[yearofbirth:yearofpension]
+                - assertNanEqual(vector_bounds[0],
+                                 MINR[yearofbirth[0]:yearofpension[0]])
+
+                # b) slices of varying length
+                #    (ie. any(stop - start != stop[0] - start[0]))
+                #    result is an IrregularNDArray:
+                #    num_individuals x slice lengths
+                - yearofpension: yearofbirth + if(gender, 65, WEMRA)
+
+                #    1) scalar start, vector stop
+                - scalar_start: MINR[period:yearofpension]
+                - assertNanEqual(scalar_start[0], MINR[period:yearofpension[0]])
+
+                #    2) vector start, scalar stop
+                # + 1 to not get all nan the first period
+                - scalar_stop: MINR[yearofbirth:period + 1]
+                - assertNanEqual(scalar_stop[0],
+                                 MINR[yearofbirth[0]:period + 1])
+
+                #    3) vector start, vector stop
+                - vector_bounds: MINR[yearofbirth:yearofpension]
+                - assertNanEqual(vector_bounds[0],
+                                 MINR[yearofbirth[0]:yearofpension[0]])
+                # test IrregularNDArray
+                - assertEqual(vector_bounds.prod(axis=1).__len__(), count())
+                - assertEqual(vector_bounds.sum(axis=1).__len__(), count())
 
                 # explicit "periodic" namespace
                 # -----------------------------
@@ -435,7 +623,7 @@ entities:
                 - assertEqual(periodic.MINR[2005], 13620.2)
                 # expr_index
                 - assertEqual(periodic.WEMRA[period - 1], fake_wemra_pm1)
-                - vector_idx: periodic.MINR[yob + 65]
+                - vector_idx: periodic.MINR[yearofbirth + 65]
 
             test_other_globals:
                 # with a PERIOD column 
@@ -1184,21 +1372,10 @@ entities:
 #            test_extra_comma:
 #                - show('test extra colon'),
 
-            test_predictor1:
-                predictor: plop
-                expr: if(age < 10, age ** 3, age ** 2)
-            test_predictor2:
-                predictor: plop
-                expr: if(age >= 10, 100, plop)
-
-            test_predictor3:
-                - a:
-                    predictor: plop2
-                    expr: if(age < 10, age ** 3, age ** 2)
-                - b:
-                    predictor: plop2
-                    expr: if(age >= 50, 100, plop2)
-                - show(plop2)
+             # commented because it raises an exception
+#            test_predictor:
+#                predictor: plop
+#                expr: age
 
             test_clone:
                 - clone(filter = age == 95,
@@ -2008,21 +2185,24 @@ simulation:
 
                    # basic
                    temp_global,
-                   show_temp_global,
-                   temp_global_test1,
-                   show_temp_global,
-                   temp_global_test2,
-                   show_temp_global,
+                   temp_global_modify,
+                   temp_global_check,
 
                    test_expr,
                    agegroup,
 
+                   # test the charts before test_new messes the demography
+                   test_charts,
+
+                   # ...
                    test_logit,
                    test_logistic,
 
                    test_attr,
                    test_subscript,
                    test_call,
+                   hybrid_test,
+                   test_hybrids,
 
                    test_periodic_globals,
                    test_other_globals,
@@ -2031,7 +2211,7 @@ simulation:
                    test_macro,
                    test_compound,
 
-                   test_predictor1, test_predictor2, test_predictor3,
+                   test_while,
 
 #                   test_extra_comma,
 #                   test_uninitialized_var,
@@ -2083,9 +2263,6 @@ simulation:
                    test_choice,
                    show_weight,
                    [marriage, 4],
-
-                   # charts
-#                   test_charts,
         ]
         - household: [num_persons, nch, maxnch, test_align_link
 #                      dump_csv_h,

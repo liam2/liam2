@@ -1,12 +1,11 @@
-# This is a "simulation" file. To run the simulation, press F6 in liam2
-# environment, or run the following command in a console:
-# INSTALL PATH\main run demo03.yml
+# This is a LIAM2 simulation file. To run the simulation, press F6 if you are
+# using the editor bundled with LIAM2, otherwise run the following command in a
+# console: [BUNDLEPATH]\liam2\main run demo03.yml
 
-# This example builds upon the previous ones and introduces the following
-# additional features: macros, lifecycle functions (new and remove), logit_regr,
-# aggregate functions (sum and avg) and the default_entity option. We use
-# the features we have introduced so far to add very simple birth and death
-# procedures to our model.
+# This example builds upon the first two and introduces a few additional
+# features: a second entity, links and one of their associated methods
+# (linkname.count()), procedures with local variables, an init procedure, the
+# choice function and a few new arguments to functions we have already seen.
 entities:
     household:
         fields:
@@ -19,20 +18,24 @@ entities:
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
+            # init_region_id is a procedure (it contains another process)
             init_region_id:
+                # region_id is set randomly, with a 10% probability to be 0,
+                # a 20% probability to be 1, etc.
                 - region_id: choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
 
             household_composition:
+                # count the number of persons in each household
                 - nb_persons: persons.count()
-                - nb_children: persons.count(age < 18)
 
-            clean_empty: remove(nb_persons == 0)
+                # count the number of children (age < 18) in each household
+                - nb_children: persons.count(age < 18)
 
     person:
         fields:
             # period and id are implicit
-            - age:        int
-            - gender:     bool
+            - age:    int
+            - gender: bool
 
             # link fields
             - mother_id:  int
@@ -42,55 +45,60 @@ entities:
             - agegroup: {type: int, initialdata: false}
 
         links:
+            # we define here all the links between individuals of the same
+            # entity...
             mother: {type: many2one, target: person, field: mother_id}
             children: {type: one2many, target: person, field: mother_id}
+
+            # ... or of a different entity
             household: {type: many2one, target: household, field: hh_id}
 
-        macros:
-            MALE: True
-            FEMALE: False
-            ISMALE: gender
-            ISFEMALE: not gender
-
-        # possible transitions and regressions. The actual list used in the
-        # simulation must be defined below
+        # possible transitions and regressions
         processes:
             ageing:
                 - age: age + 1
-                - agegroup: if(age < 50,
-                               5 * trunc(age / 5),
-                               10 * trunc(age / 10))
 
-            birth:
-                - to_give_birth: logit_regr(0.0,
-                                            filter=ISFEMALE and (age >= 15) and (age <= 50),
-                                            align='al_p_birth.csv')
-                - new('person', filter=to_give_birth,
-                      mother_id = id,
-                      hh_id = hh_id,
-                      age = 0,
-                      gender = choice([MALE, FEMALE], [0.51, 0.49]))
+                # juniors and plus50 are *local* variables. This means they are
+                # only usable within the ageing procedure. As we have seen
+                # in the first example, the agegroup process below could just
+                # as well be written using a single process (without using
+                # local variables).
+                - juniors: 5 * trunc(age / 5)
+                - plus50: 10 * trunc(age / 10)
+                - agegroup: if(age < 50, juniors, plus50)
 
-            death:
-                - dead: if(ISMALE,
-                           logit_regr(0.0, align='al_p_dead_m.csv'),
-                           logit_regr(0.0, align='al_p_dead_f.csv'))
-                - show('Avg age of dead men', avg(age, filter=dead and ISMALE))
-                - show('Avg age of dead women', avg(age, filter=dead and ISFEMALE))
-                - remove(dead)
-
+            # * dump is not limited to simple columns, it can evaluate any
+            #   expression in-place
+            # * one can easily get the value of a linked object by using
+            #   "linkname.variable_name"
+            # * the suffix argument can be used to customize the name of the
+            #   csv file. It uses this pattern: <entity>_<period>_<suffix>.csv
             dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
                                 mother.age), suffix='info')
-            show_demography: show(groupby(agegroup, gender))
+
+            # * groupby can also be saved to a csv file
+            # * you can customize the filename more precisely (than with
+            #   'suffix') by using the 'fname' argument, with the optional
+            #   {entity} and {period} keywords. They are respectively replaced
+            #   by the name of the entity and the current period
+            csv_demography: csv(groupby(agegroup, gender),
+                                fname='demography_{period}.csv')
+            
+            # * charts can be saved to files instead of being displayed
+            #   interactively. The 'fname' and 'suffix' arguments of csv() also
+            #   apply to all charting functions.
+            chart_demography: bar(groupby(agegroup, gender),
+                                  fname='demography_{period}.png')
 
 simulation:
+    # the processes listed in this section are only executed once in
+    # start_period - 1 (that is 2001 in this case), instead of once per period.
     init:
         - household: [init_region_id]
 
     processes:
-        - person: [ageing, birth, death, show_demography]
-        - household: [household_composition, clean_empty]
-#        - person: [dump_info, show_demography]
+        - household: [household_composition]
+        - person: [ageing, dump_info, csv_demography, chart_demography]
 
     input:
         file: simple2001.h5
@@ -99,7 +107,3 @@ simulation:
 
     start_period: 2002
     periods: 2
-
-    # at the end of the simulation, start the interactive console directly in
-    # the "person" entity
-    default_entity: person

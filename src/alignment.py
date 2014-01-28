@@ -115,6 +115,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                     group_maybe_indices = members_indices
                 if isinstance(score, np.ndarray):
                     maybe_members_rank_value = score[group_maybe_indices]
+                    #TODO: use np.partition (np1.8+)
                     sorted_local_indices = np.argsort(maybe_members_rank_value)
                     sorted_global_indices = \
                         group_maybe_indices[sorted_local_indices]
@@ -524,7 +525,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # for align_other (0.2s vs 4.26), so I shouldn't care too much about
         # it for now.
 
-        # target_row is an index valid for *filtered/label* columns !
+        # target_row (row of person) is an index valid for *filtered/label*
+        # columns !
         for target_row, source_row in enumerate(source_rows):
             if source_row == -1:
                 continue

@@ -350,7 +350,8 @@ class Simulation(object):
 
             if processes:
                 # build context for this period:
-                const_dict = {'period': period,
+                const_dict = {'__simulation__': self,
+                              'period': period,
                               'nan': float('nan'),
                               '__globals__': globals_data}
 
@@ -360,11 +361,6 @@ class Simulation(object):
 
                     print("- %d/%d" % (p_num, num_processes), process.name,
                           end=' ')
-                    #TODO: provide a custom __str__ method for Process &
-                    # Assignment instead
-                    if hasattr(process, 'predictor') and process.predictor \
-                       and process.predictor != process.name:
-                        print("(%s)" % process.predictor, end=' ')
                     print("...", end=' ')
                     if period_idx % periodicity == 0:
                         elapsed, _ = gettime(process.run_guarded, self,
@@ -414,17 +410,22 @@ class Simulation(object):
 
             total_objects = sum(period_objects[period] for period in periods)
             total_time = time.time() - main_start_time
+            try:
+                ind_per_sec = str(int(total_objects / total_time))
+            except ZeroDivisionError:
+                ind_per_sec = 'inf'
+
             print("""
 ==========================================
  simulation done
 ==========================================
  * %s elapsed
  * %d individuals on average
- * %d individuals/s/period on average
+ * %s individuals/s/period on average
 ==========================================
 """ % (time2str(time.time() - start_time),
        total_objects / self.periods,
-       total_objects / total_time))
+       ind_per_sec))
 
             show_top_processes(process_time, 10)
 #            if config.debug:

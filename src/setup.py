@@ -33,14 +33,14 @@ build_exe_options = {
     "optimize": 2,
     # strip paths in __file__ attributes
     "replace_paths": [("*", "")],
-    #"includes": ["matplotlib.backends.backend_qt4agg"],
-    "includes": ["matplotlib.backends.backend_tkagg"],
-    "namespace_packages": ["mpl_toolkits"],
+    "includes": ["matplotlib.backends.backend_qt4agg"],
+    # "includes": ["matplotlib.backends.backend_tkagg"],
     "excludes": [
         # linux-specific modules
         "_codecs", "_codecs_cn", "_codecs_hk", "_codecs_iso2022",
         "_codecs_jp", "_codecs_kr", "_codecs_tw",
         # common modules
+        "Tkconstants", "Tkinter",
         "Cython", "_ssl",
         "base64", "bz2", "compiler",
         "doctest", "dummy_thread",
@@ -51,7 +51,6 @@ build_exe_options = {
         "posixpath", "pydoc", "pydoc_topics", "repr", "scipy",
         "select", "stringprep", "strptime",
         "tcl", "xml"
-
         # matplotlib => calendar, distutils, unicodedata
         # matplotlib.backends.backend_tkagg => Tkconstants, Tkinter
         # ctypes, io are required now
@@ -59,7 +58,7 @@ build_exe_options = {
 }
 
 setup(name="liam2",
-      version="0.8.0",
+      version="0.7.99.2",  # 0.8-rc1 but cx_freeze wants only ints and .
       description="LIAM2",
 
       cmdclass={"build_ext": MyBuildExt},
@@ -69,3 +68,4 @@ setup(name="liam2",
                "build_exe": build_exe_options},
       executables=[Executable("main.py")],
       requires=['numpy', 'numexpr', 'tables', 'carray'])
+      # also recommends 'matplotlib' and 'vitables'

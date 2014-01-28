@@ -5,7 +5,8 @@ import types
 
 import numpy as np
 
-from utils import LabeledArray, ExplainTypeError, add_context
+from utils import (LabeledArray, ExplainTypeError, add_context, safe_take,
+                   IrregularNDArray)
 from context import EntityContext
 
 try:
@@ -616,21 +617,68 @@ class GlobalVariable(Variable):
             except ValueError:
                 globals_periods = globals_table['period']
             base_period = globals_periods[0]
-            row = key - base_period
+            if isinstance(key, slice):
+                translated_key = slice(key.start - base_period,
+                                       key.stop - base_period,
+                                       key.step)
+            else:
+                translated_key = key - base_period
         else:
-            row = key
+            translated_key = key
         if self.value not in globals_table.dtype.fields:
             raise Exception("Unknown global: %s" % self.name)
         column = globals_table[self.value]
         numrows = len(column)
         missing_value = get_missing_value(column)
-        if isinstance(row, np.ndarray) and row.shape:
-            out_of_bounds = (row < 0) | (row >= numrows)
-            row[out_of_bounds] = -1
-            return np.where(out_of_bounds, missing_value, column[row])
+
+        if isinstance(translated_key, np.ndarray) and translated_key.shape:
+            return safe_take(column, translated_key, missing_value)
+        elif isinstance(translated_key, slice):
+            start, stop = translated_key.start, translated_key.stop
+            step = translated_key.step
+            if step is not None and step != 1:
+                raise NotImplementedError("step != 1 (%d)" % step)
+            if (isinstance(start, np.ndarray) and start.shape or
+                isinstance(stop, np.ndarray) and stop.shape):
+                lengths = stop - start
+                length0 = lengths[0]
+                if not isinstance(start, np.ndarray) or not start.shape:
+                    start = np.repeat(start, len(lengths))
+                if np.all(lengths == length0):
+                    # constant length => result is a 2D array:
+                    # num_individuals x slice_length
+                    result = np.empty((len(lengths), length0),
+                                      dtype=column.dtype)
+                    # we assume there are more individuals than there are
+                    # "periods" (or other ticks) in the table.
+                    #XXX: We might want to actually test that it is true and
+                    # loop on the individuals instead if that is not the case
+                    for i in range(length0):
+                        result[:, i] = safe_take(column, start + i,
+                                                 missing_value)
+                    return result
+                else:
+                    # varying length => result is an array (num_individuals) of
+                    # 1D arrays (slice lengths)
+                    # each "item" of the result is a view, so we pay "only" for
+                    # all the arrays overhead, not for the data itself.
+                    result = np.empty(len(lengths), dtype=list)
+                    if not isinstance(stop, np.ndarray) or not stop.shape:
+                        stop = np.repeat(stop, len(lengths))
+                    for i in range(len(lengths)):
+                        result[i] = column[start[i]:stop[i]]
+                    return IrregularNDArray(result)
+            else:
+                # out of bounds slices bounds are "dropped" silently (like in
+                # python) -- ie the length of the slice returned can be smaller
+                # than the one asked. We could return "missing_value" for indices
+                # out of bounds but I do not know if it would be better. Since
+                # this version is easier to implement, lets go for it for now.
+                return column[translated_key]
         else:
-            out_of_bounds = (row < 0) or (row >= numrows)
-            return column[row] if not out_of_bounds else missing_value
+            out_of_bounds = (translated_key < 0) or (translated_key >= numrows)
+            return column[translated_key] if not out_of_bounds \
+                else missing_value
 
     def __getitem__(self, key):
         return SubscriptedGlobal(self.tablename, self.value, self._dtype, key)
@@ -667,7 +715,7 @@ class GlobalArray(Variable):
         #XXX: maybe I should just use self.name?
         tmp_varname = '__%s' % self.name
         if tmp_varname in context:
-            assert context[tmp_varname] == result
+            assert context[tmp_varname] is result
         context[tmp_varname] = result
         return Variable(tmp_varname)
 
@@ -691,3 +739,68 @@ class GlobalTable(object):
         #XXX: print (a subset of) data instead?
         return 'Table(%s)' % ', '.join([name for name, _ in self.fields])
     __repr__ = __str__
+
+
+class MethodCall(EvaluableExpression):
+    def __init__(self, entity, name, args, kwargs):
+        self.entity = entity
+        self.name = name
+        self.args = args
+        self.kwargs = kwargs
+
+    def evaluate(self, context):
+        from process import Assignment, Function
+        entity_processes = self.entity.processes
+        method = entity_processes[self.name]
+        # hybrid (method & variable) assignment can be called
+        assert isinstance(method, (Assignment, Function))
+        args = [expr_eval(arg, context) for arg in self.args]
+        kwargs = dict((k, expr_eval(v, context))
+                      for k, v in self.kwargs.iteritems())
+        fields = '__simulation__', 'period', 'nan', '__globals__'
+        const_dict = {k: context[k] for k in fields}
+        return method.run_guarded(const_dict['__simulation__'], const_dict,
+                                  *args, **kwargs)
+
+    def __str__(self):
+        args = [repr(a) for a in self.args]
+        kwargs = ['%s=%r' % (k, v) for k, v in self.kwargs.iteritems()]
+        return '%s(%s)' % (self.expr, ', '.join(args + kwargs))
+    __repr__ = __str__
+
+    def collect_variables(self, context):
+        args_vars = [collect_variables(arg, context) for arg in self.args]
+        args_vars.extend(collect_variables(v, context)
+                         for v in self.kwargs.itervalues())
+        return set.union(*args_vars) if args_vars else set()
+
+    def traverse(self, context):
+        # for node in traverse_expr(self.expr, context):
+        #     yield node
+        for arg in self.args:
+            for node in traverse_expr(arg, context):
+                yield node
+        for kwarg in self.kwargs.itervalues():
+            for node in traverse_expr(kwarg, context):
+                yield node
+        yield self
+
+
+class VariableMethodHybrid(Variable):
+    def __init__(self, name, entity, dtype=None):
+        Variable.__init__(self, name, dtype)
+        self.entity = entity
+
+    def __call__(self, *args, **kwargs):
+        return MethodCall(self.entity, self.name, args, kwargs)
+
+
+class MethodSymbol(object):
+    def __init__(self, name, entity):
+        self.name = name
+        self.entity = entity
+
+    def __call__(self, *args, **kwargs):
+        return MethodCall(self.entity, self.name, args, kwargs)
+
+

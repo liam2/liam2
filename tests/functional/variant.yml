@@ -12,7 +12,7 @@ entities:
 
         processes:
             # override process
-            agegroup: 
+            agegroup:
                 - show('this is agegroup from the variant')
                 - agegroup: 10 * trunc(age / 10)
 

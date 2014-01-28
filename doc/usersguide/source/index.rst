@@ -1,5 +1,5 @@
-Welcome to LIAM 2 User Guide !
-==============================
+Welcome to LIAM2 User Guide !
+=============================
 
 .. toctree::
    :maxdepth: 3

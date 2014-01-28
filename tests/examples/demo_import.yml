@@ -1,6 +1,6 @@
-# This is an "import" file. To use it press F5 in liam2 environment, or run
-# the following command in a console:
-# INSTALL PATH\main import demo_import.yml
+# This is a LIAM2 import file. To use it, press F5 if you are using the editor
+# bundled with LIAM2, otherwise run the following command in a console:
+# [BUNDLEPATH]\liam2\main import demo_import.yml
 output: simple2001.h5
 
 globals:

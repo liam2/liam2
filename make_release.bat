@@ -1,2 +1,2 @@
 @echo off
-python make_release.py
+python make_release.py %*

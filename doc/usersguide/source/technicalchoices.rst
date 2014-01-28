@@ -6,7 +6,7 @@ Technical choices
 Python
 ------
 
-We use the Python language (http://www.python.org/) for the development of LIAM 2. 
+We use the Python language (http://www.python.org/) for the development of LIAM2. 
 
     Python runs on Windows, Linux/Unix, Mac OS X, and has been ported to the Java and .NET virtual machines.
 
