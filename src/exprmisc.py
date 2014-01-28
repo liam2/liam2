@@ -281,10 +281,6 @@ class Choice(EvaluableExpression):
         #FIXME: add choices & prob if they are expr
         yield self
 
-    def collect_variables(self, context):
-        #FIXME: add choices & prob if they are expr
-        return set()
-
     def __str__(self):
         bins = self.bins
         if bins is None:
@@ -410,12 +406,6 @@ class CreateIndividual(EvaluableExpression):
             for node in traverse_expr(kwarg, context):
                 yield node
         yield self
-
-    def collect_variables(self, context):
-        #FIXME: we need to add variables from self.filter (that's what is
-        # needed for the general case -- in expr_eval)
-        used_variables = self._collect_kwargs_variables(context)
-        return used_variables
 
     def _collect_kwargs_variables(self, context):
         used_variables = set()
@@ -558,7 +548,7 @@ class Dump(TableExpression):
         for expr in expressions:
             expr_value = expr_eval(expr, context)
             if (filter_value is not None and isinstance(expr_value, np.ndarray)
-                and expr_value.shape):
+                    and expr_value.shape):
                 expr_value = expr_value[filter_value]
             columns.append(expr_value)
 
@@ -585,6 +575,8 @@ class Dump(TableExpression):
         return PrettyTable(table, self.missing)
 
     def traverse(self, context):
+        #FIXME: we should also somehow "traverse" expressions if self
+        # self.expressions is
         for expr in self.expressions:
             for node in traverse_expr(expr, context):
                 yield node
@@ -594,12 +586,11 @@ class Dump(TableExpression):
 
     def collect_variables(self, context):
         if self.expressions:
-            variables = set.union(*[collect_variables(expr, context)
-                                    for expr in self.expressions])
+            return super(Dump, self).collect_variables(context)
         else:
             variables = set(context.keys(extra=False))
-        variables |= collect_variables(self.filter, context)
-        return variables
+            variables |= collect_variables(self.filter, context)
+            return variables
 
     #noinspection PyUnusedLocal
     def dtype(self, context):
@@ -666,12 +657,6 @@ class Where(Expr):
     def dtype(self, context):
         assert getdtype(self.cond, context) == bool
         return coerce_types(context, self.iftrue, self.iffalse)
-
-    def collect_variables(self, context):
-        condvars = collect_variables(self.cond, context)
-        iftruevars = collect_variables(self.iftrue, context)
-        iffalsevars = collect_variables(self.iffalse, context)
-        return condvars | iftruevars | iffalsevars
 
 
 functions = {

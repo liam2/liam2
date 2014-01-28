@@ -8,9 +8,7 @@ import numpy as np
 import config
 from align_link import align_link_nd
 from context import context_length
-from expr import (Expr, Variable,
-                  expr_eval, collect_variables, traverse_expr,
-                  missing_values)
+from expr import Expr, Variable, expr_eval, traverse_expr, missing_values
 from exprbases import FilteredExpression
 from groupby import GroupBy
 from links import LinkValue, Many2One
@@ -224,14 +222,11 @@ class AlignmentAbsoluteValues(FilteredExpression):
         yield self
 
     def collect_variables(self, context):
-        variables = FilteredExpression.collect_variables(self, context)
-        if self.expressions and self.link is None:
-            variables |= set.union(*[collect_variables(expr, context)
-                                     for expr in self.expressions])
-        variables |= collect_variables(self.need, context)
-        variables |= collect_variables(self.take_filter, context)
-        variables |= collect_variables(self.leave_filter, context)
-        return variables
+        if self.link is None:
+            return FilteredExpression.collect_variables(self, context)
+        else:
+            # in this case, it's tricky
+            return set()
 
     def _eval_need(self, context):
         expressions = self.expressions

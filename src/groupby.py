@@ -50,7 +50,6 @@ class GroupBy(TableExpression):
     def evaluate(self, context):
         expr = self.expr
         expr_vars = collect_variables(expr, context)
-
         expressions = self.expressions
         labels = [str(e) for e in expressions]
         columns = [expr_eval(e, context) for e in expressions]
@@ -174,13 +173,6 @@ class GroupBy(TableExpression):
         for node in traverse_expr(self.filter, context):
             yield node
         yield self
-
-    def collect_variables(self, context):
-        variables = set.union(*[collect_variables(expr, context)
-                                for expr in self.expressions])
-        variables |= collect_variables(self.filter, context)
-        variables |= collect_variables(self.expr, context)
-        return variables
 
 
 functions = {

@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import numpy as np
 
-from expr import expr_eval, collect_variables, traverse_expr, LogicalOp
+from expr import expr_eval, traverse_expr, LogicalOp
 from exprbases import EvaluableExpression
 from context import context_length, context_subset, context_delete
 from utils import loop_wh_progress
@@ -24,22 +24,16 @@ class Matching(EvaluableExpression):
             yield node
         for node in traverse_expr(self.set2filter, context):
             yield node
-        for node in traverse_expr(self.score_expr, context):
-            yield node
+        #FIXME: we should also traverse score_expr. This is not done currently,
+        # because traverse is used by collect_variables and the presence of
+        # variables is checked in expr.expr_eval() before
+        # the evaluate method is called and the context is completed during
+        # evaluation (__other_xxx is added during evaluation).
+        # for node in traverse_expr(self.score_expr, context):
+        #     yield node
         for node in traverse_expr(self.orderby, context):
             yield node
         yield self
-
-    def collect_variables(self, context):
-        expr_vars = collect_variables(self.set1filter, context)
-        expr_vars |= collect_variables(self.set2filter, context)
-        #FIXME: add variables from score_expr. This is not done currently,
-        # because the presence of variables is done in expr.expr_eval before
-        # the evaluate method is called and the context is completed during
-        # evaluation (__other_xxx is added during evaluation).
-#        expr_vars |= collect_variables(self.score_expr, context)
-        expr_vars |= collect_variables(self.orderby, context)
-        return expr_vars
 
     def evaluate(self, context):
         global local_ctx

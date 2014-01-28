@@ -2,14 +2,12 @@ from __future__ import print_function
 
 import numpy as np
 
-from expr import (Variable, BinaryOp, getdtype, expr_eval,
-                  collect_variables, traverse_expr, get_tmp_varname,
-                  ispresent)
+from expr import (Variable, BinaryOp, getdtype, expr_eval, traverse_expr,
+                  get_tmp_varname, ispresent)
 from exprbases import EvaluableExpression, NumpyAggregate, FilteredExpression
 import exprmisc
 from context import context_length
 from utils import deprecated
-#from utils import nansum
 
 
 class All(NumpyAggregate):
@@ -56,9 +54,6 @@ class Count(EvaluableExpression):
         for node in traverse_expr(self.filter, context):
             yield node
         yield self
-
-    def collect_variables(self, context):
-        return collect_variables(self.filter, context)
 
     def __str__(self):
         filter_str = str(self.filter) if self.filter is not None else ''

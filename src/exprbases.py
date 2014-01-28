@@ -4,10 +4,9 @@ import numpy as np
 
 import config
 from context import context_length
-from expr import (Expr, ExprCall, EvaluableExpression, expr_eval,
-                  traverse_expr, collect_variables, getdtype,
-                  as_simple_expr, as_string,
-                  get_missing_value, ispresent)
+from expr import (Expr, ExprCall, EvaluableExpression, expr_eval, traverse_expr,
+                  getdtype, as_simple_expr, as_string, get_missing_value,
+                  ispresent)
 
 
 class CompoundExpression(Expr):
@@ -35,9 +34,6 @@ class CompoundExpression(Expr):
             yield node
         yield self
 
-    def collect_variables(self, context):
-        return collect_variables(self.complete_expr, context)
-
     @property
     def complete_expr(self):
         if self._complete_expr is None:
@@ -59,9 +55,6 @@ class FunctionExpression(EvaluableExpression):
 
     def __str__(self):
         return '%s(%s)' % (self.func_name, self.expr)
-
-    def collect_variables(self, context):
-        return collect_variables(self.expr, context)
 
 
 class FilteredExpression(FunctionExpression):
@@ -92,11 +85,6 @@ class FilteredExpression(FunctionExpression):
     def __str__(self):
         filter_str = ', %s' % self.filter if self.filter is not None else ''
         return '%s(%s%s)' % (self.func_name, self.expr, filter_str)
-
-    def collect_variables(self, context):
-        expr_vars = collect_variables(self.expr, context)
-        expr_vars |= collect_variables(self.filter, context)
-        return expr_vars
 
 
 class NumpyFunction(ExprCall):
@@ -219,9 +207,6 @@ class NumexprFunction(Expr):
 
     def __init__(self, expr):
         self.expr = expr
-
-    def collect_variables(self, context):
-        return collect_variables(self.expr, context)
 
     def as_simple_expr(self, context):
         return self.__class__(as_simple_expr(self.expr, context))

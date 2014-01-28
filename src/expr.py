@@ -1,7 +1,6 @@
 from __future__ import division, print_function
 
 from collections import Counter
-import types
 
 import numpy as np
 
@@ -114,9 +113,14 @@ def as_string(expr):
 
 def traverse_expr(expr, context):
     if isinstance(expr, Expr):
-        return expr.traverse(context)
+        for node in expr.traverse(context):
+            yield node
+    elif isinstance(expr, (tuple, list)):
+        for e in expr:
+            for node in traverse_expr(e, context):
+                yield node
     else:
-        return ()
+        yield expr
 
 
 def gettype(value):
@@ -215,7 +219,8 @@ def binop(opname, kind='binary', reversed=False):
 
 
 class Expr(object):
-    # __metaclass__ = ExplainTypeError
+    __metaclass__ = ExplainTypeError
+
     kind = 'generic'
 
     def __init__(self, value=None, children=None):
@@ -312,8 +317,15 @@ class Expr(object):
         return ExprAttribute(self, key)
 
     def collect_variables(self, context):
-        child_vars = [collect_variables(c, context) for c in self.children]
-        return set.union(*child_vars) if child_vars else set()
+        allvars = list(self.all_of(Variable, context))
+        #FIXME: this is a quick hack to make "othertable" work.
+        # We should return prefixed variable instead.
+        badvar = lambda v: isinstance(v, ShortLivedVariable) or \
+                           (isinstance(v, GlobalVariable) and
+                            v.tablename != 'periodic')
+        return set(v.value for v in allvars if not badvar(v))
+        # child_vars = [collect_variables(c, context) for c in self.children]
+        # return set.union(*child_vars) if child_vars else set()
 
     def traverse(self, context):
         for child in self.children:
@@ -546,7 +558,7 @@ class Variable(Expr):
     def __init__(self, name, dtype=None):
         Expr.__init__(self, name)
 
-        # this would be more efficient but we risk behind inconsistent
+        # this would be more efficient but we risk being inconsistent
         # self.name = self.value
         self._dtype = dtype
         self.version = 0
@@ -563,9 +575,6 @@ class Variable(Expr):
     def as_simple_expr(self, context):
         return self
 
-    def collect_variables(self, context):
-        return {self.value}
-
     def dtype(self, context):
         if self._dtype is None and self.value in context:
             type_ = context[self.value].dtype.type
@@ -575,8 +584,7 @@ class Variable(Expr):
 
 
 class ShortLivedVariable(Variable):
-    def collect_variables(self, context):
-        return set()
+    pass
 
 
 class GlobalVariable(Variable):
@@ -683,14 +691,6 @@ class GlobalVariable(Variable):
     def __getitem__(self, key):
         return SubscriptedGlobal(self.tablename, self.value, self._dtype, key)
 
-    def collect_variables(self, context):
-        #FIXME: this is a quick hack to make "othertable" work.
-        # We should return prefixed variable instead.
-        if self.tablename != 'periodic':
-            return set()
-        else:
-            return Variable.collect_variables(self, context)
-
 
 class SubscriptedGlobal(GlobalVariable):
     def __init__(self, tablename, name, dtype, key):
@@ -765,18 +765,10 @@ class MethodCall(EvaluableExpression):
     def __str__(self):
         args = [repr(a) for a in self.args]
         kwargs = ['%s=%r' % (k, v) for k, v in self.kwargs.iteritems()]
-        return '%s(%s)' % (self.expr, ', '.join(args + kwargs))
+        return '%s(%s)' % (self.name, ', '.join(args + kwargs))
     __repr__ = __str__
 
-    def collect_variables(self, context):
-        args_vars = [collect_variables(arg, context) for arg in self.args]
-        args_vars.extend(collect_variables(v, context)
-                         for v in self.kwargs.itervalues())
-        return set.union(*args_vars) if args_vars else set()
-
     def traverse(self, context):
-        # for node in traverse_expr(self.expr, context):
-        #     yield node
         for arg in self.args:
             for node in traverse_expr(arg, context):
                 yield node

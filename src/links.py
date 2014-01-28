@@ -6,7 +6,8 @@ from operator import itemgetter
 import numpy as np
 import numexpr as ne
 
-from expr import Variable, getdtype, expr_eval, missing_values, get_missing_value
+from expr import (Variable, getdtype, expr_eval, missing_values,
+                  get_missing_value)
 from exprbases import EvaluableExpression
 from context import EntityContext, context_length
 from registry import entity_registry
@@ -111,10 +112,11 @@ class LinkValue(LinkExpression):
         self.target_expression = target_expression
         self.missing_value = missing_value
 
-    def collect_variables(self, context):
+    def traverse(self, context):
         #XXX: don't we also need the fields within the target expression?
         #noinspection PyProtectedMember
-        return {self.link._link_field}
+        yield Variable(self.link._link_field)
+        yield self
 
     def dtype(self, context):
         target_context = self.target_context(context)
@@ -192,7 +194,7 @@ class AggregateLink(LinkExpression):
 
     def evaluate(self, context):
         assert isinstance(context, EntityContext), \
-               "one2many aggregates in groupby are currently not supported"
+                "one2many aggregates in groupby are currently not supported"
         link = self.link
         assert isinstance(link, One2Many)
 
@@ -232,13 +234,6 @@ class AggregateLink(LinkExpression):
 
     def eval_rows(self, source_rows, target_filter, context):
         raise NotImplementedError()
-
-    def collect_variables(self, context):
-        # no variable at all because collect_variable is only interested in
-        # the columns of the *current entity* and since we are only working
-        # with one2many relationships, the link column is always on the other
-        # side.
-        return set()
 
 
 class CountLink(AggregateLink):
