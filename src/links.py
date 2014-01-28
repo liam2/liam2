@@ -369,6 +369,7 @@ class MinLink(AggregateLink):
         return result
 
     def __str__(self):
+        #FIXME: this is the old syntax
         if self.target_filter is not None:
             target_filter = ", target_filter=%s" % self.target_filter
         else:
