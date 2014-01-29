@@ -3,6 +3,11 @@
 Change log
 ##########
 
+Version 0.9-pre1
+===============
+
+* heavy refactoring
+
 Version 0.8-rc1
 ===============
 

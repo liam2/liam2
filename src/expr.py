@@ -35,6 +35,7 @@ except ImportError:
         complete_globals.update(eval_context)
         return eval(expr, complete_globals, {})
 
+expr_cache = {}
 num_tmp = 0
 timings = Counter()
 
@@ -237,13 +238,10 @@ class Expr(object):
                         "displayed but it contains: '%s'." % str(self))
 
     def evaluate(self, context):
-#        FIXME: this cannot work, because dict.__contains__(k) calls k.__eq__
-#        which has a non standard meaning
-#        if self in expr_cache:
-#            s = expr_cache[self]
-#        else:
-#            s = self.as_string(context)
-#            expr_cache[self] = s
+        #FIXME: this breaks test_while (infinite loop because values does
+        # not increment at each iteration)
+        # if self in expr_cache:
+        #     return expr_cache[self]
 
         simple_expr = self.as_simple_expr(context)
         if isinstance(simple_expr, Variable) and simple_expr.name in context:
@@ -292,6 +290,7 @@ class Expr(object):
                 # array shapes, but if we ever use numexpr reduction
                 # capabilities, we will be in trouble
                 res = LabeledArray(res, labels[0], labels[1])
+            # expr_cache[self] = res
             return res
         except KeyError, e:
             raise add_context(e, s)
