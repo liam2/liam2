@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, division
 
 import os
 import math
@@ -8,14 +8,13 @@ import numpy as np
 import config
 from expr import Expr, expr_eval
 from process import Process
-from utils import LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim
+from utils import (LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim,
+                   Axis, FileProducer)
 
 try:
-    # we do not use the qt backend because when the python script is run
-    # by nppexec (in notepad++), the qt window does not open :(
-    # import matplotlib
-    # matplotlib.use('Qt4Agg')
-    # del matplotlib
+    import matplotlib
+    matplotlib.use('Qt4Agg')
+    del matplotlib
     import matplotlib.pyplot as plt
     # set interactive mode
     # plt.ion()
@@ -25,14 +24,15 @@ except ImportError, e:
           "'matplotlib.pyplot' could not be imported (%s)." % e)
 
 
-class Chart(Process):
-    grid = False
-    axes = True
-    legend = True
+class Chart(Process, FileProducer):
+    ext = '.png'
+    show_grid = False
+    show_axes = True
+    show_legend = True
     maxticks = 20
     projection = None
     ndim_req = 2
-    check_length = False
+    check_length = True
 
     def __init__(self, *args, **kwargs):
         Process.__init__(self)
@@ -44,7 +44,7 @@ class Chart(Process):
             if isinstance(arg, Expr):
                 yield arg
 
-    def get_colors(self, n, outline=False):
+    def get_colors(self, n):
         from matplotlib import cm
 
         # compute a range which includes the end (1.0)
@@ -78,22 +78,24 @@ class Chart(Process):
             if not isinstance(data, np.ndarray):
                 data = np.asarray(data)
             if ndim(data) == ndim_req:
-                return data
+                # move the last axis first so that the last dimension is stacked
+                axes = range(data.ndim)
+                data = data.transpose(axes[-1], *axes[:-1])
             elif ndim(data) == ndim_req - 1:
                 if isinstance(data, LabeledArray):
                     #TODO: implement np.newaxis in LabeledArray.__getitem__
-                    la = LabeledArray(np.asarray(data)[np.newaxis],
-                                      dim_names=['dummy'] + data.dim_names,
-                                      pvalues=[[0]] + data.pvalues)
-                    return la
+                    data = LabeledArray(np.asarray(data)[np.newaxis],
+                                        dim_names=['dummy'] + data.dim_names,
+                                        pvalues=[[0]] + data.pvalues)
                 else:
-                    return data[np.newaxis]
+                    data = data[np.newaxis]
             else:
                 raise dimerror
         elif all(ndim(a) == ndim_req - 1 for a in args):
-            return args
+            data = args
         else:
             raise dimerror
+        return data, aslabeledarray(data).axes
 
     def run(self, context):
         entity = context['__entity__']
@@ -104,23 +106,19 @@ class Chart(Process):
         kwargs = dict((k, expr_eval(v, context))
                       for k, v in self.kwargs.iteritems())
 
-        data = self.prepare(args, kwargs)
-        array = aslabeledarray(data)
-
+        data, axes = self.prepare(args, kwargs)
         colors = kwargs.pop('colors', None)
         if colors is None:
-            colors = self.get_colors(len(array))
-        fname = kwargs.pop('fname', None)
-        grid = kwargs.pop('grid', self.grid)
+            colors = self.get_colors(len(axes[0]))
+        fname = self._get_fname(kwargs)
+        grid = kwargs.pop('grid', self.show_grid)
         maxticks = kwargs.pop('maxticks', self.maxticks)
         projection = self.projection
 
-        axes = array.axes
-        if self.legend:
-            if len(array) > 1:
-                self.set_legend(axes[0], colors)
+        if self.show_legend:
+            self.set_legend(axes[0], colors)
             axes = axes[1:]
-        if self.axes:
+        if self.show_axes:
             self.set_axes(axes, maxticks, projection)
 
         self._draw(data, colors, **kwargs)
@@ -179,7 +177,7 @@ class Chart(Process):
 
 
 class BoxPlot(Chart):
-    legend = False
+    show_legend = False
     # boxplot works fine with several arrays of different lengths
     check_length = False
 
@@ -189,8 +187,41 @@ class BoxPlot(Chart):
         plt.boxplot(data, **kwargs)
 
 
+class Scatter(Chart):
+    # our code does not handle nicely axes with floating point ticks and
+    # mpl handles them fine
+    show_axes = False
+    colorbar_threshold = 10
+
+    def prepare(self, args, kwargs):
+        axes = [Axis(None, np.unique(arg)) for arg in args]
+        c = kwargs.get('c', 'b')
+        unq_colors = np.unique(c)
+        if len(unq_colors) >= self.colorbar_threshold:
+            # we will add a colorbar in this case, so we do not need a legend
+            self.show_legend = False
+        else:
+            # prepend a fake axis that will be used to make a legend
+            axes = [Axis(None, unq_colors)] + axes
+        return args, axes
+
+    def _draw(self, data, colors, **kwargs):
+        from matplotlib.colors import ListedColormap
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = ListedColormap(colors)
+        r = kwargs.pop('r', None)
+        if r is not None:
+            if kwargs.get('s') is not None:
+                raise Exception('cannot specify both r and s arguments to '
+                                'scatter')
+            kwargs['s'] = np.pi * np.asarray(r) ** 2
+        sc = plt.scatter(*data, **kwargs)
+        if len(colors) >= self.colorbar_threshold:
+            plt.colorbar(sc)
+
+
 class Plot(Chart):
-    grid = True
+    show_grid = True
 
     def __init__(self, *args, **kwargs):
         Chart.__init__(self, *args, **kwargs)
@@ -233,7 +264,7 @@ class StackPlot(Chart):
 
 
 class Bar(Chart):
-    grid = True
+    show_grid = True
 
     def _draw(self, data, colors, **kwargs):
         numvalues = len(data[0])
@@ -255,7 +286,7 @@ class Bar(Chart):
 
 
 class BarH(Bar):
-    grid = True
+    show_grid = True
 
     def _draw(self, data, colors, **kwargs):
         numvalues = len(data[0])
@@ -277,8 +308,8 @@ class BarH(Bar):
 
 
 class Pie(Chart):
-    axes = False
-    legend = False
+    show_axes = False
+    show_legend = False
     ndim_req = 1
 
     def _draw(self, data, colors, **kwargs):
@@ -301,6 +332,7 @@ class Pie(Chart):
 
 
 functions = {
+    'scatter': Scatter,
     'boxplot': BoxPlot,
     'plot': Plot,
     'stackplot': StackPlot,

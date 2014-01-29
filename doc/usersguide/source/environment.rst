@@ -3,8 +3,8 @@
 Environment
 ###########
 
-LIAM 2 bundle
--------------
+LIAM2 bundle
+------------
 
 The bundle includes:
 
@@ -19,7 +19,8 @@ The bundle includes:
     directly from within the editor by simply pressing F5 or F6 respectively.
     See below for more information.
     
-- The documentation in html and pdf formats.
+- The documentation in HTML Help format (.chm). You can find .pdf and .html
+  versions on our website.
 
 - A demonstration model with a synthetic data set of 20,200 persons grouped in
   14,700 households.
@@ -28,24 +29,24 @@ Getting Started
 ---------------
 
 - Copy the contents of the bundle in a directory on your disk (let us call it 
-  *[LIAM2PATH]*).
+  *[BUNDLEPATH]*).
 
-- Run the "Notepad++Portable.exe" from the *[LIAM2PATH]\\editor* 
+- Run the "Notepad++Portable.exe" from the *[BUNDLEPATH]\\editor* 
   directory.
 
-- Open a model (eg. *[LIAM2PATH]\\examples\\demo01.yml*)
+- Open a model (eg. *[BUNDLEPATH]\\examples\\demo01.yml*)
 
 - Press F6 to run the model. A console window will open within the editor and
   display the status of the simulation. After the simulation completes, the
   console window becomes interactive.
 
 - Use this console to explore the results. If you already quit the
-  interactive console and want to explore the results with interactive
+  interactive console and want to explore the results with the interactive
   console again without (re)simulating the model, you can press F7.
 
 - Alternatively, you can explore the results "graphically" by pressing F9.
-  This will open both the input dataset and the result file with an hdf5
-  viewer (ViTables).
+  This will open both the input dataset and the result file (if any) with an
+  hdf5 viewer (ViTables).
 
 Using your own data
 -------------------
@@ -55,7 +56,7 @@ Using your own data
   do not necessarily need to be named like that in the csv file).
 
 - Create an import file, as described in the :ref:`import_data` section. You
-  can use *[LIAM2PATH]\\examples\\demo_import.yml* as an example.
+  can use *[BUNDLEPATH]\\examples\\demo_import.yml* as an example.
 
 - Press F5 to convert your CSV files to hdf5.
 

@@ -2,14 +2,14 @@ Code architecture
 #################
 
 This document is meant for people who want to know more about the internals of
-Liam2, for example to add or modify some functionality. One should already be
+LIAM2, for example to add or modify some functionality. One should already be
 familiar with how the program is used (on the user side). 
 
 Concepts
 ========
 
 Here is a brief description of the most important concepts to understand the
-code of Liam2, as well as where those concepts are implemented.
+code of LIAM2, as well as where those concepts are implemented.
 
 Simulation
 ----------
@@ -62,13 +62,13 @@ Expressions
 file: expr.py (and many others)
 
 Expressions are the meat of the code. The *Expr* class is the base class for
-all expressions in Liam2. It defines all the basic operators on expressions
+all expressions in LIAM2. It defines all the basic operators on expressions
 (arithmetic, logical, comparison), but it should not be inherited from
 directly.
 
 file: exprbases.py
 
-Liam2 provides many different bases classes to inherit from when implementing
+LIAM2 provides many different bases classes to inherit from when implementing
 a new function:
 
 * NumexprFunction: base class for functions which are implemented
@@ -100,7 +100,7 @@ a new function:
      * FilteredExpression: subclass for functions which also take a filter
        argument. eg. align, sum, avg, gini.
 
-Liam2 current expressions are implemented in the following files:
+LIAM2 current expressions are implemented in the following files:
 
 alignment.py
     handles align() and align_abs() functions

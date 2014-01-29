@@ -1,0 +1,43 @@
+# This is a LIAM2 simulation file. To run the simulation, press F6 if you are
+# using the editor bundled with LIAM2, otherwise run the following command in a
+# console: [BUNDLEPATH]\liam2\main run demo09.yml
+
+# This example creates another variant of our model. We want to avoid
+# re-computig study_years_failed each period, so we move its computation to
+# an init process. We re-use demo07.yml, change an existing process
+# (ineducation) and add a new one (init_years_failed).
+import: demo07.yml
+
+entities:
+    person:
+        fields:
+            # additional field not present in the base model (nor in the input
+            # in this case)
+            - study_years_failed: {type: int, initialdata: false}
+
+        processes:
+            # add a new process
+            init_years_failed:
+                - study_years_failed: choice([0, 1, 2, 3],
+                                             [0.55, 0.3, 0.1, 0.05])
+
+            # override the ineducation process
+            ineducation:
+                # theoretical age at which a person stops studying
+                - studies_end: if(IS_LOWER_SECONDARY_EDU, 15,
+                                      if(IS_UPPER_SECONDARY_EDU, 18,
+                                      if(IS_TERTIARY_EDU, 23, -1)))
+
+                # unemployed if left education
+                - workstate: if(ISSTUDENT and
+                                  age >= studies_end + study_years_failed,
+                                UNEMPLOYED,
+                                workstate)
+                - show('new unemployed (ex-students)',
+                       count(ISUNEMPLOYED and lag(ISSTUDENT)))
+                       
+simulation:
+    # use our new process
+    init:
+        - household: [init_region_id]
+        - person: [init_education_level, init_years_failed, ineducation]

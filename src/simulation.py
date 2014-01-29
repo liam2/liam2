@@ -419,6 +419,8 @@ class Simulation(object):
                               'periodicity': time_period[self.time_scale]*(1 - 2*(self.retro)),
                               'table_sali': self.table_sali,
                               'format_date': self.time_scale,
+                              '__simulation__': self,
+                              'period': period,
                               'nan': float('nan'),
                               '__globals__': globals_data}
                 assert(periods[period_idx+1] == period)
@@ -428,11 +430,6 @@ class Simulation(object):
                     process, periodicity, start = process_def
                     print("- %d/%d" % (p_num, num_processes), process.name,
                           end=' ')
-                    #TODO: provide a custom __str__ method for Process &
-                    # Assignment instead
-                    if hasattr(process, 'predictor') and process.predictor \
-                       and process.predictor != process.name:
-                        print("(%s)" % process.predictor, end=' ')
                     print("...", end=' ')
                     # TDOD: change that
                     if isinstance(periodicity, int ):
@@ -569,12 +566,15 @@ class Simulation(object):
                 if nb_year_approx > 0 : 
                     time_year = total_time/nb_year_approx
                 
-            print ("""
+            try:
+                ind_per_sec = str(int(total_objects / total_time))
+            except ZeroDivisionError:
+                ind_per_sec = 'inf'
+
+            print( """
 ==========================================
  simulation done
 ==========================================
- * %s elapsed
- * %d individuals on average
  * %d individuals/s/period on average
  * %s second for init_process
  * %s time/period in average

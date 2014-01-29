@@ -10,7 +10,7 @@ from expr import Expr, expr_eval
 from exprbases import TableExpression
 from process import Process, BreakpointException
 from partition import filter_to_indices
-from utils import LabeledArray
+from utils import LabeledArray, FileProducer
 
 
 class Show(Process):
@@ -57,8 +57,11 @@ class QuickShow(Show):
         return Show.__str__(self).replace('show(', 'qshow(')
 
 
-class CSV(Process):
+class CSV(Process, FileProducer):
     #noinspection PyNoneFunctionAssignment
+    ext = '.csv'
+    fname_required = True
+
     def __init__(self, *args, **kwargs):
         Process.__init__(self)
         if (len(args) > 1 and
@@ -66,25 +69,18 @@ class CSV(Process):
                     for arg in args)):
             args = (args,)
         self.args = args
-        suffix = kwargs.pop('suffix', '')
-        fname = kwargs.pop('fname', None)
-        mode = kwargs.pop('mode', 'w')
-        if kwargs:
-            kwarg, _ = kwargs.popitem()
-            raise TypeError("'%s' is an invalid keyword argument for csv()"
-                            % kwarg)
 
-        if fname is not None and suffix:
-            raise ValueError("csv() can't have both 'suffix' and 'fname' "
-                             "arguments")
-        if fname is None:
-            suffix = "_" + suffix if suffix else ""
-            fname = "{entity}_{period}" + suffix + ".csv"
-        self.fname = fname
+        mode = kwargs.pop('mode', 'w')
         if mode not in ('w', 'a'):
             raise ValueError("csv() mode argument must be either "
                              "'w' (overwrite) or 'a' (append)")
         self.mode = mode
+
+        self.fname = self._get_fname(kwargs)
+        if kwargs:
+            kwarg, _ = kwargs.popitem()
+            raise TypeError("'%s' is an invalid keyword argument for csv()"
+                            % kwarg)
 
     def expressions(self):
         for arg in self.args:
@@ -215,7 +211,7 @@ class AssertTrue(Assert):
 
     def eval_assertion(self, context):
         if not expr_eval(self.expr, context):
-            return str(self.expr)
+            return str(self.expr) + " is not True"
 
     def expressions(self):
         if isinstance(self.expr, Expr):
@@ -225,7 +221,7 @@ class AssertTrue(Assert):
 class AssertFalse(AssertTrue):
     def eval_assertion(self, context):
         if expr_eval(self.expr, context):
-            return str(self.expr)
+            return str(self.expr) + " is not False"
 
 
 class ComparisonAssert(Assert):
@@ -239,10 +235,15 @@ class ComparisonAssert(Assert):
     def eval_assertion(self, context):
         v1 = expr_eval(self.expr1, context)
         v2 = expr_eval(self.expr2, context)
-        if not self.compare(v1, v2):
+        result = self.compare(v1, v2)
+        if isinstance(result, tuple):
+            result, details = result
+        else:
+            details = ''
+        if not result:
             op = self.inv_op
-            return "%s %s %s (%s %s %s)" % (self.expr1, op, self.expr2,
-                                            v1, op, v2)
+            return "%s %s %s (%s %s %s)%s" % (self.expr1, op, self.expr2,
+                                              v1, op, v2, details)
 
     def compare(self, v1, v2):
         raise NotImplementedError()
@@ -254,6 +255,17 @@ class ComparisonAssert(Assert):
             yield self.expr2
 
 
+def isnan(a):
+    """
+    isnan is equivalent to np.isnan, except that it returns False instead of
+    raising a TypeError if the argument is an array of non-numeric.
+    """
+    if isinstance(a, np.ndarray):
+        return np.issubsctype(a, np.floating) and np.isnan(a)
+    else:
+        return np.isnan(a)
+
+
 class AssertEqual(ComparisonAssert):
     inv_op = "!="
 
@@ -261,7 +273,14 @@ class AssertEqual(ComparisonAssert):
         # even though np.array_equal also works on scalars, we don't use it
         # systematically because it does not work on list of strings
         if isinstance(v1, np.ndarray) or isinstance(v2, np.ndarray):
-            return np.array_equal(v1, v2)
+            result = np.array_equal(v1, v2)
+            nan_v1, nan_v2 = isnan(v1), isnan(v2)
+            if (not result and np.any(nan_v1 | nan_v2) and
+                np.array_equal(nan_v1, nan_v2)):
+                return False, ' but arrays contain NaNs, did you meant to ' \
+                              'use assertNanEqual instead?'
+            else:
+                return result
         else:
             return v1 == v2
 

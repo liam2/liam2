@@ -8,10 +8,10 @@ their *fields*, the way they interact (*links*) and how they behave over time
 (*processes*). This is done in one file. We use the YAML-markup language.
 This format uses the level of indentation to specify objects and sub objects.
 
-In a LIAM 2 model file, all text following a # is considered to be comments,
+In a LIAM2 model file, all text following a # is considered to be comments,
 and is therefore ignored.
 
-A LIAM 2 model has the following structure: ::
+A LIAM2 model has the following structure: ::
 
     # imports are optional (this section can be entirely omitted)
     import:
@@ -97,7 +97,7 @@ and when they have to be executed, this allows to simulate processes of
 different entities in the order you want.
 
 
-LIAM 2 declares the entities as follows: ::
+LIAM2 declares the entities as follows: ::
 
     entities:
         entity-name1:
@@ -129,7 +129,7 @@ The fields hold the information of each member in the entity. That information
 is global in a run of the model. Every process defined in that entity can use
 and change the value. 
 
-LIAM 2 handles three types of fields:
+LIAM2 handles three types of fields:
 
 - bool: boolean (True or False)
 - int: integer
@@ -431,4 +431,4 @@ Running a model/simulation
 
 - If you are using the command line, use: ::
 
-    [LIAM2PATH]\main run <path_to_simulation_file>
+    [BUNDLEPATH]\liam2\main run <path_to_simulation_file>

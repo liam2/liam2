@@ -15,6 +15,7 @@ from collections import defaultdict, deque
 import warnings
 
 import numpy as np
+import numexpr as ne
 #import psutil
 
 import config
@@ -169,12 +170,24 @@ def safe_put(a, ind, v):
         for fname in a.dtype.names:
             safe_put(a[fname], ind, v[fname])
     else:
+        #XXX: a.put(ind, v) seem to be a bit faster (but does not work if a is
+        # not an ndarray, is it a problem?)
         np.put(a, ind, v)
     # if the last value was erroneously modified (because of a -1 in ind)
     # this assumes indices are sorted
     if ind[-1] != len(a) - 1:
         # restore its previous value
         a[-1] = last_value
+
+
+def safe_take(a, indices, missing_value):
+    """
+    like np.take but out-of-bounds indices return the missing value
+    """
+    indexed = a.take(indices, mode='wrap')
+    return ne.evaluate('where((idx < 0) | (idx >= maxidx), missing, indexed)',
+                       {'idx': indices, 'maxidx': len(a),
+                        'missing': missing_value, 'indexed': indexed})
 
 
 # we provide our own version of fromiter because it swallows any exception
@@ -233,6 +246,37 @@ def isconstant(a, filter_value=None):
     else:
         value = a[0]
         return np.all(filter_value & (a == value))
+
+
+class IrregularNDArray(object):
+    """
+    A wrapper for collections of arrays (eg list of arrays or arrays of
+    arrays) to make them act somewhat like a 2D (numpy) array. This makes it
+    possible to have irregular lengths in the second dimension.
+    """
+    def __init__(self, data):
+        self.data = data
+
+    def make_aggregate(func):
+        def method(self, axis=None):
+            if axis == 1:
+                result = np.empty(len(self.data), dtype=self.data[0].dtype)
+                for i, a in enumerate(self.data):
+                    result[i] = func(a)
+                return result
+            else:
+                raise NotImplementedError("axis != 1")
+        return method
+    prod = make_aggregate(np.prod)
+    sum = make_aggregate(np.sum)
+    min = make_aggregate(np.min)
+    max = make_aggregate(np.max)
+
+    def __getattr__(self, key):
+        return getattr(self.data, key)
+
+    def __getitem__(self, key):
+        return self.data[key]
 
 
 class Axis(object):
@@ -354,7 +398,7 @@ class LabeledArray(np.ndarray):
                        % (len(obj.dim_names), obj.ndim)
             if obj.pvalues is not None:
                 assert len(obj.pvalues) == obj.ndim, \
-                        "len(pvalues) (%d) != ndim (%d)" \
+                       "len(pvalues) (%d) != ndim (%d)" \
                        % (len(obj.pvalues), obj.ndim)
         return obj
 
@@ -367,6 +411,12 @@ class LabeledArray(np.ndarray):
         obj.col_totals = None
         obj.row_totals = None
         return obj
+
+    def transpose(self, *args):
+        res_data = np.asarray(self).transpose(args)
+        res_dim_names = [self.dim_names[i] for i in args]
+        res_pvalues = [self.pvalues[i] for i in args]
+        return LabeledArray(res_data, res_dim_names, res_pvalues)
 
     #noinspection PyAttributeOutsideInit
     def __array_finalize__(self, obj):
@@ -617,7 +667,7 @@ def table2str(table, missing):
         if len(row) < numcols:
             row.extend([''] * (numcols - len(row)))
     formatted = [[format_value(value, missing) for value in row]
-                  for row in table]
+                 for row in table]
     colwidths = [get_col_width(formatted, i) for i in xrange(numcols)]
 
     total_width = sum(colwidths)
@@ -749,6 +799,27 @@ def countlines(filepath):
 
 # dict tools
 # ----------
+
+class WarnOverrideDict(dict):
+    def update(self, other=None, **kwargs):
+        # copy the items to not lose them in case it is an exhaustable
+        # iterable
+        # also converts list and tuple to dict
+        if not isinstance(other, dict):
+            other = dict(other)
+        self._intersect_warn(self, other)
+        self._intersect_warn(self, kwargs)
+        self._intersect_warn(other, kwargs)
+        dict.update(self, other, **kwargs)
+
+    @staticmethod
+    def _intersect_warn(d1, d2):
+        intersect = set(d1.keys()) & set(d2.keys())
+        if intersect:
+            print("Warning: name collision for:",
+                  ",".join("%s (%s vs %s)" % (k, type(d1[k]), d2[k])
+                           for k in sorted(intersect)))
+
 
 def merge_dicts(*args, **kwargs):
     """
@@ -1001,3 +1072,26 @@ class ExplainTypeError(type):
                 return "%d arguments (%d given)" % (needed - 1, given - 1)
             msg = re.sub('(\d+) arguments \((\d+) given\)', repl, msg)
             raise TypeError(msg)
+
+
+class FileProducer(object):
+    # default extension if only suffix is defined
+    ext = None
+    # do we need to return a file name if neither suffix nor fname are defined?
+    fname_required = False
+
+    def _get_fname(self, kwargs):
+        """
+        Returns a filename depending on the given kwargs.
+        Note that kwargs are **pop'ed in-place** !
+        """
+        suffix = kwargs.pop('suffix', '')
+        fname = kwargs.pop('fname', None)
+
+        if fname is not None and suffix:
+            raise ValueError("%s() can't have both 'suffix' and 'fname' "
+                             "arguments" % self.__class__.__name__.lower())
+        if fname is None and (suffix or self.fname_required):
+            suffix = "_" + suffix if suffix else ""
+            fname = "{entity}_{period}" + suffix + self.ext
+        return fname

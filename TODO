@@ -23,6 +23,17 @@ implementation that I am aware of.
 features I would like to implement (in no particular order)
 ===========================================================
 
+- upgrade carray to blz
+
+- when the move away from the conditional context is done,
+  I should make macros available via links. Maybe also merge
+  entity.all_symbols and entity.variables?
+
+- replace breakpoint(period) by breakpoint(condition)
+
+- add option to insert a conditional breakpoint for asserts (ie failed
+  assert start the console)
+
 - F9 should also work on an "import file", so that you can check what you just
   imported.
 
@@ -598,8 +609,8 @@ bug fixes
 optimisation
 ============
 
-- try to compress data using google snappy, quicklz or lz4 (they seem even
-  faster than fastLZ on which blosc is based)
+- try to compress data using google snappy, quicklz or (especially) lz4 (they
+  seem even faster than fastLZ on which blosc is based)
 
 - improve numexpr caching algorithm (LRU), and/or increase its size and/or
   cache expressions ourselves. Some long expressions take a lot longer to

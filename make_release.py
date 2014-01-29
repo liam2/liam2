@@ -1,16 +1,18 @@
 #!/usr/bin/python
-# Release script for Liam2
+# Release script for LIAM2
 # Licence: GPLv3
 from __future__ import print_function
 
 import errno
+import fnmatch
 import os
 import stat
+import zipfile
 
 from os import chdir, makedirs
 from os.path import exists
 from shutil import copytree, copy2, rmtree as _rmtree
-from subprocess import check_output, STDOUT
+from subprocess import check_output, STDOUT, CalledProcessError
 
 
 def _remove_readonly(function, path, excinfo):
@@ -28,7 +30,11 @@ def rmtree(path):
 
 
 def call(*args, **kwargs):
-    return check_output(*args, stderr=STDOUT, **kwargs)
+    try:
+        return check_output(*args, stderr=STDOUT, **kwargs)
+    except CalledProcessError, e:
+        print(e.output)
+        raise e
 
 
 def git_remote_last_rev(url, branch=None):
@@ -61,43 +67,96 @@ def no(msg, default='n'):
 
 
 def do(description, func, *args, **kwargs):
-    print(description, end=' ')
+    print(description + '...', end=' ')
     func(*args, **kwargs)
     print("done.")
 
 
 def copy_release(release_name):
-    chdir('..')
     copytree(r'build\bundle\editor', r'win32\editor')
     copytree(r'build\bundle\editor', r'win64\editor')
     copytree(r'build\tests\examples', r'win32\examples')
     copytree(r'build\tests\examples', r'win64\examples')
     copytree(r'build\src\build\exe.win32-2.7', r'win32\liam2')
     copytree(r'build\src\build\exe.win-amd64-2.7', r'win64\liam2')
-    copytree(r'build\doc\usersguide\build\html',
-             r'win32\documentation\html')
-    copytree(r'build\doc\usersguide\build\html',
-             r'win64\documentation\html')
-    copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
-          r'win32\documentation')
-    copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
-          r'win64\documentation')
+    makedirs(r'win32\documentation')
+    makedirs(r'win64\documentation')
+    copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
+          r'win32\documentation\LIAM2UserGuide.chm')
+    copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
+          r'win64\documentation\LIAM2UserGuide.chm')
     # standalone docs
     copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
-          'LIAM2UserGuide-%s.pdf' % release_name)
+          r'LIAM2UserGuide-%s.pdf' % release_name)
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
-          'LIAM2UserGuide-%s.chm' % release_name)
+          r'LIAM2UserGuide-%s.chm' % release_name)
     copytree(r'build\doc\usersguide\build\html',
-             'html\\%s' % release_name)
+             r'html\%s' % release_name)
+
+
+def allfiles(pattern, path='.'):
+    """
+    like glob.glob(pattern) but also include files in subdirectories
+    """
+    return (os.path.join(dirpath, f)
+            for dirpath, dirnames, files in os.walk(path)
+            for f in fnmatch.filter(files, pattern))
+
+
+def zip_pack(archivefname, filepattern):
+    with zipfile.ZipFile(archivefname, 'w', zipfile.ZIP_DEFLATED) as f:
+        for fname in allfiles(filepattern):
+            f.write(fname)
+
+
+def zip_unpack(archivefname, dest=None):
+    with zipfile.ZipFile(archivefname, 'r') as f:
+        f.extractall(dest)
 
 
 def create_bundles(release_name):
     chdir('win32')
-    call('7z a -tzip ..\Liam2Suite-%s-win32.zip *' % release_name)
+    zip_pack(r'..\LIAM2Suite-%s-win32.zip' % release_name, '*')
     chdir('..')
     chdir('win64')
-    call('7z a -tzip ..\Liam2Suite-%s-win64.zip *' % release_name)
+    zip_pack(r'..\LIAM2Suite-%s-win64.zip' % release_name, '*')
     chdir('..')
+    chdir(r'html\%s' % release_name)
+    zip_pack(r'..\..\LIAM2UserGuide-%s-html.zip' % release_name, '*')
+    chdir(r'..\..')
+
+
+def test_bundle(archivefname, dest):
+    zip_unpack(archivefname, dest)
+    # we use --debug so that errorlevel is set
+    call(dest + r'\liam2\main --debug run src\tests\functional\generate.yml')
+    call(dest + r'\liam2\main --debug import src\tests\functional\import.yml')
+    call(dest + r'\liam2\main --debug run src\tests\functional\simulation.yml')
+    call(dest + r'\liam2\main --debug run src\tests\functional\variant.yml')
+    try:
+        chdir(dest)
+        call(r'liam2\main --debug run examples\demo01.yml')
+        call(r'liam2\main --debug import examples\demo_import.yml')
+        call(r'liam2\main --debug run examples\demo01.yml')
+        call(r'liam2\main --debug run examples\demo02.yml')
+        call(r'liam2\main --debug run examples\demo03.yml')
+        call(r'liam2\main --debug run examples\demo04.yml')
+        call(r'liam2\main --debug run examples\demo05.yml')
+        call(r'liam2\main --debug run examples\demo06.yml')
+        call(r'liam2\main --debug run examples\demo07.yml')
+        call(r'liam2\main --debug run examples\demo08.yml')
+    finally:
+        chdir('..')
+
+
+def test_bundles(release_name):
+    makedirs('test')
+    chdir('test')
+    zip_unpack(r'..\LIAM2-%s-src.zip' % release_name, 'src')
+    for arch in ('win32', 'win64'):
+        test_bundle(r'..\LIAM2Suite-%s-%s.zip' % (release_name, arch), arch)
+    chdir('..')
+    rmtree('test')
 
 
 def cleanup():
@@ -112,6 +171,10 @@ def make_release(release_name=None, branch=None):
     # it to someone, and for that I need network access anyway.
     # Furthermore, cloning from the remote repository makes sure we do not
     # include any untracked file
+    # Note, that it is exactly the same syntax, except that repository is a path
+    # instead of an URL 'git clone -b %s %s build' % (branch, repository)
+    # the only drawback I see is that I could miss changes from others, but
+    # we are not there yet :)
 
     # git config --get remote.origin.url
     repository = 'https://github.com/liam2/liam2.git'
@@ -135,12 +198,13 @@ def make_release(release_name=None, branch=None):
           % (branch, num_ahead, branch), end='')
     if num_ahead:
         if yes(', do you want to push?'):
-            do('Pushing changes...', call, 'git push')
+            do('Pushing changes', call, 'git push')
     else:
         print()
 
     rev = git_remote_last_rev(repository, 'refs/heads/%s' % branch)
 
+    public_release = release_name is not None
     if release_name is None:
         # take first 7 digits of commit hash
         release_name = rev[:7]
@@ -148,13 +212,13 @@ def make_release(release_name=None, branch=None):
     if no('Release version %s (%s)?' % (release_name, rev)):
         exit(1)
 
-    chdir('c:\\tmp')
+    chdir(r'c:\tmp')
     if exists('liam2_new_release'):
         rmtree('liam2_new_release')
     makedirs('liam2_new_release')
     chdir('liam2_new_release')
 
-    do('Cloning...', call, 'git clone -b %s %s build' % (branch, repository))
+    do('Cloning', call, 'git clone -b %s %s build' % (branch, repository))
 
     chdir('build')
 
@@ -165,32 +229,38 @@ def make_release(release_name=None, branch=None):
     if no('Does that last commit look right?'):
         exit(1)
 
-    do('Creating source archive...', call,
-       'git archive --format zip --output liam2-%s-src.zip %s'
-       % (release_name, rev))
-    do('Building everything...', call, 'buildall.bat')
-    do('Moving stuff around...', copy_release, release_name)
-    do('Creating bundles...', create_bundles, release_name)
+    if public_release:
+        test_release = True
+    else:
+        test_release = yes('Do you want to test the bundles after they are '
+                           'created?')
 
-    if release_name != rev[:7]:
+    do('Creating source archive', call,
+       r'git archive --format zip --output ..\LIAM2-%s-src.zip %s'
+       % (release_name, rev))
+    do('Building everything', call, 'buildall.bat')
+    chdir('..')
+    do('Moving stuff around', copy_release, release_name)
+    do('Creating bundles', create_bundles, release_name)
+    if test_release:
+        do('Testing bundles', test_bundles, release_name)
+
+    if public_release:
         if no('Is the release looking good (if so, the tag will be '
               'created and pushed)?'):
             exit(1)
 
-        do('Tagging release...', call,
-           'git tag -a %{name}s -m "tag release %{name}s"'
+        chdir('build')
+        do('Tagging release', call,
+           'git tag -a %(name)s -m "tag release %(name)s"'
            % {'name': release_name})
-        do('Pushing tag...', call, 'git push')
+        do('Pushing tag', call, 'git push origin %s' % release_name)
+        chdir('..')
 
-    do('Cleaning up...', cleanup)
+    do('Cleaning up', cleanup)
 
 
 if __name__=='__main__':
     from sys import argv
 
-    # if len(argv) < 2:
-    #     print "Usage: %s [version] [branch]" % (argv[0],)
-    #     exit(2)
-
     make_release(*argv[1:])
-

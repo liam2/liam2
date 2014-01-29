@@ -163,7 +163,7 @@ the **fields** section.
 
 In this example, *isold* and *backfromoldage* are local variables. They can only
 be used in the procedure where they are defined. Because we are trying
-to use the local variable *isold* in another procedure in this example, LIAM 2
+to use the local variable *isold* in another procedure in this example, LIAM2
 will refuse to run, complaining that *isold* is not defined.
 
 Actions
@@ -527,7 +527,7 @@ The expected occurrences of x after, say, 100 runs is then P(x=1) * 100 and
 the expected value is 1xP(1)+0xP(0)=P(1). This type of simulation hinges on the
 confrontation between a random variable and an exogenous probability.
 
-In LIAM 2, such a probabilistic simulation is called a **choice** process.
+In LIAM2, such a probabilistic simulation is called a **choice** process.
 Suppose i=1..n choice options, each with a probability prob_option_i. A
 choice expression then has the following form: ::
 
@@ -542,7 +542,7 @@ the gender of newborns (51% males and 49% females), as such: ::
 
     gender: choice([True, False], [0.51, 0.49])
 
-In the current version of LIAM 2, it is not possible to combine a choice with
+In the current version of LIAM2, it is not possible to combine a choice with
 alignment.
 
 Here is a more complex example of a process using choice. Suppose we want to
@@ -663,7 +663,7 @@ to use alignment so the number of events occuring per category matches a
 proportion defined externaly. 
 
 There are different ways to choose which individuals are taken. The methodology
-used for now by LIAM 2 is called "alignment by sorting", that is, for each
+used for now by LIAM2 is called "alignment by sorting", that is, for each
 category, the N individuals with the highest scores are selected.
 
 The score computation is not done internally by the align() function, but is
@@ -1227,7 +1227,7 @@ simulation dataset.
 Output
 ======
 
-LIAM 2 produces simulation output in three ways. First of all, by default, the
+LIAM2 produces simulation output in three ways. First of all, by default, the
 simulated datasets are stored in hdf5 format. These can be accessed at the end
 of the run. You can use several tools to inspect the data.
 
@@ -1603,17 +1603,18 @@ charts
 
 .. versionadded:: 0.8
 
-Liam2 has some charting capabilities, courtesy of `matplotlib
+LIAM2 has some charting capabilities, courtesy of `matplotlib
 <http://matplotlib.org>`_. They are available both during a simulation
 and in the interactive console. Each of the following functions is
 designed around the function of the same name in matplotlib. Even though we
 have tried to stay as close as possible to their API, their implementation in
-Liam2 has a few differences, in particular we added a few arguments which
+LIAM2 has a few differences, in particular we added a few arguments which
 are available in most functions.
 
 * *fname*: name of the file to save the chart to. The file format is
-  automatically deduced from the file extension. You can save the same chart
-  to several formats at once by using '&' in the extension. For
+  automatically deduced from the file extension. You can optionally use the
+  '{entity}' and '{period}' key words to customize the name. You can save the
+  same chart to several formats at once by using '&' in the extension. For
   example: ``plot(expr, fname='plot03.png&pdf')`` will write the chart to both
   ``plot03.png`` and ``plot03.pdf``. If the *fname* argument is not used,
   a window will open to view and interact with the figure using a navigation
@@ -1623,11 +1624,19 @@ are available in most functions.
   .. note::
      Keyboard shortcuts mentioned on that page currently do not work.
 
+* *suffix*: a more concise alternative to set the name of the file the chart
+  will be saved to. When it is used, the files are named using the following
+  pattern: ``{entity}_{period}_{suffix}.png``. For example: ::
+
+    bar(expr, suffix='income')
+
+  would create "person_2002_income.png", "person_2003_income.png", etc.
+
 * *colors*: a list of the colors to be used for the chart. See `matplotlib
   colors documentation <http://matplotlib.org/api/colors_api.html>`_
   for the different ways you can specify colors. For example: ::
 
-     bar(expr, colors=['r', 'g', 'b'])
+    bar(expr, colors=['r', 'g', 'b'])
 
   will make a bar chart with red, green and blue bars.
 
@@ -1805,6 +1814,44 @@ dimension). Examples: ::
 .. image:: /charts/pie1.*
 .. image:: /charts/pie2.*
 
+.. index:: scatter, scatter plots
+
+scatter plots
+~~~~~~~~~~~~~
+
+.. versionadded:: 0.8
+
+**scatter** can be used to draw scatter plots. It uses
+`matplotlib.pyplot.scatter
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.scatter>`_ and
+inherits all of its keyword arguments. It should be used like this: ::
+
+    scatter(x_expr, y_expr, ...)
+
+Where both *x_expr* and *y_expr* are (expressions returning) one-dimensional
+arrays (for example an entity field or a groupby expression with only one
+dimension).
+
+Optional keyword arguments include (among others, see above link):
+
+* *c*: to set the color of each circle. A color will be assigned for
+       each different value of this argument.
+* *s*: to set the surface of each circle (mutually exclusive with the *r*
+       argument).
+* *r*: to set the radius of each circle (`r=expr` is equivalent to
+       `s=pi * expr ** 2`). It is mutually exclusive with the *s* argument.
+       The *r* argument is specific to liam2.
+
+Examples: ::
+
+    - salary: 10000 + uniform() * 50000
+    - area: 3.1415 * (4 + 1.5 * children.count()) ** 2
+    - scatter(age, salary, c=eduach, s=area, alpha=0.5s, grid=True)
+    - scatter(normal(), normal(), c=age, r=2 ** eduach)
+
+.. image:: /charts/scatter1.*
+.. image:: /charts/scatter2.*
+
 .. index:: boxplot
 
 boxplot
@@ -1834,7 +1881,7 @@ Examples: ::
 Debugging and the interactive console
 =====================================
 
-LIAM 2 features an interactive console which allows you to interactively
+LIAM2 features an interactive console which allows you to interactively
 explore the state of the memory either during or after a simulation completed.
 
 You can reach it in two ways. You can either pass "-i" as the last argument

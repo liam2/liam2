@@ -3,7 +3,7 @@
 Introduction
 ############
 
-LIAM 2 is a tool to develop (different kinds of) microsimulation models.
+LIAM2 is a tool to develop (different kinds of) microsimulation models.
 
 About LIAM2
 ===========
@@ -26,8 +26,8 @@ http://liam2.plan.be
 About this guide
 ================
 
-This guide will help you develop dynamic microsimulation models using LIAM 2. 
-Please note that it describes version |version| of LIAM 2, but both the software
+This guide will help you develop dynamic microsimulation models using LIAM2. 
+Please note that it describes version |version| of LIAM2, but both the software
 package and this manual are very much work-in-progress, and are therefore
 subject to change, including in the syntax described in this manual for defining
 models.

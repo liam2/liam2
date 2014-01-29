@@ -18,7 +18,7 @@ from data import populate_registry, H5Data
 from upgrade import upgrade
 from view import viewhdf
 
-__version__ = "0.8-pre1"
+__version__ = "0.8-rc1"
 
 
 def eat_traceback(func, *args, **kwargs):
@@ -186,6 +186,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--versions', action=PrintVersionsAction, nargs=0,
                         help="display versions of dependencies")
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help="run in debug mode")
     parser.add_argument('--input-path', dest='input_path',
                         help='override the input path')
     parser.add_argument('--input-file', dest='input_file',
@@ -228,18 +230,28 @@ def main():
     parser_import.add_argument('file', help='data file')
 
     parsed_args = parser.parse_args()
+    if parsed_args.debug:
+        config.debug = True
+
+    # this can happen via the environment variable too!
+    if config.debug:
+        warnings.simplefilter('default')
+        wrapper = lambda func, *args, **kwargs: func(*args, **kwargs)
+    else:
+        wrapper = eat_traceback
 
     action = parsed_args.action
     if action == 'run':
-        simulate(parsed_args)
+        args = simulate, parsed_args
     elif action == "import":
-        file2h5(parsed_args.file)
+        args = file2h5, parsed_args.file
     elif action == "explore":
-        explore(parsed_args.file)
+        args = explore, parsed_args.file
     elif action == "upgrade":
-        upgrade(parsed_args.input, parsed_args.output)
+        args = upgrade, parsed_args.input, parsed_args.output
     elif action == "view":
-        display(parsed_args.file)
+        args = display, parsed_args.file
+    wrapper(*args)
 
 if __name__ == '__main__':
     import sys
@@ -250,8 +262,4 @@ if __name__ == '__main__':
     print("LIAM2 %s (%s)" % (__version__, platform.architecture()[0]))
     print()
 
-    if config.debug:
-        warnings.simplefilter('default')
-        main()
-    else:
-        eat_traceback(main)
+    main()
