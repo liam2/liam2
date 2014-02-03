@@ -147,12 +147,12 @@ class Console(object):
             raise Exception(period_required)
 
         parsing_context = self.parsing_context
-        entity_context = parsing_context[parsing_context['__entity__']]
+        local_parse_ctx = parsing_context[parsing_context['__entity__']]
 
         # add all currently defined temp_variables because otherwise
         # local variables (defined within a procedure) wouldn't be available
-        entity_context.update((name, Variable(name))
-                              for name in entity.temp_variables.keys())
+        local_parse_ctx.update((name, Variable(name))
+                               for name in entity.temp_variables.keys())
         expr = parse(s, parsing_context, interactive=True)
         ctx = EntityContext(entity, {'period': period,
                                      'nan': np.nan,
