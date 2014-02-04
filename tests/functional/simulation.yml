@@ -1270,9 +1270,9 @@ entities:
                               f_id=partner.id,
                               gender=choice([True, False], [0.51, 0.49]))
 
-                # with implicit filter
-                                    # unknown father (even if the mother has a 
-                                    # a partner)
+                # with implicit filters
+                # unknown father when the mother is < 25 years old (even if
+                # she has a partner, so that we can differentiate them.
                 - new_id: if(givebirth,
                              if(age < 25,
                                 new('person',
@@ -1289,6 +1289,17 @@ entities:
                                     m_id=id,
                                     f_id=partner.id,
                                     gender=logit_regr(0.0))),
+                             -1)
+
+                # both implicit and explicit filters
+                - new_id: if(givebirth,
+                             new('person', filter=partner_id != -1,
+                                 age=0,
+                                 partner_id=-1,
+                                 hh_id=hh_id,
+                                 m_id=id,
+                                 f_id=partner.id,
+                                 gender=choice([True, False], [0.51, 0.49])),
                              -1)
 
             test_o2m:
@@ -1612,6 +1623,18 @@ entities:
                 - assertEqual(count(filtered == males_age),
                               count(MALE))
                 - assertEqual(count(filtered == females_age),
+                              count(FEMALE))
+
+                # both implicit and explicit filter
+                # assign to each man the sum of men ages and to each woman
+                # the sum of women ages
+                - age_men_10plus: sum(age, filter=MALE and age >= 10)
+                - age_women_20plus: sum(age, filter=FEMALE and age >= 20)
+                - test_value: if(MALE, sum(age, filter=age >= 10),
+                                       sum(age, filter=age >= 20))
+                - assertEqual(count(test_value == age_men_10plus),
+                              count(MALE))
+                - assertEqual(count(test_value == age_women_20plus),
                               count(FEMALE))
 
                 # nested contextual filter (this is more of a test of nested

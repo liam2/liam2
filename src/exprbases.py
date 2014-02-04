@@ -6,7 +6,7 @@ import config
 from context import context_length
 from expr import (Expr, ExprCall, EvaluableExpression, expr_eval, traverse_expr,
                   getdtype, as_simple_expr, as_string, get_missing_value,
-                  ispresent)
+                  ispresent, LogicalOp)
 
 
 class CompoundExpression(Expr):
@@ -71,8 +71,7 @@ class FilteredExpression(FunctionExpression):
     def _getfilter(self, context):
         ctx_filter = context.filter_expr
         if self.filter is not None and ctx_filter is not None:
-            #FIXME: use logical_op
-            filter_expr = ctx_filter & self.filter
+            filter_expr = LogicalOp('&', ctx_filter, self.filter)
         elif self.filter is not None:
             filter_expr = self.filter
         elif ctx_filter is not None:

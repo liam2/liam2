@@ -441,8 +441,7 @@ class CreateIndividual(EvaluableExpression):
         ctx_filter = context.filter_expr
 
         if self.filter is not None and ctx_filter is not None:
-            #FIXME: logical op
-            filter_expr = ctx_filter & self.filter
+            filter_expr = LogicalOp('&', ctx_filter, self.filter)
         elif self.filter is not None:
             filter_expr = self.filter
         elif ctx_filter is not None:
