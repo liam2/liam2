@@ -10,6 +10,7 @@ import numpy as np
 import tables
 import yaml
 
+from context import EvaluationContext, EntityContext
 from data import H5Data, Void
 from entities import Entity, global_variables
 from registry import entity_registry
@@ -17,8 +18,8 @@ from utils import (time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
                    merge_dicts, merge_items,
                    field_str_to_type, fields_yaml_to_type)
-import console
 import config
+import console
 import expr
 
 
@@ -330,10 +331,16 @@ class Simulation(object):
 
         process_time = defaultdict(float)
         period_objects = {}
+        entities_map = {entity.name: entity for entity in self.entities}
+        eval_context = EvaluationContext(self, entities_map, globals_data)
 
         def simulate_period(period_idx, period, processes, entities,
                             init=False):
             print("\nperiod", period)
+
+            # set current period
+            eval_context.period = period
+
             if init:
                 for entity in entities:
                     print("  * %s: %d individuals" % (entity.name,
@@ -349,22 +356,18 @@ class Simulation(object):
                 entity.array['period'] = period
 
             if processes:
-                # build context for this period:
-                const_dict = {'__simulation__': self,
-                              'period': period,
-                              'nan': float('nan'),
-                              '__globals__': globals_data}
-
                 num_processes = len(processes)
                 for p_num, process_def in enumerate(processes, start=1):
                     process, periodicity = process_def
+
+                    # set current entity
+                    eval_context.entity_name = process.entity.name
 
                     print("- %d/%d" % (p_num, num_processes), process.name,
                           end=' ')
                     print("...", end=' ')
                     if period_idx % periodicity == 0:
-                        elapsed, _ = gettime(process.run_guarded, self,
-                                             const_dict)
+                        elapsed, _ = gettime(process.run_guarded, eval_context)
                     else:
                         elapsed = 0
                         print("skipped (periodicity)")

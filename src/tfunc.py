@@ -16,10 +16,9 @@ class ValueForPeriod(FunctionExpression):
         self.missing = missing
 
     def evaluate(self, context):
-        entity = context['__entity__']
+        entity = context.entity
         period = expr_eval(self.period, context)
-        return entity.value_for_period(self.expr, period, context,
-                                       self.missing)
+        return entity.value_for_period(self.expr, period, context, self.missing)
 
 
 class Lag(FunctionExpression):
@@ -31,10 +30,9 @@ class Lag(FunctionExpression):
         self.missing = missing
 
     def evaluate(self, context):
-        entity = context['__entity__']
-        period = context['period'] - expr_eval(self.num_periods, context)
-        return entity.value_for_period(self.expr, period, context,
-                                       self.missing)
+        entity = context.entity
+        period = context.period - expr_eval(self.num_periods, context)
+        return entity.value_for_period(self.expr, period, context, self.missing)
 
     def dtype(self, context):
         return getdtype(self.expr, context)
@@ -44,10 +42,10 @@ class Duration(FunctionExpression):
     func_name = 'duration'
 
     def evaluate(self, context):
-        entity = context['__entity__']
+        entity = context.entity
 
         baseperiod = entity.base_period
-        period = context['period'] - 1
+        period = context.period - 1
         bool_expr = self.expr
         value = expr_eval(bool_expr, context)
 
@@ -86,17 +84,17 @@ class TimeAverage(FunctionExpression):
     func_name = 'tavg'
 
     def evaluate(self, context):
-        entity = context['__entity__']
+        entity = context.entity
 
         baseperiod = entity.base_period
-        period = context['period'] - 1
+        period = context.period - 1
         expr = self.expr
 
         res_size = len(entity.array)
 
         num_values = np.zeros(res_size, dtype=np.int)
         last_period_wh_value = np.empty(res_size, dtype=np.int)
-        last_period_wh_value.fill(context['period'])  # current period
+        last_period_wh_value.fill(context.period)  # current period
 
         sum_values = np.zeros(res_size, dtype=np.float)
         id_to_rownum = context.id_to_rownum
@@ -130,10 +128,10 @@ class TimeSum(FunctionExpression):
     func_name = 'tsum'
 
     def evaluate(self, context):
-        entity = context['__entity__']
+        entity = context.entity
 
         baseperiod = entity.base_period
-        period = context['period'] - 1
+        period = context.period - 1
         expr = self.expr
 
         typemap = {bool: int, int: int, float: float}

@@ -98,8 +98,8 @@ class Chart(Expr, FileProducer):
         return data, aslabeledarray(data).axes
 
     def evaluate(self, context):
-        entity = context['__entity__']
-        period = context['period']
+        entity = context.entity
+        period = context.period
 
         fig = plt.figure()
         args = [expr_eval(arg, context) for arg in self.args]

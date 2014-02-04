@@ -493,9 +493,7 @@ class Entity(object):
         return result
 
     def value_for_period(self, expr, period, context, fill='auto'):
-        sub_context = EntityContext(self,
-                                    {'period': period,
-                                     '__globals__': context['__globals__']})
+        sub_context = context.clone(fresh_data=True, period=period)
         result = expr_eval(expr, sub_context)
         if isinstance(result, np.ndarray) and result.shape:
             ids = expr_eval(Variable('id'), sub_context)

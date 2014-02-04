@@ -38,8 +38,7 @@ class Matching(EvaluableExpression):
     def evaluate(self, context):
         global local_ctx
 
-        ctx_filter = context.get('__filter__')
-
+        ctx_filter = context.filter_expr
         id_to_rownum = context.id_to_rownum
 
         # at some point ctx_filter will be cached automatically, so we don't
@@ -61,8 +60,11 @@ class Matching(EvaluableExpression):
         used_variables2 = ['id'] + [v[8:] for v in used_variables
                                     if v.startswith('__other_')]
 
-        set1 = context_subset(context, set1filter, used_variables1)
-        set2 = context_subset(context, set2filter, used_variables2)
+        set1 = context.subset(set1filter, used_variables1)
+        set2 = context.subset(set2filter, used_variables2)
+        set1 = set1.entity_data
+        set2 = set2.entity_data
+
         orderby = expr_eval(self.orderby, context)
         set1len = set1filter.sum()
         set2len = set2filter.sum()

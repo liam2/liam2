@@ -25,12 +25,14 @@ class Process(object):
         self.name = name
         self.entity = entity
 
-    def run_guarded(self, simulation, const_dict):
+    def run_guarded(self, context):
         try:
-            context = EntityContext(self.entity, const_dict.copy())
+            # purge extra
+            context.entity_data.extra = {}
             self.run(context)
         except BreakpointException:
-            simulation.stepbystep = True
+            #XXX: store this in the (evaluation) context instead?
+            context.simulation.stepbystep = True
 
     def run(self, context):
         raise NotImplementedError()
@@ -129,14 +131,13 @@ class While(Process):
         Process.attach(self, name, entity)
         self.code.attach('while:code', entity)
 
-    def run_guarded(self, simulation, const_dict):
+    def run_guarded(self, context):
         while True:
-            context = EntityContext(self.entity, const_dict.copy())
             cond_value = expr_eval(self.cond, context)
             if not cond_value:
                 break
 
-            self.code.run_guarded(simulation, const_dict)
+            self.code.run_guarded(context)
 
     def expressions(self):
         if isinstance(self.cond, Expr):
@@ -145,6 +146,7 @@ class While(Process):
             yield e
 
 
+#TODO: I think I can kill this class by moving the methods to Function
 class AbstractProcessGroup(Process):
     def backup_and_purge_locals(self):
         # backup and purge local variables
@@ -175,18 +177,18 @@ class ProcessGroup(AbstractProcessGroup):
         for k, v in self.subprocesses:
             v.attach(k, entity)
 
-    def run_guarded(self, simulation, const_dict):
-        period = const_dict['period']
+    def run_guarded(self, context):
+        period = context.period
 
         print()
         for k, v in self.subprocesses:
             print("    *", end=' ')
             if k is not None:
                 print(k, end=' ')
-            utils.timed(v.run_guarded, simulation, const_dict)
+            utils.timed(v.run_guarded, context)
 #            print "done."
-            simulation.start_console(v.entity, period,
-                                     const_dict['__globals__'])
+            context.simulation.start_console(v.entity, period,
+                                             context.global_tables)
         if config.autodump is not None:
             self._autodump(period)
 
@@ -225,11 +227,12 @@ class ProcessGroup(AbstractProcessGroup):
         else:
             return self.name
 
-    def _autodump(self, period):
+    def _autodump(self, context):
         fields = self._modified_fields
         if not fields:
             return
 
+        period = context.period
         fname, numrows = config.autodump
         h5file = config.autodump_file
         name = self._tablename(period)
@@ -241,8 +244,8 @@ class ProcessGroup(AbstractProcessGroup):
         print("writing {} to {}/{}/{} ...".format(', '.join(fnames),
                                                   fname, period, name))
 
-        context = EntityContext(self.entity, {'period': period})
-        append_carray_to_table(context, table, numrows)
+        entity_context = EntityContext(self.entity, {'period': period})
+        append_carray_to_table(entity_context, table, numrows)
         print("done.")
 
     def _autodiff(self, period, numdiff=10, raiseondiff=False):
@@ -314,7 +317,7 @@ class Function(AbstractProcessGroup):
         Process.attach(self, name, entity)
         self.code.attach('func:code', entity)
 
-    def run_guarded(self, simulation, const_dict, *args, **kwargs):
+    def run_guarded(self, context, *args, **kwargs):
         #XXX: wouldn't some form of cascading context make all this junk much
         # cleaner? Context(globalvars, localvars) (globalvars contain both
         # entity fields and global temporaries)
@@ -326,11 +329,10 @@ class Function(AbstractProcessGroup):
             raise TypeError("takes exactly %d arguments (%d given)" %
                             (len(self.argnames), len(args)))
 
-        const_dict = const_dict.copy()
+        context = context.copy()
         for name, value in zip(self.argnames, args):
-            const_dict[name] = value
-        self.code.run_guarded(simulation, const_dict)
-        context = EntityContext(self.entity, const_dict)
+            context[name] = value
+        self.code.run_guarded(context)
         result = expr_eval(self.result, context)
 
         self.purge_and_restore_locals(backup)

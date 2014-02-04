@@ -9,13 +9,14 @@ import warnings
 import yaml
 
 import config
-from simulation import Simulation
-from importer import csv2h5
 from console import Console
-from utils import AutoFlushFile
-import registry
+from context import EvaluationContext
 from data import populate_registry, H5Data
+from importer import csv2h5
+import registry
+from simulation import Simulation
 from upgrade import upgrade
+from utils import AutoFlushFile
 from view import viewhdf
 
 __version__ = "0.9-pre1"
@@ -122,6 +123,7 @@ def explore(fpath):
         h5in, _, globals_data = data_source.load(globals_def,
                                                  registry.entity_registry)
         h5out = None
+        simulation = None
         entity, period = None, None
     else:
         simulation = Simulation.from_yaml(fpath)
@@ -129,6 +131,7 @@ def explore(fpath):
         entity = simulation.console_entity
         period = simulation.start_period + simulation.periods - 1
         globals_def = simulation.globals_def
+    # context = EvaluationContext(simulation, data, period, entity)
     try:
         c = Console(entity, period, globals_def, globals_data)
         c.run()

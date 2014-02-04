@@ -69,8 +69,9 @@ class FilteredExpression(FunctionExpression):
             yield node
 
     def _getfilter(self, context):
-        ctx_filter = context.get('__filter__')
+        ctx_filter = context.filter_expr
         if self.filter is not None and ctx_filter is not None:
+            #FIXME: use logical_op
             filter_expr = ctx_filter & self.filter
         elif self.filter is not None:
             filter_expr = self.filter
@@ -90,10 +91,10 @@ class FilteredExpression(FunctionExpression):
 class NumpyFunction(ExprCall):
     func_name = None  # optional (for display)
     np_func = (None,)
-    # arg_names can be set automatically by using inspect.getargspec,
-    # but it only works for pure Python functions, so I decided to avoid it
-    # because when you add a function, it is hard to know whether it is
-    # implemented in C or not.
+    # arg_names can be set automatically by using inspect.getargspec, but it
+    # only works for pure Python functions, so I decided to avoid it because
+    # when you add a function, it is hard to know whether it is implemented
+    # in C or not.
     arg_names = None
     # all subclasses support a filter keyword-only argument
     kwargs_names = ('filter',)
@@ -127,9 +128,9 @@ class NumpyChangeArray(NumpyFunction):
         if filter_value is None:
             return new_values
         else:
-            # we cannot do this yet because dtype() currently requires context
-            # (and I don't want to change the signature of compute just for that)
-            # assert dtype(old_values) == dtype(new_values)
+            # we cannot do this yet because dtype() currently requires
+            # context (and I don't want to change the signature of compute
+            # just for that) assert dtype(old_values) == dtype(new_values)
             old_values = args[0]
             return np.where(filter_value, new_values, old_values)
 

@@ -88,8 +88,8 @@ class CSV(Expr, FileProducer):
                 yield node
 
     def evaluate(self, context):
-        entity = context['__entity__']
-        period = context['period']
+        entity = context.entity
+        period = context.period
         fname = self.fname.format(entity=entity.name, period=period)
         print("writing to", fname, "...", end=' ')
         file_path = os.path.join(config.output_directory, fname)
@@ -126,7 +126,7 @@ class RemoveIndividuals(Expr):
 
         not_removed = ~filter_value
 
-        entity = context['__entity__']
+        entity = context.entity
         len_before = len(entity.array)
 
         # Shrink array & temporaries. 99% of the function time is spent here.
@@ -169,7 +169,7 @@ class Breakpoint(Expr):
         self.period = period
 
     def evaluate(self, context):
-        if self.period is None or self.period == context['period']:
+        if self.period is None or self.period == context.period:
             raise BreakpointException()
 
     def __str__(self):

@@ -29,10 +29,14 @@ class Link(object):
         return entity_registry[self._target_entity_name]
 
     def _target_context(self, context):
-        target_entity = self._target_entity()
-        return EntityContext(target_entity,
-                             {'period': context['period'],
-                             '__globals__': context['__globals__']})
+        # we need a "fresh" context (fresh_data=True) so that if we come from
+        #  a subset context (dict instead of EntityContext, eg in a new()
+        # child), the target_expression must be evaluated on an unfiltered
+        # target context (because, even if the current context is filtered,
+        # there is no restriction on where the link column ids can point to (
+        # they can point to ids outside the filter)
+        return context.clone(fresh_data=True,
+                             entity_name=self._target_entity_name)
 
 
 class Many2One(Link):
@@ -193,8 +197,8 @@ class AggregateLink(LinkExpression):
         self.target_filter = target_filter
 
     def evaluate(self, context):
-        assert isinstance(context, EntityContext), \
-                "one2many aggregates in groupby are currently not supported"
+        # assert isinstance(context, EntityContext), \
+        #         "one2many aggregates in groupby are currently not supported"
         link = self.link
         assert isinstance(link, One2Many)
 

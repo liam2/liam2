@@ -61,7 +61,7 @@ class GroupBy(TableExpression):
                                    if isinstance(col, np.ndarray) and col.shape
                                    else [col]
                                 for col in columns]
-            filtered_context = context_subset(context, filter_value, expr_vars)
+            filtered_context = context.subset(filter_value, expr_vars)
         else:
             filtered_columns = columns
             filtered_context = context
@@ -78,8 +78,7 @@ class GroupBy(TableExpression):
             return LabeledArray([], labels, possible_values)
 
         # evaluate the expression on each group
-        data = [expr_eval(expr, context_subset(filtered_context, indices,
-                                               expr_vars))
+        data = [expr_eval(expr, filtered_context.subset(indices, expr_vars))
                 for indices in groups]
 
         #TODO: use group_indices_nd directly to avoid using np.unique
@@ -115,11 +114,11 @@ class GroupBy(TableExpression):
         cols_indices.append(np.concatenate(cols_indices))
 
         # evaluate the expression on each "combined" group (ie compute totals)
-        row_totals = [expr_eval(expr, context_subset(filtered_context, indices,
-                                                     expr_vars))
+        row_totals = [expr_eval(expr, filtered_context.subset(indices,
+                                                              expr_vars))
                       for indices in rows_indices]
-        col_totals = [expr_eval(expr, context_subset(filtered_context, indices,
-                                                     expr_vars))
+        col_totals = [expr_eval(expr, filtered_context.subset(indices,
+                                                              expr_vars))
                       for indices in cols_indices]
 
         if self.percent:

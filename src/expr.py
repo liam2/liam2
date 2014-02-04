@@ -6,7 +6,7 @@ import numpy as np
 
 from utils import (LabeledArray, ExplainTypeError, add_context, safe_take,
                    IrregularNDArray)
-from context import EntityContext
+from context import EntityContext, EvaluationContext
 
 try:
     import numexpr
@@ -170,7 +170,7 @@ def collect_variables(expr, context):
 
 def expr_eval(expr, context):
     if isinstance(expr, Expr):
-        globals_data = context.get('__globals__')
+        globals_data = context.global_tables
         if globals_data is not None:
             globals_names = set(globals_data.keys())
             if 'periodic' in globals_data:
@@ -260,7 +260,9 @@ class Expr(object):
         # supports ndarrays and LabeledArray so that I can get the dtype from
         # the expression instead of from actual values.
         labels = None
-        if isinstance(context, EntityContext) and context.is_array_period:
+        assert isinstance(context, EvaluationContext)
+        local_ctx = context.entity_data
+        if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
             for var_name in simple_expr.collect_variables(context):
                 # var_name should always be in the context at this point
                 # because missing temporaries should have been already caught
@@ -283,7 +285,7 @@ class Expr(object):
 
         s = simple_expr.as_string()
         try:
-            res = evaluate(s, context, {}, truediv='auto')
+            res = evaluate(s, local_ctx, {'nan': float('nan')}, truediv='auto')
             if labels is not None:
                 # This is a hack which relies on the fact that currently
                 # all the expression we evaluate through numexpr preserve
@@ -292,8 +294,8 @@ class Expr(object):
                 res = LabeledArray(res, labels[0], labels[1])
             # expr_cache[self] = res
             return res
-        except KeyError, e:
-            raise add_context(e, s)
+        # except KeyError, e:
+        #     raise add_context(e, s)
         except Exception:
             raise
 
@@ -370,8 +372,7 @@ class SubscriptedExpr(EvaluableExpression):
 
     def evaluate(self, context):
         expr_value, key = [expr_eval(c, context) for c in self.children]
-
-        filter_expr = context.get('__filter__')
+        filter_expr = context.filter_expr
 
         # When there is a contextual filter, we modify the key to avoid
         # crashes (IndexError).
@@ -381,11 +382,13 @@ class SubscriptedExpr(EvaluableExpression):
         # value of another individual (index -1). This should not pose a
         # problem because those values should not be used anyway.
         if filter_expr is not None:
-            # We need a context without __filter__ to evaluate the filter
+            # We need a context without filter to evaluate the filter
             # (to avoid an infinite recursion)
-            sub_context = context.copy()
-            del sub_context['__filter__']
+            sub_context = context.clone(filter_expr=None)
+            # filter_value should be a bool scalar or a bool array
             filter_value = expr_eval(filter_expr, sub_context)
+            assert isinstance(filter_value, (bool, np.bool_)) or \
+                   np.issubdtype(filter_value.dtype, bool)
 
             def fixkey(orig_key, filter_value):
                 if non_scalar_array(orig_key):
@@ -398,6 +401,7 @@ class SubscriptedExpr(EvaluableExpression):
 
             if non_scalar_array(filter_value):
                 if isinstance(key, tuple):
+                    # nd-key
                     key = tuple(fixkey(k, filter_value) for k in key)
                 elif isinstance(key, slice):
                     raise NotImplementedError()
@@ -608,11 +612,11 @@ class GlobalVariable(Variable):
         return Variable(tmp_varname)
 
     def _eval_key(self, context):
-        return context['period']
+        return context.period
 
     def evaluate(self, context):
         key = self._eval_key(context)
-        globals_data = context['__globals__']
+        globals_data = context.global_tables
         globals_table = globals_data[self.tablename]
 
         #TODO: this row computation should be encapsulated in the
@@ -709,7 +713,7 @@ class GlobalArray(Variable):
         Variable.__init__(self, name, dtype)
 
     def as_simple_expr(self, context):
-        globals_data = context['__globals__']
+        globals_data = context.global_tables
         result = globals_data[self.name]
         #XXX: maybe I should just use self.name?
         tmp_varname = '__%s' % self.name
@@ -756,10 +760,7 @@ class MethodCall(EvaluableExpression):
         args = [expr_eval(arg, context) for arg in self.args]
         kwargs = dict((k, expr_eval(v, context))
                       for k, v in self.kwargs.iteritems())
-        fields = '__simulation__', 'period', 'nan', '__globals__'
-        const_dict = {k: context[k] for k in fields}
-        return method.run_guarded(const_dict['__simulation__'], const_dict,
-                                  *args, **kwargs)
+        return method.run_guarded(context, *args, **kwargs)
 
     def __str__(self):
         args = [repr(a) for a in self.args]

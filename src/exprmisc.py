@@ -16,12 +16,13 @@ from exprbases import (EvaluableExpression, CompoundExpression,
                        NumexprFunction,
                        FunctionExpression, TableExpression,
                        NumpyRandom, NumpyChangeArray)
-from context import (EntityContext, context_length, context_subset,
-                     new_context_like)
+from context import context_length
 from registry import entity_registry
 from utils import PrettyTable
 
 
+#TODO: implement functions in expr to generate "Expr" nodes at the python level
+# less painful
 class Min(CompoundExpression):
     def __init__(self, *args):
         CompoundExpression.__init__(self)
@@ -347,7 +348,7 @@ class Exp(NumexprFunction):
 
 
 def add_individuals(target_context, children):
-    target_entity = target_context['__entity__']
+    target_entity = target_context.entity
     id_to_rownum = target_entity.id_to_rownum
     array = target_entity.array
     num_rows = len(array)
@@ -363,13 +364,21 @@ def add_individuals(target_context, children):
         #FIXME: OUCH, this is getting ugly, I'll need a better way to
         # differentiate nd-arrays from "entity" variables
         # I guess having the context contain all entities and a separate
-        # globals namespace should fix this problem
+        # globals namespace should fix this problem. Well, no it would not
+        # fix the problem by itself, as this would only move the problem
+        # to the "store" part of Assignment processes which would need to be
+        # able to differentiate between an "entity temp" and a global temp.
+        # I think this can be done by inspecting the expressions that generate
+        # them: no non-aggregated entity var => global temp. It would be nice
+        # to further distinguish between aggregated entity var and other global
+        # temporaries to store them in the entity somewhere, but I am unsure
+        # whether it is possible.
         if (isinstance(temp_value, np.ndarray) and
             temp_value.shape == (num_rows,)):
             extra = get_missing_vector(num_birth, temp_value.dtype)
             temp_variables[name] = np.concatenate((temp_value, extra))
 
-    extra_variables = target_context.extra
+    extra_variables = target_context.entity_data.extra
     for name, temp_value in extra_variables.iteritems():
         if name == '__globals__':
             continue
@@ -414,22 +423,25 @@ class CreateIndividual(EvaluableExpression):
         return used_variables
 
     def evaluate(self, context):
-        source_entity = context['__entity__']
+        source_entity = context.entity
         if self.entity_name is None:
             target_entity = source_entity
         else:
             target_entity = entity_registry[self.entity_name]
 
+        # target context is the context where the new individuals will be
+        # created
         if target_entity is source_entity:
             target_context = context
         else:
-            target_context = \
-                EntityContext(target_entity,
-                              {'period': context['period'],
-                               '__globals__': context['__globals__']})
-        ctx_filter = context.get('__filter__')
+            # we do need to copy the data (.extra) because we will insert into
+            # the entity.array anyway => fresh_data=True
+            target_context = context.clone(fresh_data=True,
+                                           entity_name=target_entity.name)
+        ctx_filter = context.filter_expr
 
         if self.filter is not None and ctx_filter is not None:
+            #FIXME: logical op
             filter_expr = ctx_filter & self.filter
         elif self.filter is not None:
             filter_expr = self.filter
@@ -456,14 +468,14 @@ class CreateIndividual(EvaluableExpression):
         if num_birth:
             children['id'] = np.arange(num_individuals,
                                        num_individuals + num_birth)
-            children['period'] = context['period']
+            children['period'] = context.period
 
             used_variables = self._collect_kwargs_variables(context)
             if to_give_birth is None:
-                child_context = new_context_like(context, length=num_birth)
+                assert not used_variables
+                child_context = context.empty(num_birth)
             else:
-                child_context = context_subset(context, to_give_birth,
-                                               used_variables)
+                child_context = context.subset(to_give_birth, used_variables)
             for k, v in self.kwargs.iteritems():
                 children[k] = expr_eval(v, child_context)
 
@@ -575,8 +587,8 @@ class Dump(TableExpression):
         return PrettyTable(table, self.missing)
 
     def traverse(self, context):
-        #FIXME: we should also somehow "traverse" expressions if self
-        # self.expressions is
+        #FIXME: we should also somehow "traverse" expressions if
+        # self.expressions is []
         for expr in self.expressions:
             for node in traverse_expr(expr, context):
                 yield node
@@ -617,32 +629,24 @@ class Where(Expr):
         cond = as_simple_expr(self.cond, context)
 
         # filter is stored as an unevaluated expression
-        filter_expr = context.get('__filter__')
-
-        if filter_expr is None:
-            context['__filter__'] = self.cond
+        self.filter = context.filter_expr
+        context_filter = self.filter
+        local_ctx = context.clone()
+        if context_filter is None:
+            local_ctx.filter_expr = self.cond
         else:
             # filter = filter and cond
-            context['__filter__'] = LogicalOp('&', filter_expr, self.cond)
-        iftrue = as_simple_expr(self.iftrue, context)
+            local_ctx.filter_expr = LogicalOp('&', context_filter, self.cond)
+        iftrue = as_simple_expr(self.iftrue, local_ctx)
 
-        if filter_expr is None:
-            context['__filter__'] = UnaryOp('~', self.cond)
+        if context_filter is None:
+            local_ctx.filter_expr = UnaryOp('~', self.cond)
         else:
             # filter = filter and not cond
-            context['__filter__'] = LogicalOp('&',
-                                              filter_expr,
+            local_ctx.filter_expr = LogicalOp('&',
+                                              context_filter,
                                               UnaryOp('~', self.cond))
-        iffalse = as_simple_expr(self.iffalse, context)
-
-        # This is probably useless because the only situation I can think of
-        # where it could matter is inside the "iffalse" part of a nested if()
-        # and in that case the contextual filter is overwritten using the value
-        # of the filter at the *start* of the if() (see above), so it works
-        # regardless of what we do here. It should not hurt to be correct
-        # though.
-        context['__filter__'] = filter_expr
-
+        iffalse = as_simple_expr(self.iffalse, local_ctx)
         return Where(cond, iftrue, iffalse)
 
     def as_string(self):

@@ -3,19 +3,127 @@ from __future__ import print_function
 import numpy as np
 
 
+class EvaluationContext(object):
+    def __init__(self, simulation, entities, global_tables=None, period=None,
+                 entity_name=None, filter_expr=None, entities_data=None):
+        """
+        :param simulation: Simulation
+        :param entities: dict of entities {name: entity}
+        :param global_tables: dict of ndarrays (structured or not)
+        :param period: int of the current period
+        :param entity_name: name (str) of the current entity
+        :param filter_expr: contextual filter expression (Expr)
+        :param entities_data: dict of data for entities (dict of
+                              EntityContext or dict of dict)
+        :return:
+        """
+        self.simulation = simulation
+        self.entities = entities
+        self.global_tables = global_tables
+        self.period = period
+        self.entity_name = entity_name
+        self.filter_expr = filter_expr
+        if entities_data is None:
+            entities_data = {name: EntityContext(self, entity)
+                             for name, entity in entities.iteritems()}
+        self.entities_data = entities_data
+
+    def copy(self, fresh_data=False):
+        entities_data = None if fresh_data else self.entities_data.copy()
+        return EvaluationContext(self.simulation, self.entities,
+                                 self.global_tables, self.period,
+                                 self.entity_name, self.filter_expr,
+                                 entities_data)
+
+    def clone(self, fresh_data=False, **kwargs):
+        res = self.copy(fresh_data=fresh_data)
+        for k, v in kwargs.iteritems():
+            allowed_kwargs = ('simulation', 'entities', 'global_tables',
+                              'period', 'entity_name', 'filter_expr',
+                              'entities_data', 'entity_data')
+            assert k in allowed_kwargs, "%s is not a valid kwarg" % k
+            setattr(res, k, v)
+        return res
+
+    @property
+    def entity(self):
+        return self.entities[self.entity_name]
+
+    @property
+    def id_to_rownum(self):
+        entity_context = self.entity_data
+        if hasattr(entity_context, 'id_to_rownum'):
+            return entity_context.id_to_rownum
+        else:
+            # fall back on the entity itself
+            return self.entity.id_to_rownum
+
+    @property
+    def entity_data(self):
+        return self.entities_data[self.entity_name]
+
+    @entity_data.setter
+    def entity_data(self, value):
+        self.entities_data[self.entity_name] = value
+
+    def __getitem__(self, key):
+        if key == 'period':
+            return self.period
+        else:
+            return self.entity_data[key]
+
+    def get(self, key, elsevalue=None):
+        try:
+            return self[key]
+        except KeyError:
+            return elsevalue
+
+    def __setitem__(self, key, value):
+        #XXX: how do we set a new global?
+        self.entity_data[key] = value
+
+    def __contains__(self, key):
+        return key in self.entity_data
+
+    def length(self):
+        return context_length(self.entity_data)
+
+    def subset(self, index=None, keys=None):
+        """
+        returns a copy of the context with only a subset of the current entity.
+        The main use case is to take a subset of rows. Since this is a
+        costly operation, the user can also provide keys so that only the
+        columns he needs are filtered.
+        :param index:
+        :param keys: list of column names or None (take all)
+        :return:
+        """
+        return self.clone(entity_data=context_subset(self.entity_data, index,
+                                                     keys))
+
+    def empty(self, length=None):
+        """
+        returns a copy of the context with the same length but no data.
+        """
+        return self.clone(entity_data=empty_context(length))
+
+
 class EntityContext(object):
-    def __init__(self, entity, extra=None):
+    def __init__(self, eval_ctx, entity, extra=None):
+        self.eval_ctx = eval_ctx
         self.entity = entity
         if extra is None:
             extra = {}
         self.extra = extra
-        self['__entity__'] = entity
 
     def __getitem__(self, key):
+        if key == 'period':
+            return self.eval_ctx.period
+
         try:
             return self.extra[key]
         except KeyError:
-            period = self.extra['period']
+            period = self.eval_ctx.period
             array_period = self.entity.array_period
             if period == array_period:
                 try:
@@ -26,6 +134,9 @@ class EntityContext(object):
                     except ValueError:
                         raise KeyError(key)
             else:
+                #FIXME: lags will break if used from a context subset (eg in
+                # new() or groupby(): all individuals will be returned instead
+                # of only the "filtered" ones.
                 if (self.entity.array_lag is not None and
                     array_period is not None and
                     period == array_period - 1 and
@@ -43,7 +154,7 @@ class EntityContext(object):
     # is the current array period the same as the context period?
     @property
     def is_array_period(self):
-        return self.entity.array_period == self.extra['period']
+        return self.entity.array_period == self.eval_ctx.period
 
     def __setitem__(self, key, value):
         self.extra[key] = value
@@ -81,7 +192,7 @@ class EntityContext(object):
         if self.is_array_period:
             return len(self.entity.array)
         else:
-            period = self.extra['period']
+            period = self.eval_ctx.period
             bounds = self.entity.output_rows.get(period)
             if bounds is not None:
                 startrow, stoprow = bounds
@@ -97,7 +208,7 @@ class EntityContext(object):
 
     @property
     def id_to_rownum(self):
-        period = self.extra['period']
+        period = self.eval_ctx.period
         if self.is_array_period:
             return self.entity.id_to_rownum
         elif period in self.entity.output_index:
@@ -110,15 +221,8 @@ class EntityContext(object):
             return self.entity.input_index[period]
 
 
-def new_context_like(context, length=None):
-    if length is None:
-        length = context_length(context)
-    #FIXME: nan should come from somewhere else
-    return {'period': context['period'],
-            '__len__': length,
-            '__entity__': context['__entity__'],
-            '__globals__': context['__globals__'],
-            'nan': float('nan')}
+def empty_context(length):
+    return {'__len__': length}
 
 
 def context_subset(context, index=None, keys=None):
@@ -136,11 +240,12 @@ def context_subset(context, index=None, keys=None):
     elif np.issubdtype(index.dtype, int):
         length = len(index)
     else:
+        assert np.issubdtype(index.dtype, bool)
         assert len(index) == context_length(context), \
                "boolean index has length %d instead of %d" % \
                (len(index), context_length(context))
         length = np.sum(index)
-    result = new_context_like(context, length=length)
+    result = empty_context(length)
     for key in keys:
         value = context[key]
         if index is not None and isinstance(value, np.ndarray) and value.shape:
