@@ -48,7 +48,7 @@ class EvaluationContext(object):
 
     @property
     def entity(self):
-        return self.entities[self.entity_name]
+        return self.entities.get(self.entity_name)
 
     @entity.setter
     def entity(self, value):

@@ -298,6 +298,10 @@ class Simulation(object):
         return timed(self.data_source.load, self.globals_def,
                      entity_registry)
 
+    @property
+    def entities_map(self):
+        return {entity.name: entity for entity in self.entities}
+
     def run(self, run_console=False):
         start_time = time.time()
         h5in, h5out, globals_data = timed(self.data_source.run,
@@ -331,8 +335,7 @@ class Simulation(object):
 
         process_time = defaultdict(float)
         period_objects = {}
-        entities_map = {entity.name: entity for entity in self.entities}
-        eval_ctx = EvaluationContext(self, entities_map, globals_data)
+        eval_ctx = EvaluationContext(self, self.entities_map, globals_data)
 
         def simulate_period(period_idx, period, processes, entities,
                             init=False):
@@ -444,14 +447,6 @@ class Simulation(object):
             h5out.close()
             if h5_autodump is not None:
                 h5_autodump.close()
-
-    @property
-    def console_entity(self):
-        """compute the entity the console should start in (if any)"""
-
-        return entity_registry[self.default_entity] \
-            if self.default_entity is not None \
-            else None
 
     def start_console(self, context):
         if self.stepbystep:

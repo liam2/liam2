@@ -11,7 +11,7 @@ import yaml
 import config
 from console import Console
 from context import EvaluationContext
-from data import populate_registry, H5Data
+from data import entities_from_h5, H5Data
 from importer import csv2h5
 import registry
 from simulation import Simulation
@@ -118,20 +118,24 @@ def explore(fpath):
     ftype = 'data' if ext in ('.h5', '.hdf5') else 'simulation'
     print("Using %s file: '%s'" % (ftype, fpath))
     if ftype == 'data':
-        globals_def = populate_registry(fpath)
+        globals_def, entities = entities_from_h5(fpath)
         data_source = H5Data(None, fpath)
-        h5in, _, globals_data = data_source.load(globals_def,
-                                                 registry.entity_registry)
+        h5in, _, globals_data = data_source.load(globals_def, entities)
         h5out = None
-        simulation = None
-        entity, period = None, None
+        simulation = Simulation(globals_def, None, None, None, None, None,
+                                entities.values(), None)
+        period, entity_name = None, None
     else:
         simulation = Simulation.from_yaml(fpath)
         h5in, h5out, globals_data = simulation.load()
-        entity = simulation.console_entity
         period = simulation.start_period + simulation.periods - 1
-        globals_def = simulation.globals_def
-
+        entity_name = simulation.default_entity
+    entities = simulation.entities_map
+    if entity_name is None and len(entities) == 1:
+        entity_name = entities.keys()[0]
+    if period is None and entity_name is not None:
+        entity = entities[entity_name]
+        period = max(entity.output_index.keys())
     eval_ctx = EvaluationContext(simulation, entities, globals_data, period,
                                  entity_name)
     try:

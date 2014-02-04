@@ -44,12 +44,12 @@ class Console(object):
         globals_parse_ctx = {'__globals__': global_variables(globals_def)}
         parse_ctx = globals_parse_ctx.copy()
         parse_ctx.update((entity.name, entity.all_symbols(globals_parse_ctx))
-                         for entity in entity_registry.itervalues())
+                         for entity in eval_ctx.entities.itervalues())
         parse_ctx['__entity__'] = eval_ctx.entity_name
         self.parse_ctx = parse_ctx
 
     def list_entities(self):
-        ent_names = [repr(k) for k in entity_registry.keys()]
+        ent_names = [repr(k) for k in self.eval_ctx.entities.keys()]
         print("available entities:", ', '.join(ent_names))
 
     def get_entity(self, name):

@@ -854,13 +854,14 @@ class Void(DataSource):
         return None, output_file, None
 
 
-def populate_registry(fpath):
-    import entities
-    import registry
-    h5in = tables.openFile(fpath, mode="r")
+def entities_from_h5(fpath):
+    from entities import Entity
+    h5in = tables.openFile(fpath)
     h5root = h5in.root
+    entities = {}
     for table in h5root.entities:
-        registry.entity_registry.add(entities.Entity.from_table(table))
+        entity = Entity.from_table(table)
+        entities[entity.name] = entity
     globals_def = {}
     if hasattr(h5root, 'globals'):
         for table in h5root.globals:
@@ -870,4 +871,4 @@ def populate_registry(fpath):
                 global_def = get_fields(table)
             globals_def[table.name] = global_def
     h5in.close()
-    return globals_def
+    return globals_def, entities
