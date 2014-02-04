@@ -30,6 +30,7 @@ class EvaluationContext(object):
 
     def copy(self, fresh_data=False):
         entities_data = None if fresh_data else self.entities_data.copy()
+        #FIXME: when switching entities, filter should not come along
         return EvaluationContext(self.simulation, self.entities,
                                  self.global_tables, self.period,
                                  self.entity_name, self.filter_expr,
@@ -48,6 +49,12 @@ class EvaluationContext(object):
     @property
     def entity(self):
         return self.entities[self.entity_name]
+
+    @entity.setter
+    def entity(self, value):
+        assert value.name in self.entities, '%s not in %s' % (value,
+                                                              self.entities)
+        self.entity_name = value.name
 
     @property
     def id_to_rownum(self):

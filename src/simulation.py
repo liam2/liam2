@@ -332,14 +332,14 @@ class Simulation(object):
         process_time = defaultdict(float)
         period_objects = {}
         entities_map = {entity.name: entity for entity in self.entities}
-        eval_context = EvaluationContext(self, entities_map, globals_data)
+        eval_ctx = EvaluationContext(self, entities_map, globals_data)
 
         def simulate_period(period_idx, period, processes, entities,
                             init=False):
             print("\nperiod", period)
 
             # set current period
-            eval_context.period = period
+            eval_ctx.period = period
 
             if init:
                 for entity in entities:
@@ -361,13 +361,13 @@ class Simulation(object):
                     process, periodicity = process_def
 
                     # set current entity
-                    eval_context.entity_name = process.entity.name
+                    eval_ctx.entity_name = process.entity.name
 
                     print("- %d/%d" % (p_num, num_processes), process.name,
                           end=' ')
                     print("...", end=' ')
                     if period_idx % periodicity == 0:
-                        elapsed, _ = gettime(process.run_guarded, eval_context)
+                        elapsed, _ = gettime(process.run_guarded, eval_ctx)
                     else:
                         elapsed = 0
                         print("skipped (periodicity)")
@@ -377,8 +377,7 @@ class Simulation(object):
                         print("done (%s elapsed)." % time2str(elapsed))
                     else:
                         print("done.")
-                    self.start_console(process.entity, period,
-                                       globals_data)
+                    self.start_console(eval_ctx)
 
             print("- storing period data")
             for entity in entities:
@@ -435,8 +434,8 @@ class Simulation(object):
 #                show_top_expr()
 
             if run_console:
-                c = console.Console(self.console_entity, periods[-1],
-                                    self.globals_def, globals_data)
+                console_ctx = eval_ctx.clone(entity_name=self.default_entity)
+                c = console.Console(console_ctx)
                 c.run()
 
         finally:
@@ -451,11 +450,11 @@ class Simulation(object):
         """compute the entity the console should start in (if any)"""
 
         return entity_registry[self.default_entity] \
-               if self.default_entity is not None \
-               else None
+            if self.default_entity is not None \
+            else None
 
-    def start_console(self, entity, period, globals_data):
+    def start_console(self, context):
         if self.stepbystep:
-            c = console.Console(entity, period, self.globals_def, globals_data)
+            c = console.Console(context)
             res = c.run(debugger=True)
             self.stepbystep = res == "step"

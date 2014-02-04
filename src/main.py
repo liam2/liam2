@@ -131,9 +131,11 @@ def explore(fpath):
         entity = simulation.console_entity
         period = simulation.start_period + simulation.periods - 1
         globals_def = simulation.globals_def
-    # context = EvaluationContext(simulation, data, period, entity)
+
+    eval_ctx = EvaluationContext(simulation, entities, globals_data, period,
+                                 entity_name)
     try:
-        c = Console(entity, period, globals_def, globals_data)
+        c = Console(eval_ctx)
         c.run()
     finally:
         h5in.close()
@@ -254,6 +256,8 @@ def main():
         args = upgrade, parsed_args.input, parsed_args.output
     elif action == "view":
         args = display, parsed_args.file
+    else:
+        raise ValueError("invalid action")
     wrapper(*args)
 
 if __name__ == '__main__':

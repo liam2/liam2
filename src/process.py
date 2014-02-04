@@ -187,8 +187,7 @@ class ProcessGroup(AbstractProcessGroup):
                 print(k, end=' ')
             utils.timed(v.run_guarded, context)
 #            print "done."
-            context.simulation.start_console(v.entity, period,
-                                             context.global_tables)
+            context.simulation.start_console(context)
         if config.autodump is not None:
             self._autodump(period)
 
@@ -284,7 +283,7 @@ class ProcessGroup(AbstractProcessGroup):
                     node.version = self.versions[node.name]
             if isinstance(p, Assignment):
                 # is this always == k?
-                target = p.predictor
+                target = p.name
                 if target not in local_vars:
                     continue
                 version = self.versions[target]
