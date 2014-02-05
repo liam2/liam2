@@ -360,8 +360,8 @@ class Entity(object):
         processes = self.parse_expressions(self.process_strings.iteritems(),
                                            context)
         # attach processes
-        # TODO: make actions inherit from Expr instead of Process, and wrap
-        # them in a Compute process so that I can kill attach
+        # TODO: now that actions inherit from Expr instead of Process it should
+        # be possible to kill attach
         for k, v in processes:
             v.attach(k, self)
 
