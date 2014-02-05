@@ -110,7 +110,7 @@ def zip_pack(archivefname, filepattern):
 
 
 def zip_unpack(archivefname, dest=None):
-    with zipfile.ZipFile(archivefname, 'r') as f:
+    with zipfile.ZipFile(archivefname) as f:
         f.extractall(dest)
 
 
@@ -260,7 +260,7 @@ def make_release(release_name=None, branch=None):
     do('Cleaning up', cleanup)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     from sys import argv
 
     make_release(*argv[1:])

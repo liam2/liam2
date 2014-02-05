@@ -78,7 +78,7 @@ def convert_txt_align(input_path, output_path=None, invert=False):
     try:
         variables, possible_values, data = load_txt_align(input_path, invert)
         save_csv_align(output_path, variables, possible_values, data)
-    except:
+    except Exception:
         print "FAILED"
     
 if __name__ == '__main__':

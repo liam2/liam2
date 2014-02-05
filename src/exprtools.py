@@ -237,7 +237,6 @@ class CallNode(Node):
         if (isinstance(callable_ast, types.MethodType) and
                 isinstance(callable_ast.__self__, (links.Link,
                                                    links.LinkValue))):
-            entities = context['__entities__']
             link = callable_ast.__self__
             if isinstance(link, links.LinkValue):
                 # find the link of the deepest LinkValue in the "link chain"
@@ -378,4 +377,3 @@ def parse(s, context, interactive=False):
     context['__globals__'] = globals_context
     node = _parse(s, interactive=interactive)
     return to_ast(node, context)
-

@@ -4,8 +4,7 @@ from collections import Counter
 
 import numpy as np
 
-from utils import (LabeledArray, ExplainTypeError, add_context, safe_take,
-                   IrregularNDArray)
+from utils import LabeledArray, ExplainTypeError, safe_take, IrregularNDArray
 from context import EntityContext, EvaluationContext
 
 try:

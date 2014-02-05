@@ -132,8 +132,8 @@ class Logistic(CompoundExpression):
         return DivisionOp('/', 1.0,
                           BinaryOp('+', 1.0, Exp(UnaryOp('-', self.expr))))
 
-        def __str__(self):
-            return 'logistic(%s)' % self.expr
+    def __str__(self):
+        return 'logistic(%s)' % self.expr
 
 
 class ZeroClip(CompoundExpression):
@@ -627,8 +627,7 @@ class Where(Expr):
         cond = as_simple_expr(self.cond, context)
 
         # filter is stored as an unevaluated expression
-        self.filter = context.filter_expr
-        context_filter = self.filter
+        context_filter = context.filter_expr
         local_ctx = context.clone()
         if context_filter is None:
             local_ctx.filter_expr = self.cond

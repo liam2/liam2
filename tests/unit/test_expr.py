@@ -192,7 +192,8 @@ class TestLink(StringExprTestCase):
 # * context needs append & keep/remove methods
 
 # Q: General architecture
-# A1: EntityContext which dispatches to 3 IndexedColumnArray (globals/locals/extra)
+# A1: EntityContext which dispatches to 3 IndexedColumnArray (globals
+#     / locals / extra)
 #    > hmm, not great as they should share the same index
 #    > what about disk storage? (ie array vs table)
 #    > what about lag variables?
@@ -221,7 +222,8 @@ class TestLink(StringExprTestCase):
 # long-term
 
 #  data[entity][column == value][colname] = 2d array (num_ids x num_periods)
-#  data[entity][time_obj] = 1d array (vector) with structured dtype (ie several columns) # < use pandas dataframes?
+#  data[entity][time_obj] = 1d array (vector) with structured dtype (ie several
+#                           columns) # < use pandas dataframes?
 #  data[entity][colname][time_obj] = vector # < use pandas dataframes?
 #  data[entity][colname] = sort of 2d array # (time x individuals)
 #  >>> 2darray[time_obj] = vector of individuals
@@ -229,7 +231,8 @@ class TestLink(StringExprTestCase):
 #  >>> 2darray.XXX == 2darray[current_time].XXX ?
 #  >>> 2darray.sum() == 2darray.sum(axis=ind) == scalar
 
-#  >>> 2darray.sum(axis=time) == 1darray (N individuals) ? >>> needs to know the function before we can know what "2darray.XXX" mean
+#  >>> 2darray.sum(axis=time) == 1darray (N individuals) ? >>> needs to know
+#      the function before we can know what "2darray.XXX" mean
 #  OR
 #  >>> 2darray[:] == 2darray[time.all()] == fake 2d array
 #  >>> 2darray[:].sum(axis=time) == 1darray (N individuals)
