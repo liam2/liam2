@@ -120,11 +120,9 @@ class TestLink(StringExprTestCase):
     def test_one2many(self):
         self.assertEvalEqual("children.count()", [2, 0, 1, 0, 0])
 
-#    def test_past_one2many(self):
-#        person = entity_registry['person']
-#        context = EntityContext(person, {'period': 2001})
-#        e = parse("countlink(children)", person.links, autovariables=True)
-#        self.assertArrayEqual(e.evaluate(context), [2, 0, 1, 0])
+    # def test_past_one2many(self):
+    #     self.eval_ctx.period = 2001
+    #     self.assertEvalEqual("children.count()", [2, 0, 1, 0, 0])
 
 # short-term data provider contract:
 
