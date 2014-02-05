@@ -6,7 +6,7 @@ import tables
 
 import config
 from context import context_length
-from data import merge_arrays, get_fields, ColumnArray
+from data import merge_arrays, get_fields, ColumnArray, index_table
 from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
                   GlobalArray, expr_eval, get_missing_value, Expr, MethodSymbol)
 from exprtools import parse
@@ -124,7 +124,7 @@ class Entity(object):
         # we need a separate field, instead of using array['period'] to be able
         # to get the period even when the array is empty.
         self.array_period = array_period
-        self.array = None
+        self.array = array
 
         self.lag_fields = []
         self.array_lag = None
@@ -132,6 +132,13 @@ class Entity(object):
         self.num_tmp = 0
         self.temp_variables = {}
         self.id_to_rownum = None
+        if array is not None:
+            rows_per_period, index_per_period = index_table(array)
+            self.input_rows = rows_per_period
+            self.output_rows = rows_per_period
+            self.input_index = index_per_period
+            self.output_index = index_per_period
+            self.id_to_rownum = index_per_period[array_period]
         self._variables = None
         self._methods = None
 
@@ -190,7 +197,10 @@ class Entity(object):
     @property
     def variables(self):
         if self._variables is None:
-            processes = self.process_strings.items()
+            if self.process_strings:
+                processes = self.process_strings.items()
+            else:
+                processes = []
 
             # names of all processes (hybrid or not) of the entity
             process_names = set(k for k, v in processes if k is not None)
@@ -225,11 +235,15 @@ class Entity(object):
     @property
     def methods(self):
         if self._methods is None:
-            # variable-method hybrids are handled by the self.variable property
-            self._methods = [(key, MethodSymbol(key, self))
-                             for key, value in self.process_strings.iteritems()
-                             if self.ismethod(value) and
-                                key not in self.stored_fields]
+            if self.process_strings is None:
+                self._methods = []
+            else:
+                # variable-method hybrids are handled by the self.variable
+                # property
+                self._methods = [(k, MethodSymbol(k, self))
+                                 for k, v in self.process_strings.iteritems()
+                                 if self.ismethod(v) and
+                                    k not in self.stored_fields]
         return self._methods
 
     def all_symbols(self, global_context):
@@ -239,11 +253,11 @@ class Entity(object):
         local_context = global_context.copy()
         local_context[self.name] = symbols
         local_context['__entity__'] = self.name
-
-        macros = dict((k, parse(v, local_context))
-                      for k, v in self.macro_strings.iteritems())
-        symbols.update(macros)
-        symbols['other'] = PrefixingLink(macros, self.links, '__other_')
+        if self.macro_strings:
+            macros = dict((k, parse(v, local_context))
+                          for k, v in self.macro_strings.iteritems())
+            symbols.update(macros)
+            symbols['other'] = PrefixingLink(macros, self.links, '__other_')
         symbols.update(self.methods)
         return symbols
 

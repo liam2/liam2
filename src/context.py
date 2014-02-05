@@ -178,7 +178,7 @@ class EntityContext(object):
                        key in entity.array.dtype.fields))
         return (key in self.extra
                 or keyinarray
-                or key in entity.table.dtype.fields)
+                or (entity.table and key in entity.table.dtype.fields))
 
     def keys(self, extra=True):
         res = list(self.entity.array.dtype.names)
