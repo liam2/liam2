@@ -4,8 +4,9 @@ import numpy as np
 
 
 class EvaluationContext(object):
-    def __init__(self, simulation, entities, global_tables=None, period=None,
-                 entity_name=None, filter_expr=None, entities_data=None):
+    def __init__(self, simulation=None, entities=None, global_tables=None,
+                 period=None, entity_name=None, filter_expr=None,
+                 entities_data=None):
         """
         :param simulation: Simulation
         :param entities: dict of entities {name: entity}

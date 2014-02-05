@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from numpy import array
 
-from context import EntityContext, context_length
+from context import EntityContext, context_length, EvaluationContext
 from entities import Entity
 from expr import Variable
 from exprtools import parse
@@ -27,8 +27,10 @@ class StringTestCase(ArrayTestCase):
 
 class Test(StringTestCase):
     def setUp(self):
-        self.context = {'age': array([20, 10, 35, 55]),
-                        'dead': array([False, True, False, True])}
+        data = {'person': {'age': array([20, 10, 35, 55]),
+                           'dead': array([False, True, False, True])}}
+        self.context = EvaluationContext(entity_name='person',
+                                         entities_data=data)
         self.parsing_context = {
             'person': {'age': Variable('age'), 'dead': Variable('dead')},
             '__entity__': 'person'
