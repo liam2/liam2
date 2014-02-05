@@ -3,33 +3,10 @@
 Change log
 ##########
 
-Version 0.8-rc1
-===============
+Version 0.8
+===========
 
-Released on 2013-01-27.
-
-* implemented scatter plots.
-
-* implemented "suffix" argument for charts.
-
-* improved the first few demonstration models quite a bit. A recommended read
-  for all users.
-
-* fixed the "view" action (ViTables) which did not work on some computers when
-  launched from within the bundled editor (notepad++).
-
-* made the archive smaller by using Qt as the backend for charts instead of Tk
-  so that we do not need to include the latter in LIAM2 anymore.
-
-* include the documentation only in HTML Help format (.chm) in the bundle.
-  .pdf and "normal" html are still available as separate downloads on the
-  website.
-
-
-Version 0.8-pre1
-================
-
-Released on 2013-12-17.
+Released on 2014-02-05.
 
 New features:
 -------------
@@ -54,21 +31,19 @@ New features:
 Miscellaneous improvements:
 ---------------------------
 
+* improved the first few demonstration models quite a bit. A recommended read
+  for all users.
+
 * added precisions in the documentation of align() based on Alexis Eidelman
   suggestions.
 
 * made a few more error messages a bit more useful by displaying the line
   where the error occurred.
 
-* adapted the release script since our move to git and converted it to Python.
+* sped up global[array_expr].
 
 * give a hint to use assertNanEqual when it would make a failing assertEqual
   pass.
-
-* removed the predictor keyword support (it now raises an exception instead
-  of a warning).
-
-* sped up global[array_expr].
 
 * implemented global[slice_expr] (eg. MINR[period: period+2]). When the
   slice bounds are arrays (different for each individual) and the slice
@@ -76,12 +51,21 @@ Miscellaneous improvements:
   it returns a special array with an extremely limited set of supported
   operations: only aggregates on axis=1 are implemented.
 
+* include the documentation only in HTML Help format (.chm) in the bundle.
+  .pdf and "normal" html are still available as separate downloads on the
+  website.
+
+* removed the predictor keyword support (it now raises an exception instead
+  of a warning).
+
+* adapted the release script since our move to git and converted it to Python.
+
 Fixes:
 ------
 
-* fixed the upgrade script by removing a special case for grpmin and grpmax as
-  it was in fact not needed and caused problems when the expression being
-  aggregated contained parentheses.
+* fixed the "syntax upgrade" script by removing a special case for grpmin and
+  grpmax as it was in fact not needed and caused problems when the expression
+  being aggregated contained parentheses.
 
 
 Version 0.7
