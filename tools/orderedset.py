@@ -5,6 +5,7 @@ import collections
 
 KEY, PREV, NEXT = range(3)
 
+
 class OrderedSet(collections.MutableSet):
     def __init__(self, iterable=None):
         self.end = end = [] 
