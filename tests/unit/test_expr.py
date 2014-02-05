@@ -8,7 +8,6 @@ from entities import Entity
 from expr import Variable
 from exprtools import parse
 import links
-from registry import entity_registry
 
 
 class ArrayTestCase(unittest.TestCase):
@@ -58,6 +57,8 @@ class FakeEntity(object):
 
 class TestLink(ArrayTestCase): 
     def setUp(self):
+        entities = {}
+
         hh_link = links.Many2One('household', 'hh_id', 'household')
         mother_link = links.Many2One('mother', 'mother_id', 'person')
         child_link = links.One2Many('children', 'mother_id', 'person')
@@ -113,8 +114,9 @@ class TestLink(ArrayTestCase):
         household = Entity('household',
                            links={'persons': persons_link},
                            array=households)
-        entity_registry.add(person)
-        entity_registry.add(household)
+        entities['person'] = person
+        entities['household'] = household
+        self.entities = entities
 
 #    def test_many2one_from_dict(self):
 #        person = entity_registry['person']
@@ -125,14 +127,14 @@ class TestLink(ArrayTestCase):
 #        self.assertArrayEqual(e.evaluate(context), [-1, 55, 55, 22])
         
     def test_many2one_from_entity_context(self):
-        person = entity_registry['person']
+        person = self.entities['person']
         context = EntityContext(person, {'period': 2002})
         self.assertEqual(context_length(context), 5)
         e = parse("mother.age", person.links, autovariables=True)
         self.assertArrayEqual(e.evaluate(context), [-1, 55, 55, -1, 22])
 
     def test_one2many_from_entity_context(self):
-        person = entity_registry['person']
+        person = self.entities['person']
         context = EntityContext(person, {'period': 2002})
         e = parse("countlink(children)", person.links, autovariables=True)
         self.assertArrayEqual(e.evaluate(context), [2, 0, 1, 0, 0])

@@ -222,7 +222,7 @@ class CallNode(Node):
             if link_symbol is not None:
                 link = to_ast(link_symbol, context)
                 local_context = context.copy()
-                local_context['__entity__'] = link._target_entity().name
+                local_context['__entity__'] = link._target_entity_name
                 axis_symbol = self.kwargs.get('secondary_axis', None)
                 if axis_symbol is not None:
                     self.kwargs['secondary_axis'] = to_ast(axis_symbol,
@@ -237,16 +237,18 @@ class CallNode(Node):
         if (isinstance(callable_ast, types.MethodType) and
                 isinstance(callable_ast.__self__, (links.Link,
                                                    links.LinkValue))):
+            entities = context['__entities__']
             link = callable_ast.__self__
             if isinstance(link, links.LinkValue):
                 # find the link of the deepest LinkValue in the "link chain"
                 lv = link
                 while isinstance(lv.target_expression, links.LinkValue):
                     lv = lv.target_expression
-                target_entity = lv.link._target_entity()
+                target_entity = lv.link._target_entity
                 link = target_entity.links[lv.target_expression.name]
             local_context = context.copy()
-            local_context['__entity__'] = link._target_entity().name
+
+            local_context['__entity__'] = link._target_entity_name
         else:
             local_context = context
         args, kwargs = to_ast((self.args, self.kwargs), local_context)

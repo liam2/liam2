@@ -5,13 +5,12 @@ import numpy as np
 import tables
 
 import config
-from context import EntityContext, context_length
+from context import context_length
 from data import merge_arrays, get_fields, ColumnArray
 from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
                   GlobalArray, expr_eval, get_missing_value, Expr, MethodSymbol)
 from exprtools import parse
 from process import Assignment, Compute, ProcessGroup, While, Function
-from registry import entity_registry
 from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
                    WarnOverrideDict)
 
@@ -168,6 +167,11 @@ class Entity(object):
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}))
 
+    def attach_and_resolve_links(self, entities):
+        for link in self.links.itervalues():
+            link._attach(self)
+            link._resolve_target(entities)
+
     @property
     def local_var_names(self):
         return set(self.temp_variables.keys()) - set(self.variables.keys())
@@ -227,15 +231,6 @@ class Entity(object):
                              if self.ismethod(value) and
                                 key not in self.stored_fields]
         return self._methods
-
-    def check_links(self):
-        for name, link in self.links.iteritems():
-            #noinspection PyProtectedMember
-            target_name = link._target_entity_name
-            if target_name not in entity_registry:
-                raise Exception("Target of '%s' link in entity '%s' is an "
-                                "unknown entity (%s)" % (name, self.name,
-                                                         target_name))
 
     def all_symbols(self, global_context):
         from links import PrefixingLink
@@ -324,7 +319,8 @@ class Entity(object):
                         #TODO: use code.predictors instead (but it currently
                         # fails for some reason) or at least factor this out
                         # with the code in parse_process_group
-                        group_expressions = [elem.items()[0] if isinstance(elem, dict)
+                        group_expressions = [elem.items()[0]
+                                             if isinstance(elem, dict)
                                              else (None, elem)
                                              for elem in code_def]
                         group_predictors = \

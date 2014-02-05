@@ -29,8 +29,6 @@ The *Entity* class stores all there is to know about each entity: fields,
 links, processes and data. It serves as a glue class between everything
 data, processes, ...
 
-When entities are created, they are added to a global registry in registry.py
-
 Process
 -------
 
@@ -215,9 +213,6 @@ main.py
 partition.py 
     handles partitioning objects depending on the possible values of their
     columns. 
-
-registry.py
-    global registry of entities
 
 utils.py
     miscellaneous support functions 

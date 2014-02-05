@@ -17,7 +17,6 @@ from exprbases import (EvaluableExpression, CompoundExpression,
                        FunctionExpression, TableExpression,
                        NumpyRandom, NumpyChangeArray)
 from context import context_length
-from registry import entity_registry
 from utils import PrettyTable
 
 
@@ -427,7 +426,7 @@ class CreateIndividual(EvaluableExpression):
         if self.entity_name is None:
             target_entity = source_entity
         else:
-            target_entity = entity_registry[self.entity_name]
+            target_entity = context.entities[self.entity_name]
 
         # target context is the context where the new individuals will be
         # created

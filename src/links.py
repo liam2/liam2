@@ -9,8 +9,7 @@ import numexpr as ne
 from expr import (Variable, getdtype, expr_eval, missing_values,
                   get_missing_value)
 from exprbases import EvaluableExpression
-from context import EntityContext, context_length
-from registry import entity_registry
+from context import context_length
 from utils import deprecated
 
 
@@ -21,12 +20,24 @@ class Link(object):
         self._name = name
         self._link_field = link_field
         self._target_entity_name = target_entity_name
+        self._target_entity = None
+        self._entity = None
+
+    def _attach(self, entity):
+        self._entity = entity
+
+    def _resolve_target(self, entities):
+        target_name = self._target_entity_name
+        try:
+            self._target_entity = entities[target_name]
+        except KeyError:
+            raise Exception("Target of '%s' link in entity '%s' is an "
+                            "unknown entity (%s)" % (self.name,
+                                                     self._entity.name,
+                                                     target_name))
 
     def __str__(self):
         return self._name
-
-    def _target_entity(self):
-        return entity_registry[self._target_entity_name]
 
     def _target_context(self, context):
         # we need a "fresh" context (fresh_data=True) so that if we come from
@@ -155,8 +166,7 @@ class LinkValue(LinkExpression):
         # assert expr.name in entity.links
         assert isinstance(expr, Variable)
         #noinspection PyProtectedMember
-        target_entity = lv.link._target_entity()
-        deepest_link = target_entity.links[expr.name]
+        deepest_link = lv.link._target_entity.links[expr.name]
         # add one more link to the chain
         lv.target_expression = LinkValue(deepest_link, key, missing_value)
         return self

@@ -6,7 +6,6 @@ import config
 from entities import global_variables
 from expr import expr_eval, Variable
 from exprtools import parse
-from registry import entity_registry
 
 entity_required = \
     "current entity is not set. It is required to set one using " \

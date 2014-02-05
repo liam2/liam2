@@ -10,10 +10,9 @@ import numpy as np
 import tables
 import yaml
 
-from context import EvaluationContext, EntityContext
+from context import EvaluationContext
 from data import H5Data, Void
 from entities import Entity, global_variables
-from registry import entity_registry
 from utils import (time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
                    merge_dicts, merge_items,
@@ -237,26 +236,30 @@ class Simulation(object):
             output_file = output_def['file']
         output_path = os.path.join(output_directory, output_file)
 
+        entities = {}
         for k, v in content['entities'].iteritems():
-            entity_registry.add(Entity.from_yaml(k, v))
+            entities[k] = Entity.from_yaml(k, v)
 
-        global_context = {'__globals__': global_variables(globals_def)}
+        for entity in entities.itervalues():
+            entity.attach_and_resolve_links(entities)
+
+        global_context = {'__globals__': global_variables(globals_def),
+                          '__entities__': entities}
         parsing_context = global_context.copy()
         parsing_context.update((entity.name, entity.all_symbols(global_context))
-                               for entity in entity_registry.itervalues())
-        for entity in entity_registry.itervalues():
+                               for entity in entities.itervalues())
+        for entity in entities.itervalues():
             parsing_context['__entity__'] = entity.name
-            entity.check_links()
             entity.parse_processes(parsing_context)
             entity.compute_lagged_fields()
 
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()
         for ent_name, proc_names in init_def:
-            if ent_name not in entity_registry:
+            if ent_name not in entities:
                 raise Exception("Entity '%s' not found" % ent_name)
 
-            entity = entity_registry[ent_name]
+            entity = entities[ent_name]
             init_entities.add(entity)
             init_processes.extend([(entity.processes[proc_name], 1)
                                    for proc_name in proc_names])
@@ -264,7 +267,7 @@ class Simulation(object):
         processes_def = [d.items()[0] for d in simulation_def['processes']]
         processes, entity_set = [], set()
         for ent_name, proc_defs in processes_def:
-            entity = entity_registry[ent_name]
+            entity = entities[ent_name]
             entity_set.add(entity)
             for proc_def in proc_defs:
                 # proc_def is simply a process name
@@ -274,7 +277,7 @@ class Simulation(object):
                 else:
                     proc_name, periodicity = proc_def
                 processes.append((entity.processes[proc_name], periodicity))
-        entities = sorted(entity_set, key=lambda e: e.name)
+        entities_list = sorted(entity_set, key=lambda e: e.name)
 
         method = input_def.get('method', 'h5')
 
@@ -290,13 +293,12 @@ class Simulation(object):
                              "be either 'h5' or 'void'")
 
         default_entity = simulation_def.get('default_entity')
-        return Simulation(globals_def, periods, start_period,
-                          init_processes, init_entities, processes, entities,
-                          data_source, default_entity)
+        return Simulation(globals_def, periods, start_period, init_processes,
+                          init_entities, processes, entities_list, data_source,
+                          default_entity)
 
     def load(self):
-        return timed(self.data_source.load, self.globals_def,
-                     entity_registry)
+        return timed(self.data_source.load, self.globals_def, self.entities_map)
 
     @property
     def entities_map(self):
@@ -306,7 +308,7 @@ class Simulation(object):
         start_time = time.time()
         h5in, h5out, globals_data = timed(self.data_source.run,
                                           self.globals_def,
-                                          entity_registry,
+                                          self.entities_map,
                                           self.start_period - 1)
 
         if config.autodump or config.autodiff:
