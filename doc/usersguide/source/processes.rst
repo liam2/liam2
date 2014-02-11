@@ -1944,8 +1944,11 @@ should produce. The behavior when an assertion fails is determined by
 the :ref:`assertions-label` simulation option.
 
 - assertTrue(expr): evaluates the expression and check its result is True.
-- assertEqual(expr1, expr2): evaluates both expressions and check their 
+- assertFalse(expr): evaluates the expression and check its result is False.
+- assertEqual(expr1, expr2): evaluates both expressions and check their
   results are equal.
+- assertNanEqual(expr1, expr2): evaluates both expressions and check their
+  results are equal, even in the presence of nans (because normally nan != nan).
 - assertEquiv(expr1, expr2): evaluates both expressions and check their
   results are equal tolerating a difference in shape (though they must be
   compatible).
