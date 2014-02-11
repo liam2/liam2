@@ -1,7 +1,3 @@
-Highlights: charts!
-
-.. more::
-
 New features
 ------------
 
