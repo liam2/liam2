@@ -84,8 +84,9 @@ slug_word_separator = '_'
 extensions = ['tinkerer.ext.blog', 'tinkerer.ext.disqus',
               'sphinx.ext.intersphinx']
 
-intersphinx_mapping = {'doc': ('http://liam2.plan.be/documentation/{version}',
-                               'objects.inv')}
+# WARNING: braces need to be escaped !
+intersphinx_mapping = {{'doc': ('http://liam2.plan.be/documentation/{version}',
+                               'objects.inv')}}
 
 # Add other template paths here
 templates_path = ['_templates']
@@ -100,9 +101,10 @@ html_theme_path = ['_themes', tinkerer.paths.themes]
 exclude_patterns = ["drafts/*", "_templates/*"]
 
 # Add templates to be rendered in sidebar here
-html_sidebars = {
+# WARNING: braces need to be escaped !
+html_sidebars = {{
     "**": ["recent.html", "searchbox.html"]
-}
+}}
 
 # **************************************************************
 # Do not modify below lines as the values are required by
