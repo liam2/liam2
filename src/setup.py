@@ -57,8 +57,44 @@ build_exe_options = {
     ]
 }
 
+
+def int_version(release_name):
+    """
+    converts a release name to a version number with only dots and integers
+    :param release_name: the release to convert
+    :return: a release name with -pre and -rc parts stripped
+
+    >>> int_version('0.8')
+    '0.8'
+    >>> int_version('0.8.1')
+    '0.8.1'
+    >>> int_version('0.8-pre1')
+    '0.7.99801'
+    >>> int_version('0.8-rc2')
+    '0.7.99902'
+    >>> int_version('0.8.1-pre2')
+    '0.8.0.99802'
+    >>> int_version('0.8.1-rc1')
+    '0.8.0.99901'
+    """
+    pre_pos = release_name.find('-pre')
+    rc_pos = release_name.find('-rc')
+    if pre_pos != -1:
+        head, tail = release_name[:pre_pos], release_name[pre_pos+4:]
+        prefix = '8'
+    elif rc_pos != -1:
+        head, tail = release_name[:rc_pos], release_name[rc_pos+3:]
+        prefix = '9'
+    else:
+        return release_name
+    assert tail.isdigit()
+    patch = '.99' + prefix + tail.rjust(2, '0')
+    head, middle = head.rsplit('.', 1)
+    return head + '.' + str(int(middle) - 1) + patch
+
+
 setup(name="liam2",
-      version="0.8.0",  # cx_freeze wants only ints and .
+      version=int_version('0.8.0'),  # cx_freeze wants only ints and dots
       description="LIAM2",
 
       cmdclass={"build_ext": MyBuildExt},
