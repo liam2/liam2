@@ -17,3 +17,7 @@ tests/examples/simulation.h5
 tests/examples/demography_*.png
 tests/examples/error.log
 tests/examples/person_*.csv
+doc/website/blog
+doc/website/objects.inv
+doc/website/pages/download.rst
+doc/website/pages/documentation.rst
