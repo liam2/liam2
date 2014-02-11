@@ -8,7 +8,7 @@ LIAM2 bundle
 
 The bundle includes:
 
-- The executable.
+- The executable for Windows.
 
 - A text editor (Notepad++), pre-configured to work with LIAM2 models.
 
