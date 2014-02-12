@@ -24,6 +24,7 @@ Fixes
 * fixed something.
 """
 
+
 def add_release(release_name):
     # create "empty" change file for that release
     fname = relname2fname(release_name)
