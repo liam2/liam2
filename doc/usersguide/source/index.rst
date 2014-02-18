@@ -29,3 +29,4 @@ Appendix
    architecture 
    technicalchoices
    changes
+   credits
