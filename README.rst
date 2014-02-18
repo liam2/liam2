@@ -2,7 +2,7 @@ LIAM2
 -----
 
 LIAM2 is a tool to develop (different kinds of) `microsimulation
-<Microsimulation>`_ models.
+<#Microsimulation>`_ models.
 
 The goal of the project is to let modellers concentrate on what is strictly
 specific to their model without having to worry about the technical details.
