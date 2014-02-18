@@ -1,9 +1,8 @@
 Version 0.2 released
 ====================
 
-.. include:: ../../../../usersguide/source/changes/version_0_2.rst
+.. include:: ../../../../usersguide/source/changes/version_0_2.rst.inc
 
 .. author:: default
-.. categories:: none
-.. tags:: none
+.. tags:: release
 .. comments::
