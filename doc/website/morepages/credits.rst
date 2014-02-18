@@ -1,1 +1,3 @@
-﻿.. include:: ../../../CREDITS.rst
+﻿.. _credits:
+
+.. include:: ../../../CREDITS.rst

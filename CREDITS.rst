@@ -1,6 +1,4 @@
-﻿.. _credits:
-
-Credits
+﻿Credits
 =======
 
 LIAM2 is the result of ongoing collaboration between individual researchers
@@ -15,7 +13,7 @@ Berger (CEPS/INSTEAD) and Raymond Wagener (IGSS). Finally, Cathal O'Donoghue
 shared the source code of the first version of LIAM, which the FPB used in the
 AIM project (Dekkers et al., 2010).
 
-It was initially the result of the MiDaL project (December 2009 - November
+LIAM2 was initially the result of the MiDaL project (December 2009 - November
 2011), "Towards the development of a dynamic Microsimulation toolbox « LIAM-II »
 and the complementary implementation of administrative Data needed for dynamic
 microsimulation of pensions in Luxembourg". The general objective of the
@@ -28,5 +26,5 @@ Inspectorate for Social Security (IGSS) of Luxembourg.
 
 The PROGRESS programme was created by the European Commission to financially
 support the implementation of the objectives of the European Union in the
-employment, social affairs and equal opportunities areas. For more information
+employment, social affairs and equal opportunities areas. For more information,
 see: http://ec.europa.eu/progress

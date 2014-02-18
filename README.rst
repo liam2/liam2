@@ -46,10 +46,10 @@ on Google Groups.
 Credits
 -------
 
-The software is being developed mainly at the Federal Planning Bureau (Belgium),
-with funding and testing by CEPS/INSTEAD (Luxembourg) and IGSS (Luxembourg), and
-funding from the European Commission. See the :ref:`credits page <credits>`
-for details.
+The software is primarily being developed at the Federal Planning Bureau
+(Belgium), with testing and funding by CEPS/INSTEAD (Luxembourg) and IGSS
+(Luxembourg), and funding from the European Commission. See the
+:ref:`credits page <credits>` for details.
 
 Contact
 -------
