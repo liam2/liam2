@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# LIAM2 User Guide documentation build configuration file, created by
+# LIAM2 User Guide build configuration file, created by
 # sphinx-quickstart on Fri Feb 04 10:08:07 2011.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -105,6 +105,7 @@ html_theme = 'default'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
+html_title = "LIAM2 %s User Guide" % version
 #html_title = None
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
@@ -150,6 +151,7 @@ html_static_path = ['_static']
 
 # If true, links to the reST sources are added to the pages.
 #html_show_sourcelink = True
+html_show_sourcelink = False
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
 #html_show_sphinx = True
