@@ -1,7 +1,8 @@
-LIAM2
------
+.. About LIAM2 ..
+.. =========== ..
 
-LIAM2 is a tool to develop (different kinds of) `microsimulation`_ models.
+LIAM2 is a tool to develop (different kinds of) :ref:`microsimulation
+<microsimulation>` models.
 
 The goal of the project is to let modellers concentrate on what is strictly
 specific to their model without having to worry about the technical details.
@@ -15,42 +16,32 @@ almost any microsimulation model as long as it use cross-sectional ageing, ie
 all individuals are simulated at the same time for one period, then for the next
 period, etc.
 
-Microsimulation
----------------
-
-Microsimulation is a modelling technique that operates at the level of
-individual units such as persons, households, vehicles or firms. Each unit
-has a set of associated attributes – e.g. a person has an associated age,
-sex, and employment status. In the case of discrete-time dynamic models,
-a set of rules (intended to represent individual preferences) are applied to
-these units at each time step, leading to simulated changes in state and
-possibly behaviour. These rules may be deterministic (probability = 1),
-such as ageing, or stochastic (probability < 1), such as the chance of dying,
-marrying, giving birth or moving within a given time period.
-
-The aim of such simulations is to give insight about both the overall
-aggregate change of some characteristics and, most importantly,
-the way these changes are distributed in the population that is being
-modelled. The methodology is often used to design and evaluate public
-policies that are affected by earlier events and choices as is the case for
-pensions or education.
-
 License
 -------
 
-LIAM2 is licensed under the GNU General Public License (GPL) version 3. This
-means you can freely use, copy, modify and redistribute this software
-provided you follow a few conditions. See the COPYING.txt file for details.
+LIAM2 is licensed under the `GNU General Public License (GPL) version 3
+<http://www.gnu.org/licenses/gpl.html>`_. This means you can freely use,
+copy, modify and redistribute this software provided you follow a few
+conditions. See the license text for details.
 
-Stay informed
--------------
+Staying informed
+----------------
 
 You can get notified of new versions and other LIAM2-related announcements by
-subscribing to the LIAM2-announce mailing list on Google Groups
-(http://groups.google.com/group/liam2-announce).
+either using `our website <http://liam2.plan.be>`_
+`RSS feed <http://liam2.plan.be/rss.html>`_ or subscribing to the
+`LIAM2-announce mailing list <http://groups.google.com/group/liam2-announce>`_
+on Google Groups.
 
-You can download later releases on our website at:
-http://liam2.plan.be
+.. raw:: html
+
+   <p>
+   You can do so by entering your email address here:
+   </p>
+   <form action="http://groups.google.com/group/liam2-announce/boxsubscribe">
+   <input type="text" name="email:" id="subscribe-email"/>
+   <input type="submit" name="sub" value="Subscribe">
+   </form>
 
 Credits
 -------
@@ -63,8 +54,25 @@ developed by Cathal O'Donoghue. See the CREDITS file for details.
 Contact
 -------
 
-Please don't hesitate to contact us at liam2 (at) plan (dot) be if you have any question or suggestion.
+For any question, suggestion or comment you might have,
+please send a message to the `LIAM2-users mailing list <http://groups.google
+.com/group/liam2-users>`_. Please note that, as a spam counter measure,
+new member posts are moderated. We are doing all we can to let them through
+as quickly as possible, but since it is a manual process it can take a few
+hours, or exceptionally a few days. Please be patient in case your post is
+delayed.
 
+.. raw:: html
 
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/liam2/liam2/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+   <p>
+   You can subscribe to the users mailing list by entering your email
+   address here:
+   </p>
+   <form action="http://groups.google.com/group/liam2-users/boxsubscribe">
+   <input type="text" name="email" id="subscribe-email"/>
+   <input type="submit" name="sub" value="Subscribe">
+   </form>
 
+If you **really** do not want your message to be public, you can contact the
+authors at liam2 x plan y be (replace x and y by @ and . respectively) but
+**we would highly prefer if you used the mailing list instead if you can**.
