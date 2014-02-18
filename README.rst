@@ -46,10 +46,10 @@ on Google Groups.
 Credits
 -------
 
-The software is being developed at the Federal Planning Bureau (Belgium), with
-funding and testing by CEPS/INSTEAD (Luxembourg) and IGSS (Luxembourg), and
-funding from the European Community. It is the spiritual successor of LIAM 1,
-developed by Cathal O'Donoghue. See the CREDITS file for details.
+The software is being developed mainly at the Federal Planning Bureau (Belgium),
+with funding and testing by CEPS/INSTEAD (Luxembourg) and IGSS (Luxembourg), and
+funding from the European Commission. See the :ref:`credits page <credits>`
+for details.
 
 Contact
 -------
