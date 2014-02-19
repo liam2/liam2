@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# coding=utf-8
 # Release script for LIAM2
 # Licence: GPLv3
 from __future__ import print_function
@@ -7,12 +8,43 @@ import errno
 import fnmatch
 import os
 import stat
+import subprocess
 import zipfile
 
+from datetime import date
 from os import chdir, makedirs
-from os.path import exists
+from os.path import exists, getsize, abspath
 from shutil import copytree, copy2, rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
+
+WEBSITE = 'liam2.plan.be'
+
+#TODO: add more scripts to implement the "git flow" model
+# - hotfix_branch
+# - release_branch
+# - feature_branch
+# - make_release, detects hotfix or release
+
+#---------------#
+# generic tools #
+#---------------#
+
+def size2str(value):
+    unit = "bytes"
+    if value > 1024.0:
+        value /= 1024.0
+        unit = "Kb"
+        if value > 1024.0:
+            value /= 1024.0
+            unit = "Mb"
+        return "%.2f %s" % (value, unit)
+    else:
+        return "%d %s" % (value, unit)
+
+
+def generate(fname, **kwargs):
+    with open('%s.tmpl' % fname) as in_f, open(fname, 'w') as out_f:
+        out_f.write(in_f.read().format(**kwargs))
 
 
 def _remove_readonly(function, path, excinfo):
@@ -72,6 +104,77 @@ def do(description, func, *args, **kwargs):
     print("done.")
 
 
+def allfiles(pattern, path='.'):
+    """
+    like glob.glob(pattern) but also include files in subdirectories
+    """
+    return (os.path.join(dirpath, f)
+            for dirpath, dirnames, files in os.walk(path)
+            for f in fnmatch.filter(files, pattern))
+
+
+def zip_pack(archivefname, filepattern):
+    with zipfile.ZipFile(archivefname, 'w', zipfile.ZIP_DEFLATED) as f:
+        for fname in allfiles(filepattern):
+            f.write(fname)
+
+
+def zip_unpack(archivefname, dest=None):
+    with zipfile.ZipFile(archivefname) as f:
+        f.extractall(dest)
+
+
+def short(rel_name):
+    return rel_name[:-2] if rel_name.endswith('.0') else rel_name
+
+
+#----------------------#
+# end of generic tools #
+#----------------------#
+
+
+changelog_template = """Version {short_version}
+=============
+
+Released on {date}.
+
+.. include:: {fpath}
+
+
+"""
+
+
+def update_versions(release_name):
+    # git clone + install will fail sauf si post-release (mais meme dans ce
+    # cas là, ce ne sera pas précis)
+    #
+    # version in archive I do with make_release: OK
+
+    # doc\usersguide\source\conf.py
+    # src\setup.py
+    # src\main.py
+    pass
+
+
+def update_changelog(release_name):
+    fname = relname2fname(release_name)
+
+    # include it in changes.rst
+    fpath = r'doc\usersguide\source\changes.rst'
+    with open(fpath) as f:
+        lines = f.readlines()
+
+        variables = dict(short_version=short(release_name),
+                         date=date.today().isoformat(),
+                         fpath='changes/' + fname)
+        this_version = changelog_template.format(**variables)
+        lines[5:5] = this_version
+    with open(fpath, 'w') as f:
+        f.writelines(lines)
+    call('git commit %s' % fpath)
+    do('pushing changes.rst', call, 'git push')
+
+
 def copy_release(release_name):
     copytree(r'build\bundle\editor', r'win32\editor')
     copytree(r'build\bundle\editor', r'win64\editor')
@@ -91,27 +194,7 @@ def copy_release(release_name):
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
           r'LIAM2UserGuide-%s.chm' % release_name)
     copytree(r'build\doc\usersguide\build\html',
-             r'html\%s' % release_name)
-
-
-def allfiles(pattern, path='.'):
-    """
-    like glob.glob(pattern) but also include files in subdirectories
-    """
-    return (os.path.join(dirpath, f)
-            for dirpath, dirnames, files in os.walk(path)
-            for f in fnmatch.filter(files, pattern))
-
-
-def zip_pack(archivefname, filepattern):
-    with zipfile.ZipFile(archivefname, 'w', zipfile.ZIP_DEFLATED) as f:
-        for fname in allfiles(filepattern):
-            f.write(fname)
-
-
-def zip_unpack(archivefname, dest=None):
-    with zipfile.ZipFile(archivefname, 'r') as f:
-        f.extractall(dest)
+             r'html\%s' % short(release_name))
 
 
 def create_bundles(release_name):
@@ -121,7 +204,7 @@ def create_bundles(release_name):
     chdir('win64')
     zip_pack(r'..\LIAM2Suite-%s-win64.zip' % release_name, '*')
     chdir('..')
-    chdir(r'html\%s' % release_name)
+    chdir(r'html\%s' % short(release_name))
     zip_pack(r'..\..\LIAM2UserGuide-%s-html.zip' % release_name, '*')
     chdir(r'..\..')
 
@@ -159,10 +242,95 @@ def test_bundles(release_name):
     rmtree('test')
 
 
+def build_website(release_name):
+    fnames = ["LIAM2Suite-%s-win32.zip", "LIAM2Suite-%s-win64.zip",
+              "LIAM2-%s-src.zip"]
+    s32b, s64b, ssrc = [size2str(getsize(fname % release_name))
+                        for fname in fnames]
+
+    chdir(r'build\doc\website')
+
+    generate(r'conf.py', version=short(release_name))
+    generate(r'pages\download.rst',
+             version=release_name, short_version=short(release_name),
+             size32b=s32b, size64b=s64b, sizesrc=ssrc)
+    generate(r'pages\documentation.rst',
+             version=release_name, short_version=short(release_name))
+
+    title = 'Version %s released' % short(release_name)
+    fname = call('tinker -f -p "%s"' % title)
+
+    call('buildall.bat')
+
+    call('start ' + abspath(r'blog\html\index.html'), shell=True)
+    call('start ' + abspath(r'blog\html\pages\download.html'), shell=True)
+    call('start ' + abspath(r'blog\html\pages\documentation.html'), shell=True)
+
+    if no('Does the website look good?'):
+        exit(1)
+
+    call('git commit %s' % fname)
+    do('Git-pushing website', call, 'git push')
+
+    chdir(r'..\..\..')
+
+
+def upload(release_name):
+    # pscp is the scp provided in PuTTY's installer
+    base_url = '%s@%s:%s' % ('cic', WEBSITE, WEBSITE)
+    # archives
+    subprocess.call(r'pscp * %s/download' % base_url)
+
+    # documentation
+    chdir(r'html')
+    subprocess.call(r'pscp -r %s %s/documentation' % (short(release_name),
+                                                      base_url))
+    chdir(r'..')
+
+    # website
+    chdir(r'build\doc\website\blog\html')
+    subprocess.call(r'pscp -r * %s' % base_url)
+    chdir(r'..')
+
+
+def announce(release_name, changes):
+    body = """\
+I am pleased to announce that version 0.8 of LIAM2 is now available.
+
+The highlights of this release are:
+- x
+- y
+
+More details and the complete list of changes are available below.
+
+This new release can be downloaded on our website:
+http://liam2.plan.be
+
+As always, *any* feedback is very welcome, preferably on the liam2-users
+mailing list: liam2-users@googlegroups.com (you need to register to be able to
+post).
+
+%s
+""" % changes
+    # preselectid='id1' selects the first "identity" for the "from" field
+    # We do not use our usual call because the command returns an exit status
+    # of 1 (failure) instead of 0, even if it works, so we simply ignore
+    # the failure.
+    subprocess.call("thunderbird -compose \""
+                    "preselectid='id1',"
+                    "to='liam2-announce@googlegroups.com',"
+                    "subject='Version %s released',"
+                    "body='%s'\"" % (short(release_name), body))
+
+
 def cleanup():
     rmtree('win32')
     rmtree('win64')
     rmtree('build')
+
+
+def relname2fname(release_name):
+    return r"version_%s.rst.inc" % short(release_name).replace('.', '_')
 
 
 def make_release(release_name=None, branch=None):
@@ -220,7 +388,9 @@ def make_release(release_name=None, branch=None):
 
     do('Cloning', call, 'git clone -b %s %s build' % (branch, repository))
 
+    # ---------- #
     chdir('build')
+    # ---------- #
 
     print()
     print(call('git log -1').decode('utf8'))
@@ -231,36 +401,69 @@ def make_release(release_name=None, branch=None):
 
     if public_release:
         test_release = True
+        fpath = "doc\usersguide\source\changes\\" + relname2fname(release_name)
+        with open(fpath) as f:
+            changes = f.read()
+            print(changes)
+        if no('Does this changelog look good?'):
+            exit(1)
+        update_changelog(release_name)
     else:
         test_release = yes('Do you want to test the bundles after they are '
                            'created?')
+        changes = ''
 
     do('Creating source archive', call,
        r'git archive --format zip --output ..\LIAM2-%s-src.zip %s'
        % (release_name, rev))
+
     do('Building everything', call, 'buildall.bat')
+
+    # ------- #
     chdir('..')
+    # ------- #
+
     do('Moving stuff around', copy_release, release_name)
     do('Creating bundles', create_bundles, release_name)
     if test_release:
         do('Testing bundles', test_bundles, release_name)
 
     if public_release:
-        if no('Is the release looking good (if so, the tag will be '
-              'created and pushed)?'):
+        do('Building website (news, download and documentation pages)',
+           build_website, release_name)
+
+        if no('Is the release looking good? If so, the tag will be created and '
+              'pushed, everything will be uploaded to the production server '
+              'and the release will be announced.'):
             exit(1)
 
+        # ---------- #
         chdir('build')
+        # ---------- #
+
         do('Tagging release', call,
            'git tag -a %(name)s -m "tag release %(name)s"'
            % {'name': release_name})
         do('Pushing tag', call, 'git push origin %s' % release_name)
+
+        # ------- #
         chdir('..')
+        # ------- #
+
+        do('Uploading', upload, release_name)
+
+        do('Announcing', announce, release_name, changes)
 
     do('Cleaning up', cleanup)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     from sys import argv
+
+    # chdir(r'c:\tmp')
+    # chdir('liam2_new_release')
+    # build_website(*argv[1:])
+    # upload(*argv[1:])
+    # announce(*argv[1:])
 
     make_release(*argv[1:])
