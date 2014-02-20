@@ -495,13 +495,15 @@ temporal functions
 - tsum(expr): sum of an expression since the individual was created
 
 
-.. index:: random, uniform, normal, randint
+.. index:: random, uniform, normal, gumbel, randint
 
 random functions
 ----------------
 
 - uniform: random numbers with a uniform distribution [0,1)
 - normal: random numbers with a normal distribution
+- gumbel: random numbers with a Gumbel distribution (also known as the Smallest
+          Extreme Value (SEV) distribution)
 - randint: random integers between bounds
 
 *example* ::
