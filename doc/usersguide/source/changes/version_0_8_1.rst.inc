@@ -1,8 +1,8 @@
 ﻿New features
 ------------
 
-* added the gumbel() function to draw random numbers from Gumbel distribution
-  (also known as the Smallest Extreme Value (SEV) distribution).
+* added the gumbel() function to draw random numbers from the Gumbel
+  distribution (also known as the Smallest Extreme Value (SEV) distribution).
 
 Miscellaneous improvements
 --------------------------
