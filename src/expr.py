@@ -237,10 +237,21 @@ class Expr(object):
                         "displayed but it contains: '%s'." % str(self))
 
     def evaluate(self, context):
-        #FIXME: this breaks test_while (infinite loop because values does
-        # not increment at each iteration)
-        # if self in expr_cache:
-        #     return expr_cache[self]
+        period = context.period
+        if isinstance(period, np.ndarray):
+            assert np.isscalar(period) or not period.shape
+            period = int(period)
+        cache_key = (self, period, context.entity_name)
+        try:
+            # check that the key is hashable
+            h = hash(cache_key)
+            cached_result = expr_cache.get(cache_key, None)
+            if cached_result is not None:
+                print("CACHE HIT for %s !" % str(cache_key))
+            #     return cached_result
+        except TypeError:
+            print("ERROR: %s is not hashable" % str(cache_key))
+
 
         simple_expr = self.as_simple_expr(context)
         if isinstance(simple_expr, Variable) and simple_expr.name in context:
@@ -291,7 +302,12 @@ class Expr(object):
                 # array shapes, but if we ever use numexpr reduction
                 # capabilities, we will be in trouble
                 res = LabeledArray(res, labels[0], labels[1])
-            # expr_cache[self] = res
+            expr_cache[cache_key] = res
+            if cached_result is not None:
+                print("bad cache for key", cache_key)
+                eq = np.array_equal(res, cached_result)
+                assert eq, "%s != %s" % (res, cached_result)
+                return cached_result
             return res
         # except KeyError, e:
         #     raise add_context(e, s)

@@ -77,6 +77,8 @@ class GroupBy(TableExpression):
             return LabeledArray([], labels, possible_values)
 
         # evaluate the expression on each group
+        #TODO: each subset/sub context should have their .filter_expr set,
+        # so that we can add it to the cache_key
         data = [expr_eval(expr, filtered_context.subset(indices, expr_vars))
                 for indices in groups]
 

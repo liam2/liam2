@@ -7,7 +7,7 @@ import numpy as np
 import config
 from diff_h5 import diff_array
 from data import append_carray_to_table, ColumnArray
-from expr import Expr, Variable, type_to_idx, idx_to_type, expr_eval
+from expr import Expr, Variable, type_to_idx, idx_to_type, expr_eval, expr_cache
 from context import EntityContext
 import utils
 
@@ -138,6 +138,10 @@ class While(Process):
                 break
 
             self.code.run_guarded(context)
+            #FIXME: this is a bit brutal :) This is necessary because
+            # otherwise test_while loops indefinitely (because "values" is
+            # never incremented)
+            expr_cache.clear()
 
     def expressions(self):
         if isinstance(self.cond, Expr):
