@@ -241,7 +241,7 @@ class Expr(object):
         if isinstance(period, np.ndarray):
             assert np.isscalar(period) or not period.shape
             period = int(period)
-        cache_key = (self, period, context.entity_name)
+        cache_key = (self, period, context.entity_name, context.filter_expr)
         try:
             # check that the key is hashable
             h = hash(cache_key)
@@ -353,6 +353,35 @@ class Expr(object):
         for node in self.traverse(context):
             if isinstance(node, node_type):
                 yield node
+
+    # cmpnames = ['astType', 'astKind', 'value', 'children']
+    cmpnames = ['kind', 'value', 'children']
+
+    def __eq__(self, other):
+        # if self.astType == 'alias':
+        #     self = self.value
+        # if other.astType == 'alias':
+        #     other = other.value
+        # if not isinstance(other, ASTNode):
+        #     return False
+        if not isinstance(other, Expr):
+            print("bad expr type", self, "vs", other)
+            return False
+        for name in self.cmpnames:
+            if getattr(self, name) != getattr(other, name):
+                return False
+        return True
+
+    def __hash__(self):
+        # if self.astType == 'alias':
+        #     self = self.value
+        # return hash((self.astType, self.astKind, self.value, self.children))
+        print("hash", self)
+        if hasattr(self, 'value'):
+            print("we got an attr")
+            return hash((self.kind, self.value, self.children))
+        else:
+            return id(self)
 
 
 class EvaluableExpression(Expr):
