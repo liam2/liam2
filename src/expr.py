@@ -169,6 +169,8 @@ def collect_variables(expr, context):
 
 def expr_eval(expr, context):
     if isinstance(expr, Expr):
+        assert isinstance(expr.__fields__, tuple)
+
         globals_data = context.global_tables
         if globals_data is not None:
             globals_names = set(globals_data.keys())
@@ -219,6 +221,10 @@ def binop(opname, kind='binary', reversed=False):
 
 
 class Expr(object):
+    __fields__ = None
+
+    TODO: add a check in the metaclass that the class instances effectively
+    have those fields/attributes defined !!
     __metaclass__ = ExplainTypeError
 
     kind = 'generic'
@@ -354,9 +360,6 @@ class Expr(object):
             if isinstance(node, node_type):
                 yield node
 
-    # cmpnames = ['astType', 'astKind', 'value', 'children']
-    cmpnames = ['kind', 'value', 'children']
-
     def __eq__(self, other):
         # if self.astType == 'alias':
         #     self = self.value
@@ -367,7 +370,7 @@ class Expr(object):
         if not isinstance(other, Expr):
             print("bad expr type", self, "vs", other)
             return False
-        for name in self.cmpnames:
+        for name in self.__fields__:
             if getattr(self, name) != getattr(other, name):
                 return False
         return True
@@ -385,6 +388,7 @@ class Expr(object):
 
 
 class EvaluableExpression(Expr):
+    __fields__ = ('kind', 'value', 'children')
     def evaluate(self, context):
         raise NotImplementedError()
 
