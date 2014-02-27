@@ -4,7 +4,7 @@ import numpy as np
 
 import config
 from context import context_length
-from expr import (Expr, ExprCall, EvaluableExpression, expr_eval, traverse_expr,
+from expr import (Expr, AbstractExprCall, EvaluableExpression, expr_eval, traverse_expr,
                   getdtype, as_simple_expr, as_string, get_missing_value,
                   ispresent, LogicalOp)
 
@@ -42,6 +42,7 @@ class CompoundExpression(Expr):
 
 
 #TODO: generalise to a function with several arguments
+# - factorize with NumpyFunction, AbstractExprCall, FilteredExpression
 class FunctionExpression(EvaluableExpression):
     func_name = None
 
@@ -87,7 +88,7 @@ class FilteredExpression(FunctionExpression):
         return '%s(%s%s)' % (self.func_name, self.expr, filter_str)
 
 
-class NumpyFunction(ExprCall):
+class NumpyFunction(AbstractExprCall):
     func_name = None  # optional (for display)
     np_func = (None,)
     # arg_names can be set automatically by using inspect.getargspec, but it
@@ -109,7 +110,7 @@ class NumpyFunction(ExprCall):
             extra_kwargs = [repr(arg) for arg in extra_kwargs]
             raise TypeError("got an unexpected keyword argument %s" %
                             extra_kwargs[0])
-        ExprCall.__init__(self, self.np_func[0], *args, **kwargs)
+        AbstractExprCall.__init__(self, *args, **kwargs)
 
     @property
     def func_name(self):
@@ -117,13 +118,16 @@ class NumpyFunction(ExprCall):
 
 
 class NumpyChangeArray(NumpyFunction):
-    def _compute(self, func, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         # the first argument should be the array to work on ('a')
         assert self.arg_names[0] == 'a'
+        NumpyFunction.__init__(self, *args, **kwargs)
 
-        filter_value = kwargs.pop('filter', None)
+    def _compute(self, *args, **kwargs):
+        func = self.np_func[0]
         new_values = func(*args, **kwargs)
 
+        filter_value = kwargs.pop('filter', None)
         if filter_value is None:
             return new_values
         else:
@@ -135,9 +139,11 @@ class NumpyChangeArray(NumpyFunction):
 
 
 class NumpyCreateArray(NumpyFunction):
-    def _compute(self, func, *args, **kwargs):
-        filter_value = kwargs.pop('filter', None)
+    def _compute(self, *args, **kwargs):
+        func = self.np_func[0]
         values = func(*args, **kwargs)
+
+        filter_value = kwargs.pop('filter', None)
         if filter_value is None:
             return values
         else:
@@ -147,16 +153,16 @@ class NumpyCreateArray(NumpyFunction):
 
 class NumpyRandom(NumpyCreateArray):
     def _eval_args(self, context):
-        func, args, kwargs = NumpyCreateArray._eval_args(self, context)
+        args, kwargs = NumpyCreateArray._eval_args(self, context)
         if 'size' in self.arg_names and 'size' not in kwargs:
             kwargs['size'] = context_length(context)
-        return func, args, kwargs
+        return args, kwargs
 
-    def _compute(self, func, *args, **kwargs):
+    def _compute(self, *args, **kwargs):
         if config.debug:
             print()
             print("random sequence position before:", np.random.get_state()[2])
-        res = super(NumpyRandom, self)._compute(func, *args, **kwargs)
+        res = super(NumpyRandom, self)._compute(*args, **kwargs)
         if config.debug:
             print("random sequence position after:", np.random.get_state()[2])
         return res
@@ -166,22 +172,25 @@ class NumpyAggregate(NumpyFunction):
     nan_func = (None,)
     kwargs_names = ('filter', 'skip_na')
 
-    def _eval_args(self, context):
+    def __init__(self, *args, **kwargs):
         # the first argument should be the array to work on ('a')
         assert self.arg_names[0] == 'a'
+        NumpyFunction.__init__(self, *args, **kwargs)
 
-        func, args, kwargs = super(NumpyAggregate, self)._eval_args(context)
+    def _compute(self, *args, **kwargs):
         filter_value = kwargs.pop('filter', None)
         skip_na = kwargs.pop('skip_na', True)
 
         values, args = args[0], args[1:]
         values = np.asanyarray(values)
 
-        usenanfunc = False
         if (skip_na and issubclass(values.dtype.type, np.inexact) and
                 self.nan_func[0] is not None):
             usenanfunc = True
             func = self.nan_func[0]
+        else:
+            usenanfunc = False
+            func = self.np_func[0]
 
         if values.shape:
             if values.ndim == 1:
@@ -198,7 +207,7 @@ class NumpyAggregate(NumpyFunction):
                 raise Exception("filter argument is not supported on arrays "
                                 "with more than 1 dimension")
         args = (values,) + args
-        return func, args, kwargs
+        return func(*args, **kwargs)
 
 
 class NumexprFunction(Expr):

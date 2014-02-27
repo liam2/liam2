@@ -169,7 +169,7 @@ def collect_variables(expr, context):
 
 def expr_eval(expr, context):
     if isinstance(expr, Expr):
-        assert isinstance(expr.__fields__, tuple)
+        # assert isinstance(expr.__fields__, tuple)
 
         globals_data = context.global_tables
         if globals_data is not None:
@@ -223,8 +223,8 @@ def binop(opname, kind='binary', reversed=False):
 class Expr(object):
     __fields__ = None
 
-    TODO: add a check in the metaclass that the class instances effectively
-    have those fields/attributes defined !!
+    # TODO: add a check in the metaclass that the class instances effectively
+    # have those fields/attributes defined !!
     __metaclass__ = ExplainTypeError
 
     kind = 'generic'
@@ -244,19 +244,20 @@ class Expr(object):
 
     def evaluate(self, context):
         period = context.period
-        if isinstance(period, np.ndarray):
-            assert np.isscalar(period) or not period.shape
-            period = int(period)
-        cache_key = (self, period, context.entity_name, context.filter_expr)
-        try:
-            # check that the key is hashable
-            h = hash(cache_key)
-            cached_result = expr_cache.get(cache_key, None)
-            if cached_result is not None:
-                print("CACHE HIT for %s !" % str(cache_key))
-            #     return cached_result
-        except TypeError:
-            print("ERROR: %s is not hashable" % str(cache_key))
+
+        # if isinstance(period, np.ndarray):
+        #     assert np.isscalar(period) or not period.shape
+        #     period = int(period)
+        # cache_key = (self, period, context.entity_name, context.filter_expr)
+        # try:
+        #     # check that the key is hashable
+        #     h = hash(cache_key)
+        #     cached_result = expr_cache.get(cache_key, None)
+        #     if cached_result is not None:
+        #         print("CACHE HIT for %s !" % str(cache_key))
+        #     #     return cached_result
+        # except TypeError:
+        #     print("ERROR: %s is not hashable" % str(cache_key))
 
 
         simple_expr = self.as_simple_expr(context)
@@ -308,12 +309,12 @@ class Expr(object):
                 # array shapes, but if we ever use numexpr reduction
                 # capabilities, we will be in trouble
                 res = LabeledArray(res, labels[0], labels[1])
-            expr_cache[cache_key] = res
-            if cached_result is not None:
-                print("bad cache for key", cache_key)
-                eq = np.array_equal(res, cached_result)
-                assert eq, "%s != %s" % (res, cached_result)
-                return cached_result
+            # expr_cache[cache_key] = res
+            # if cached_result is not None:
+            #     print("bad cache for key", cache_key)
+            #     eq = np.array_equal(res, cached_result)
+            #     assert eq, "%s != %s" % (res, cached_result)
+            #     return cached_result
             return res
         # except KeyError, e:
         #     raise add_context(e, s)
@@ -370,21 +371,22 @@ class Expr(object):
         if not isinstance(other, Expr):
             print("bad expr type", self, "vs", other)
             return False
-        for name in self.__fields__:
-            if getattr(self, name) != getattr(other, name):
-                return False
-        return True
+        return False
+        # for name in self.__fields__:
+        #     if getattr(self, name) != getattr(other, name):
+        #         return False
+        # return True
 
     def __hash__(self):
         # if self.astType == 'alias':
         #     self = self.value
         # return hash((self.astType, self.astKind, self.value, self.children))
-        print("hash", self)
-        if hasattr(self, 'value'):
-            print("we got an attr")
-            return hash((self.kind, self.value, self.children))
-        else:
-            return id(self)
+        # print("hash", self)
+        # if hasattr(self, 'value'):
+        #     print("we got an attr")
+        #     return hash((self.kind, self.value, self.children))
+        # else:
+        return id(self)
 
 
 class EvaluableExpression(Expr):
@@ -487,36 +489,63 @@ class ExprAttribute(EvaluableExpression):
         return getattr(expr, key)
 
     def __call__(self, *args, **kwargs):
-        return ExprCall(self, *args, **kwargs)
+        return GenericExprCall(self, *args, **kwargs)
 
 
 #TODO: factorize with NumpyFunction & FunctionExpression
-class ExprCall(EvaluableExpression):
-    def __init__(self, func, *args, **kwargs):
-        Expr.__init__(self, 'call',
-                      children=(func, args, sorted(kwargs.items())))
+class AbstractExprCall(EvaluableExpression):
+    """
+    base class
+    """
+    funcname = None
+
+    def __init__(self, *args, **kwargs):
+        Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
 
     def _eval_args(self, context):
-        func, args, kwargs = expr_eval(self.children, context)
-        return func, args, dict(kwargs)
+        args, kwargs = expr_eval(self.children, context)
+        return args, dict(kwargs)
 
-    def _compute(self, func, *args, **kwargs):
-        return func(*args, **kwargs)
+    def _compute(self, *args, **kwargs):
+        raise NotImplementedError()
 
     def evaluate(self, context):
-        func, args, kwargs = self._eval_args(context)
-        return self._compute(func, *args, **kwargs)
+        args, kwargs = self._eval_args(context)
+        return self._compute(*args, **kwargs)
 
     @property
-    def funcname(self):
-        return str(self.children[0])
+    def args(self):
+        return self.children[0]
+
+    @property
+    def kwargs(self):
+        return self.children[1]
 
     def __str__(self):
-        _, args, kwargs = self.children
+        args, kwargs = self.args, self.kwargs
         args = [repr(a) for a in args]
         kwargs = ['%s=%r' % (k, v) for k, v in kwargs]
         return '%s(%s)' % (self.funcname, ', '.join(args + kwargs))
     __repr__ = __str__
+
+
+class GenericExprCall(AbstractExprCall):
+    @property
+    def funcname(self):
+        return str(self.children[0][0])
+
+    @property
+    def args(self):
+        return self.children[0][1:]
+
+    @property
+    def kwargs(self):
+        return self.children[1]
+
+    def _compute(self, *args, **kwargs):
+        func, args = args[0], args[1:]
+        return func(*args, **kwargs)
+
 
 
 #############
