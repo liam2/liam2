@@ -556,7 +556,7 @@ class Simulation(object):
 
 
             if self.final_stat:
-                elapsed, _ = gettime(stat,period)
+                elapsed, _ = gettime(start, period)
                 process_time['Stat'] += elapsed              
 
             total_time = time.time() - main_start_time
@@ -565,12 +565,12 @@ class Simulation(object):
                 nb_year_approx = periods[-1]/100 - periods[1]/100
                 if nb_year_approx > 0 : 
                     time_year = total_time/nb_year_approx
-                
+               
+            total_time = time.time() - main_start_time
             try:
                 ind_per_sec = str(int(total_objects / total_time))
             except ZeroDivisionError:
                 ind_per_sec = 'inf'
-
             print( """
 ==========================================
  simulation done
@@ -586,7 +586,7 @@ class Simulation(object):
         time2str(time_init),
         time2str(total_time / self.periods),
         time2str(time_year)))
-            
+           
             show_top_processes(process_time, 10)
 #            if config.debug:
 #                show_top_expr()

@@ -152,10 +152,10 @@ class While(Process):
 
     def __init__(self, cond, code):
         """
-cond -- an Expr returning a (single) boolean, it means the condition
-value must be the same for all individuals
-code -- a ProcessGroup
-"""
+        cond -- an Expr returning a (single) boolean, it means the condition
+                value must be the same for all individuals
+        code -- a ProcessGroup
+        """
         Process.__init__(self)
         self.cond = cond
         assert isinstance(code, ProcessGroup)
@@ -216,11 +216,12 @@ class ProcessGroup(AbstractProcessGroup):
 
         print()
         for k, v in self.subprocesses:
-            print(" *", end=' ')
+            print("    *", end=' ')
             if k is not None:
                 print(k, end=' ')
             utils.timed(v.run_guarded, simulation, const_dict)
-# print "done."
+#            print "done."
+
             simulation.start_console(v.entity, period,
                                      const_dict['__globals__'])
         if config.autodump is not None:
@@ -308,10 +309,10 @@ class Function(AbstractProcessGroup):
 
     def __init__(self, argnames, code=None, result=None):
         """
-args -- a list of strings
-code -- a ProcessGroup (or None)
-result -- an Expr (or None)
-"""
+        args -- a list of strings
+        code -- a ProcessGroup (or None)
+        result -- an Expr (or None)
+        """
         Process.__init__(self)
 
         assert isinstance(argnames, list)
@@ -354,5 +355,3 @@ result -- an Expr (or None)
         #XXX: not sure what to put here as I don't remember what it is used for
         for e in self.code.expressions():
             yield e
-
-

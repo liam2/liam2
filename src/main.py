@@ -18,8 +18,7 @@ from data import populate_registry, H5Data
 from upgrade import upgrade
 from view import viewhdf
 
-__version__ = "0.8-rc1"
-
+__version__ = "0.8.0"
 
 def eat_traceback(func, *args, **kwargs):
 # e.context      | while parsing a block mapping
@@ -243,8 +242,13 @@ def main():
     action = parsed_args.action
     if action == 'run':
         args = simulate, parsed_args
+<<<<<<< HEAD
     elif action == "import":
         args = file2h5, parsed_args.file
+=======
+    elif action == "import":
+        args = csv2h5, parsed_args.file
+>>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
     elif action == "explore":
         args = explore, parsed_args.file
     elif action == "upgrade":
@@ -262,4 +266,8 @@ if __name__ == '__main__':
     print("LIAM2 %s (%s)" % (__version__, platform.architecture()[0]))
     print()
 
+<<<<<<< HEAD
     main()
+=======
+    main()
+>>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625

@@ -15,7 +15,6 @@ from process import Assignment, Compute, Process, ProcessGroup, While, Function
 from registry import entity_registry
 from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
                    WarnOverrideDict)
-
 max_vars = 0
 
 #def compress_column(a, level):
@@ -86,7 +85,7 @@ class Entity(object):
         # another solution is to use a Field class
         # seems like the better long term solution
         self.missing_fields = missing_fields
-
+        
         self.default_values = default_values
         self.period_individual_fnames = [name for name, _ in fields]
 
@@ -195,10 +194,9 @@ class Entity(object):
     def variables(self):
         if self._variables is None:
             processes = self.process_strings.items()
-
             # names of all processes (hybrid or not) of the entity
             process_names = set(k for k, v in processes if k is not None)
-
+            
             # names of all entity variables (temporary or not) which are set
             # globally
             all_predictors = set(self.collect_predictors(processes))

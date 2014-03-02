@@ -74,4 +74,5 @@ simulation:
 
     # first simulated period
     start_period: 2002
+>>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
     periods: 2

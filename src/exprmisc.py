@@ -173,6 +173,11 @@ class Normal(NumpyRandom):
     arg_names = ('loc', 'scale', 'size')
 
 
+class Gumbel(NumpyRandom):
+    np_func = (np.random.gumbel,)
+    arg_names = ('loc', 'scale', 'size')
+
+
 class RandInt(NumpyRandom):
     np_func = (np.random.randint,)
     arg_names = ('low', 'high', 'size')
@@ -704,6 +709,7 @@ functions = {
     # random
     'uniform': Uniform,
     'normal': Normal,
+    'gumbel': Gumbel,
     'choice': Choice,
     'randint': RandInt,
     # aggregates/per element combined functions

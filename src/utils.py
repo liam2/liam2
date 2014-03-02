@@ -1095,3 +1095,4 @@ class FileProducer(object):
             suffix = "_" + suffix if suffix else ""
             fname = "{entity}_{period}" + suffix + self.ext
         return fname
+

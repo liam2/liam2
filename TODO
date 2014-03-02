@@ -1,9 +1,13 @@
---------------------------------------
-TODO
---------------------------------------
+#========================================================#
+# Most TODO items have been converted to GitHub issues ! #
+# See: https://github.com/liam2/liam2/issues             #
+# Only "weird items" which do not really translate well  #
+# to issues are left here for reference.                 #
+#=========================================================
 
-longterm "cleanup" roadmap 
+projects to keep an eye on
 ==========================
+<<<<<<< HEAD
 This is a short list of the most important shortcomings of the current
 implementation that I am aware of.
 
@@ -681,49 +685,27 @@ optimisation
                    ('a', 'd + 1'),
                    ('c', 'a * 2')], {'a': [1, 2], 'b': [3, 4]})
   >> {'a': ..., 'c': ..., 'd': ...}
-
-cleanup
 =======
+>>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 
-- use proper logging & warnings (use logging and warnings modules)
-- move expr to its own directory and split it. Move properties there too. 
-- __entity__ vs .entity
-- change constructor arguments to Entity, so that
-  1) it is shielded from YAML specifics
-  2) I can use the real thing in test_expr instead of FakeEntity
-- factorize/simplify __str__ methods in some way: by using multi-inheritance?
-- merge src/expr with tools/expr
-? do not store the array/data into the entity. The entity would only be a
-  descriptor.
+misc
+----
 
-GUI
-===
+- pandas: I could kill half of my code and it would bring for free many
+  of the features I want to develop (and more), but this would need such a
+  major refactoring that I am uneager to start it :)
 
-- make liam2 useable within Ipython notebook
-  * if it doesn't exist yet, develop a web-based generic "table" viewer for
-    Ipython (using their archicture). This might need (or not) developing an
-    ipython extension
-  * on the server side, implement an hdf5 backend
-- assess whether we can get inspiration (or even code) from spyke viewer:
-  http://neuralensemble.blogspot.be/2012/11/spyke-viewer-020-released.html
-- try Kivy (kivy.org)
-- integrate with matplotlib for normal graphics
-? glumpy for "live" visualisation during the simulation
+- Blaze (http://blaze.pydata.org/) is a generalisation of ndarray with more
+  data layouts -- potentially distributed), a delayed-evaluation system
+  (like I have done in liam2) and a built-in code generation framework based
+  on LLVM (using Numba I think). Documentation is a bit scarce at this point,
+  but from my quick glance at it, it seems to be exactly what I have been
+  dreaming for but would have been unable to achieve by myself.
 
-non feature tasks
-=================
+- Odin (equivalent of Blaze from Enthought)
 
-? check the situation and possibly document that csv files need to be encoded
-  in utf8.
-- document what each regression function does
-- move all these TODO to trac tickets
-- add explanation of what you can do with the website both on the site and
-  in the doc
-- reorder the doc to be more logical (like in my presentations)
-- add unit tests
-
-projects to keep an eye on
-==========================
+speed
+-----
 
 - Julia (http://julialang.org): a language specifically tailored for
   scientific computing. It seem to have a very interesting feature set
@@ -732,25 +714,10 @@ projects to keep an eye on
   "stdlib" is complete enough for our needs (csv input, hdf output, plotting,
   ...).
 
-- SciDB: http://www.scidb.org   
-
-- pandas: I could kill half of my code and it would bring for free many
-  of the features I want to develop (and more), but this would need such a
-  major refactoring that I am uneager to start it :)
-
 - Numba: early tests seem very promising.
 
 - Parakeet: jit for a subset of python. very similar to numba, but more limited
   in scope
-
-- Blaze (http://blaze.pydata.org/) is a generalisation of ndarray with more
-  data layouts -- potentially distributed), a delayed-evaluation system
-  (like I have done in liam2) and a built-in code generation framework based
-  on LLVM (using Numba I think). Documentation is a bit scarce at this point,
-  but from my quick glance at it, it seems to be exactly what I have been
-  dreaming for but would have been unable to achieve by myself.
-  
-- Odin (equivalent of Blaze from Enthought)
 
 - SymPy. They use mpmath and I wonder how fast it is.
 
@@ -758,13 +725,10 @@ projects to keep an eye on
   nansum, nanmin, nanmax, nanmean, nanstd
   it will probably be integrated back into numpy/scipy at some point but it
   will probably take a while, so let's use this in the mean time
-  
-- pydap (http://www.pydap.org) 
-  access many kinds of data formats using a uniform interface
 
 - corepy
 
-- copperhead (targets NVIDIA GPUs & multi core CPUs) 
+- copperhead (targets NVIDIA GPUs & multi core CPUs)
   http://copperhead.github.io/
 
 - Theano (http://deeplearning.net/software/theano/)
@@ -776,10 +740,10 @@ projects to keep an eye on
 
 - Clyther: translates python/numpy code to OpenCL
 
-- pythran: python to C++ compiler  
+- pythran: python to C++ compiler
 
 - shedskin: python to C++ compiler
-  
+
 - nuitka: python to C++ compiler
 
 - scipy.weave.blitz. It seems a bit limited in functionality but it uses
@@ -788,14 +752,52 @@ projects to keep an eye on
   hard. It seems to be really slow to compile though, so it'll probably be
   only worth it when using very large arrays.
 
-- ORC (but I would need to create python bindings for it) 
+- ORC (but I would need to create python bindings for it)
   http://code.entropywave.com/projects/orc/
   or any of the other C JIT referenced in the external links at:
   http://en.wikipedia.org/wiki/Just-in-time_compilation
 
-undecided
-=========
+storage
+-------
+- SciDB: http://www.scidb.org
 
+- pydap (http://www.pydap.org)
+  access many kinds of data formats using a uniform interface
+
+GUI
+---
+
+- assess whether we can get inspiration (or even code) from spyke viewer:
+  http://neuralensemble.blogspot.be/2012/11/spyke-viewer-020-released.html
+- try Kivy (kivy.org)
+? glumpy for "live" visualisation during the simulation
+
+
+undecided ideas
+===============
+
+The following is a list of improvements ideas I had at some point that I am
+now unsure they are worth implementing.
+
+? try alternate algorithm for RemoveIndividuals: simply reindex, like I do it
+  elsewhere. It might cause a problem if the last ids (newly borns) die.
+  it seems to be a tad slower in fact. However, it might be a better starting
+  point to translate in C if that is ever necessary.
+? make numexpr able to compute several expressions at the same time
+  eg ne.evalutate(["a + (a * b)", "(a * b) * 5", {'a': [1, 2], 'b': [3, 4]})
+  >> [3, 10], [15, 40]
+  >> this would be limited to expressions which do not "recompute" any of
+  >> the variable used
+  >> if it is the only factorization, it would limit some of it, because if
+  >> some sub expression is common between one expression of the group and
+  >> one which is not in the group, there wouldn't be any factorization
+  Ideally, I could feed targets too, so that numexpr would be able to do
+  the whole thing by itself:
+  eg ne.evalutate([('c', 'a + (a * b)'),
+                   ('d', '(a * b) * c'),
+                   ('a', 'd + 1'),
+                   ('c', 'a * 2')], {'a': [1, 2], 'b': [3, 4]})
+  >> {'a': ..., 'c': ..., 'd': ...}
 ? make specifying output field types optional (I can compute them):
   listing the fields is technically enough, though having the type make things
   easier and we can have some type checks
@@ -810,16 +812,14 @@ undecided
   * would introduce some kind of dependency on Stata which is not a good thing
     IMO -> convert them first?
 ? importer: import all columns, except a few
-? allow setting temporary variables in new() 
-  I doubt it is a good idea...
 ? somehow make "chenard" algorithm (used in align_abs(link=)) available in
   standard alignment. I would have to make the iterator run on individuals
   directly instead of hh. The code would be much simpler because we wouldn't
-  need num_unfillable, num_excedent, etc... 
+  need num_unfillable, num_excedent, etc...
 ? two different values for missing links:
   * linked to none/no individual = -1
   * missing value = -2
-  A potential problem (even if the distinction has value -- I am unsure at 
+  A potential problem (even if the distinction has value -- I am unsure at
   this point) is that modellers will probably not have the additional
   information in their input data.
 ? temporaries which are carried from one period to another
@@ -828,30 +828,14 @@ undecided
     minr61_c: "if(minr61_d, minr61_c + 1, minr61_c)"
   we do not (necessarily) need to store the value for each year (unless we
   want to inspect it after-the fact)
-   => probleme for the first period
+   => problem for the first period
 ? m2o link in aggregate link
-  eg, hh_nch: countlink(househould.persons)
-  I am not sure it's a good idea after all, because that would introduce
-  two ways to do the same thing and the other way (should) already work(s):
-      hh_nch: household.get(countlink(persons))
+  eg, hh_nch: househould.persons.count()
+  Another spelling which (should) already work(s):
+      hh_nch: household.get(persons.count())
 ? a: "where(b, c[, d])" -> d implicitly = a
 ? specific choice method for boolean: boolchoice(0.3)
   instead of: choice([True, False], [0.3, 1-0.3])
-? somehow "merge" grpxxx and xxxlink functions (at least for the user, not
-  necessarily technically):
-  grpcount()            -> count()
-  countlink(persons)    -> count(persons)
-  >>> this is problematic because count() returns a scalar while
-  >>> count(persons) return a vector
-  grpsum(age)           -> sum(age)
-  sumlink(persons, age) -> [sum(person.age for person in household.persons)
-                            for each household]
-  After some thought, I think having:
-  grpcount()            -> count()
-  countlink(persons)    -> persons.count()
-  makes more sense.
-? at the start of each period, wipe out the array (set all to missing)
-  => need to use lag explicitly
 ? allow processes to be run only at specific periodicity: eg. some monthly,
   some quarterly, and some annually
 ? store alignment tables in hdf input & output files
@@ -862,21 +846,29 @@ undecided
     and would thus require an extra import step.
   * on the other hand, having all input data in one file is convenient if they
     want to pass their simulation around
-? implicit "dead" field. Not sure it is really necessary, as some simulations
-  might not involve the creation or death of individuals. And some people
-  might want to name it differently: alive, ...
-? implicit age: I don't like the idea but Geert would like to have it.
-? implement data generator using variable definitions + custom code where
-  it is absolutely needed
 ? explicit "fill missing values" so that you can do operations between vectors
   of a past period.
 ? OR, we could "timestamp" each expression and convert only when using both
   old and current ones in the same expression
+? move expression optimisation/simplification to numexpr
+
+abandoned ideas
+===============
+
+The following is a list of improvements ideas I had at some point that I do
+not want to implement anymore because they are either plain bad ideas or would
+take too much time to implement for very little benefit.
+
+? allow setting temporary variables in new()
+? at the start of each period, wipe out the array (set all to missing)
+  => need to use lag explicitly
+? implicit "dead" field. Not sure it is really necessary, as some simulations
+  might not involve the creation or death of individuals. And some people
+  might want to name it differently: alive, ...
+? implicit age: I don't like the idea but Geert would like to have it.
 ? automatically add dependencies to simulation? (eg add person.difficult_match
   when person.partner_id is computed)
-? allow lag to use temporary variables, though it doesn't make much sense.
-  it's better to only allow macros
-? move expression optimisation/simplification to numexpr
+? allow lag to use temporary variables. > it's better to only allow macros
 ? "new" action is limited because it can only have one parent, it might be
   interesting to have an arbitrary number of them. eg:
    newbirth: "new('person', filters={'mother': to_give_birth & ~male,
@@ -897,7 +889,6 @@ undecided
                   male=logit(0.0),
                   partner_id=-1)"
   ... but in that case, the current syntax works as well.
-
 ? Q: use validictory instead of my custom validator?
      http://readthedocs.org/docs/validictory/
   A: probably not. I prefer my own solution, as the syntax is more concise and

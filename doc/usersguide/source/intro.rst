@@ -1,8 +1,7 @@
-﻿.. highlight:: YAML
-
-Introduction
+﻿Introduction
 ############
 
+<<<<<<< HEAD
 LIAM2 is a tool to develop (different kinds of) microsimulation models.
 
 About LIAM2
@@ -31,34 +30,25 @@ Please note that it describes version |version| of LIAM2, but both the software
 package and this manual are very much work-in-progress, and are therefore
 subject to change, including in the syntax described in this manual for defining
 models.
-
-Microsimulation
-===============
-
-Microsimulation is (as defined by the International Microsimulation
-Association), a modelling technique that operates at the level of individual
-units such as persons, households, vehicles or firms. Each unit has a set of
-associated attributes – e.g. each person in the model has an associated age,
-sex, marital and employment status. At each time step, a set of rules (intended
-to represent individual preferences and tendencies) are applied to these units
-leading to simulated changes in state and possibly behaviour. These rules may be
-deterministic (probability = 1), such as ageing, or stochastic 
-(probability < 1), such as the chance of dying, marrying, giving birth or moving
-within a given time period.
-
-The aim of such simulations is to give insight about both the overall aggregate
-change of some characteristics and (importantly) the way these changes are
-distributed in the population that is being modelled. 
-
-Credits
 =======
+About LIAM2
+===========
 
-LIAM2 is being developed at the Federal Planning Bureau (Belgium), with funding
-and testing by CEPS/INSTEAD (Luxembourg) and IGSS (Luxembourg), and funding from
-the European Community. It is the spiritual successor of LIAM 1, developed by
-Cathal O’Donoghue.
+.. include:: ../../../README.rst
+>>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 
-More formally, it is part of the MiDaL project, supported by the European
-Community Programme for Employment and Social Solidarity - PROGRESS (2007-2013),
-under the Grant VS/2009/0569 Abstract - Project PROGRESS MiDaL deliverable Work
-Package A.
+.. _microsimulation:
+
+About microsimulation
+=====================
+
+.. include:: ../../../MICROSIMULATION.rst
+
+
+About this guide
+================
+
+This guide will help you develop dynamic microsimulation models using LIAM2. 
+Please note that it describes version |version| of LIAM2, but both the software
+package and this manual are work-in-progress, and are therefore subject to
+change.

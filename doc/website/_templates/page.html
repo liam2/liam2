@@ -1,0 +1,7 @@
+{% extends "!page.html" %}
+
+{% block footer %}
+    {{ super() }}
+    {% include "../_static/piwik.js" %}
+    {% include "../_static/github-banner.html" %}
+{% endblock %}
