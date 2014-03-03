@@ -16,12 +16,8 @@ tests/functional/empty_file.csv
 tests/examples/simulation.h5
 tests/examples/demography_*.png
 tests/examples/error.log
-<<<<<<< HEAD
-tests/examples/person_*.csv
-=======
 tests/examples/person_*.csv
 doc/website/blog
 doc/website/objects.inv
 doc/website/pages/download.rst
 doc/website/pages/documentation.rst
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625

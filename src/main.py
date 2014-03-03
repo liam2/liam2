@@ -242,13 +242,8 @@ def main():
     action = parsed_args.action
     if action == 'run':
         args = simulate, parsed_args
-<<<<<<< HEAD
     elif action == "import":
-        args = file2h5, parsed_args.file
-=======
-    elif action == "import":
-        args = csv2h5, parsed_args.file
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
+        args = file2h5, parsed_args.fil
     elif action == "explore":
         args = explore, parsed_args.file
     elif action == "upgrade":
@@ -265,9 +260,4 @@ if __name__ == '__main__':
 
     print("LIAM2 %s (%s)" % (__version__, platform.architecture()[0]))
     print()
-
-<<<<<<< HEAD
     main()
-=======
-    main()
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625

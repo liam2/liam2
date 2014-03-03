@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import numpy as np
-
+import pdb
 from expr import (Variable, getdtype, expr_eval,
                   collect_variables, traverse_expr, get_tmp_varname,
                   ispresent)
@@ -284,8 +284,6 @@ class Retraite(FilteredExpression):
         expr = self.expr
         
         values = expr_eval(expr, context)
-        import pdb
-        pdb.set_trace()
         carriere = context['table_sali']
         values = np.asarray(values)
         return 0.7*values

@@ -73,7 +73,7 @@ def find_first(char, s, depth=0):
     return -1
 
 
-class AutoflushFile(object):
+class AutoFlushFile(object):
     def __init__(self, f):
         self.f = f
 

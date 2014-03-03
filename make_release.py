@@ -1,8 +1,5 @@
 #!/usr/bin/python
-<<<<<<< HEAD
-=======
 # coding=utf-8
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 # Release script for LIAM2
 # Licence: GPLv3
 from __future__ import print_function
@@ -11,10 +8,7 @@ import errno
 import fnmatch
 import os
 import stat
-<<<<<<< HEAD
-=======
 import subprocess
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 import zipfile
 
 from datetime import date
@@ -22,8 +16,6 @@ from os import chdir, makedirs
 from os.path import exists, getsize, abspath
 from shutil import copytree, copy2, rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
-<<<<<<< HEAD
-=======
 
 WEBSITE = 'liam2.plan.be'
 
@@ -53,7 +45,6 @@ def size2str(value):
 def generate(fname, **kwargs):
     with open('%s.tmpl' % fname) as in_f, open(fname, 'w') as out_f:
         out_f.write(in_f.read().format(**kwargs))
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 
 
 def _remove_readonly(function, path, excinfo):
@@ -80,9 +71,9 @@ def call(*args, **kwargs):
 
 def git_remote_last_rev(url, branch=None):
     """
-    url of the remote repository
-    branch is an optional branch (defaults to 'refs/heads/master')
-    """
+url of the remote repository
+branch is an optional branch (defaults to 'refs/heads/master')
+"""
     if branch is None:
         branch = 'refs/heads/master'
     output = call('git ls-remote %s %s' % (url, branch))
@@ -115,8 +106,8 @@ def do(description, func, *args, **kwargs):
 
 def allfiles(pattern, path='.'):
     """
-    like glob.glob(pattern) but also include files in subdirectories
-    """
+like glob.glob(pattern) but also include files in subdirectories
+"""
     return (os.path.join(dirpath, f)
             for dirpath, dirnames, files in os.walk(path)
             for f in fnmatch.filter(files, pattern))
@@ -203,31 +194,7 @@ def copy_release(release_name):
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
           r'LIAM2UserGuide-%s.chm' % release_name)
     copytree(r'build\doc\usersguide\build\html',
-<<<<<<< HEAD
-             r'html\%s' % release_name)
-
-
-def allfiles(pattern, path='.'):
-    """
-    like glob.glob(pattern) but also include files in subdirectories
-    """
-    return (os.path.join(dirpath, f)
-            for dirpath, dirnames, files in os.walk(path)
-            for f in fnmatch.filter(files, pattern))
-
-
-def zip_pack(archivefname, filepattern):
-    with zipfile.ZipFile(archivefname, 'w', zipfile.ZIP_DEFLATED) as f:
-        for fname in allfiles(filepattern):
-            f.write(fname)
-
-
-def zip_unpack(archivefname, dest=None):
-    with zipfile.ZipFile(archivefname, 'r') as f:
-        f.extractall(dest)
-=======
              r'html\%s' % short(release_name))
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 
 
 def create_bundles(release_name):
@@ -236,45 +203,6 @@ def create_bundles(release_name):
     chdir('..')
     chdir('win64')
     zip_pack(r'..\LIAM2Suite-%s-win64.zip' % release_name, '*')
-<<<<<<< HEAD
-    chdir('..')
-    chdir(r'html\%s' % release_name)
-    zip_pack(r'..\..\LIAM2UserGuide-%s-html.zip' % release_name, '*')
-    chdir(r'..\..')
-
-
-def test_bundle(archivefname, dest):
-    zip_unpack(archivefname, dest)
-    # we use --debug so that errorlevel is set
-    call(dest + r'\liam2\main --debug run src\tests\functional\generate.yml')
-    call(dest + r'\liam2\main --debug import src\tests\functional\import.yml')
-    call(dest + r'\liam2\main --debug run src\tests\functional\simulation.yml')
-    call(dest + r'\liam2\main --debug run src\tests\functional\variant.yml')
-    try:
-        chdir(dest)
-        call(r'liam2\main --debug run examples\demo01.yml')
-        call(r'liam2\main --debug import examples\demo_import.yml')
-        call(r'liam2\main --debug run examples\demo01.yml')
-        call(r'liam2\main --debug run examples\demo02.yml')
-        call(r'liam2\main --debug run examples\demo03.yml')
-        call(r'liam2\main --debug run examples\demo04.yml')
-        call(r'liam2\main --debug run examples\demo05.yml')
-        call(r'liam2\main --debug run examples\demo06.yml')
-        call(r'liam2\main --debug run examples\demo07.yml')
-        call(r'liam2\main --debug run examples\demo08.yml')
-    finally:
-        chdir('..')
-
-
-def test_bundles(release_name):
-    makedirs('test')
-    chdir('test')
-    zip_unpack(r'..\LIAM2-%s-src.zip' % release_name, 'src')
-    for arch in ('win32', 'win64'):
-        test_bundle(r'..\LIAM2Suite-%s-%s.zip' % (release_name, arch), arch)
-    chdir('..')
-    rmtree('test')
-=======
     chdir('..')
     chdir(r'html\%s' % short(release_name))
     zip_pack(r'..\..\LIAM2UserGuide-%s-html.zip' % release_name, '*')
@@ -393,7 +321,6 @@ post).
                     "to='liam2-announce@googlegroups.com',"
                     "subject='Version %s released',"
                     "body='%s'\"" % (short(release_name), body))
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 
 
 def cleanup():
@@ -474,11 +401,6 @@ def make_release(release_name=None, branch=None):
 
     if public_release:
         test_release = True
-<<<<<<< HEAD
-    else:
-        test_release = yes('Do you want to test the bundles after they are '
-                           'created?')
-=======
         fpath = "doc\usersguide\source\changes\\" + relname2fname(release_name)
         with open(fpath) as f:
             changes = f.read()
@@ -490,26 +412,10 @@ def make_release(release_name=None, branch=None):
         test_release = yes('Do you want to test the bundles after they are '
                            'created?')
         changes = ''
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 
     do('Creating source archive', call,
        r'git archive --format zip --output ..\LIAM2-%s-src.zip %s'
        % (release_name, rev))
-<<<<<<< HEAD
-    do('Building everything', call, 'buildall.bat')
-    chdir('..')
-    do('Moving stuff around', copy_release, release_name)
-    do('Creating bundles', create_bundles, release_name)
-    if test_release:
-        do('Testing bundles', test_bundles, release_name)
-
-    if public_release:
-        if no('Is the release looking good (if so, the tag will be '
-              'created and pushed)?'):
-            exit(1)
-
-        chdir('build')
-=======
 
     do('Building everything', call, 'buildall.bat')
 
@@ -535,21 +441,14 @@ def make_release(release_name=None, branch=None):
         chdir('build')
         # ---------- #
 
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
         do('Tagging release', call,
            'git tag -a %(name)s -m "tag release %(name)s"'
            % {'name': release_name})
         do('Pushing tag', call, 'git push origin %s' % release_name)
-<<<<<<< HEAD
-        chdir('..')
-
-    do('Cleaning up', cleanup)
-=======
 
         # ------- #
         chdir('..')
         # ------- #
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 
         do('Uploading', upload, release_name)
 
@@ -561,13 +460,10 @@ def make_release(release_name=None, branch=None):
 if __name__ == '__main__':
     from sys import argv
 
-<<<<<<< HEAD
-=======
     # chdir(r'c:\tmp')
     # chdir('liam2_new_release')
     # build_website(*argv[1:])
     # upload(*argv[1:])
     # announce(*argv[1:])
 
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
     make_release(*argv[1:])
