@@ -1,7 +1,6 @@
 from __future__ import print_function
 
 import numpy as np
-import pdb
 from expr import (Variable, getdtype, expr_eval,
                   collect_variables, traverse_expr, get_tmp_varname,
                   ispresent)
@@ -16,7 +15,7 @@ class All(NumpyAggregate):
     func_name = 'all'
     np_func = (np.all,)
     arg_names = ('a', 'axis', 'out', 'keepdims')
-    
+
     #noinspection PyMethodMayBeStatic,PyUnusedLocal
     def dtype(self, context):
         return bool
@@ -106,7 +105,7 @@ def na_sum(a, overwrite=False):
 #    def dtype(self, context):
 #        #TODO: merge this typemap with tsum's
 #        typemap = {bool: int, int: int, float: float}
-#        return typemap[getdtype(self.args[0], context)]
+#        return typemap[dtype(self.args[0], context)]
 
 
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
@@ -274,23 +273,6 @@ class Gini(FilteredExpression):
     def dtype(self, context):
         return float
 
-class Retraite(FilteredExpression):
-    func_name = 'retraite'
-
-    def __init__(self, expr, filter=None):
-        FilteredExpression.__init__(self, expr, filter)
-
-    def evaluate(self, context):
-        expr = self.expr
-        
-        values = expr_eval(expr, context)
-        carriere = context['table_sali']
-        values = np.asarray(values)
-        return 0.7*values
-        
-    def dtype(self, context):
-        return float
-
 def make_dispatcher(agg_func, elem_func):
     def dispatcher(*args, **kwargs):
         func = agg_func if len(args) == 1 else elem_func
@@ -309,8 +291,7 @@ functions = {
     'std': Std,
     'median': Median,
     'percentile': Percentile,
-    'gini': Gini,
-    'retraite': Retraite
+    'gini': Gini
 }
 
 for k, v in functions.items():

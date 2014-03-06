@@ -12,7 +12,7 @@ from expr import (Expr, Variable,
                   collect_variables, traverse_expr,
                   get_missing_record, get_missing_vector)
 from exprbases import (EvaluableExpression, CompoundExpression,
-                       NumexprFunction,
+                       NumexprFunction, FilteredExpression, 
                        FunctionExpression, TableExpression,
                        NumpyRandom, NumpyChangeArray)
 from context import (EntityContext, context_length, context_subset,
@@ -90,7 +90,7 @@ class Max(CompoundExpression):
 
     def __str__(self):
         return 'max(%s)' % ', '.join(str(arg) for arg in self.args)
-    
+
 
 class Logit(CompoundExpression):
     def __init__(self, expr):
@@ -106,7 +106,6 @@ class Logit(CompoundExpression):
 
     def __str__(self):
         return 'logit(%s)' % self.expr
-
 
 class Logistic(CompoundExpression):
     def __init__(self, expr):
@@ -703,8 +702,24 @@ class Where(Expr):
         iftruevars = collect_variables(self.iftrue, context)
         iffalsevars = collect_variables(self.iffalse, context)
         return condvars | iftruevars | iffalsevars
+    
+class Retraite(FilteredExpression):
+    def __init__(self, expr, filter=None):
+        FilteredExpression.__init__(self, expr, filter)
 
-
+    def evaluate(self, context):
+        expr = self.expr
+        values = expr_eval(expr, context)
+        sali = context['table_sali']
+        workstate = context['table_workstate']
+        import pdb
+        pdb.set_trace()
+        values = np.asarray(values)
+        return 0.7*values
+        
+    def dtype(self, context):
+        return float
+    
 functions = {
     # random
     'uniform': Uniform,
@@ -735,4 +750,5 @@ functions = {
     'new': CreateIndividual,
     'clone': Clone,
     'dump': Dump,
+    'pension_func': Retraite
 }
