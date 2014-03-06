@@ -7,26 +7,20 @@ from collections import defaultdict
 import random
 
 import numpy as np
+import tables
 import yaml
-import tables 
 
 from data import H5Data, Void
 from entities import Entity
-from process import ExtProcess
 from registry import entity_registry
 from utils import (time_period, addmonth, 
                    time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
                    merge_dicts, merge_items,
                    field_str_to_type, fields_yaml_to_type)
-# from stat_final import stat
-
 import console
 import config
 import expr
-
-import sys
-import pdb
 
 
 def show_top_times(what, times):
@@ -76,6 +70,7 @@ def handle_imports(content, directory):
                     multi_set(content, multi_key, merged_fields)
             content = merge_dicts(import_content, content)
     return content
+
 
 class Simulation(object):
     yaml_layout = {
@@ -175,6 +170,7 @@ class Simulation(object):
         self.final_stat = final_stat
         self.time_scale = time_scale
         self.table_sali = None
+        self.table_workstate = None
         self.retro = retro 
         self.stepbystep = False
 
@@ -216,7 +212,7 @@ class Simulation(object):
             print("using fixed random seed: %d" % seed)
             random.seed(seed)
             np.random.seed(seed)
-            
+
         periods = simulation_def['periods']
         time_scale = simulation_def.get('time_scale', 'year')
         retro = simulation_def.get('retro', False)
@@ -418,6 +414,7 @@ class Simulation(object):
                               'periods': periods,
                               'periodicity': time_period[self.time_scale]*(1 - 2*(self.retro)),
                               'table_sali': self.table_sali,
+                              'table_workstate': self.table_workstate,
                               'format_date': self.time_scale,
                               '__simulation__': self,
                               'period': period,
@@ -469,12 +466,15 @@ class Simulation(object):
             from pandas import DataFrame
             person = [x for x in entities if x.name == 'person'][0]
             sali = person.array.columns['sali']
+            workstate = person.array.columns['workstate']
             id = person.array.columns['id']                
             if init: 
                 self.table_sali = DataFrame({'id':id, period:sali})
+                self.table_workstate = DataFrame({'id':id, period:workstate})
             else:
                 sali = DataFrame({'id':id, period:sali})
                 self.table_sali = self.table_sali.merge(sali, on='id', how='outer')
+                self.table_workstate = self.table_workstate.merge(sali, on='id', how='outer')
 #             pdb.set_trace()
             #self.entities[2].table
 
