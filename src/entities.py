@@ -7,15 +7,17 @@ import tables
 import config
 from context import EntityContext, context_length
 from data import merge_arrays, get_fields, ColumnArray
-
 from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
-                  GlobalArray, expr_eval, missing_values, get_missing_value, Expr, MethodSymbol)
+                  GlobalArray, expr_eval, get_missing_value, Expr, MethodSymbol, missing_values)
 from exprparser import parse
 from process import Assignment, Compute, Process, ProcessGroup, While, Function
 from registry import entity_registry
 from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
                    WarnOverrideDict)
+
+
 max_vars = 0
+
 
 #def compress_column(a, level):
 #    arr = ca.carray(a, cparams=ca.cparams(level))
@@ -53,10 +55,21 @@ class Entity(object):
     """
     fields is a list of tuple (name, type)
     """
-    def __init__(self, name, fields, missing_fields=None, default_values={}, links=None,
+    def __init__(self, name, fields=None, missing_fields=None, default_values={}, links=None,
                  macro_strings=None, process_strings=None,
-                 on_align_overflow='carry'):
+                 array=None):
         self.name = name
+
+        # we should have exactly one of either array or fields defined
+        assert ((fields is None and array is not None) or
+                (fields is not None and array is None))
+
+        if array is not None:
+            if fields is None:
+                fields = get_fields(array)
+            array_period = np.min(array['period'])
+        else:
+            array_period = None
 
         duplicate_names = [name
                            for name, num
@@ -85,18 +98,13 @@ class Entity(object):
         # another solution is to use a Field class
         # seems like the better long term solution
         self.missing_fields = missing_fields
-        
         self.default_values = default_values
-        self.period_individual_fnames = [name for name, _ in fields]
-
         self.stored_fields = set(name for name, _ in fields)
-
         self.links = links
-
-        self.on_align_overflow = on_align_overflow
 
         self.macro_strings = macro_strings
         self.process_strings = process_strings
+        self.processes = None
 
         self.expectedrows = tables.parameters.EXPECTED_ROWS_TABLE
         self.table = None
@@ -117,7 +125,7 @@ class Entity(object):
         self.base_period = None
         # we need a separate field, instead of using array['period'] to be able
         # to get the period even when the array is empty.
-        self.array_period = None
+        self.array_period = array_period
         self.array = None
 
         self.lag_fields = []
@@ -194,9 +202,10 @@ class Entity(object):
     def variables(self):
         if self._variables is None:
             processes = self.process_strings.items()
+
             # names of all processes (hybrid or not) of the entity
             process_names = set(k for k, v in processes if k is not None)
-            
+
             # names of all entity variables (temporary or not) which are set
             # globally
             all_predictors = set(self.collect_predictors(processes))
@@ -264,7 +273,7 @@ class Entity(object):
         # per target entity
         for entity in set(linked_entities.values()):
             cond_context.update(entity.get_cond_context(entities_visited))
-                
+
         # entities linked directly take priority over (override) farther ones
         cond_context.update((k, entity.variables)
                             for k, entity in linked_entities.items())
@@ -526,6 +535,7 @@ class Entity(object):
     def value_for_period(self, expr, period, context, fill='auto'):
         sub_context = EntityContext(self,
                                     {'periods': [period],
+                                     'period': period,
                                      'period_idx': 0,
                                      'format_date': context['format_date'],
                                      '__globals__': context['__globals__']})

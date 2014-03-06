@@ -6,7 +6,6 @@ from __future__ import print_function
 import re
 import sys
 import time
-import datetime as dt
 import operator
 import itertools
 from itertools import izip, product
@@ -19,6 +18,7 @@ import numexpr as ne
 #import psutil
 
 import config
+
 
 class ExceptionOnGetAttr(object):
     """
@@ -47,6 +47,7 @@ def deprecated(f, msg):
         return f(*args, **kwargs)
     func.__name__ = f.__name__
     return func
+
 
 def find_first(char, s, depth=0):
     """
@@ -139,6 +140,7 @@ def timed(func, *args, **kwargs):
 
 def prod(values):
     return reduce(operator.mul, values, 1)
+
 
 def ndim(arraylike):
     """
@@ -1095,4 +1097,3 @@ class FileProducer(object):
             suffix = "_" + suffix if suffix else ""
             fname = "{entity}_{period}" + suffix + self.ext
         return fname
-

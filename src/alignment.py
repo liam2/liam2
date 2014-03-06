@@ -5,7 +5,7 @@ from fractions import gcd
 import os
 
 import numpy as np
-import pdb
+
 import config
 from align_link import align_link_nd
 from context import context_length
@@ -460,21 +460,14 @@ class AlignmentAbsoluteValues(FilteredExpression):
             num_to_align = ctx_length
 
         if expressions:
-            # retrieve the columns we need to work with zzzz
+            # retrieve the columns we need to work with
             columns = [expr_eval(expr, context) for expr in expressions]
-            
-#             #bidouille pour age si on passe a un format yyyymm
-#             str_expressions = [str(e) for e in expressions]
-#             if 'age' in str_expressions:
-#                 age_axis_num = str_expressions.index('age')
-#                 columns[age_axis_num] = columns[age_axis_num]/100
-                
-                   
             if filter_value is not None:
                 groups = partition_nd(columns, filter_value, possible_values)
             else:
                 groups = partition_nd(columns, True, possible_values)
         else:
+            columns = []
             if filter_value is not None:
                 groups = [filter_to_indices(filter_value)]
             else:
@@ -505,6 +498,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if scores is not None:            
             scores = scores*periodicity/self.periodicity_given 
             
+        #noinspection PyAugmentAssignment
         need = need * self._get_need_correction(groups, possible_values)
         need = self._handle_frac_need(need)
         need = self._add_past_error(need, context)
@@ -651,6 +645,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
     def _get_need_correction(self, groups, possible_values):
         return 1
 
+    #noinspection PyUnusedLocal
     def dtype(self, context):
         return bool
 
@@ -670,7 +665,7 @@ class Alignment(AlignmentAbsoluteValues):
                 raise Exception("align() expressions and possible_values "
                                 "arguments should have the same length")
 
-        if  proportions is None and fname is None:
+        if proportions is None and fname is None:
             if method=='default':
                 raise Exception("align() needs either an fname or proportions "
                                 "arguments")

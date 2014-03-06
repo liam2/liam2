@@ -15,42 +15,35 @@ class EntityContext(object):
         try:
             return self.extra[key]
         except KeyError:
-            periods = self.extra['periods']
-            idx = self.extra['period_idx']
-            period = periods[idx]
-            if key == 'period':
-                return period
-            else:
-                array_period = self.entity.array_period
-                if period == array_period:
+            period = self.extra['period']
+            array_period = self.entity.array_period
+            if period == array_period:
+                try:
+                    return self.entity.temp_variables[key]
+                except KeyError:
                     try:
-                        return self.entity.temp_variables[key]
-                    except KeyError:
-                        try:
-                            return self.entity.array[key]
-                        except ValueError:
-                            raise KeyError(key)
+                        return self.entity.array[key]
+                    except ValueError:
+                        raise KeyError(key)
+            else:
+                if (self.entity.array_lag is not None and
+                    array_period is not None and
+                    period == array_period - 1 and
+                    key in self.entity.array_lag.dtype.fields):
+                    return self.entity.array_lag[key]
+
+                bounds = self.entity.output_rows.get(period)
+                if bounds is not None:
+                    startrow, stoprow = bounds
                 else:
-                    if (self.entity.array_lag is not None and
-                        array_period is not None and
-                        period == array_period - 1 and
-                        key in self.entity.array_lag.dtype.fields):
-                        return self.entity.array_lag[key]
-    
-                    bounds = self.entity.output_rows.get(period)
-                    if bounds is not None:
-                        startrow, stoprow = bounds
-                    else:
-                        startrow, stoprow = 0, 0
-                    return self.entity.table.read(start=startrow, stop=stoprow,
-                                                  field=key)
+                    startrow, stoprow = 0, 0
+                return self.entity.table.read(start=startrow, stop=stoprow,
+                                              field=key)
 
     # is the current array period the same as the context period?
     @property
-    def _is_array_period(self):
-        periods = self.extra['periods']
-        idx = self.extra['period_idx'] 
-        return self.entity.array_period == periods[idx] 
+    def is_array_period(self):
+        return self.entity.array_period == self.extra['period']
 
     def __setitem__(self, key, value):
         self.extra[key] = value
@@ -60,10 +53,13 @@ class EntityContext(object):
 
     def __contains__(self, key):
         entity = self.entity
-        return (key in self.extra or
-                (self._is_array_period and key in entity.temp_variables) or
-                # use the fact that array fields should be = to table.fields
-                key in entity.array.dtype.fields)
+        # entity.array can be None! (eg. with "explore")
+        keyinarray = (self.is_array_period and
+                      (key in entity.temp_variables or
+                       key in entity.array.dtype.fields))
+        return (key in self.extra
+                or keyinarray
+                or key in entity.table.dtype.fields)
 
     def keys(self, extra=True):
         res = list(self.entity.array.dtype.names)
@@ -82,12 +78,10 @@ class EntityContext(object):
         return EntityContext(self.entity, self.extra.copy())
 
     def length(self):
-        if self._is_array_period:
+        if self.is_array_period:
             return len(self.entity.array)
         else:
-            periods = self.extra['periods']
-            idx = self.extra['period_idx'] 
-            period = periods[idx]
+            period = self.extra['period']
             bounds = self.entity.output_rows.get(period)
             if bounds is not None:
                 startrow, stoprow = bounds
@@ -103,10 +97,8 @@ class EntityContext(object):
 
     @property
     def id_to_rownum(self):
-        periods = self.extra['periods']
-        idx = self.extra['period_idx'] 
-        period = periods[idx]
-        if self._is_array_period:
+        period = self.extra['period']
+        if self.is_array_period:
             return self.entity.id_to_rownum
         elif period in self.entity.output_index:
             return self.entity.output_index[period]
@@ -122,7 +114,8 @@ def new_context_like(context, length=None):
     if length is None:
         length = context_length(context)
     #FIXME: nan should come from somewhere else
-    return {'periods': context['periods'],
+    return {'period': context['period'],
+            'periods': context['periods'],
             'period_idx': context['period_idx'],
             '__len__': length,
             '__entity__': context['__entity__'],

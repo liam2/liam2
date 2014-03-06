@@ -12,8 +12,8 @@ import yaml
 
 from pandas import HDFStore
 import pdb
-import pandas.rpy.common as com 
-import rpy2.rpy_classic as rpy
+# import pandas.rpy.common as com 
+# import rpy2.rpy_classic as rpy
 
 from utils import (validate_dict, merge_dicts, merge_items, invert_dict,
                    countlines, skip_comment_cells, strip_rows, PrettyTable,

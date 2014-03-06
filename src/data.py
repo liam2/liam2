@@ -145,11 +145,13 @@ class ColumnArray(object):
         else:
             return 0
 
-    def keep(self, indices):
+    def keep(self, key):
+        """key can be either a vector of int indices or boolean filter"""
+
         # using gc.collect() after each column update frees a bit of memory
         # but slows things down significantly.
         for name, column in self.columns.iteritems():
-            self.columns[name] = column[indices]
+            self.columns[name] = column[key]
 
     def append(self, array):
         assert array.dtype == self.dtype
@@ -180,7 +182,7 @@ class ColumnArray(object):
         numlines = stop - start
         ca = cls.empty(numlines, dtype)
         ca.dval = default_values
-        buffer_rows = min(numlines, max_buffer_rows)
+#        buffer_rows = min(numlines, max_buffer_rows)
 #        chunk = np.empty(buffer_rows, dtype=dtype)
         array_start = 0
         table_start = start
@@ -232,11 +234,7 @@ class ColumnArray(object):
         length = len(self)
         # add missing fields
         for name in output_names - input_names:
-            if name in default_values:
-                self[name] = np.empty(length, dtype=output_dtype[name])
-                self[name].fill(default_values[name])
-            else: 
-                self[name] = get_missing_vector(length, output_dtype[name])
+            self[name] = get_missing_vector(length, output_dtype[name])
         # delete extra fields
         for name in input_names - output_names:
             del self[name]
@@ -245,6 +243,7 @@ class ColumnArray(object):
 def get_fields(array):
     dtype = array.dtype
     return [(name, normalize_type(dtype[name].type)) for name in dtype.names]
+
 
 def assert_valid_type(array, wanted_type, allowed_missing=None, context=None):
     if isinstance(wanted_type, list):
@@ -291,11 +290,12 @@ def add_and_drop_fields(array, output_fields, default_values={}, output_array=No
     output_dtype = np.dtype(output_fields)
     output_names = set(output_dtype.names)
     input_names = set(array.dtype.names)
+    
     common_fields = output_names & input_names
-    all_missing_fields = output_names - input_names
+    missing_fields = output_names - input_names
     if output_array is None:
         output_array = np.empty(len(array), dtype=output_dtype)
-        for fname in all_missing_fields:
+        for fname in missing_fields:
             if fname in default_values:
                 output_array[fname] = default_values[fname]
             else:
@@ -349,9 +349,10 @@ def merge_subset_in_array(output, id_to_rownum, subset, first=False):
 
 def merge_arrays(array1, array2, result_fields='union'):
     """data in array2 overrides data in array1"""
+
     fields1 = get_fields(array1)
     fields2 = get_fields(array2)
-    
+
     #TODO: check that common fields have the same type
     if result_fields == 'union':
         names1 = set(array1.dtype.names)
@@ -452,7 +453,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
                 output_data = add_and_drop_fields(input_data, output_fields, default_values)
         else:
             output_data = input_data
-            
+
         output_table.append(output_data)
         output_table.flush()
 
@@ -500,6 +501,8 @@ def build_period_array(input_table, output_fields, input_rows,
 
     # computing is present
     max_id = len(input_index[target_period]) - 1
+    period_id_to_rownum = None
+    present_in_period = None
     is_present = np.zeros(max_id + 1, dtype=bool)
     for period in periods_before:
         period_id_to_rownum = input_index[period]
@@ -556,10 +559,8 @@ def build_period_array(input_table, output_fields, input_rows,
             break
 
     # reading data
-    output_array = input_table.readCoordinates(output_array_source_rows)
-# New version: should replqce previous line
-#     output_array = ColumnArray.from_table_coords(input_table,
-#                                                  output_array_source_rows)
+    output_array = ColumnArray.from_table_coords(input_table,
+                                                 output_array_source_rows)
     output_array.add_and_drop_fields(output_fields)
     return output_array, id_to_rownum
 
@@ -659,7 +660,7 @@ def index_tables(globals_def, entities, fpath):
     try:
         input_root = input_file.root
 
-        #TODO: move the checking (assert_valid_type) to a separate function
+        #TODO: move the checking (assertValidType) to a separate function
         globals_data = {}
         if globals_def:
             if 'globals' not in input_root:
@@ -824,8 +825,8 @@ class H5Data(DataSource):
                 # optional.
                 entity.array, entity.id_to_rownum = \
                     build_period_array(table.table, entity.fields,
-                                      entity.input_rows,
-                                      entity.input_index, start_period, entity.default_values)
+                                       entity.input_rows,
+                                       entity.input_index, start_period, entity.default_values)
                 assert isinstance(entity.array, ColumnArray)
                 entity.array_period = start_period
                 print("done (%s elapsed)." % time2str(time.time() - start_time))
@@ -857,7 +858,7 @@ class Void(DataSource):
             entity.input_table = None
             entity.table = output_table
         return None, output_file, None
-    
+
 
 def populate_registry(fpath):
     import entities

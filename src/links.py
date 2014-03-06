@@ -30,9 +30,10 @@ class Link(object):
     def _target_context(self, context):
         target_entity = self._target_entity()
         return EntityContext(target_entity,
-                             {'periods': context['periods'],
-                              'period_idx': context['period_idx'],
-                             '__globals__': context['__globals__']})
+                         {'periods': context['periods'],
+                          'period': context['period'],
+                          'period_idx': context['period_idx'],
+                         '__globals__': context['__globals__']})         
 
 
 class Many2One(Link):

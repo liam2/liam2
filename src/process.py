@@ -80,10 +80,10 @@ class ExtProcess(Process):
 
 class Compute(Process):
     """these processes only compute an expression and do not store their
-result (but they usually have side-effects). No class inherits from
-this but we use it when a user does not store anywhere the result of
-an expression (with a side effect) which *does* return a value.
-new() is a good example for this"""
+       result (but they usually have side-effects). No class inherits from
+       this but we use it when a user does not store anywhere the result of
+       an expression (with a side effect) which *does* return a value.
+       new() is a good example for this"""
 
     def __init__(self, expr):
         super(Compute, self).__init__()
@@ -221,7 +221,6 @@ class ProcessGroup(AbstractProcessGroup):
                 print(k, end=' ')
             utils.timed(v.run_guarded, simulation, const_dict)
 #            print "done."
-
             simulation.start_console(v.entity, period,
                                      const_dict['__globals__'])
         if config.autodump is not None:
@@ -296,7 +295,7 @@ class ProcessGroup(AbstractProcessGroup):
             disk_array = ColumnArray.from_table(table, stop=numrows)
             diff_array(disk_array, ColumnArray(fields), numdiff, raiseondiff)
         else:
-            print(" SKIPPED (could not find table)")
+            print("  SKIPPED (could not find table)")
 
     def expressions(self):
         for _, p in self.subprocesses:

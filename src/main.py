@@ -20,6 +20,7 @@ from view import viewhdf
 
 __version__ = "0.8.0"
 
+
 def eat_traceback(func, *args, **kwargs):
 # e.context      | while parsing a block mapping
 # e.context_mark | in "import.yml", line 18, column 9
@@ -243,7 +244,7 @@ def main():
     if action == 'run':
         args = simulate, parsed_args
     elif action == "import":
-        args = file2h5, parsed_args.fil
+        args = file2h5, parsed_args.file
     elif action == "explore":
         args = explore, parsed_args.file
     elif action == "upgrade":
@@ -260,4 +261,5 @@ if __name__ == '__main__':
 
     print("LIAM2 %s (%s)" % (__version__, platform.architecture()[0]))
     print()
+
     main()
