@@ -347,15 +347,11 @@ class Simulation(object):
 
         default_entity = simulation_def.get('default_entity')
         #processes[2][0].subprocesses[0][0]
-        import pdb
-        pdb.set_trace()
         return Simulation(globals_def, periods, init_period,
                           init_processes, init_entities, processes, entities,
                           data_source, default_entity, legislation, final_stat, time_scale, retro)
 
     def load(self):
-        import pdb
-        pdb.set_trace()
         return timed(self.data_source.load, self.globals_def,
                      entity_registry)
 
@@ -465,21 +461,19 @@ class Simulation(object):
                     self.start_console(process.entity, period,
                                        globals_data)
             # update longitudinal                 
-            from pandas import DataFrame
+            from pandas import DataFrame, HDFStore
             person = [x for x in entities if x.name == 'person'][0] # maybe we have a get_entity or anything more nice than that #TODO: check
             id = person.array.columns['id'] 
+
             for varname in ['sali', 'workstate']:
-                var = person.array.columns[varname]               
+                var = person.array.columns[varname]              
                 if init:
-                    import pdb
-                    pdb.set_trace()
                     fpath = self.data_source.input_path
-                    input_file = tables.openFile(fpath, mode="r")
-                    input_longitudinal = input_file.root
-                    if 'past' in input_file.root:
-                        input_longitudinal = input_file.root.past
+                    input_file = HDFStore(fpath, mode="r")
+                    if 'longitudinal' in input_file.root:
+                        input_longitudinal = input_file.root.longitudinal
                         if varname in input_longitudinal:
-                            self.longitudinal[varname] = input_longitudinal.varname
+                            self.longitudinal[varname] = input_file['/longitudinal/' + varname]
                         else:
                             self.longitudinal[varname] = DataFrame({'id':id, period:var})
                     else:
