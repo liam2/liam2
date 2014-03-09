@@ -347,6 +347,8 @@ class Simulation(object):
 
         default_entity = simulation_def.get('default_entity')
         #processes[2][0].subprocesses[0][0]
+        import pdb
+        pdb.set_trace()
         return Simulation(globals_def, periods, init_period,
                           init_processes, init_entities, processes, entities,
                           data_source, default_entity, legislation, final_stat, time_scale, retro)
@@ -469,10 +471,19 @@ class Simulation(object):
             for varname in ['sali', 'workstate']:
                 var = person.array.columns[varname]               
                 if init:
-                    #TODO: chercher le past.
                     import pdb
                     pdb.set_trace()
-                    self.longitudinal[varname] = DataFrame({'id':id, period:var})
+                    fpath = self.data_source.input_path
+                    input_file = tables.openFile(fpath, mode="r")
+                    input_longitudinal = input_file.root
+                    if 'past' in input_file.root:
+                        input_longitudinal = input_file.root.past
+                        if varname in input_longitudinal:
+                            self.longitudinal[varname] = input_longitudinal.varname
+                        else:
+                            self.longitudinal[varname] = DataFrame({'id':id, period:var})
+                    else:
+                        self.longitudinal[varname] = DataFrame({'id':id, period:var})
                 else:        
                     table = DataFrame({'id':id, period:var})       
                     self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
