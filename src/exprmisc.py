@@ -710,8 +710,8 @@ class Retraite(FilteredExpression):
     def evaluate(self, context):
         expr = self.expr
         values = expr_eval(expr, context)
-        sali = context['table_sali']
-        workstate = context['table_workstate']
+        sali = context['longitudinal']['sali']
+        workstate = context['longitudinal']['workstate']
         import pdb
         pdb.set_trace()
         values = np.asarray(values)

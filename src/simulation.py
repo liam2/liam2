@@ -169,8 +169,7 @@ class Simulation(object):
         self.legislation = legislation
         self.final_stat = final_stat
         self.time_scale = time_scale
-        self.table_sali = None
-        self.table_workstate = None
+        self.longitudinal = {}
         self.retro = retro 
         self.stepbystep = False
 
@@ -353,6 +352,8 @@ class Simulation(object):
                           data_source, default_entity, legislation, final_stat, time_scale, retro)
 
     def load(self):
+        import pdb
+        pdb.set_trace()
         return timed(self.data_source.load, self.globals_def,
                      entity_registry)
 
@@ -413,8 +414,7 @@ class Simulation(object):
                 const_dict = {'period_idx': period_idx+1,
                               'periods': periods,
                               'periodicity': time_period[self.time_scale]*(1 - 2*(self.retro)),
-                              'table_sali': self.table_sali,
-                              'table_workstate': self.table_workstate,
+                              'longitudinal': self.longitudinal,
                               'format_date': self.time_scale,
                               '__simulation__': self,
                               'period': period,
@@ -462,21 +462,22 @@ class Simulation(object):
                         print("done.")
                     self.start_console(process.entity, period,
                                        globals_data)
-            # update table_sali                   
+            # update longitudinal                 
             from pandas import DataFrame
-            person = [x for x in entities if x.name == 'person'][0]
-            sali = person.array.columns['sali']
-            workstate = person.array.columns['workstate']
-            id = person.array.columns['id']                
-            if init: 
-                self.table_sali = DataFrame({'id':id, period:sali})
-                self.table_workstate = DataFrame({'id':id, period:workstate})
-            else:
-                sali = DataFrame({'id':id, period:sali})
-                self.table_sali = self.table_sali.merge(sali, on='id', how='outer')
-                self.table_workstate = self.table_workstate.merge(sali, on='id', how='outer')
-#             pdb.set_trace()
-            #self.entities[2].table
+            person = [x for x in entities if x.name == 'person'][0] # maybe we have a get_entity or anything more nice than that #TODO: check
+            id = person.array.columns['id'] 
+            for varname in ['sali', 'workstate']:
+                var = person.array.columns[varname]               
+                if init:
+                    #TODO: chercher le past.
+                    import pdb
+                    pdb.set_trace()
+                    self.longitudinal[varname] = DataFrame({'id':id, period:var})
+                else:        
+                    table = DataFrame({'id':id, period:var})       
+                    self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
+    #             pdb.set_trace()
+                #self.entities[2].table
 
             print("- storing period data")
             for entity in entities:
@@ -575,14 +576,17 @@ class Simulation(object):
 ==========================================
  simulation done
 ==========================================
- * %d individuals/s/period on average
+ * %s elapsed 
+ * %d individuals on average 
+ * %s individuals/s/period on average
+ 
  * %s second for init_process
  * %s time/period in average
  * %s time/year in average
 ==========================================
 """ % (time2str(time.time() - start_time),
-       total_objects / self.periods,
-       total_objects / total_time,
+        total_objects / self.periods,
+        ind_per_sec,
         time2str(time_init),
         time2str(total_time / self.periods),
         time2str(time_year)))
