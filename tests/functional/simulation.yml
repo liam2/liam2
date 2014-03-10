@@ -566,6 +566,13 @@ entities:
                 - result: MINR[yearofpension]
                 - assertEqual(result[0], MINR[yearofpension[0]])
 
+                # test for issue 121 (ie GLOBAL[large_negative] was very slow)
+                # In the initial report, it was created with trunc(nan)
+                # (= -2147483648).
+                - bad_index: if(id >= 0, -2147483648, -1)
+                # This takes ~1 minute wh/out the fix and < 1 ms with it.
+                - MINR[bad_index]
+
                 # test slices
 
                 # a) slices of constant lengths
@@ -2190,7 +2197,7 @@ simulation:
                    agegroup,
 
                    # test the charts before test_new messes the demography
-                   test_charts,
+#                   test_charts,
 
                    # ...
                    test_logit,

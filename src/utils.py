@@ -183,7 +183,7 @@ def safe_take(a, indices, missing_value):
     """
     like np.take but out-of-bounds indices return the missing value
     """
-    indexed = a.take(indices, mode='wrap')
+    indexed = a.take(indices, mode='clip')
     return ne.evaluate('where((idx < 0) | (idx >= maxidx), missing, indexed)',
                        {'idx': indices, 'maxidx': len(a),
                         'missing': missing_value, 'indexed': indexed})
