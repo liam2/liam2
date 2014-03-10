@@ -19,7 +19,7 @@ from context import (EntityContext, context_length, context_subset,
                      new_context_like)
 from registry import entity_registry
 from utils import PrettyTable
-
+from pgm.Pension.run_pension import run_pension
 
 class Min(CompoundExpression):
     def __init__(self, *args):
@@ -704,7 +704,7 @@ class Where(Expr):
         return condvars | iftruevars | iffalsevars
     
 class Retraite(FilteredExpression):
-    def __init__(self, expr, filter=None):
+    def __init__(self, expr = None, filter=None):
         FilteredExpression.__init__(self, expr, filter)
 
     def evaluate(self, context):
@@ -712,6 +712,7 @@ class Retraite(FilteredExpression):
         values = expr_eval(expr, context)
         sali = context['longitudinal']['sali']
         workstate = context['longitudinal']['workstate']
+        run_pension(sali, workstate)
         import pdb
         pdb.set_trace()
         values = np.asarray(values)
@@ -739,6 +740,7 @@ functions = {
     'clip': Clip,
     'zeroclip': ZeroClip,
     'round': Round,
+    
     'trunc': Trunc,
     'exp': Exp,
     'log': Log,
