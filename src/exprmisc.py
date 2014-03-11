@@ -4,8 +4,11 @@ from collections import Sequence
 from itertools import izip, chain
 
 import numpy as np
+import os
+import pandas as pd
 
 import config
+from pgm.CONFIG import path_til
 from expr import (Expr, Variable,
                   getdtype, coerce_types, expr_eval,
                   as_simple_expr, as_string,
@@ -712,9 +715,13 @@ class Retraite(FilteredExpression):
         values = expr_eval(expr, context)
         sali = context['longitudinal']['sali']
         workstate = context['longitudinal']['workstate']
+
+        # Pour l'instant selection a ce niveau des individus ayant plus de 62 ans pour lancer le calcul des retraites
+        id_age = pd.DataFrame({'id':context['id'], 'age': context['age']})
+        list_id = id_age.loc[(id_age['age']>61), 'id']
+        workstate = workstate.loc[workstate['id'].isin(list_id), : ]
+        sali = sali.loc[sali['id'].isin(list_id), : ]
         run_pension(sali, workstate)
-        import pdb
-        pdb.set_trace()
         values = np.asarray(values)
         return 0.7*values
         
