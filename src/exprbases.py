@@ -58,7 +58,7 @@ class FunctionExpression(EvaluableExpression):
         return '%s(%s)' % (self.func_name, self.expr)
 
 
-class FilteredExpression(FunctionExpression):
+class FilteredExpression(AbstractExprCall):
     def __init__(self, expr, filter=None):
         super(FilteredExpression, self).__init__(expr)
         self.filter = filter
@@ -66,7 +66,7 @@ class FilteredExpression(FunctionExpression):
     def traverse(self, context):
         for node in traverse_expr(self.filter, context):
             yield node
-        for node in FunctionExpression.traverse(self, context):
+        for node in AbstractExprCall.traverse(self, context):
             yield node
 
     def _getfilter(self, context):
@@ -97,19 +97,31 @@ class NumpyFunction(AbstractExprCall):
     # in C or not.
     arg_names = None
     # all subclasses support a filter keyword-only argument
-    kwargs_names = ('filter',)
+    kwonlyargnames = ('filter',)
 
     def __init__(self, *args, **kwargs):
         if len(args) > len(self.arg_names):
             # + 1 to be consistent with Python (to account for self)
             raise TypeError("takes at most %d arguments (%d given)" %
                             (len(self.arg_names) + 1, len(args) + 1))
-        allowed_kwargs = set(self.arg_names) | set(self.kwargs_names)
+        allowed_kwargs = set(self.arg_names) | set(self.kwonlyargnames)
         extra_kwargs = set(kwargs.keys()) - allowed_kwargs
         if extra_kwargs:
             extra_kwargs = [repr(arg) for arg in extra_kwargs]
             raise TypeError("got an unexpected keyword argument %s" %
                             extra_kwargs[0])
+
+        # move as many kwargs as possible to args
+        extra_args = []
+        # loop over potential args passed as keyword args
+        for a in self.arg_names[len(args):]:
+            if a in kwargs:
+                extra_args.append(kwargs.pop(a))
+            else:
+                # we stop at the first missing arg (other args can still be
+                # passed as keyword arguments, but we cannot convert them).
+                break
+        args = args + tuple(extra_args)
         AbstractExprCall.__init__(self, *args, **kwargs)
 
     @property
@@ -124,10 +136,11 @@ class NumpyChangeArray(NumpyFunction):
         NumpyFunction.__init__(self, *args, **kwargs)
 
     def _compute(self, *args, **kwargs):
+        filter_value = kwargs.pop('filter', None)
+
         func = self.np_func[0]
         new_values = func(*args, **kwargs)
 
-        filter_value = kwargs.pop('filter', None)
         if filter_value is None:
             return new_values
         else:
@@ -140,10 +153,11 @@ class NumpyChangeArray(NumpyFunction):
 
 class NumpyCreateArray(NumpyFunction):
     def _compute(self, *args, **kwargs):
+        filter_value = kwargs.pop('filter', None)
+
         func = self.np_func[0]
         values = func(*args, **kwargs)
 
-        filter_value = kwargs.pop('filter', None)
         if filter_value is None:
             return values
         else:
@@ -170,7 +184,7 @@ class NumpyRandom(NumpyCreateArray):
 
 class NumpyAggregate(NumpyFunction):
     nan_func = (None,)
-    kwargs_names = ('filter', 'skip_na')
+    kwonlyargnames = ('filter', 'skip_na')
 
     def __init__(self, *args, **kwargs):
         # the first argument should be the array to work on ('a')
