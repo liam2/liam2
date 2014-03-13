@@ -15,7 +15,7 @@ class All(NumpyAggregate):
     np_func = (np.all,)
     arg_names = ('a', 'axis', 'out', 'keepdims')
 
-    #noinspection PyMethodMayBeStatic,PyUnusedLocal
+    #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
         return bool
 
@@ -25,7 +25,7 @@ class Any(NumpyAggregate):
     np_func = (np.any,)
     arg_names = ('a', 'axis', 'out', 'keepdims')
 
-    #noinspection PyUnusedLocal
+    #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
         return bool
 
@@ -46,7 +46,7 @@ class Count(EvaluableExpression):
                 raise Exception("count filter must be a boolean expression")
             return np.sum(expr_eval(self.filter, context))
 
-    #noinspection PyUnusedLocal
+    #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
         return int
 
@@ -191,7 +191,7 @@ class Average(FilteredExpression):
         else:
             return float('nan')
 
-    #noinspection PyUnusedLocal
+    #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
         return float
 
@@ -201,7 +201,7 @@ class Std(NumpyAggregate):
     np_func = (np.std,)
     arg_names = ('a', 'axis', 'dtype', 'out', 'ddof')
 
-    #noinspection PyUnusedLocal
+    #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
         return float
 
@@ -211,7 +211,7 @@ class Median(NumpyAggregate):
     np_func = (np.median,)
     arg_names = ('a', 'axis', 'out', 'overwrite_input')
 
-    #noinspection PyUnusedLocal
+    #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
         return float
 
@@ -221,7 +221,7 @@ class Percentile(NumpyAggregate):
     np_func = (np.percentile,)
     arg_names = ('a', 'q', 'axis', 'out', 'overwrite_input')
 
-    #noinspection PyUnusedLocal
+    #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
         return float
 
@@ -267,7 +267,7 @@ class Gini(FilteredExpression):
                   "for filter" % (self.expr, filter_expr))
         return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
 
-    #noinspection PyUnusedLocal
+    #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
         return float
 
