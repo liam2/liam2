@@ -1,0 +1,119 @@
+    # for traversal, cache
+    __fields__ = ('args', 'kwargs')
+
+    # in fact, I cannot store everything in args only, because of
+    # kwargs-only args (like in groupby) but all "normal" arguments (whether
+    # they have a default value or not and whether they are **passed as kwargs
+    # or not** should be stored in "args"
+
+    __eval_args__ = ('num_periods', 'missing')
+    #AND/OR
+    __no_eval_args__ = ('expr',)
+
+    def __init__(self, expr, num_periods=1, missing='auto'):
+        AbstractExprCall.__init__(self, expr, num_periods)
+
+class NumpyAggregate(NumpyFunction):
+    nan_func = (None,)
+    kwonlyargnames = ('filter', 'skip_na')
+
+class Std(NumpyAggregate):
+    func_name = 'std'
+    np_func = (np.std,)
+    arg_names = ('a', 'axis', 'dtype', 'out', 'ddof')
+
+    #noinspection PyUnusedLocal,PyMethodMayBeStatic
+    def dtype(self, context):
+        return float
+
+# OPTION 1
+# ========
+
+# storage, usage in the class, traversal, cache: in .args and .kwargs
+# __fields__ is computed automatically from .__init__
+# => all arguments are stored
+
+# arg eval: all except those listed in __no_eval_args__
+# arg_names and kwonlyargnames in NumpyFunction: computed automatically
+
+class Std(NumpyAggregate):
+    func_name = 'std'
+    np_func = (np.std,)
+
+    def __init__(self, a, axis=a, dtype=b, out=c, ddof=d, filter=e, skip_na=f):
+        NumpyAggregate.__init__(self, a, axis, dtype, out, ddof, ...)
+
+
+class Gini(FilteredExpression):
+    func_name = 'gini'
+
+    def __init__(self, expr, filter=None, skip_na=True):
+        FilteredExpression.__init__(self, expr, filter)
+        self.skip_na = skip_na
+
+    def evaluate(self, context):
+        values = expr_eval(self.expr, context)
+        values = np.asarray(values)
+
+        filter_expr = self._getfilter(context)
+        if filter_expr is not None:
+            filter_values = expr_eval(filter_expr, context)
+        else:
+            filter_values = True
+        if self.skip_na:
+            # we should *not* use an inplace operation because filter_values
+            # can be a simple variable
+            filter_values = filter_values & ispresent(values)
+        if filter_values is not True:
+            values = values[filter_values]
+
+        # from Wikipedia:
+        # G = 1/n * (n + 1 - 2 * (sum((n + 1 - i) * a[i]) / sum(a[i])))
+        #                        i=1..n                    i=1..n
+        # but sum((n + 1 - i) * a[i])
+        #    i=1..n
+        #   = sum((n - i) * a[i] for i in range(n))
+        #   = sum(cumsum(a))
+        sorted_values = np.sort(values)
+        n = len(values)
+
+        # force float to avoid overflows with integer input expressions
+        cumsum = np.cumsum(sorted_values, dtype=float)
+        values_sum = cumsum[-1]
+        if values_sum == 0:
+            print("gini(%s, filter=%s): expression is all zeros (or nan) "
+                  "for filter" % (self.expr, filter_expr))
+        return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
+
+
+class Lag(AbstractExprCall):
+    func_name = 'lag'
+
+    __no_eval_args__ = ('expr',)
+
+    def __init__(self, expr, num_periods=1, missing='auto'):
+        AbstractExprCall.__init__(self, expr, num_periods, missing)
+
+# OPTION 2
+# ========
+
+# for storage, usage in the class, traversal, cache
+# __fields__ = ('args', 'kwargs')
+# for eval: everything by default
+# __no_eval_args__ = ('expr',)
+# arg_names and kwonlyargnames in NumpyFunction are computed automatically
+
+class Std(NumpyAggregate):
+    func_name = 'std'
+    np_func = (np.std,)
+
+    def __init__(self, a, axis=a, dtype=b, out=c, ddof=d, filter=e, skip_na=f):
+        NumpyAggregate.__init__(self, a, axis, dtype, out, ddof, ...)
+
+class Lag(AbstractExprCall):
+    func_name = 'lag'
+
+    __no_eval_args__ = ('expr',)
+
+    def __init__(self, expr, num_periods=1, missing='auto'):
+        AbstractExprCall.__init__(self, expr, num_periods, missing)
