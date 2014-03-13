@@ -4,41 +4,74 @@ import numpy as np
 
 from utils import safe_put
 from expr import expr_eval, getdtype, hasvalue
-from exprbases import FunctionExpression
+from exprbases import AbstractExprCall
 
 
-class ValueForPeriod(FunctionExpression):
+class ValueForPeriod(AbstractExprCall):
     func_name = 'value_for_period'
+    #TODO: update Expr._eval_args to take __eval_args__ into account
+    __eval_args__ = ('period', 'missing')
+    #AND/OR
+    __no_eval_args__ = ('expr',)
 
     def __init__(self, expr, period, missing='auto'):
-        FunctionExpression.__init__(self, expr)
-        self.period = period
-        self.missing = missing
+        AbstractExprCall.__init__(self, expr, period, missing)
 
-    def evaluate(self, context):
+    def _compute(self, context, expr, period, missing):
         entity = context.entity
-        period = expr_eval(self.period, context)
-        return entity.value_for_period(self.expr, period, context, self.missing)
+        return entity.value_for_period(expr, period, context, missing)
 
 
-class Lag(FunctionExpression):
+class Lag(AbstractExprCall):
     func_name = 'lag'
 
+    # for traversal, cache
+    __fields__ = ('args',)
+    __fields__ = ('args', 'kwargs')
+    # might be better to store them all in args so that cache key are
+    # independent as to how args are passed >> for the cache, yes
+    # but for NumpyFunction...
+    # >>> in fact, I cannot store everything in args only, because of
+    #     kwargs-only args (like in groupby)
+    # >>> but all "normal" arguments (whether they have a default value or not
+    #     that are **passed as kwargs or not** should be stored in "args"
+    # => should rename AbstractExprCall.kwargs into kwonlyargs
+    # arg_names
+    # kwargs_names -> extra_arg_names
+
+    # kwargs
+    __fields__ = ('args', 'kwargs')
+    __eval_args__ = ('num_periods', 'missing')
+    #AND/OR
+    __no_eval_args__ = ('expr',)
+
     def __init__(self, expr, num_periods=1, missing='auto'):
-        FunctionExpression.__init__(self, expr)
-        self.num_periods = num_periods
-        self.missing = missing
+        AbstractExprCall.__init__(self, expr)
+        # self.num_periods = num_periods
+        # self.missing = missing
+
+    # def _compute(self, context, expr, num_periods, missing):
+    #     entity = context.entity
+    #     period = context.period - num_periods
+    #     return entity.value_for_period(expr, period, context, missing)
 
     def evaluate(self, context):
+        expr, num_periods, missing = self.args
         entity = context.entity
-        period = context.period - expr_eval(self.num_periods, context)
-        return entity.value_for_period(self.expr, period, context, self.missing)
+        period = context.period - expr_eval(num_periods, context)
+        missing = expr_eval(missing, context)
+        return entity.value_for_period(expr, period, context, missing)
+
+    # def evaluate(self, context):
+    #     entity = context.entity
+    #     period = context.period - expr_eval(self.num_periods, context)
+    #     return entity.value_for_period(self.expr, period, context, self.missing)
 
     def dtype(self, context):
         return getdtype(self.expr, context)
 
 
-class Duration(FunctionExpression):
+class Duration(AbstractExprCall):
     func_name = 'duration'
 
     def evaluate(self, context):
@@ -80,7 +113,7 @@ class Duration(FunctionExpression):
         return int
 
 
-class TimeAverage(FunctionExpression):
+class TimeAverage(AbstractExprCall):
     func_name = 'tavg'
 
     def evaluate(self, context):
@@ -124,7 +157,7 @@ class TimeAverage(FunctionExpression):
         return sum_values / num_values
 
 
-class TimeSum(FunctionExpression):
+class TimeSum(AbstractExprCall):
     func_name = 'tsum'
 
     def evaluate(self, context):

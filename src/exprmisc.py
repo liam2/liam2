@@ -14,7 +14,7 @@ from expr import (Expr, Variable,
                   get_missing_record, get_missing_vector)
 from exprbases import (EvaluableExpression, CompoundExpression,
                        NumexprFunction,
-                       FunctionExpression, TableExpression,
+                       AbstractExprCall, TableExpression,
                        NumpyRandom, NumpyChangeArray)
 from context import context_length
 from utils import PrettyTable
@@ -309,7 +309,7 @@ class Round(NumpyChangeArray):
         return res
 
 
-class Trunc(FunctionExpression):
+class Trunc(AbstractExprCall):
     func_name = 'trunc'
 
     def evaluate(self, context):
