@@ -254,6 +254,20 @@ entities:
                     - result: result * 2
                 return: result * 2
 
+            # issue 119: function arguments not available in interactive console
+            func_wh_breakpoint:
+                args: arg
+                code:
+                    - localarg: arg
+                    # function arguments are not available in the interactive
+                    # console, but local variables work fine:
+                    # >>> arg
+                    # name 'arg' is not defined
+                    # >>> localarg
+                    # 1.0
+                    - show("type 'arg' and see if it is defined")
+                    - breakpoint()
+
             # this is an awful hack since we do not have an if control flow
             # keyword yet
             factorial:
@@ -290,6 +304,14 @@ entities:
                 # make sure the local variable did not change
                 - assertEqual(temp_var, age * 42)
 
+#            func_only_args(a, b)
+#            func_only_return() # -> age + 1
+#            func_no_args() # -> age * 4
+#            func_no_code(a, b) # -> a + b
+#            func_no_return(a, b) # no return but int_field1: age + 1
+#            func_args_code_result:
+
+#FIXME: these loop infinitely, I don't know why
 #                - assertEqual(factorial(1), 1)
 #                - assertEqual(factorial(2), 2)
 #                - assertEqual(factorial(3), 6)
@@ -308,6 +330,9 @@ entities:
                 # with expr argument
                 - axis: 0
                 - assertEqual(age.min(axis=axis), min(age))
+
+            test_issue119:
+                - func_wh_breakpoint(1.0)
 
             hybrid_test:
                 - hybrid_test: age + 1
@@ -2197,7 +2222,7 @@ simulation:
                    agegroup,
 
                    # test the charts before test_new messes the demography
-                   test_charts,
+#                   test_charts,
 
                    # ...
                    test_logit,
@@ -2206,6 +2231,7 @@ simulation:
                    test_attr,
                    test_subscript,
                    test_call,
+                   test_issue119,
                    hybrid_test,
                    test_hybrids,
 
