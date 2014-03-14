@@ -54,6 +54,7 @@ class Entity(object):
     """
     fields is a list of tuple (name, type)
     """
+
     def __init__(self, name, fields=None, missing_fields=None, links=None,
                  macro_strings=None, process_strings=None,
                  array=None):
@@ -376,6 +377,7 @@ class Entity(object):
     def compute_lagged_fields(self):
         from tfunc import Lag
         from links import LinkValue
+
         lag_vars = set()
         for p in self.processes.itervalues():
             for expr in p.expressions():
@@ -474,9 +476,9 @@ class Entity(object):
             self.output_index[period] = self.id_to_rownum
         self.table.flush()
 
-#    def compress_period_data(self, level):
-#        compressed = ca.ctable(self.array, cparams=ca.cparams(level))
-#        print "%d -> %d (%f)" % compressed._get_stats()
+    #     def compress_period_data(self, level):
+    #     compressed = ca.ctable(self.array, cparams=ca.cparams(level))
+    #     print "%d -> %d (%f)" % compressed._get_stats()
 
     @staticmethod
     def fill_missing_values(ids, values, context, filler='auto'):
@@ -495,9 +497,9 @@ class Entity(object):
             # period. Currently, remove() keeps old ids, so this never
             # happens, but if we ever change remove(), we'll need to add
             # such a check everywhere we use id_to_rownum
-#            invalid_ids = ids > len(id_to_rownum)
-#            if np.any(invalid_ids):
-#                fix ids
+            # invalid_ids = ids > len(id_to_rownum)
+            # if np.any(invalid_ids):
+            #     fix ids
             rows = id_to_rownum[ids]
             safe_put(result, rows, values)
         return result

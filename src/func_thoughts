@@ -1,3 +1,22 @@
+1) storage:
+   a) .args and .kwargs
+   b) specific fields (eg .expr)
+2) __init__ signature:
+   a) explicit args
+   b) *args, **kwargs
+3) how to populate __fields__:
+   a) manually
+   b) from __init__ signature
+4) argument evaluation
+   a) _eval_args
+
+# arg eval: all except those listed in __no_eval_args__
+
+    __no_eval_args__ = ('expr',) # <- an alternative to this would be to have
+    # in AbstractExprCall a "modify_context" method which would do nothing by
+    # default. Hmmm, might not be feasible, because I need to change the
+    # context to evaluate only *some* arguments (eg expr, not all)
+
     # for traversal, cache
     __fields__ = ('args', 'kwargs')
 
@@ -10,21 +29,10 @@
     #AND/OR
     __no_eval_args__ = ('expr',)
 
+    def __init__(self, *args, ...)
+    OR
     def __init__(self, expr, num_periods=1, missing='auto'):
-        AbstractExprCall.__init__(self, expr, num_periods)
 
-class NumpyAggregate(NumpyFunction):
-    nan_func = (None,)
-    kwonlyargnames = ('filter', 'skip_na')
-
-class Std(NumpyAggregate):
-    func_name = 'std'
-    np_func = (np.std,)
-    arg_names = ('a', 'axis', 'dtype', 'out', 'ddof')
-
-    #noinspection PyUnusedLocal,PyMethodMayBeStatic
-    def dtype(self, context):
-        return float
 
 # OPTION 1
 # ========
@@ -43,48 +51,18 @@ class Std(NumpyAggregate):
     def __init__(self, a, axis=a, dtype=b, out=c, ddof=d, filter=e, skip_na=f):
         NumpyAggregate.__init__(self, a, axis, dtype, out, ddof, ...)
 
-
-class Gini(FilteredExpression):
+class Gini(AbstractExprCall):
     func_name = 'gini'
 
     def __init__(self, expr, filter=None, skip_na=True):
-        FilteredExpression.__init__(self, expr, filter)
-        self.skip_na = skip_na
+        # skip_na is not explicitly supported by AbstractExprCall but since
+        # it takes *args, **kwargs, it should work
+        AbstractExprCall.__init__(self, expr, filter, skip_na)
 
-    def evaluate(self, context):
-        values = expr_eval(self.expr, context)
-        values = np.asarray(values)
-
-        filter_expr = self._getfilter(context)
-        if filter_expr is not None:
-            filter_values = expr_eval(filter_expr, context)
-        else:
-            filter_values = True
-        if self.skip_na:
-            # we should *not* use an inplace operation because filter_values
-            # can be a simple variable
-            filter_values = filter_values & ispresent(values)
-        if filter_values is not True:
-            values = values[filter_values]
-
-        # from Wikipedia:
-        # G = 1/n * (n + 1 - 2 * (sum((n + 1 - i) * a[i]) / sum(a[i])))
-        #                        i=1..n                    i=1..n
-        # but sum((n + 1 - i) * a[i])
-        #    i=1..n
-        #   = sum((n - i) * a[i] for i in range(n))
-        #   = sum(cumsum(a))
-        sorted_values = np.sort(values)
-        n = len(values)
-
-        # force float to avoid overflows with integer input expressions
-        cumsum = np.cumsum(sorted_values, dtype=float)
-        values_sum = cumsum[-1]
-        if values_sum == 0:
-            print("gini(%s, filter=%s): expression is all zeros (or nan) "
-                  "for filter" % (self.expr, filter_expr))
-        return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
-
+    def _compute(self, expr, filter, skip_na):
+        if skip_na:
+            ...
+        return ...
 
 class Lag(AbstractExprCall):
     func_name = 'lag'
@@ -94,8 +72,20 @@ class Lag(AbstractExprCall):
     def __init__(self, expr, num_periods=1, missing='auto'):
         AbstractExprCall.__init__(self, expr, num_periods, missing)
 
+    def _compute(self, context, expr, num_periods, missing):
+        entity = context.entity
+        return entity.value_for_period(expr, context.period - num_periods,
+                                       context, missing)
+
 # OPTION 2
 # ========
+
+# storage, usage in the class, traversal, cache: specific fields (eg .expr)
+# __fields__ is computed automatically from .__init__
+# => all arguments are stored
+
+# arg eval: all except those listed in __no_eval_args__
+# arg_names and kwonlyargnames in NumpyFunction: computed automatically
 
 # for storage, usage in the class, traversal, cache
 # __fields__ = ('args', 'kwargs')
