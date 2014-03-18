@@ -58,7 +58,7 @@ class FunctionExpression(EvaluableExpression):
         return '%s(%s)' % (self.func_name, self.expr)
 
 
-class FilteredExpression(AbstractExprCall):
+class FilteredExpression(FunctionExpression):
     def __init__(self, expr, filter=None):
         super(FilteredExpression, self).__init__(expr)
         self.filter = filter
@@ -66,7 +66,7 @@ class FilteredExpression(AbstractExprCall):
     def traverse(self, context):
         for node in traverse_expr(self.filter, context):
             yield node
-        for node in AbstractExprCall.traverse(self, context):
+        for node in FunctionExpression.traverse(self, context):
             yield node
 
     def _getfilter(self, context):

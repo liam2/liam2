@@ -4,41 +4,35 @@ import numpy as np
 
 from utils import safe_put
 from expr import expr_eval, getdtype, hasvalue
-from exprbases import AbstractExprCall
+from exprbases import FunctionExpression
 
 
-class ValueForPeriod(AbstractExprCall):
+class ValueForPeriod(FunctionExpression):
     func_name = 'value_for_period'
-    #TODO: update Expr._eval_args to take __eval_args__ into account
-    __eval_args__ = ('period', 'missing')
-    #AND/OR
-    __no_eval_args__ = ('expr',)
 
     def __init__(self, expr, period, missing='auto'):
-        AbstractExprCall.__init__(self, expr, period, missing)
+        FunctionExpression.__init__(self, expr)
+        self.period = period
+        self.missing = missing
 
-    def _compute(self, context, expr, period, missing):
+    def evaluate(self, context):
         entity = context.entity
-        return entity.value_for_period(expr, period, context, missing)
+        period = expr_eval(self.period, context)
+        return entity.value_for_period(self.expr, period, context, self.missing)
 
 
 #TODO: this should be a compound expression:
 # Lag(expr, numperiods, missing)
 # ->
 # ValueForPeriod(expr, Subtract(Variable('period'), numperiods), missing)
-class Lag(AbstractExprCall):
+class Lag(FunctionExpression):
     func_name = 'lag'
-
-    # for traversal, cache
-    __fields__ = ('args', 'kwargs')
-    __eval_args__ = ('num_periods', 'missing')
-    #AND/OR
-    __no_eval_args__ = ('expr',)
+    # __no_eval__ = ('expr',)
 
     def __init__(self, expr, num_periods=1, missing='auto'):
-        AbstractExprCall.__init__(self, expr)
-        # self.num_periods = num_periods
-        # self.missing = missing
+        FunctionExpression.__init__(self, expr)
+        self.num_periods = num_periods
+        self.missing = missing
 
     # def _compute(self, context, expr, num_periods, missing):
     #     entity = context.entity
@@ -46,23 +40,15 @@ class Lag(AbstractExprCall):
     #     return entity.value_for_period(expr, period, context, missing)
 
     def evaluate(self, context):
-        expr, num_periods, missing = self.args
         entity = context.entity
-        period = context.period - expr_eval(num_periods, context)
-        missing = expr_eval(missing, context)
-        return entity.value_for_period(expr, period, context, missing)
-
-    # def evaluate(self, context):
-    #     entity = context.entity
-    #     period = context.period - expr_eval(self.num_periods, context)
-    #     return entity.value_for_period(self.expr, period, context,
-    # self.missing)
+        period = context.period - expr_eval(self.num_periods, context)
+        return entity.value_for_period(self.expr, period, context, self.missing)
 
     def dtype(self, context):
         return getdtype(self.expr, context)
 
 
-class Duration(AbstractExprCall):
+class Duration(FunctionExpression):
     func_name = 'duration'
 
     def evaluate(self, context):
@@ -104,7 +90,7 @@ class Duration(AbstractExprCall):
         return int
 
 
-class TimeAverage(AbstractExprCall):
+class TimeAverage(FunctionExpression):
     func_name = 'tavg'
 
     def evaluate(self, context):
@@ -148,7 +134,7 @@ class TimeAverage(AbstractExprCall):
         return sum_values / num_values
 
 
-class TimeSum(AbstractExprCall):
+class TimeSum(FunctionExpression):
     func_name = 'tsum'
 
     def evaluate(self, context):
