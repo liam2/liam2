@@ -1,109 +1,110 @@
-1) storage:
-   a) .args and .kwargs
-   b) specific fields (eg .expr)
-2) __init__ signature:
-   a) explicit args
+decision
+========
+* no __init__ for most functions (signature inferred & args checked) by
+  inspect(compute) or manual signature
+* storage in .children because no function, even non-simple should ever need
+  to see it (or maybe in some very rare cases): only the generic code to pass
+  arguments to compute should need it.
+* all args evaluated except those in __no_eval__
+* __fields__ not necessary because .children is used as storage
+
+rough steps to implement
+========================
+
+1) add check in NumpyFunction.__init__ if we can get the signature of the
+   function or not.
+2) manually add signature to all functions that need one (numpy random
+   generators and functions using varargs/kw-only args:
+   eg nprandom(np.random.normal, None, always(float),
+               (('loc', 0.0), ('scale', 1.0), ('size', None)))
+3) using signature, store all args & kwargs in args (I think it's better
+   than kwargs because you do not need to sort them again to display them or
+   do anything else wh them)
+4) make wrapper for "simple functions"
+5) add __no_eval__ field to "non-simple" functions
+6) specify the signature of functions using varargs/kw-only args
+7) eval all args (except those in __no_eval__) in non-simple functions
+   (inspect the "compute" method)
+8) update non-simple functions to use compute(context, *a, **kw) instead of
+   evaluate and not evaluate themselves their "simple arguments"
+9) provide a few "standard" dtype funcs/factories: always(type), coerce_types,
+   first_arg_dtype. dtpye method in Expr classes should be defined:
+   dtype = always(int)
+
+Random observations which were taken into account:
+
+* groupby, show/qshow, csv, charts, min(x, y, z), dump and NumpyFunction*
+  (but this one could be changed) use *args (and kw-only args).
+  inspect(compute) will not work (on Python2) for those => we need to specify
+  the signature manually (like for builtin funcs) until we switch to (require)
+  Python 3.
+
+* links, tfunc, matching, align(link=), new/clone and groupby fiddle with the
+  context and need __no_eval__.
+
+* we can store everything in args only, provided we know the default values of
+  all optional arguments, even for builtin funcs and funcs with kw-only
+  arguments. For kwargs-only args (like in groupby), we store "normal" args
+  then kw-only args sorted by key/name.
+
+* "non-numpy" simple (all args evaluated in current ctx) functions:
+  - manual aggregates (sum, count, average, gini)
+  - choice, trunc, dump, csv, (q)show, remove, breakpoint, asserts,
+  - align with no "link"
+  - charts
+  - regressions (but those are CompoundExpression)
+
+* exporting "pure python" np functions should only be a matter of:
+  std = npagg(np.std, None, lambda c: float)
+
+* defining a "simple" function should only be a matter of:
+
+    def gini(values):
+        ...
+        return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
+    gini = make_func(gini, dtype=always(float), base=AggregateFunc)
+
+  or, using a decorator:
+
+    @make_func(dtype=always(float), base=AggregateFunc)
+    def gini(values):
+        ...
+        return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
+
+* for builtin/C functions, we need to provide the signature. There are several
+  options to do that:
+  a) normal = nprandom(np.random.normal, None, always(float),
+                       (('loc', 0.0), ('scale', 1.0), ('size', None)))
+  b) normal = nprandom(np.random.normal, None, always(float),
+                       ('loc', 0.0, 'scale', 1.0, 'size', None))
+  c) normal = nprandom(np.random.normal, always(float),
+                      'loc, scale, size', (0.0, 1.0, None))
+  Even though it is the longest (and annoying to type), I think option a) is
+  the best by a long shot because it maps directly to dict, it is more natural
+  and less error-prone than the other syntaxes.
+
+options
+=======
+
+1) __init__ signature:
+   a) explicit args: better behavior with IDE etc. <=> 3c
+      if I know the default values for all (potential) kw arguments,
+      I can convert all the non-kw-only args to (non-kw)args
    b) *args, **kwargs
-3) how to populate __fields__:
-   a) manually
-   b) from __init__ signature
-4) argument evaluation
-   a) _eval_args
-
-# arg eval: all except those listed in __no_eval_args__
-
-    __no_eval_args__ = ('expr',) # <- an alternative to this would be to have
-    # in AbstractExprCall a "modify_context" method which would do nothing by
-    # default. Hmmm, might not be feasible, because I need to change the
-    # context to evaluate only *some* arguments (eg expr, not all)
-
-    # for traversal, cache
-    __fields__ = ('args', 'kwargs')
-
-    # in fact, I cannot store everything in args only, because of
-    # kwargs-only args (like in groupby) but all "normal" arguments (whether
-    # they have a default value or not and whether they are **passed as kwargs
-    # or not** should be stored in "args"
-
-    __eval_args__ = ('num_periods', 'missing')
-    #AND/OR
-    __no_eval_args__ = ('expr',)
-
-    def __init__(self, *args, ...)
-    OR
-    def __init__(self, expr, num_periods=1, missing='auto'):
-
-
-# OPTION 1
-# ========
-
-# storage, usage in the class, traversal, cache: in .args and .kwargs
-# __fields__ is computed automatically from .__init__
-# => all arguments are stored
-
-# arg eval: all except those listed in __no_eval_args__
-# arg_names and kwonlyargnames in NumpyFunction: computed automatically
-
-class Std(NumpyAggregate):
-    func_name = 'std'
-    np_func = (np.std,)
-
-    def __init__(self, a, axis=a, dtype=b, out=c, ddof=d, filter=e, skip_na=f):
-        NumpyAggregate.__init__(self, a, axis, dtype, out, ddof, ...)
-
-class Gini(AbstractExprCall):
-    func_name = 'gini'
-
-    def __init__(self, expr, filter=None, skip_na=True):
-        # skip_na is not explicitly supported by AbstractExprCall but since
-        # it takes *args, **kwargs, it should work
-        AbstractExprCall.__init__(self, expr, filter, skip_na)
-
-    def _compute(self, expr, filter, skip_na):
-        if skip_na:
-            ...
-        return ...
-
-class Lag(AbstractExprCall):
-    func_name = 'lag'
-
-    __no_eval_args__ = ('expr',)
-
-    def __init__(self, expr, num_periods=1, missing='auto'):
-        AbstractExprCall.__init__(self, expr, num_periods, missing)
-
-    def _compute(self, context, expr, num_periods, missing):
-        entity = context.entity
-        return entity.value_for_period(expr, context.period - num_periods,
-                                       context, missing)
-
-# OPTION 2
-# ========
-
-# storage, usage in the class, traversal, cache: specific fields (eg .expr)
-# __fields__ is computed automatically from .__init__
-# => all arguments are stored
-
-# arg eval: all except those listed in __no_eval_args__
-# arg_names and kwonlyargnames in NumpyFunction: computed automatically
-
-# for storage, usage in the class, traversal, cache
-# __fields__ = ('args', 'kwargs')
-# for eval: everything by default
-# __no_eval_args__ = ('expr',)
-# arg_names and kwonlyargnames in NumpyFunction are computed automatically
-
-class Std(NumpyAggregate):
-    func_name = 'std'
-    np_func = (np.std,)
-
-    def __init__(self, a, axis=a, dtype=b, out=c, ddof=d, filter=e, skip_na=f):
-        NumpyAggregate.__init__(self, a, axis, dtype, out, ddof, ...)
-
-class Lag(AbstractExprCall):
-    func_name = 'lag'
-
-    __no_eval_args__ = ('expr',)
-
-    def __init__(self, expr, num_periods=1, missing='auto'):
-        AbstractExprCall.__init__(self, expr, num_periods, missing)
+2) storage:
+   a) .children # common for all ops
+   b) .args and .kwargs # common for all functions
+   c) specific fields (eg .expr)
+3) how to know which fields to traverse/cache
+   a) standard hierarchy (.children or .args and .kwargs) (=> 2a or 2b)
+   b) __fields__ manually (=> 2c)
+   c) from __init__ signature (<=> 1a)
+   d) __eval_args__ + __no_eval_args (=> 4d)
+4) how to specify which arguments should be evaluated
+   a) override _eval_args if not all fields should be evaluated
+   b) __no_eval_args__ field
+   c) __eval_args__ field
+   d) __no_eval_args__ + __eval_args__ fields
+   e) wrap in specific obj:
+      def __init__(self, expr, num_periods=1, missing='auto'):
+          FuncExpr.__init__(self, NoEval(expr), num_periods, missing)
