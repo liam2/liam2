@@ -226,6 +226,8 @@ class Percentile(NumpyAggregate):
         return float
 
 
+#TODO: filter and skip_na should be provided by an "Aggregate" mixin that is
+# used both here and in NumpyAggregate
 class Gini(FilteredExpression):
     func_name = 'gini'
 

@@ -22,24 +22,14 @@ class ValueForPeriod(AbstractExprCall):
         return entity.value_for_period(expr, period, context, missing)
 
 
+#TODO: this should be a compound expression:
+# Lag(expr, numperiods, missing)
+# ->
+# ValueForPeriod(expr, Subtract(Variable('period'), numperiods), missing)
 class Lag(AbstractExprCall):
     func_name = 'lag'
 
     # for traversal, cache
-    __fields__ = ('args',)
-    __fields__ = ('args', 'kwargs')
-    # might be better to store them all in args so that cache key are
-    # independent as to how args are passed >> for the cache, yes
-    # but for NumpyFunction...
-    # >>> in fact, I cannot store everything in args only, because of
-    #     kwargs-only args (like in groupby)
-    # >>> but all "normal" arguments (whether they have a default value or not
-    #     that are **passed as kwargs or not** should be stored in "args"
-    # => should rename AbstractExprCall.kwargs into kwonlyargs
-    # arg_names
-    # kwargs_names -> extra_arg_names
-
-    # kwargs
     __fields__ = ('args', 'kwargs')
     __eval_args__ = ('num_periods', 'missing')
     #AND/OR
@@ -65,7 +55,8 @@ class Lag(AbstractExprCall):
     # def evaluate(self, context):
     #     entity = context.entity
     #     period = context.period - expr_eval(self.num_periods, context)
-    #     return entity.value_for_period(self.expr, period, context, self.missing)
+    #     return entity.value_for_period(self.expr, period, context,
+    # self.missing)
 
     def dtype(self, context):
         return getdtype(self.expr, context)
@@ -193,10 +184,6 @@ class TimeSum(AbstractExprCall):
             period -= 1
         return sum_values
 
-functions = {
-    'value_for_period': ValueForPeriod,
-    'lag': Lag,
-    'duration': Duration,
-    'tavg': TimeAverage,
-    'tsum': TimeSum,
-}
+
+functions = {'value_for_period': ValueForPeriod, 'lag': Lag,
+             'duration': Duration, 'tavg': TimeAverage, 'tsum': TimeSum, }

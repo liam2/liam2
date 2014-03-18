@@ -153,6 +153,7 @@ class ZeroClip(CompoundExpression):
                      0)
 
     def dtype(self, context):
+        #FIXME: should coerce wh expr_min & expr_max
         return getdtype(self.expr, context)
 
 
@@ -586,7 +587,7 @@ class Dump(TableExpression):
 
     def traverse(self, context):
         #FIXME: we should also somehow "traverse" expressions if
-        # self.expressions is []
+        # self.expressions is [] (=> all keys in the current context)
         for expr in self.expressions:
             for node in traverse_expr(expr, context):
                 yield node
