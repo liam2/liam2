@@ -504,10 +504,13 @@ class Entity(object):
             safe_put(result, rows, values)
         return result
 
+    #TODO: move this to tfunc (as a plain module-level function) as it does
+    # not use "self"
     def value_for_period(self, expr, period, context, fill='auto'):
         sub_context = context.clone(fresh_data=True, period=period)
         result = expr_eval(expr, sub_context)
         if isinstance(result, np.ndarray) and result.shape:
+            #TODO: replace all expr_eval(Variable(v), context) by context[v]
             ids = expr_eval(Variable('id'), sub_context)
             if fill is None:
                 return ids, result
