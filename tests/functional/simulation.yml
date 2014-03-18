@@ -255,7 +255,7 @@ entities:
                 return: result * 2
 
             # issue 119: function arguments not available in interactive console
-            func_wh_breakpoint:
+            issue119callee:
                 args: arg
                 code:
                     - localarg: arg
@@ -332,7 +332,14 @@ entities:
                 - assertEqual(age.min(axis=axis), min(age))
 
             test_issue119:
-                - func_wh_breakpoint(1.0)
+                - issue119callee(1.0)
+
+            test_issue120:
+                # breakpoint to test issue 120: global temp produces
+                # warning in the interactive console. It needs to be
+                # called *after* the "temp_global" process !
+                - show("type 'age' and see if produces a warning")
+                - breakpoint()
 
             hybrid_test:
                 - hybrid_test: age + 1
@@ -2217,6 +2224,8 @@ simulation:
                    temp_global,
                    temp_global_modify,
                    temp_global_check,
+
+                   test_issue120,
 
                    test_expr,
                    agegroup,
