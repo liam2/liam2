@@ -203,9 +203,9 @@ class Entity(object):
                              if name in stored_fields - process_names)
             # callable fields
             variables.update((name, VariableMethodHybrid(name, self, type_))
-                             for name, type_ in self.fields
-                             if stored_fields & process_names)
-            # temporary fields (they are all callable)
+                             for name, type_ in self.fields if
+                             name in stored_fields & process_names)
+            # global temporaries (they are all callable)
             variables.update((name, VariableMethodHybrid(name, self))
                              for name in all_predictors - stored_fields)
             variables.update(self.links)
