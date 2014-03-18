@@ -51,14 +51,11 @@ type_to_idx = {bool: 0, np.bool_: 0,
                float: 2, np.float64: 2}
 idx_to_type = [bool, int, float]
 
-missing_values = {
-#    int: -2147483648,
-    # for links, we need to have abs(missing_int) < len(a) !
-    #XXX: we might want to use different missing values for links and for
+missing_values = {  # int: -2147483648,
+                    # for links, we need to have abs(missing_int) < len(a) !
+                    #XXX: we might want to use different missing values for links and for
     #     "normal" ints
-    int: -1,
-    float: float('nan'),
-#    bool: -1
+    int: -1, float: float('nan'),  # bool: -1
     bool: False
 }
 
@@ -196,9 +193,9 @@ def expr_eval(expr, context):
 #        time, res = gettime(expr.evaluate, context)
 #        timings[expr.__class__.__name__] += time
 #        return res
-    elif isinstance(expr, list): # and any(isinstance(e, Expr) for e in expr):
+    elif isinstance(expr, list):
         return [expr_eval(e, context) for e in expr]
-    elif isinstance(expr, tuple): # and any(isinstance(e, Expr) for e in expr):
+    elif isinstance(expr, tuple):
         return tuple([expr_eval(e, context) for e in expr])
     elif isinstance(expr, slice):
         return slice(expr_eval(expr.start, context),
@@ -258,7 +255,6 @@ class Expr(object):
         #     #     return cached_result
         # except TypeError:
         #     print("ERROR: %s is not hashable" % str(cache_key))
-
 
         simple_expr = self.as_simple_expr(context)
         if isinstance(simple_expr, Variable) and simple_expr.name in context:
@@ -726,8 +722,8 @@ class GlobalVariable(Variable):
             step = translated_key.step
             if step is not None and step != 1:
                 raise NotImplementedError("step != 1 (%d)" % step)
-            if (isinstance(start, np.ndarray) and start.shape or
-                isinstance(stop, np.ndarray) and stop.shape):
+            if (isinstance(start, np.ndarray) and start.shape or isinstance(
+                    stop, np.ndarray) and stop.shape):
                 lengths = stop - start
                 length0 = lengths[0]
                 if not isinstance(start, np.ndarray) or not start.shape:
@@ -758,10 +754,11 @@ class GlobalVariable(Variable):
                     return IrregularNDArray(result)
             else:
                 # out of bounds slices bounds are "dropped" silently (like in
-                # python) -- ie the length of the slice returned can be smaller
-                # than the one asked. We could return "missing_value" for indices
-                # out of bounds but I do not know if it would be better. Since
-                # this version is easier to implement, lets go for it for now.
+                # python) -- ie the length of the slice returned can be
+                # smaller than the one asked. We could return "missing_value"
+                # for indices out of bounds but I do not know if it would be
+                # better. Since this version is easier to implement, lets go for
+                # it for now.
                 return column[translated_key]
         else:
             out_of_bounds = (translated_key < 0) or (translated_key >= numrows)
@@ -821,6 +818,7 @@ class GlobalTable(object):
     __repr__ = __str__
 
 
+#XXX: can we factorise this with FunctionExpr et al.?
 class MethodCall(EvaluableExpression):
     def __init__(self, entity, name, args, kwargs):
         self.entity = entity
