@@ -160,9 +160,10 @@ class LinkValue(LinkExpression):
         expr = lv.target_expression
 
         # at this point, expr must be a Variable with a link name,
-        # however given that we have no context, we do not know the current
-        # entity and cannot make a strong assertion here.
-        #XXX: we could add an _entity fields to the Link class though
+        # however given that we have no context, we do not know the *current*
+        # entity (we do know the target entity) and cannot make a strong
+        # assertion here.
+        #XXX: we could add an _entity field to the Link class though
         # assert expr.name in entity.links
         assert isinstance(expr, Variable)
         #noinspection PyProtectedMember
