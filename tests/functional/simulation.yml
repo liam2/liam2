@@ -2225,7 +2225,7 @@ simulation:
                    temp_global_modify,
                    temp_global_check,
 
-                   test_issue120,
+#                   test_issue120,
 
                    test_expr,
                    agegroup,
