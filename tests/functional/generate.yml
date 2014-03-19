@@ -22,7 +22,7 @@ entities:
             partner: {type: many2one, target: person, field: partner_id}
 
         processes:
-            birth: new('person', number=100000,
+            birth: new('person', number=1000,
                        age=randint(0, 98),
                        errsal=normal(0.0, 10.0),
                        male=choice([False, True]),
