@@ -18,6 +18,7 @@ import sys, os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
+
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -26,7 +27,10 @@ import sys, os
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 #extensions = ['sphinx.ext.todo', 'sphinx.ext.pngmath', 'rst2pdf.pdfbuilder']
-extensions = ['sphinx.ext.todo', 'sphinx.ext.pngmath']
+extensions = ['sphinx.ext.extlinks']
+
+extlinks = {'issue': ('https://github.com/liam2/liam2/issues/%s',
+                      'issue ')}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -268,7 +272,9 @@ epub_copyright = u'2011-2013, gb@plan.be, gd@plan.be, gdm@plan.be'
 # Allow duplicate toc entries.
 #epub_tocdup = True
 
+
 # -- Options for PDF output --------------------------------------------------
+
 # Grouping the document tree into PDF files. List of tuples
 # (source start file, target name, title, author, options).
 #
@@ -285,3 +291,4 @@ epub_copyright = u'2011-2013, gb@plan.be, gd@plan.be, gdm@plan.be'
 pdf_documents = [
 ('index', u'LIAM2', u'LIAM2', u'gb, gd, gdm'),
 ]
+
