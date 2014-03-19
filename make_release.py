@@ -69,6 +69,11 @@ def call(*args, **kwargs):
         raise e
 
 
+def echocall(*args, **kwargs):
+    print(' '.join(args))
+    return call(*args, **kwargs)
+
+
 def git_remote_last_rev(url, branch=None):
     """
     url of the remote repository
@@ -171,8 +176,8 @@ def update_changelog(release_name):
         lines[5:5] = this_version
     with open(fpath, 'w') as f:
         f.writelines(lines)
-    call('git commit -m "include release changes (%s) in changes.rst" %s' % (
-    fname, fpath))
+    call('git commit -m "include release changes (%s) in changes.rst" %s'
+         % (fname, fpath))
     do('pushing changes.rst', call, 'git push')
 
 
@@ -213,22 +218,25 @@ def create_bundles(release_name):
 def test_bundle(archivefname, dest):
     zip_unpack(archivefname, dest)
     # we use --debug so that errorlevel is set
-    call(dest + r'\liam2\main --debug run src\tests\functional\generate.yml')
-    call(dest + r'\liam2\main --debug import src\tests\functional\import.yml')
-    call(dest + r'\liam2\main --debug run src\tests\functional\simulation.yml')
-    call(dest + r'\liam2\main --debug run src\tests\functional\variant.yml')
+    main_dbg = dest + r'\liam2\main --debug '
+    echocall(main_dbg + r'run src\tests\functional\generate.yml')
+    echocall(main_dbg + r'import src\tests\functional\import.yml')
+    echocall(main_dbg + r'run src\tests\functional\simulation.yml')
+    echocall(main_dbg + r'run src\tests\functional\variant.yml')
     try:
         chdir(dest)
-        call(r'liam2\main --debug run examples\demo01.yml')
-        call(r'liam2\main --debug import examples\demo_import.yml')
-        call(r'liam2\main --debug run examples\demo01.yml')
-        call(r'liam2\main --debug run examples\demo02.yml')
-        call(r'liam2\main --debug run examples\demo03.yml')
-        call(r'liam2\main --debug run examples\demo04.yml')
-        call(r'liam2\main --debug run examples\demo05.yml')
-        call(r'liam2\main --debug run examples\demo06.yml')
-        call(r'liam2\main --debug run examples\demo07.yml')
-        call(r'liam2\main --debug run examples\demo08.yml')
+        main_dbg = r'liam2\main --debug '
+        echocall(main_dbg + r'run examples\demo01.yml')
+        echocall(main_dbg + r'import examples\demo_import.yml')
+        echocall(main_dbg + r'run examples\demo01.yml')
+        echocall(main_dbg + r'run examples\demo02.yml')
+        echocall(main_dbg + r'run examples\demo03.yml')
+        echocall(main_dbg + r'run examples\demo04.yml')
+        echocall(main_dbg + r'run examples\demo05.yml')
+        echocall(main_dbg + r'run examples\demo06.yml')
+        echocall(main_dbg + r'run examples\demo07.yml')
+        echocall(main_dbg + r'run examples\demo08.yml')
+        echocall(main_dbg + r'run examples\demo09.yml')
     finally:
         chdir('..')
 
@@ -463,6 +471,7 @@ if __name__ == '__main__':
 
     # chdir(r'c:\tmp')
     # chdir('liam2_new_release')
+    # test_bundles(*argv[1:])
     # build_website(*argv[1:])
     # upload(*argv[1:])
     # announce(*argv[1:])
