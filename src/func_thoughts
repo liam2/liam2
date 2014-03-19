@@ -11,23 +11,45 @@ decision
 rough steps to implement
 ========================
 
-1) add check in NumpyFunction.__init__ if we can get the signature of the
-   function or not.
-2) manually add signature to all functions that need one (numpy random
-   generators and functions using varargs/kw-only args:
-   eg nprandom(np.random.normal, None, always(float),
+1) change arg_names to "signature" (which includes varargs and default values)
+   use the same format as argspec?
+   ('a', ('loc', 0.0), ('scale', 1.0), ('size', None), '*a', '**k'))
+   FullArgSpec(args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations)
+    inspect.getfullargspec(func)
+
+   - args is a list of the argument names.
+   - varargs and varkw are the names of the * and ** arguments or None.
+   - defaults is an n-tuple of the default values of the last n arguments,
+     or None if there are no default arguments.
+   - kwonlyargs is a list of keyword-only argument names.
+   - kwonlydefaults is a dictionary mapping names from kwonlyargs to defaults.
+   - annotations is a dictionary mapping argument names to annotations.
+2) manually add signature for numpy random generators
+3) make sure filter and skip_na args are added correctly to the signature of
+   np aggregates
+4) manually add signature for functions using varargs/kw-only args
+   groupby, show/qshow, csv, charts, min(x, y, z), dump
+5) get signature for (non-numpy) "simple" functions from inspect(compute)
+   if **kw present and no manual signature present => raise
+6) move the "signature is present" check to AbstractExprCall
+7) using signature, store all args & kwargs in args and kwonlyargs (I think
+   it's better than kwargs because you do not need to sort them again to display
+   them or do anything else wh them)
+8) add __no_eval__ field to "non-simple" functions
+9) eval all args (except those in __no_eval__) in non-simple functions
+10) update non-simple functions to use compute(context, *a, **kw) instead of
+    evaluate and not evaluate themselves their "simple arguments"
+
+# optional (ie not needed for cache)
+1) make wrapper(s) for "numpy functions"
+   eg npchangearray(np.clip, coerce)
+   eg nprandom(np.random.normal, always(float),
                (('loc', 0.0), ('scale', 1.0), ('size', None)))
-3) using signature, store all args & kwargs in args (I think it's better
-   than kwargs because you do not need to sort them again to display them or
-   do anything else wh them)
-4) make wrapper for "simple functions"
-5) add __no_eval__ field to "non-simple" functions
-6) specify the signature of functions using varargs/kw-only args
-7) eval all args (except those in __no_eval__) in non-simple functions
-   (inspect the "compute" method)
-8) update non-simple functions to use compute(context, *a, **kw) instead of
-   evaluate and not evaluate themselves their "simple arguments"
-9) provide a few "standard" dtype funcs/factories: always(type), coerce_types,
+2) make wrapper for other "simple functions"
+   gini = make_func(gini, dtype=always(float), base=AggregateFunc)
+   eg make_func(gini, always(float),
+               (('loc', 0.0), ('scale', 1.0), ('size', None)))
+3) provide a few "standard" dtype funcs/factories: always(type), coerce_types,
    first_arg_dtype. dtpye method in Expr classes should be defined:
    dtype = always(int)
 
