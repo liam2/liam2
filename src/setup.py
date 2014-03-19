@@ -28,15 +28,25 @@ build_ext_options = {}
 # cx_freeze options
 build_exe_options = {# compress zip archive
                      "compressed": True,
+
                      # optimize pyc files (strip docstrings and asserts)
-                     "optimize": 2, # strip paths in __file__ attributes
+                     "optimize": 2,
+
+                     # strip paths in __file__ attributes
                      "replace_paths": [("*", "")],
+
                      "includes": ["matplotlib.backends.backend_qt4agg"],
                      # "includes": ["matplotlib.backends.backend_tkagg"],
+
+                     # matplotlib => calendar, distutils, unicodedata
+                     # matplotlib.backends.backend_tkagg => Tkconstants, Tkinter
+                     # ctypes, io are required now
                      "excludes": [# linux-specific modules
                                   "_codecs", "_codecs_cn", "_codecs_hk",
                                   "_codecs_iso2022", "_codecs_jp", "_codecs_kr",
-                                  "_codecs_tw", # common modules
+                                  "_codecs_tw",
+
+                                  # common modules
                                   "Tkconstants", "Tkinter", "Cython", "_ssl",
                                   "base64", "bz2", "compiler", "doctest",
                                   "dummy_thread", "dummy_threading", "email",
@@ -45,12 +55,7 @@ build_exe_options = {# compress zip archive
                                   "numpy.core._dotblas", "os2emxpath", "pdb",
                                   "pkg_resources", "posixpath", "pydoc",
                                   "pydoc_topics", "repr", "scipy", "select",
-                                  "stringprep", "strptime", "tcl", "xml"
-                                  # matplotlib => calendar, distutils,
-                                  # unicodedata
-                                  # matplotlib.backends.backend_tkagg =>
-                                  # Tkconstants, Tkinter
-                                  # ctypes, io are required now]}
+                                  "stringprep", "strptime", "tcl", "xml"]}
 
 
 def int_version(release_name):
