@@ -25,6 +25,7 @@ WEBSITE = 'liam2.plan.be'
 # - feature_branch
 # - make_release, detects hotfix or release
 
+
 #---------------#
 # generic tools #
 #---------------#
@@ -342,7 +343,7 @@ def relname2fname(release_name):
     return r"version_%s.rst.inc" % short(release_name).replace('.', '_')
 
 
-def make_release(release_name=None, branch=None):
+def make_release(release_name=None, branch='master'):
     # Since git is a dvcs, we could make this script work locally, but it would
     # not be any more useful because making a release is usually to distribute
     # it to someone, and for that I need network access anyway.
@@ -353,10 +354,7 @@ def make_release(release_name=None, branch=None):
     # the only drawback I see is that I could miss changes from others, but
     # we are not there yet :)
 
-    # git config --get remote.origin.url
-    repository = 'https://github.com/liam2/liam2.git'
-    if branch is None:
-        branch = 'master'
+    repository = call('git config --get remote.origin.url')
 
     status = call('git status -s')
     lines = status.splitlines()
