@@ -222,6 +222,8 @@ class Expr(object):
 
     # TODO: add a check in the metaclass that the class instances effectively
     # have those fields/attributes defined !!
+
+    # we cannot do this in __new__ (args are verified in metaclass.__call__)
     __metaclass__ = ExplainTypeError
 
     kind = 'generic'

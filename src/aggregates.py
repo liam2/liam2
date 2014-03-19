@@ -13,7 +13,6 @@ from utils import deprecated
 class All(NumpyAggregate):
     func_name = 'all'
     np_func = (np.all,)
-    arg_names = ('a', 'axis', 'out', 'keepdims')
 
     #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
@@ -23,7 +22,6 @@ class All(NumpyAggregate):
 class Any(NumpyAggregate):
     func_name = 'any'
     np_func = (np.any,)
-    arg_names = ('a', 'axis', 'out', 'keepdims')
 
     #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
@@ -64,7 +62,6 @@ class Min(NumpyAggregate):
     func_name = 'min'
     np_func = (np.amin,)
     nan_func = (np.nanmin,)
-    arg_names = ('a', 'axis', 'out')
 
     def dtype(self, context):
         return getdtype(self.args[0], context)
@@ -74,7 +71,6 @@ class Max(NumpyAggregate):
     func_name = 'max'
     np_func = (np.amax,)
     nan_func = (np.nanmax,)
-    arg_names = ('a', 'axis', 'out')
 
     def dtype(self, context):
         return getdtype(self.args[0], context)
@@ -96,7 +92,6 @@ def na_sum(a, overwrite=False):
 #    func_name = 'sum'
 #    np_func = (np.sum,)
 #    nan_func = (nansum,)
-#    arg_names = ('a', 'axis')
 #
 #    def dtype(self, context):
 #        #TODO: merge this typemap with tsum's
@@ -136,7 +131,6 @@ class Sum(FilteredExpression):
 #    func_name = 'avg'
 #    np_func = (np.mean,)
 ##    nan_func = (nanmean,)
-#    arg_names = ('a', 'axis')
 #
 #    def dtype(self, context):
 #        return float
@@ -199,7 +193,6 @@ class Average(FilteredExpression):
 class Std(NumpyAggregate):
     func_name = 'std'
     np_func = (np.std,)
-    arg_names = ('a', 'axis', 'dtype', 'out', 'ddof')
 
     #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
@@ -209,7 +202,6 @@ class Std(NumpyAggregate):
 class Median(NumpyAggregate):
     func_name = 'median'
     np_func = (np.median,)
-    arg_names = ('a', 'axis', 'out', 'overwrite_input')
 
     #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
@@ -219,7 +211,6 @@ class Median(NumpyAggregate):
 class Percentile(NumpyAggregate):
     func_name = 'percentile'
     np_func = (np.percentile,)
-    arg_names = ('a', 'q', 'axis', 'out', 'overwrite_input')
 
     #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
@@ -278,22 +269,15 @@ def make_dispatcher(agg_func, elem_func):
     def dispatcher(*args, **kwargs):
         func = agg_func if len(args) == 1 else elem_func
         return func(*args, **kwargs)
+
     return dispatcher
 
 
-functions = {
-    'all': All,
-    'any': Any,
-    'count': Count,
-    'min': make_dispatcher(Min, exprmisc.Min),
-    'max': make_dispatcher(Max, exprmisc.Max),
-    'sum': Sum,
-    'avg': Average,
-    'std': Std,
-    'median': Median,
-    'percentile': Percentile,
-    'gini': Gini,
-}
+functions = {'all': All, 'any': Any, 'count': Count,
+             'min': make_dispatcher(Min, exprmisc.Min),
+             'max': make_dispatcher(Max, exprmisc.Max), 'sum': Sum,
+             'avg': Average, 'std': Std, 'median': Median,
+             'percentile': Percentile, 'gini': Gini, }
 
 for k, v in functions.items():
     functions['grp' + k] = deprecated(v, "%s is deprecated, please use %s "

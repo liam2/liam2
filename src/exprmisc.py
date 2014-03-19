@@ -6,15 +6,13 @@ from itertools import izip, chain
 import numpy as np
 
 import config
-from expr import (Expr, Variable,
-                  UnaryOp, BinaryOp, ComparisonOp, DivisionOp, LogicalOp,
-                  getdtype, coerce_types, expr_eval,
-                  as_simple_expr, as_string,
-                  collect_variables, traverse_expr,
+from expr import (Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
+                  LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
+                  as_string, collect_variables, traverse_expr,
                   get_missing_record, get_missing_vector)
-from exprbases import (EvaluableExpression, CompoundExpression,
-                       NumexprFunction, FunctionExpression, TableExpression,
-                       NumpyRandom, NumpyChangeArray)
+from exprbases import (EvaluableExpression, CompoundExpression, NumexprFunction,
+                       FunctionExpression, TableExpression, NumpyRandom,
+                       NumpyChangeArray)
 from context import context_length
 from utils import PrettyTable
 
@@ -33,56 +31,56 @@ class Min(CompoundExpression):
         for arg in self.args[2:]:
             expr = Where(ComparisonOp('<', expr, arg), expr, arg)
 
-        # args = [Symbol('x%d' % i) for i in range(len(self.args))]
-        # ctx = {'__entity__': 'x',
-        #        'x': {'x%d' % i: a for i, a in enumerate(self.args)}}
-        # where = Symbol('where')
-        # expr = where(a < b, a, b)
-        # for arg in self.args[2:]:
-        #     expr = where(expr < arg, expr, arg)
-        # expr = expr.to_ast(ctx)
+            # args = [Symbol('x%d' % i) for i in range(len(self.args))]
+            # ctx = {'__entity__': 'x',
+            #        'x': {'x%d' % i: a for i, a in enumerate(self.args)}}
+            # where = Symbol('where')
+            # expr = where(a < b, a, b)
+            # for arg in self.args[2:]:
+            #     expr = where(expr < arg, expr, arg)
+            # expr = expr.to_ast(ctx)
 
-        # expr1, expr2 = self.args[:2]
-        # expr = parse('if(a < b, a, b)',
-        #              {'__entity__': 'x', 'x': {'a': expr1, 'b': expr2}})
-        # for arg in self.args[2:]:
-        #     expr = parse('if(a < b, a, b)',
-        #                  {'__entity__': 'x', 'x': {'a': expr, 'b': arg}})
+            # expr1, expr2 = self.args[:2]
+            # expr = parse('if(a < b, a, b)',
+            #              {'__entity__': 'x', 'x': {'a': expr1, 'b': expr2}})
+            # for arg in self.args[2:]:
+            #     expr = parse('if(a < b, a, b)',
+            #                  {'__entity__': 'x', 'x': {'a': expr, 'b': arg}})
 
-        # expr = Where(expr1 < expr2, expr1, expr2)
-        # for arg in self.args[2:]:
-        #     expr = Where(expr < arg, expr, arg)
+            # expr = Where(expr1 < expr2, expr1, expr2)
+            # for arg in self.args[2:]:
+            #     expr = Where(expr < arg, expr, arg)
 
-#        Where(Where(expr1 < expr2, expr1, expr2) < expr3,
-#              Where(expr1 < expr2, expr1, expr2),
-#              expr3)
-#        3 where, 3 comparisons = 6 op (or 4 if optimised)
-#
-#        Where(Where(Where(expr1 < expr2, expr1, expr2) < expr3,
-#                    Where(expr1 < expr2, expr1, expr2),
-#                    expr3) < expr4,
-#              Where(Where(expr1 < expr2, expr1, expr2) < expr3,
-#                    Where(expr1 < expr2, expr1, expr2),
-#                    expr3),
-#              expr4)
-#        7 where, 7 comp = 14 op (or 6 if optimised)
+        #        Where(Where(expr1 < expr2, expr1, expr2) < expr3,
+        #              Where(expr1 < expr2, expr1, expr2),
+        #              expr3)
+        #        3 where, 3 comparisons = 6 op (or 4 if optimised)
+        #
+        #        Where(Where(Where(expr1 < expr2, expr1, expr2) < expr3,
+        #                    Where(expr1 < expr2, expr1, expr2),
+        #                    expr3) < expr4,
+        #              Where(Where(expr1 < expr2, expr1, expr2) < expr3,
+        #                    Where(expr1 < expr2, expr1, expr2),
+        #                    expr3),
+        #              expr4)
+        #        7 where, 7 comp = 14 op (or 6 if optimised)
 
         # this version scales better in theory (but in practice, it will depend
         # if numexpr factorize the common subexpression in the above version
         # or not)
-#        Where(expr1 < expr2 & expr1 < expr3,
-#              expr1,
-#              Where(expr2 < expr3, expr2, expr3))
-#        2 where, 3 comparisons, 1 and = 6 op
-#
-#        Where(expr1 < expr2 & expr1 < expr3 & expr1 < expr4,
-#              expr1,
-#              Where(expr2 < expr3 & expr2 < expr4,
-#                    expr2
-#                    Where(expr3 < expr4,
-#                          expr3,
-#                          expr4)))
-#        3 where, 6 comp, 3 and = 12 op
+        #        Where(expr1 < expr2 & expr1 < expr3,
+        #              expr1,
+        #              Where(expr2 < expr3, expr2, expr3))
+        #        2 where, 3 comparisons, 1 and = 6 op
+        #
+        #        Where(expr1 < expr2 & expr1 < expr3 & expr1 < expr4,
+        #              expr1,
+        #              Where(expr2 < expr3 & expr2 < expr4,
+        #                    expr2
+        #                    Where(expr3 < expr4,
+        #                          expr3,
+        #                          expr4)))
+        #        3 where, 6 comp, 3 and = 12 op
         return expr
 
     def __str__(self):
@@ -145,10 +143,8 @@ class ZeroClip(CompoundExpression):
     def build_expr(self):
         expr = self.expr
         # if(minv <= x <= maxv, x, 0)
-        return Where(LogicalOp('&',
-                         ComparisonOp('>=', expr, self.expr_min),
-                         ComparisonOp('<=', expr, self.expr_max)),
-                     expr,
+        return Where(LogicalOp('&', ComparisonOp('>=', expr, self.expr_min),
+                               ComparisonOp('<=', expr, self.expr_max)), expr,
                      0)
 
     def dtype(self, context):
@@ -168,12 +164,11 @@ class ZeroClip(CompoundExpression):
 # 10 loops, best of 3: 94.1 ms per loop
 class Clip(NumpyChangeArray):
     np_func = (np.clip,)
-    arg_names = ('a', 'a_min', 'a_max', 'out')
 
 
 class Sort(NumpyChangeArray):
     np_func = (np.sort,)
-    arg_names = ('a', 'axis', 'kind', 'order')
+
 
 #------------------------------------
 
@@ -286,11 +281,9 @@ class Choice(EvaluableExpression):
         if bins is None:
             weights_str = ""
         else:
-            weights_str = ", %s" % (bins
-                                    if any(isinstance(b, Expr) for b in bins)
-                                    else '[%s]' %
-                                         ', '.join(str(b)
-                                                   for b in np.diff(bins)))
+            weights_str = ", %s" % (
+            bins if any(isinstance(b, Expr) for b in bins)
+            else '[%s]' % ', '.join(str(b) for b in np.diff(bins)))
         return "%s(%s%s)" % (self.func_name, list(self.choices), weights_str)
 
 
@@ -318,6 +311,7 @@ class Trunc(FunctionExpression):
     def dtype(self, context):
         assert getdtype(self.expr, context) == float
         return int
+
 
 #------------------------------------
 
@@ -352,9 +346,8 @@ def add_individuals(target_context, children):
     array = target_entity.array
     num_rows = len(array)
     num_birth = len(children)
-    print("%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name,
-                                       num_rows, num_rows + num_birth),
-          end=' ')
+    print("%d new %s(s) (%d -> %d)" % (
+    num_birth, target_entity.name, num_rows, num_rows + num_birth), end=' ')
 
     target_entity.array.append(children)
 
@@ -372,8 +365,8 @@ def add_individuals(target_context, children):
         # to further distinguish between aggregated entity var and other global
         # temporaries to store them in the entity somewhere, but I am unsure
         # whether it is possible.
-        if (isinstance(temp_value, np.ndarray) and
-            temp_value.shape == (num_rows,)):
+        if (isinstance(temp_value, np.ndarray) and temp_value.shape == (
+        num_rows,)):
             extra = get_missing_vector(num_birth, temp_value.dtype)
             temp_variables[name] = np.concatenate((temp_value, extra))
 
@@ -386,8 +379,8 @@ def add_individuals(target_context, children):
             extra_variables[name] = np.concatenate((temp_value, extra))
 
     id_to_rownum_tail = np.arange(num_rows, num_rows + num_birth)
-    target_entity.id_to_rownum = np.concatenate((id_to_rownum,
-                                                 id_to_rownum_tail))
+    target_entity.id_to_rownum = np.concatenate(
+        (id_to_rownum, id_to_rownum_tail))
 
 
 #TODO: inherit from FilteredExpression so that I can use _getfilter
@@ -398,8 +391,9 @@ class CreateIndividual(EvaluableExpression):
         self.filter = filter
         self.kwargs = kwargs
         self.number = number
-#        assert filter is not None and number is None or \
-#               number is not None and filter is None
+
+    #        assert filter is not None and number is None or \
+    #               number is not None and filter is None
 
     def _initial_values(self, array, to_give_birth, num_birth):
         #TODO: use default values for fields which have one
@@ -513,18 +507,19 @@ class Dump(TableExpression):
     def __init__(self, *args, **kwargs):
         self.expressions = args
         if len(args):
-            assert all(isinstance(e, Expr) for e in args), \
-                   "dump arguments must be expressions, not a list of them, " \
-                   "or strings"
+            assert all(isinstance(e, Expr) for e in
+                       args), "dump arguments must be expressions, not a list " \
+                              "of them, " \
+                              "or strings"
 
         self.filter = kwargs.pop('filter', None)
         self.missing = kwargs.pop('missing', None)
-#        self.periods = kwargs.pop('periods', None)
+        #        self.periods = kwargs.pop('periods', None)
         self.header = kwargs.pop('header', True)
         if kwargs:
             kwarg, _ = kwargs.popitem()
-            raise TypeError("'%s' is an invalid keyword argument for dump()"
-                            % kwarg)
+            raise TypeError(
+                "'%s' is an invalid keyword argument for dump()" % kwarg)
 
     def evaluate(self, context):
         if self.filter is not None:
@@ -537,8 +532,7 @@ class Dump(TableExpression):
         else:
             # extra=False because we don't want globals nor "system" variables
             # (nan, period, __xxx__)
-            expressions = [Variable(name)
-                           for name in context.keys(extra=False)]
+            expressions = [Variable(name) for name in context.keys(extra=False)]
 
         str_expressions = [str(e) for e in expressions]
         if 'id' not in str_expressions:
@@ -548,17 +542,18 @@ class Dump(TableExpression):
         else:
             id_pos = str_expressions.index('id')
 
-#        if (self.periods is not None and len(self.periods) and
-#            'period' not in str_expressions):
-#            str_expressions.insert(0, 'period')
-#            expressions.insert(0, Variable('period'))
-#            id_pos += 1
+        #        if (self.periods is not None and len(self.periods) and
+        #            'period' not in str_expressions):
+        #            str_expressions.insert(0, 'period')
+        #            expressions.insert(0, Variable('period'))
+        #            id_pos += 1
 
         columns = []
         for expr in expressions:
             expr_value = expr_eval(expr, context)
-            if (filter_value is not None and isinstance(expr_value, np.ndarray)
-                    and expr_value.shape):
+            if (filter_value is not None and isinstance(expr_value,
+                                                        np.ndarray) and
+                    expr_value.shape):
                 expr_value = expr_value[filter_value]
             columns.append(expr_value)
 
@@ -640,19 +635,18 @@ class Where(Expr):
             local_ctx.filter_expr = UnaryOp('~', self.cond)
         else:
             # filter = filter and not cond
-            local_ctx.filter_expr = LogicalOp('&',
-                                              context_filter,
+            local_ctx.filter_expr = LogicalOp('&', context_filter,
                                               UnaryOp('~', self.cond))
         iffalse = as_simple_expr(self.iffalse, local_ctx)
         return Where(cond, iftrue, iffalse)
 
     def as_string(self):
-        return "where(%s, %s, %s)" % (as_string(self.cond),
-                                      as_string(self.iftrue),
-                                      as_string(self.iffalse))
+        return "where(%s, %s, %s)" % (
+        as_string(self.cond), as_string(self.iftrue), as_string(self.iffalse))
 
     def __str__(self):
         return "if(%s, %s, %s)" % (self.cond, self.iftrue, self.iffalse)
+
     __repr__ = __str__
 
     def dtype(self, context):
@@ -660,27 +654,13 @@ class Where(Expr):
         return coerce_types(context, self.iftrue, self.iffalse)
 
 
-functions = {
-    # random
-    'uniform': Uniform,
-    'normal': Normal,
-    'choice': Choice,
-    'randint': RandInt,
-    # element-wise functions
-    # Min and Max are in aggregates.py.functions (because of the dispatcher)
-    'abs': Abs,
-    'clip': Clip,
-    'zeroclip': ZeroClip,
-    'round': Round,
-    'trunc': Trunc,
-    'exp': Exp,
-    'log': Log,
-    'logit': Logit,
-    'logistic': Logistic,
-    'where': Where,
-    # misc
-    'sort': Sort,
-    'new': CreateIndividual,
-    'clone': Clone,
-    'dump': Dump,
-}
+functions = {# random
+             'uniform': Uniform, 'normal': Normal, 'choice': Choice,
+             'randint': RandInt, # element-wise functions
+             # Min and Max are in aggregates.py.functions (because of the
+             # dispatcher)
+             'abs': Abs, 'clip': Clip, 'zeroclip': ZeroClip, 'round': Round,
+             'trunc': Trunc, 'exp': Exp, 'log': Log, 'logit': Logit,
+             'logistic': Logistic, 'where': Where, # misc
+             'sort': Sort, 'new': CreateIndividual, 'clone': Clone,
+             'dump': Dump, }

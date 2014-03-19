@@ -1,12 +1,15 @@
 from __future__ import print_function
 
+import inspect
+
 import numpy as np
 
 import config
 from context import context_length
-from expr import (Expr, AbstractExprCall, EvaluableExpression, expr_eval, traverse_expr,
-                  getdtype, as_simple_expr, as_string, get_missing_value,
-                  ispresent, LogicalOp)
+from expr import (Expr, AbstractExprCall, EvaluableExpression, expr_eval,
+                  traverse_expr, getdtype, as_simple_expr, as_string,
+                  get_missing_value, ispresent, LogicalOp)
+from utils import ExplainTypeError
 
 
 class CompoundExpression(Expr):
@@ -79,7 +82,8 @@ class FilteredExpression(FunctionExpression):
             filter_expr = ctx_filter
         else:
             filter_expr = None
-        if filter_expr is not None and getdtype(filter_expr, context) is not bool:
+        if filter_expr is not None and getdtype(filter_expr,
+                                                context) is not bool:
             raise Exception("filter must be a boolean expression")
         return filter_expr
 
@@ -88,13 +92,38 @@ class FilteredExpression(FunctionExpression):
         return '%s(%s%s)' % (self.func_name, self.expr, filter_str)
 
 
+# we need to inherit from ExplainTypeError, so that TypeError exceptions are
+# also "explained" for NumpyFunction
+class FillArgSpecMeta(ExplainTypeError):
+    def __init__(cls, name, bases, dct):
+        super(FillArgSpecMeta, cls).__init__(name, bases, dct)
+
+        npfunc = cls.np_func[0]
+        if npfunc is not None:
+            try:
+                # >>> def a(a, b, c=1, *d, **e):
+                # ...     pass
+                #
+                # >>> inspect.getargspec(a)
+                # ArgSpec(args=['a', 'b', 'c'], varargs='d', keywords='e',
+                #         defaults=(1,))
+                spec = inspect.getargspec(npfunc)
+                cls.arg_names = spec.args
+            except TypeError:
+                if 'arg_names' not in dct:
+                    raise Exception('%s is not a pure-Python function so its '
+                                    'signature needs to be specified '
+                                    'explicitly. See exprmisc.Uniform for an '
+                                    'example' % npfunc.__name__)
+
+
 class NumpyFunction(AbstractExprCall):
+    __metaclass__ = FillArgSpecMeta
+
     func_name = None  # optional (for display)
     np_func = (None,)
-    # arg_names can be set automatically by using inspect.getargspec, but it
-    # only works for pure Python functions, so I decided to avoid it because
-    # when you add a function, it is hard to know whether it is implemented
-    # in C or not.
+    # arg_names is set automatically for pure-python functions, but needs to
+    # be set manually for builtin/C functions.
     arg_names = None
     # all subclasses support a filter keyword-only argument
     kwonlyargnames = ('filter',)
