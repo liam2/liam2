@@ -21,7 +21,7 @@ Miscellaneous improvements
 Fixes
 -----
 
-* fixed something.
+* fixed something (closes :issue:`1`).
 """
 
 
