@@ -17,45 +17,40 @@ class MyBuildExt(build_ext):
         build_ext.finalize_options(self)
         sys.path.insert(0, self.build_lib)
 
+
 ext_modules = [Extension("cpartition", ["cpartition.pyx"],
                          include_dirs=[np.get_include()]),
                Extension("cutils", ["cutils.pyx"],
-                         include_dirs=[np.get_include()])
-              ]
+                         include_dirs=[np.get_include()])]
 build_ext_options = {}
 
 
 # cx_freeze options
-build_exe_options = {
-    # compress zip archive
-    "compressed": True,
-    # optimize pyc files (strip docstrings and asserts)
-    "optimize": 2,
-    # strip paths in __file__ attributes
-    "replace_paths": [("*", "")],
-    "includes": ["matplotlib.backends.backend_qt4agg"],
-    # "includes": ["matplotlib.backends.backend_tkagg"],
-    "excludes": [
-        # linux-specific modules
-        "_codecs", "_codecs_cn", "_codecs_hk", "_codecs_iso2022",
-        "_codecs_jp", "_codecs_kr", "_codecs_tw",
-        # common modules
-        "Tkconstants", "Tkinter",
-        "Cython", "_ssl",
-        "base64", "bz2", "compiler",
-        "doctest", "dummy_thread",
-        "dummy_threading", "email", "ftplib",
-        "logging", "multiprocessing", "nose",
-        "numpy.distutils", "numpy.core._dotblas",
-        "os2emxpath", "pdb", "pkg_resources",
-        "posixpath", "pydoc", "pydoc_topics", "repr", "scipy",
-        "select", "stringprep", "strptime",
-        "tcl", "xml"
-        # matplotlib => calendar, distutils, unicodedata
-        # matplotlib.backends.backend_tkagg => Tkconstants, Tkinter
-        # ctypes, io are required now
-    ]
-}
+build_exe_options = {# compress zip archive
+                     "compressed": True,
+                     # optimize pyc files (strip docstrings and asserts)
+                     "optimize": 2, # strip paths in __file__ attributes
+                     "replace_paths": [("*", "")],
+                     "includes": ["matplotlib.backends.backend_qt4agg"],
+                     # "includes": ["matplotlib.backends.backend_tkagg"],
+                     "excludes": [# linux-specific modules
+                                  "_codecs", "_codecs_cn", "_codecs_hk",
+                                  "_codecs_iso2022", "_codecs_jp", "_codecs_kr",
+                                  "_codecs_tw", # common modules
+                                  "Tkconstants", "Tkinter", "Cython", "_ssl",
+                                  "base64", "bz2", "compiler", "doctest",
+                                  "dummy_thread", "dummy_threading", "email",
+                                  "ftplib", "logging", "multiprocessing",
+                                  "nose", "numpy.distutils",
+                                  "numpy.core._dotblas", "os2emxpath", "pdb",
+                                  "pkg_resources", "posixpath", "pydoc",
+                                  "pydoc_topics", "repr", "scipy", "select",
+                                  "stringprep", "strptime", "tcl", "xml"
+                                  # matplotlib => calendar, distutils,
+                                  # unicodedata
+                                  # matplotlib.backends.backend_tkagg =>
+                                  # Tkconstants, Tkinter
+                                  # ctypes, io are required now]}
 
 
 def int_version(release_name):
@@ -80,10 +75,10 @@ def int_version(release_name):
     pre_pos = release_name.find('-pre')
     rc_pos = release_name.find('-rc')
     if pre_pos != -1:
-        head, tail = release_name[:pre_pos], release_name[pre_pos+4:]
+        head, tail = release_name[:pre_pos], release_name[pre_pos + 4:]
         prefix = '8'
     elif rc_pos != -1:
-        head, tail = release_name[:rc_pos], release_name[rc_pos+3:]
+        head, tail = release_name[:rc_pos], release_name[rc_pos + 3:]
         prefix = '9'
     else:
         return release_name
@@ -93,15 +88,13 @@ def int_version(release_name):
     return head + '.' + str(int(middle) - 1) + patch
 
 
-setup(name="liam2",
-      version=int_version('0.8.0'),  # cx_freeze wants only ints and dots
+setup(name="liam2", version=int_version('0.8.1'),
+      # cx_freeze wants only ints and dots
       description="LIAM2",
 
-      cmdclass={"build_ext": MyBuildExt},
-      ext_modules=ext_modules,
+      cmdclass={"build_ext": MyBuildExt}, ext_modules=ext_modules,
 
-      options={"build_ext": build_ext_options,
-               "build_exe": build_exe_options},
+      options={"build_ext": build_ext_options, "build_exe": build_exe_options},
       executables=[Executable("main.py")],
       requires=['numpy', 'numexpr', 'tables', 'carray'])
-      # also recommends 'matplotlib' and 'vitables'
+# also recommends 'matplotlib' and 'vitables'

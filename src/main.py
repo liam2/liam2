@@ -18,14 +18,14 @@ from data import populate_registry, H5Data
 from upgrade import upgrade
 from view import viewhdf
 
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 
 
 def eat_traceback(func, *args, **kwargs):
-# e.context      | while parsing a block mapping
-# e.context_mark | in "import.yml", line 18, column 9
-# e.problem      | expected <block end>, but found '<block sequence start>'
-# e.problem_mark | in "import.yml", line 29, column 12
+    # e.context      | while parsing a block mapping
+    # e.context_mark | in "import.yml", line 18, column 9
+    # e.problem      | expected <block end>, but found '<block sequence start>'
+    # e.problem_mark | in "import.yml", line 29, column 12
     error_log_path = None
     try:
         try:
@@ -44,8 +44,8 @@ def eat_traceback(func, *args, **kwargs):
                     traceback.print_exc(file=f)
                 error_log_path = error_path
             except IOError, log_ex:
-                print("WARNING: %s on '%s'" % (log_ex.strerror,
-                                               log_ex.filename))
+                print(
+                    "WARNING: %s on '%s'" % (log_ex.strerror, log_ex.filename))
             except Exception, log_ex:
                 print(log_ex)
             raise e
@@ -63,8 +63,9 @@ def eat_traceback(func, *args, **kwargs):
                 msg = e.problem
             mark = e.context_mark
         else:
-            if (e.problem ==
-                    "found character '\\t' that cannot start any token"):
+            if (
+                e.problem == "found character '\\t' that cannot start any "
+                             "token"):
                 msg = "found a TAB character instead of spaces"
             else:
                 msg = ""
@@ -97,19 +98,20 @@ def eat_traceback(func, *args, **kwargs):
 def simulate(args):
     print("Using simulation file: '%s'" % args.file)
 
-    simulation = Simulation.from_yaml(args.file,
-                                      input_dir=args.input_path,
+    simulation = Simulation.from_yaml(args.file, input_dir=args.input_path,
                                       input_file=args.input_file,
                                       output_dir=args.output_path,
                                       output_file=args.output_file)
     simulation.run(args.interactive)
+
+
 #    import cProfile as profile
 #    profile.runctx('simulation.run(args.interactive)', vars(), {},
 #                   'c:\\tmp\\simulation.profile')
-    # to use profiling data:
-    # import pstats
-    # p = pstats.Stats('c:\\tmp\\simulation.profile')
-    # p.strip_dirs().sort_stats('cum').print_stats(30)
+# to use profiling data:
+# import pstats
+# p = pstats.Stats('c:\\tmp\\simulation.profile')
+# p.strip_dirs().sort_stats('cum').print_stats(30)
 
 
 def explore(fpath):
@@ -159,6 +161,7 @@ class PrintVersionsAction(argparse.Action):
 
         try:
             from cpartition import filter_to_indices
+
             del filter_to_indices
             cext = True
         except ImportError:
@@ -173,12 +176,9 @@ numpy {np}
 numexpr {ne}
 pytables {pt}
 carray {ca}
-pyyaml {yml}""".format(py=py_version,
-                       np=numpy.__version__,
-                       ne=numexpr.__version__,
-                       pt=tables.__version__,
-                       ca=carray.__version__,
-                       yml=yaml.__version__))
+pyyaml {yml}""".format(py=py_version, np=numpy.__version__,
+                       ne=numexpr.__version__, pt=tables.__version__,
+                       ca=carray.__version__, yml=yaml.__version__))
         parser.exit()
 
 
@@ -212,7 +212,7 @@ def main():
 
     # create the parser for the "explore" command
     parser_explore = subparsers.add_parser('explore', help='explore data of a '
-                                          'past simulation')
+                                                           'past simulation')
     parser_explore.add_argument('file', help='explore file')
 
     # create the parser for the "upgrade" command
@@ -252,6 +252,7 @@ def main():
     elif action == "view":
         args = display, parsed_args.file
     wrapper(*args)
+
 
 if __name__ == '__main__':
     import sys
