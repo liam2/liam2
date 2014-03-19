@@ -3,14 +3,6 @@
 Change log
 ##########
 
-Version 0.8.1
-=============
-
-Released on 2014-02-xx.
-
-.. include:: changes/version_0_8_1.rst.inc
-
-
 Version 0.8
 ===========
 
