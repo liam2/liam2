@@ -303,12 +303,12 @@ def upload(release_name):
     # website
     chdir(r'build\doc\website\blog\html')
     subprocess.call(r'pscp -r * %s' % base_url)
-    chdir(r'..')
+    chdir(r'..\..\..\..\..')
 
 
 def announce(release_name, changes):
     body = """\
-I am pleased to announce that version 0.8 of LIAM2 is now available.
+I am pleased to announce that version %s of LIAM2 is now available.
 
 The highlights of this release are:
 - x
@@ -317,14 +317,14 @@ The highlights of this release are:
 More details and the complete list of changes are available below.
 
 This new release can be downloaded on our website:
-http://liam2.plan.be
+http://liam2.plan.be/pages/download.html
 
 As always, *any* feedback is very welcome, preferably on the liam2-users
-mailing list: liam2-users@googlegroups.com (you need to register to be able to
-post).
+mailing list: liam2-users@googlegroups.com (you need to register to be
+able to post).
 
 %s
-""" % changes
+""" % (short(release_name), changes)
     # preselectid='id1' selects the first "identity" for the "from" field
     # We do not use our usual call because the command returns an exit status
     # of 1 (failure) instead of 0, even if it works, so we simply ignore
