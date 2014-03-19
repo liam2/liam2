@@ -403,7 +403,7 @@ def make_release(release_name=None, branch=None):
         test_release = True
         fpath = "doc\usersguide\source\changes\\" + relname2fname(release_name)
         with open(fpath) as f:
-            changes = f.read()
+            changes = f.read().decode('utf-8-sig')
             print(changes)
         if no('Does this changelog look good?'):
             exit(1)
