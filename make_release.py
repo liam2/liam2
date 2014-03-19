@@ -268,7 +268,8 @@ def build_website(release_name):
              version=release_name, short_version=short(release_name))
 
     title = 'Version %s released' % short(release_name)
-    fname = call('tinker -f -p "%s"' % title)
+    # strip is important otherwise it contains a \n and git chokes on it
+    fname = call('tinker -f -p "%s"' % title).strip()
 
     call('buildall.bat')
 
@@ -279,7 +280,9 @@ def build_website(release_name):
     if no('Does the website look good?'):
         exit(1)
 
-    call('git commit %s' % fname)
+    call('git add master.rst')
+    call('git add %s' % fname)
+    call('git commit -m "announce version %s on website"' % short(release_name))
     do('Git-pushing website', call, 'git push')
 
     chdir(r'..\..\..')
