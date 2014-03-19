@@ -1,4 +1,4 @@
-New features
+﻿New features
 ------------
 
 * added a few functions to create charts (courtesy of `matplotlib
