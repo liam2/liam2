@@ -171,7 +171,8 @@ def update_changelog(release_name):
         lines[5:5] = this_version
     with open(fpath, 'w') as f:
         f.writelines(lines)
-    call('git commit %s' % fpath)
+    call('git commit -m "include release changes (%s) in changes.rst" %s' % (
+    fname, fpath))
     do('pushing changes.rst', call, 'git push')
 
 
