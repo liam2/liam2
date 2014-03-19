@@ -354,7 +354,9 @@ def make_release(release_name=None, branch='master'):
     # the only drawback I see is that I could miss changes from others, but
     # we are not there yet :)
 
-    repository = call('git config --get remote.origin.url')
+    # git ls-remote does not seem to support user-tagged urls
+    # repository = call('git config --get remote.origin.url')
+    repository = 'https://github.com/liam2/liam2.git'
 
     status = call('git status -s')
     lines = status.splitlines()
