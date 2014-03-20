@@ -160,12 +160,12 @@ class Chart(Expr, FileProducer):
     set_yaxis = _set_axis_method('y')
     set_zaxis = _set_axis_method('z')
 
-    def set_legend(self, axis, colors, **kwargs):
+    def set_legend(self, axis, colors):
         # we don't want a legend when there is only one item
         if len(axis) < 2:
             return
         proxies = [plt.Rectangle((0, 0), 1, 1, fc=color) for color in colors]
-        plt.legend(proxies, axis.labels, title=axis.name, **kwargs)
+        plt.legend(proxies, axis.labels, title=axis.name)
 
     def set_axes(self, axes, maxticks=20, projection=None):
         ndim = len(axes)
