@@ -14,32 +14,24 @@ from utils import LabeledArray, FileProducer
 
 
 class Show(Expr):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args):
         Expr.__init__(self)
         self.args = args
-        self.print_exprs = kwargs.pop('print_exprs', False)
-        if kwargs:
-            kwarg, _ = kwargs.popitem()
-            raise TypeError("'%s' is an invalid keyword argument for show()"
-                            % kwarg)
 
     def traverse(self, context):
         for arg in self.args:
             for node in traverse_expr(arg, context):
                 yield node
 
+    def print_values(self, values):
+        print(' '.join(str(v) for v in values), end=' ')
+
     def evaluate(self, context):
         if config.skip_shows:
             print("show skipped", end=' ')
         else:
             values = [expr_eval(expr, context) for expr in self.args]
-            if self.print_exprs:
-                titles = [str(expr) for expr in self.args]
-                print('\n'.join('%s: %s' % (title, value)
-                                for title, value in zip(titles, values)),
-                      end=' ')
-            else:
-                print(' '.join(str(v) for v in values), end=' ')
+            self.print_values(values)
 
     def __str__(self):
         #TODO: the differentiation shouldn't be needed. I guess I should
@@ -50,8 +42,11 @@ class Show(Expr):
 
 
 class QuickShow(Show):
-    def __init__(self, *args):
-        Show.__init__(self, *args, print_exprs=True)
+    def print_values(self, values):
+        titles = [str(expr) for expr in self.args]
+        print('\n'.join('%s: %s' % (title, value)
+                        for title, value in zip(titles, values)),
+              end=' ')
 
     def __str__(self):
         return Show.__str__(self).replace('show(', 'qshow(')
