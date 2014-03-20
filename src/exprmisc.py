@@ -14,7 +14,7 @@ from exprbases import (EvaluableExpression, CompoundExpression, NumexprFunction,
                        FunctionExpression, TableExpression, NumpyRandom,
                        NumpyChangeArray)
 from context import context_length
-from utils import PrettyTable
+from utils import PrettyTable, argspec
 
 
 #TODO: implement functions in expr to generate "Expr" nodes at the python level
@@ -175,17 +175,17 @@ class Sort(NumpyChangeArray):
 
 class Uniform(NumpyRandom):
     np_func = (np.random.uniform,)
-    arg_names = ('low', 'high', 'size')
+    argspec = argspec(('low', 0.0), ('high', 1.0), ('size', 1))
 
 
 class Normal(NumpyRandom):
     np_func = (np.random.normal,)
-    arg_names = ('loc', 'scale', 'size')
+    argspec = argspec(('loc', 0.0), ('scale', 1.0), ('size', None))
 
 
 class RandInt(NumpyRandom):
     np_func = (np.random.randint,)
-    arg_names = ('low', 'high', 'size')
+    argspec = argspec('low', ('high', None), ('size', None))
 
     #noinspection PyUnusedLocal
     def dtype(self, context):
@@ -293,7 +293,6 @@ class Choice(EvaluableExpression):
 class Round(NumpyChangeArray):
     func_name = 'round'  # np.round redirects to np.round_
     np_func = (np.round,)
-    arg_names = ('a', 'decimals', 'out')
 
     def dtype(self, context):
         # result dtype is the same as the input dtype
@@ -641,8 +640,9 @@ class Where(Expr):
         return Where(cond, iftrue, iffalse)
 
     def as_string(self):
-        return "where(%s, %s, %s)" % (
-        as_string(self.cond), as_string(self.iftrue), as_string(self.iffalse))
+        return "where(%s, %s, %s)" % (as_string(self.cond),
+                                      as_string(self.iftrue),
+                                      as_string(self.iffalse))
 
     def __str__(self):
         return "if(%s, %s, %s)" % (self.cond, self.iftrue, self.iffalse)
@@ -654,13 +654,15 @@ class Where(Expr):
         return coerce_types(context, self.iftrue, self.iffalse)
 
 
-functions = {# random
-             'uniform': Uniform, 'normal': Normal, 'choice': Choice,
-             'randint': RandInt, # element-wise functions
-             # Min and Max are in aggregates.py.functions (because of the
-             # dispatcher)
-             'abs': Abs, 'clip': Clip, 'zeroclip': ZeroClip, 'round': Round,
-             'trunc': Trunc, 'exp': Exp, 'log': Log, 'logit': Logit,
-             'logistic': Logistic, 'where': Where, # misc
-             'sort': Sort, 'new': CreateIndividual, 'clone': Clone,
-             'dump': Dump, }
+functions = {
+    # random
+    'uniform': Uniform, 'normal': Normal, 'choice': Choice,
+    'randint': RandInt, # element-wise functions
+    # Min and Max are in aggregates.py.functions (because of the
+    # dispatcher)
+    'abs': Abs, 'clip': Clip, 'zeroclip': ZeroClip, 'round': Round,
+    'trunc': Trunc, 'exp': Exp, 'log': Log, 'logit': Logit,
+    'logistic': Logistic, 'where': Where, # misc
+    'sort': Sort, 'new': CreateIndividual, 'clone': Clone,
+    'dump': Dump
+}

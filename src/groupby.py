@@ -4,13 +4,15 @@ import numpy as np
 
 from expr import expr_eval, collect_variables, traverse_expr
 from exprbases import TableExpression
-from utils import prod, LabeledArray
+from utils import prod, LabeledArray, argspec
 from aggregates import Count
 from partition import partition_nd
 
 
 class GroupBy(TableExpression):
 #    func_name = 'groupby'
+
+    argspec = argspec(expr=None, filter=None, percent=False, pvalues=None)
 
     #noinspection PyNoneFunctionAssignment
     def __init__(self, *args, **kwargs):

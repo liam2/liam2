@@ -11,20 +11,6 @@ decision
 rough steps to implement
 ========================
 
-1) change arg_names to "signature" (which includes varargs and default values)
-   use the same format as argspec?
-   ('a', ('loc', 0.0), ('scale', 1.0), ('size', None), '*a', '**k'))
-   FullArgSpec(args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations)
-    inspect.getfullargspec(func)
-
-   - args is a list of the argument names.
-   - varargs and varkw are the names of the * and ** arguments or None.
-   - defaults is an n-tuple of the default values of the last n arguments,
-     or None if there are no default arguments.
-   - kwonlyargs is a list of keyword-only argument names.
-   - kwonlydefaults is a dictionary mapping names from kwonlyargs to defaults.
-   - annotations is a dictionary mapping argument names to annotations.
-2) manually add signature for numpy random generators
 3) make sure filter and skip_na args are added correctly to the signature of
    np aggregates
 4) manually add signature for functions using varargs/kw-only args

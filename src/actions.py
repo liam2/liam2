@@ -10,7 +10,7 @@ from expr import Expr, expr_eval, traverse_expr
 from exprbases import TableExpression
 from process import BreakpointException
 from partition import filter_to_indices
-from utils import LabeledArray, FileProducer
+from utils import LabeledArray, FileProducer, argspec
 
 
 class Show(Expr):
@@ -55,6 +55,8 @@ class QuickShow(Show):
 class CSV(Expr, FileProducer):
     ext = '.csv'
     fname_required = True
+
+    argspec = argspec(mode='w', **FileProducer.argspec.kwonlydefaults)
 
     #noinspection PyNoneFunctionAssignment
     def __init__(self, *args, **kwargs):

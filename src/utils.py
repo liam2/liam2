@@ -10,7 +10,7 @@ import operator
 import itertools
 from itertools import izip, product
 from textwrap import wrap
-from collections import defaultdict, deque
+from collections import defaultdict, deque, namedtuple
 import warnings
 
 import numpy as np
@@ -1062,7 +1062,33 @@ class ExplainTypeError(type):
             raise TypeError(msg)
 
 
+FullArgSpec = namedtuple('FullArgSpec',
+                         'args, varargs, varkw, defaults, kwonlyargs, '
+                         'kwonlydefaults, annotations')
+
+
+def argspec(*args, **kwonlyargs):
+    """
+    args = argument names. Arguments with a default value must be
+    given as a ('name', value) tuple.
+    if there is any kwonly argument, we assume there are also a varargs
+    variable named 'args'.
+    >>> argspec('a', 'b', ('c', 1), 'd'=None)
+    FullArgSpec(args=['a', 'b', 'c', varargs='args', varkw=None, defaults=(1,),
+                kwonlyargs=['d'], kwonlydefaults={'d': None}, annotations={})
+    """
+    defaults = [a[1] for a in args if isinstance(a, tuple)]
+    assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
+    args = [a[0] if isinstance(a, tuple) else a for a in args]
+    varargs = 'args' if kwonlyargs else None
+    return FullArgSpec(args, varargs, None, defaults,
+                       kwonlyargs=kwonlyargs.keys(), kwonlydefaults=kwonlyargs,
+                       annotations=None)
+
+
 class FileProducer(object):
+    argspec = argspec(suffix='', fname=None)
+
     # default extension if only suffix is defined
     ext = None
     # do we need to return a file name if neither suffix nor fname are defined?

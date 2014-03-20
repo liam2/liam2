@@ -9,7 +9,7 @@ from context import context_length
 from expr import (Expr, AbstractExprCall, EvaluableExpression, expr_eval,
                   traverse_expr, getdtype, as_simple_expr, as_string,
                   get_missing_value, ispresent, LogicalOp)
-from utils import ExplainTypeError
+from utils import ExplainTypeError, FullArgSpec
 
 
 class CompoundExpression(Expr):
@@ -108,9 +108,9 @@ class FillArgSpecMeta(ExplainTypeError):
                 # ArgSpec(args=['a', 'b', 'c'], varargs='d', keywords='e',
                 #         defaults=(1,))
                 spec = inspect.getargspec(npfunc)
-                cls.arg_names = spec.args
+                cls.argspec = FullArgSpec._make(spec + ([], {}, {}))
             except TypeError:
-                if 'arg_names' not in dct:
+                if 'argspec' not in dct:
                     raise Exception('%s is not a pure-Python function so its '
                                     'signature needs to be specified '
                                     'explicitly. See exprmisc.Uniform for an '
@@ -122,18 +122,18 @@ class NumpyFunction(AbstractExprCall):
 
     func_name = None  # optional (for display)
     np_func = (None,)
-    # arg_names is set automatically for pure-python functions, but needs to
+    # argspec is set automatically for pure-python functions, but needs to
     # be set manually for builtin/C functions.
-    arg_names = None
+    argspec = None
     # all subclasses support a filter keyword-only argument
     kwonlyargnames = ('filter',)
 
     def __init__(self, *args, **kwargs):
-        if len(args) > len(self.arg_names):
+        if len(args) > len(self.argspec.args):
             # + 1 to be consistent with Python (to account for self)
             raise TypeError("takes at most %d arguments (%d given)" %
-                            (len(self.arg_names) + 1, len(args) + 1))
-        allowed_kwargs = set(self.arg_names) | set(self.kwonlyargnames)
+                            (len(self.argspec.args) + 1, len(args) + 1))
+        allowed_kwargs = set(self.argspec.args) | set(self.kwonlyargnames)
         extra_kwargs = set(kwargs.keys()) - allowed_kwargs
         if extra_kwargs:
             extra_kwargs = [repr(arg) for arg in extra_kwargs]
@@ -143,7 +143,7 @@ class NumpyFunction(AbstractExprCall):
         # move as many kwargs as possible to args
         extra_args = []
         # loop over potential args passed as keyword args
-        for a in self.arg_names[len(args):]:
+        for a in self.argspec.args[len(args):]:
             if a in kwargs:
                 extra_args.append(kwargs.pop(a))
             else:
@@ -161,7 +161,7 @@ class NumpyFunction(AbstractExprCall):
 class NumpyChangeArray(NumpyFunction):
     def __init__(self, *args, **kwargs):
         # the first argument should be the array to work on ('a')
-        assert self.arg_names[0] == 'a'
+        assert self.argspec.args[0] == 'a'
         NumpyFunction.__init__(self, *args, **kwargs)
 
     def _compute(self, *args, **kwargs):
@@ -197,7 +197,7 @@ class NumpyCreateArray(NumpyFunction):
 class NumpyRandom(NumpyCreateArray):
     def _eval_args(self, context):
         args, kwargs = NumpyCreateArray._eval_args(self, context)
-        if 'size' in self.arg_names and 'size' not in kwargs:
+        if 'size' in self.argspec.args and 'size' not in kwargs:
             kwargs['size'] = context_length(context)
         return args, kwargs
 
@@ -217,7 +217,7 @@ class NumpyAggregate(NumpyFunction):
 
     def __init__(self, *args, **kwargs):
         # the first argument should be the array to work on ('a')
-        assert self.arg_names[0] == 'a'
+        assert self.argspec.args[0] == 'a'
         NumpyFunction.__init__(self, *args, **kwargs)
 
     def _compute(self, *args, **kwargs):
