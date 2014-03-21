@@ -175,17 +175,20 @@ class Sort(NumpyChangeArray):
 
 class Uniform(NumpyRandom):
     np_func = (np.random.uniform,)
-    argspec = argspec(('low', 0.0), ('high', 1.0), ('size', 1))
+    argspec = argspec(('low', 0.0), ('high', 1.0), ('size', 1),
+                      **NumpyRandom.kwonlyargs)
 
 
 class Normal(NumpyRandom):
     np_func = (np.random.normal,)
-    argspec = argspec(('loc', 0.0), ('scale', 1.0), ('size', None))
+    argspec = argspec(('loc', 0.0), ('scale', 1.0), ('size', None),
+                      **NumpyRandom.kwonlyargs)
 
 
 class RandInt(NumpyRandom):
     np_func = (np.random.randint,)
-    argspec = argspec('low', ('high', None), ('size', None))
+    argspec = argspec('low', ('high', None), ('size', None),
+                      **NumpyRandom.kwonlyargs)
 
     #noinspection PyUnusedLocal
     def dtype(self, context):

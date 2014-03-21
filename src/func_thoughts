@@ -11,9 +11,7 @@ decision
 rough steps to implement
 ========================
 
-3) make sure filter and skip_na args are added correctly to the signature of
-   np aggregates
-4) manually add signature for functions using varargs/kw-only args
+4) manually add signature for functions using varargs/kw-only args:
    groupby, show/qshow, csv, charts, min(x, y, z), dump
 5) get signature for (non-numpy) "simple" functions from inspect(compute)
    if **kw present and no manual signature present => raise

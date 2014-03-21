@@ -101,18 +101,19 @@ class FillArgSpecMeta(ExplainTypeError):
         npfunc = cls.np_func[0]
         # make sure we are not on one of the Abstract base class
         if npfunc is not None:
-            try:
-                # >>> def a(a, b, c=1, *d, **e):
-                # ...     pass
-                #
-                # >>> inspect.getargspec(a)
-                # ArgSpec(args=['a', 'b', 'c'], varargs='d', keywords='e',
-                #         defaults=(1,))
-                spec = inspect.getargspec(npfunc)
-                extra = (cls.kwonlyargs.keys(), cls.kwonlyargs, {})
-                cls.argspec = FullArgSpec._make(spec + extra)
-            except TypeError:
-                if 'argspec' not in dct:
+            argspec = dct.get('argspec')
+            if argspec is None:
+                try:
+                    # >>> def a(a, b, c=1, *d, **e):
+                    # ...     pass
+                    #
+                    # >>> inspect.getargspec(a)
+                    # ArgSpec(args=['a', 'b', 'c'], varargs='d', keywords='e',
+                    #         defaults=(1,))
+                    spec = inspect.getargspec(npfunc)
+                    extra = (cls.kwonlyargs.keys(), cls.kwonlyargs, {})
+                    cls.argspec = FullArgSpec._make(spec + extra)
+                except TypeError:
                     raise Exception('%s is not a pure-Python function so its '
                                     'signature needs to be specified '
                                     'explicitly. See exprmisc.Uniform for an '
