@@ -99,6 +99,7 @@ class FillArgSpecMeta(ExplainTypeError):
         super(FillArgSpecMeta, cls).__init__(name, bases, dct)
 
         npfunc = cls.np_func[0]
+        # make sure we are not on one of the Abstract base class
         if npfunc is not None:
             try:
                 # >>> def a(a, b, c=1, *d, **e):
@@ -108,7 +109,8 @@ class FillArgSpecMeta(ExplainTypeError):
                 # ArgSpec(args=['a', 'b', 'c'], varargs='d', keywords='e',
                 #         defaults=(1,))
                 spec = inspect.getargspec(npfunc)
-                cls.argspec = FullArgSpec._make(spec + ([], {}, {}))
+                extra = (cls.kwonlyargs.keys(), cls.kwonlyargs, {})
+                cls.argspec = FullArgSpec._make(spec + extra)
             except TypeError:
                 if 'argspec' not in dct:
                     raise Exception('%s is not a pure-Python function so its '
@@ -126,14 +128,14 @@ class NumpyFunction(AbstractExprCall):
     # be set manually for builtin/C functions.
     argspec = None
     # all subclasses support a filter keyword-only argument
-    kwonlyargnames = ('filter',)
+    kwonlyargs = {'filter': None}
 
     def __init__(self, *args, **kwargs):
         if len(args) > len(self.argspec.args):
             # + 1 to be consistent with Python (to account for self)
             raise TypeError("takes at most %d arguments (%d given)" %
                             (len(self.argspec.args) + 1, len(args) + 1))
-        allowed_kwargs = set(self.argspec.args) | set(self.kwonlyargnames)
+        allowed_kwargs = set(self.argspec.args) | set(self.kwonlyargs.keys())
         extra_kwargs = set(kwargs.keys()) - allowed_kwargs
         if extra_kwargs:
             extra_kwargs = [repr(arg) for arg in extra_kwargs]
@@ -213,7 +215,7 @@ class NumpyRandom(NumpyCreateArray):
 
 class NumpyAggregate(NumpyFunction):
     nan_func = (None,)
-    kwonlyargnames = ('filter', 'skip_na')
+    kwonlyargs = {'filter': None, 'skip_na': True}
 
     def __init__(self, *args, **kwargs):
         # the first argument should be the array to work on ('a')
