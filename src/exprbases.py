@@ -93,36 +93,8 @@ class FilteredExpression(FunctionExpression):
 class NumpyFunction(AbstractExprCall):
     func_name = None  # optional (for display)
     np_func = (None,)
-    # argspec is set automatically for pure-python functions, but needs to
-    # be set manually for builtin/C functions.
-    argspec = None
     # all subclasses support a filter keyword-only argument
     kwonlyargs = {'filter': None}
-
-    def __init__(self, *args, **kwargs):
-        if len(args) > len(self.argspec.args):
-            # + 1 to be consistent with Python (to account for self)
-            raise TypeError("takes at most %d arguments (%d given)" %
-                            (len(self.argspec.args) + 1, len(args) + 1))
-        allowed_kwargs = set(self.argspec.args) | set(self.kwonlyargs.keys())
-        extra_kwargs = set(kwargs.keys()) - allowed_kwargs
-        if extra_kwargs:
-            extra_kwargs = [repr(arg) for arg in extra_kwargs]
-            raise TypeError("got an unexpected keyword argument %s" %
-                            extra_kwargs[0])
-
-        # move as many kwargs as possible to args
-        extra_args = []
-        # loop over potential args passed as keyword args
-        for a in self.argspec.args[len(args):]:
-            if a in kwargs:
-                extra_args.append(kwargs.pop(a))
-            else:
-                # we stop at the first missing arg (other args can still be
-                # passed as keyword arguments, but we cannot convert them).
-                break
-        args = args + tuple(extra_args)
-        AbstractExprCall.__init__(self, *args, **kwargs)
 
     @classmethod
     def get_compute_func(cls):

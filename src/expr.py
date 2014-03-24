@@ -391,6 +391,7 @@ class Expr(object):
 
 class EvaluableExpression(Expr):
     __fields__ = ('kind', 'value', 'children')
+
     def evaluate(self, context):
         raise NotImplementedError()
 
@@ -531,6 +532,9 @@ class AbstractExprCall(EvaluableExpression):
 
     funcname = None
 
+    # argspec is set automatically for pure-python functions, but needs to
+    # be set manually for builtin/C functions.
+    argspec = None
     kwonlyargs = {}
 
     @classmethod
@@ -538,6 +542,29 @@ class AbstractExprCall(EvaluableExpression):
         return cls._compute
 
     def __init__(self, *args, **kwargs):
+        if len(args) > len(self.argspec.args):
+            # + 1 to be consistent with Python (to account for self)
+            raise TypeError("takes at most %d arguments (%d given)" %
+                            (len(self.argspec.args) + 1, len(args) + 1))
+        allowed_kwargs = set(self.argspec.args) | set(self.kwonlyargs.keys())
+        extra_kwargs = set(kwargs.keys()) - allowed_kwargs
+        if extra_kwargs:
+            print(self.__class__, args, kwargs)
+            extra_kwargs = [repr(arg) for arg in extra_kwargs]
+            raise TypeError("got an unexpected keyword argument %s" %
+                            extra_kwargs[0])
+
+        # move as many kwargs as possible to args
+        extra_args = []
+        # loop over potential args passed as keyword args
+        for a in self.argspec.args[len(args):]:
+            if a in kwargs:
+                extra_args.append(kwargs.pop(a))
+            else:
+                # we stop at the first missing arg (other args can still be
+                # passed as keyword arguments, but we cannot convert them).
+                break
+        args = args + tuple(extra_args)
         Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
 
     def _eval_args(self, context):
@@ -568,6 +595,13 @@ class AbstractExprCall(EvaluableExpression):
 
 
 class GenericExprCall(AbstractExprCall):
+    # GenericExprCall is (currently) only used for calling ndarray methods,
+    # which are all builtin methods for which we do not have signatures,
+    # so we cannot (at this point) check arguments nor convert kwargs to args,
+    # so we deliberately do not call AbstractExprCall.__init__ which does both
+    def __init__(self, *args, **kwargs):
+        Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
+
     @property
     def funcname(self):
         return str(self.children[0][0])
