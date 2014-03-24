@@ -488,6 +488,11 @@ entities:
                 - assertEqual(age, backup + 1)
                 - age: backup
 
+            test_trunc:
+                - diff: (age / 5) - trunc(age / 5)
+                - assertTrue(all(0.0 <= diff and diff < 1.0))
+                - assertTrue(any(diff > 0.0) and any(diff == 0.0))
+
             test_logit:
                 - float_field: age / 120.0
                 - assertNanEqual(logit(float_field),
@@ -2212,6 +2217,7 @@ simulation:
                    temp_global_check,
 
                    test_expr,
+                   test_trunc,
                    agegroup,
 
                    # test the charts before test_new messes the demography
