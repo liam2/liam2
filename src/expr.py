@@ -1,10 +1,12 @@
 from __future__ import division, print_function
 
+import inspect
 from collections import Counter
 
 import numpy as np
 
-from utils import LabeledArray, ExplainTypeError, safe_take, IrregularNDArray
+from utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray,
+                   FullArgSpec)
 from context import EntityContext, EvaluationContext
 
 try:
@@ -490,12 +492,50 @@ class ExprAttribute(EvaluableExpression):
         return GenericExprCall(self, *args, **kwargs)
 
 
+# we need to inherit from ExplainTypeError, so that TypeError exceptions are
+# also "explained" for functions using FillArgSpecMeta
+#XXX: it might be a good idea to merge both
+class FillArgSpecMeta(ExplainTypeError):
+    def __init__(cls, name, bases, dct):
+        super(FillArgSpecMeta, cls).__init__(name, bases, dct)
+
+        compute = cls.get_compute_func()
+
+        # make sure we are not on one of the Abstract base class
+        if compute is not None:
+            argspec = dct.get('argspec')
+            if argspec is None:
+                try:
+                    # >>> def a(a, b, c=1, *d, **e):
+                    # ...     pass
+                    #
+                    # >>> inspect.getargspec(a)
+                    # ArgSpec(args=['a', 'b', 'c'], varargs='d', keywords='e',
+                    #         defaults=(1,))
+                    spec = inspect.getargspec(compute)
+                    extra = (cls.kwonlyargs.keys(), cls.kwonlyargs, {})
+                    cls.argspec = FullArgSpec._make(spec + extra)
+                except TypeError:
+                    raise Exception('%s is not a pure-Python function so its '
+                                    'signature needs to be specified '
+                                    'explicitly. See exprmisc.Uniform for an '
+                                    'example' % compute.__name__)
+
+
 #TODO: factorize with NumpyFunction & FunctionExpression
 class AbstractExprCall(EvaluableExpression):
     """
     base class
     """
+    __metaclass__ = FillArgSpecMeta
+
     funcname = None
+
+    kwonlyargs = {}
+
+    @classmethod
+    def get_compute_func(cls):
+        return cls._compute
 
     def __init__(self, *args, **kwargs):
         Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))

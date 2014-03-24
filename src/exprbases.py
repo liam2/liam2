@@ -1,7 +1,5 @@
 from __future__ import print_function
 
-import inspect
-
 import numpy as np
 
 import config
@@ -92,37 +90,7 @@ class FilteredExpression(FunctionExpression):
         return '%s(%s%s)' % (self.func_name, self.expr, filter_str)
 
 
-# we need to inherit from ExplainTypeError, so that TypeError exceptions are
-# also "explained" for NumpyFunction
-class FillArgSpecMeta(ExplainTypeError):
-    def __init__(cls, name, bases, dct):
-        super(FillArgSpecMeta, cls).__init__(name, bases, dct)
-
-        npfunc = cls.np_func[0]
-        # make sure we are not on one of the Abstract base class
-        if npfunc is not None:
-            argspec = dct.get('argspec')
-            if argspec is None:
-                try:
-                    # >>> def a(a, b, c=1, *d, **e):
-                    # ...     pass
-                    #
-                    # >>> inspect.getargspec(a)
-                    # ArgSpec(args=['a', 'b', 'c'], varargs='d', keywords='e',
-                    #         defaults=(1,))
-                    spec = inspect.getargspec(npfunc)
-                    extra = (cls.kwonlyargs.keys(), cls.kwonlyargs, {})
-                    cls.argspec = FullArgSpec._make(spec + extra)
-                except TypeError:
-                    raise Exception('%s is not a pure-Python function so its '
-                                    'signature needs to be specified '
-                                    'explicitly. See exprmisc.Uniform for an '
-                                    'example' % npfunc.__name__)
-
-
 class NumpyFunction(AbstractExprCall):
-    __metaclass__ = FillArgSpecMeta
-
     func_name = None  # optional (for display)
     np_func = (None,)
     # argspec is set automatically for pure-python functions, but needs to
@@ -155,6 +123,10 @@ class NumpyFunction(AbstractExprCall):
                 break
         args = args + tuple(extra_args)
         AbstractExprCall.__init__(self, *args, **kwargs)
+
+    @classmethod
+    def get_compute_func(cls):
+        return cls.np_func[0]
 
     @property
     def func_name(self):
