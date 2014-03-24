@@ -9,10 +9,9 @@ import config
 from expr import (Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
                   as_string, collect_variables, traverse_expr,
-                  get_missing_record, get_missing_vector)
+                  get_missing_record, get_missing_vector, AbstractExprCall)
 from exprbases import (EvaluableExpression, CompoundExpression, NumexprFunction,
-                       FunctionExpression, TableExpression, NumpyRandom,
-                       NumpyChangeArray)
+                       TableExpression, NumpyRandom, NumpyChangeArray)
 from context import context_length
 from utils import PrettyTable, argspec
 
@@ -304,11 +303,11 @@ class Round(NumpyChangeArray):
         return res
 
 
-class Trunc(FunctionExpression):
+class Trunc(AbstractExprCall):
     func_name = 'trunc'
 
-    def evaluate(self, context):
-        return expr_eval(self.expr, context).astype(int)
+    def _compute(self, expr):
+        return expr.astype(int)
 
     def dtype(self, context):
         assert getdtype(self.expr, context) == float
