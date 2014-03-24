@@ -189,6 +189,7 @@ class ProcessGroup(AbstractProcessGroup):
         self.subprocesses = subprocesses
         self.calls = collections.Counter()
         self.purge = purge
+        self.versions = {}
 
     def attach(self, name, entity):
         assert name == self.name
