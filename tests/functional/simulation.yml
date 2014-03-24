@@ -493,7 +493,7 @@ entities:
                 - assertTrue(all(0.0 <= diff and diff < 1.0))
                 - assertTrue(any(diff > 0.0) and any(diff == 0.0))
 
-#TODO: move these test somewhere more appropriate
+#TODO: move these tests somewhere more appropriate
                 # this tests the argument-checking code for "_compute"-based
                 # functions.
 #                - trunc()

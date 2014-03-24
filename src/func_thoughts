@@ -15,10 +15,6 @@ rough steps to implement
    groupby, show/qshow, csv, charts, min(x, y, z), dump
 5) get signature for (non-numpy) "simple" functions from inspect(compute)
    if **kw present and no manual signature present => raise
-6) move the "signature is present" check to AbstractExprCall
-7) using signature, store all args & kwargs in args and kwonlyargs (I think
-   it's better than kwargs because you do not need to sort them again to display
-   them or do anything else wh them)
 8) add __no_eval__ field to "non-simple" functions
 9) eval all args (except those in __no_eval__) in non-simple functions
 10) update non-simple functions to use compute(context, *a, **kw) instead of
