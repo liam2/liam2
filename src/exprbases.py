@@ -7,7 +7,7 @@ from context import context_length
 from expr import (Expr, AbstractExprCall, EvaluableExpression, expr_eval,
                   traverse_expr, getdtype, as_simple_expr, as_string,
                   get_missing_value, ispresent, LogicalOp)
-from utils import ExplainTypeError, FullArgSpec
+from utils import ExplainTypeError, FullArgSpec, classproperty
 
 
 class CompoundExpression(Expr):
@@ -91,7 +91,6 @@ class FilteredExpression(FunctionExpression):
 
 
 class NumpyFunction(AbstractExprCall):
-    func_name = None  # optional (for display)
     np_func = (None,)
     # all subclasses support a filter keyword-only argument
     kwonlyargs = {'filter': None}
@@ -100,9 +99,11 @@ class NumpyFunction(AbstractExprCall):
     def get_compute_func(cls):
         return cls.np_func[0]
 
-    @property
-    def func_name(self):
-        return self.np_func[0].__name__
+    # subclasses can override this by a class-constant
+    @classproperty
+    @classmethod
+    def func_name(cls):
+        return cls.np_func[0].__name__
 
 
 class NumpyChangeArray(NumpyFunction):

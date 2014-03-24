@@ -20,6 +20,11 @@ import numexpr as ne
 import config
 
 
+class classproperty(property):
+    def __get__(self, cls, owner):
+        return self.fget.__get__(None, owner)()
+
+
 class ExceptionOnGetAttr(object):
     """
     ExceptionOnGetAttr can be used when an optional part is missing
