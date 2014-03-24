@@ -1,5 +1,6 @@
 from __future__ import division, print_function
 
+import types
 import inspect
 from collections import Counter
 
@@ -503,24 +504,32 @@ class FillArgSpecMeta(ExplainTypeError):
         compute = cls.get_compute_func()
 
         # make sure we are not on one of the Abstract base class
-        if compute is not None:
-            argspec = dct.get('argspec')
-            if argspec is None:
-                try:
-                    # >>> def a(a, b, c=1, *d, **e):
-                    # ...     pass
-                    #
-                    # >>> inspect.getargspec(a)
-                    # ArgSpec(args=['a', 'b', 'c'], varargs='d', keywords='e',
-                    #         defaults=(1,))
-                    spec = inspect.getargspec(compute)
-                    extra = (cls.kwonlyargs.keys(), cls.kwonlyargs, {})
-                    cls.argspec = FullArgSpec._make(spec + extra)
-                except TypeError:
-                    raise Exception('%s is not a pure-Python function so its '
-                                    'signature needs to be specified '
-                                    'explicitly. See exprmisc.Uniform for an '
-                                    'example' % compute.__name__)
+        if compute is None:
+            return
+
+        argspec = dct.get('argspec')
+        if argspec is None:
+            try:
+                # >>> def a(a, b, c=1, *d, **e):
+                # ...     pass
+                #
+                # >>> inspect.getargspec(a)
+                # ArgSpec(args=['a', 'b', 'c'], varargs='d', keywords='e',
+                #         defaults=(1,))
+                spec = inspect.getargspec(compute)
+            except TypeError:
+                raise Exception('%s is not a pure-Python function so its '
+                                'signature needs to be specified '
+                                'explicitly. See exprmisc.Uniform for an '
+                                'example' % compute.__name__)
+            if isinstance(compute, types.MethodType):
+                # for methods, strip "self" arg
+                spec = (spec.args[1:],) + spec[1:]
+            extra = (cls.kwonlyargs.keys(), cls.kwonlyargs, {})
+            cls.argspec = FullArgSpec._make(spec + extra)
+
+    def get_compute_func(cls):
+        raise NotImplementedError()
 
 
 #TODO: factorize with NumpyFunction & FunctionExpression
@@ -530,7 +539,7 @@ class AbstractExprCall(EvaluableExpression):
     """
     __metaclass__ = FillArgSpecMeta
 
-    funcname = None
+    func_name = None
 
     # argspec is set automatically for pure-python functions, but needs to
     # be set manually for builtin/C functions.
@@ -542,14 +551,27 @@ class AbstractExprCall(EvaluableExpression):
         return cls._compute
 
     def __init__(self, *args, **kwargs):
-        if len(args) > len(self.argspec.args):
-            # + 1 to be consistent with Python (to account for self)
-            raise TypeError("takes at most %d arguments (%d given)" %
-                            (len(self.argspec.args) + 1, len(args) + 1))
+        maxargs = len(self.argspec.args)
+
+        # check that we have enough args
+        defaults = self.argspec.defaults
+        req_args = maxargs - len(defaults) if defaults is not None else 0
+        if len(args) < req_args:
+            #TODO: correct plural/singlular for "arguments"
+            raise TypeError("%s() takes at least %d arguments (%d given)" %
+                            (self.func_name, req_args + 1, len(args) + 1))
+
+        # check that we do not have too many args
+        if len(args) > maxargs:
+            # + 1 to be consistent with Python (to account for self) but
+            # those will be modified again (-1) in ExplainTypeError
+            raise TypeError("%s() takes at most %d arguments (%d given)" %
+                            (self.func_name, maxargs + 1, len(args) + 1))
+
+        # check that we do not have unknown kwargs
         allowed_kwargs = set(self.argspec.args) | set(self.kwonlyargs.keys())
         extra_kwargs = set(kwargs.keys()) - allowed_kwargs
         if extra_kwargs:
-            print(self.__class__, args, kwargs)
             extra_kwargs = [repr(arg) for arg in extra_kwargs]
             raise TypeError("got an unexpected keyword argument %s" %
                             extra_kwargs[0])
@@ -590,7 +612,7 @@ class AbstractExprCall(EvaluableExpression):
         args, kwargs = self.args, self.kwargs
         args = [repr(a) for a in args]
         kwargs = ['%s=%r' % (k, v) for k, v in kwargs]
-        return '%s(%s)' % (self.funcname, ', '.join(args + kwargs))
+        return '%s(%s)' % (self.func_name, ', '.join(args + kwargs))
     __repr__ = __str__
 
 
@@ -603,7 +625,7 @@ class GenericExprCall(AbstractExprCall):
         Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
 
     @property
-    def funcname(self):
+    def func_name(self):
         return str(self.children[0][0])
 
     @property
