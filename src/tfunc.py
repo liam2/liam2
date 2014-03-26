@@ -3,49 +3,36 @@ from __future__ import print_function
 import numpy as np
 
 from utils import safe_put
-from expr import expr_eval, getdtype, hasvalue
+from expr import expr_eval, getdtype, hasvalue, AbstractExprCall
 from exprbases import FunctionExpression
 
 
-class ValueForPeriod(FunctionExpression):
+class TimeFunction(AbstractExprCall):
+    no_eval = ('expr',)
+
+
+class ValueForPeriod(TimeFunction):
     func_name = 'value_for_period'
 
-    def __init__(self, expr, period, missing='auto'):
-        FunctionExpression.__init__(self, expr)
-        self.period = period
-        self.missing = missing
-
-    def evaluate(self, context):
+    def _compute(self, context, expr, period, missing='auto'):
         entity = context.entity
-        period = expr_eval(self.period, context)
-        return entity.value_for_period(self.expr, period, context, self.missing)
+        return entity.value_for_period(expr, period, context, missing)
 
 
 #TODO: this should be a compound expression:
 # Lag(expr, numperiods, missing)
 # ->
 # ValueForPeriod(expr, Subtract(Variable('period'), numperiods), missing)
-class Lag(FunctionExpression):
+class Lag(TimeFunction):
     func_name = 'lag'
-    # __no_eval__ = ('expr',)
 
-    def __init__(self, expr, num_periods=1, missing='auto'):
-        FunctionExpression.__init__(self, expr)
-        self.num_periods = num_periods
-        self.missing = missing
-
-    # def _compute(self, context, expr, num_periods, missing):
-    #     entity = context.entity
-    #     period = context.period - num_periods
-    #     return entity.value_for_period(expr, period, context, missing)
-
-    def evaluate(self, context):
+    def _compute(self, context, expr, num_periods=1, missing='auto'):
         entity = context.entity
-        period = context.period - expr_eval(self.num_periods, context)
-        return entity.value_for_period(self.expr, period, context, self.missing)
+        period = context.period - num_periods
+        return entity.value_for_period(expr, period, context, missing)
 
     def dtype(self, context):
-        return getdtype(self.expr, context)
+        return getdtype(self.args[0], context)
 
 
 class Duration(FunctionExpression):
@@ -171,5 +158,10 @@ class TimeSum(FunctionExpression):
         return sum_values
 
 
-functions = {'value_for_period': ValueForPeriod, 'lag': Lag,
-             'duration': Duration, 'tavg': TimeAverage, 'tsum': TimeSum, }
+functions = {
+    'value_for_period': ValueForPeriod,
+    'lag': Lag,
+    'duration': Duration,
+    'tavg': TimeAverage,
+    'tsum': TimeSum
+}
