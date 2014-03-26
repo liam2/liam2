@@ -4,7 +4,6 @@ import numpy as np
 
 from utils import safe_put
 from expr import expr_eval, getdtype, hasvalue, AbstractExprCall
-from exprbases import FunctionExpression
 
 
 class TimeFunction(AbstractExprCall):
@@ -35,15 +34,15 @@ class Lag(TimeFunction):
         return getdtype(self.args[0], context)
 
 
-class Duration(FunctionExpression):
+class Duration(TimeFunction):
     func_name = 'duration'
+    no_eval = ('bool_expr',)
 
-    def evaluate(self, context):
+    def _compute(self, context, bool_expr):
         entity = context.entity
 
         baseperiod = entity.base_period
         period = context.period - 1
-        bool_expr = self.expr
         value = expr_eval(bool_expr, context)
 
         # using a full int so that the "store" type check works
@@ -73,19 +72,18 @@ class Duration(FunctionExpression):
         return result
 
     def dtype(self, context):
-        assert getdtype(self.expr, context) == bool
+        assert getdtype(self.args[0], context) == bool
         return int
 
 
-class TimeAverage(FunctionExpression):
+class TimeAverage(TimeFunction):
     func_name = 'tavg'
 
-    def evaluate(self, context):
+    def _compute(self, context, expr):
         entity = context.entity
 
         baseperiod = entity.base_period
         period = context.period - 1
-        expr = self.expr
 
         res_size = len(entity.array)
 
@@ -121,15 +119,14 @@ class TimeAverage(FunctionExpression):
         return sum_values / num_values
 
 
-class TimeSum(FunctionExpression):
+class TimeSum(TimeFunction):
     func_name = 'tsum'
 
-    def evaluate(self, context):
+    def _compute(self, context, expr):
         entity = context.entity
 
         baseperiod = entity.base_period
         period = context.period - 1
-        expr = self.expr
 
         typemap = {bool: int, int: int, float: float}
         res_type = typemap[getdtype(expr, context)]
