@@ -112,7 +112,7 @@ class NumpyChangeArray(NumpyFunction):
         assert self.argspec.args[0] == 'a'
         NumpyFunction.__init__(self, *args, **kwargs)
 
-    def _compute(self, *args, **kwargs):
+    def _compute(self, context, *args, **kwargs):
         filter_value = kwargs.pop('filter', None)
 
         func = self.np_func[0]
@@ -129,7 +129,7 @@ class NumpyChangeArray(NumpyFunction):
 
 
 class NumpyCreateArray(NumpyFunction):
-    def _compute(self, *args, **kwargs):
+    def _compute(self, context, *args, **kwargs):
         filter_value = kwargs.pop('filter', None)
 
         func = self.np_func[0]
@@ -149,11 +149,11 @@ class NumpyRandom(NumpyCreateArray):
             kwargs['size'] = context_length(context)
         return args, kwargs
 
-    def _compute(self, *args, **kwargs):
+    def _compute(self, context, *args, **kwargs):
         if config.debug:
             print()
             print("random sequence position before:", np.random.get_state()[2])
-        res = super(NumpyRandom, self)._compute(*args, **kwargs)
+        res = super(NumpyRandom, self)._compute(context, *args, **kwargs)
         if config.debug:
             print("random sequence position after:", np.random.get_state()[2])
         return res
@@ -168,7 +168,7 @@ class NumpyAggregate(NumpyFunction):
         assert self.argspec.args[0] == 'a'
         NumpyFunction.__init__(self, *args, **kwargs)
 
-    def _compute(self, *args, **kwargs):
+    def _compute(self, context, *args, **kwargs):
         filter_value = kwargs.pop('filter', None)
         skip_na = kwargs.pop('skip_na', True)
 

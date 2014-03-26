@@ -523,8 +523,8 @@ class FillArgSpecMeta(ExplainTypeError):
                                 'explicitly. See exprmisc.Uniform for an '
                                 'example' % compute.__name__)
             if isinstance(compute, types.MethodType):
-                # for methods, strip "self" arg
-                spec = (spec.args[1:],) + spec[1:]
+                # for methods, strip "self" and "context" args
+                spec = (spec.args[2:],) + spec[1:]
             extra = (cls.kwonlyargs.keys(), cls.kwonlyargs, {})
             cls.argspec = FullArgSpec._make(spec + extra)
 
@@ -545,6 +545,7 @@ class AbstractExprCall(EvaluableExpression):
     # be set manually for builtin/C functions.
     argspec = None
     kwonlyargs = {}
+    no_eval = ()
 
     @classmethod
     def get_compute_func(cls):
@@ -590,15 +591,24 @@ class AbstractExprCall(EvaluableExpression):
         Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
 
     def _eval_args(self, context):
-        args, kwargs = expr_eval(self.children, context)
+        if self.no_eval:
+            args, kwargs = self.children
+            no_eval = set(self.no_eval)
+            args = [expr_eval(arg, context) if name not in no_eval else arg
+                    for arg, name in zip(args, self.argspec.args)]
+            kwargs = [expr_eval(arg, context) if name not in no_eval else arg
+                      for arg, name in kwargs]
+        else:
+            args, kwargs = expr_eval(self.children, context)
+
         return args, dict(kwargs)
 
-    def _compute(self, *args, **kwargs):
+    def _compute(self, context, *args, **kwargs):
         raise NotImplementedError()
 
     def evaluate(self, context):
         args, kwargs = self._eval_args(context)
-        return self._compute(*args, **kwargs)
+        return self._compute(context, *args, **kwargs)
 
     @property
     def args(self):
@@ -636,7 +646,7 @@ class GenericExprCall(AbstractExprCall):
     def kwargs(self):
         return self.children[1]
 
-    def _compute(self, *args, **kwargs):
+    def _compute(self, context, *args, **kwargs):
         func, args = args[0], args[1:]
         return func(*args, **kwargs)
 

@@ -306,7 +306,7 @@ class Round(NumpyChangeArray):
 class Trunc(AbstractExprCall):
     func_name = 'trunc'
 
-    def _compute(self, expr):
+    def _compute(self, context, expr):
         return expr.astype(int)
 
     def dtype(self, context):
