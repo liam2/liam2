@@ -595,9 +595,10 @@ class AbstractExprCall(EvaluableExpression):
             args, kwargs = self.children
             no_eval = set(self.no_eval)
             args = [expr_eval(arg, context) if name not in no_eval else arg
-                    for arg, name in zip(args, self.argspec.args)]
-            kwargs = [expr_eval(arg, context) if name not in no_eval else arg
-                      for arg, name in kwargs]
+                    for name, arg in zip(self.argspec.args, args)]
+            kwargs = [(name, expr_eval(arg, context))
+                          if name not in no_eval else arg
+                      for name, arg in kwargs]
         else:
             args, kwargs = expr_eval(self.children, context)
 
