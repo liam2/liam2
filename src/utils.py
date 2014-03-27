@@ -20,6 +20,12 @@ import numexpr as ne
 import config
 
 
+def always(type_):
+    def dtype(self, context):
+        return type_
+    return dtype
+
+
 class classproperty(property):
     def __get__(self, cls, owner):
         return self.fget.__get__(None, owner)()
