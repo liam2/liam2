@@ -1,3 +1,14 @@
+aftermath
+=========
+
+I am not entirely thrilled by __no_eval__. It might be better to evaluate all
+arguments manually. Since we want it to be as short as possible, we can do it
+like this:
+
+    def _compute(self, context, expr, filter=None, skip_na=True):
+        filter, skip_na = expr_eval((filter, skip_na), context)
+
+
 decision
 ========
 * no __init__ for most functions (signature inferred & args checked) by

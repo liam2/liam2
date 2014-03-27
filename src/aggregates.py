@@ -3,7 +3,7 @@ from __future__ import print_function
 import numpy as np
 
 from expr import (Variable, BinaryOp, getdtype, expr_eval, traverse_expr,
-                  get_tmp_varname, ispresent)
+                  get_tmp_varname, ispresent, AbstractExprCall)
 from exprbases import EvaluableExpression, NumpyAggregate, FilteredExpression
 import exprmisc
 from context import context_length
@@ -102,24 +102,17 @@ def na_sum(a, overwrite=False):
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Sum(FilteredExpression):
     func_name = 'sum'
+    no_eval = ('expr', 'filter')
 
-    def __init__(self, expr, filter=None, skip_na=True):
-        FilteredExpression.__init__(self, expr, filter)
-        self.skip_na = skip_na
-
-    def evaluate(self, context):
-        expr = self.expr
-        filter_expr = self._getfilter(context)
+    def _compute(self, context, expr, filter=None, skip_na=True):
+        filter_expr = self._getfilter(context, filter)
         if filter_expr is not None:
             expr = BinaryOp('*', expr, filter_expr)
 
         values = expr_eval(expr, context)
         values = np.asarray(values)
 
-        if self.skip_na:
-            return na_sum(values)
-        else:
-            return np.sum(values)
+        return na_sum(values) if skip_na else np.sum(values)
 
     def dtype(self, context):
         #TODO: merge this typemap with tsum's
@@ -139,21 +132,15 @@ class Sum(FilteredExpression):
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Average(FilteredExpression):
     func_name = 'avg'
+    no_eval = ('expr')
 
-    def __init__(self, expr, filter=None, skip_na=True):
-        FilteredExpression.__init__(self, expr, filter)
-        self.skip_na = skip_na
-
-    def evaluate(self, context):
-        expr = self.expr
-
+    def _compute(self, context, expr, filter=None, skip_na=True):
         #FIXME: either take "contextual filter" into account here (by using
         # self._getfilter), or don't do it in sum & gini
-        if self.filter is not None:
-            filter_values = expr_eval(self.filter, context)
+        if filter is not None:
             tmp_varname = get_tmp_varname()
             context = context.copy()
-            context[tmp_varname] = filter_values
+            context[tmp_varname] = filter
             if getdtype(expr, context) is bool:
                 # convert expr to int because mul_bbb is not implemented in
                 # numexpr
@@ -162,23 +149,23 @@ class Average(FilteredExpression):
             # expr *= filter_values
             expr = BinaryOp('*', expr, Variable(tmp_varname))
         else:
-            filter_values = True
+            filter = True
 
         values = expr_eval(expr, context)
         values = np.asarray(values)
 
-        if self.skip_na:
-            # we should *not* use an inplace operation because filter_values
-            # can be a simple variable
-            filter_values = filter_values & ispresent(values)
+        if skip_na:
+            # we should *not* use an inplace operation because filter can be a
+            # simple variable
+            filter = filter & ispresent(values)
 
-        if filter_values is True:
+        if filter is True:
             numrows = len(values)
         else:
-            numrows = np.sum(filter_values)
+            numrows = np.sum(filter)
 
         if numrows:
-            if self.skip_na:
+            if skip_na:
                 return na_sum(values) / float(numrows)
             else:
                 return np.sum(values) / float(numrows)
@@ -221,21 +208,17 @@ class Percentile(NumpyAggregate):
 # used both here and in NumpyAggregate
 class Gini(FilteredExpression):
     func_name = 'gini'
+    no_eval = ('filter')
 
-    def __init__(self, expr, filter=None, skip_na=True):
-        FilteredExpression.__init__(self, expr, filter)
-        self.skip_na = skip_na
+    def _compute(self, context, expr, filter=None, skip_na=True):
+        values = np.asarray(expr)
 
-    def evaluate(self, context):
-        values = expr_eval(self.expr, context)
-        values = np.asarray(values)
-
-        filter_expr = self._getfilter(context)
+        filter_expr = self._getfilter(context, filter)
         if filter_expr is not None:
             filter_values = expr_eval(filter_expr, context)
         else:
             filter_values = True
-        if self.skip_na:
+        if skip_na:
             # we should *not* use an inplace operation because filter_values
             # can be a simple variable
             filter_values = filter_values & ispresent(values)

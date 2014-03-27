@@ -59,23 +59,14 @@ class FunctionExpression(EvaluableExpression):
         return '%s(%s)' % (self.func_name, self.expr)
 
 
-class FilteredExpression(FunctionExpression):
-    def __init__(self, expr, filter=None):
-        super(FilteredExpression, self).__init__(expr)
-        self.filter = filter
-
-    def traverse(self, context):
-        for node in traverse_expr(self.filter, context):
-            yield node
-        for node in FunctionExpression.traverse(self, context):
-            yield node
-
-    def _getfilter(self, context):
+class FilteredExpression(AbstractExprCall):
+    @staticmethod
+    def _getfilter(context, filter):
         ctx_filter = context.filter_expr
-        if self.filter is not None and ctx_filter is not None:
-            filter_expr = LogicalOp('&', ctx_filter, self.filter)
-        elif self.filter is not None:
-            filter_expr = self.filter
+        if filter is not None and ctx_filter is not None:
+            filter_expr = LogicalOp('&', ctx_filter, filter)
+        elif filter is not None:
+            filter_expr = filter
         elif ctx_filter is not None:
             filter_expr = ctx_filter
         else:
@@ -84,10 +75,6 @@ class FilteredExpression(FunctionExpression):
                                                 context) is not bool:
             raise Exception("filter must be a boolean expression")
         return filter_expr
-
-    def __str__(self):
-        filter_str = ', %s' % self.filter if self.filter is not None else ''
-        return '%s(%s%s)' % (self.func_name, self.expr, filter_str)
 
 
 class NumpyFunction(AbstractExprCall):
