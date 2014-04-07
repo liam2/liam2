@@ -79,6 +79,9 @@ speed
   or any of the other C JIT referenced in the external links at:
   http://en.wikipedia.org/wiki/Just-in-time_compilation
 
+- Armadillo (http://arma.sourceforge.net/): approximately numpy for C++
+  there are Python bindings though.
+
 storage
 -------
 - SciDB: http://www.scidb.org
