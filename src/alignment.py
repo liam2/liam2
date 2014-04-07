@@ -20,6 +20,8 @@ from utils import PrettyTable, LabeledArray
 def kill_axis(axis_name, value, expressions, possible_values, need):
     """possible_values is a list of ndarrays"""
 
+    #When we transition to LArray, this whole function could be replaced by:
+    # need = need.filter(axis[value])
     str_expressions = [str(e) for e in expressions]
     axis_num = str_expressions.index(axis_name)
     expressions = expressions[:axis_num] + expressions[axis_num + 1:]
@@ -30,9 +32,8 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
     is_wanted_value = axis_values == value
     value_idx = is_wanted_value.nonzero()[0]
     num_idx = len(value_idx)
-    if num_idx < 1:
-        raise Exception('missing alignment data for %s %s'
-                        % (axis_name, value))
+    if not num_idx:
+        raise Exception('missing alignment data for %s %s' % (axis_name, value))
     if num_idx > 1:
         raise Exception('invalid alignment data for %s %s: there are %d cells'
                         'for that value (instead of one)'
@@ -153,93 +154,98 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
 #noinspection PyProtectedMember
 class AlignmentAbsoluteValues(FilteredExpression):
     func_name = 'align_abs'
+    no_eval = ('filter', 'secondary_axis',)
 
-    def __init__(self, score, need,
-                 filter=None, take=None, leave=None,
-                 expressions=None, possible_values=None,
-                 errors='default', frac_need='uniform',
-                 link=None, secondary_axis=None):
-        super(AlignmentAbsoluteValues, self).__init__(score, filter)
-
+# need eval: score, need, filter, take, leave, expressions, pv
+    def post_init(self):
+        need = self.args[1]
         if isinstance(need, basestring):
             fpath = os.path.join(config.input_directory, need)
             need = load_ndarray(fpath, float)
-
-        # need is a single scalar
-        if not isinstance(need, (tuple, list, Expr, np.ndarray)):
-            need = [need]
-
-        # need is a simple list (no expr inside)
-        if isinstance(need, (tuple, list)) and \
-           not any(isinstance(p, Expr) for p in need):
-            need = np.array(need)
-
-        self.need = need
-
-        if expressions is None:
-            expressions = []
-        self.expressions = expressions
-
-        if possible_values is None:
-            possible_values = []
-        else:
-            possible_values = [np.array(pv) for pv in possible_values]
-        self.possible_values = possible_values
-
-        self.take_filter = take
-        self.leave_filter = leave
-
-        self.errors = errors
+            self.args = (self.args[0], need) + self.args[2:]
         self.past_error = None
 
-        self.frac_need = frac_need
-        if frac_need not in ('uniform', 'cutoff', 'round'):
-            raise Exception("frac_need should be one of: 'uniform', 'cutoff' "
-                            "or 'round'")
+    # def _compute(self, context, score, need,
+    #              filter=None, take=None, leave=None,
+    #              expressions=None, possible_values=None,
+    #              errors='default', frac_need='uniform',
+    #              link=None, secondary_axis=None):
 
-        self.link = link
-        if secondary_axis is not None and link is None:
-            raise Exception("the 'secondary_axis' argument is only valid in "
-                            "combination with the 'link' argument")
-        if not isinstance(secondary_axis, (type(None), int, Variable)):
-            raise Exception("'secondary_axis' should be either an integer or "
-                            "an axis name (but got '%s' which is of type '%s')"
-                            % (secondary_axis, type(secondary_axis)))
-        self.secondary_axis = secondary_axis
+        # need is a single scalar
+        # if not isinstance(need, (tuple, list, Expr, np.ndarray)):
+        #     need = [need]
+        #
+        # # need is a simple list (no expr inside)
+        # if isinstance(need, (tuple, list)) and \
+        #    not any(isinstance(p, Expr) for p in need):
+        #     need = np.array(need)
+        #
+        # self.need = need
+        #
+        # if expressions is None:
+        #     expressions = []
+        # self.expressions = expressions
+        #
+        # if possible_values is None:
+        #     possible_values = []
+        # else:
+        #     possible_values = [np.array(pv) for pv in possible_values]
+        # self.possible_values = possible_values
+        #
+        # self.take_filter = take
+        # self.leave_filter = leave
+        #
+        # self.errors = errors
+        # self.past_error = None
+        #
+        # self.frac_need = frac_need
+        # if frac_need not in ('uniform', 'cutoff', 'round'):
+        #     raise Exception("frac_need should be one of: 'uniform', 'cutoff' "
+        #                     "or 'round'")
+        #
+        # self.link = link
+        # if secondary_axis is not None and link is None:
+        #     raise Exception("the 'secondary_axis' argument is only valid in "
+        #                     "combination with the 'link' argument")
+        # if not isinstance(secondary_axis, (type(None), int, Variable)):
+        #     raise Exception("'secondary_axis' should be either an integer or "
+        #                     "an axis name (but got '%s' which is of type '%s')"
+        #                     % (secondary_axis, type(secondary_axis)))
+        # self.secondary_axis = secondary_axis
 
-    def traverse(self, context):
-        for node in FilteredExpression.traverse(self, context):
-            yield node
-        for expr in self.expressions:
-            for node in traverse_expr(expr, context):
-                yield node
-        for node in traverse_expr(self.need, context):
-            yield node
-        for node in traverse_expr(self.take_filter, context):
-            yield node
-        for node in traverse_expr(self.leave_filter, context):
-            yield node
-        yield self
+    # def traverse(self, context):
+    #     for node in FilteredExpression.traverse(self, context):
+    #         yield node
+    #     for expr in self.expressions:
+    #         for node in traverse_expr(expr, context):
+    #             yield node
+    #     for node in traverse_expr(self.need, context):
+    #         yield node
+    #     for node in traverse_expr(self.take_filter, context):
+    #         yield node
+    #     for node in traverse_expr(self.leave_filter, context):
+    #         yield node
+    #     yield self
+    #
+    # def collect_variables(self, context):
+    #     if self.link is None:
+    #         return FilteredExpression.collect_variables(self, context)
+    #     else:
+    #         # in this case, it's tricky
+    #         return set()
 
-    def collect_variables(self, context):
-        if self.link is None:
-            return FilteredExpression.collect_variables(self, context)
-        else:
-            # in this case, it's tricky
-            return set()
-
-    def _eval_need(self, context):
-        expressions = self.expressions
-        possible_values = self.possible_values
-        if isinstance(self.need, (tuple, list)):
-            need = np.array([expr_eval(e, context) for e in self.need])
-        elif isinstance(self.need, Expr):
-            need = expr_eval(self.need, context)
-            # need was a *scalar* expr
-            if not (isinstance(need, np.ndarray) and need.shape):
-                need = np.array([need])
-        else:
-            need = self.need
+    def _eval_need(self, context, need, expressions, possible_values):
+        # expressions = self.expressions
+        # possible_values = self.possible_values
+        # if isinstance(self.need, (tuple, list)):
+        #     need = np.array([expr_eval(e, context) for e in self.need])
+        # elif isinstance(self.need, Expr):
+        #     need = expr_eval(self.need, context)
+        #     # need was a *scalar* expr
+        if not (isinstance(need, np.ndarray) and need.shape):
+            need = np.array([need])
+        # else:
+        #     need = self.need
 
         if isinstance(need, LabeledArray):
             if not expressions:
@@ -273,10 +279,10 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         return need, expressions, possible_values
 
-    def _handle_frac_need(self, need):
+    def _handle_frac_need(self, need, frac_need):
         # handle the "fractional people problem"
         if not issubclass(need.dtype.type, np.integer):
-            if self.frac_need == 'uniform':
+            if frac_need == 'uniform':
                 int_need = need.astype(int)
                 if config.debug:
                     print()
@@ -287,7 +293,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                     print("random sequence position after:",
                           np.random.get_state()[2])
                 need = int_need + (u < need - int_need)
-            elif self.frac_need == 'cutoff':
+            elif frac_need == 'cutoff':
                 int_need = need.astype(int)
                 frac_need = need - int_need
                 need = int_need
@@ -310,7 +316,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                         # cutoff.
                         assert np.sum(frac_need == cutoff) > 1
                     need += extra
-            elif self.frac_need == 'round':
+            elif frac_need == 'round':
                 # always use 0.5 as a cutoff point
                 need = (need + 0.5).astype(int)
 
@@ -324,6 +330,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         if errors == 'carry':
             if self.past_error is None:
+                #TODO: we should store this somewhere in the context
                 self.past_error = np.zeros(need.shape, dtype=int)
 
             print("adding %d individuals from last period error"
@@ -342,35 +349,67 @@ class AlignmentAbsoluteValues(FilteredExpression):
                           [[col[row] for col in columns]
                            for row in range(num_rows) if unaligned[row]]))
 
-    def evaluate(self, context):
-        if self.link is None:
-            return self.align_no_link(context)
-        else:
-            return self.align_link(context)
+    def _compute(self, context, score, need, filter=None, take=None, leave=None,
+                 expressions=None, possible_values=None, errors='default',
+                 frac_need='uniform', link=None, secondary_axis=None):
+        # need is a single scalar
+        # if not isinstance(need, (tuple, list, np.ndarray)):
+        if np.isscalar(need):
+            need = [need]
 
-    def align_no_link(self, context):
+        # need is a non-ndarray sequence
+        if isinstance(need, (tuple, list)):
+            need = np.array(need)
+
+        if expressions is None:
+            expressions = []
+
+        if possible_values is None:
+            possible_values = []
+        else:
+            possible_values = [np.array(pv) for pv in possible_values]
+
+        if frac_need not in ('uniform', 'cutoff', 'round'):
+            cls = ValueError if isinstance(frac_need, basestring) else TypeError
+            raise cls("frac_need should be one of: 'uniform', 'cutoff' or "
+                      "'round'")
+
+        if secondary_axis is not None and link is None:
+            raise Exception("the 'secondary_axis' argument is only valid in "
+                            "combination with the 'link' argument")
+        if not isinstance(secondary_axis, (type(None), int, Variable)):
+            raise Exception("'secondary_axis' should be either an integer or "
+                            "an axis name (but got '%s' which is of type '%s')"
+                            % (secondary_axis, type(secondary_axis)))
+
+        func = self.align_no_link if link is None else self.align_link
+        return func(context, score, need, filter, take, leave, expressions,
+                    possible_values, errors, frac_need, link, secondary_axis)
+
+    def align_no_link(self, context, score, need, filter=None, take=None,
+                      leave=None, expressions=None, possible_values=None,
+                      errors='default', frac_need='uniform', link=None,
+                      secondary_axis=None):
         ctx_length = context_length(context)
 
-        scores = expr_eval(self.expr, context)
+        need, expressions, possible_values = \
+            self._eval_need(context, need, expressions, possible_values)
 
-        need, expressions, possible_values = self._eval_need(context)
-
-        filter_value = expr_eval(self._getfilter(context), context)
-        take_filter = expr_eval(self.take_filter, context)
-        leave_filter = expr_eval(self.leave_filter, context)
+        filter_value = expr_eval(self._getfilter(context, filter), context)
 
         if filter_value is not None:
             num_to_align = np.sum(filter_value)
         else:
             num_to_align = ctx_length
 
-        if expressions:
-            # retrieve the columns we need to work with
-            columns = [expr_eval(expr, context) for expr in expressions]
+        # retrieve the columns we need to work with
+        columns = expressions
+        if expressions is not None:
             if filter_value is not None:
-                groups = partition_nd(columns, filter_value, possible_values)
+                groups = partition_nd(expressions, filter_value,
+                                      possible_values)
             else:
-                groups = partition_nd(columns, True, possible_values)
+                groups = partition_nd(expressions, True, possible_values)
         else:
             columns = []
             if filter_value is not None:
@@ -395,7 +434,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         need = self._add_past_error(need, context)
 
         return align_get_indices_nd(ctx_length, groups, need, filter_value,
-                                    scores, take_filter, leave_filter)
+                                    scores, take, leave)
 
     def align_link(self, context):
         scores = expr_eval(self.expr, context)
