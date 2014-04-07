@@ -208,7 +208,7 @@ class Percentile(NumpyAggregate):
 # used both here and in NumpyAggregate
 class Gini(FilteredExpression):
     func_name = 'gini'
-    no_eval = ('filter')
+    no_eval = ('filter',)
 
     def _compute(self, context, expr, filter=None, skip_na=True):
         values = np.asarray(expr)
