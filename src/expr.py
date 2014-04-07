@@ -589,6 +589,10 @@ class AbstractExprCall(EvaluableExpression):
                 break
         args = args + tuple(extra_args)
         Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
+        self.post_init()
+
+    def post_init(self):
+        pass
 
     def _eval_args(self, context):
         if self.no_eval:
@@ -614,6 +618,10 @@ class AbstractExprCall(EvaluableExpression):
     @property
     def args(self):
         return self.children[0]
+
+    @args.setter
+    def args(self, value):
+        self.children = (value, self.kwargs)
 
     @property
     def kwargs(self):
