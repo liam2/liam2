@@ -132,7 +132,7 @@ class Sum(FilteredExpression):
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Average(FilteredExpression):
     func_name = 'avg'
-    no_eval = ('expr')
+    no_eval = ('expr',)
 
     def _compute(self, context, expr, filter=None, skip_na=True):
         #FIXME: either take "contextual filter" into account here (by using
