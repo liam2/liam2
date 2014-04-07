@@ -71,8 +71,8 @@ class FilteredExpression(AbstractExprCall):
             filter_expr = ctx_filter
         else:
             filter_expr = None
-        if filter_expr is not None and getdtype(filter_expr,
-                                                context) is not bool:
+        if filter_expr is not None and \
+                getdtype(filter_expr, context) is not bool:
             raise Exception("filter must be a boolean expression")
         return filter_expr
 
