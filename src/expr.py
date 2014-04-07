@@ -596,12 +596,17 @@ class AbstractExprCall(EvaluableExpression):
 
     def _eval_args(self, context):
         if self.no_eval:
+            no_eval = self.no_eval
+            assert isinstance(no_eval, tuple) and \
+                all(isinstance(f, basestring) for f in no_eval), \
+                "no_eval should be a tuple of strings but %r is a %s" \
+                % (self.no_eval, type(self.no_eval))
             args, kwargs = self.children
-            no_eval = set(self.no_eval)
+            no_eval = set(no_eval)
             args = [expr_eval(arg, context) if name not in no_eval else arg
                     for name, arg in zip(self.argspec.args, args)]
             kwargs = [(name, expr_eval(arg, context))
-                          if name not in no_eval else arg
+                      if name not in no_eval else arg
                       for name, arg in kwargs]
         else:
             args, kwargs = expr_eval(self.children, context)
