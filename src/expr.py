@@ -370,7 +370,7 @@ class Expr(object):
         # if not isinstance(other, ASTNode):
         #     return False
         if not isinstance(other, Expr):
-            print("bad expr type", self, "vs", other)
+            # print("bad expr type", self, "vs %s (%s)" % (other, type(other)))
             return False
         return False
         # for name in self.__fields__:
@@ -606,7 +606,7 @@ class AbstractExprCall(EvaluableExpression):
             args = [expr_eval(arg, context) if name not in no_eval else arg
                     for name, arg in zip(self.argspec.args, args)]
             kwargs = [(name, expr_eval(arg, context))
-                      if name not in no_eval else arg
+                      if name not in no_eval else (name, arg)
                       for name, arg in kwargs]
         else:
             args, kwargs = expr_eval(self.children, context)
