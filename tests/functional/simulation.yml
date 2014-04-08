@@ -1143,6 +1143,30 @@ entities:
                              <=
                              min(age, filter=not gender and int_aligned))
 
+                # manual alignment with constant need
+                # -----------------------------------
+                - aligned: align_abs(age, 10)
+                - assertEqual(count(aligned), 10)
+
+                # manual alignment with expr need
+                # -------------------------------
+                # count(age < 5) is just a number to match, we align over the
+                # whole population (ie we do not have a filter)
+                - aligned: align_abs(age, count(age < 5))
+                - assertEqual(count(aligned), count(age < 5))
+
+                # manual alignment with tuple of exprs need
+                # -----------------------------------------
+                - aligned: align_abs(age,
+                                     (count(not gender and age > 18),
+                                      count(gender and age > 20)),
+                                     expressions=[gender],
+                                     possible_values=[[False, True]])
+                - assertEqual(count(aligned and not gender),
+                              count(not gender and age > 18))
+                - assertEqual(count(aligned and gender),
+                              count(gender and age > 20))
+
                 # external file
                 # -------------
                 - by_gender: align_abs(0, 'al_p_absolute.csv')
