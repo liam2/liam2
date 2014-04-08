@@ -643,6 +643,10 @@ class FunctionExpr(EvaluableExpression):
 
 
 class GenericExprCall(FunctionExpr):
+    """
+    GenericExprCall handles ExprCall where the function to run is
+    determined at runtime (it is the first argument of _compute).
+    """
     # GenericExprCall is (currently) only used for calling ndarray methods,
     # which are all builtin methods for which we do not have signatures,
     # so we cannot (at this point) check arguments nor convert kwargs to args,
@@ -662,8 +666,7 @@ class GenericExprCall(FunctionExpr):
     def kwargs(self):
         return self.children[1]
 
-    def _compute(self, context, *args, **kwargs):
-        func, args = args[0], args[1:]
+    def _compute(self, context, func, *args, **kwargs):
         return func(*args, **kwargs)
 
 
