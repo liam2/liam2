@@ -166,7 +166,7 @@ class NumpyAggregate(NumpyFunction):
         values, args = args[0], args[1:]
         values = np.asanyarray(values)
 
-        if (skip_na and issubclass(values.dtype.type, np.inexact) and
+        if (skip_na and np.issubdtype(values.dtype, np.inexact) and
                 self.nan_func[0] is not None):
             usenanfunc = True
             func = self.nan_func[0]

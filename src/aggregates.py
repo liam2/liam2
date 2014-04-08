@@ -27,33 +27,23 @@ class Any(NumpyAggregate):
 
 
 #XXX: inherit from FilteredExpression instead?
-class Count(EvaluableExpression):
-    def __init__(self, filter=None):
-        self.filter = filter
+class Count(FunctionExpr):
+    func_name = 'count'
 
-    def evaluate(self, context):
-        if self.filter is None:
+    def compute(self, context, filter=None):
+        if filter is None:
             return context_length(context)
         else:
             #TODO: check this at "compile" time (in __init__), though for
             # that we need to know the type of all temporary variables
             # first
-            if getdtype(self.filter, context) is not bool:
-                raise Exception("count filter must be a boolean expression")
-            return np.sum(expr_eval(self.filter, context))
+            if not np.issubdtype(filter.dtype, bool):
+                raise ValueError("count filter must be a boolean expression")
+            return np.sum(filter)
 
     #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
         return int
-
-    def traverse(self, context):
-        for node in traverse_expr(self.filter, context):
-            yield node
-        yield self
-
-    def __str__(self):
-        filter_str = str(self.filter) if self.filter is not None else ''
-        return "count(%s)" % filter_str
 
 
 class Min(NumpyAggregate):
@@ -75,7 +65,7 @@ class Max(NumpyAggregate):
 
 
 def na_sum(a, overwrite=False):
-    if issubclass(a.dtype.type, np.inexact):
+    if np.issubdtype(a.dtype, np.inexact):
         func = np.nansum
     else:
         func = np.sum

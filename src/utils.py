@@ -226,7 +226,7 @@ except ImportError:
 # as a bonus, this version is also faster
 def nansum(a, axis=None):
     a = np.asarray(a)
-    if issubclass(a.dtype.type, np.inexact):
+    if np.issubdtype(a.dtype, np.inexact):
         return np.nansum(a, axis)
     else:
         return np.sum(a, axis)

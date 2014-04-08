@@ -48,7 +48,7 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
 def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                          take_filter=None, leave_filter=None):
     assert isinstance(need, np.ndarray) and \
-        issubclass(need.dtype.type, np.integer)
+        np.issubdtype(need.dtype, np.integer)
     assert score is None or isinstance(score, (bool, int, float, np.ndarray))
 
     if filter_value is not None:
@@ -216,7 +216,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
     def _handle_frac_need(self, need, method):
         # handle the "fractional people problem"
-        if not issubclass(need.dtype.type, np.integer):
+        if not np.issubdtype(need.dtype, np.integer):
             if method == 'uniform':
                 int_need = need.astype(int)
                 if config.debug:
@@ -255,7 +255,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                 # always use 0.5 as a cutoff point
                 need = (need + 0.5).astype(int)
 
-        assert issubclass(need.dtype.type, np.integer)
+        assert np.issubdtype(need.dtype, np.integer)
         return need
 
     def _add_past_error(self, context, need, method='default'):

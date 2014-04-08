@@ -58,7 +58,7 @@ def diff_array(array1, array2, numdiff=10, raiseondiff=False):
             print("missing in file 2")
             continue
         col1, col2 = array1[fname], array2[fname]
-        if issubclass(col1.dtype.type, np.inexact):
+        if np.issubdtype(col1.dtype, np.inexact):
             if len(col1) == len(col2):
                 both_nan = np.isnan(col1) & np.isnan(col2)
                 eq = np.all(both_nan | (col1 == col2))
