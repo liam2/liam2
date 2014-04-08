@@ -42,23 +42,6 @@ class CompoundExpression(Expr):
         return self._complete_expr
 
 
-#TODO: generalise to a function with several arguments
-# - factorize with NumpyFunction, AbstractExprCall, FilteredExpression
-class FunctionExpression(EvaluableExpression):
-    func_name = None
-
-    def __init__(self, expr):
-        self.expr = expr
-
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
-        yield self
-
-    def __str__(self):
-        return '%s(%s)' % (self.func_name, self.expr)
-
-
 class FilteredExpression(AbstractExprCall):
     @staticmethod
     def _getfilter(context, filter):

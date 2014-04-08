@@ -92,8 +92,7 @@ a new function:
      * NumpyAggregate: subclass for aggregate functions. eg. count, min,
        max, std, median.
 
-  b) FunctionExpression: subclass for functions (which take one expression as
-     argument). eg. trunc, lag, duration, ...
+  b) AbstractExprCall: subclass for functions. eg. trunc, lag, duration, ...
 
      * FilteredExpression: subclass for functions which also take a filter
        argument. eg. align, sum, avg, gini.
