@@ -3,7 +3,7 @@ from __future__ import print_function
 import numpy as np
 
 from expr import (Variable, BinaryOp, getdtype, expr_eval, traverse_expr,
-                  get_tmp_varname, ispresent, AbstractExprCall)
+                  get_tmp_varname, ispresent, FunctionExpr)
 from exprbases import EvaluableExpression, NumpyAggregate, FilteredExpression
 import exprmisc
 from context import context_length

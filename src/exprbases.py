@@ -4,7 +4,7 @@ import numpy as np
 
 import config
 from context import context_length
-from expr import (Expr, AbstractExprCall, EvaluableExpression, expr_eval,
+from expr import (Expr, FunctionExpr, EvaluableExpression, expr_eval,
                   traverse_expr, getdtype, as_simple_expr, as_string,
                   get_missing_value, ispresent, LogicalOp)
 from utils import ExplainTypeError, FullArgSpec, classproperty
@@ -42,7 +42,7 @@ class CompoundExpression(Expr):
         return self._complete_expr
 
 
-class FilteredExpression(AbstractExprCall):
+class FilteredExpression(FunctionExpr):
     @staticmethod
     def _getfilter(context, filter):
         ctx_filter = context.filter_expr
@@ -60,7 +60,7 @@ class FilteredExpression(AbstractExprCall):
         return filter_expr
 
 
-class NumpyFunction(AbstractExprCall):
+class NumpyFunction(FunctionExpr):
     np_func = (None,)
     # all subclasses support a filter keyword-only argument
     kwonlyargs = {'filter': None}

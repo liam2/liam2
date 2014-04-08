@@ -3,10 +3,10 @@ from __future__ import print_function
 import numpy as np
 
 from utils import safe_put
-from expr import expr_eval, getdtype, hasvalue, AbstractExprCall
+from expr import expr_eval, getdtype, hasvalue, FunctionExpr
 
 
-class TimeFunction(AbstractExprCall):
+class TimeFunction(FunctionExpr):
     no_eval = ('expr',)
 
 

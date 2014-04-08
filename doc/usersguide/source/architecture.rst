@@ -92,10 +92,11 @@ a new function:
      * NumpyAggregate: subclass for aggregate functions. eg. count, min,
        max, std, median.
 
-  b) AbstractExprCall: subclass for functions. eg. trunc, lag, duration, ...
+  b) FunctionExpr: subclass for functions. eg. trunc, lag, duration, ...
 
-     * FilteredExpression: subclass for functions which also take a filter
-       argument. eg. align, sum, avg, gini.
+     * FilteredExpression: subclass for functions which have a filter
+       argument and need to support contextual filters. eg. align, sum, avg,
+       gini.
 
 LIAM2 current expressions are implemented in the following files:
 

@@ -532,10 +532,12 @@ class FillArgSpecMeta(ExplainTypeError):
         raise NotImplementedError()
 
 
-#TODO: factorize with NumpyFunction & FunctionExpression
-class AbstractExprCall(EvaluableExpression):
+class FunctionExpr(EvaluableExpression):
     """
-    base class
+    Base class for defining (python-level) functions. That is, if you want to
+    make a new function available in LIAM2 models, you should inherit from this
+    class. In most cases, overriding the _compute and dtype methods is
+    enough, but your mileage may vary.
     """
     __metaclass__ = FillArgSpecMeta
 
@@ -640,11 +642,11 @@ class AbstractExprCall(EvaluableExpression):
     __repr__ = __str__
 
 
-class GenericExprCall(AbstractExprCall):
+class GenericExprCall(FunctionExpr):
     # GenericExprCall is (currently) only used for calling ndarray methods,
     # which are all builtin methods for which we do not have signatures,
     # so we cannot (at this point) check arguments nor convert kwargs to args,
-    # so we deliberately do not call AbstractExprCall.__init__ which does both
+    # so we deliberately do not call FunctionExpr.__init__ which does both
     def __init__(self, *args, **kwargs):
         Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
 
