@@ -491,7 +491,7 @@ class ExprAttribute(EvaluableExpression):
         return getattr(expr, key)
 
     def __call__(self, *args, **kwargs):
-        return GenericExprCall(self, *args, **kwargs)
+        return DynamicFunctionCall(self, *args, **kwargs)
 
 
 # we need to inherit from ExplainTypeError, so that TypeError exceptions are
@@ -642,12 +642,12 @@ class FunctionExpr(EvaluableExpression):
     __repr__ = __str__
 
 
-class GenericExprCall(FunctionExpr):
+class DynamicFunctionCall(FunctionExpr):
     """
-    GenericExprCall handles ExprCall where the function to run is
-    determined at runtime (it is the first argument of _compute).
+    DynamicFunctionCall handles calling expressions where the function to run is
+    determined at runtime (it should be passed as the first argument).
     """
-    # GenericExprCall is (currently) only used for calling ndarray methods,
+    # DynamicFunctionCall is (currently) only used for calling ndarray methods,
     # which are all builtin methods for which we do not have signatures,
     # so we cannot (at this point) check arguments nor convert kwargs to args,
     # so we deliberately do not call FunctionExpr.__init__ which does both
