@@ -154,7 +154,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
 #noinspection PyProtectedMember
 class AlignmentAbsoluteValues(FilteredExpression):
     func_name = 'align_abs'
-    no_eval = ('filter', 'secondary_axis',)
+    no_eval = ('filter', 'secondary_axis', 'expressions')
 
 # need eval: score, need, filter, take, leave, expressions, pv
     def post_init(self):
@@ -264,8 +264,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if 'period' in [str(e) for e in expressions]:
             period = context.period
             expressions, possible_values, need = \
-                kill_axis('period', period, expressions, possible_values,
-                          need)
+                kill_axis('period', period, expressions, possible_values, need)
 
         # kill any axis where the value is constant for all individuals
         # satisfying the filter
@@ -279,10 +278,10 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         return need, expressions, possible_values
 
-    def _handle_frac_need(self, need, frac_need):
+    def _handle_frac_need(self, need, method):
         # handle the "fractional people problem"
         if not issubclass(need.dtype.type, np.integer):
-            if frac_need == 'uniform':
+            if method == 'uniform':
                 int_need = need.astype(int)
                 if config.debug:
                     print()
@@ -293,7 +292,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                     print("random sequence position after:",
                           np.random.get_state()[2])
                 need = int_need + (u < need - int_need)
-            elif frac_need == 'cutoff':
+            elif method == 'cutoff':
                 int_need = need.astype(int)
                 frac_need = need - int_need
                 need = int_need
@@ -316,21 +315,20 @@ class AlignmentAbsoluteValues(FilteredExpression):
                         # cutoff.
                         assert np.sum(frac_need == cutoff) > 1
                     need += extra
-            elif frac_need == 'round':
+            elif method == 'round':
                 # always use 0.5 as a cutoff point
                 need = (need + 0.5).astype(int)
 
         assert issubclass(need.dtype.type, np.integer)
         return need
 
-    def _add_past_error(self, need, context):
-        errors = self.errors
-        if errors == 'default':
-            errors = context.get('__on_align_error__')
+    def _add_past_error(self, context, need, method='default'):
+        if method == 'default':
+            method = context.get('__on_align_error__')
 
-        if errors == 'carry':
+        if method == 'carry':
             if self.past_error is None:
-                #TODO: we should store this somewhere in the context
+                #TODO: we should store this somewhere in the context instead
                 self.past_error = np.zeros(need.shape, dtype=int)
 
             print("adding %d individuals from last period error"
@@ -386,10 +384,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
         return func(context, score, need, filter, take, leave, expressions,
                     possible_values, errors, frac_need, link, secondary_axis)
 
-    def align_no_link(self, context, score, need, filter=None, take=None,
-                      leave=None, expressions=None, possible_values=None,
-                      errors='default', frac_need='uniform', link=None,
-                      secondary_axis=None):
+    def align_no_link(self, context, score, need, filter, take, leave,
+                      expressions, possible_values, errors, frac_need, link,
+                      secondary_axis):
         ctx_length = context_length(context)
 
         need, expressions, possible_values = \
@@ -403,13 +400,12 @@ class AlignmentAbsoluteValues(FilteredExpression):
             num_to_align = ctx_length
 
         # retrieve the columns we need to work with
-        columns = expressions
-        if expressions is not None:
+        if expressions:
+            columns = [expr_eval(expr, context) for expr in expressions]
             if filter_value is not None:
-                groups = partition_nd(expressions, filter_value,
-                                      possible_values)
+                groups = partition_nd(columns, filter_value, possible_values)
             else:
-                groups = partition_nd(expressions, True, possible_values)
+                groups = partition_nd(columns, True, possible_values)
         else:
             columns = []
             if filter_value is not None:
@@ -430,18 +426,18 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         #noinspection PyAugmentAssignment
         need = need * self._get_need_correction(groups, possible_values)
-        need = self._handle_frac_need(need)
-        need = self._add_past_error(need, context)
+        need = self._handle_frac_need(need, frac_need)
+        need = self._add_past_error(context, need, method=errors)
 
         return align_get_indices_nd(ctx_length, groups, need, filter_value,
-                                    scores, take, leave)
+                                    score, take, leave)
 
     def align_link(self, context):
         scores = expr_eval(self.expr, context)
 
         need, expressions, possible_values = self._eval_need(context)
-        need = self._handle_frac_need(need)
-        need = self._add_past_error(need, context)
+        need = self._handle_frac_need(need, frac_need)
+        need = self._add_past_error(context, need, method=errors)
 
         # handle secondary axis
         secondary_axis = self.secondary_axis
