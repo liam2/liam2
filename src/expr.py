@@ -536,7 +536,7 @@ class FunctionExpr(EvaluableExpression):
     """
     Base class for defining (python-level) functions. That is, if you want to
     make a new function available in LIAM2 models, you should inherit from this
-    class. In most cases, overriding the _compute and dtype methods is
+    class. In most cases, overriding the compute and dtype methods is
     enough, but your mileage may vary.
     """
     __metaclass__ = FillArgSpecMeta
@@ -551,7 +551,7 @@ class FunctionExpr(EvaluableExpression):
 
     @classmethod
     def get_compute_func(cls):
-        return cls._compute
+        return cls.compute
 
     def __init__(self, *args, **kwargs):
         maxargs = len(self.argspec.args)
@@ -615,12 +615,12 @@ class FunctionExpr(EvaluableExpression):
 
         return args, dict(kwargs)
 
-    def _compute(self, context, *args, **kwargs):
+    def compute(self, context, *args, **kwargs):
         raise NotImplementedError()
 
     def evaluate(self, context):
         args, kwargs = self._eval_args(context)
-        return self._compute(context, *args, **kwargs)
+        return self.compute(context, *args, **kwargs)
 
     @property
     def args(self):
@@ -666,7 +666,7 @@ class DynamicFunctionCall(FunctionExpr):
     def kwargs(self):
         return self.children[1]
 
-    def _compute(self, context, func, *args, **kwargs):
+    def compute(self, context, func, *args, **kwargs):
         return func(*args, **kwargs)
 
 

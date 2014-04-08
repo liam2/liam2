@@ -23,6 +23,7 @@ except ImportError, e:
           "'matplotlib.pyplot' could not be imported (%s)." % e)
 
 
+#TODO: use FunctionExpr
 class Chart(Expr, FileProducer):
     ext = '.png'
     show_grid = False

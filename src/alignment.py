@@ -283,7 +283,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                           [[col[row] for col in columns]
                            for row in range(num_rows) if unaligned[row]]))
 
-    def _compute(self, context, score, need, filter=None, take=None, leave=None,
+    def compute(self, context, score, need, filter=None, take=None, leave=None,
                  expressions=None, possible_values=None, errors='default',
                  frac_need='uniform', link=None, secondary_axis=None):
         # need is a single scalar

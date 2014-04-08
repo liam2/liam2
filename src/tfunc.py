@@ -13,7 +13,7 @@ class TimeFunction(FunctionExpr):
 class ValueForPeriod(TimeFunction):
     func_name = 'value_for_period'
 
-    def _compute(self, context, expr, period, missing='auto'):
+    def compute(self, context, expr, period, missing='auto'):
         entity = context.entity
         return entity.value_for_period(expr, period, context, missing)
 
@@ -25,7 +25,7 @@ class ValueForPeriod(TimeFunction):
 class Lag(TimeFunction):
     func_name = 'lag'
 
-    def _compute(self, context, expr, num_periods=1, missing='auto'):
+    def compute(self, context, expr, num_periods=1, missing='auto'):
         entity = context.entity
         period = context.period - num_periods
         return entity.value_for_period(expr, period, context, missing)
@@ -38,7 +38,7 @@ class Duration(TimeFunction):
     func_name = 'duration'
     no_eval = ('bool_expr',)
 
-    def _compute(self, context, bool_expr):
+    def compute(self, context, bool_expr):
         entity = context.entity
 
         baseperiod = entity.base_period
@@ -79,7 +79,7 @@ class Duration(TimeFunction):
 class TimeAverage(TimeFunction):
     func_name = 'tavg'
 
-    def _compute(self, context, expr):
+    def compute(self, context, expr):
         entity = context.entity
 
         baseperiod = entity.base_period
@@ -122,7 +122,7 @@ class TimeAverage(TimeFunction):
 class TimeSum(TimeFunction):
     func_name = 'tsum'
 
-    def _compute(self, context, expr):
+    def compute(self, context, expr):
         entity = context.entity
 
         baseperiod = entity.base_period

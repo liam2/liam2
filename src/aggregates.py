@@ -104,7 +104,7 @@ class Sum(FilteredExpression):
     func_name = 'sum'
     no_eval = ('expr', 'filter')
 
-    def _compute(self, context, expr, filter=None, skip_na=True):
+    def compute(self, context, expr, filter=None, skip_na=True):
         filter_expr = self._getfilter(context, filter)
         if filter_expr is not None:
             expr = BinaryOp('*', expr, filter_expr)
@@ -134,7 +134,7 @@ class Average(FilteredExpression):
     func_name = 'avg'
     no_eval = ('expr',)
 
-    def _compute(self, context, expr, filter=None, skip_na=True):
+    def compute(self, context, expr, filter=None, skip_na=True):
         #FIXME: either take "contextual filter" into account here (by using
         # self._getfilter), or don't do it in sum & gini
         if filter is not None:
@@ -210,7 +210,7 @@ class Gini(FilteredExpression):
     func_name = 'gini'
     no_eval = ('filter',)
 
-    def _compute(self, context, expr, filter=None, skip_na=True):
+    def compute(self, context, expr, filter=None, skip_na=True):
         values = np.asarray(expr)
 
         filter_expr = self._getfilter(context, filter)
