@@ -3,7 +3,8 @@ from __future__ import print_function
 import numpy as np
 
 from expr import (Variable, BinaryOp, getdtype, expr_eval, traverse_expr,
-                  get_tmp_varname, ispresent, FunctionExpr)
+                  get_tmp_varname, ispresent, FunctionExpr,
+                  always, firstarg_dtype)
 from exprbases import EvaluableExpression, NumpyAggregate, FilteredExpression
 import exprmisc
 from context import context_length
@@ -12,18 +13,12 @@ from utils import deprecated
 
 class All(NumpyAggregate):
     np_func = np.all
-
-    #noinspection PyUnusedLocal,PyMethodMayBeStatic
-    def dtype(self, context):
-        return bool
+    dtype = always(bool)
 
 
 class Any(NumpyAggregate):
     np_func = np.any
-
-    #noinspection PyUnusedLocal,PyMethodMayBeStatic
-    def dtype(self, context):
-        return bool
+    dtype = always(bool)
 
 
 #XXX: inherit from FilteredExpression instead?
@@ -41,27 +36,21 @@ class Count(FunctionExpr):
                 raise ValueError("count filter must be a boolean expression")
             return np.sum(filter)
 
-    #noinspection PyUnusedLocal,PyMethodMayBeStatic
-    def dtype(self, context):
-        return int
+    dtype = always(int)
 
 
 class Min(NumpyAggregate):
     func_name = 'min'
     np_func = np.amin
     nan_func = (np.nanmin,)
-
-    def dtype(self, context):
-        return getdtype(self.args[0], context)
+    dtype = firstarg_dtype
 
 
 class Max(NumpyAggregate):
     func_name = 'max'
     np_func = np.amax
     nan_func = (np.nanmax,)
-
-    def dtype(self, context):
-        return getdtype(self.args[0], context)
+    dtype = firstarg_dtype
 
 
 def na_sum(a, overwrite=False):
@@ -110,10 +99,8 @@ class Sum(FilteredExpression):
 #class Average(NumpyAggregate):
 #    func_name = 'avg'
 #    np_func = np.mean
-##    nan_func = (nanmean,)
-#
-#    def dtype(self, context):
-#        return float
+#    nan_func = (nanmean,)
+#    dtype = always(float)
 
 
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
@@ -159,33 +146,22 @@ class Average(FilteredExpression):
         else:
             return float('nan')
 
-    #noinspection PyUnusedLocal,PyMethodMayBeStatic
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 class Std(NumpyAggregate):
     np_func = np.std
-
-    #noinspection PyUnusedLocal,PyMethodMayBeStatic
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 class Median(NumpyAggregate):
     np_func = np.median
-
-    #noinspection PyUnusedLocal,PyMethodMayBeStatic
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 class Percentile(NumpyAggregate):
     np_func = np.percentile
-
-    #noinspection PyUnusedLocal,PyMethodMayBeStatic
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 #TODO: filter and skip_na should be provided by an "Aggregate" mixin that is
@@ -227,9 +203,7 @@ class Gini(FilteredExpression):
                   "for filter" % (self.expr, filter_expr))
         return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
 
-    #noinspection PyUnusedLocal,PyMethodMayBeStatic
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 def make_dispatcher(agg_func, elem_func):

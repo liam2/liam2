@@ -8,7 +8,8 @@ import numpy as np
 import config
 from align_link import align_link_nd
 from context import context_length
-from expr import Expr, Variable, expr_eval, traverse_expr, missing_values
+from expr import Expr, Variable, expr_eval, traverse_expr, missing_values, \
+    always
 from exprbases import FilteredExpression
 from groupby import GroupBy
 from links import LinkValue, Many2One
@@ -507,9 +508,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
     def _get_need_correction(self, groups, possible_values):
         return 1
 
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return bool
+    dtype = always(bool)
 
 
 class Alignment(AlignmentAbsoluteValues):

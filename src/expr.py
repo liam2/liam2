@@ -140,6 +140,21 @@ def getdtype(expr, context):
         return gettype(expr)
 
 
+def always(type_):
+    def dtype(self, context):
+        return type_
+    return dtype
+
+
+def firstarg_dtype(expr, context):
+    return getdtype(expr.args[0], context)
+
+
+def coerce_child_dtypes(expr, context):
+    expr1, expr2 = expr.children
+    return coerce_types(context, expr1, expr2)
+
+
 def ispresent(values):
     dt = values.dtype
     if np.issubdtype(dt, float):
@@ -670,7 +685,6 @@ class DynamicFunctionCall(FunctionExpr):
         return func(*args, **kwargs)
 
 
-
 #############
 # Operators #
 #############
@@ -713,9 +727,7 @@ class BinaryOp(Expr):
         expr1, expr2 = [as_string(c) for c in self.children]
         return "(%s %s %s)" % (expr1, self.value, expr2)
 
-    def dtype(self, context):
-        expr1, expr2 = self.children
-        return coerce_types(context, expr1, expr2)
+    dtype = coerce_child_dtypes
 
     def __str__(self):
         expr1, expr2 = self.children
@@ -724,8 +736,7 @@ class BinaryOp(Expr):
 
 
 class DivisionOp(BinaryOp):
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 class LogicalOp(BinaryOp):
@@ -735,6 +746,7 @@ class LogicalOp(BinaryOp):
             raise Exception("operands to logical operators need to be "
                             "boolean but %s is %s" % (expr, dt))
 
+    #TODO: move the test to __init__ and use dtype = always(bool)
     def dtype(self, context):
         expr1, expr2 = self.children
         self.assertbool(expr1, context)
@@ -743,6 +755,7 @@ class LogicalOp(BinaryOp):
 
 
 class ComparisonOp(BinaryOp):
+    #TODO: move the test to __init__ and use dtype = always(bool)
     def dtype(self, context):
         expr1, expr2 = self.children
         if coerce_types(context, expr1, expr2) is None:
@@ -996,5 +1009,3 @@ class MethodSymbol(object):
 
     def __call__(self, *args, **kwargs):
         return MethodCall(self.entity, self.name, args, kwargs)
-
-

@@ -3,7 +3,8 @@ from __future__ import print_function
 import numpy as np
 
 from utils import safe_put
-from expr import expr_eval, getdtype, hasvalue, FunctionExpr
+from expr import (expr_eval, getdtype, hasvalue, FunctionExpr, always,\
+                  firstarg_dtype)
 
 
 class TimeFunction(FunctionExpr):
@@ -16,6 +17,8 @@ class ValueForPeriod(TimeFunction):
     def compute(self, context, expr, period, missing='auto'):
         entity = context.entity
         return entity.value_for_period(expr, period, context, missing)
+
+    dtype = firstarg_dtype
 
 
 #TODO: this should be a compound expression:
@@ -30,8 +33,7 @@ class Lag(TimeFunction):
         period = context.period - num_periods
         return entity.value_for_period(expr, period, context, missing)
 
-    def dtype(self, context):
-        return getdtype(self.args[0], context)
+    dtype = firstarg_dtype
 
 
 class Duration(TimeFunction):
@@ -71,6 +73,7 @@ class Duration(TimeFunction):
             period -= 1
         return result
 
+    #TODO: move the check to __init__ and use dtype = always(int)
     def dtype(self, context):
         assert getdtype(self.args[0], context) == bool
         return int
@@ -118,6 +121,8 @@ class TimeAverage(TimeFunction):
             period -= 1
         return sum_values / num_values
 
+    dtype = always(float)
+
 
 class TimeSum(TimeFunction):
     func_name = 'tsum'
@@ -154,6 +159,7 @@ class TimeSum(TimeFunction):
             period -= 1
         return sum_values
 
+    dtype = firstarg_dtype
 
 functions = {
     'value_for_period': ValueForPeriod,

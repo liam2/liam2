@@ -7,7 +7,7 @@ import numpy as np
 import numexpr as ne
 
 from expr import (Variable, getdtype, expr_eval, missing_values,
-                  get_missing_value)
+                  get_missing_value, always)
 from exprbases import EvaluableExpression
 from context import context_length
 from utils import deprecated
@@ -279,9 +279,10 @@ class CountLink(AggregateLink):
         else:
             return np.array([], dtype=int)
 
-    def dtype(self, context):
-        return int
+    dtype = always(int)
 
+    #FIXME: str() should return the new syntax: link.count() instead of
+    # countlink(link)
     def __str__(self):
         if self.target_filter is not None:
             target_filter = ", target_filter=%s" % self.target_filter
@@ -345,8 +346,7 @@ class AvgLink(SumLink):
         # as the data is converted from float to int then back to float
         return sums.astype(float) / count
 
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 class MinLink(AggregateLink):

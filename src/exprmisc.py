@@ -9,7 +9,8 @@ import config
 from expr import (Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
                   as_string, collect_variables, traverse_expr,
-                  get_missing_record, get_missing_vector, FunctionExpr)
+                  get_missing_record, get_missing_vector, FunctionExpr,
+                  always, firstarg_dtype)
 from exprbases import (EvaluableExpression, CompoundExpression, NumexprFunction,
                        TableExpression, NumpyRandom, NumpyChangeArray)
 from context import context_length
@@ -147,7 +148,8 @@ class ZeroClip(CompoundExpression):
                      0)
 
     def dtype(self, context):
-        #FIXME: should coerce wh expr_min & expr_max
+        # We do not have to coerce with self.expr_min & expr_max because they
+        # are only used in the comparisons, not in the result.
         return getdtype(self.expr, context)
 
 
@@ -188,10 +190,7 @@ class RandInt(NumpyRandom):
     np_func = np.random.randint
     argspec = argspec('low', ('high', None), ('size', None),
                       **NumpyRandom.kwonlyargs)
-
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return int
+    dtype = always(int)
 
 
 #XXX: use np.random.choice (new in np 1.7)
@@ -295,12 +294,7 @@ class Choice(EvaluableExpression):
 class Round(NumpyChangeArray):
     func_name = 'round'  # np.round redirects to np.round_
     np_func = np.round
-
-    def dtype(self, context):
-        # result dtype is the same as the input dtype
-        res = getdtype(self.args[0], context)
-        assert res == float
-        return res
+    dtype = firstarg_dtype
 
 
 class Trunc(FunctionExpr):
@@ -309,6 +303,7 @@ class Trunc(FunctionExpr):
     def compute(self, context, expr):
         return expr.astype(int)
 
+    #TODO: do the check in __init__ and use dtype = always(int)
     def dtype(self, context):
         assert getdtype(self.expr, context) == float
         return int
@@ -319,26 +314,17 @@ class Trunc(FunctionExpr):
 
 class Abs(NumexprFunction):
     func_name = 'abs'
-
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 class Log(NumexprFunction):
     func_name = 'log'
-
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 class Exp(NumexprFunction):
     func_name = 'exp'
-
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 def add_individuals(target_context, children):
@@ -490,9 +476,7 @@ class CreateIndividual(EvaluableExpression):
         else:
             return None
 
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return int
+    dtype = always(int)
 
 
 class Clone(CreateIndividual):
@@ -598,9 +582,7 @@ class Dump(TableExpression):
             variables |= collect_variables(self.filter, context)
             return variables
 
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return None
+    dtype = always(None)
 
 
 #TODO: inherit from NumexprFunction
@@ -658,13 +640,13 @@ class Where(Expr):
 
 functions = {
     # random
-    'uniform': Uniform, 'normal': Normal, 'choice': Choice,
-    'randint': RandInt, # element-wise functions
-    # Min and Max are in aggregates.py.functions (because of the
-    # dispatcher)
+    'uniform': Uniform, 'normal': Normal, 'choice': Choice, 'randint': RandInt,
+    # element-wise functions
+    # Min and Max are in aggregates.py.functions (because of the dispatcher)
     'abs': Abs, 'clip': Clip, 'zeroclip': ZeroClip, 'round': Round,
-    'trunc': Trunc, 'exp': Exp, 'log': Log, 'logit': Logit,
-    'logistic': Logistic, 'where': Where, # misc
-    'sort': Sort, 'new': CreateIndividual, 'clone': Clone,
-    'dump': Dump
+    'trunc': Trunc, 'exp': Exp, 'log': Log,
+    'logit': Logit, 'logistic': Logistic,
+    'where': Where,
+    # misc
+    'sort': Sort, 'new': CreateIndividual, 'clone': Clone, 'dump': Dump
 }

@@ -6,7 +6,7 @@ from alignment import Alignment
 import config
 from context import context_length
 from expr import (Expr, Variable, ShortLivedVariable, BinaryOp, ComparisonOp,
-                  get_tmp_varname, missing_values, getdtype, expr_eval)
+                  get_tmp_varname, missing_values, getdtype, expr_eval, always)
 from exprbases import CompoundExpression
 from exprmisc import Exp, Normal, Max, Where, Logit, Logistic
 
@@ -42,8 +42,7 @@ class Regression(CompoundExpression):
         expr = self.add_filter(self.complete_expr, context)
         return expr.as_simple_expr(context)
 
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 class LogitScore(CompoundExpression):
@@ -79,9 +78,7 @@ class LogitScore(CompoundExpression):
     def __str__(self):
         return '%s(%s)' % (self.func_name, self.expr)
 
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 class LogitRegr(Regression):
@@ -108,8 +105,7 @@ class LogitRegr(Regression):
         else:
             return super(LogitRegr, self).add_filter(expr, context)
 
-    def dtype(self, context):
-        return bool
+    dtype = always(bool)
 
 
 class ContRegr(Regression):

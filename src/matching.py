@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import numpy as np
 
-from expr import expr_eval, traverse_expr, LogicalOp
+from expr import expr_eval, traverse_expr, LogicalOp, always
 from exprbases import EvaluableExpression
 from context import context_length, context_delete
 from utils import loop_wh_progress
@@ -119,9 +119,7 @@ class Matching(EvaluableExpression):
         loop_wh_progress(match_one_set1_individual, set1tomatch)
         return result
 
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return int
+    dtype = always(int)
 
 
 functions = {'matching': Matching}
