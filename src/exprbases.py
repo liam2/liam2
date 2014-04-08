@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import types
+
 import numpy as np
 
 import config
@@ -61,19 +63,38 @@ class FilteredExpression(FunctionExpr):
 
 
 class NumpyFunction(FunctionExpr):
-    np_func = (None,)
+    np_func = None
     # all subclasses support a filter keyword-only argument
     kwonlyargs = {'filter': None}
 
     @classmethod
     def get_compute_func(cls):
-        return cls.np_func[0]
+        func = cls.np_func
+        if func is None:
+            return None
+        elif isinstance(func, types.BuiltinFunctionType):
+            # Note that types.BuiltinFunctionType and types.BuiltinMethodType
+            # are the same object (equal to <type 'builtin_function_or_method'>)
+            return func
+        else:
+            # This is necessary because class attributes set to functions are
+            # automatically converted to methods !
+            # >>> def f():
+            # ...     pass
+            # >>> class A(object):
+            # ...     m = f
+            # >>> f
+            # <function f at 0x02844470>
+            # >>> A.m
+            # <unbound method A.f>
+            assert isinstance(func, types.MethodType)
+            return func.im_func
 
     # subclasses can override this by a class-constant
     @classproperty
     @classmethod
     def func_name(cls):
-        return cls.np_func[0].__name__
+        return cls.get_compute_func().__name__
 
 
 class NumpyChangeArray(NumpyFunction):
@@ -85,7 +106,7 @@ class NumpyChangeArray(NumpyFunction):
     def compute(self, context, *args, **kwargs):
         filter_value = kwargs.pop('filter', None)
 
-        func = self.np_func[0]
+        func = self.get_compute_func()
         new_values = func(*args, **kwargs)
 
         if filter_value is None:
@@ -102,7 +123,7 @@ class NumpyCreateArray(NumpyFunction):
     def compute(self, context, *args, **kwargs):
         filter_value = kwargs.pop('filter', None)
 
-        func = self.np_func[0]
+        func = self.get_compute_func()
         values = func(*args, **kwargs)
 
         if filter_value is None:
@@ -151,7 +172,7 @@ class NumpyAggregate(NumpyFunction):
             func = self.nan_func[0]
         else:
             usenanfunc = False
-            func = self.np_func[0]
+            func = self.get_compute_func()
 
         if values.shape:
             if values.ndim == 1:

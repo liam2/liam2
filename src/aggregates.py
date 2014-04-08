@@ -11,8 +11,7 @@ from utils import deprecated
 
 
 class All(NumpyAggregate):
-    func_name = 'all'
-    np_func = (np.all,)
+    np_func = np.all
 
     #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
@@ -20,8 +19,7 @@ class All(NumpyAggregate):
 
 
 class Any(NumpyAggregate):
-    func_name = 'any'
-    np_func = (np.any,)
+    np_func = np.any
 
     #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
@@ -60,7 +58,7 @@ class Count(EvaluableExpression):
 
 class Min(NumpyAggregate):
     func_name = 'min'
-    np_func = (np.amin,)
+    np_func = np.amin
     nan_func = (np.nanmin,)
 
     def dtype(self, context):
@@ -69,7 +67,7 @@ class Min(NumpyAggregate):
 
 class Max(NumpyAggregate):
     func_name = 'max'
-    np_func = (np.amax,)
+    np_func = np.amax
     nan_func = (np.nanmax,)
 
     def dtype(self, context):
@@ -89,8 +87,7 @@ def na_sum(a, overwrite=False):
 
 
 #class Sum(NumpyAggregate):
-#    func_name = 'sum'
-#    np_func = (np.sum,)
+#    np_func = np.sum
 #    nan_func = (nansum,)
 #
 #    def dtype(self, context):
@@ -122,7 +119,7 @@ class Sum(FilteredExpression):
 
 #class Average(NumpyAggregate):
 #    func_name = 'avg'
-#    np_func = (np.mean,)
+#    np_func = np.mean
 ##    nan_func = (nanmean,)
 #
 #    def dtype(self, context):
@@ -178,8 +175,7 @@ class Average(FilteredExpression):
 
 
 class Std(NumpyAggregate):
-    func_name = 'std'
-    np_func = (np.std,)
+    np_func = np.std
 
     #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
@@ -187,8 +183,7 @@ class Std(NumpyAggregate):
 
 
 class Median(NumpyAggregate):
-    func_name = 'median'
-    np_func = (np.median,)
+    np_func = np.median
 
     #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
@@ -196,8 +191,7 @@ class Median(NumpyAggregate):
 
 
 class Percentile(NumpyAggregate):
-    func_name = 'percentile'
-    np_func = (np.percentile,)
+    np_func = np.percentile
 
     #noinspection PyUnusedLocal,PyMethodMayBeStatic
     def dtype(self, context):
@@ -256,11 +250,14 @@ def make_dispatcher(agg_func, elem_func):
     return dispatcher
 
 
-functions = {'all': All, 'any': Any, 'count': Count,
-             'min': make_dispatcher(Min, exprmisc.Min),
-             'max': make_dispatcher(Max, exprmisc.Max), 'sum': Sum,
-             'avg': Average, 'std': Std, 'median': Median,
-             'percentile': Percentile, 'gini': Gini, }
+functions = {
+    'all': All, 'any': Any, 'count': Count,
+    'min': make_dispatcher(Min, exprmisc.Min),
+    'max': make_dispatcher(Max, exprmisc.Max),
+    'sum': Sum, 'avg': Average, 'std': Std,
+    'median': Median, 'percentile': Percentile,
+    'gini': Gini
+}
 
 for k, v in functions.items():
     functions['grp' + k] = deprecated(v, "%s is deprecated, please use %s "

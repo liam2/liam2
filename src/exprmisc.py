@@ -162,30 +162,30 @@ class ZeroClip(CompoundExpression):
 # >>> timeit ne.evaluate('where(a < mi, mi, where(a > ma, ma, a))')
 # 10 loops, best of 3: 94.1 ms per loop
 class Clip(NumpyChangeArray):
-    np_func = (np.clip,)
+    np_func = np.clip
 
 
 class Sort(NumpyChangeArray):
-    np_func = (np.sort,)
+    np_func = np.sort
 
 
 #------------------------------------
 
 
 class Uniform(NumpyRandom):
-    np_func = (np.random.uniform,)
+    np_func = np.random.uniform
     argspec = argspec(('low', 0.0), ('high', 1.0), ('size', 1),
                       **NumpyRandom.kwonlyargs)
 
 
 class Normal(NumpyRandom):
-    np_func = (np.random.normal,)
+    np_func = np.random.normal
     argspec = argspec(('loc', 0.0), ('scale', 1.0), ('size', None),
                       **NumpyRandom.kwonlyargs)
 
 
 class RandInt(NumpyRandom):
-    np_func = (np.random.randint,)
+    np_func = np.random.randint
     argspec = argspec('low', ('high', None), ('size', None),
                       **NumpyRandom.kwonlyargs)
 
@@ -294,7 +294,7 @@ class Choice(EvaluableExpression):
 
 class Round(NumpyChangeArray):
     func_name = 'round'  # np.round redirects to np.round_
-    np_func = (np.round,)
+    np_func = np.round
 
     def dtype(self, context):
         # result dtype is the same as the input dtype
