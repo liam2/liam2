@@ -48,7 +48,7 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
 def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                          take_filter=None, leave_filter=None):
     assert isinstance(need, np.ndarray) and \
-           issubclass(need.dtype.type, np.integer)
+        issubclass(need.dtype.type, np.integer)
     assert score is None or isinstance(score, (bool, int, float, np.ndarray))
 
     if filter_value is not None:
@@ -156,7 +156,6 @@ class AlignmentAbsoluteValues(FilteredExpression):
     func_name = 'align_abs'
     no_eval = ('filter', 'secondary_axis', 'expressions')
 
-# need eval: score, need, filter, take, leave, expressions, pv
     def post_init(self):
         need = self.args[1]
         if isinstance(need, basestring):
@@ -165,87 +164,24 @@ class AlignmentAbsoluteValues(FilteredExpression):
             self.args = (self.args[0], need) + self.args[2:]
         self.past_error = None
 
-    # def _compute(self, context, score, need,
-    #              filter=None, take=None, leave=None,
-    #              expressions=None, possible_values=None,
-    #              errors='default', frac_need='uniform',
-    #              link=None, secondary_axis=None):
-
-        # need is a single scalar
-        # if not isinstance(need, (tuple, list, Expr, np.ndarray)):
-        #     need = [need]
-        #
-        # # need is a simple list (no expr inside)
-        # if isinstance(need, (tuple, list)) and \
-        #    not any(isinstance(p, Expr) for p in need):
-        #     need = np.array(need)
-        #
-        # self.need = need
-        #
-        # if expressions is None:
-        #     expressions = []
-        # self.expressions = expressions
-        #
-        # if possible_values is None:
-        #     possible_values = []
-        # else:
-        #     possible_values = [np.array(pv) for pv in possible_values]
-        # self.possible_values = possible_values
-        #
-        # self.take_filter = take
-        # self.leave_filter = leave
-        #
-        # self.errors = errors
-        # self.past_error = None
-        #
-        # self.frac_need = frac_need
-        # if frac_need not in ('uniform', 'cutoff', 'round'):
-        #     raise Exception("frac_need should be one of: 'uniform', 'cutoff' "
-        #                     "or 'round'")
-        #
-        # self.link = link
-        # if secondary_axis is not None and link is None:
-        #     raise Exception("the 'secondary_axis' argument is only valid in "
-        #                     "combination with the 'link' argument")
-        # if not isinstance(secondary_axis, (type(None), int, Variable)):
-        #     raise Exception("'secondary_axis' should be either an integer or "
-        #                     "an axis name (but got '%s' which is of type '%s')"
-        #                     % (secondary_axis, type(secondary_axis)))
-        # self.secondary_axis = secondary_axis
-
-    # def traverse(self, context):
-    #     for node in FilteredExpression.traverse(self, context):
-    #         yield node
-    #     for expr in self.expressions:
-    #         for node in traverse_expr(expr, context):
-    #             yield node
-    #     for node in traverse_expr(self.need, context):
-    #         yield node
-    #     for node in traverse_expr(self.take_filter, context):
-    #         yield node
-    #     for node in traverse_expr(self.leave_filter, context):
-    #         yield node
-    #     yield self
-    #
-    # def collect_variables(self, context):
-    #     if self.link is None:
-    #         return FilteredExpression.collect_variables(self, context)
-    #     else:
-    #         # in this case, it's tricky
-    #         return set()
+    def collect_variables(self, context):
+        if self.link is None:
+            return FilteredExpression.collect_variables(self, context)
+        else:
+            # in this case, it's tricky
+            return set()
 
     def _eval_need(self, context, need, expressions, possible_values):
-        # expressions = self.expressions
-        # possible_values = self.possible_values
-        # if isinstance(self.need, (tuple, list)):
-        #     need = np.array([expr_eval(e, context) for e in self.need])
-        # elif isinstance(self.need, Expr):
-        #     need = expr_eval(self.need, context)
-        #     # need was a *scalar* expr
-        if not (isinstance(need, np.ndarray) and need.shape):
+        assert isinstance(need, np.ndarray)
+
+        # When given a 0d array, we convert it to 1d. This can happen e.g. for
+        # >>> b = True; x = ne.evaluate('where(b, 0.1, 0.2)')
+        # >>> isinstance(x, np.ndarray)
+        # True
+        # >>> x.shape
+        # ()
+        if not need.shape:
             need = np.array([need])
-        # else:
-        #     need = self.need
 
         if isinstance(need, LabeledArray):
             if not expressions:
@@ -297,11 +233,11 @@ class AlignmentAbsoluteValues(FilteredExpression):
                 frac_need = need - int_need
                 need = int_need
 
-                # the sum of fractional objects number of extra objects we want
-                # aligned
+                # the sum of fractional objects is the number of extra objects
+                # we want aligned
                 extra_wanted = int(round(np.sum(frac_need)))
                 if extra_wanted:
-                    # search cutoff that yield
+                    # search the cutoff point yielding:
                     # sum(frac_need >= cutoff) == extra_wanted
                     sorted_frac_need = frac_need.flatten()
                     sorted_frac_need.sort()
@@ -358,6 +294,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # need is a non-ndarray sequence
         if isinstance(need, (tuple, list)):
             need = np.array(need)
+        assert isinstance(need, np.ndarray)
 
         if expressions is None:
             expressions = []
@@ -426,21 +363,21 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         #noinspection PyAugmentAssignment
         need = need * self._get_need_correction(groups, possible_values)
-        need = self._handle_frac_need(need, frac_need)
+        need = self._handle_frac_need(need, method=frac_need)
         need = self._add_past_error(context, need, method=errors)
 
         return align_get_indices_nd(ctx_length, groups, need, filter_value,
                                     score, take, leave)
 
-    def align_link(self, context):
-        scores = expr_eval(self.expr, context)
-
-        need, expressions, possible_values = self._eval_need(context)
-        need = self._handle_frac_need(need, frac_need)
+    def align_link(self, context, score, need, filter, take, leave,
+                   expressions, possible_values, errors, frac_need, link,
+                   secondary_axis):
+        need, expressions, possible_values = \
+            self._eval_need(context, need, expressions, possible_values)
+        need = self._handle_frac_need(need, method=frac_need)
         need = self._add_past_error(context, need, method=errors)
 
         # handle secondary axis
-        secondary_axis = self.secondary_axis
         if isinstance(secondary_axis, Expr):
             axis_name = str(secondary_axis)
             try:
@@ -457,15 +394,14 @@ class AlignmentAbsoluteValues(FilteredExpression):
                                 % (secondary_axis, need.ndim))
 
         # evaluate columns
-        target_context = self.link._target_context(context)
+        target_context = link._target_context(context)
         target_columns = [expr_eval(e, target_context) for e in expressions]
         # this is a one2many, so the link column is on the target side
-        link_column = expr_eval(Variable(self.link._link_field),
-                                target_context)
+        link_column = expr_eval(Variable(link._link_field), target_context)
 
-        filter_expr = self._getfilter(context)
+        filter_expr = self._getfilter(context, filter)
         if filter_expr is not None:
-            reverse_link = Many2One("reverse", self.link._link_field,
+            reverse_link = Many2One("reverse", link._link_field,
                                     context.entity.name)
             target_filter = LinkValue(reverse_link, filter_expr, False)
             target_filter_value = expr_eval(target_filter, target_context)
@@ -474,8 +410,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
             # because we loose information about "indices", but in this case,
             # it is fine, because we do not need that information afterwards.
             filtered_columns = [col[target_filter_value]
-                                  if isinstance(col, np.ndarray) and col.shape
-                                  else [col]
+                                if isinstance(col, np.ndarray) and col.shape
+                                else [col]
                                 for col in target_columns]
 
             link_column = link_column[target_filter_value]
@@ -563,7 +499,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
             hh[source_row].append(target_row)
 
         aligned, error = \
-            align_link_nd(scores, need, num_candidates, hh, fcols_labels,
+            align_link_nd(score, need, num_candidates, hh, fcols_labels,
                           secondary_axis)
         self.past_error = error
         return aligned
