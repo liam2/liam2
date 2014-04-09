@@ -54,11 +54,14 @@ type_to_idx = {bool: 0, np.bool_: 0,
                float: 2, np.float64: 2}
 idx_to_type = [bool, int, float]
 
-missing_values = {  # int: -2147483648,
-                    # for links, we need to have abs(missing_int) < len(a) !
-                    #XXX: we might want to use different missing values for links and for
+missing_values = {
+    # int: -2147483648,
+    # for links, we need to have abs(missing_int) < len(a) !
+    #XXX: we might want to use different missing values for links and for
     #     "normal" ints
-    int: -1, float: float('nan'),  # bool: -1
+    int: -1,
+    float: float('nan'),
+    # bool: -1
     bool: False
 }
 
