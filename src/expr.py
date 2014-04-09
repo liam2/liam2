@@ -657,18 +657,11 @@ class FunctionExpr(EvaluableExpression):
     __repr__ = __str__
 
 
-class DynamicFunctionCall(FunctionExpr):
+class GenericFunctionCall(FunctionExpr):
     """
-    DynamicFunctionCall handles calling expressions where the function to run is
-    determined at runtime (it should be passed as the first argument).
+    GenericFunctionCall handles calling expressions where the function to run is
+    passed as the first argument.
     """
-    # DynamicFunctionCall is (currently) only used for calling ndarray methods,
-    # which are all builtin methods for which we do not have signatures,
-    # so we cannot (at this point) check arguments nor convert kwargs to args,
-    # so we deliberately do not call FunctionExpr.__init__ which does both
-    def __init__(self, *args, **kwargs):
-        Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
-
     @property
     def func_name(self):
         return str(self.children[0][0])
@@ -683,6 +676,19 @@ class DynamicFunctionCall(FunctionExpr):
 
     def compute(self, context, func, *args, **kwargs):
         return func(*args, **kwargs)
+
+
+class DynamicFunctionCall(GenericFunctionCall):
+    """
+    DynamicFunctionCall handles calling expressions where the function to run is
+    determined at runtime (it should be passed as the first argument).
+    """
+    # DynamicFunctionCall is (currently) only used for calling ndarray methods,
+    # which are all builtin methods for which we do not have signatures,
+    # so we cannot (at this point) check arguments nor convert kwargs to args,
+    # so we deliberately do not call FunctionExpr.__init__ which does both
+    def __init__(self, *args, **kwargs):
+        Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
 
 
 #############
@@ -1002,10 +1008,34 @@ class VariableMethodHybrid(Variable):
         return MethodCall(self.entity, self.name, args, kwargs)
 
 
+# class MethodCallToResolve(Expr):
+#     def __init__(self, name, entity, args, kwargs):
+#         self.name = name
+#         self.entity = entity
+#         self.args = args
+#         self.kwargs = kwargs
+#
+#     def resolve(self):
+#         entity_processes = self.entity.processes
+#         method = entity_processes[self.name]
+#         # hybrid (method & variable) assignment can be called
+#         assert isinstance(method, (Assignment, Function))
+#         return GenericFunctionCall(method, *self.args, **self.kwargs)
+
+
 class MethodSymbol(object):
     def __init__(self, name, entity):
         self.name = name
         self.entity = entity
 
     def __call__(self, *args, **kwargs):
+        # we cannot use self.entity.processes as they are not defined yet (we
+        # are probably currently building them), so we cannot return a
+        # GenericFunctionCall now like we should and instead must either
+        # return an intermediary object (MethodCallToResolve) which we will
+        # "resolve" later, or use DynamicFunctionCall (for which we cannot
+        # have dtype yet). However that "resolve" step is currently hard to
+        # do because we need ast.NodeTransformer-like machinery which we do not
+        # have yet.
+        # return MethodCallToResolve(self.entity, self.name, args, kwargs)
         return MethodCall(self.entity, self.name, args, kwargs)

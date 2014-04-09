@@ -369,6 +369,14 @@ class Entity(object):
         self.processes = dict(processes)
         # self.ssa()
 
+    # def resolve_method_calls(self):
+    #     for p in self.processes.itervalues():
+    #         for expr in p.expressions():
+    #             for node in expr.all_of(MethodCallToResolve):
+    #                 # replace node in the parent node by the "resolved" node
+    #                 #TODO: mimic ast.NodeTransformer
+    #                 node.resolve()
+
     def ssa(self):
         for p in self.processes.itervalues():
             if isinstance(p, ProcessGroup):

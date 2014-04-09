@@ -253,6 +253,9 @@ class Simulation(object):
             entity.parse_processes(parsing_context)
             entity.compute_lagged_fields()
 
+        # for entity in entities.itervalues():
+        #     entity.resolve_method_calls()
+
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()
         for ent_name, proc_names in init_def:
