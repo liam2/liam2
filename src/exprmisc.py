@@ -378,7 +378,7 @@ def add_individuals(target_context, children):
 
 #TODO: inherit from FilteredExpression so that I can use _getfilter
 #TODO: allow number to be an expression
-class CreateIndividual(EvaluableExpression):
+class New(EvaluableExpression):
     def __init__(self, entity_name=None, filter=None, number=None, **kwargs):
         self.entity_name = entity_name
         self.filter = filter
@@ -485,9 +485,9 @@ class CreateIndividual(EvaluableExpression):
     dtype = always(int)
 
 
-class Clone(CreateIndividual):
+class Clone(New):
     def __init__(self, filter=None, **kwargs):
-        CreateIndividual.__init__(self, None, filter, None, **kwargs)
+        New.__init__(self, None, filter, None, **kwargs)
 
     def _initial_values(self, array, to_give_birth, num_birth):
         return array[to_give_birth]
@@ -665,7 +665,7 @@ functions = {
     'where': Where,
     # misc
     'sort': Sort,
-    'new': CreateIndividual,
+    'new': New,
     'clone': Clone,
     'dump': Dump
 }
