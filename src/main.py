@@ -22,10 +22,10 @@ __version__ = "0.9-pre1"
 
 
 def eat_traceback(func, *args, **kwargs):
-# e.context      | while parsing a block mapping
-# e.context_mark | in "import.yml", line 18, column 9
-# e.problem      | expected <block end>, but found '<block sequence start>'
-# e.problem_mark | in "import.yml", line 29, column 12
+    # e.context      | while parsing a block mapping
+    # e.context_mark | in "import.yml", line 18, column 9
+    # e.problem      | expected <block end>, but found '<block sequence start>'
+    # e.problem_mark | in "import.yml", line 29, column 12
     error_log_path = None
     try:
         try:
@@ -167,6 +167,7 @@ class PrintVersionsAction(argparse.Action):
 
         try:
             from cpartition import filter_to_indices
+
             del filter_to_indices
             cext = True
         except ImportError:
@@ -181,12 +182,9 @@ numpy {np}
 numexpr {ne}
 pytables {pt}
 carray {ca}
-pyyaml {yml}""".format(py=py_version,
-                       np=numpy.__version__,
-                       ne=numexpr.__version__,
-                       pt=tables.__version__,
-                       ca=carray.__version__,
-                       yml=yaml.__version__))
+pyyaml {yml}""".format(py=py_version, np=numpy.__version__,
+                       ne=numexpr.__version__, pt=tables.__version__,
+                       ca=carray.__version__, yml=yaml.__version__))
         parser.exit()
 
 
@@ -220,7 +218,7 @@ def main():
 
     # create the parser for the "explore" command
     parser_explore = subparsers.add_parser('explore', help='explore data of a '
-                                          'past simulation')
+                                                           'past simulation')
     parser_explore.add_argument('file', help='explore file')
 
     # create the parser for the "upgrade" command
@@ -262,6 +260,7 @@ def main():
     else:
         raise ValueError("invalid action")
     wrapper(*args)
+
 
 if __name__ == '__main__':
     import sys

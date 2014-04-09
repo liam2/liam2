@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# LIAM2 User Guide documentation build configuration file, created by
+# LIAM2 User Guide build configuration file, created by
 # sphinx-quickstart on Fri Feb 04 10:08:07 2011.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -19,6 +19,7 @@ import sys
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
+
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -27,7 +28,10 @@ import sys
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 #extensions = ['sphinx.ext.todo', 'sphinx.ext.pngmath', 'rst2pdf.pdfbuilder']
-extensions = ['sphinx.ext.todo', 'sphinx.ext.pngmath']
+extensions = ['sphinx.ext.extlinks']
+
+extlinks = {'issue': ('https://github.com/liam2/liam2/issues/%s',
+                      'issue ')}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -106,6 +110,7 @@ html_theme = 'default'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
+html_title = "LIAM2 %s User Guide" % version
 #html_title = None
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
@@ -151,6 +156,7 @@ html_static_path = ['_static']
 
 # If true, links to the reST sources are added to the pages.
 #html_show_sourcelink = True
+html_show_sourcelink = False
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
 #html_show_sphinx = True
@@ -267,7 +273,9 @@ epub_copyright = u'2011-2013, gb@plan.be, gd@plan.be, gdm@plan.be'
 # Allow duplicate toc entries.
 #epub_tocdup = True
 
+
 # -- Options for PDF output --------------------------------------------------
+
 # Grouping the document tree into PDF files. List of tuples
 # (source start file, target name, title, author, options).
 #
@@ -284,3 +292,4 @@ epub_copyright = u'2011-2013, gb@plan.be, gd@plan.be, gdm@plan.be'
 pdf_documents = [
 ('index', u'LIAM2', u'LIAM2', u'gb, gd, gdm'),
 ]
+

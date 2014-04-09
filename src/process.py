@@ -349,7 +349,12 @@ class Function(AbstractProcessGroup):
                             (len(self.argnames), len(args)))
 
         context = context.copy()
+        # add arguments to the local namespace
         for name, value in zip(self.argnames, args):
+            # backup the variable if it existed in the caller namespace
+            # if name in self.entity.temp_variables:
+            #     backup[name] = self.entity.temp_variables.pop(name)
+            # self.entity.temp_variables[name] = value
             context[name] = value
         self.code.run_guarded(context)
         result = expr_eval(self.result, context)

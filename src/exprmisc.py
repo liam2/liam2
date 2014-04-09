@@ -186,6 +186,11 @@ class Normal(NumpyRandom):
                       **NumpyRandom.kwonlyargs)
 
 
+class Gumbel(NumpyRandom):
+    np_func = (np.random.gumbel,)
+    arg_names = ('loc', 'scale', 'size')
+
+
 class RandInt(NumpyRandom):
     np_func = np.random.randint
     argspec = argspec('low', ('high', None), ('size', None),
@@ -640,13 +645,26 @@ class Where(Expr):
 
 functions = {
     # random
-    'uniform': Uniform, 'normal': Normal, 'choice': Choice, 'randint': RandInt,
+    'uniform': Uniform,
+    'normal': Normal,
+    'gumbel': Gumbel,
+    'choice': Choice,
+    'randint': RandInt,
     # element-wise functions
     # Min and Max are in aggregates.py.functions (because of the dispatcher)
-    'abs': Abs, 'clip': Clip, 'zeroclip': ZeroClip, 'round': Round,
-    'trunc': Trunc, 'exp': Exp, 'log': Log,
-    'logit': Logit, 'logistic': Logistic,
+    'abs': Abs,
+    'clip': Clip,
+    'zeroclip': ZeroClip,
+    'round': Round,
+    'trunc': Trunc,
+    'exp': Exp,
+    'log': Log,
+    'logit': Logit,
+    'logistic': Logistic,
     'where': Where,
     # misc
-    'sort': Sort, 'new': CreateIndividual, 'clone': Clone, 'dump': Dump
+    'sort': Sort,
+    'new': CreateIndividual,
+    'clone': Clone,
+    'dump': Dump
 }
