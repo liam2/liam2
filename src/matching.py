@@ -9,8 +9,80 @@ from utils import loop_wh_progress
 from timeit import itertools
 
 #TODO:  
-# class Ranking_Matching(EvaluableExpression):
-           
+class Ranking_Matching(EvaluableExpression):
+    ''' General frame for a Matching based on rank '''
+    def __init__(self, set1filter, set2filter, rank1, rank2):
+        self.set1filter = set1filter
+        self.set2filter = set2filter
+        self.rank1_expr = rank1
+        self.rank2_expr = rank2
+        if isinstance(rank1, basestring) or isinstance(rank2, basestring):
+            raise Exception("Using a string for the score expression is not "
+                            "supported anymore. You should use a normal "
+                            "expression (ie simply remove the quotes).")
+        
+    def traverse(self, context):
+        for node in traverse_expr(self.set1filter, context):
+            yield node
+        for node in traverse_expr(self.set2filter, context):
+            yield node
+        for node in traverse_expr(self.rank1_expr, context):
+            yield node
+        for node in traverse_expr(self.rank2_expr, context):
+            yield node
+        yield self
+
+    def collect_variables(self, context):
+        expr_vars = collect_variables(self.set1filter, context)
+        expr_vars |= collect_variables(self.set2filter, context)
+        #FIXME: add variables from score_expr. This is not done currently,
+        # because the presence of variables is done in expr.expr_eval before
+        # the evaluate method is called and the context is completed during
+        # evaluation (__other_xxx is added during evaluation).
+#        expr_vars |= collect_variables(self.rank1_expr, context)
+#        expr_vars |= collect_variables(self.rank2_expr, context)
+        return expr_vars
+
+    def evaluate(self, context):
+        ctx_filter = context.get('__filter__')
+        id_to_rownum = context.id_to_rownum
+
+        # at some point ctx_filter will be cached automatically, so we don't
+        # need to take care of it manually here
+        if ctx_filter is not None:
+            set1filter = expr_eval(ctx_filter & self.set1filter, context)
+            set2filter = expr_eval(ctx_filter & self.set2filter, context)
+        else:
+            set1filter = expr_eval(self.set1filter, context)
+            set2filter = expr_eval(self.set2filter, context)
+
+        rank1_expr = self.rank1_expr
+        rank2_expr = self.rank2_expr
+
+        used_variables1 = ['id'] + rank1_expr.collect_variables(context)
+        used_variables2 = ['id'] + rank2_expr.collect_variables(context)
+        set1 = context_subset(context, set1filter, used_variables1)
+        set2 = context_subset(context, set2filter, used_variables2)
+        set1len = set1filter.sum()
+        set2len = set2filter.sum()
+        tomatch = min(set1len, set2len)
+        order1 = expr_eval(rank1_expr, context)
+        order2 = expr_eval(rank2_expr, context)
+        sorted_set1_indices = order1[set1filter].argsort()
+        sorted_set2_indices = order2[set2filter].argsort()
+        idx1 = sorted_set1_indices[:tomatch]
+        idx2 = sorted_set2_indices[:tomatch]
+        print("matching with %d/%d individuals" % (set1len, set2len))
+        
+        result = np.empty(context_length(context), dtype=int)
+        result.fill(-1)
+        result[id_to_rownum[idx1]] = idx2
+        result[id_to_rownum[idx2]] = idx1
+        
+    #noinspection PyUnusedLocal
+    def dtype(self, context):
+        return int
+                      
 class Score_Matching(EvaluableExpression):
     ''' General frame for a Matching based on score '''
     def __init__(self, set1filter, set2filter, score):
