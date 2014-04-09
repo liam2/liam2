@@ -187,8 +187,9 @@ class Normal(NumpyRandom):
 
 
 class Gumbel(NumpyRandom):
-    np_func = (np.random.gumbel,)
-    arg_names = ('loc', 'scale', 'size')
+    np_func = np.random.gumbel
+    argspec = argspec(('loc', 0.0), ('scale', 1.0), ('size', None),
+                      **NumpyRandom.kwonlyargs)
 
 
 class RandInt(NumpyRandom):
