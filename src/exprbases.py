@@ -136,8 +136,19 @@ class NumpyCreateArray(NumpyFunction):
 class NumpyRandom(NumpyCreateArray):
     def _eval_args(self, context):
         args, kwargs = NumpyCreateArray._eval_args(self, context)
-        if 'size' in self.argspec.args and 'size' not in kwargs:
-            kwargs['size'] = context_length(context)
+        if 'size' in self.argspec.args:
+            pos = self.argspec.args.index('size')
+            size = args[pos]
+
+            # The original functions return a scalar when size is None, and an
+            # array of length one when size is 1.
+            #TODO: users should have a way to have the "size=None" behavior. We
+            # could differentiate whether None was explicitly passed or comes
+            # from the default value (as we did previously: 'size' not in
+            # kwargs), but I do not think it is a good idea. Adding a new
+            # "sentinel" value (e.g. -1 or "scalar") is probably better.
+            if size is None:
+                args = args[:pos] + (context_length(context),) + args[pos + 1:]
         return args, kwargs
 
     def compute(self, context, *args, **kwargs):
