@@ -594,7 +594,7 @@ class FunctionExpr(EvaluableExpression):
                             (self.func_name, maxargs + 1, nargs + 1))
 
         # check that we do not have invalid kwargs
-        allowed_kwargs = set(argnames) | set(self.kwonlyargs.keys())
+        allowed_kwargs = set(argnames) | set(self.argspec.kwonlyargs)
         extra_kwargs = set(kwargs.keys()) - allowed_kwargs
         # def f(**kwargs) => argspec.varkw = 'kwargs'
         if extra_kwargs and self.argspec.varkw is None:
@@ -631,9 +631,19 @@ class FunctionExpr(EvaluableExpression):
             no_eval = set(no_eval)
             args = [expr_eval(arg, context) if name not in no_eval else arg
                     for name, arg in zip(self.argspec.args, args)]
-            kwargs = [(name, expr_eval(arg, context))
-                      if name not in no_eval else (name, arg)
-                      for name, arg in kwargs]
+            if self.argspec.varkw in no_eval:
+                # "normal" kwargs have been transfered to args, so we only need
+                # to evaluate kwonlyargs
+                to_eval = set(self.argspec.kwonlyargs)
+                kwargs = [(name, expr_eval(arg, context))
+                          if name in to_eval else (name, arg)
+                          for name, arg in kwargs]
+            else:
+                # we already checked in __init__ that we have no "unknown"
+                # kwarg if varkw is None
+                kwargs = [(name, expr_eval(arg, context))
+                          if name not in no_eval else (name, arg)
+                          for name, arg in kwargs]
         else:
             args, kwargs = expr_eval(self.children, context)
 
