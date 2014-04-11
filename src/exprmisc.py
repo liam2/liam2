@@ -176,7 +176,9 @@ class Sort(NumpyChangeArray):
 
 class Uniform(NumpyRandom):
     np_func = np.random.uniform
-    argspec = argspec(('low', 0.0), ('high', 1.0), ('size', 1),
+    # The docstring is wrong: the default size is None instead of 1.
+    # Issue reported as: https://github.com/numpy/numpy/pull/4611
+    argspec = argspec(('low', 0.0), ('high', 1.0), ('size', None),
                       **NumpyRandom.kwonlyargs)
 
 
