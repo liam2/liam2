@@ -96,6 +96,12 @@ class EvaluationContext(object):
     def length(self):
         return context_length(self.entity_data)
 
+    def keys(self):
+        return self.entity_data.keys()
+
+    def __len__(self):
+        return self.length()
+
     def subset(self, index=None, keys=None):
         """
         returns a copy of the context with only a subset of the current entity.
