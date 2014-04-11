@@ -1334,7 +1334,15 @@ entities:
             uninitialized_var: True
 
             test_new:
-                # with no filter/parent (number=) 
+                # with no filter nor number
+                - pop: count()
+                - new_id: new('person', age=999)
+                - assertEqual(count(), 2 * pop)
+                - assertEqual(count(age == 999), pop)
+                - remove(age == 999)
+                - assertEqual(count(), pop)
+
+                # with number
                 - new_id: new('person', number=10,
                               age=0,
                               gender=choice([True, False], [0.51, 0.49]))

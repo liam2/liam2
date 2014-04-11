@@ -379,16 +379,8 @@ def add_individuals(target_context, children):
 
 
 #TODO: inherit from FilteredExpression so that I can use _getfilter
-#TODO: allow number to be an expression
-class New(EvaluableExpression):
-    def __init__(self, entity_name=None, filter=None, number=None, **kwargs):
-        self.entity_name = entity_name
-        self.filter = filter
-        self.kwargs = kwargs
-        self.number = number
-
-    #        assert filter is not None and number is None or \
-    #               number is not None and filter is None
+class New(FunctionExpr):
+    no_eval = ('filter', 'kwargs')
 
     def _initial_values(self, array, to_give_birth, num_birth):
         #TODO: use default values for fields which have one
@@ -396,26 +388,28 @@ class New(EvaluableExpression):
         children[:] = get_missing_record(array)
         return children
 
-    def traverse(self, context):
-        for node in traverse_expr(self.filter, context):
-            yield node
-        for kwarg in self.kwargs.itervalues():
-            for node in traverse_expr(kwarg, context):
-                yield node
-        yield self
-
-    def _collect_kwargs_variables(self, context):
+    @classmethod
+    def _collect_kwargs_variables(cls, kwargs, context):
         used_variables = set()
-        for v in self.kwargs.itervalues():
+        # kwargs are stored as a list of (k, v) pairs
+        for k, v in kwargs.iteritems():
             used_variables.update(collect_variables(v, context))
         return used_variables
 
-    def evaluate(self, context):
+    def compute(self, context, entity_name=None, filter=None, number=None,
+                **kwargs):
+        if filter is not None and number is not None:
+            # Having neither is allowed, though, as there can be a contextual
+            # filter. Also, there is no reason to prevent the whole
+            # population giving birth, even though the usefulness of such
+            # usage seem dubious.
+            raise ValueError("new() 'filter' and 'number' arguments are "
+                             "mutually exclusive")
         source_entity = context.entity
-        if self.entity_name is None:
+        if entity_name is None:
             target_entity = source_entity
         else:
-            target_entity = context.entities[self.entity_name]
+            target_entity = context.entities[entity_name]
 
         # target context is the context where the new individuals will be
         # created
@@ -428,10 +422,10 @@ class New(EvaluableExpression):
                                            entity_name=target_entity.name)
         ctx_filter = context.filter_expr
 
-        if self.filter is not None and ctx_filter is not None:
-            filter_expr = LogicalOp('&', ctx_filter, self.filter)
-        elif self.filter is not None:
-            filter_expr = self.filter
+        if filter is not None and ctx_filter is not None:
+            filter_expr = LogicalOp('&', ctx_filter, filter)
+        elif filter is not None:
+            filter_expr = filter
         elif ctx_filter is not None:
             filter_expr = ctx_filter
         else:
@@ -440,11 +434,12 @@ class New(EvaluableExpression):
         if filter_expr is not None:
             to_give_birth = expr_eval(filter_expr, context)
             num_birth = to_give_birth.sum()
-        elif self.number is not None:
+        elif number is not None:
             to_give_birth = None
-            num_birth = self.number
+            num_birth = number
         else:
-            raise Exception('no filter nor number in "new"')
+            to_give_birth = np.ones(len(context), dtype=bool)
+            num_birth = len(context)
 
         array = target_entity.array
 
@@ -457,13 +452,13 @@ class New(EvaluableExpression):
                                        num_individuals + num_birth)
             children['period'] = context.period
 
-            used_variables = self._collect_kwargs_variables(context)
+            used_variables = self._collect_kwargs_variables(kwargs, context)
             if to_give_birth is None:
                 assert not used_variables
                 child_context = context.empty(num_birth)
             else:
                 child_context = context.subset(to_give_birth, used_variables)
-            for k, v in self.kwargs.iteritems():
+            for k, v in kwargs.iteritems():
                 children[k] = expr_eval(v, child_context)
 
         add_individuals(target_context, children)
