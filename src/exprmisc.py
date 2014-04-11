@@ -11,8 +11,9 @@ from expr import (Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   as_string, collect_variables, traverse_expr,
                   get_missing_record, get_missing_vector, FunctionExpr,
                   always, firstarg_dtype)
-from exprbases import (EvaluableExpression, CompoundExpression, NumexprFunction,
-                       TableExpression, NumpyRandom, NumpyChangeArray)
+from exprbases import (EvaluableExpression, FilteredExpression,
+                       CompoundExpression, NumexprFunction, TableExpression,
+                       NumpyRandom, NumpyChangeArray)
 from context import context_length
 from utils import PrettyTable, argspec
 
@@ -378,8 +379,7 @@ def add_individuals(target_context, children):
         (id_to_rownum, id_to_rownum_tail))
 
 
-#TODO: inherit from FilteredExpression so that I can use _getfilter
-class New(FunctionExpr):
+class New(FilteredExpression):
     no_eval = ('filter', 'kwargs')
 
     def _initial_values(self, array, to_give_birth, num_birth):
@@ -420,17 +420,8 @@ class New(FunctionExpr):
             # the entity.array anyway => fresh_data=True
             target_context = context.clone(fresh_data=True,
                                            entity_name=target_entity.name)
-        ctx_filter = context.filter_expr
 
-        if filter is not None and ctx_filter is not None:
-            filter_expr = LogicalOp('&', ctx_filter, filter)
-        elif filter is not None:
-            filter_expr = filter
-        elif ctx_filter is not None:
-            filter_expr = ctx_filter
-        else:
-            filter_expr = None
-
+        filter_expr = self._getfilter(context, filter)
         if filter_expr is not None:
             to_give_birth = expr_eval(filter_expr, context)
             num_birth = to_give_birth.sum()
