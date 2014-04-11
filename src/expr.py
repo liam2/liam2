@@ -572,41 +572,47 @@ class FunctionExpr(EvaluableExpression):
         return cls.compute
 
     def __init__(self, *args, **kwargs):
-        maxargs = len(self.argspec.args)
+        argnames = self.argspec.args
+        maxargs = len(argnames)
 
         # check that we have enough args
         defaults = self.argspec.defaults
-        req_args = maxargs - len(defaults) if defaults is not None else 0
-        if len(args) < req_args:
+        req_args = maxargs - (len(defaults) if defaults is not None else 0)
+        nargs = len(args)
+        if nargs < req_args:
             #TODO: correct plural/singlular for "arguments"
+            # + 1 to be consistent with Python (to account for self) but
+            # those will be modified again (-1) in ExplainTypeError
             raise TypeError("%s() takes at least %d arguments (%d given)" %
-                            (self.func_name, req_args + 1, len(args) + 1))
+                            (self.func_name, req_args + 1, nargs + 1))
 
         # check that we do not have too many args
-        if len(args) > maxargs:
+        if nargs > maxargs:
             # + 1 to be consistent with Python (to account for self) but
             # those will be modified again (-1) in ExplainTypeError
             raise TypeError("%s() takes at most %d arguments (%d given)" %
-                            (self.func_name, maxargs + 1, len(args) + 1))
+                            (self.func_name, maxargs + 1, nargs + 1))
 
-        # check that we do not have unknown kwargs
-        allowed_kwargs = set(self.argspec.args) | set(self.kwonlyargs.keys())
+        # check that we do not have invalid kwargs
+        allowed_kwargs = set(argnames) | set(self.kwonlyargs.keys())
         extra_kwargs = set(kwargs.keys()) - allowed_kwargs
-        if extra_kwargs:
+        # def f(**kwargs) => argspec.varkw = 'kwargs'
+        if extra_kwargs and self.argspec.varkw is None:
             extra_kwargs = [repr(arg) for arg in extra_kwargs]
             raise TypeError("got an unexpected keyword argument %s" %
                             extra_kwargs[0])
 
-        # move as many kwargs as possible to args
-        extra_args = []
-        # loop over potential args passed as keyword args
-        for a in self.argspec.args[len(args):]:
-            if a in kwargs:
-                extra_args.append(kwargs.pop(a))
-            else:
-                # we stop at the first missing arg (other args can still be
-                # passed as keyword arguments, but we cannot convert them).
-                break
+        # move all "non-kwonly" kwargs to args
+        if defaults is None:
+            extra_args = []
+        else:
+            # Loop over args not passed as args (they all have a default value
+            # since otherwise the "if len(args) < req_args" test would have
+            # triggered an exception
+            extra_args = [kwargs.pop(argname) if argname in kwargs else default
+                          for argname, default
+                          in zip(argnames[nargs:], defaults[nargs - req_args:])]
+
         args = args + tuple(extra_args)
         Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
         self.post_init()
