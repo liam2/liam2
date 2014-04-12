@@ -4,11 +4,10 @@ from collections import Sequence
 from itertools import izip, chain
 
 import numpy as np
-import os
 import pandas as pd
+import importlib
 
 import config
-from pgm.CONFIG import path_til
 from expr import (Expr, Variable,
                   getdtype, coerce_types, expr_eval,
                   as_simple_expr, as_string,
@@ -22,7 +21,6 @@ from context import (EntityContext, context_length, context_subset,
                      new_context_like)
 from registry import entity_registry
 from utils import PrettyTable
-from pgm.Pension.run_pension import run_pension
 
 class Min(CompoundExpression):
     def __init__(self, *args):
@@ -736,7 +734,9 @@ class Retraite(FilteredExpression):
         info_child_father  = _count_enf(info_child, list_id, 'pere')
         info_child_mother  = _count_enf(info_child, list_id, 'mere') # Remarque : tres peu d'enfants chez les meres et toutes associees 
         # print (len(info_child_mother), len(info_child_father), len(list_id))
-        run_pension(sali, workstate, info_ind, info_child_father, info_child_mother)
+        
+        module = importlib.import_module('run_pension')
+        module.run_pension(sali, workstate, info_ind, info_child_father, info_child_mother)
         values = np.asarray(values)
         return 'salut'
         
