@@ -575,13 +575,15 @@ class TextProgressBar(ProgressBar):
 #        self.master.destroy()
 
 
-def loop_wh_progress(func, sequence, pbclass=TextProgressBar):
+def loop_wh_progress(func, sequence, pbclass=TextProgressBar, **kwargs):
     pb = pbclass(len(sequence))
     for i, value in enumerate(sequence, start=1):
         try:
-            func(i, value)
+            func(i, value, **kwargs)
             pb.update(i)
         except StopIteration:
+            import pdb
+            pdb.set_trace()
             break
     pb.destroy()
 
