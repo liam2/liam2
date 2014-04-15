@@ -1020,7 +1020,7 @@ individuals from set 2. There is many different ways to realise a matching.
 .. index:: matching
 
 matching
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
 
 For each individual in set 1 following a particular
 order (given by the *orderby* argument), the function
@@ -1054,7 +1054,15 @@ variables with higest numerical values.
 The "unusual individuals" are relative to an implicit distance which is defined
 by the score. That method defines the difficulty to match someone in set 1 by
 how far he or she is from the center of set2 according to the score. 
-           
+
+An optional parameter *pool_size* can set an slightly different process of
+matching. If a positive integer is entered, the best match for an individual
+of set 1 won't be searched in all remaining set 2 but in a random subset of
+size pool_size. That way sounds closer to "reality" where usually people doesn't
+meet every one in the "market". When there is less the remaining number of 
+candidates in the set 2 is lower than pool_size, the match is looked for among
+all set 2.
+
 The matching function returns the identification number of the matched
 individual for individuals which were matched, -1 for others.
 
@@ -1066,7 +1074,8 @@ simply ignored.
     matching(set1filter=boolean_expr,
              set2filter=boolean_expr,
              orderby=difficult_match,	# expression or 'EDtM' or 'SDtOM' 
-             score=coef1 * field1 + coef2 * other.field2 + ...)
+             score=coef1 * field1 + coef2 * other.field2 + ...,
+             pool_size = int)    # or None by default.
 
 *example* ::
 

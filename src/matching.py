@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import numpy as np
 import itertools
+import random
 
 from expr import expr_eval, collect_variables, traverse_expr
 from exprbases import EvaluableExpression
@@ -152,14 +153,17 @@ class SequentialMatching(ScoreMatching):
                 - 'SDtOM' : 'Score Distance to the Other Mean'
             The SDtOM is the most relevant distance.
     '''
-    def __init__(self, set1filter, set2filter, score, orderby):
+    def __init__(self, set1filter, set2filter, score, orderby, pool_size=None):
         ScoreMatching.__init__(self, set1filter, set2filter, score)
         
+        if pool_size is not None:
+            assert isinstance(pool_size, int) and pool_size > 0 
         if isinstance(orderby, str):
             if orderby not in difficulty_methods:
                 raise Exception("The given method is not implemented, you can try with "
                                 "%s "  % (' or '.join(difficulty_methods)))
         self.orderby = orderby
+        self.pool_size = pool_size
         
     def traverse(self, context):
         return itertools.chain(traverse_expr(self.orderby, context), ScoreMatching.traverse(self,context))
@@ -230,37 +234,71 @@ class SequentialMatching(ScoreMatching):
         local_ctx = dict(('__other_' + k if k in ['id'] + used_variables2 else k, v)
                          for k, v in set2.iteritems())
 
-        #noinspection PyUnusedLocal
-        def match_one_set1_individual(idx, sorted_idx):
-            global local_ctx
+        if self.pool_size is None:
+            #noinspection PyUnusedLocal
+            def match_one_set1_individual(idx, sorted_idx):
+                global local_ctx
+    
+                if not context_length(local_ctx):
+                    raise StopIteration
+    
+                local_ctx.update((k, set1[k][sorted_idx]) for k in ['id'] + used_variables1)
+    
+    #            pk = tuple(individual1[fname] for fname in pk_names)
+    #            optimized_expr = optimized_exprs.get(pk)
+    #            if optimized_expr is None:
+    #                for name in pk_names:
+    #                    fake_set1['__f_%s' % name].value = individual1[name]
+    #                optimized_expr = str(symbolic_expr.simplify())
+    #                optimized_exprs[pk] = optimized_expr
+    #            set2_scores = evaluate(optimized_expr, mm_dict, set2)
+    
+                set2_scores = expr_eval(score_expr, local_ctx)
+    
+                individual2_idx = np.argmax(set2_scores)
+    
+                id1 = local_ctx['id']
+                id2 = local_ctx['__other_id'][individual2_idx]
+    
+                local_ctx = context_delete(local_ctx, individual2_idx)
+    
+                result[id_to_rownum[id1]] = id2
+                result[id_to_rownum[id2]] = id1            
+            
+            loop_wh_progress(match_one_set1_individual, set1tomatch)
+        else:
+            pool_size = self.pool_size
+            #noinspection PyUnusedLocal
+            def match_one_set1_individual_pool(idx, sorted_idx, pool_size):
+                global local_ctx
+                
+                set2_size = context_length(local_ctx)
+                if not set2_size:
+                    raise StopIteration
+                
+                if set2_size > pool_size:
+                    pool = random.sample(xrange(context_length(local_ctx)), pool_size)
+                else:
+                    pool = range(set2_size)
 
-            if not context_length(local_ctx):
-                raise StopIteration
-
-            local_ctx.update((k, set1[k][sorted_idx]) for k in ['id'] + used_variables1)
-
-#            pk = tuple(individual1[fname] for fname in pk_names)
-#            optimized_expr = optimized_exprs.get(pk)
-#            if optimized_expr is None:
-#                for name in pk_names:
-#                    fake_set1['__f_%s' % name].value = individual1[name]
-#                optimized_expr = str(symbolic_expr.simplify())
-#                optimized_exprs[pk] = optimized_expr
-#            set2_scores = evaluate(optimized_expr, mm_dict, set2)
-
-            set2_scores = expr_eval(score_expr, local_ctx)
-
-            individual2_idx = np.argmax(set2_scores)
-
-            id1 = local_ctx['id']
-            id2 = local_ctx['__other_id'][individual2_idx]
-
-            local_ctx = context_delete(local_ctx, individual2_idx)
-
-            result[id_to_rownum[id1]] = id2
-            result[id_to_rownum[id2]] = id1
-
-        loop_wh_progress(match_one_set1_individual, set1tomatch)
+                sub_local_ctx = context_subset(local_ctx, pool, None)
+                sub_local_ctx.update((k, set1[k][sorted_idx]) for k in ['id'] + used_variables1)
+                
+                set2_scores = expr_eval(score_expr, sub_local_ctx)
+    
+                individual2_pool_idx = np.argmax(set2_scores)
+                individual2_idx = pool[individual2_pool_idx]
+                
+                id1 = sub_local_ctx['id']
+                id2 = local_ctx['__other_id'][individual2_idx]
+    
+                local_ctx = context_delete(local_ctx, individual2_idx)
+    
+                result[id_to_rownum[id1]] = id2
+                result[id_to_rownum[id2]] = id1
+                
+            loop_wh_progress(match_one_set1_individual_pool, set1tomatch, pool_size=10)
+            
         return result
-
+    
 functions = {'matching': SequentialMatching, 'rank_matching': RankingMatching}
