@@ -7,7 +7,7 @@ import numpy as np
 from expr import (Variable, BinaryOp, getdtype, expr_eval, traverse_expr,
                   get_tmp_varname, ispresent, FunctionExpr,
                   always, firstarg_dtype)
-from exprbases import EvaluableExpression, NumpyAggregate, FilteredExpression
+from exprbases import NumpyAggregate, FilteredExpression
 import exprmisc
 from context import context_length
 from utils import deprecated
