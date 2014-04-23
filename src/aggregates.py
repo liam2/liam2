@@ -4,7 +4,7 @@ import inspect
 
 import numpy as np
 
-from expr import (Variable, BinaryOp, getdtype, expr_eval, traverse_expr,
+from expr import (Variable, BinaryOp, getdtype, expr_eval,
                   get_tmp_varname, ispresent, FunctionExpr,
                   always, firstarg_dtype)
 from exprbases import NumpyAggregate, FilteredExpression
