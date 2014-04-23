@@ -7,7 +7,7 @@ from collections import Counter
 import numpy as np
 
 from utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray,
-                   FullArgSpec)
+                   FullArgSpec, englishenum)
 from context import EntityContext, EvaluationContext
 
 try:
@@ -572,46 +572,70 @@ class FunctionExpr(EvaluableExpression):
         return cls.compute
 
     def __init__(self, *args, **kwargs):
+        # The behavior/error messages match Python 3.4 (and probably other 3.x)
         argnames = self.argspec.args
         maxargs = len(argnames)
-
-        # check that we have enough args
         defaults = self.argspec.defaults
-        req_args = maxargs - (len(defaults) if defaults is not None else 0)
-        nargs = len(args)
-        if nargs < req_args:
-            #TODO: correct plural/singlular for "arguments"
-            # + 1 to be consistent with Python (to account for self) but
-            # those will be modified again (-1) in ExplainTypeError
-            raise TypeError("%s() takes at least %d arguments (%d given)" %
-                            (self.func_name, req_args + 1, nargs + 1))
-
-        # check that we do not have too many args
-        if nargs > maxargs:
-            # + 1 to be consistent with Python (to account for self) but
-            # those will be modified again (-1) in ExplainTypeError
-            raise TypeError("%s() takes at most %d arguments (%d given)" %
-                            (self.func_name, maxargs + 1, nargs + 1))
-
-        # check that we do not have invalid kwargs
+        nreqargs = maxargs - (len(defaults) if defaults is not None else 0)
+        reqargnames = argnames[:nreqargs]
         allowed_kwargs = set(argnames) | set(self.argspec.kwonlyargs)
-        extra_kwargs = set(kwargs.keys()) - allowed_kwargs
+        funcname = self.func_name
+
+        nargs = len(args)
+
+        availposargnames = set(argnames[:nargs])
+        availkwargnames = set(kwargs.keys())
+        dupeargnames = availposargnames & availkwargnames
+        if dupeargnames:
+            raise TypeError("%s() got multiple values for argument '%s'"
+                            % (funcname, dupeargnames.pop()))
+
+        # Check that we do not have invalid kwargs
+        extra_kwargs = availkwargnames - allowed_kwargs
         # def f(**kwargs) => argspec.varkw = 'kwargs'
         if extra_kwargs and self.argspec.varkw is None:
-            extra_kwargs = [repr(arg) for arg in extra_kwargs]
-            raise TypeError("got an unexpected keyword argument %s" %
-                            extra_kwargs[0])
+            raise TypeError("%s() got an unexpected keyword argument '%s'"
+                            % (funcname, extra_kwargs.pop()))
+
+        # Check that we do not have too many args
+        if nargs > maxargs:
+            # f() takes 3 positional arguments but 4 were given
+            # f() takes from 1 to 3 positional arguments but 4 were given
+            # + 1 to be consistent with Python (to account for self) but
+            # those will be modified again (-1) in ExplainTypeError
+            posargs = str(nreqargs + 1) if nreqargs == maxargs \
+                else "from %d to %d" % (nreqargs + 1, maxargs + 1)
+
+            msg = "%s() takes %s positional argument%s but %d were given"
+            raise TypeError(msg % (funcname, posargs,
+                                   's' if maxargs > 1 else '', nargs + 1))
+
+        # Check that we have all required args (passed either as args or kwargs)
+        missing = [name for name in reqargnames
+                   if name not in (availposargnames | availkwargnames)]
+        if missing:
+            nmissing = len(missing)
+            # f() missing 1 required positional argument: 'a'
+            # f() missing 2 required positional arguments: 'a' and 'b'
+            # f() missing 3 required positional arguments: 'a', 'b', and 'c'
+            # + 1 to be consistent with Python (to account for self) but
+            # those will be modified again (-1) in ExplainTypeError
+            raise TypeError("%s() missing %d positional argument%s: %s"
+                            % (funcname,
+                               nmissing + 1,
+                               's' if nmissing > 1 else '',
+                               englishenum(repr(a) for a in missing)))
 
         # move all "non-kwonly" kwargs to args
         if defaults is None:
             extra_args = []
         else:
-            # Loop over args not passed as args (they all have a default value
-            # since otherwise the "if len(args) < req_args" test would have
-            # triggered an exception
+            # Loop over args not passed as positional args (they all have a
+            # default value since otherwise the "if missing" test above would
+            # have triggered an exception)
             extra_args = [kwargs.pop(argname) if argname in kwargs else default
                           for argname, default
-                          in zip(argnames[nargs:], defaults[nargs - req_args:])]
+                          in zip(argnames[nargs:], defaults[nargs - nreqargs:])]
 
         args = args + tuple(extra_args)
         Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
@@ -838,6 +862,7 @@ class GlobalVariable(Variable):
         result = self.evaluate(context)
         period = self._eval_key(context)
         if isinstance(period, int):
+            #XXX: is self.value valid?
             tmp_varname = '__%s_%s' % (self.value, period)
             if tmp_varname in context:
                 # should be consistent but nan != nan

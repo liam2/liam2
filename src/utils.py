@@ -1079,12 +1079,46 @@ class ExplainTypeError(type):
                 funcname = cls.__name__.lower()
             msg = e.args[0].replace('__init__()', funcname)
 
-            def repl(matchobj):
-                needed, given = int(matchobj.group(1)), int(matchobj.group(2))
-                return "%d arguments (%d given)" % (needed - 1, given - 1)
-            msg = re.sub('(\d+) arguments \((\d+) given\)', repl, msg)
+            def repl_py2(matchobj):
+                needed, given = int(matchobj.group(1)), int(matchobj.group(3))
+                word = matchobj.group(2)
+                return '%d %s (%d given)' % (needed - 1, word, given - 1)
+
+            def repl_py3_toomany_from_to(matchobj):
+                nfrom, nto, given = [int(matchobj.group(n)) for n in (1, 2, 4)]
+                word = matchobj.group(3)
+                return 'from %d to %d positional %s but %d were given' \
+                       % (nfrom - 1, nto - 1, word, given - 1)
+
+            def repl_py3_toomany(matchobj):
+                needed, given = int(matchobj.group(1)), int(matchobj.group(3))
+                word = matchobj.group(2)
+                return 'takes %d positional %s but %d were given' \
+                       % (needed - 1, word, given - 1)
+
+            def repl_py3_missing(matchobj):
+                missing = int(matchobj.group(1))
+                return 'missing %d positional argument' % (missing - 1)
+
+            # Python2 style
+            msg = re.sub('(\d+) (arguments?) \((\d+) given\)', repl_py2, msg)
+            # Python3 style for too many args in the presence of default values
+            msg = re.sub('from (\d+) to (\d+) positional (arguments?) but '
+                         '(\d+) were given',
+                         repl_py3_toomany_from_to, msg)
+            # Python3 style for too many args with no default values
+            # "takes" is included to not match from_to again
+            msg = re.sub('takes (\d+) positional (arguments?) but '
+                         '(\d+) were given',
+                         repl_py3_toomany, msg)
+            # Python3 style for missing
+            msg = re.sub('missing (\d+) positional argument',
+                         repl_py3_missing, msg)
             raise TypeError(msg)
 
+
+# function signatures
+# -------------------
 
 FullArgSpec = namedtuple('FullArgSpec',
                          'args, varargs, varkw, defaults, kwonlyargs, '
@@ -1110,6 +1144,9 @@ def argspec(*args, **kwonlyargs):
                        kwonlyargs=kwonlyargs.keys(), kwonlydefaults=kwonlyargs,
                        annotations={})
 
+
+# miscellaneous tools
+# -------------------
 
 class FileProducer(object):
     argspec = argspec(suffix='', fname=None)
