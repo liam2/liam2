@@ -76,6 +76,26 @@ def find_first(char, s, depth=0):
     return -1
 
 
+def englishenum(iterable):
+    """
+    Returns an "english enumeration" of the strings in the iterable iterable.
+    >>> englishenum(['a', 'b', 'c'])
+    'a, b, and c'
+    >>> englishenum('abc')
+    'a, b, and c'
+    >>> englishenum('ab')
+    'a and b'
+    >>> englishenum('a')
+    'a'
+    """
+    l = list(iterable)
+    if len(l) == 2:
+        return '%s and %s' % tuple(l)
+    elif len(l) > 2:
+        l[-1] = 'and ' + l[-1]
+    return ', '.join(l)
+
+
 class AutoFlushFile(object):
     def __init__(self, f):
         self.f = f
@@ -870,10 +890,12 @@ def expand_wild(wild_key, d):
     expands a multi-level string key (separated by '/') containing wildcards
     (*) with the keys actually present in a multi-level dictionary.
 
-    >>> expand_wild('a/*/c', {'a': {'one': {'c': 0}, 'two': {'c': 0}}})
+    >>> res = expand_wild('a/*/c', {'a': {'one': {'c': 0}, 'two': {'c': 0}}})
+    >>> sorted(res) # expand_wild result ordering is random
     ['a/one/c', 'a/two/c']
 
-    >>> expand_wild('a/*/*', {'a': {'one': {'c': 0}, 'two': {'d': 0}}})
+    >>> res = expand_wild('a/*/*', {'a': {'one': {'c': 0}, 'two': {'d': 0}}})
+    >>> sorted(res) # expand_wild result ordering is random
     ['a/one/c', 'a/two/d']
     """
     return ['/'.join(r) for r in expand_wild_tuple(wild_key.split('/'), d)]
@@ -1075,17 +1097,18 @@ def argspec(*args, **kwonlyargs):
     given as a ('name', value) tuple.
     if there is any kwonly argument, we assume there are also a varargs
     variable named 'args'.
-    >>> argspec('a', 'b', ('c', 1), 'd'=None)
-    FullArgSpec(args=['a', 'b', 'c', varargs='args', varkw=None, defaults=(1,),
-                kwonlyargs=['d'], kwonlydefaults={'d': None}, annotations={})
+    >>> argspec('a', 'b', ('c', 1), d=None) # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a', 'b', 'c'], varargs='args', varkw=None,
+                defaults=(1,), kwonlyargs=['d'], kwonlydefaults={'d': None},
+                annotations={})
     """
-    defaults = [a[1] for a in args if isinstance(a, tuple)]
+    defaults = tuple(a[1] for a in args if isinstance(a, tuple))
     assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
     args = [a[0] if isinstance(a, tuple) else a for a in args]
     varargs = 'args' if kwonlyargs else None
     return FullArgSpec(args, varargs, None, defaults,
                        kwonlyargs=kwonlyargs.keys(), kwonlydefaults=kwonlyargs,
-                       annotations=None)
+                       annotations={})
 
 
 class FileProducer(object):
