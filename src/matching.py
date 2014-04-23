@@ -2,12 +2,13 @@ from __future__ import print_function
 
 import numpy as np
 
-from expr import expr_eval, traverse_expr, LogicalOp, always, FunctionExpr
+from expr import expr_eval, always
+from exprbases import FilteredExpression
 from context import context_length, context_delete
 from utils import loop_wh_progress
 
 
-class Matching(FunctionExpr):
+class Matching(FilteredExpression):
     func_name = 'matching'
     no_eval = ('set1filter', 'set2filter', 'score')
 
@@ -29,19 +30,10 @@ class Matching(FunctionExpr):
                             "supported anymore. You should use a normal "
                             "expression (ie simply remove the quotes).")
 
-        ctx_filter = context.filter_expr
         id_to_rownum = context.id_to_rownum
 
-        # at some point ctx_filter will be cached automatically, so we don't
-        # need to take care of it manually here
-        if ctx_filter is not None:
-            set1filter = expr_eval(LogicalOp('&', ctx_filter, set1filter),
-                                   context)
-            set2filter = expr_eval(LogicalOp('&', ctx_filter, set2filter),
-                                   context)
-        else:
-            set1filter = expr_eval(set1filter, context)
-            set2filter = expr_eval(set2filter, context)
+        set1filter = expr_eval(self._getfilter(context, set1filter), context)
+        set2filter = expr_eval(self._getfilter(context, set2filter), context)
 
         used_variables = score.collect_variables(context)
         used_variables1 = ['id'] + [v for v in used_variables
