@@ -1051,14 +1051,11 @@ class ExplainTypeError(type):
             #noinspection PyArgumentList
             return type.__call__(cls, *args, **kwargs)
         except TypeError, e:
-            if hasattr(cls, 'func_name'):
+            if hasattr(cls, 'func_name') and cls.func_name is not None:
                 funcname = cls.func_name
             else:
                 funcname = cls.__name__.lower()
-            if funcname is not None:
-                msg = e.args[0].replace('__init__()', funcname)
-            else:
-                msg = e.args[0]
+            msg = e.args[0].replace('__init__()', funcname)
 
             def repl(matchobj):
                 needed, given = int(matchobj.group(1)), int(matchobj.group(2))
