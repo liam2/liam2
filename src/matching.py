@@ -2,41 +2,32 @@ from __future__ import print_function
 
 import numpy as np
 
-from expr import expr_eval, traverse_expr, LogicalOp, always
-from exprbases import EvaluableExpression
+from expr import expr_eval, traverse_expr, LogicalOp, always, FunctionExpr
 from context import context_length, context_delete
 from utils import loop_wh_progress
 
 
-class Matching(EvaluableExpression):
-    def __init__(self, set1filter, set2filter, score, orderby):
-        self.set1filter = set1filter
-        self.set2filter = set2filter
-        self.score_expr = score
+class Matching(FunctionExpr):
+    func_name = 'matching'
+    no_eval = ('set1filter', 'set2filter', 'score')
+
+    def traverse(self, context):
+        #FIXME: we should not override the parent traverse method, so that all
+        # "child" expressions are traversed too.
+        # This is not done currently, because it would traverse score_expr.
+        # This is a problem because traverse is used by collect_variables and
+        # the presence of variables is checked in expr.expr_eval() before
+        # the evaluate method is called and the context is completed during
+        # evaluation (__other_xxx is added during evaluation).
+        yield self
+
+    def compute(self, context, set1filter, set2filter, score, orderby):
+        global local_ctx
+
         if isinstance(score, basestring):
             raise Exception("Using a string for the score expression is not "
                             "supported anymore. You should use a normal "
                             "expression (ie simply remove the quotes).")
-        self.orderby = orderby
-
-    def traverse(self, context):
-        for node in traverse_expr(self.set1filter, context):
-            yield node
-        for node in traverse_expr(self.set2filter, context):
-            yield node
-        #FIXME: we should also traverse score_expr. This is not done currently,
-        # because traverse is used by collect_variables and the presence of
-        # variables is checked in expr.expr_eval() before
-        # the evaluate method is called and the context is completed during
-        # evaluation (__other_xxx is added during evaluation).
-        # for node in traverse_expr(self.score_expr, context):
-        #     yield node
-        for node in traverse_expr(self.orderby, context):
-            yield node
-        yield self
-
-    def evaluate(self, context):
-        global local_ctx
 
         ctx_filter = context.filter_expr
         id_to_rownum = context.id_to_rownum
@@ -44,17 +35,15 @@ class Matching(EvaluableExpression):
         # at some point ctx_filter will be cached automatically, so we don't
         # need to take care of it manually here
         if ctx_filter is not None:
-            set1filter = expr_eval(LogicalOp('&', ctx_filter, self.set1filter),
+            set1filter = expr_eval(LogicalOp('&', ctx_filter, set1filter),
                                    context)
-            set2filter = expr_eval(LogicalOp('&', ctx_filter, self.set2filter),
+            set2filter = expr_eval(LogicalOp('&', ctx_filter, set2filter),
                                    context)
         else:
-            set1filter = expr_eval(self.set1filter, context)
-            set2filter = expr_eval(self.set2filter, context)
+            set1filter = expr_eval(set1filter, context)
+            set2filter = expr_eval(set2filter, context)
 
-        score_expr = self.score_expr
-
-        used_variables = score_expr.collect_variables(context)
+        used_variables = score.collect_variables(context)
         used_variables1 = ['id'] + [v for v in used_variables
                                     if not v.startswith('__other_')]
         used_variables2 = ['id'] + [v[8:] for v in used_variables
@@ -65,7 +54,6 @@ class Matching(EvaluableExpression):
         set1 = set1.entity_data
         set2 = set2.entity_data
 
-        orderby = expr_eval(self.orderby, context)
         set1len = set1filter.sum()
         set2len = set2filter.sum()
         tomatch = min(set1len, set2len)
@@ -104,7 +92,7 @@ class Matching(EvaluableExpression):
 #                optimized_exprs[pk] = optimized_expr
 #            set2_scores = evaluate(optimized_expr, mm_dict, set2)
 
-            set2_scores = expr_eval(score_expr, local_ctx)
+            set2_scores = expr_eval(score, local_ctx)
 
             individual2_idx = np.argmax(set2_scores)
 
