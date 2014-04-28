@@ -206,21 +206,12 @@ class Choice(FunctionExpr):
     def compute(self, context, choices, p=None, size=None, replace=True):
         #TODO: __init__ should detect when all args are constants and run
         # a "check_arg_values" method if present
-        if p is not None:
-            total = np.sum(p)
-            error = total - 1.0
-            if 0.0 < abs(error) <= 1e-6:
-                # only warn if the values are "visually different"
-                last_p = str(p[-1])
-                adjusted_last_p = str(p[-1] - error)
-                if adjusted_last_p != last_p:
-                    print("Warning: last choice probability adjusted to %s "
-                          "instead of %s !" % (adjusted_last_p, last_p))
-                    p = np.asarray(p)
-                    p[-1] -= error
-            elif abs(error) > 1e-6:
-                raise Exception("the cumulative sum of choice probabilities "
-                                "must be ~1")
+        #TODO: document the change in behavior for the case where the sum of
+        # probabilities is != 1
+        # random.choice only checks that the error is < 1e-8 but always
+        # divides probabilities by sum(p). It is probably a better choice
+        # because it distributes the error to all bins instead of only
+        # adjusting the probability of the last choice.
         if size is None:
             size = len(context)
         return np.random.choice(choices, size=size, replace=replace, p=p)
