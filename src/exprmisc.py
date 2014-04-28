@@ -1,19 +1,16 @@
 from __future__ import print_function
 
-from collections import Sequence
 from itertools import izip, chain
 
 import numpy as np
 
-import config
 from expr import (Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
                   as_string, collect_variables, traverse_expr,
                   get_missing_record, get_missing_vector, FunctionExpr,
                   always, firstarg_dtype)
-from exprbases import (EvaluableExpression, FilteredExpression,
-                       CompoundExpression, NumexprFunction, TableExpression,
-                       NumpyRandom, NumpyChangeArray)
+from exprbases import (FilteredExpression, CompoundExpression, NumexprFunction,
+                       TableExpression, NumpyRandom, NumpyChangeArray)
 from context import context_length
 from utils import PrettyTable, argspec
 
@@ -177,7 +174,7 @@ class Sort(NumpyChangeArray):
 
 class Uniform(NumpyRandom):
     np_func = np.random.uniform
-    # The docstring is wrong: the default size is None instead of 1.
+    # The docstring was wrong in np1.7: the default size is None instead of 1.
     # Issue reported as: https://github.com/numpy/numpy/pull/4611
     argspec = argspec(('low', 0.0), ('high', 1.0), ('size', None),
                       **NumpyRandom.kwonlyargs)
@@ -201,101 +198,34 @@ class RandInt(NumpyRandom):
                       **NumpyRandom.kwonlyargs)
     dtype = always(int)
 
-
-#XXX: use np.random.choice (new in np 1.7)
-class Choice(EvaluableExpression):
+# not inheriting from NumpyRandom as it would get the argspec from an
+# nonexistent np_func
+class Choice(FunctionExpr):
     func_name = 'choice'
 
-    def __init__(self, choices, weights=None):
-        EvaluableExpression.__init__(self)
-        if not isinstance(choices, Sequence):
-            raise TypeError("choice() first argument should be a sequence "
-                            "(tuple or list)")
+    def compute(self, context, choices, p=None, size=None, replace=True):
+        #TODO: __init__ should detect when all args are constants and run
+        # a "check_arg_values" method if present
+        if p is not None:
+            total = np.sum(p)
+            error = total - 1.0
+            if 0.0 < abs(error) <= 1e-6:
+                # only warn if the values are "visually different"
+                last_p = str(p[-1])
+                adjusted_last_p = str(p[-1] - error)
+                if adjusted_last_p != last_p:
+                    print("Warning: last choice probability adjusted to %s "
+                          "instead of %s !" % (adjusted_last_p, last_p))
+                    p = np.asarray(p)
+                    p[-1] -= error
+            elif abs(error) > 1e-6:
+                raise Exception("the cumulative sum of choice probabilities "
+                                "must be ~1")
+        if size is None:
+            size = len(context)
+        return np.random.choice(choices, size=size, replace=replace, p=p)
 
-        if any(isinstance(c, Expr) for c in choices):
-            self.choices = choices
-        else:
-            self.choices = np.array(choices)
-
-        if weights is not None:
-            if not isinstance(weights, Sequence):
-                raise TypeError("if provided, choice weights should be a "
-                                "sequence (tuple or list)")
-            if any(isinstance(w, Expr) for w in weights):
-                self.bins = weights
-            else:
-                self.bins = self._weights_to_bins(weights)
-        else:
-            self.bins = None
-
-    @staticmethod
-    def _weights_to_bins(weights):
-        bins = np.array([0.0] + list(np.cumsum(weights)))
-        error = abs(bins[-1] - 1.0)
-        if 0.0 < error <= 1e-6:
-            # We correct the last bin in all cases, even though when the total
-            # is > 1.0, it does not change anything (since the random numbers
-            # will always be < 1, having a larger last bin -- with a total
-            # > 1 -- will not increase its probability). In short, correcting
-            # it just makes things explicit.
-            bins[-1] = 1.0
-
-            # only warn if the values are "visually different"
-            last_weight = str(weights[-1])
-            adjusted_last_weight = str(1.0 - bins[-2])
-            if adjusted_last_weight != last_weight:
-                print("Warning: last choice probability adjusted to %s " \
-                      "instead of %s !" % (adjusted_last_weight, last_weight))
-        elif error > 1e-6:
-            raise Exception("the cumulative sum of choice weights must be ~1")
-        return bins
-
-    def evaluate(self, context):
-        if config.debug:
-            print()
-            print("random sequence position before:", np.random.get_state()[2])
-        num = context_length(context)
-        choices = self.choices
-        if num:
-            bins = self.bins
-            if bins is None:
-                # all values have the same probability
-                choices_idx = np.random.randint(len(choices), size=num)
-            else:
-                if any(isinstance(b, Expr) for b in bins):
-                    weights = [expr_eval(expr, context) for expr in bins]
-                    bins = self._weights_to_bins(weights)
-                u = np.random.uniform(size=num)
-                #XXX: np.choice uses searchsorted(bins, u) instead of digitize
-                choices_idx = np.digitize(u, bins) - 1
-        else:
-            choices_idx = []
-
-        if config.debug:
-            print("random sequence position after:", np.random.get_state()[2])
-
-        if any(isinstance(c, Expr) for c in choices):
-            choices = np.array([expr_eval(expr, context) for expr in choices])
-        return choices[choices_idx]
-
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return getdtype(self.choices, context)
-
-    def traverse(self, context):
-        #FIXME: add choices & prob if they are expr
-        yield self
-
-    def __str__(self):
-        bins = self.bins
-        if bins is None:
-            weights_str = ""
-        else:
-            weights_str = ", %s" % (
-            bins if any(isinstance(b, Expr) for b in bins)
-            else '[%s]' % ', '.join(str(b) for b in np.diff(bins)))
-        return "%s(%s%s)" % (self.func_name, list(self.choices), weights_str)
-
+    dtype = firstarg_dtype
 
 #------------------------------------
 
