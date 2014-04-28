@@ -263,7 +263,7 @@ class Expr(object):
                         "displayed but it contains: '%s'." % str(self))
 
     def evaluate(self, context):
-        period = context.period
+        # period = context.period
 
         # if isinstance(period, np.ndarray):
         #     assert np.isscalar(period) or not period.shape
