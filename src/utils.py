@@ -1087,14 +1087,16 @@ class ExplainTypeError(type):
             def repl_py3_toomany_from_to(matchobj):
                 nfrom, nto, given = [int(matchobj.group(n)) for n in (1, 2, 4)]
                 word = matchobj.group(3)
-                return 'from %d to %d positional %s but %d were given' \
-                       % (nfrom - 1, nto - 1, word, given - 1)
+                verb = 'were' if given != 2 else 'was'
+                return 'from %d to %d positional %s but %d %s given' \
+                       % (nfrom - 1, nto - 1, word, given - 1, verb)
 
             def repl_py3_toomany(matchobj):
                 needed, given = int(matchobj.group(1)), int(matchobj.group(3))
                 word = matchobj.group(2)
-                return 'takes %d positional %s but %d were given' \
-                       % (needed - 1, word, given - 1)
+                verb = 'were' if given != 2 else 'was'
+                return 'takes %d positional %s but %d %s given' \
+                       % (needed - 1, word, given - 1, verb)
 
             def repl_py3_missing(matchobj):
                 missing = int(matchobj.group(1))
