@@ -198,6 +198,7 @@ class RandInt(NumpyRandom):
                       **NumpyRandom.kwonlyargs)
     dtype = always(int)
 
+
 # not inheriting from NumpyRandom as it would get the argspec from an
 # nonexistent np_func
 class Choice(FunctionExpr):
@@ -263,8 +264,8 @@ def add_individuals(target_context, children):
     array = target_entity.array
     num_rows = len(array)
     num_birth = len(children)
-    print("%d new %s(s) (%d -> %d)" % (
-    num_birth, target_entity.name, num_rows, num_rows + num_birth), end=' ')
+    print("%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name, num_rows,
+                                       num_rows + num_birth), end=' ')
 
     target_entity.array.append(children)
 
@@ -407,10 +408,9 @@ class Dump(TableExpression):
     def __init__(self, *args, **kwargs):
         self.expressions = args
         if len(args):
-            assert all(isinstance(e, Expr) for e in
-                       args), "dump arguments must be expressions, not a list " \
-                              "of them, " \
-                              "or strings"
+            assert all(isinstance(e, Expr) for e in args), \
+                "dump arguments must be expressions, not a list of them, or " \
+                "strings"
 
         self.filter = kwargs.pop('filter', None)
         self.missing = kwargs.pop('missing', None)

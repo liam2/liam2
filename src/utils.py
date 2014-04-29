@@ -272,6 +272,18 @@ def isconstant(a, filter_value=None):
         return np.all(filter_value & (a == value))
 
 
+def _make_aggregate(func):
+    def method(self, axis=None):
+        if axis == 1:
+            result = np.empty(len(self.data), dtype=self.data[0].dtype)
+            for i, a in enumerate(self.data):
+                result[i] = func(a)
+            return result
+        else:
+            raise NotImplementedError("axis != 1")
+    return method
+
+
 class IrregularNDArray(object):
     """
     A wrapper for collections of arrays (eg list of arrays or arrays of
@@ -281,20 +293,10 @@ class IrregularNDArray(object):
     def __init__(self, data):
         self.data = data
 
-    def make_aggregate(func):
-        def method(self, axis=None):
-            if axis == 1:
-                result = np.empty(len(self.data), dtype=self.data[0].dtype)
-                for i, a in enumerate(self.data):
-                    result[i] = func(a)
-                return result
-            else:
-                raise NotImplementedError("axis != 1")
-        return method
-    prod = make_aggregate(np.prod)
-    sum = make_aggregate(np.sum)
-    min = make_aggregate(np.min)
-    max = make_aggregate(np.max)
+    prod = _make_aggregate(np.prod)
+    sum = _make_aggregate(np.sum)
+    min = _make_aggregate(np.min)
+    max = _make_aggregate(np.max)
 
     def __getattr__(self, key):
         return getattr(self.data, key)

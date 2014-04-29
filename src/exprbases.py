@@ -9,7 +9,7 @@ from context import context_length
 from expr import (Expr, FunctionExpr, EvaluableExpression, expr_eval,
                   traverse_expr, getdtype, as_simple_expr, as_string,
                   get_missing_value, ispresent, LogicalOp)
-from utils import FullArgSpec, classproperty
+from utils import classproperty
 
 
 class CompoundExpression(Expr):
