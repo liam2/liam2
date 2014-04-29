@@ -139,7 +139,7 @@ class Entity(object):
 
     @classmethod
     def from_yaml(cls, ent_name, entity_def):
-        from links import Many2One, One2Many
+        from links import Many2One, One2Many, One2One
 
         # YAML "ordered dict" syntax returns a list of dict and we want a list
         # of tuples
@@ -173,7 +173,7 @@ class Entity(object):
             
 
         link_defs = entity_def.get('links', {})
-        str2class = {'one2many': One2Many, 'many2one': Many2One}
+        str2class = {'one2many': One2Many, 'many2one': Many2One, 'one2one': One2One}
         links = dict((name,
                       str2class[l['type']](name, l['field'], l['target']))
                      for name, l in link_defs.iteritems())

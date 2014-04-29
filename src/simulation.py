@@ -18,6 +18,7 @@ from utils import (time_period, addmonth,
                    expand_wild, multi_get, multi_set,
                    merge_dicts, merge_items,
                    field_str_to_type, fields_yaml_to_type)
+from process import ExtProcess
 import console
 import config
 import expr
@@ -93,7 +94,7 @@ class Simulation(object):
                 }],
                 'links': {
                     '*': {
-                        '#type': str,  # Or('many2one', 'one2many')
+                        '#type': str,  # Or('many2one', 'one2many', 'one2one')
                         '#target': str,
                         '#field': str
                     }

@@ -59,6 +59,27 @@ class One2Many(Link):
     def max(self, target_expr, target_filter=None):
         return MaxLink(self, target_expr, target_filter)
 
+class One2One(Link):
+
+    def get(self, key, missing_value=None):
+        return LinkValue(self, key, missing_value)
+
+    __getattr__ = get
+    
+    def count(self, target_filter=None):
+        return CountLink(self, target_filter)
+
+    def sum(self, target_expr, target_filter=None):
+        return SumLink(self, target_expr, target_filter)
+
+    def avg(self, target_expr, target_filter=None):
+        return AvgLink(self, target_expr, target_filter)
+
+    def min(self, target_expr, target_filter=None):
+        return MinLink(self, target_expr, target_filter)
+
+    def max(self, target_expr, target_filter=None):
+        return MaxLink(self, target_expr, target_filter)
 
 class PrefixingLink(object):
     def __init__(self, macros, links, prefix):
@@ -144,8 +165,14 @@ class LinkValue(LinkExpression):
         id_to_rownum = target_context.id_to_rownum
 
         missing_int = missing_values[int]
-        target_rows = id_to_rownum[target_ids]
-
+        try:
+            target_rows = id_to_rownum[target_ids]
+        except:
+            import pdb
+            print(target_ids)
+            print(len(id_to_rownum))
+            pdb.set_trace()
+            
         target_values = expr_eval(self.target_expression, target_context)
         missing_value = self.missing_value
         if missing_value is None:
@@ -194,7 +221,11 @@ class AggregateLink(LinkExpression):
 
         id_to_rownum = context.id_to_rownum
         if len(id_to_rownum):
-            source_rows = id_to_rownum[source_ids]
+            try:
+                source_rows = id_to_rownum[source_ids]
+            except:
+                import pdb
+                pdb.set_trace()
             # filter out missing values: those where the value of the link
             # points to nowhere (-1)
             #XXX: use np.putmask(source_rows, source_ids == missing_int,
