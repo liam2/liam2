@@ -718,25 +718,26 @@ class Retraite(FilteredExpression):
         info_ind = pd.DataFrame({'id':context['id'], 'agem': context['agem'], 'sexe' : context['sexe']})
         #print (context.keys())
         info_ind  = info_ind.loc[(info_ind['agem'] > 708), :] # 708 = 59 *12
-        list_id = info_ind['id']
-        info_ind.index = list_id
-        workstate = workstate.loc[workstate['id'].isin(list_id), : ]
-        sali = sali.loc[sali['id'].isin(list_id), : ]
+        info_ind.set_index('id', inplace=True)
+        
+        workstate = workstate.loc[workstate['id'].isin(info_ind.index), :]
+        sali = sali.loc[sali['id'].isin(info_ind.index), :]
+        
         info_child = pd.DataFrame({'id':context['id'], 'age': context['age'], 'pere': context['pere'], 'mere': context['mere']})
         info_child = info_child.loc[((info_child['pere'] != -1) | (info_child['mere'] != -1) ) & (info_child['age'] <= 20), :]
         info_child.index = info_child['id']
+        
         def _count_enf(data, list_id, parent):
             nb_enf = data.groupby([parent, 'age']).size().reset_index()
             nb_enf.columns = ['id_parent', 'age_enf', 'nb_enf']
             nb_enf = nb_enf.loc[nb_enf['id_parent'].isin(list_id), :] # nb_enf['id_parent'] != - 1
             return nb_enf
         # print ("Identifiants exetremaux : ", min(list_id), max(list_id))
-        info_child_father  = _count_enf(info_child, list_id, 'pere')
-        info_child_mother  = _count_enf(info_child, list_id, 'mere') # Remarque : tres peu d'enfants chez les meres et toutes associees 
-        # print (len(info_child_mother), len(info_child_father), len(list_id))
-        
+        info_child_father  = _count_enf(info_child, info_ind.index, 'pere')
+        info_child_mother  = _count_enf(info_child, info_ind.index, 'mere') # Remarque : tres peu d'enfants chez les meres et toutes associees 
+        # print (len(info_child_mother), len(info_child_father), len(list_id))       
         module = importlib.import_module('run_pension')
-        module.run_pension(sali, workstate, info_ind, info_child_father, info_child_mother)
+        module.til_pension(sali, workstate, info_ind, info_child_father, info_child_mother)
         values = np.asarray(values)
         return 'salut'
         
