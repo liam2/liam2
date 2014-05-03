@@ -722,10 +722,12 @@ class Retraite(FilteredExpression):
         info_ind.set_index('id', inplace=True)
         
         workstate = workstate.loc[workstate['id'].isin(info_ind.index), :]
+        workstate.set_index('id', inplace=True)
         sali = sali.loc[sali['id'].isin(info_ind.index), :]
-
+        sali.set_index('id', inplace=True)
+        
         module = importlib.import_module('run_pension')
-        module.til_pension(sali, workstate, info_ind)
+        module.til_pension(sali, workstate, info_ind, yearsim=context['period']//100)
         values = np.asarray(values)
         return 'salut'
         
