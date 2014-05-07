@@ -404,34 +404,22 @@ class Clone(New):
 
 
 class Dump(TableExpression):
-    #noinspection PyNoneFunctionAssignment
-    def __init__(self, *args, **kwargs):
-        self.expressions = args
-        if len(args):
-            assert all(isinstance(e, Expr) for e in args), \
-                "dump arguments must be expressions, not a list of them, or " \
-                "strings"
+    no_eval = ('args',)
+    kwonlyargs = {'filter': None, 'missing': None, 'header': True}
 
-        self.filter = kwargs.pop('filter', None)
-        self.missing = kwargs.pop('missing', None)
-        #        self.periods = kwargs.pop('periods', None)
-        self.header = kwargs.pop('header', True)
-        if kwargs:
-            kwarg, _ = kwargs.popitem()
-            raise TypeError(
-                "'%s' is an invalid keyword argument for dump()" % kwarg)
+    def compute(self, context, *args, **kwargs):
+        filter_value = kwargs.pop('filter', None)
+        missing = kwargs.pop('missing', None)
+        # periods = kwargs.pop('periods', None)
+        header = kwargs.pop('header', True)
 
-    def evaluate(self, context):
-        if self.filter is not None:
-            filter_value = expr_eval(self.filter, context)
-        else:
-            filter_value = None
-
-        if self.expressions:
-            expressions = list(self.expressions)
+        if args:
+            expressions = list(args)
         else:
             # extra=False because we don't want globals nor "system" variables
             # (nan, period, __xxx__)
+            #FIXME: we should also somehow "traverse" expressions in this case
+            # too (args is ()) => all keys in the current context
             expressions = [Variable(name) for name in context.keys(extra=False)]
 
         str_expressions = [str(e) for e in expressions]
@@ -476,26 +464,8 @@ class Dump(TableExpression):
                 columns[idx] = newcol
 
         data = izip(*columns)
-        table = chain([str_expressions], data) if self.header else data
-        return PrettyTable(table, self.missing)
-
-    def traverse(self, context):
-        #FIXME: we should also somehow "traverse" expressions if
-        # self.expressions is [] (=> all keys in the current context)
-        for expr in self.expressions:
-            for node in traverse_expr(expr, context):
-                yield node
-        for node in traverse_expr(self.filter, context):
-            yield node
-        yield self
-
-    def collect_variables(self, context):
-        if self.expressions:
-            return super(Dump, self).collect_variables(context)
-        else:
-            variables = set(context.keys(extra=False))
-            variables |= collect_variables(self.filter, context)
-            return variables
+        table = chain([str_expressions], data) if header else data
+        return PrettyTable(table, missing)
 
     dtype = always(None)
 

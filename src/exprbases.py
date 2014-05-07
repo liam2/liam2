@@ -224,5 +224,5 @@ class NumexprFunction(Expr):
             yield node
 
 
-class TableExpression(EvaluableExpression):
+class TableExpression(FunctionExpr):
     pass
