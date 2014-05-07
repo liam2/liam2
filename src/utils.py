@@ -1131,20 +1131,37 @@ FullArgSpec = namedtuple('FullArgSpec',
 
 def argspec(*args, **kwonlyargs):
     """
-    args = argument names. Arguments with a default value must be
-    given as a ('name', value) tuple.
-    if there is any kwonly argument, we assume there are also a varargs
-    variable named 'args'.
-    >>> argspec('a', 'b', ('c', 1), d=None) # doctest: +NORMALIZE_WHITESPACE
-    FullArgSpec(args=['a', 'b', 'c'], varargs='args', varkw=None,
-                defaults=(1,), kwonlyargs=['d'], kwonlydefaults={'d': None},
-                annotations={})
+    args = argument names. Arguments with a default value must be given as a
+    ('name', value) tuple. varargs and varkw argument names, if any, should be
+    prefixed with '*' and '**' respectively and must be the last positional
+    arguments.
+    >>> argspec('a', 'b', ('c', 1), '*d', '**e', f=None)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a', 'b', 'c'], varargs='d', varkw='e', defaults=(1,),
+                kwonlyargs=['f'], kwonlydefaults={'f': None}, annotations={})
+    >>> argspec('a', '*', '**b', c=None)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a'], varargs=None, varkw='b', defaults=None,
+                kwonlyargs=['c'], kwonlydefaults={'c': None}, annotations={})
+    >>> argspec('a', 'b', ('c', 1), d=None)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a', 'b', 'c'], varargs=None, varkw=None, defaults=(1,),
+                kwonlyargs=['d'], kwonlydefaults={'d': None}, annotations={})
     """
+    args = list(args)
+    def lastitem_startswith(l, s):
+        return l and isinstance(l[-1], basestring) and l[-1].startswith(s)
+    varkw = args.pop()[2:] if lastitem_startswith(args, '**') else None
+    varargs = args.pop()[1:] if lastitem_startswith(args, '*') else None
+    if not varargs:
+        varargs = None
     defaults = tuple(a[1] for a in args if isinstance(a, tuple))
-    assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
+    if not defaults:
+        defaults = None
+    else:
+        assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
     args = [a[0] if isinstance(a, tuple) else a for a in args]
-    varargs = 'args' if kwonlyargs else None
-    return FullArgSpec(args, varargs, None, defaults,
+    return FullArgSpec(args, varargs, varkw, defaults,
                        kwonlyargs=kwonlyargs.keys(), kwonlydefaults=kwonlyargs,
                        annotations={})
 
