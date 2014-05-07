@@ -586,6 +586,7 @@ class FunctionExpr(EvaluableExpression):
         return cls.compute
 
     def __init__(self, *args, **kwargs):
+        #TODO: move this whole thing in a function (in utils?)
         # The behavior/error messages match Python 3.4 (and probably other 3.x)
         argnames = self.argspec.args
         maxargs = len(argnames)
@@ -641,15 +642,26 @@ class FunctionExpr(EvaluableExpression):
                                englishenum(repr(a) for a in missing)))
 
         # move all "non-kwonly" kwargs to args
-        if defaults is None:
-            extra_args = []
-        else:
-            # Loop over args not passed as positional args (they all have a
-            # default value since otherwise the "if missing" test above would
-            # have triggered an exception)
-            extra_args = [kwargs.pop(argname) if argname in kwargs else default
-                          for argname, default
-                          in zip(argnames[nargs:], defaults[nargs - nreqargs:])]
+        # def func(a, b, c, d, e=1, f=1):
+        #     pass
+        # nreqargs = 4, maxargs = 6
+        # >>> func(1, 2, c=3, d=4, f=5)
+        # nargs = 2
+        # >>> func(1, 2, 3, 4, 5)
+        # nargs = 5
+        # 1) required arguments (without a default value) passed as kwargs
+        #    pop() should not raise otherwise the "if missing" test above would
+        #    have triggered an exception)
+        extra_args = [kwargs.pop(name) for name in argnames[nargs:nreqargs]]
+
+        # 2) optional args (with a default value) not passed as positional args
+        if defaults is not None:
+            # number of optional args passed as positional args
+            nposopt = max(nargs - nreqargs, 0)
+            extra_args.extend([kwargs.pop(argname, default)
+                               for argname, default
+                               in zip(argnames[nreqargs + nposopt:],
+                                      defaults[nposopt:])])
 
         args = args + tuple(extra_args)
         Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
@@ -664,21 +676,32 @@ class FunctionExpr(EvaluableExpression):
             assert isinstance(no_eval, tuple) and \
                 all(isinstance(f, basestring) for f in no_eval), \
                 "no_eval should be a tuple of strings but %r is a %s" \
-                % (self.no_eval, type(self.no_eval))
-            args, kwargs = self.children
+                % (no_eval, type(no_eval))
             no_eval = set(no_eval)
+
+            argspec = self.argspec
+            args, kwargs = self.children
+
+            varargs = args[len(argspec.args):]
             args = [expr_eval(arg, context) if name not in no_eval else arg
-                    for name, arg in zip(self.argspec.args, args)]
-            if self.argspec.varkw in no_eval:
-                # "normal" kwargs have been transfered to args, so we only need
-                # to evaluate kwonlyargs
-                to_eval = set(self.argspec.kwonlyargs)
+                    for name, arg in zip(argspec.args, args)]
+            if varargs:
+                assert argspec.varargs is not None
+                if argspec.varargs not in no_eval:
+                    varargs = [expr_eval(arg, context) for arg in varargs]
+                args.extend(varargs)
+
+            # The case where varkw is None and varkw in no_eval should never
+            # happen and is already covered by the assert above.
+            if argspec.varkw is None or argspec.varkw in no_eval:
+                # arguments passed as keyword arguments have been transferred to
+                # args, so we only need to evaluate kwonlyargs
+                to_eval = set(argspec.kwonlyargs)
                 kwargs = [(name, expr_eval(arg, context))
                           if name in to_eval else (name, arg)
                           for name, arg in kwargs]
             else:
-                # we already checked in __init__ that we have no "unknown"
-                # kwarg if varkw is None
+                # varkw is not None and varkw not in noeval
                 kwargs = [(name, expr_eval(arg, context))
                           if name not in no_eval else (name, arg)
                           for name, arg in kwargs]
