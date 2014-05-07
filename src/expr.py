@@ -543,13 +543,21 @@ class FillArgSpecMeta(ExplainTypeError):
             if isinstance(compute, types.MethodType):
                 # for methods, strip "self" and "context" args
                 spec = (spec.args[2:],) + spec[1:]
-            extra = (cls.kwonlyargs.keys(), cls.kwonlyargs, {})
+            kwonly = cls.kwonlyargs
+            # if we have a varkw variable but it was only needed because of
+            # kwonly args
+            if spec[2] is not None and kwonly and not cls.kwonlyandvarkw:
+                # we set varkw to None
+                spec = spec[:2] + (None,) + spec[3:]
+            extra = (kwonly.keys(), kwonly, {})
             cls.argspec = FullArgSpec._make(spec + extra)
 
     def get_compute_func(cls):
         raise NotImplementedError()
 
 
+# this needs to stay in the expr module because of ExprAttribute, which uses
+# DynamicFunctionCall -> GenericFunctionCall -> FunctionExpr
 class FunctionExpr(EvaluableExpression):
     """
     Base class for defining (python-level) functions. That is, if you want to
@@ -565,6 +573,7 @@ class FunctionExpr(EvaluableExpression):
     # be set manually for builtin/C functions.
     argspec = None
     kwonlyargs = {}
+    kwonlyandvarkw = False
     no_eval = ()
 
     @classmethod
@@ -582,7 +591,6 @@ class FunctionExpr(EvaluableExpression):
         funcname = self.func_name
 
         nargs = len(args)
-
         availposargnames = set(argnames[:nargs])
         availkwargnames = set(kwargs.keys())
         dupeargnames = availposargnames & availkwargnames
@@ -598,7 +606,7 @@ class FunctionExpr(EvaluableExpression):
                             % (funcname, extra_kwargs.pop()))
 
         # Check that we do not have too many args
-        if nargs > maxargs:
+        if self.argspec.varargs is None and nargs > maxargs:
             # f() takes 3 positional arguments but 4 were given
             # f() takes from 1 to 3 positional arguments but 4 were given
             # + 1 to be consistent with Python (to account for self) but
