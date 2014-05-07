@@ -10,7 +10,7 @@ from partition import partition_nd
 
 
 class GroupBy(TableExpression):
-#    func_name = 'groupby'
+#    funcname = 'groupby'
 
     argspec = argspec(expr=None, filter=None, percent=False, pvalues=None)
 

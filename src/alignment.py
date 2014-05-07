@@ -154,7 +154,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
 
 #noinspection PyProtectedMember
 class AlignmentAbsoluteValues(FilteredExpression):
-    func_name = 'align_abs'
+    funcname = 'align_abs'
     no_eval = ('filter', 'secondary_axis', 'expressions')
 
     def post_init(self):
@@ -513,7 +513,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
 
 class Alignment(AlignmentAbsoluteValues):
-    func_name = 'align'
+    funcname = 'align'
 
     def __init__(self, score=None, proportions=None,
                  filter=None, take=None, leave=None,

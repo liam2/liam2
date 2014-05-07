@@ -252,7 +252,7 @@ class AggregateLink(LinkExpression):
 
 
 class CountLink(AggregateLink):
-    func_name = 'countlink'
+    funcname = 'countlink'
 
     def eval_rows(self, source_rows, target_filter, context):
         # We can't use a negative value because that is not allowed by
@@ -289,11 +289,11 @@ class CountLink(AggregateLink):
         else:
             target_filter = ""
         #noinspection PyProtectedMember
-        return '%s(%s%s)' % (self.func_name, self.link._name, target_filter)
+        return '%s(%s%s)' % (self.funcname, self.link._name, target_filter)
 
 
 class SumLink(CountLink):
-    func_name = 'sumlink'
+    funcname = 'sumlink'
 
     def __init__(self, link, target_expr, target_filter=None):
         CountLink.__init__(self, link, target_filter)
@@ -331,12 +331,12 @@ class SumLink(CountLink):
         else:
             target_filter = ""
         #noinspection PyProtectedMember
-        return '%s(%s, %s%s)' % (self.func_name, self.link._name,
+        return '%s(%s, %s%s)' % (self.funcname, self.link._name,
                                  self.target_expr, target_filter)
 
 
 class AvgLink(SumLink):
-    func_name = 'avglink'
+    funcname = 'avglink'
 
     def count(self, source_rows, target_filter, context):
         sums = super(AvgLink, self).count(source_rows, target_filter, context)
@@ -350,7 +350,7 @@ class AvgLink(SumLink):
 
 
 class MinLink(AggregateLink):
-    func_name = 'minlink'
+    funcname = 'minlink'
     aggregate_func = min
 
     def __init__(self, link, target_expr, target_filter=None):
@@ -390,12 +390,12 @@ class MinLink(AggregateLink):
         else:
             target_filter = ""
         #noinspection PyProtectedMember
-        return '%s(%s, %s%s)' % (self.func_name, self.link._name,
+        return '%s(%s, %s%s)' % (self.funcname, self.link._name,
                                  self.target_expr, target_filter)
 
 
 class MaxLink(MinLink):
-    func_name = 'maxlink'
+    funcname = 'maxlink'
     aggregate_func = max
 
 

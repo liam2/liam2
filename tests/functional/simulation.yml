@@ -1608,6 +1608,7 @@ entities:
                                        fname='person_age_aggregates.csv')
 
             test_dump:
+                - dump(age)
                 - expr: csv(dump(gender, age, partner_id, partner.age),
                             suffix='partner_ages')
                 - full: csv(dump(), suffix='full')
@@ -2363,7 +2364,7 @@ simulation:
 
                    # output
                    test_groupby,
-#                   test_dump,
+                   test_dump,
                    test_csv,
                    
                    imported_process,

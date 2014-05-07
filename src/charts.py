@@ -62,10 +62,10 @@ class Chart(Expr, FileProducer):
         return [cmap(f) for f in ratios]
 
     def prepare(self, args, kwargs):
-        func_name = self.__class__.__name__.lower()
+        funcname = self.__class__.__name__.lower()
         ndim_req = self.ndim_req
         dimerror = ValueError("%s only works on %d or %d dimensional data"
-                              % (func_name, ndim_req - 1, ndim_req))
+                              % (funcname, ndim_req - 1, ndim_req))
         if self.check_length and len(args) > 1:
             if all(np.isscalar(a) for a in args):
                 args = [np.asarray(args)]

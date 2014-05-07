@@ -202,7 +202,7 @@ class RandInt(NumpyRandom):
 # not inheriting from NumpyRandom as it would get the argspec from an
 # nonexistent np_func
 class Choice(FunctionExpr):
-    func_name = 'choice'
+    funcname = 'choice'
 
     def compute(self, context, choices, p=None, size=None, replace=True):
         #TODO: __init__ should detect when all args are constants and run
@@ -223,13 +223,13 @@ class Choice(FunctionExpr):
 
 
 class Round(NumpyChangeArray):
-    func_name = 'round'  # np.round redirects to np.round_
+    funcname = 'round'  # np.round redirects to np.round_
     np_func = np.round
     dtype = firstarg_dtype
 
 
 class Trunc(FunctionExpr):
-    func_name = 'trunc'
+    funcname = 'trunc'
 
     def compute(self, context, expr):
         return expr.astype(int)
@@ -244,17 +244,17 @@ class Trunc(FunctionExpr):
 
 
 class Abs(NumexprFunction):
-    func_name = 'abs'
+    funcname = 'abs'
     dtype = always(float)
 
 
 class Log(NumexprFunction):
-    func_name = 'log'
+    funcname = 'log'
     dtype = always(float)
 
 
 class Exp(NumexprFunction):
-    func_name = 'exp'
+    funcname = 'exp'
     dtype = always(float)
 
 
@@ -404,6 +404,8 @@ class Clone(New):
 
 
 class Dump(TableExpression):
+    funcname = 'dump'
+
     no_eval = ('args',)
     kwonlyargs = {'filter': None, 'missing': None, 'header': True}
 

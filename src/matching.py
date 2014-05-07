@@ -9,7 +9,7 @@ from utils import loop_wh_progress
 
 
 class Matching(FilteredExpression):
-    func_name = 'matching'
+    funcname = 'matching'
     no_eval = ('set1filter', 'set2filter', 'score')
 
     def traverse(self, context):

@@ -525,6 +525,11 @@ class FillArgSpecMeta(ExplainTypeError):
         if compute is None:
             return
 
+        funcname = dct.get('funcname')
+        if funcname is None:
+            funcname = cls.__name__.lower()
+            cls.funcname = funcname
+
         argspec = dct.get('argspec')
         if argspec is None:
             try:
@@ -567,7 +572,7 @@ class FunctionExpr(EvaluableExpression):
     """
     __metaclass__ = FillArgSpecMeta
 
-    func_name = None
+    funcname = None
 
     # argspec is set automatically for pure-python functions, but needs to
     # be set manually for builtin/C functions.
@@ -588,7 +593,8 @@ class FunctionExpr(EvaluableExpression):
         nreqargs = maxargs - (len(defaults) if defaults is not None else 0)
         reqargnames = argnames[:nreqargs]
         allowed_kwargs = set(argnames) | set(self.argspec.kwonlyargs)
-        funcname = self.func_name
+        funcname = self.funcname
+        assert funcname is not None
 
         nargs = len(args)
         availposargnames = set(argnames[:nargs])
@@ -704,7 +710,7 @@ class FunctionExpr(EvaluableExpression):
         args, kwargs = self.args, self.kwargs
         args = [repr(a) for a in args]
         kwargs = ['%s=%r' % (k, v) for k, v in kwargs]
-        return '%s(%s)' % (self.func_name, ', '.join(args + kwargs))
+        return '%s(%s)' % (self.funcname, ', '.join(args + kwargs))
     __repr__ = __str__
 
 
@@ -714,7 +720,7 @@ class GenericFunctionCall(FunctionExpr):
     passed as the first argument.
     """
     @property
-    def func_name(self):
+    def funcname(self):
         return str(self.children[0][0])
 
     @property

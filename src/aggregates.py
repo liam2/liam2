@@ -25,7 +25,7 @@ class Any(NumpyAggregate):
 
 #XXX: inherit from FilteredExpression instead?
 class Count(FunctionExpr):
-    func_name = 'count'
+    funcname = 'count'
 
     def compute(self, context, filter=None):
         if filter is None:
@@ -63,14 +63,14 @@ nanmax = limited(np.nanmax)
 
 
 class Min(NumpyAggregate):
-    func_name = 'min'
+    funcname = 'min'
     np_func = np.amin
     nan_func = (nanmin,)
     dtype = firstarg_dtype
 
 
 class Max(NumpyAggregate):
-    func_name = 'max'
+    funcname = 'max'
     np_func = np.amax
     nan_func = (nanmax,)
     dtype = firstarg_dtype
@@ -100,7 +100,7 @@ def na_sum(a, overwrite=False):
 
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Sum(FilteredExpression):
-    func_name = 'sum'
+    funcname = 'sum'
     no_eval = ('expr', 'filter')
 
     def compute(self, context, expr, filter=None, skip_na=True):
@@ -120,7 +120,7 @@ class Sum(FilteredExpression):
 
 
 #class Average(NumpyAggregate):
-#    func_name = 'avg'
+#    funcname = 'avg'
 #    np_func = np.mean
 #    nan_func = (nanmean,)
 #    dtype = always(float)
@@ -128,7 +128,7 @@ class Sum(FilteredExpression):
 
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Average(FilteredExpression):
-    func_name = 'avg'
+    funcname = 'avg'
     no_eval = ('expr',)
 
     def compute(self, context, expr, filter=None, skip_na=True):
@@ -190,7 +190,7 @@ class Percentile(NumpyAggregate):
 #TODO: filter and skip_na should be provided by an "Aggregate" mixin that is
 # used both here and in NumpyAggregate
 class Gini(FilteredExpression):
-    func_name = 'gini'
+    funcname = 'gini'
     no_eval = ('filter',)
 
     def compute(self, context, expr, filter=None, skip_na=True):

@@ -46,7 +46,7 @@ class Regression(CompoundExpression):
 
 
 class LogitScore(CompoundExpression):
-    func_name = 'logit_score'
+    funcname = 'logit_score'
 
     def __init__(self, expr):
         CompoundExpression.__init__(self)
@@ -76,13 +76,13 @@ class LogitScore(CompoundExpression):
         return expr
 
     def __str__(self):
-        return '%s(%s)' % (self.func_name, self.expr)
+        return '%s(%s)' % (self.funcname, self.expr)
 
     dtype = always(float)
 
 
 class LogitRegr(Regression):
-    func_name = 'logit_regr'
+    funcname = 'logit_regr'
 
     def __init__(self, expr, filter=None, align=None):
         Regression.__init__(self, expr, filter)
@@ -109,7 +109,7 @@ class LogitRegr(Regression):
 
 
 class ContRegr(Regression):
-    func_name = 'cont_regr'
+    funcname = 'cont_regr'
 
     def __init__(self, expr, filter=None, mult=0.0, error_var=None):
         Regression.__init__(self, expr, filter)
@@ -128,14 +128,14 @@ class ContRegr(Regression):
 
 
 class ClipRegr(ContRegr):
-    func_name = 'clip_regr'
+    funcname = 'clip_regr'
 
     def build_expr(self):
         return Max(ContRegr.build_expr(self), 0)
 
 
 class LogRegr(ContRegr):
-    func_name = 'log_regr'
+    funcname = 'log_regr'
 
     def build_expr(self):
         return Exp(ContRegr.build_expr(self))

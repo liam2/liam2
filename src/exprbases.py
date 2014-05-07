@@ -93,7 +93,7 @@ class NumpyFunction(FunctionExpr):
     # subclasses can override this by a class-constant
     @classproperty
     @classmethod
-    def func_name(cls):
+    def funcname(cls):
         return cls.get_compute_func().__name__
 
 
@@ -205,7 +205,7 @@ class NumpyAggregate(NumpyFunction):
 
 class NumexprFunction(Expr):
     """For functions which are present as-is in numexpr"""
-    func_name = None
+    funcname = None
 
     def __init__(self, expr):
         self.expr = expr
@@ -214,10 +214,10 @@ class NumexprFunction(Expr):
         return self.__class__(as_simple_expr(self.expr, context))
 
     def as_string(self):
-        return '%s(%s)' % (self.func_name, as_string(self.expr))
+        return '%s(%s)' % (self.funcname, as_string(self.expr))
 
     def __str__(self):
-        return '%s(%s)' % (self.func_name, self.expr)
+        return '%s(%s)' % (self.funcname, self.expr)
 
     def traverse(self, context):
         for node in traverse_expr(self.expr, context):

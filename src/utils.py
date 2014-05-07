@@ -1075,10 +1075,7 @@ class ExplainTypeError(type):
             #noinspection PyArgumentList
             return type.__call__(cls, *args, **kwargs)
         except TypeError, e:
-            if hasattr(cls, 'func_name') and cls.func_name is not None:
-                funcname = cls.func_name
-            else:
-                funcname = cls.__name__.lower()
+            funcname = cls.funcname
             msg = e.args[0].replace('__init__()', funcname)
 
             def repl_py2(matchobj):
@@ -1159,6 +1156,7 @@ def argspec(*args, **kwonlyargs):
     if not defaults:
         defaults = None
     else:
+        assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
         assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
     args = [a[0] if isinstance(a, tuple) else a for a in args]
     return FullArgSpec(args, varargs, varkw, defaults,
