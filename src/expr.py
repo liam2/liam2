@@ -696,7 +696,7 @@ class FunctionExpr(EvaluableExpression):
             if argspec.varkw is None or argspec.varkw in no_eval:
                 # arguments passed as keyword arguments have been transferred to
                 # args, so we only need to evaluate kwonlyargs
-                to_eval = set(argspec.kwonlyargs)
+                to_eval = set(argspec.kwonlyargs) - no_eval
                 kwargs = [(name, expr_eval(arg, context))
                           if name in to_eval else (name, arg)
                           for name, arg in kwargs]
