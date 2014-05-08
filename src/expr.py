@@ -691,20 +691,16 @@ class FunctionExpr(EvaluableExpression):
                     varargs = [expr_eval(arg, context) for arg in varargs]
                 args.extend(varargs)
 
-            # The case where varkw is None and varkw in no_eval should never
-            # happen and is already covered by the assert above.
-            if argspec.varkw is None or argspec.varkw in no_eval:
-                # arguments passed as keyword arguments have been transferred to
-                # args, so we only need to evaluate kwonlyargs
-                to_eval = set(argspec.kwonlyargs) - no_eval
-                kwargs = [(name, expr_eval(arg, context))
-                          if name in to_eval else (name, arg)
-                          for name, arg in kwargs]
-            else:
-                # varkw is not None and varkw not in noeval
-                kwargs = [(name, expr_eval(arg, context))
-                          if name not in no_eval else (name, arg)
-                          for name, arg in kwargs]
+            if argspec.varkw is not None and argspec.varkw in no_eval:
+                allkwnames = set(name for name, _ in kwargs)
+                # "normal" args passed as kwargs have been transferred to
+                # positional args, so all remaining kwargs are either kwonlyargs
+                # or varkwargs
+                varkwnames = allkwnames - set(argspec.kwonlyargs)
+                no_eval |= varkwnames
+            kwargs = [(name, expr_eval(arg, context))
+                      if name not in no_eval else (name, arg)
+                      for name, arg in kwargs]
         else:
             args, kwargs = expr_eval(self.children, context)
 
