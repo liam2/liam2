@@ -6,50 +6,32 @@ import csv
 import numpy as np
 
 import config
-from expr import Expr, expr_eval, traverse_expr
+from expr import Expr, expr_eval, traverse_expr, FunctionExpr
 from exprbases import TableExpression
 from process import BreakpointException
 from partition import filter_to_indices
 from utils import LabeledArray, FileProducer, argspec
 
 
-class Show(Expr):
-    def __init__(self, *args):
-        Expr.__init__(self)
-        self.args = args
-
-    def traverse(self, context):
-        for arg in self.args:
-            for node in traverse_expr(arg, context):
-                yield node
-
-    def print_values(self, values):
-        print(' '.join(str(v) for v in values), end=' ')
-
+class Show(FunctionExpr):
     def evaluate(self, context):
         if config.skip_shows:
             print("show skipped", end=' ')
         else:
-            values = [expr_eval(expr, context) for expr in self.args]
-            self.print_values(values)
+            super(Show, self).evaluate(context)
 
-    def __str__(self):
-        #TODO: the differentiation shouldn't be needed. I guess I should
-        # have __repr__ defined for all expressions
-        str_args = [str(arg) if isinstance(arg, Expr) else repr(arg)
-                    for arg in self.args]
-        return 'show(%s)' % ', '.join(str_args)
+    def compute(self, context, *args):
+        print(' '.join(str(v) for v in args), end=' ')
 
 
 class QuickShow(Show):
-    def print_values(self, values):
+    funcname = 'qshow'
+
+    def compute(self, context, *args):
         titles = [str(expr) for expr in self.args]
         print('\n'.join('%s: %s' % (title, value)
-                        for title, value in zip(titles, values)),
+                        for title, value in zip(titles, args)),
               end=' ')
-
-    def __str__(self):
-        return Show.__str__(self).replace('show(', 'qshow(')
 
 
 class CSV(Expr, FileProducer):
