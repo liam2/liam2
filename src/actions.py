@@ -34,6 +34,7 @@ class QuickShow(Show):
               end=' ')
 
 
+#TODO
 class CSV(Expr, FileProducer):
     ext = '.csv'
     fname_required = True
@@ -88,18 +89,9 @@ class CSV(Expr, FileProducer):
                 writer.writerows(data)
 
 
-class RemoveIndividuals(Expr):
-    def __init__(self, filter):
-        Expr.__init__(self)
-        self.filter = filter
-
-    def traverse(self, context):
-        for node in traverse_expr(self.filter, context):
-            yield node
-
-    def evaluate(self, context):
-        filter_value = expr_eval(self.filter, context)
-
+class RemoveIndividuals(FunctionExpr):
+    def compute(self, context, filter):
+        filter_value = filter
         if not np.any(filter_value):
             return
 
@@ -142,36 +134,22 @@ class RemoveIndividuals(Expr):
                                                end=' ')
 
 
-class Breakpoint(Expr):
-    def __init__(self, period=None):
-        Expr.__init__(self)
-        self.period = period
-
-    def evaluate(self, context):
-        if self.period is None or self.period == context.period:
+class Breakpoint(FunctionExpr):
+    def compute(self, context, period=None):
+        if period is None or period == context.period:
             raise BreakpointException()
 
-    def __str__(self):
-        if self.period is not None:
-            return 'breakpoint(%d)' % self.period
-        else:
-            return ''
 
-    def traverse(self, context):
-        for _ in ():
-            yield None
-
-
-class Assert(Expr):
-    def eval_assertion(self, context):
+class Assert(FunctionExpr):
+    def eval_assertion(self, context, *args):
         raise NotImplementedError()
 
-    def evaluate(self, context):
+    def compute(self, context, *args):
         if config.assertions == "skip":
             print("assertion skipped", end=' ')
         else:
             print("assertion", end=' ')
-            failure = self.eval_assertion(context)
+            failure = self.eval_assertion(context, *args)
             if failure:
                 if config.assertions == "warn":
                     print("FAILED:", failure, end=' ')
@@ -182,36 +160,22 @@ class Assert(Expr):
 
 
 class AssertTrue(Assert):
-    def __init__(self, expr):
-        Expr.__init__(self)
-        self.expr = expr
-
-    def eval_assertion(self, context):
-        if not expr_eval(self.expr, context):
-            return str(self.expr) + " is not True"
-
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
+    def eval_assertion(self, context, value):
+        if not value:
+            return str(self.args[0]) + " is not True"
 
 
-class AssertFalse(AssertTrue):
-    def eval_assertion(self, context):
-        if expr_eval(self.expr, context):
-            return str(self.expr) + " is not False"
+
+class AssertFalse(Assert):
+    def eval_assertion(self, context, value):
+        if value:
+            return str(self.args[0]) + " is not False"
 
 
 class ComparisonAssert(Assert):
     inv_op = None
 
-    def __init__(self, expr1, expr2):
-        Expr.__init__(self)
-        self.expr1 = expr1
-        self.expr2 = expr2
-
-    def eval_assertion(self, context):
-        v1 = expr_eval(self.expr1, context)
-        v2 = expr_eval(self.expr2, context)
+    def eval_assertion(self, context, v1, v2):
         result = self.compare(v1, v2)
         if isinstance(result, tuple):
             result, details = result
@@ -219,19 +183,14 @@ class ComparisonAssert(Assert):
             details = ''
         if not result:
             op = self.inv_op
-            return "%s %s %s (%s %s %s)%s" % (self.expr1, op, self.expr2,
+            return "%s %s %s (%s %s %s)%s" % (self.args[0], op, self.args[1],
                                               v1, op, v2, details)
 
     def compare(self, v1, v2):
         raise NotImplementedError()
 
-    def traverse(self, context):
-        for node in traverse_expr(self.expr1, context):
-            yield node
-        for node in traverse_expr(self.expr2, context):
-            yield node
 
-
+#TODO: move to utils
 def isnan(a):
     """
     isnan is equivalent to np.isnan, except that it returns False instead of
@@ -253,7 +212,7 @@ class AssertEqual(ComparisonAssert):
             result = np.array_equal(v1, v2)
             nan_v1, nan_v2 = isnan(v1), isnan(v2)
             if (not result and np.any(nan_v1 | nan_v2) and
-                np.array_equal(nan_v1, nan_v2)):
+                    np.array_equal(nan_v1, nan_v2)):
                 return False, ' but arrays contain NaNs, did you meant to ' \
                               'use assertNanEqual instead?'
             else:
