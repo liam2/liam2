@@ -115,7 +115,7 @@ class RemoveIndividuals(FunctionExpr):
 
         print("%d %s(s) removed (%d -> %d)" % (filter_value.sum(), entity.name,
                                                len_before, len(entity.array)),
-                                               end=' ')
+              end=' ')
 
 
 class Breakpoint(FunctionExpr):
