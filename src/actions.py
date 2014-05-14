@@ -6,11 +6,10 @@ import csv
 import numpy as np
 
 import config
-from expr import Expr, expr_eval, traverse_expr, FunctionExpr
-from exprbases import TableExpression
+from expr import FunctionExpr
 from process import BreakpointException
 from partition import filter_to_indices
-from utils import LabeledArray, FileProducer, argspec
+from utils import LabeledArray, FileProducer, merge_dicts, PrettyTable
 
 
 class Show(FunctionExpr):
@@ -34,59 +33,44 @@ class QuickShow(Show):
               end=' ')
 
 
-#TODO
-class CSV(Expr, FileProducer):
+class CSV(FunctionExpr, FileProducer):
+    kwonlyargs = merge_dicts(FileProducer.argspec.kwonlydefaults, mode='w')
     ext = '.csv'
     fname_required = True
 
-    argspec = argspec(mode='w', **FileProducer.argspec.kwonlydefaults)
-
-    #noinspection PyNoneFunctionAssignment
-    def __init__(self, *args, **kwargs):
-        Expr.__init__(self)
+    def compute(self, context, *args, **kwargs):
+        table = (LabeledArray, PrettyTable)
+        sequence = (list, tuple)
         if (len(args) > 1 and
-            not any(isinstance(arg, (TableExpression, list, tuple))
-                    for arg in args)):
+                not any(isinstance(arg, table + sequence) for arg in args)):
             args = (args,)
-        self.args = args
 
         mode = kwargs.pop('mode', 'w')
         if mode not in ('w', 'a'):
             raise ValueError("csv() mode argument must be either "
                              "'w' (overwrite) or 'a' (append)")
-        self.mode = mode
 
-        self.fname = self._get_fname(kwargs)
-        if kwargs:
-            kwarg, _ = kwargs.popitem()
-            raise TypeError("'%s' is an invalid keyword argument for csv()"
-                            % kwarg)
+        fname = self._get_fname(kwargs)
 
-    def traverse(self, context):
-        for arg in self.args:
-            for node in traverse_expr(arg, context):
-                yield node
-
-    def evaluate(self, context):
         entity = context.entity
         period = context.period
-        fname = self.fname.format(entity=entity.name, period=period)
+        fname = fname.format(entity=entity.name, period=period)
         print("writing to", fname, "...", end=' ')
-        file_path = os.path.join(config.output_directory, fname)
 
-        with open(file_path, self.mode + 'b') as f:
+        file_path = os.path.join(config.output_directory, fname)
+        with open(file_path, mode + 'b') as f:
             writer = csv.writer(f)
-            for arg in self.args:
-                #XXX: use py3.4 singledispatch?
-                if isinstance(arg, TableExpression):
-                    data = expr_eval(arg, context)
-                    if isinstance(data, LabeledArray):
-                        data = data.as_table()
-                elif isinstance(arg, (list, tuple)):
-                    data = [[expr_eval(expr, context) for expr in arg]]
+            sequence = (list, tuple)
+            for arg in args:
+                if isinstance(arg, LabeledArray):
+                    arg = arg.as_table()
+                elif isinstance(arg, sequence):
+                    arg = [arg]
+                elif isinstance(arg, PrettyTable):
+                    pass
                 else:
-                    data = [[expr_eval(arg, context)]]
-                writer.writerows(data)
+                    arg = [[arg]]
+                writer.writerows(arg)
 
 
 class RemoveIndividuals(FunctionExpr):
