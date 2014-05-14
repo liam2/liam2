@@ -1602,13 +1602,13 @@ entities:
 
             test_dump_init:
                 - empty_file: csv(fname='empty_file.csv')
-                - one_line_header: csv('period', 'id', 'age', fname='person_ages.csv')
-                - two_line_header: csv(['average', 'gini'],
-                                       ['-', 'inequality coefficient'],
+                - one_line_header: csv('period', 'id', 'age',
+                                       fname='person_ages.csv')
+                - two_line_header: csv(['average age', '/'],
+                                       ['average age', 'gini'],
                                        fname='person_age_aggregates.csv')
 
             test_dump:
-                - dump(age)
                 - expr: csv(dump(gender, age, partner_id, partner.age),
                             suffix='partner_ages')
                 - full: csv(dump(), suffix='full')
