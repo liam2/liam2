@@ -6,7 +6,7 @@ import math
 import numpy as np
 
 import config
-from expr import Expr, expr_eval, traverse_expr
+from expr import FunctionExpr
 from utils import (LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim,
                    Axis, FileProducer)
 
@@ -23,8 +23,7 @@ except ImportError, e:
           "'matplotlib.pyplot' could not be imported (%s)." % e)
 
 
-#TODO: use FunctionExpr
-class Chart(Expr, FileProducer):
+class Chart(FunctionExpr, FileProducer):
     ext = '.png'
     show_grid = False
     show_axes = True
@@ -33,17 +32,6 @@ class Chart(Expr, FileProducer):
     projection = None
     ndim_req = 2
     check_length = True
-
-    def __init__(self, *args, **kwargs):
-        Expr.__init__(self)
-        self.args = args
-        self.kwargs = kwargs
-
-    def traverse(self, context):
-        for arg in self.args:
-            for node in traverse_expr(arg, context):
-                yield node
-        yield self
 
     def get_colors(self, n):
         from matplotlib import cm
@@ -62,10 +50,9 @@ class Chart(Expr, FileProducer):
         return [cmap(f) for f in ratios]
 
     def prepare(self, args, kwargs):
-        funcname = self.__class__.__name__.lower()
         ndim_req = self.ndim_req
-        dimerror = ValueError("%s only works on %d or %d dimensional data"
-                              % (funcname, ndim_req - 1, ndim_req))
+        dimerror = ValueError("%s() only works on %d or %d dimensional data"
+                              % (self.funcname, ndim_req - 1, ndim_req))
         if self.check_length and len(args) > 1:
             if all(np.isscalar(a) for a in args):
                 args = [np.asarray(args)]
@@ -98,14 +85,11 @@ class Chart(Expr, FileProducer):
             raise dimerror
         return data, aslabeledarray(data).axes
 
-    def evaluate(self, context):
+    def compute(self, context, *args, **kwargs):
         entity = context.entity
         period = context.period
 
         fig = plt.figure()
-        args = [expr_eval(arg, context) for arg in self.args]
-        kwargs = dict((k, expr_eval(v, context))
-                      for k, v in self.kwargs.iteritems())
 
         data, axes = self.prepare(args, kwargs)
         colors = kwargs.pop('colors', None)
