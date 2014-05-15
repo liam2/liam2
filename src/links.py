@@ -98,11 +98,16 @@ class PrefixingLink(object):
 
 
 class LinkExpression(EvaluableExpression):
-    """abstract base class for all function which handle links (both many2one
-       and one2many"""
-
+    """
+    Abstract base class for all functions which handle links (both many2one
+    and one2many)
+    """
     def __init__(self, link):
+        """
+        link must be a Link instance
+        """
         EvaluableExpression.__init__(self)
+        assert isinstance(link, Link)
         self.link = link
 
     def target_context(self, context):
@@ -117,7 +122,7 @@ class LinkExpression(EvaluableExpression):
 class LinkValue(LinkExpression):
     def __init__(self, link, target_expression, missing_value=None):
         """
-        links can be either a Link instance, a string, or a list of either
+        link must be a Link instance
         target_expression can be any expression (it will be evaluated on the
                           target rows)
         """
