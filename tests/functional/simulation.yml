@@ -1391,7 +1391,7 @@ entities:
 
             test_o2m:
                 # new style (link methods)
-                
+
                 # count
                 - nch: children.count()
                 #- assertEqual(m_id, mother.id)
@@ -1456,10 +1456,8 @@ entities:
                        'edu:', eduach,
                        'num persons:', household.get(persons.count()),
                        'num high edu:', household.get(persons.count(eduach == 4)))
-                - show('region',
-                       household.region_id,
-                       'num hh in region',
-                       household.region.get(households.count()))
+                - show('region', household.region_id)
+                - show('num hh in region', household.region.get(households.count()))
                 - show('long link chain',
                        partner.partner.household.region.get(households.count()))
                 - show(avg(children.count()))
@@ -2364,7 +2362,7 @@ simulation:
 
                    # output
                    test_groupby,
-                   test_dump,
+#                   test_dump,
                    test_csv,
                    
                    imported_process,
