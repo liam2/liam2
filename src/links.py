@@ -6,9 +6,8 @@ from operator import itemgetter
 import numpy as np
 import numexpr as ne
 
-from expr import (Variable, getdtype, expr_eval, missing_values,
-                  get_missing_value, always)
-from exprbases import EvaluableExpression
+from expr import (Expr, Variable, getdtype, expr_eval, missing_values,
+                  get_missing_value, always, FunctionExpr)
 from context import context_length
 from utils import deprecated
 
@@ -39,6 +38,10 @@ class Link(object):
     def __str__(self):
         return self._name
 
+    def __repr__(self):
+        return "%s(%s, %s, %s)" % (self.__class__.__name__, self._name,
+                                   self._link_field, self._target_entity_name)
+
     def _target_context(self, context):
         # we need a "fresh" context (fresh_data=True) so that if we come from
         #  a subset context (dict instead of EntityContext, eg in a new()
@@ -52,9 +55,12 @@ class Link(object):
 
 class Many2One(Link):
     def get(self, key, missing_value=None):
+        if isinstance(key, basestring):
+            key = Variable(key)
         return LinkValue(self, key, missing_value)
 
     __getattr__ = get
+
 
 
 class One2Many(Link):
@@ -97,21 +103,24 @@ class PrefixingLink(object):
         return Variable(self.prefix + key)
 
 
-class LinkExpression(EvaluableExpression):
+class LinkExpression(FunctionExpr):
     """
     Abstract base class for all functions which handle links (both many2one
     and one2many)
     """
-    def __init__(self, link):
-        """
-        link must be a Link instance
-        """
-        EvaluableExpression.__init__(self)
-        assert isinstance(link, Link)
-        self.link = link
+    # def __init__(self, link):
+    #     """
+    #     link must be a Link instance
+    #     """
+    #     super(LinkExpression, self).__init__()
+    #     assert isinstance(link, Link)
+    #     self.link = link
 
     def target_context(self, context):
         #noinspection PyProtectedMember
+        #TODO: implement this
+        # return self.args.link._target_context(context)
+        assert isinstance(self.link, Link)
         return self.link._target_context(context)
 
     #XXX: I think this is not enough. Implement Visitor pattern instead?
@@ -120,17 +129,8 @@ class LinkExpression(EvaluableExpression):
 
 
 class LinkValue(LinkExpression):
-    def __init__(self, link, target_expression, missing_value=None):
-        """
-        link must be a Link instance
-        target_expression can be any expression (it will be evaluated on the
-                          target rows)
-        """
-        LinkExpression.__init__(self, link)
-        if isinstance(target_expression, basestring):
-            target_expression = Variable(target_expression)
-        self.target_expression = target_expression
-        self.missing_value = missing_value
+    funcname = "linkvalue"
+    no_eval = ('target_expression',)
 
     def traverse(self, context):
         #XXX: don't we also need the fields within the target expression?
@@ -142,7 +142,22 @@ class LinkValue(LinkExpression):
         target_context = self.target_context(context)
         return getdtype(self.target_expression, target_context)
 
+    @property
+    def link(self):
+        return self.args[0]
+
+    @property
+    def target_expression(self):
+        return self.args[1]
+
+    @property
+    def missing_value(self):
+        return self.args[2]
+
     def get(self, key, missing_value=None):
+        if isinstance(key, basestring):
+            key = Variable(key)
+
         # partner.mother.household.region.get(households.count()))
 
         # partner is
@@ -158,10 +173,11 @@ class LinkValue(LinkExpression):
         #                       LinkValue(Link('household'),
         #                                 Variable('region'))))
         lv = self
-
+        link_chain = [lv.link]
         # find the deepest LinkValue
         while isinstance(lv.target_expression, LinkValue):
             lv = lv.target_expression
+            link_chain.append(lv.link)
         expr = lv.target_expression
 
         # at this point, expr must be a Variable with a link name,
@@ -170,18 +186,36 @@ class LinkValue(LinkExpression):
         # assertion here.
         #XXX: we could add an _entity field to the Link class though
         # assert expr.name in entity.links
-        assert isinstance(expr, Variable)
+        assert isinstance(expr, Variable), "%s is not a Variable (%s)" \
+                                           % (expr, type(expr))
         #noinspection PyProtectedMember
         deepest_link = lv.link._target_entity.links[expr.name]
         # add one more link to the chain
-        lv.target_expression = LinkValue(deepest_link, key, missing_value)
-        return self
+        #XXX: can we really get away with this? (modifying it inplace?)
+        # it will probably break if we do this (in user code):
+        # step_mother: partner.mother
+        # step_hh: step_mother.household
+        # step_grand_mother: step_mother.mother
+        # lv.target_expression = LinkValue(deepest_link, key, missing_value)
+        # return self
+        result = LinkValue(deepest_link, key, missing_value)
+        for link in link_chain[::-1]:
+            result = LinkValue(link, result)
+        return result
 
     __getattr__ = get
 
-    def evaluate(self, context):
+    def compute(self, context, link, target_expression, missing_value=None):
+        """
+        link must be a Link instance
+        target_expression can be any expression (it will be evaluated on the
+                          target rows)
+        """
+        assert isinstance(link, Link)
+        assert isinstance(target_expression, Expr), str(type(target_expression))
+
         #noinspection PyProtectedMember
-        target_ids = expr_eval(Variable(self.link._link_field), context)
+        target_ids = expr_eval(Variable(link._link_field), context)
         target_context = self.target_context(context)
 
         id_to_rownum = target_context.id_to_rownum
@@ -189,8 +223,7 @@ class LinkValue(LinkExpression):
         missing_int = missing_values[int]
         target_rows = id_to_rownum[target_ids]
 
-        target_values = expr_eval(self.target_expression, target_context)
-        missing_value = self.missing_value
+        target_values = expr_eval(target_expression, target_context)
         if missing_value is None:
             missing_value = get_missing_value(target_values)
 
@@ -208,15 +241,20 @@ class LinkValue(LinkExpression):
 
 
 class AggregateLink(LinkExpression):
-    def __init__(self, link, target_filter=None):
-        LinkExpression.__init__(self, link)
-        self.target_filter = target_filter
+    no_eval = ('target_filter',)
 
-    def evaluate(self, context):
+    @property
+    def link(self):
+        return self.args[0]
+
+    @property
+    def target_filter(self):
+        return self.args[1]
+
+    def compute(self, context, link, target_filter=None):
         # assert isinstance(context, EntityContext), \
         #         "one2many aggregates in groupby are currently not supported"
-        link = self.link
-        assert isinstance(link, One2Many)
+        assert isinstance(link, One2Many), "%s (%s)" % (link, type(link))
 
         # eg (in household entity):
         # persons: {type: one2many, target: person, field: hh_id}
@@ -228,8 +266,8 @@ class AggregateLink(LinkExpression):
 
         missing_int = missing_values[int]
 
-        if self.target_filter is not None:
-            target_filter = expr_eval(self.target_filter, target_context)
+        if target_filter is not None:
+            target_filter = expr_eval(target_filter, target_context)
             source_ids = link_column[target_filter]
         else:
             target_filter = None
@@ -299,10 +337,18 @@ class CountLink(AggregateLink):
 
 class SumLink(CountLink):
     funcname = 'sumlink'
+    no_eval = ('target_expr', 'target_filter')
 
-    def __init__(self, link, target_expr, target_filter=None):
-        CountLink.__init__(self, link, target_filter)
-        self.target_expr = target_expr
+    def compute(self, context, link, target_expr, target_filter=None):
+        return super(SumLink, self).compute(context, link, target_filter)
+
+    @property
+    def target_expr(self):
+        return self.args[1]
+
+    @property
+    def target_filter(self):
+        return self.args[2]
 
     def count(self, source_rows, target_filter, context):
         target_context = self.target_context(context)
