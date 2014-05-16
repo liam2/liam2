@@ -358,17 +358,6 @@ class Expr(object):
     def __getattr__(self, key):
         return ExprAttribute(self, key)
 
-    def collect_variables(self, context):
-        allvars = list(self.all_of(Variable, context))
-        #FIXME: this is a quick hack to make "othertable" work.
-        # We should return prefixed variable instead.
-        badvar = lambda v: isinstance(v, ShortLivedVariable) or \
-                           (isinstance(v, GlobalVariable) and
-                            v.tablename != 'periodic')
-        return set(v.value for v in allvars if not badvar(v))
-        # child_vars = [collect_variables(c, context) for c in self.children]
-        # return set.union(*child_vars) if child_vars else set()
-
     def traverse(self, context):
         for child in self.children:
             for node in traverse_expr(child, context):
@@ -379,6 +368,17 @@ class Expr(object):
         for node in self.traverse(context):
             if isinstance(node, node_type):
                 yield node
+
+    def collect_variables(self, context):
+        allvars = list(self.all_of(Variable, context))
+        #FIXME: this is a quick hack to make "othertable" work.
+        # We should return prefixed variable instead.
+        badvar = lambda v: isinstance(v, ShortLivedVariable) or \
+                           (isinstance(v, GlobalVariable) and
+                            v.tablename != 'periodic')
+        return set(v.value for v in allvars if not badvar(v))
+        # child_vars = [collect_variables(c, context) for c in self.children]
+        # return set.union(*child_vars) if child_vars else set()
 
     def __eq__(self, other):
         # if self.astType == 'alias':
