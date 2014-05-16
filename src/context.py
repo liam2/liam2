@@ -97,7 +97,11 @@ class EvaluationContext(object):
         return context_length(self.entity_data)
 
     def keys(self, extra=True):
-        return self.entity_data.keys(extra)
+        entity_data = self.entity_data
+        if isinstance(entity_data, EntityContext):
+            return entity_data.keys(extra)
+        else:
+            return entity_data.keys()
 
     def __len__(self):
         return self.length()
