@@ -62,7 +62,6 @@ class Many2One(Link):
     __getattr__ = get
 
 
-
 class One2Many(Link):
     def count(self, target_filter=None):
         return CountLink(self, target_filter)
@@ -108,14 +107,6 @@ class LinkExpression(FunctionExpr):
     Abstract base class for all functions which handle links (both many2one
     and one2many)
     """
-    # def __init__(self, link):
-    #     """
-    #     link must be a Link instance
-    #     """
-    #     super(LinkExpression, self).__init__()
-    #     assert isinstance(link, Link)
-    #     self.link = link
-
     def target_context(self, context):
         #noinspection PyProtectedMember
         #TODO: implement this
@@ -190,14 +181,12 @@ class LinkValue(LinkExpression):
                                            % (expr, type(expr))
         #noinspection PyProtectedMember
         deepest_link = lv.link._target_entity.links[expr.name]
-        # add one more link to the chain
-        #XXX: can we really get away with this? (modifying it inplace?)
-        # it will probably break if we do this (in user code):
-        # step_mother: partner.mother
-        # step_hh: step_mother.household
-        # step_grand_mother: step_mother.mother
-        # lv.target_expression = LinkValue(deepest_link, key, missing_value)
-        # return self
+
+        # add one more link to the chain. Previously, we modified
+        # lv.target_expression inplace and it was easier but this relied on the
+        # fact that we cannot currently store partial links in variables,
+        # eg: "p: partner" then "x: p.household" and this could be supported
+        # some day.
         result = LinkValue(deepest_link, key, missing_value)
         for link in link_chain[::-1]:
             result = LinkValue(link, result)
