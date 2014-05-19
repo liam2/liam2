@@ -13,13 +13,14 @@ from utils import deprecated
 
 
 class Link(object):
-    def __init__(self, name, link_field, target_entity_name):
+    def __init__(self, name, link_field, target_entity_name,
+                 target_entity=None):
         # the leading underscores are necessary to not collide with
         # user-defined fields via __getattr__.
         self._name = name
         self._link_field = link_field
         self._target_entity_name = target_entity_name
-        self._target_entity = None
+        self._target_entity = target_entity
         self._entity = None
 
     def _attach(self, entity):
@@ -35,13 +36,6 @@ class Link(object):
                                                      self._entity.name,
                                                      target_name))
 
-    def __str__(self):
-        return self._name
-
-    def __repr__(self):
-        return "%s(%s, %s, %s)" % (self.__class__.__name__, self._name,
-                                   self._link_field, self._target_entity_name)
-
     def _target_context(self, context):
         # we need a "fresh" context (fresh_data=True) so that if we come from
         #  a subset context (dict instead of EntityContext, eg in a new()
@@ -51,6 +45,13 @@ class Link(object):
         # they can point to ids outside the filter)
         return context.clone(fresh_data=True,
                              entity_name=self._target_entity_name)
+
+    def __str__(self):
+        return self._name
+
+    def __repr__(self):
+        return "%s(%s, %s, %s)" % (self.__class__.__name__, self._name,
+                                   self._link_field, self._target_entity_name)
 
 
 class Many2One(Link):
@@ -98,7 +99,8 @@ class PrefixingLink(object):
             #noinspection PyProtectedMember
             return link.__class__(link._name,
                                   self.prefix + link._link_field,
-                                  link._target_entity_name)
+                                  link._target_entity_name,
+                                  link._target_entity)
         return Variable(self.prefix + key)
 
 
@@ -146,9 +148,6 @@ class LinkValue(LinkExpression):
         return self.args[2]
 
     def get(self, key, missing_value=None):
-        if isinstance(key, basestring):
-            key = Variable(key)
-
         # partner.mother.household.region.get(households.count()))
 
         # partner is
@@ -187,7 +186,7 @@ class LinkValue(LinkExpression):
         # fact that we cannot currently store partial links in variables,
         # eg: "p: partner" then "x: p.household" and this could be supported
         # some day.
-        result = LinkValue(deepest_link, key, missing_value)
+        result = deepest_link.get(key, missing_value)
         for link in link_chain[::-1]:
             result = LinkValue(link, result)
         return result
