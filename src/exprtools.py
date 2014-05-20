@@ -243,8 +243,8 @@ class CallNode(Node):
                 lv = link
                 while isinstance(lv.target_expression, links.LinkValue):
                     lv = lv.target_expression
-                target_entity = lv.link._target_entity
-                link = target_entity.links[lv.target_expression.name]
+                assert isinstance(lv.target_expression, links.Link)
+                link = lv.target_expression
             local_context = context.copy()
 
             local_context['__entity__'] = link._target_entity_name

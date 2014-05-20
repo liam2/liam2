@@ -57,7 +57,16 @@ class Link(object):
 class Many2One(Link):
     def get(self, key, missing_value=None):
         if isinstance(key, basestring):
-            key = Variable(key)
+            entity = self._target_entity
+
+            # We could use entity.variables instead but since local variables
+            # are not in there (and links can currently point to them), we need
+            # to special case that and it does not make things any simpler.
+            if key in entity.links:
+                key = entity.links[key]
+            else:
+                key = Variable(key)
+
         return LinkValue(self, key, missing_value)
 
     __getattr__ = get
@@ -168,25 +177,14 @@ class LinkValue(LinkExpression):
         while isinstance(lv.target_expression, LinkValue):
             lv = lv.target_expression
             link_chain.append(lv.link)
-        expr = lv.target_expression
-
-        # at this point, expr must be a Variable with a link name,
-        # however given that we have no context, we do not know the *current*
-        # entity (we do know the target entity) and cannot make a strong
-        # assertion here.
-        #XXX: we could add an _entity field to the Link class though
-        # assert expr.name in entity.links
-        assert isinstance(expr, Variable), "%s is not a Variable (%s)" \
-                                           % (expr, type(expr))
-        #noinspection PyProtectedMember
-        deepest_link = lv.link._target_entity.links[expr.name]
+        assert isinstance(lv.target_expression, Link)
 
         # add one more link to the chain. Previously, we modified
         # lv.target_expression inplace and it was easier but this relied on the
         # fact that we cannot currently store partial links in variables,
         # eg: "p: partner" then "x: p.household" and this could be supported
         # some day.
-        result = deepest_link.get(key, missing_value)
+        result = lv.target_expression.get(key, missing_value)
         for link in link_chain[::-1]:
             result = LinkValue(link, result)
         return result
