@@ -790,12 +790,15 @@ class UnaryOp(Expr):
     def as_string(self):
         return "(%s%s)" % (self.value, self.children[0].as_string())
 
-    def __str__(self):
-        return "(%s%s)" % (self.value, self.children[0])
-    __repr__ = __str__
-
     def dtype(self, context):
         return getdtype(self.children[0], context)
+
+    #FIXME: only add parentheses if necessary
+    def __str__(self):
+        nicerop = {'~': 'not '}
+        niceop = nicerop.get(self.value, self.value)
+        return "(%s%s)" % (niceop, self.children[0])
+    __repr__ = __str__
 
 
 class BinaryOp(Expr):
@@ -817,9 +820,12 @@ class BinaryOp(Expr):
 
     dtype = coerce_child_dtypes
 
+    #FIXME: only add parentheses if necessary
     def __str__(self):
         expr1, expr2 = self.children
-        return "(%s %s %s)" % (expr1, self.value, expr2)
+        nicerop = {'&': 'and', '|': 'or'}
+        niceop = nicerop.get(self.value, self.value)
+        return "(%s %s %s)" % (expr1, niceop, expr2)
     __repr__ = __str__
 
 
@@ -834,7 +840,7 @@ class LogicalOp(BinaryOp):
             raise Exception("operands to logical operators need to be "
                             "boolean but %s is %s" % (expr, dt))
 
-    #TODO: move the test to __init__ and use dtype = always(bool)
+    #TODO: move the tests to a typecheck phase and use dtype = always(bool)
     def dtype(self, context):
         expr1, expr2 = self.children
         self.assertbool(expr1, context)
@@ -843,7 +849,7 @@ class LogicalOp(BinaryOp):
 
 
 class ComparisonOp(BinaryOp):
-    #TODO: move the test to __init__ and use dtype = always(bool)
+    #TODO: move the test to a typecheck phase and use dtype = always(bool)
     def dtype(self, context):
         expr1, expr2 = self.children
         if coerce_types(context, expr1, expr2) is None:
