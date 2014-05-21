@@ -227,7 +227,7 @@ class LinkValue(LinkExpression):
 
 
 class AggregateLink(LinkExpression):
-    no_eval = ('target_filter',)
+    no_eval = ('target_expr', 'target_filter')
 
     @property
     def link(self):
@@ -237,27 +237,28 @@ class AggregateLink(LinkExpression):
     def target_filter(self):
         return self.args[1]
 
-    def compute(self, context, link, target_filter=None):
+    def compute(self, context, link, target_expr, filter_expr=None):
         # assert isinstance(context, EntityContext), \
         #         "one2many aggregates in groupby are currently not supported"
         assert isinstance(link, One2Many), "%s (%s)" % (link, type(link))
 
         # eg (in household entity):
         # persons: {type: one2many, target: person, field: hh_id}
-        target_context = self.target_context(context)
+        target_context = link._target_context(context)
 
         # this is a one2many, so the link column is on the target side
         #noinspection PyProtectedMember
-        link_column = expr_eval(Variable(link._link_field), target_context)
+        source_ids = expr_eval(Variable(link._link_field), target_context)
+        expr_value = expr_eval(target_expr, target_context)
+        filter_value = expr_eval(filter_expr, target_context)
+        if filter_value is not None:
+            source_ids = source_ids[filter_value]
+            # intentionally not using np.isscalar because of some corner
+            # cases, eg. None and np.array(1.0)
+            if isinstance(expr_value, np.ndarray) and expr_value.shape:
+                expr_value = expr_value[filter_value]
 
         missing_int = missing_values[int]
-
-        if target_filter is not None:
-            target_filter = expr_eval(target_filter, target_context)
-            source_ids = link_column[target_filter]
-        else:
-            target_filter = None
-            source_ids = link_column
 
         id_to_rownum = context.id_to_rownum
         if len(id_to_rownum):
@@ -274,16 +275,28 @@ class AggregateLink(LinkExpression):
             #TODO: document this fact in eval_rows
             source_rows = source_ids.copy()
 
-        return self.eval_rows(source_rows, target_filter, context)
+        if isinstance(expr_value, np.ndarray) and expr_value.shape:
+            assert len(source_rows) == len(expr_value), \
+                "%d != %d" % (len(source_rows), len(expr_value))
 
-    def eval_rows(self, source_rows, target_filter, context):
+        return self.eval_rows(source_rows, expr_value, context)
+
+    def eval_rows(self, source_rows, expr_value, context):
         raise NotImplementedError()
 
 
-class CountLink(AggregateLink):
-    funcname = 'countlink'
+class SumLink(AggregateLink):
+    funcname = 'sumlink'
 
-    def eval_rows(self, source_rows, target_filter, context):
+    @property
+    def target_expr(self):
+        return self.args[1]
+
+    @property
+    def target_filter(self):
+        return self.args[2]
+
+    def eval_rows(self, source_rows, expr_value, context):
         # We can't use a negative value because that is not allowed by
         # bincount, and using a value too high will uselessly increase the size
         # of the array returned by bincount
@@ -297,63 +310,24 @@ class CountLink(AggregateLink):
         #                    missing_int)
         source_rows[source_rows == missing_int] = idx_for_missing
 
-        counts = self.count(source_rows, target_filter, context)
+        counts = self.count(source_rows, expr_value)
         counts.resize(idx_for_missing)
         return counts
 
-    def count(self, source_rows, target_filter, context):
-        #XXX: the test is probably not needed anymore with numpy 1.6.2+
-        if len(source_rows):
-            return np.bincount(source_rows)
-        else:
-            return np.array([], dtype=int)
-
-    dtype = always(int)
-
-    #FIXME: str() should return the new syntax: link.count() instead of
-    # countlink(link)
-    def __str__(self):
-        if self.target_filter is not None:
-            target_filter = ", target_filter=%s" % self.target_filter
-        else:
-            target_filter = ""
-        #noinspection PyProtectedMember
-        return '%s(%s%s)' % (self.funcname, self.link._name, target_filter)
-
-
-class SumLink(CountLink):
-    funcname = 'sumlink'
-    no_eval = ('target_expr', 'target_filter')
-
-    def compute(self, context, link, target_expr, target_filter=None):
-        return super(SumLink, self).compute(context, link, target_filter)
-
-    @property
-    def target_expr(self):
-        return self.args[1]
-
-    @property
-    def target_filter(self):
-        return self.args[2]
-
-    def count(self, source_rows, target_filter, context):
-        target_context = self.target_context(context)
-        value_column = expr_eval(self.target_expr, target_context)
-        if isinstance(value_column, np.ndarray) and value_column.shape:
-            if target_filter is not None:
-                value_column = value_column[target_filter]
-            assert len(source_rows) == len(value_column), \
-                   "%d != %d" % (len(source_rows), len(value_column))
-
-            res = np.bincount(source_rows, value_column)
+    def count(self, source_rows, expr_value):
+        if isinstance(expr_value, np.ndarray) and expr_value.shape:
+            res = np.bincount(source_rows, expr_value)
 
             # we need to explicitly convert to the type of the value field
             # because bincount always return floats when its weight argument
             # is used.
-            return res.astype(value_column.dtype)
+            return res.astype(expr_value.dtype)
         else:
             # summing a scalar value
-            return np.bincount(source_rows) * value_column
+            counts = np.bincount(source_rows)
+            # Optimization for countlink. Not using != 1 because it would
+            # return a bad type (int) when expr_value is 1.0.
+            return counts * expr_value if expr_value is not 1 else counts
 
     def dtype(self, context):
         target_context = self.target_context(context)
@@ -372,13 +346,36 @@ class SumLink(CountLink):
                                  self.target_expr, target_filter)
 
 
+class CountLink(SumLink):
+    funcname = 'countlink'
+
+    target_expr = None
+
+    @property
+    def target_filter(self):
+        return self.args[1]
+
+    def compute(self, context, link, target_filter=None):
+        return super(CountLink, self).compute(context, link, 1, target_filter)
+
+    #FIXME: str() should return the new syntax: link.count() instead of
+    # countlink(link)
+    def __str__(self):
+        if self.target_filter is not None:
+            target_filter = ", target_filter=%s" % self.target_filter
+        else:
+            target_filter = ""
+        #noinspection PyProtectedMember
+        return '%s(%s%s)' % (self.funcname, self.link._name, target_filter)
+
+
 class AvgLink(SumLink):
     funcname = 'avglink'
 
-    def count(self, source_rows, target_filter, context):
-        sums = super(AvgLink, self).count(source_rows, target_filter, context)
+    def count(self, source_rows, expr_value):
+        sums = super(AvgLink, self).count(source_rows, expr_value)
         count = np.bincount(source_rows)
-
+        #XXX; use from future import division instead?
         # this is slightly sub optimal if the value column contains integers
         # as the data is converted from float to int then back to float
         return sums.astype(float) / count
@@ -390,27 +387,17 @@ class MinLink(AggregateLink):
     funcname = 'minlink'
     aggregate_func = min
 
-    def __init__(self, link, target_expr, target_filter=None):
-        AggregateLink.__init__(self, link, target_filter)
-        self.target_expr = target_expr
-
     def dtype(self, context):
         target_context = self.target_context(context)
         return getdtype(self.target_expr, target_context)
 
-    def eval_rows(self, source_rows, target_filter, context):
-        target_context = self.target_context(context)
-        value_column = expr_eval(self.target_expr, target_context)
-        if target_filter is not None:
-            value_column = value_column[target_filter]
-        assert len(source_rows) == len(value_column)
-
-        result = np.empty(context_length(context), dtype=value_column.dtype)
-        result.fill(get_missing_value(value_column))
+    def eval_rows(self, source_rows, expr_value, context):
+        result = np.empty(context_length(context), dtype=expr_value.dtype)
+        result.fill(get_missing_value(expr_value))
 
         id_sort_indices = np.argsort(source_rows)
         sorted_rownum = source_rows[id_sort_indices]
-        sorted_values = value_column[id_sort_indices]
+        sorted_values = expr_value[id_sort_indices]
         groups = groupby(izip(sorted_rownum, sorted_values), key=itemgetter(0))
         aggregate_func = self.aggregate_func
         for rownum, values in groups:

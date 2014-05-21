@@ -1410,7 +1410,7 @@ entities:
 
                 # avg
                 - ch_012_age_avg: children.avg(age, age <= 12)
-                - assertNanEqual(ch_012_age_avg, ch_012_age_sum / nch_012)  
+                - assertNanEqual(ch_012_age_avg, ch_012_age_sum / nch_012)
                 
                 # min, max
                 - ch_minage: children.min(age)
