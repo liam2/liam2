@@ -5,8 +5,8 @@ import numpy as np
 from alignment import Alignment
 import config
 from context import context_length
-from expr import (Expr, Variable, ShortLivedVariable, get_tmp_varname,
-                  missing_values, getdtype, expr_eval)
+from expr import (Expr, Variable, ShortLivedVariable, BinaryOp, ComparisonOp,
+                  get_tmp_varname, missing_values, getdtype, expr_eval, always)
 from exprbases import CompoundExpression
 from exprmisc import Exp, Normal, Max, Where, Logit, Logistic
 
@@ -42,12 +42,11 @@ class Regression(CompoundExpression):
         expr = self.add_filter(self.complete_expr, context)
         return expr.as_simple_expr(context)
 
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 class LogitScore(CompoundExpression):
-    func_name = 'logit_score'
+    funcname = 'logit_score'
 
     def __init__(self, expr):
         CompoundExpression.__init__(self)
@@ -72,19 +71,18 @@ class LogitScore(CompoundExpression):
             expr = u
         else:
             epsilon = Logit(u)
-            expr = Logistic(expr - epsilon)
+            # expr = logistic(expr - epsilon)
+            expr = Logistic(BinaryOp('-', expr, epsilon))
         return expr
 
     def __str__(self):
-        return '%s(%s)' % (self.func_name, self.expr)
+        return '%s(%s)' % (self.funcname, self.expr)
 
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 class LogitRegr(Regression):
-    func_name = 'logit_regr'
+    funcname = 'logit_regr'
 
     def __init__(self, expr, filter=None, align=None):
         Regression.__init__(self, expr, filter)
@@ -98,7 +96,7 @@ class LogitRegr(Regression):
         if self.align is not None:
             return Alignment(score_expr, self.align, filter=self.filter)
         else:
-            return score_expr > 0.5
+            return ComparisonOp('>', score_expr, 0.5)
 
     # this is an optimisation: Alignment already handles the filter
     def add_filter(self, expr, context):
@@ -107,12 +105,11 @@ class LogitRegr(Regression):
         else:
             return super(LogitRegr, self).add_filter(expr, context)
 
-    def dtype(self, context):
-        return bool
+    dtype = always(bool)
 
 
 class ContRegr(Regression):
-    func_name = 'cont_regr'
+    funcname = 'cont_regr'
 
     def __init__(self, expr, filter=None, mult=0.0, error_var=None):
         Regression.__init__(self, expr, filter)
@@ -122,21 +119,23 @@ class ContRegr(Regression):
     def build_expr(self):
         expr = self.expr
         if self.error_var is not None:
-            expr += Variable(self.error_var)
+            # expr += error_var
+            expr = BinaryOp('+', expr, Variable(self.error_var))
         if self.mult:
-            expr += Normal(0, 1) * self.mult
+            # expr += normal(0, 1) * mult
+            expr = BinaryOp('+', expr, BinaryOp('*', Normal(0, 1), self.mult))
         return expr
 
 
 class ClipRegr(ContRegr):
-    func_name = 'clip_regr'
+    funcname = 'clip_regr'
 
     def build_expr(self):
         return Max(ContRegr.build_expr(self), 0)
 
 
 class LogRegr(ContRegr):
-    func_name = 'log_regr'
+    funcname = 'log_regr'
 
     def build_expr(self):
         return Exp(ContRegr.build_expr(self))

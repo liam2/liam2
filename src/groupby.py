@@ -4,70 +4,58 @@ import numpy as np
 
 from expr import expr_eval, collect_variables, traverse_expr
 from exprbases import TableExpression
-from context import context_subset
-from utils import prod, LabeledArray
+from utils import prod, LabeledArray, argspec
 from aggregates import Count
 from partition import partition_nd
 
 
 class GroupBy(TableExpression):
-#    func_name = 'groupby'
+    funcname = 'groupby'
+    no_eval = ('expressions', 'expr')
+    kwonlyargs = {'expr': None, 'filter': None, 'percent': False,
+                  'pvalues': None}
 
     #noinspection PyNoneFunctionAssignment
-    def __init__(self, *args, **kwargs):
-        assert len(args), "groupby needs at least one expression"
+    def compute(self, context, *expressions, **kwargs):
+        if not expressions:
+            raise TypeError("groupby() takes at least 1 argument")
+
         #TODO: allow lists/tuples of arguments to group by the combinations
         # of keys
-        for arg in args:
-            if isinstance(arg, (bool, int, float)):
-                raise TypeError("groupby takes expressions as arguments, "
-                                "not scalar values")
-            if isinstance(arg, (tuple, list)):
-                raise TypeError("groupby takes expressions as arguments, "
+        for expr in expressions:
+            if isinstance(expr, (bool, int, float)):
+                raise TypeError("groupby() does not work with constant "
+                                "arguments")
+            if isinstance(expr, (tuple, list)):
+                raise TypeError("groupby() takes expressions as arguments, "
                                 "not a list of expressions")
-        self.expressions = args
 
         # On python 3, we could clean up this code (keyword only arguments).
         expr = kwargs.pop('expr', None)
         if expr is None:
             expr = Count()
-        self.expr = expr
 
 #        by = kwargs.pop('by', None)
-#        if isinstance(by, Expr):
-#            by = (by,)
-#        self.by = by
+        filter_value = kwargs.pop('filter', None)
+        percent = kwargs.pop('percent', False)
+        possible_values = kwargs.pop('pvalues', None)
 
-        self.filter = kwargs.pop('filter', None)
-        self.percent = kwargs.pop('percent', False)
-        self.pvalues = kwargs.pop('pvalues', None)
-
-        if kwargs:
-            kwarg, _ = kwargs.popitem()
-            raise TypeError("'%s' is an invalid keyword argument for groupby()"
-                            % kwarg)
-
-    def evaluate(self, context):
-        expr = self.expr
         expr_vars = collect_variables(expr, context)
-
-        expressions = self.expressions
         labels = [str(e) for e in expressions]
         columns = [expr_eval(e, context) for e in expressions]
-        if self.filter is not None:
-            filter_value = expr_eval(self.filter, context)
+
+        if filter_value is not None:
             #TODO: make a function out of this, I think we have this pattern
             # in several places
             filtered_columns = [col[filter_value]
-                                   if isinstance(col, np.ndarray) and col.shape
-                                   else [col]
+                                if isinstance(col, np.ndarray) and col.shape
+                                else [col]
                                 for col in columns]
-            filtered_context = context_subset(context, filter_value, expr_vars)
+            filtered_context = context.subset(filter_value, expr_vars)
         else:
             filtered_columns = columns
             filtered_context = context
 
-        possible_values = self.pvalues
         if possible_values is None:
             possible_values = [np.unique(col) for col in filtered_columns]
 
@@ -79,8 +67,9 @@ class GroupBy(TableExpression):
             return LabeledArray([], labels, possible_values)
 
         # evaluate the expression on each group
-        data = [expr_eval(expr, context_subset(filtered_context, indices,
-                                               expr_vars))
+        #TODO: each subset/sub context should have their .filter_expr set,
+        # so that we can add it to the cache_key
+        data = [expr_eval(expr, filtered_context.subset(indices, expr_vars))
                 for indices in groups]
 
         #TODO: use group_indices_nd directly to avoid using np.unique
@@ -116,14 +105,14 @@ class GroupBy(TableExpression):
         cols_indices.append(np.concatenate(cols_indices))
 
         # evaluate the expression on each "combined" group (ie compute totals)
-        row_totals = [expr_eval(expr, context_subset(filtered_context, indices,
-                                                     expr_vars))
+        row_totals = [expr_eval(expr, filtered_context.subset(indices,
+                                                              expr_vars))
                       for indices in rows_indices]
-        col_totals = [expr_eval(expr, context_subset(filtered_context, indices,
-                                                     expr_vars))
+        col_totals = [expr_eval(expr, filtered_context.subset(indices,
+                                                              expr_vars))
                       for indices in cols_indices]
 
-        if self.percent:
+        if percent:
             # convert to np.float64 to get +-inf if total_value is int(0)
             # instead of Python's built-in behaviour of raising an exception.
             # This can happen at least when using the default expr (count())
@@ -164,23 +153,6 @@ class GroupBy(TableExpression):
         data = data.reshape(len_pvalues)
         return LabeledArray(data, labels, possible_values,
                             row_totals, col_totals)
-
-    def traverse(self, context):
-        for expr in self.expressions:
-            for node in traverse_expr(expr, context):
-                yield node
-        for node in traverse_expr(self.expr, context):
-            yield node
-        for node in traverse_expr(self.filter, context):
-            yield node
-        yield self
-
-    def collect_variables(self, context):
-        variables = set.union(*[collect_variables(expr, context)
-                                for expr in self.expressions])
-        variables |= collect_variables(self.filter, context)
-        variables |= collect_variables(self.expr, context)
-        return variables
 
 
 functions = {

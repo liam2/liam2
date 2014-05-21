@@ -2,14 +2,14 @@ Code architecture
 #################
 
 This document is meant for people who want to know more about the internals of
-Liam2, for example to add or modify some functionality. One should already be
+LIAM2, for example to add or modify some functionality. One should already be
 familiar with how the program is used (on the user side). 
 
 Concepts
 ========
 
 Here is a brief description of the most important concepts to understand the
-code of Liam2, as well as where those concepts are implemented.
+code of LIAM2, as well as where those concepts are implemented.
 
 Simulation
 ----------
@@ -28,8 +28,6 @@ file: entities.py
 The *Entity* class stores all there is to know about each entity: fields,
 links, processes and data. It serves as a glue class between everything
 data, processes, ...
-
-When entities are created, they are added to a global registry in registry.py
 
 Process
 -------
@@ -62,13 +60,13 @@ Expressions
 file: expr.py (and many others)
 
 Expressions are the meat of the code. The *Expr* class is the base class for
-all expressions in Liam2. It defines all the basic operators on expressions
+all expressions in LIAM2. It defines all the basic operators on expressions
 (arithmetic, logical, comparison), but it should not be inherited from
 directly.
 
 file: exprbases.py
 
-Liam2 provides many different bases classes to inherit from when implementing
+LIAM2 provides many different bases classes to inherit from when implementing
 a new function:
 
 * NumexprFunction: base class for functions which are implemented
@@ -94,13 +92,13 @@ a new function:
      * NumpyAggregate: subclass for aggregate functions. eg. count, min,
        max, std, median.
 
-  b) FunctionExpression: subclass for functions (which take one expression as
-     argument). eg. trunc, lag, duration, ...
+  b) FunctionExpr: subclass for functions. eg. trunc, lag, duration, ...
 
-     * FilteredExpression: subclass for functions which also take a filter
-       argument. eg. align, sum, avg, gini.
+     * FilteredExpression: subclass for functions which have a filter
+       argument and need to support contextual filters. eg. align, sum, avg,
+       gini.
 
-Liam2 current expressions are implemented in the following files:
+LIAM2 current expressions are implemented in the following files:
 
 alignment.py
     handles align() and align_abs() functions
@@ -118,9 +116,9 @@ links.py
     contains all link-related code: 
 
     * the *Link* class stores the definition of links
-    * the *LinkValue* class handles ManyToOne links
-    * link functions to handle OneToMany links: countlink, sumlink, avglink,
-      minlink and maxlink
+    * the *LinkGet* class handles ManyToOne links
+    * one class for each method of OneToMany links: *Count*, *Sum*, *Avg*,
+      *Min* and *Max*.
 
 matching.py
     handles the matching() function
@@ -196,7 +194,7 @@ data.py
     uniform interface from different data sources but it is a work in
     progress. 
 
-exprparser.py
+exprtools.py
     parsing code for expressions
 
 importer.py
@@ -215,9 +213,6 @@ main.py
 partition.py 
     handles partitioning objects depending on the possible values of their
     columns. 
-
-registry.py
-    global registry of entities
 
 utils.py
     miscellaneous support functions 

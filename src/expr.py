@@ -1,11 +1,14 @@
 from __future__ import division, print_function
 
+import types
+import inspect
 from collections import Counter
 
 import numpy as np
 
-from utils import LabeledArray, ExplainTypeError, add_context
-from context import EntityContext
+from utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray,
+                   FullArgSpec, englishenum)
+from context import EntityContext, EvaluationContext
 
 try:
     import numexpr
@@ -34,6 +37,7 @@ except ImportError:
         complete_globals.update(eval_context)
         return eval(expr, complete_globals, {})
 
+expr_cache = {}
 num_tmp = 0
 timings = Counter()
 
@@ -51,13 +55,13 @@ type_to_idx = {bool: 0, np.bool_: 0,
 idx_to_type = [bool, int, float]
 
 missing_values = {
-#    int: -2147483648,
+    # int: -2147483648,
     # for links, we need to have abs(missing_int) < len(a) !
     #XXX: we might want to use different missing values for links and for
     #     "normal" ints
     int: -1,
     float: float('nan'),
-#    bool: -1
+    # bool: -1
     bool: False
 }
 
@@ -112,9 +116,14 @@ def as_string(expr):
 
 def traverse_expr(expr, context):
     if isinstance(expr, Expr):
-        return expr.traverse(context)
+        for node in expr.traverse(context):
+            yield node
+    elif isinstance(expr, (tuple, list)):
+        for e in expr:
+            for node in traverse_expr(e, context):
+                yield node
     else:
-        return ()
+        yield expr
 
 
 def gettype(value):
@@ -134,6 +143,21 @@ def getdtype(expr, context):
         return gettype(expr)
 
 
+def always(type_):
+    def dtype(self, context):
+        return type_
+    return dtype
+
+
+def firstarg_dtype(expr, context):
+    return getdtype(expr.args[0], context)
+
+
+def coerce_child_dtypes(expr, context):
+    expr1, expr2 = expr.children
+    return coerce_types(context, expr1, expr2)
+
+
 def ispresent(values):
     dt = values.dtype
     if np.issubdtype(dt, float):
@@ -147,20 +171,25 @@ def ispresent(values):
         raise Exception('%s is not a supported type for ispresent' % dt)
 
 
-# context is needed because in LinkValue we need to know what is the current
+# context is needed because in LinkGet we need to know what is the current
 # entity (so that we can resolve links)
 #TODO: we shouldn't resolve links during the simulation but
 # rather in a "compilation" phase
 def collect_variables(expr, context):
     if isinstance(expr, Expr):
         return expr.collect_variables(context)
+    elif isinstance(expr, (tuple, list)):
+        all_vars = [collect_variables(e, context) for e in expr]
+        return set.union(*all_vars) if all_vars else set()
     else:
         return set()
 
 
 def expr_eval(expr, context):
     if isinstance(expr, Expr):
-        globals_data = context.get('__globals__')
+        # assert isinstance(expr.__fields__, tuple)
+
+        globals_data = context.global_tables
         if globals_data is not None:
             globals_names = set(globals_data.keys())
             if 'periodic' in globals_data:
@@ -185,9 +214,9 @@ def expr_eval(expr, context):
 #        time, res = gettime(expr.evaluate, context)
 #        timings[expr.__class__.__name__] += time
 #        return res
-    elif isinstance(expr, list) and any(isinstance(e, Expr) for e in expr):
+    elif isinstance(expr, list):
         return [expr_eval(e, context) for e in expr]
-    elif isinstance(expr, tuple) and any(isinstance(e, Expr) for e in expr):
+    elif isinstance(expr, tuple):
         return tuple([expr_eval(e, context) for e in expr])
     elif isinstance(expr, slice):
         return slice(expr_eval(expr.start, context),
@@ -197,16 +226,33 @@ def expr_eval(expr, context):
         return expr
 
 
+def binop(opname, kind='binary', reversed=False):
+    def op(self, other):
+        classes = {'binary': BinaryOp,
+                   'division': DivisionOp,
+                   'logical': LogicalOp,
+                   'comparison': ComparisonOp}
+        class_ = classes[kind]
+        return class_(opname, other, self) if reversed \
+                                           else class_(opname, self, other)
+    return op
+
+
 class Expr(object):
+    __fields__ = None
+
+    # TODO: add a check in the metaclass that the class instances effectively
+    # have those fields/attributes defined !!
+
+    # we cannot do this in __new__ (args are verified in metaclass.__call__)
     __metaclass__ = ExplainTypeError
 
-    def traverse(self, context):
-        raise NotImplementedError()
+    kind = 'generic'
 
-    def all_of(self, node_type, context=None):
-        for node in self.traverse(context):
-            if isinstance(node, node_type):
-                yield node
+    def __init__(self, value=None, children=None):
+        object.__init__(self)
+        self.value = value
+        self.children = tuple(children) if children is not None else ()
 
     # makes sure we do not use "normal" python logical operators
     # (and, or, not)
@@ -216,97 +262,22 @@ class Expr(object):
                         "'or' expression. The complete expression cannot be "
                         "displayed but it contains: '%s'." % str(self))
 
-    def __lt__(self, other):
-        return ComparisonOp('<', self, other)
-    def __le__(self, other):
-        return ComparisonOp('<=', self, other)
-    def __eq__(self, other):
-        return ComparisonOp('==', self, other)
-    def __ne__(self, other):
-        return ComparisonOp('!=', self, other)
-    def __gt__(self, other):
-        return ComparisonOp('>', self, other)
-    def __ge__(self, other):
-        return ComparisonOp('>=', self, other)
-
-    def __add__(self, other):
-        return Addition('+', self, other)
-    def __sub__(self, other):
-        return Subtraction('-', self, other)
-    def __mul__(self, other):
-        return Multiplication('*', self, other)
-    def __div__(self, other):
-        return Division('/', self, other)
-    def __truediv__(self, other):
-        return Division('/', self, other)
-    def __floordiv__(self, other):
-        return Division('//', self, other)
-    def __mod__(self, other):
-        return BinaryOp('%', self, other)
-    def __divmod__(self, other):
-        #FIXME
-        return BinaryOp('divmod', self, other)
-    def __pow__(self, other, modulo=None):
-        return BinaryOp('**', self, other)
-    def __lshift__(self, other):
-        return BinaryOp('<<', self, other)
-    def __rshift__(self, other):
-        return BinaryOp('>>', self, other)
-
-    def __and__(self, other):
-        return And('&', self, other)
-    def __xor__(self, other):
-        return BinaryOp('^', self, other)
-    def __or__(self, other):
-        return Or('|', self, other)
-
-    def __radd__(self, other):
-        return Addition('+', other, self)
-    def __rsub__(self, other):
-        return Subtraction('-', other, self)
-    def __rmul__(self, other):
-        return Multiplication('*', other, self)
-    def __rdiv__(self, other):
-        return Division('/', other, self)
-    def __rtruediv__(self, other):
-        return Division('/', other, self)
-    def __rfloordiv__(self, other):
-        return Division('//', other, self)
-    def __rmod__(self, other):
-        return BinaryOp('%', other, self)
-    def __rdivmod__(self, other):
-        return BinaryOp('divmod', other, self)
-    def __rpow__(self, other):
-        return BinaryOp('**', other, self)
-    def __rlshift__(self, other):
-        return BinaryOp('<<', other, self)
-    def __rrshift__(self, other):
-        return BinaryOp('>>', other, self)
-
-    def __rand__(self, other):
-        return And('&', other, self)
-    def __rxor__(self, other):
-        return BinaryOp('^', other, self)
-    def __ror__(self, other):
-        return Or('|', other, self)
-
-    def __neg__(self):
-        return UnaryOp('-', self)
-    def __pos__(self):
-        return UnaryOp('+', self)
-    def __abs__(self):
-        return UnaryOp('abs', self)
-    def __invert__(self):
-        return Not('~', self)
-
     def evaluate(self, context):
-#        FIXME: this cannot work, because dict.__contains__(k) calls k.__eq__
-#        which has a non standard meaning
-#        if self in expr_cache:
-#            s = expr_cache[self]
-#        else:
-#            s = self.as_string(context)
-#            expr_cache[self] = s
+        # period = context.period
+
+        # if isinstance(period, np.ndarray):
+        #     assert np.isscalar(period) or not period.shape
+        #     period = int(period)
+        # cache_key = (self, period, context.entity_name, context.filter_expr)
+        # try:
+        #     # check that the key is hashable
+        #     h = hash(cache_key)
+        #     cached_result = expr_cache.get(cache_key, None)
+        #     if cached_result is not None:
+        #         print("CACHE HIT for %s !" % str(cache_key))
+        #     #     return cached_result
+        # except TypeError:
+        #     print("ERROR: %s is not hashable" % str(cache_key))
 
         simple_expr = self.as_simple_expr(context)
         if isinstance(simple_expr, Variable) and simple_expr.name in context:
@@ -325,7 +296,9 @@ class Expr(object):
         # supports ndarrays and LabeledArray so that I can get the dtype from
         # the expression instead of from actual values.
         labels = None
-        if isinstance(context, EntityContext) and context.is_array_period:
+        assert isinstance(context, EvaluationContext)
+        local_ctx = context.entity_data
+        if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
             for var_name in simple_expr.collect_variables(context):
                 # var_name should always be in the context at this point
                 # because missing temporaries should have been already caught
@@ -348,16 +321,22 @@ class Expr(object):
 
         s = simple_expr.as_string()
         try:
-            res = evaluate(s, context, {}, truediv='auto')
+            res = evaluate(s, local_ctx, {'nan': float('nan')}, truediv='auto')
             if labels is not None:
                 # This is a hack which relies on the fact that currently
                 # all the expression we evaluate through numexpr preserve
                 # array shapes, but if we ever use numexpr reduction
                 # capabilities, we will be in trouble
                 res = LabeledArray(res, labels[0], labels[1])
+            # expr_cache[cache_key] = res
+            # if cached_result is not None:
+            #     print("bad cache for key", cache_key)
+            #     eq = np.array_equal(res, cached_result)
+            #     assert eq, "%s != %s" % (res, cached_result)
+            #     return cached_result
             return res
-        except KeyError, e:
-            raise add_context(e, s)
+        # except KeyError, e:
+        #     raise add_context(e, s)
         except Exception:
             raise
 
@@ -379,11 +358,59 @@ class Expr(object):
     def __getattr__(self, key):
         return ExprAttribute(self, key)
 
+    def traverse(self, context):
+        for child in self.children:
+            for node in traverse_expr(child, context):
+                yield node
+        yield self
+
+    def all_of(self, node_type, context=None):
+        for node in self.traverse(context):
+            if isinstance(node, node_type):
+                yield node
+
     def collect_variables(self, context):
-        raise NotImplementedError()
+        allvars = list(self.all_of(Variable, context))
+        #FIXME: this is a quick hack to make "othertable" work.
+        # We should return prefixed variable instead.
+        badvar = lambda v: isinstance(v, ShortLivedVariable) or \
+                           (isinstance(v, GlobalVariable) and
+                            v.tablename != 'periodic')
+        return set(v.value for v in allvars if not badvar(v))
+        # child_vars = [collect_variables(c, context) for c in self.children]
+        # return set.union(*child_vars) if child_vars else set()
+
+    def __eq__(self, other):
+        # if self.astType == 'alias':
+        #     self = self.value
+        # if other.astType == 'alias':
+        #     other = other.value
+        # if not isinstance(other, ASTNode):
+        #     return False
+        if not isinstance(other, Expr):
+            # print("bad expr type", self, "vs %s (%s)" % (other, type(other)))
+            return False
+        return False
+        # for name in self.__fields__:
+        #     if getattr(self, name) != getattr(other, name):
+        #         return False
+        # return True
+
+    def __hash__(self):
+        # if self.astType == 'alias':
+        #     self = self.value
+        # return hash((self.astType, self.astKind, self.value, self.children))
+        # print("hash", self)
+        # if hasattr(self, 'value'):
+        #     print("we got an attr")
+        #     return hash((self.kind, self.value, self.children))
+        # else:
+        return id(self)
 
 
 class EvaluableExpression(Expr):
+    __fields__ = ('kind', 'value', 'children')
+
     def evaluate(self, context):
         raise NotImplementedError()
 
@@ -400,25 +427,22 @@ def non_scalar_array(a):
 
 class SubscriptedExpr(EvaluableExpression):
     def __init__(self, expr, key):
-        self.expr = expr
-        self.key = key
+        Expr.__init__(self, 'subscript', children=(expr, key))
 
     def __str__(self):
-        key = self.key
+        expr, key = self.children
         if isinstance(key, slice):
             key_str = '%s:%s' % (key.start, key.stop)
             if key.step is not None:
                 key_str += ':%s' % key.step
         else:
             key_str = str(key)
-        return '%s[%s]' % (self.expr, key_str)
+        return '%s[%s]' % (expr, key_str)
     __repr__ = __str__
 
     def evaluate(self, context):
-        expr_value = expr_eval(self.expr, context)
-        key = expr_eval(self.key, context)
-
-        filter_expr = context.get('__filter__')
+        expr_value, key = [expr_eval(c, context) for c in self.children]
+        filter_expr = context.filter_expr
 
         # When there is a contextual filter, we modify the key to avoid
         # crashes (IndexError).
@@ -428,11 +452,13 @@ class SubscriptedExpr(EvaluableExpression):
         # value of another individual (index -1). This should not pose a
         # problem because those values should not be used anyway.
         if filter_expr is not None:
-            # We need a context without __filter__ to evaluate the filter
+            # We need a context without filter to evaluate the filter
             # (to avoid an infinite recursion)
-            sub_context = context.copy()
-            del sub_context['__filter__']
+            sub_context = context.clone(filter_expr=None)
+            # filter_value should be a bool scalar or a bool array
             filter_value = expr_eval(filter_expr, sub_context)
+            assert isinstance(filter_value, (bool, np.bool_)) or \
+                   np.issubdtype(filter_value.dtype, bool)
 
             def fixkey(orig_key, filter_value):
                 if non_scalar_array(orig_key):
@@ -445,6 +471,7 @@ class SubscriptedExpr(EvaluableExpression):
 
             if non_scalar_array(filter_value):
                 if isinstance(key, tuple):
+                    # nd-key
                     key = tuple(fixkey(k, filter_value) for k in key)
                 elif isinstance(key, slice):
                     raise NotImplementedError()
@@ -468,84 +495,282 @@ class SubscriptedExpr(EvaluableExpression):
                         return missing_value
         return expr_value[key]
 
-    def collect_variables(self, context):
-        exprvars = collect_variables(self.expr, context)
-        return exprvars | collect_variables(self.key, context)
-
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
-        for node in traverse_expr(self.key, context):
-            yield node
-        yield self
-
 
 class ExprAttribute(EvaluableExpression):
     def __init__(self, expr, key):
-        self.expr = expr
-        self.key = key
+        Expr.__init__(self, 'attr', children=(expr, key))
 
     def __str__(self):
-        return '%s.%s' % (self.expr, self.key)
+        return '%s.%s' % self.children
     __repr__ = __str__
 
     def evaluate(self, context):
-        # currently key can only be a string but if I ever expose getattr,
-        # it could be an expr too
-        return getattr(expr_eval(self.expr, context),
-                       expr_eval(self.key, context))
+        expr, key = expr_eval(self.children, context)
+        return getattr(expr, key)
 
     def __call__(self, *args, **kwargs):
-        return ExprCall(self, args, kwargs)
-
-    def collect_variables(self, context):
-        exprvars = collect_variables(self.expr, context)
-        return exprvars | collect_variables(self.key, context)
-
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
-        for node in traverse_expr(self.key, context):
-            yield node
-        yield self
+        return DynamicFunctionCall(self, *args, **kwargs)
 
 
-#TODO: factorize with NumpyFunction & FunctionExpression
-class ExprCall(EvaluableExpression):
-    def __init__(self, expr, args, kwargs):
-        self.expr = expr
-        self.args = args
-        self.kwargs = kwargs
+# we need to inherit from ExplainTypeError, so that TypeError exceptions are
+# also "explained" for functions using FillArgSpecMeta
+#XXX: it might be a good idea to merge both
+class FillArgSpecMeta(ExplainTypeError):
+    def __init__(cls, name, bases, dct):
+        super(FillArgSpecMeta, cls).__init__(name, bases, dct)
+
+        compute = cls.get_compute_func()
+
+        # make sure we are not on one of the Abstract base class
+        if compute is None:
+            return
+
+        funcname = dct.get('funcname')
+        if funcname is None:
+            funcname = cls.__name__.lower()
+            cls.funcname = funcname
+
+        argspec = dct.get('argspec')
+        if argspec is None:
+            try:
+                # >>> def a(a, b, c=1, *d, **e):
+                # ...     pass
+                #
+                # >>> inspect.getargspec(a)
+                # ArgSpec(args=['a', 'b', 'c'], varargs='d', keywords='e',
+                #         defaults=(1,))
+                spec = inspect.getargspec(compute)
+            except TypeError:
+                raise Exception('%s is not a pure-Python function so its '
+                                'signature needs to be specified '
+                                'explicitly. See exprmisc.Uniform for an '
+                                'example' % compute.__name__)
+            if isinstance(compute, types.MethodType):
+                # for methods, strip "self" and "context" args
+                spec = (spec.args[2:],) + spec[1:]
+            kwonly = cls.kwonlyargs
+            # if we have a varkw variable but it was only needed because of
+            # kwonly args
+            if spec[2] is not None and kwonly and not cls.kwonlyandvarkw:
+                # we set varkw to None
+                spec = spec[:2] + (None,) + spec[3:]
+            extra = (kwonly.keys(), kwonly, {})
+            cls.argspec = FullArgSpec._make(spec + extra)
+
+    def get_compute_func(cls):
+        raise NotImplementedError()
+
+
+# this needs to stay in the expr module because of ExprAttribute, which uses
+# DynamicFunctionCall -> GenericFunctionCall -> FunctionExpr
+class FunctionExpr(EvaluableExpression):
+    """
+    Base class for defining (python-level) functions. That is, if you want to
+    make a new function available in LIAM2 models, you should inherit from this
+    class. In most cases, overriding the compute and dtype methods is
+    enough, but your mileage may vary.
+    """
+    __metaclass__ = FillArgSpecMeta
+
+    funcname = None
+
+    # argspec is set automatically for pure-python functions, but needs to
+    # be set manually for builtin/C functions.
+    argspec = None
+    kwonlyargs = {}
+    kwonlyandvarkw = False
+    no_eval = ()
+
+    @classmethod
+    def get_compute_func(cls):
+        return cls.compute
+
+    def __init__(self, *args, **kwargs):
+        #TODO: move this whole thing in a function (in utils?)
+        # The behavior/error messages match Python 3.4 (and probably other 3.x)
+        argnames = self.argspec.args
+        maxargs = len(argnames)
+        defaults = self.argspec.defaults
+        nreqargs = maxargs - (len(defaults) if defaults is not None else 0)
+        reqargnames = argnames[:nreqargs]
+        allowed_kwargs = set(argnames) | set(self.argspec.kwonlyargs)
+        funcname = self.funcname
+        assert funcname is not None
+
+        nargs = len(args)
+        availposargnames = set(argnames[:nargs])
+        availkwargnames = set(kwargs.keys())
+        dupeargnames = availposargnames & availkwargnames
+        if dupeargnames:
+            raise TypeError("%s() got multiple values for argument '%s'"
+                            % (funcname, dupeargnames.pop()))
+
+        # Check that we do not have invalid kwargs
+        extra_kwargs = availkwargnames - allowed_kwargs
+        # def f(**kwargs) => argspec.varkw = 'kwargs'
+        if extra_kwargs and self.argspec.varkw is None:
+            raise TypeError("%s() got an unexpected keyword argument '%s'"
+                            % (funcname, extra_kwargs.pop()))
+
+        # Check that we do not have too many args
+        if self.argspec.varargs is None and nargs > maxargs:
+            # f() takes 3 positional arguments but 4 were given
+            # f() takes from 1 to 3 positional arguments but 4 were given
+            # + 1 to be consistent with Python (to account for self) but
+            # those will be modified again (-1) in ExplainTypeError
+            posargs = str(nreqargs + 1) if nreqargs == maxargs \
+                else "from %d to %d" % (nreqargs + 1, maxargs + 1)
+
+            msg = "%s() takes %s positional argument%s but %d were given"
+            raise TypeError(msg % (funcname, posargs,
+                                   's' if maxargs > 1 else '', nargs + 1))
+
+        # Check that we have all required args (passed either as args or kwargs)
+        missing = [name for name in reqargnames
+                   if name not in (availposargnames | availkwargnames)]
+        if missing:
+            nmissing = len(missing)
+            # f() missing 1 required positional argument: 'a'
+            # f() missing 2 required positional arguments: 'a' and 'b'
+            # f() missing 3 required positional arguments: 'a', 'b', and 'c'
+            # + 1 to be consistent with Python (to account for self) but
+            # those will be modified again (-1) in ExplainTypeError
+            raise TypeError("%s() missing %d positional argument%s: %s"
+                            % (funcname,
+                               nmissing + 1,
+                               's' if nmissing > 1 else '',
+                               englishenum(repr(a) for a in missing)))
+
+        # save original arguments before we mess with them
+        self.original_args = args, sorted(kwargs.iteritems())
+
+        # move all "non-kwonly" kwargs to args
+        # def func(a, b, c, d, e=1, f=1):
+        #     pass
+        # nreqargs = 4, maxargs = 6
+        # >>> func(1, 2, c=3, d=4, f=5)
+        # nargs = 2
+        # >>> func(1, 2, 3, 4, 5)
+        # nargs = 5
+        # 1) required arguments (without a default value) passed as kwargs
+        #    pop() should not raise otherwise the "if missing" test above would
+        #    have triggered an exception)
+        extra_args = [kwargs.pop(name) for name in argnames[nargs:nreqargs]]
+
+        # 2) optional args (with a default value) not passed as positional args
+        if defaults is not None:
+            # number of optional args passed as positional args
+            nposopt = max(nargs - nreqargs, 0)
+            extra_args.extend([kwargs.pop(argname, default)
+                               for argname, default
+                               in zip(argnames[nreqargs + nposopt:],
+                                      defaults[nposopt:])])
+
+        args = args + tuple(extra_args)
+        Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
+        self.post_init()
+
+    def post_init(self):
+        pass
+
+    def _eval_args(self, context):
+        if self.no_eval:
+            no_eval = self.no_eval
+            assert isinstance(no_eval, tuple) and \
+                all(isinstance(f, basestring) for f in no_eval), \
+                "no_eval should be a tuple of strings but %r is a %s" \
+                % (no_eval, type(no_eval))
+            no_eval = set(no_eval)
+
+            argspec = self.argspec
+            args, kwargs = self.children
+
+            varargs = args[len(argspec.args):]
+            args = [expr_eval(arg, context) if name not in no_eval else arg
+                    for name, arg in zip(argspec.args, args)]
+            if varargs:
+                assert argspec.varargs is not None
+                if argspec.varargs not in no_eval:
+                    varargs = [expr_eval(arg, context) for arg in varargs]
+                args.extend(varargs)
+
+            if argspec.varkw is not None and argspec.varkw in no_eval:
+                allkwnames = set(name for name, _ in kwargs)
+                # "normal" args passed as kwargs have been transferred to
+                # positional args, so all remaining kwargs are either kwonlyargs
+                # or varkwargs
+                varkwnames = allkwnames - set(argspec.kwonlyargs)
+                no_eval |= varkwnames
+            kwargs = [(name, expr_eval(arg, context))
+                      if name not in no_eval else (name, arg)
+                      for name, arg in kwargs]
+        else:
+            args, kwargs = expr_eval(self.children, context)
+
+        return args, dict(kwargs)
+
+    def compute(self, context, *args, **kwargs):
+        raise NotImplementedError()
 
     def evaluate(self, context):
-        expr = expr_eval(self.expr, context)
-        args = [expr_eval(arg, context) for arg in self.args]
-        kwargs = dict((k, expr_eval(v, context))
-                      for k, v in self.kwargs.iteritems())
-        return expr(*args, **kwargs)
+        args, kwargs = self._eval_args(context)
+        return self.compute(context, *args, **kwargs)
+
+    @property
+    def args(self):
+        return self.children[0]
+
+    @args.setter
+    def args(self, value):
+        self.children = (value, self.kwargs)
+
+    @property
+    def kwargs(self):
+        return self.children[1]
+
+    @staticmethod
+    def args_str(args, kwargs):
+        args = [repr(a) for a in args]
+        kwargs = ['%s=%r' % (k, v) for k, v in kwargs]
+        return ', '.join(args + kwargs)
 
     def __str__(self):
-        args = [repr(a) for a in self.args]
-        kwargs = ['%s=%r' % (k, v) for k, v in self.kwargs.iteritems()]
-        return '%s(%s)' % (self.expr, ', '.join(args + kwargs))
+        return '%s(%s)' % (self.funcname, self.args_str(*self.original_args))
     __repr__ = __str__
 
-    def collect_variables(self, context):
-        args_vars = [collect_variables(arg, context) for arg in self.args]
-        args_vars.extend(collect_variables(v, context)
-                         for v in self.kwargs.itervalues())
-        return set.union(*args_vars) if args_vars else set()
 
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
-        for arg in self.args:
-            for node in traverse_expr(arg, context):
-                yield node
-        for kwarg in self.kwargs.itervalues():
-            for node in traverse_expr(kwarg, context):
-                yield node
-        yield self
+class GenericFunctionCall(FunctionExpr):
+    """
+    GenericFunctionCall handles calling expressions where the function to run is
+    passed as the first argument.
+    """
+    @property
+    def funcname(self):
+        return str(self.children[0][0])
+
+    @property
+    def args(self):
+        return self.children[0][1:]
+
+    @property
+    def kwargs(self):
+        return self.children[1]
+
+    def compute(self, context, func, *args, **kwargs):
+        return func(*args, **kwargs)
+
+
+class DynamicFunctionCall(GenericFunctionCall):
+    """
+    DynamicFunctionCall handles calling expressions where the function to run is
+    determined at runtime (it should be passed as the first argument).
+    """
+    # DynamicFunctionCall is (currently) only used for calling ndarray methods,
+    # which are all builtin methods for which we do not have signatures,
+    # so we cannot (at this point) check arguments nor convert kwargs to args,
+    # so we deliberately do not call FunctionExpr.__init__ which does both
+    def __init__(self, *args, **kwargs):
+        Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
 
 
 #############
@@ -553,186 +778,84 @@ class ExprCall(EvaluableExpression):
 #############
 
 class UnaryOp(Expr):
+    kind = 'op'
+
     def __init__(self, op, expr):
-        self.op = op
-        self.expr = expr
-
-    def simplify(self):
-        expr = self.expr.simplify()
-        if not isinstance(expr, Expr):
-            return eval('%s%s' % (self.op, self.expr))
-        return self
-
-    def show(self, indent):
-        print(indent, self.op)
-        self.expr.show(indent + '    ')
+        Expr.__init__(self, op, children=(expr,))
 
     def as_simple_expr(self, context):
-        return self.__class__(self.op, self.expr.as_simple_expr(context))
+        child = self.children[0].as_simple_expr(context)
+        return self.__class__(self.value, child)
 
     def as_string(self):
-        return "(%s%s)" % (self.op, self.expr.as_string())
-
-    def __str__(self):
-        return "(%s%s)" % (self.op, self.expr)
-    __repr__ = __str__
-
-    def collect_variables(self, context):
-        return self.expr.collect_variables(context)
+        return "(%s%s)" % (self.value, self.children[0].as_string())
 
     def dtype(self, context):
-        return getdtype(self.expr, context)
+        return getdtype(self.children[0], context)
 
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
-        yield self
-
-
-class Not(UnaryOp):
-    def simplify(self):
-        expr = self.expr.simplify()
-        if not isinstance(expr, Expr):
-            return not expr
-        return self
+    #FIXME: only add parentheses if necessary
+    def __str__(self):
+        nicerop = {'~': 'not '}
+        niceop = nicerop.get(self.value, self.value)
+        return "(%s%s)" % (niceop, self.children[0])
+    __repr__ = __str__
 
 
 class BinaryOp(Expr):
-    neutral_value = None
-    overpowering_value = None
+    kind = 'op'
 
     def __init__(self, op, expr1, expr2):
-        self.op = op
-        self.expr1 = expr1
-        self.expr2 = expr2
-
-    def traverse(self, context):
-        for c in traverse_expr(self.expr1, context):
-            yield c
-        for c in traverse_expr(self.expr2, context):
-            yield c
-        yield self
+        Expr.__init__(self, op, children=(expr1, expr2))
 
     def as_simple_expr(self, context):
-        expr1 = as_simple_expr(self.expr1, context)
-        expr2 = as_simple_expr(self.expr2, context)
-        return self.__class__(self.op, expr1, expr2)
+        expr1, expr2 = self.children
+        expr1 = as_simple_expr(expr1, context)
+        expr2 = as_simple_expr(expr2, context)
+        return self.__class__(self.value, expr1, expr2)
 
     # We can't simply use __str__ because of where vs if
     def as_string(self):
-        return "(%s %s %s)" % (as_string(self.expr1),
-                               self.op,
-                               as_string(self.expr2))
+        expr1, expr2 = [as_string(c) for c in self.children]
+        return "(%s %s %s)" % (expr1, self.value, expr2)
 
-    def dtype(self, context):
-        return coerce_types(context, self.expr1, self.expr2)
+    dtype = coerce_child_dtypes
 
+    #FIXME: only add parentheses if necessary
     def __str__(self):
-        return "(%s %s %s)" % (self.expr1, self.op, self.expr2)
+        expr1, expr2 = self.children
+        nicerop = {'&': 'and', '|': 'or'}
+        niceop = nicerop.get(self.value, self.value)
+        return "(%s %s %s)" % (expr1, niceop, expr2)
     __repr__ = __str__
 
-    def simplify(self):
-        expr1 = self.expr1.simplify()
-        if isinstance(self.expr2, Expr):
-            expr2 = self.expr2.simplify()
-        else:
-            expr2 = self.expr2
 
-        if self.neutral_value is not None:
-            if isinstance(expr2, self.accepted_types) and \
-               expr2 == self.neutral_value:
-                return expr1
-
-        if self.overpowering_value is not None:
-            if isinstance(expr2, self.accepted_types) and \
-               expr2 == self.overpowering_value:
-                return self.overpowering_value
-        if not isinstance(expr1, Expr) and not isinstance(expr2, Expr):
-            return eval('%s %s %s' % (expr1, self.op, expr2))
-        return BinaryOp(self.op, expr1, expr2)
-
-    def show(self, indent=''):
-        print(indent, self.op)
-        if isinstance(self.expr1, Expr):
-            self.expr1.show(indent=indent + '    ')
-        else:
-            print(indent + '    ', self.expr1)
-        if isinstance(self.expr2, Expr):
-            self.expr2.show(indent=indent + '    ')
-        else:
-            print(indent + '    ', self.expr2)
-
-    def collect_variables(self, context):
-        vars2 = collect_variables(self.expr2, context)
-        return collect_variables(self.expr1, context).union(vars2)
-
-#    def guard_missing(self):
-#        dtype = self.dtype()
-#        if dtype is float:
-#            return self
-#        else:
-#            return Where(ispresent(self.expr1) & ispresent(self.expr2),
-#                         self,
-#                         missingvalue[dtype])
-
-
-class ComparisonOp(BinaryOp):
-    def dtype(self, context):
-        assert coerce_types(context, self.expr1, self.expr2) is not None, \
-               "operands to comparison operators need to be of compatible " \
-               "types"
-        return bool
+class DivisionOp(BinaryOp):
+    dtype = always(float)
 
 
 class LogicalOp(BinaryOp):
+    def assertbool(self, expr, context):
+        dt = getdtype(expr, context)
+        if dt is not bool:
+            raise Exception("operands to logical operators need to be "
+                            "boolean but %s is %s" % (expr, dt))
+
+    #TODO: move the tests to a typecheck phase and use dtype = always(bool)
     def dtype(self, context):
-        def assertbool(expr):
-            dt = getdtype(expr, context)
-            if dt is not bool:
-                raise Exception("operands to logical operators need to be "
-                                "boolean but %s is %s" % (expr, dt))
-        assertbool(self.expr1)
-        assertbool(self.expr2)
+        expr1, expr2 = self.children
+        self.assertbool(expr1, context)
+        self.assertbool(expr2, context)
         return bool
 
 
-class And(LogicalOp):
-    neutral_value = True
-    overpowering_value = False
-    accepted_types = (bool, np.bool_)
-
-
-class Or(LogicalOp):
-    neutral_value = False
-    overpowering_value = True
-    accepted_types = (bool, np.bool_)
-
-
-class Subtraction(BinaryOp):
-    neutral_value = 0.0
-    overpowering_value = None
-    accepted_types = (float,)
-
-
-class Addition(BinaryOp):
-    neutral_value = 0.0
-    overpowering_value = None
-    accepted_types = (float,)
-
-
-class Multiplication(BinaryOp):
-    neutral_value = 1.0
-    overpowering_value = 0.0
-    accepted_types = (float,)
-
-
-class Division(BinaryOp):
-    neutral_value = 1.0
-    overpowering_value = None
-    accepted_types = (float,)
-
+class ComparisonOp(BinaryOp):
+    #TODO: move the test to a typecheck phase and use dtype = always(bool)
     def dtype(self, context):
-        return float
+        expr1, expr2 = self.children
+        if coerce_types(context, expr1, expr2) is None:
+            raise TypeError("operands to comparison operators need to be of "
+                            "compatible types")
+        return bool
 
 
 #############
@@ -740,41 +863,38 @@ class Division(BinaryOp):
 #############
 
 class Variable(Expr):
-    def __init__(self, name, dtype=None):
-        self.name = name
-        self._dtype = dtype
+    kind = 'variable'
 
-    def traverse(self, context):
-        yield self
+    def __init__(self, name, dtype=None):
+        Expr.__init__(self, name)
+
+        # this would be more efficient but we risk being inconsistent
+        # self.name = self.value
+        self._dtype = dtype
+        self.version = 0
+
+    @property
+    def name(self):
+        return self.value
 
     def __str__(self):
-        return self.name
+        return self.value
     __repr__ = __str__
     as_string = __str__
 
     def as_simple_expr(self, context):
         return self
 
-    def simplify(self):
-        return self
-
-    def show(self, indent):
-        print(indent, self.name)
-
-    def collect_variables(self, context):
-        return {self.name}
-
     def dtype(self, context):
-        if self._dtype is None and self.name in context:
-            type_ = context[self.name].dtype.type
+        if self._dtype is None and self.value in context:
+            type_ = context[self.value].dtype.type
             return normalize_type(type_)
         else:
             return self._dtype
 
 
 class ShortLivedVariable(Variable):
-    def collect_variables(self, context):
-        return set()
+    pass
 
 
 class GlobalVariable(Variable):
@@ -787,7 +907,8 @@ class GlobalVariable(Variable):
         result = self.evaluate(context)
         period = self._eval_key(context)
         if isinstance(period, int):
-            tmp_varname = '__%s_%s' % (self.name, period)
+            #XXX: is self.value valid?
+            tmp_varname = '__%s_%s' % (self.value, period)
             if tmp_varname in context:
                 # should be consistent but nan != nan
                 assert result != result or context[tmp_varname] == result
@@ -799,11 +920,11 @@ class GlobalVariable(Variable):
         return Variable(tmp_varname)
 
     def _eval_key(self, context):
-        return context['period']
+        return context.period
 
     def evaluate(self, context):
         key = self._eval_key(context)
-        globals_data = context['__globals__']
+        globals_data = context.global_tables
         globals_table = globals_data[self.tablename]
 
         #TODO: this row computation should be encapsulated in the
@@ -815,32 +936,72 @@ class GlobalVariable(Variable):
             except ValueError:
                 globals_periods = globals_table['period']
             base_period = globals_periods[0]
-            row = key - base_period
+            if isinstance(key, slice):
+                translated_key = slice(key.start - base_period,
+                                       key.stop - base_period,
+                                       key.step)
+            else:
+                translated_key = key - base_period
         else:
-            row = key
-        if self.name not in globals_table.dtype.fields:
+            translated_key = key
+        if self.value not in globals_table.dtype.fields:
             raise Exception("Unknown global: %s" % self.name)
-        column = globals_table[self.name]
+        column = globals_table[self.value]
         numrows = len(column)
         missing_value = get_missing_value(column)
-        if isinstance(row, np.ndarray) and row.shape:
-            out_of_bounds = (row < 0) | (row >= numrows)
-            row[out_of_bounds] = -1
-            return np.where(out_of_bounds, missing_value, column[row])
+
+        if isinstance(translated_key, np.ndarray) and translated_key.shape:
+            return safe_take(column, translated_key, missing_value)
+        elif isinstance(translated_key, slice):
+            start, stop = translated_key.start, translated_key.stop
+            step = translated_key.step
+            if step is not None and step != 1:
+                raise NotImplementedError("step != 1 (%d)" % step)
+            if (isinstance(start, np.ndarray) and start.shape or isinstance(
+                    stop, np.ndarray) and stop.shape):
+                lengths = stop - start
+                length0 = lengths[0]
+                if not isinstance(start, np.ndarray) or not start.shape:
+                    start = np.repeat(start, len(lengths))
+                if np.all(lengths == length0):
+                    # constant length => result is a 2D array:
+                    # num_individuals x slice_length
+                    result = np.empty((len(lengths), length0),
+                                      dtype=column.dtype)
+                    # we assume there are more individuals than there are
+                    # "periods" (or other ticks) in the table.
+                    #XXX: We might want to actually test that it is true and
+                    # loop on the individuals instead if that is not the case
+                    for i in range(length0):
+                        result[:, i] = safe_take(column, start + i,
+                                                 missing_value)
+                    return result
+                else:
+                    # varying length => result is an array (num_individuals) of
+                    # 1D arrays (slice lengths)
+                    # each "item" of the result is a view, so we pay "only" for
+                    # all the arrays overhead, not for the data itself.
+                    result = np.empty(len(lengths), dtype=list)
+                    if not isinstance(stop, np.ndarray) or not stop.shape:
+                        stop = np.repeat(stop, len(lengths))
+                    for i in range(len(lengths)):
+                        result[i] = column[start[i]:stop[i]]
+                    return IrregularNDArray(result)
+            else:
+                # out of bounds slices bounds are "dropped" silently (like in
+                # python) -- ie the length of the slice returned can be
+                # smaller than the one asked. We could return "missing_value"
+                # for indices out of bounds but I do not know if it would be
+                # better. Since this version is easier to implement, lets go for
+                # it for now.
+                return column[translated_key]
         else:
-            out_of_bounds = (row < 0) or (row >= numrows)
-            return column[row] if not out_of_bounds else missing_value
+            out_of_bounds = (translated_key < 0) or (translated_key >= numrows)
+            return column[translated_key] if not out_of_bounds \
+                else missing_value
 
     def __getitem__(self, key):
-        return SubscriptedGlobal(self.tablename, self.name, self._dtype, key)
-
-    def collect_variables(self, context):
-        #FIXME: this is a quick hack to make "othertable" work.
-        # We should return prefixed variable instead.
-        if self.tablename != 'periodic':
-            return set()
-        else:
-            return Variable.collect_variables(self, context)
+        return SubscriptedGlobal(self.tablename, self.value, self._dtype, key)
 
 
 class SubscriptedGlobal(GlobalVariable):
@@ -861,12 +1022,12 @@ class GlobalArray(Variable):
         Variable.__init__(self, name, dtype)
 
     def as_simple_expr(self, context):
-        globals_data = context['__globals__']
+        globals_data = context.global_tables
         result = globals_data[self.name]
         #XXX: maybe I should just use self.name?
         tmp_varname = '__%s' % self.name
         if tmp_varname in context:
-            assert context[tmp_varname] == result
+            assert context[tmp_varname] is result
         context[tmp_varname] = result
         return Variable(tmp_varname)
 
@@ -890,3 +1051,80 @@ class GlobalTable(object):
         #XXX: print (a subset of) data instead?
         return 'Table(%s)' % ', '.join([name for name, _ in self.fields])
     __repr__ = __str__
+
+
+#XXX: can we factorise this with FunctionExpr et al.?
+class MethodCall(EvaluableExpression):
+    def __init__(self, entity, name, args, kwargs):
+        self.entity = entity
+        self.name = name
+        self.args = args
+        self.kwargs = kwargs
+
+    def evaluate(self, context):
+        from process import Assignment, Function
+        entity_processes = self.entity.processes
+        method = entity_processes[self.name]
+        # hybrid (method & variable) assignment can be called
+        assert isinstance(method, (Assignment, Function))
+        args = [expr_eval(arg, context) for arg in self.args]
+        kwargs = dict((k, expr_eval(v, context))
+                      for k, v in self.kwargs.iteritems())
+        return method.run_guarded(context, *args, **kwargs)
+
+    def __str__(self):
+        args = [repr(a) for a in self.args]
+        kwargs = ['%s=%r' % (k, v) for k, v in self.kwargs.iteritems()]
+        return '%s(%s)' % (self.name, ', '.join(args + kwargs))
+    __repr__ = __str__
+
+    def traverse(self, context):
+        for arg in self.args:
+            for node in traverse_expr(arg, context):
+                yield node
+        for kwarg in self.kwargs.itervalues():
+            for node in traverse_expr(kwarg, context):
+                yield node
+        yield self
+
+
+class VariableMethodHybrid(Variable):
+    def __init__(self, name, entity, dtype=None):
+        Variable.__init__(self, name, dtype)
+        self.entity = entity
+
+    def __call__(self, *args, **kwargs):
+        return MethodCall(self.entity, self.name, args, kwargs)
+
+
+# class MethodCallToResolve(Expr):
+#     def __init__(self, name, entity, args, kwargs):
+#         self.name = name
+#         self.entity = entity
+#         self.args = args
+#         self.kwargs = kwargs
+#
+#     def resolve(self):
+#         entity_processes = self.entity.processes
+#         method = entity_processes[self.name]
+#         # hybrid (method & variable) assignment can be called
+#         assert isinstance(method, (Assignment, Function))
+#         return GenericFunctionCall(method, *self.args, **self.kwargs)
+
+
+class MethodSymbol(object):
+    def __init__(self, name, entity):
+        self.name = name
+        self.entity = entity
+
+    def __call__(self, *args, **kwargs):
+        # we cannot use self.entity.processes as they are not defined yet (we
+        # are probably currently building them), so we cannot return a
+        # GenericFunctionCall now like we should and instead must either
+        # return an intermediary object (MethodCallToResolve) which we will
+        # "resolve" later, or use DynamicFunctionCall (for which we cannot
+        # have dtype yet). However that "resolve" step is currently hard to
+        # do because we need ast.NodeTransformer-like machinery which we do not
+        # have yet.
+        # return MethodCallToResolve(self.entity, self.name, args, kwargs)
+        return MethodCall(self.entity, self.name, args, kwargs)

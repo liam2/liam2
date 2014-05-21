@@ -1,21 +1,21 @@
 from __future__ import print_function
 
-import warnings
-
 #import carray as ca
 import numpy as np
 import tables
 
 import config
-from context import EntityContext, context_length
-from data import merge_arrays, get_fields, ColumnArray
-from expr import (Variable, GlobalVariable, GlobalTable, GlobalArray,
-                  expr_eval, get_missing_value)
-from exprparser import parse
-from process import Assignment, Compute, Process, ProcessGroup
-from registry import entity_registry
+from context import context_length
+from data import merge_arrays, get_fields, ColumnArray, index_table
+from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
+                  GlobalArray, expr_eval, get_missing_value, Expr, MethodSymbol)
+from exprtools import parse
+from process import Assignment, Compute, ProcessGroup, While, Function
 from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
-                   UserDeprecationWarning)
+                   WarnOverrideDict)
+
+
+max_vars = 0
 
 
 #def compress_column(a, level):
@@ -28,9 +28,11 @@ from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
 #def decompress_column(a):
 #    return a[:]
 
+# TODO: rename to global_symbols
 def global_variables(globals_def):
     #FIXME: these should be computed once somewhere else, not for each
     # entity. I guess they should have a class of their own
+    # TODO: rename to symbols
     variables = {}
     for name, global_type in globals_def.iteritems():
         if isinstance(global_type, list):
@@ -50,8 +52,9 @@ def global_variables(globals_def):
 
 class Entity(object):
     """
-    fields is a list of tuple (name, type, options)
+    fields is a list of tuple (name, type)
     """
+
     def __init__(self, name, fields=None, missing_fields=None, links=None,
                  macro_strings=None, process_strings=None,
                  array=None):
@@ -95,7 +98,7 @@ class Entity(object):
         # another solution is to use a Field class
         # seems like the better long term solution
         self.missing_fields = missing_fields
-        self.period_individual_fnames = [name for name, _ in fields]
+        self.stored_fields = set(name for name, _ in fields)
         self.links = links
 
         self.macro_strings = macro_strings
@@ -122,7 +125,7 @@ class Entity(object):
         # we need a separate field, instead of using array['period'] to be able
         # to get the period even when the array is empty.
         self.array_period = array_period
-        self.array = None
+        self.array = array
 
         self.lag_fields = []
         self.array_lag = None
@@ -130,7 +133,15 @@ class Entity(object):
         self.num_tmp = 0
         self.temp_variables = {}
         self.id_to_rownum = None
+        if array is not None:
+            rows_per_period, index_per_period = index_table(array)
+            self.input_rows = rows_per_period
+            self.output_rows = rows_per_period
+            self.input_index = index_per_period
+            self.output_index = index_per_period
+            self.id_to_rownum = index_per_period[array_period]
         self._variables = None
+        self._methods = None
 
     @classmethod
     def from_yaml(cls, ent_name, entity_def):
@@ -164,6 +175,16 @@ class Entity(object):
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}))
 
+    # noinspection PyProtectedMember
+    def attach_and_resolve_links(self, entities):
+        for link in self.links.itervalues():
+            link._attach(self)
+            link._resolve_target(entities)
+
+    @property
+    def local_var_names(self):
+        return set(self.temp_variables.keys()) - set(self.variables.keys())
+
     @classmethod
     def from_table(cls, table):
         return Entity(table.name, get_fields(table), missing_fields=[],
@@ -171,159 +192,202 @@ class Entity(object):
 
     @staticmethod
     def collect_predictors(items):
-        predictors = []
-        for k, v in items:
-            if k is None:
-                continue
-            # no need to test for bool since bool is a subclass of int
-            if isinstance(v, (basestring, int, float)):
-                predictors.append(k)
-            elif isinstance(v, dict):
-                predictors.append(v['predictor'])
-        return predictors
+        # this excludes lists (procedures) and dict (while, ...)
+        return [k for k, v in items
+                if k is not None and isinstance(v, (basestring, int, float))]
 
     @property
     def variables(self):
         if self._variables is None:
-            global_predictors = \
-                self.collect_predictors(self.process_strings.iteritems())
-            all_fields = set(global_predictors)
-            stored_fields = set(self.period_individual_fnames)
-            temporary_fields = all_fields - stored_fields
+            if self.process_strings:
+                processes = self.process_strings.items()
+            else:
+                processes = []
 
+            # names of all processes (hybrid or not) of the entity
+            process_names = set(k for k, v in processes if k is not None)
+
+            # names of all entity variables (temporary or not) which are set
+            # globally
+            all_predictors = set(self.collect_predictors(processes))
+
+            stored_fields = self.stored_fields
+
+            # non-callable fields (no variable-procedure for them)
             variables = dict((name, Variable(name, type_))
-                             for name, type_ in self.fields)
-            variables.update((name, Variable(name))
-                             for name in temporary_fields)
+                             for name, type_ in self.fields
+                             if name in stored_fields - process_names)
+            # callable fields
+            variables.update((name, VariableMethodHybrid(name, self, type_)) for
+                             name, type_ in self.fields if
+                             name in stored_fields & process_names)
+            # global temporaries (they are all callable)
+            variables.update((name, VariableMethodHybrid(name, self))
+                             for name in all_predictors - stored_fields)
             variables.update(self.links)
             self._variables = variables
         return self._variables
 
-    def check_links(self):
-        for name, link in self.links.iteritems():
-            #noinspection PyProtectedMember
-            target_name = link._target_entity_name
-            if target_name not in entity_registry:
-                raise Exception("Target of '%s' link in entity '%s' is an "
-                                "unknown entity (%s)" % (name, self.name,
-                                                         target_name))
+    @staticmethod
+    def ismethod(v):
+        keys = ('args', 'code', 'return')
+        return (isinstance(v, list) or
+                isinstance(v, dict) and any(key in v for key in keys))
 
-    def get_cond_context(self, entities_visited=None):
-        """returns the conditional context: {link: variables}"""
+    @property
+    def methods(self):
+        if self._methods is None:
+            if self.process_strings is None:
+                self._methods = []
+            else:
+                # variable-method hybrids are handled by the self.variable
+                # property
+                self._methods = \
+                    [(k, MethodSymbol(k, self))
+                     for k, v in self.process_strings.iteritems()
+                     if self.ismethod(v) and k not in self.stored_fields]
+        return self._methods
 
-        if entities_visited is None:
-            entities_visited = set()
-        else:
-            entities_visited = entities_visited.copy()
-        entities_visited.add(self)
-
-        linked_entities = {}
-        for k, link in self.links.items():
-            #noinspection PyProtectedMember
-            entity = link._target_entity()
-            if entity not in entities_visited:
-                linked_entities[k] = entity
-
-        cond_context = {}
-        # use a set of entities to compute the conditional context only once
-        # per target entity
-        for entity in set(linked_entities.values()):
-            cond_context.update(entity.get_cond_context(entities_visited))
-
-        # entities linked directly take priority over (override) farther ones
-        cond_context.update((k, entity.variables)
-                            for k, entity in linked_entities.items())
-        return cond_context
-    conditional_context = property(get_cond_context)
-
-    def all_variables(self, globals_def):
+    def all_symbols(self, global_context):
         from links import PrefixingLink
 
-        variables = global_variables(globals_def).copy()
-        variables.update(self.variables)
-        cond_context = self.conditional_context
-        macros = dict((k, parse(v, variables, cond_context))
-                      for k, v in self.macro_strings.iteritems())
-        variables.update(macros)
-        variables['other'] = PrefixingLink(macros, self.links, '__other_')
-        return variables
+        symbols = WarnOverrideDict(self.variables.copy())
+        local_context = global_context.copy()
+        local_context[self.name] = symbols
+        local_context['__entity__'] = self.name
+        if self.macro_strings:
+            macros = dict((k, parse(v, local_context))
+                          for k, v in self.macro_strings.iteritems())
+            symbols.update(macros)
+            symbols['other'] = PrefixingLink(macros, self.links, '__other_')
+        symbols.update(self.methods)
+        return symbols
 
-    def parse_expressions(self, items, variables, cond_context):
+    @staticmethod
+    def parse_expr(k, v, context):
+        if isinstance(v, (bool, int, float)):
+            return Assignment(v)
+        elif isinstance(v, basestring):
+            expr = parse(v, context)
+            if k is None:
+                return Compute(expr)
+            else:
+                return Assignment(expr)
+        else:
+            # lets be explicit about it
+            return None
+
+    @staticmethod
+    def get_group_context(context, varnames):
+        group_context = context.copy()
+        cur_entity = group_context['__entity__']
+        entity_context = group_context[cur_entity].copy()
+        entity_context.update((name, Variable(name)) for name in varnames)
+        group_context[cur_entity] = entity_context
+        return group_context
+
+    def parse_process_group(self, k, items, context, purge=True):
+        # items is a list of [dict (assignment) or string (action)]
+        group_expressions = [elem.items()[0] if isinstance(elem, dict)
+                             else (None, elem)
+                             for elem in items]
+        group_predictors = self.collect_predictors(group_expressions)
+        group_context = self.get_group_context(context, group_predictors)
+        sub_processes = self.parse_expressions(group_expressions, group_context)
+        return ProcessGroup(k, sub_processes, purge)
+
+    def parse_expressions(self, items, context):
+        """
+        items -- a list of tuples (name, process_string)
+        context -- parsing context
+                   a dict of all symbols available for all entities
+        """
         processes = []
         for k, v in items:
-            if isinstance(v, (bool, int, float)):
-                process = Assignment(v)
-            elif isinstance(v, basestring):
-                expr = parse(v, variables, cond_context)
-                if not isinstance(expr, Process):
-                    if k is None:
-                        process = Compute(expr)
-                    else:
-                        process = Assignment(expr)
-                else:
-                    process = expr
-            elif isinstance(v, list):
-                # v is a procedure
-                # it should be a list of dict (assignment) or string (action)
-                group_expressions = []
-                for element in v:
-                    if isinstance(element, dict):
-                        group_expressions.append(element.items()[0])
-                    else:
-                        group_expressions.append((None, element))
-                group_predictors = \
-                    self.collect_predictors(group_expressions)
-                group_context = variables.copy()
-                group_context.update((name, Variable(name))
-                                     for name in group_predictors)
-                sub_processes = self.parse_expressions(group_expressions,
-                                                       group_context,
-                                                       cond_context)
-                process = ProcessGroup(k, sub_processes)
-            elif isinstance(v, dict):
-                warnings.warn("Using the 'predictor' keyword is deprecated. "
-                              "If you need several processes to "
-                              "write to the same variable, you should "
-                              "rather use procedures.",
-                              UserDeprecationWarning)
-                expr = parse(v['expr'], variables, cond_context)
-                process = Assignment(expr)
-                process.predictor = v['predictor']
+            if k == 'while':
+                if not isinstance(v, dict):
+                    raise ValueError("while is a reserved keyword")
+                cond = parse(v['cond'], context)
+                assert isinstance(cond, Expr)
+                code = self.parse_process_group("while:code", v['code'],
+                                                context, purge=False)
+                process = While(cond, code)
             else:
-                raise Exception("unknown expression type for %s: %s"
-                                % (k, type(v)))
+                process = self.parse_expr(k, v, context)
+                if process is None:
+                    if self.ismethod(v):
+                        if isinstance(v, list):
+                            # v should be a list of dicts (assignments) or
+                            # strings (actions)
+                            argnames, code_def, result_def = [], v, None
+                        else:
+                            assert isinstance(v, dict)
+                            args_def = v.get('args', '')
+                            argnames = [a.strip()
+                                        for a in args_def.split(',')
+                                        if a != '']
+                            code_def = v.get('code', [])
+                            result_def = v.get('return')
+                        method_context = self.get_group_context(context,
+                                                                argnames)
+                        code = self.parse_process_group("func:code", code_def,
+                                                        method_context,
+                                                        purge=False)
+                        #TODO: use code.predictors instead (but it currently
+                        # fails for some reason) or at least factor this out
+                        # with the code in parse_process_group
+                        group_expressions = [elem.items()[0]
+                                             if isinstance(elem, dict)
+                                             else (None, elem)
+                                             for elem in code_def]
+                        group_predictors = \
+                            self.collect_predictors(group_expressions)
+                        method_context = self.get_group_context(
+                            method_context, group_predictors)
+                        result = parse(result_def, method_context)
+                        assert result is None or isinstance(result, Expr)
+                        process = Function(argnames, code, result)
+                    elif isinstance(v, dict) and 'predictor' in v:
+                        raise ValueError("Using the 'predictor' keyword is "
+                                         "not supported anymore. "
+                                         "If you need several processes to "
+                                         "write to the same variable, you "
+                                         "should rather use procedures.")
+                    else:
+                        raise Exception("unknown expression type for %s: %s"
+                                        % (k, type(v)))
             processes.append((k, process))
         return processes
 
-    def parse_processes(self, globals_def):
+    def parse_processes(self, context):
         processes = self.parse_expressions(self.process_strings.iteritems(),
-                                           self.all_variables(globals_def),
-                                           self.conditional_context)
-        processes = dict(processes)
+                                           context)
+        # attach processes
+        # TODO: now that actions inherit from Expr instead of Process it should
+        # be possible to kill attach
+        for k, v in processes:
+            v.attach(k, self)
 
-        fnames = set(self.period_individual_fnames)
+        self.processes = dict(processes)
+        # self.ssa()
 
-        def attach_processes(items):
-            for k, v in items:
-                if isinstance(v, ProcessGroup):
-                    v.entity = self
-                    attach_processes(v.subprocesses)
-                elif isinstance(v, Assignment):
-                    predictor = v.predictor if v.predictor is not None else k
-                    if predictor in fnames:
-                        kind = 'period_individual'
-                    else:
-                        kind = None
-                    v.attach(k, self, kind)
-                else:
-                    v.attach(k, self)
-        attach_processes(processes.iteritems())
+    # def resolve_method_calls(self):
+    #     for p in self.processes.itervalues():
+    #         for expr in p.expressions():
+    #             for node in expr.all_of(MethodCallToResolve):
+    #                 # replace node in the parent node by the "resolved" node
+    #                 #TODO: mimic ast.NodeTransformer
+    #                 node.resolve()
 
-        self.processes = processes
+    def ssa(self):
+        for p in self.processes.itervalues():
+            if isinstance(p, ProcessGroup):
+                p.ssa()
 
     def compute_lagged_fields(self):
         from tfunc import Lag
-        from links import LinkValue
+        from links import LinkGet
+
         lag_vars = set()
         for p in self.processes.itervalues():
             for expr in p.expressions():
@@ -331,13 +395,13 @@ class Entity(object):
                     for v in node.all_of(Variable):
                         if not isinstance(v, GlobalVariable):
                             lag_vars.add(v.name)
-                    for lv in node.all_of(LinkValue):
+                    for lv in node.all_of(LinkGet):
                         #noinspection PyProtectedMember
                         lag_vars.add(lv.link._link_field)
                         #noinspection PyProtectedMember
                         target_entity = lv.link._target_entity()
                         if target_entity == self:
-                            target_vars = lv.target_expression.all_of(Variable)
+                            target_vars = lv.target_expr.all_of(Variable)
                             lag_vars.update(v.name for v in target_vars)
 
         if lag_vars:
@@ -380,12 +444,32 @@ class Entity(object):
         if not isinstance(self.array, ColumnArray):
             self.array = ColumnArray(self.array)
 
+    def purge_locals(self):
+        """purge all local variables"""
+        global max_vars
+
+        temp_vars = self.temp_variables
+        local_var_names = self.local_var_names
+        num_locals = len(local_var_names)
+        if config.debug and num_locals:
+            local_vars = [v for k, v in temp_vars.iteritems()
+                          if k in local_var_names and isinstance(v, np.ndarray)]
+            max_vars = max(max_vars, num_locals)
+            temp_mem = sum(v.nbytes for v in local_vars)
+            avgsize = sum(v.dtype.itemsize for v in local_vars) / num_locals
+            print(("purging {} variables (max {}), will free {} of memory "
+                   "(avg field size: {} b)".format(num_locals, max_vars,
+                                                   size2str(temp_mem),
+                                                   avgsize)))
+        for var in local_var_names:
+            del temp_vars[var]
+
     def store_period_data(self, period):
         if config.debug:
             temp_mem = sum(v.nbytes for v in self.temp_variables.itervalues()
                            if isinstance(v, np.ndarray))
             main_mem = self.array.nbytes
-            print("mem used: %s (main: %s / temp: %s)" \
+            print("mem used: %s (main: %s / temp: %s)"
                   % (size2str(temp_mem + main_mem),
                      size2str(main_mem),
                      size2str(temp_mem)))
@@ -402,9 +486,9 @@ class Entity(object):
             self.output_index[period] = self.id_to_rownum
         self.table.flush()
 
-#    def compress_period_data(self, level):
-#        compressed = ca.ctable(self.array, cparams=ca.cparams(level))
-#        print "%d -> %d (%f)" % compressed._get_stats()
+    #     def compress_period_data(self, level):
+    #     compressed = ca.ctable(self.array, cparams=ca.cparams(level))
+    #     print "%d -> %d (%f)" % compressed._get_stats()
 
     @staticmethod
     def fill_missing_values(ids, values, context, filler='auto'):
@@ -423,19 +507,20 @@ class Entity(object):
             # period. Currently, remove() keeps old ids, so this never
             # happens, but if we ever change remove(), we'll need to add
             # such a check everywhere we use id_to_rownum
-#            invalid_ids = ids > len(id_to_rownum)
-#            if np.any(invalid_ids):
-#                fix ids
+            # invalid_ids = ids > len(id_to_rownum)
+            # if np.any(invalid_ids):
+            #     fix ids
             rows = id_to_rownum[ids]
             safe_put(result, rows, values)
         return result
 
+    #TODO: move this to tfunc (as a plain module-level function) as it does
+    # not use "self"
     def value_for_period(self, expr, period, context, fill='auto'):
-        sub_context = EntityContext(self,
-                                    {'period': period,
-                                     '__globals__': context['__globals__']})
+        sub_context = context.clone(fresh_data=True, period=period)
         result = expr_eval(expr, sub_context)
         if isinstance(result, np.ndarray) and result.shape:
+            #TODO: replace all expr_eval(Variable(v), context) by context[v]
             ids = expr_eval(Variable('id'), sub_context)
             if fill is None:
                 return ids, result
@@ -447,5 +532,3 @@ class Entity(object):
 
     def __repr__(self):
         return "<Entity '%s'>" % self.name
-
-

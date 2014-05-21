@@ -1,5 +1,5 @@
-Welcome to LIAM 2 User Guide !
-==============================
+LIAM2 User Guide
+================
 
 .. toctree::
    :maxdepth: 3
@@ -29,3 +29,4 @@ Appendix
    architecture 
    technicalchoices
    changes
+   credits

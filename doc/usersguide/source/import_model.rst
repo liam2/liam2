@@ -89,7 +89,7 @@ as long as the combined model is valid. See the examples below.
   
   simulation:
       # since we have a new process, we have to override the *entire* process
-      # list, as Liam2 would not know where to insert the new process otherwise.
+      # list, as LIAM2 would not know where to insert the new process otherwise.
       processes:
           - person: [ageing, death]
   

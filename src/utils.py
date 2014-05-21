@@ -10,13 +10,19 @@ import operator
 import itertools
 from itertools import izip, product
 from textwrap import wrap
-from collections import defaultdict, deque
+from collections import defaultdict, deque, namedtuple
 import warnings
 
 import numpy as np
+import numexpr as ne
 #import psutil
 
 import config
+
+
+class classproperty(property):
+    def __get__(self, cls, owner):
+        return self.fget.__get__(None, owner)()
 
 
 class ExceptionOnGetAttr(object):
@@ -68,6 +74,26 @@ def find_first(char, s, depth=0):
         raise ValueError("syntax error: missing parenthesis or "
                          "bracket in string: %s" % s)
     return -1
+
+
+def englishenum(iterable):
+    """
+    Returns an "english enumeration" of the strings in the iterable iterable.
+    >>> englishenum(['a', 'b', 'c'])
+    'a, b, and c'
+    >>> englishenum('abc')
+    'a, b, and c'
+    >>> englishenum('ab')
+    'a and b'
+    >>> englishenum('a')
+    'a'
+    """
+    l = list(iterable)
+    if len(l) == 2:
+        return '%s and %s' % tuple(l)
+    elif len(l) > 2:
+        l[-1] = 'and ' + l[-1]
+    return ', '.join(l)
 
 
 class AutoFlushFile(object):
@@ -138,6 +164,21 @@ def prod(values):
     return reduce(operator.mul, values, 1)
 
 
+def ndim(arraylike):
+    """
+    Computes the number of dimensions of arbitrary structures, including
+    sequence of arrays and array of sequences.
+    """
+    n = 0
+    while isinstance(arraylike, (list, tuple, np.ndarray)):
+        if len(arraylike) == 0:
+            raise ValueError('Cannot compute ndim of array with empty dim')
+        #XXX: check that other elements have the same length?
+        arraylike = arraylike[0]
+        n += 1
+    return n
+
+
 def safe_put(a, ind, v):
     """
     np.put but where values corresponding to -1 indices are ignored,
@@ -153,12 +194,24 @@ def safe_put(a, ind, v):
         for fname in a.dtype.names:
             safe_put(a[fname], ind, v[fname])
     else:
+        #XXX: a.put(ind, v) seem to be a bit faster (but does not work if a is
+        # not an ndarray, is it a problem?)
         np.put(a, ind, v)
     # if the last value was erroneously modified (because of a -1 in ind)
     # this assumes indices are sorted
     if ind[-1] != len(a) - 1:
         # restore its previous value
         a[-1] = last_value
+
+
+def safe_take(a, indices, missing_value):
+    """
+    like np.take but out-of-bounds indices return the missing value
+    """
+    indexed = a.take(indices, mode='clip')
+    return ne.evaluate('where((idx < 0) | (idx >= maxidx), missing, indexed)',
+                       {'idx': indices, 'maxidx': len(a),
+                        'missing': missing_value, 'indexed': indexed})
 
 
 # we provide our own version of fromiter because it swallows any exception
@@ -187,7 +240,7 @@ except ImportError:
 # as a bonus, this version is also faster
 def nansum(a, axis=None):
     a = np.asarray(a)
-    if issubclass(a.dtype.type, np.inexact):
+    if np.issubdtype(a.dtype, np.inexact):
         return np.nansum(a, axis)
     else:
         return np.sum(a, axis)
@@ -217,6 +270,39 @@ def isconstant(a, filter_value=None):
     else:
         value = a[0]
         return np.all(filter_value & (a == value))
+
+
+def _make_aggregate(func):
+    def method(self, axis=None):
+        if axis == 1:
+            result = np.empty(len(self.data), dtype=self.data[0].dtype)
+            for i, a in enumerate(self.data):
+                result[i] = func(a)
+            return result
+        else:
+            raise NotImplementedError("axis != 1")
+    return method
+
+
+class IrregularNDArray(object):
+    """
+    A wrapper for collections of arrays (eg list of arrays or arrays of
+    arrays) to make them act somewhat like a 2D (numpy) array. This makes it
+    possible to have irregular lengths in the second dimension.
+    """
+    def __init__(self, data):
+        self.data = data
+
+    prod = _make_aggregate(np.prod)
+    sum = _make_aggregate(np.sum)
+    min = _make_aggregate(np.min)
+    max = _make_aggregate(np.max)
+
+    def __getattr__(self, key):
+        return getattr(self.data, key)
+
+    def __getitem__(self, key):
+        return self.data[key]
 
 
 class Axis(object):
@@ -327,7 +413,7 @@ class LabeledArray(np.ndarray):
                        % (len(obj.dim_names), obj.ndim)
             if obj.pvalues is not None:
                 assert len(obj.pvalues) == obj.ndim, \
-                        "len(pvalues) (%d) != ndim (%d)" \
+                       "len(pvalues) (%d) != ndim (%d)" \
                        % (len(obj.pvalues), obj.ndim)
         return obj
 
@@ -340,6 +426,12 @@ class LabeledArray(np.ndarray):
         obj.col_totals = None
         obj.row_totals = None
         return obj
+
+    def transpose(self, *args):
+        res_data = np.asarray(self).transpose(args)
+        res_dim_names = [self.dim_names[i] for i in args]
+        res_pvalues = [self.pvalues[i] for i in args]
+        return LabeledArray(res_data, res_dim_names, res_pvalues)
 
     #noinspection PyAttributeOutsideInit
     def __array_finalize__(self, obj):
@@ -448,7 +540,8 @@ def aslabeledarray(data):
     sequence = (tuple, list)
     if isinstance(data, LabeledArray):
         return data
-    elif isinstance(data, sequence) and isinstance(data[0], LabeledArray):
+    elif (isinstance(data, sequence) and len(data) and
+          isinstance(data[0], LabeledArray)):
         arraydata = np.asarray(data)
         #TODO: check that all arrays have the same axes
         dim_names = [None] + data[0].dim_names
@@ -589,7 +682,7 @@ def table2str(table, missing):
         if len(row) < numcols:
             row.extend([''] * (numcols - len(row)))
     formatted = [[format_value(value, missing) for value in row]
-                  for row in table]
+                 for row in table]
     colwidths = [get_col_width(formatted, i) for i in xrange(numcols)]
 
     total_width = sum(colwidths)
@@ -722,6 +815,27 @@ def countlines(filepath):
 # dict tools
 # ----------
 
+class WarnOverrideDict(dict):
+    def update(self, other=None, **kwargs):
+        # copy the items to not lose them in case it is an exhaustable
+        # iterable
+        # also converts list and tuple to dict
+        if not isinstance(other, dict):
+            other = dict(other)
+        self._intersect_warn(self, other)
+        self._intersect_warn(self, kwargs)
+        self._intersect_warn(other, kwargs)
+        dict.update(self, other, **kwargs)
+
+    @staticmethod
+    def _intersect_warn(d1, d2):
+        intersect = set(d1.keys()) & set(d2.keys())
+        if intersect:
+            print("Warning: name collision for:",
+                  ",".join("%s (%s vs %s)" % (k, type(d1[k]), d2[k])
+                           for k in sorted(intersect)))
+
+
 def merge_dicts(*args, **kwargs):
     """
     Returns a new dictionary which is the result of recursively merging all
@@ -778,10 +892,12 @@ def expand_wild(wild_key, d):
     expands a multi-level string key (separated by '/') containing wildcards
     (*) with the keys actually present in a multi-level dictionary.
 
-    >>> expand_wild('a/*/c', {'a': {'one': {'c': 0}, 'two': {'c': 0}}})
+    >>> res = expand_wild('a/*/c', {'a': {'one': {'c': 0}, 'two': {'c': 0}}})
+    >>> sorted(res) # expand_wild result ordering is random
     ['a/one/c', 'a/two/c']
 
-    >>> expand_wild('a/*/*', {'a': {'one': {'c': 0}, 'two': {'d': 0}}})
+    >>> res = expand_wild('a/*/*', {'a': {'one': {'c': 0}, 'two': {'d': 0}}})
+    >>> sorted(res) # expand_wild result ordering is random
     ['a/one/c', 'a/two/d']
     """
     return ['/'.join(r) for r in expand_wild_tuple(wild_key.split('/'), d)]
@@ -959,17 +1075,118 @@ class ExplainTypeError(type):
             #noinspection PyArgumentList
             return type.__call__(cls, *args, **kwargs)
         except TypeError, e:
-            if hasattr(cls, 'func_name'):
-                funcname = cls.func_name
-            else:
-                funcname = cls.__name__.lower()
-            if funcname is not None:
-                msg = e.args[0].replace('__init__()', funcname)
-            else:
-                msg = e.args[0]
+            funcname = cls.funcname
+            msg = e.args[0].replace('__init__()', funcname)
 
-            def repl(matchobj):
-                needed, given = int(matchobj.group(1)), int(matchobj.group(2))
-                return "%d arguments (%d given)" % (needed - 1, given - 1)
-            msg = re.sub('(\d+) arguments \((\d+) given\)', repl, msg)
+            def repl_py2(matchobj):
+                needed, given = int(matchobj.group(1)), int(matchobj.group(3))
+                word = matchobj.group(2)
+                return '%d %s (%d given)' % (needed - 1, word, given - 1)
+
+            def repl_py3_toomany_from_to(matchobj):
+                nfrom, nto, given = [int(matchobj.group(n)) for n in (1, 2, 4)]
+                word = matchobj.group(3)
+                verb = 'were' if given != 2 else 'was'
+                return 'from %d to %d positional %s but %d %s given' \
+                       % (nfrom - 1, nto - 1, word, given - 1, verb)
+
+            def repl_py3_toomany(matchobj):
+                needed, given = int(matchobj.group(1)), int(matchobj.group(3))
+                word = matchobj.group(2)
+                verb = 'were' if given != 2 else 'was'
+                return 'takes %d positional %s but %d %s given' \
+                       % (needed - 1, word, given - 1, verb)
+
+            def repl_py3_missing(matchobj):
+                missing = int(matchobj.group(1))
+                return 'missing %d positional argument' % (missing - 1)
+
+            # Python2 style
+            msg = re.sub('(\d+) (arguments?) \((\d+) given\)', repl_py2, msg)
+            # Python3 style for too many args in the presence of default values
+            msg = re.sub('from (\d+) to (\d+) positional (arguments?) but '
+                         '(\d+) were given',
+                         repl_py3_toomany_from_to, msg)
+            # Python3 style for too many args with no default values
+            # "takes" is included to not match from_to again
+            msg = re.sub('takes (\d+) positional (arguments?) but '
+                         '(\d+) were given',
+                         repl_py3_toomany, msg)
+            # Python3 style for missing
+            msg = re.sub('missing (\d+) positional argument',
+                         repl_py3_missing, msg)
             raise TypeError(msg)
+
+
+# function signatures
+# -------------------
+
+FullArgSpec = namedtuple('FullArgSpec',
+                         'args, varargs, varkw, defaults, kwonlyargs, '
+                         'kwonlydefaults, annotations')
+
+
+def argspec(*args, **kwonlyargs):
+    """
+    args = argument names. Arguments with a default value must be given as a
+    ('name', value) tuple. varargs and varkw argument names, if any, should be
+    prefixed with '*' and '**' respectively and must be the last positional
+    arguments.
+    >>> argspec('a', 'b', ('c', 1), '*d', '**e', f=None)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a', 'b', 'c'], varargs='d', varkw='e', defaults=(1,),
+                kwonlyargs=['f'], kwonlydefaults={'f': None}, annotations={})
+    >>> argspec('a', '*', '**b', c=None)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a'], varargs=None, varkw='b', defaults=None,
+                kwonlyargs=['c'], kwonlydefaults={'c': None}, annotations={})
+    >>> argspec('a', 'b', ('c', 1), d=None)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a', 'b', 'c'], varargs=None, varkw=None, defaults=(1,),
+                kwonlyargs=['d'], kwonlydefaults={'d': None}, annotations={})
+    """
+    args = list(args)
+    def lastitem_startswith(l, s):
+        return l and isinstance(l[-1], basestring) and l[-1].startswith(s)
+    varkw = args.pop()[2:] if lastitem_startswith(args, '**') else None
+    varargs = args.pop()[1:] if lastitem_startswith(args, '*') else None
+    if not varargs:
+        varargs = None
+    defaults = tuple(a[1] for a in args if isinstance(a, tuple))
+    if not defaults:
+        defaults = None
+    else:
+        assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
+        assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
+    args = [a[0] if isinstance(a, tuple) else a for a in args]
+    return FullArgSpec(args, varargs, varkw, defaults,
+                       kwonlyargs=kwonlyargs.keys(), kwonlydefaults=kwonlyargs,
+                       annotations={})
+
+
+# miscellaneous tools
+# -------------------
+
+class FileProducer(object):
+    argspec = argspec(suffix='', fname=None)
+
+    # default extension if only suffix is defined
+    ext = None
+    # do we need to return a file name if neither suffix nor fname are defined?
+    fname_required = False
+
+    def _get_fname(self, kwargs):
+        """
+        Returns a filename depending on the given kwargs.
+        Note that kwargs are **pop'ed in-place** !
+        """
+        suffix = kwargs.pop('suffix', '')
+        fname = kwargs.pop('fname', None)
+
+        if fname is not None and suffix:
+            raise ValueError("%s() can't have both 'suffix' and 'fname' "
+                             "arguments" % self.__class__.__name__.lower())
+        if fname is None and (suffix or self.fname_required):
+            suffix = "_" + suffix if suffix else ""
+            fname = "{entity}_{period}" + suffix + self.ext
+        return fname

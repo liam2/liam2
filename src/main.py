@@ -9,23 +9,23 @@ import warnings
 import yaml
 
 import config
-from simulation import Simulation
-from importer import csv2h5
 from console import Console
-from utils import AutoFlushFile
-import registry
-from data import populate_registry, H5Data
+from context import EvaluationContext
+from data import entities_from_h5, H5Data
+from importer import csv2h5
+from simulation import Simulation
 from upgrade import upgrade
+from utils import AutoFlushFile
 from view import viewhdf
 
-__version__ = "0.8.0pre1"
+__version__ = "0.9-pre1"
 
 
 def eat_traceback(func, *args, **kwargs):
-# e.context      | while parsing a block mapping
-# e.context_mark | in "import.yml", line 18, column 9
-# e.problem      | expected <block end>, but found '<block sequence start>'
-# e.problem_mark | in "import.yml", line 29, column 12
+    # e.context      | while parsing a block mapping
+    # e.context_mark | in "import.yml", line 18, column 9
+    # e.problem      | expected <block end>, but found '<block sequence start>'
+    # e.problem_mark | in "import.yml", line 29, column 12
     error_log_path = None
     try:
         try:
@@ -117,20 +117,28 @@ def explore(fpath):
     ftype = 'data' if ext in ('.h5', '.hdf5') else 'simulation'
     print("Using %s file: '%s'" % (ftype, fpath))
     if ftype == 'data':
-        globals_def = populate_registry(fpath)
+        globals_def, entities = entities_from_h5(fpath)
         data_source = H5Data(None, fpath)
-        h5in, _, globals_data = data_source.load(globals_def,
-                                                 registry.entity_registry)
+        h5in, _, globals_data = data_source.load(globals_def, entities)
         h5out = None
-        entity, period = None, None
+        simulation = Simulation(globals_def, None, None, None, None, None,
+                                entities.values(), None)
+        period, entity_name = None, None
     else:
         simulation = Simulation.from_yaml(fpath)
         h5in, h5out, globals_data = simulation.load()
-        entity = simulation.console_entity
         period = simulation.start_period + simulation.periods - 1
-        globals_def = simulation.globals_def
+        entity_name = simulation.default_entity
+    entities = simulation.entities_map
+    if entity_name is None and len(entities) == 1:
+        entity_name = entities.keys()[0]
+    if period is None and entity_name is not None:
+        entity = entities[entity_name]
+        period = max(entity.output_index.keys())
+    eval_ctx = EvaluationContext(simulation, entities, globals_data, period,
+                                 entity_name)
     try:
-        c = Console(entity, period, globals_def, globals_data)
+        c = Console(eval_ctx)
         c.run()
     finally:
         h5in.close()
@@ -159,6 +167,7 @@ class PrintVersionsAction(argparse.Action):
 
         try:
             from cpartition import filter_to_indices
+
             del filter_to_indices
             cext = True
         except ImportError:
@@ -173,12 +182,9 @@ numpy {np}
 numexpr {ne}
 pytables {pt}
 carray {ca}
-pyyaml {yml}""".format(py=py_version,
-                       np=numpy.__version__,
-                       ne=numexpr.__version__,
-                       pt=tables.__version__,
-                       ca=carray.__version__,
-                       yml=yaml.__version__))
+pyyaml {yml}""".format(py=py_version, np=numpy.__version__,
+                       ne=numexpr.__version__, pt=tables.__version__,
+                       ca=carray.__version__, yml=yaml.__version__))
         parser.exit()
 
 
@@ -186,6 +192,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--versions', action=PrintVersionsAction, nargs=0,
                         help="display versions of dependencies")
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help="run in debug mode")
     parser.add_argument('--input-path', dest='input_path',
                         help='override the input path')
     parser.add_argument('--input-file', dest='input_file',
@@ -210,7 +218,7 @@ def main():
 
     # create the parser for the "explore" command
     parser_explore = subparsers.add_parser('explore', help='explore data of a '
-                                          'past simulation')
+                                                           'past simulation')
     parser_explore.add_argument('file', help='explore file')
 
     # create the parser for the "upgrade" command
@@ -228,18 +236,31 @@ def main():
     parser_import.add_argument('file', help='data file')
 
     parsed_args = parser.parse_args()
+    if parsed_args.debug:
+        config.debug = True
+
+    # this can happen via the environment variable too!
+    if config.debug:
+        warnings.simplefilter('default')
+        wrapper = lambda func, *args, **kwargs: func(*args, **kwargs)
+    else:
+        wrapper = eat_traceback
 
     action = parsed_args.action
     if action == 'run':
-        simulate(parsed_args)
+        args = simulate, parsed_args
     elif action == "import":
-        csv2h5(parsed_args.file)
+        args = csv2h5, parsed_args.file
     elif action == "explore":
-        explore(parsed_args.file)
+        args = explore, parsed_args.file
     elif action == "upgrade":
-        upgrade(parsed_args.input, parsed_args.output)
+        args = upgrade, parsed_args.input, parsed_args.output
     elif action == "view":
-        display(parsed_args.file)
+        args = display, parsed_args.file
+    else:
+        raise ValueError("invalid action")
+    wrapper(*args)
+
 
 if __name__ == '__main__':
     import sys
@@ -250,8 +271,4 @@ if __name__ == '__main__':
     print("LIAM2 %s (%s)" % (__version__, platform.architecture()[0]))
     print()
 
-    if config.debug:
-        warnings.simplefilter('default')
-        main()
-    else:
-        eat_traceback(main)
+    main()

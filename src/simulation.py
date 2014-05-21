@@ -10,15 +10,15 @@ import numpy as np
 import tables
 import yaml
 
+from context import EvaluationContext
 from data import H5Data, Void
-from entities import Entity
-from registry import entity_registry
+from entities import Entity, global_variables
 from utils import (time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
                    merge_dicts, merge_items,
                    field_str_to_type, fields_yaml_to_type)
-import console
 import config
+import console
 import expr
 
 
@@ -236,21 +236,33 @@ class Simulation(object):
             output_file = output_def['file']
         output_path = os.path.join(output_directory, output_file)
 
+        entities = {}
         for k, v in content['entities'].iteritems():
-            entity_registry.add(Entity.from_yaml(k, v))
+            entities[k] = Entity.from_yaml(k, v)
 
-        for entity in entity_registry.itervalues():
-            entity.check_links()
-            entity.parse_processes(globals_def)
+        for entity in entities.itervalues():
+            entity.attach_and_resolve_links(entities)
+
+        global_context = {'__globals__': global_variables(globals_def),
+                          '__entities__': entities}
+        parsing_context = global_context.copy()
+        parsing_context.update((entity.name, entity.all_symbols(global_context))
+                               for entity in entities.itervalues())
+        for entity in entities.itervalues():
+            parsing_context['__entity__'] = entity.name
+            entity.parse_processes(parsing_context)
             entity.compute_lagged_fields()
+
+        # for entity in entities.itervalues():
+        #     entity.resolve_method_calls()
 
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()
         for ent_name, proc_names in init_def:
-            if ent_name not in entity_registry:
+            if ent_name not in entities:
                 raise Exception("Entity '%s' not found" % ent_name)
 
-            entity = entity_registry[ent_name]
+            entity = entities[ent_name]
             init_entities.add(entity)
             init_processes.extend([(entity.processes[proc_name], 1)
                                    for proc_name in proc_names])
@@ -258,7 +270,7 @@ class Simulation(object):
         processes_def = [d.items()[0] for d in simulation_def['processes']]
         processes, entity_set = [], set()
         for ent_name, proc_defs in processes_def:
-            entity = entity_registry[ent_name]
+            entity = entities[ent_name]
             entity_set.add(entity)
             for proc_def in proc_defs:
                 # proc_def is simply a process name
@@ -268,7 +280,7 @@ class Simulation(object):
                 else:
                     proc_name, periodicity = proc_def
                 processes.append((entity.processes[proc_name], periodicity))
-        entities = sorted(entity_set, key=lambda e: e.name)
+        entities_list = sorted(entity_set, key=lambda e: e.name)
 
         method = input_def.get('method', 'h5')
 
@@ -284,19 +296,22 @@ class Simulation(object):
                              "be either 'h5' or 'void'")
 
         default_entity = simulation_def.get('default_entity')
-        return Simulation(globals_def, periods, start_period,
-                          init_processes, init_entities, processes, entities,
-                          data_source, default_entity)
+        return Simulation(globals_def, periods, start_period, init_processes,
+                          init_entities, processes, entities_list, data_source,
+                          default_entity)
 
     def load(self):
-        return timed(self.data_source.load, self.globals_def,
-                     entity_registry)
+        return timed(self.data_source.load, self.globals_def, self.entities_map)
+
+    @property
+    def entities_map(self):
+        return {entity.name: entity for entity in self.entities}
 
     def run(self, run_console=False):
         start_time = time.time()
         h5in, h5out, globals_data = timed(self.data_source.run,
                                           self.globals_def,
-                                          entity_registry,
+                                          self.entities_map,
                                           self.start_period - 1)
 
         if config.autodump or config.autodiff:
@@ -325,10 +340,15 @@ class Simulation(object):
 
         process_time = defaultdict(float)
         period_objects = {}
+        eval_ctx = EvaluationContext(self, self.entities_map, globals_data)
 
         def simulate_period(period_idx, period, processes, entities,
                             init=False):
             print("\nperiod", period)
+
+            # set current period
+            eval_ctx.period = period
+
             if init:
                 for entity in entities:
                     print("  * %s: %d individuals" % (entity.name,
@@ -344,26 +364,18 @@ class Simulation(object):
                 entity.array['period'] = period
 
             if processes:
-                # build context for this period:
-                const_dict = {'period': period,
-                              'nan': float('nan'),
-                              '__globals__': globals_data}
-
                 num_processes = len(processes)
                 for p_num, process_def in enumerate(processes, start=1):
                     process, periodicity = process_def
 
+                    # set current entity
+                    eval_ctx.entity_name = process.entity.name
+
                     print("- %d/%d" % (p_num, num_processes), process.name,
                           end=' ')
-                    #TODO: provide a custom __str__ method for Process &
-                    # Assignment instead
-                    if hasattr(process, 'predictor') and process.predictor \
-                       and process.predictor != process.name:
-                        print("(%s)" % process.predictor, end=' ')
                     print("...", end=' ')
                     if period_idx % periodicity == 0:
-                        elapsed, _ = gettime(process.run_guarded, self,
-                                             const_dict)
+                        elapsed, _ = gettime(process.run_guarded, eval_ctx)
                     else:
                         elapsed = 0
                         print("skipped (periodicity)")
@@ -373,8 +385,7 @@ class Simulation(object):
                         print("done (%s elapsed)." % time2str(elapsed))
                     else:
                         print("done.")
-                    self.start_console(process.entity, period,
-                                       globals_data)
+                    self.start_console(eval_ctx)
 
             print("- storing period data")
             for entity in entities:
@@ -409,25 +420,30 @@ class Simulation(object):
 
             total_objects = sum(period_objects[period] for period in periods)
             total_time = time.time() - main_start_time
+            try:
+                ind_per_sec = str(int(total_objects / total_time))
+            except ZeroDivisionError:
+                ind_per_sec = 'inf'
+
             print("""
 ==========================================
  simulation done
 ==========================================
  * %s elapsed
  * %d individuals on average
- * %d individuals/s/period on average
+ * %s individuals/s/period on average
 ==========================================
 """ % (time2str(time.time() - start_time),
        total_objects / self.periods,
-       total_objects / total_time))
+       ind_per_sec))
 
             show_top_processes(process_time, 10)
 #            if config.debug:
 #                show_top_expr()
 
             if run_console:
-                c = console.Console(self.console_entity, periods[-1],
-                                    self.globals_def, globals_data)
+                console_ctx = eval_ctx.clone(entity_name=self.default_entity)
+                c = console.Console(console_ctx)
                 c.run()
 
         finally:
@@ -437,16 +453,8 @@ class Simulation(object):
             if h5_autodump is not None:
                 h5_autodump.close()
 
-    @property
-    def console_entity(self):
-        """compute the entity the console should start in (if any)"""
-
-        return entity_registry[self.default_entity] \
-               if self.default_entity is not None \
-               else None
-
-    def start_console(self, entity, period, globals_data):
+    def start_console(self, context):
         if self.stepbystep:
-            c = console.Console(entity, period, self.globals_def, globals_data)
+            c = console.Console(context)
             res = c.run(debugger=True)
             self.stepbystep = res == "step"

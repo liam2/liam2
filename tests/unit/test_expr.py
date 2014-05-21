@@ -3,34 +3,45 @@ import unittest
 import numpy as np
 from numpy import array
 
+from context import EvaluationContext
 from entities import Entity
-from registry import entity_registry
-from context import EntityContext, context_length
-from exprparser import parse
-import links 
+from expr import Variable
+from exprtools import parse
+import links
 
 
 class ArrayTestCase(unittest.TestCase):
     def assertArrayEqual(self, first, other):
         assert np.array_equal(first, other), "got: %s\nexpected: %s" % (first, 
-                                                                        other) 
+                                                                        other)
 
 
-class StringTestCase(ArrayTestCase):
-    context = None
+def evaluate(s, parse_ctx, eval_ctx):
+    expr = parse(s, parse_ctx)
+    return expr.evaluate(eval_ctx)
+
+
+class StringExprTestCase(ArrayTestCase):
+    parse_ctx = None
+    eval_ctx = None
+
+    def evaluate(self, s):
+        return evaluate(s, self.parse_ctx, self.eval_ctx)
 
     def assertEvalEqual(self, s, result):
-        e = parse(s, autovariables=True)
-        self.assertArrayEqual(e.evaluate(self.context), result)
+        self.assertArrayEqual(self.evaluate(s), result)
 
 
-class Test(StringTestCase):
+class TestSimple(StringExprTestCase):
     def setUp(self):
-        self.context = {'age': array([20, 10, 35, 55]),
-                        'dead': array([False, True, False, True])}
-
-    def tearDown(self):
-        pass
+        data = {'person': {'age': array([20, 10, 35, 55]),
+                           'dead': array([False, True, False, True])}}
+        self.eval_ctx = EvaluationContext(entity_name='person',
+                                          entities_data=data)
+        self.parse_ctx = {
+            'person': {'age': Variable('age'), 'dead': Variable('dead')},
+            '__entity__': 'person'
+        }
 
     def test_where(self):
         self.assertEvalEqual("where(dead, 1, 2)", [2, 1, 2, 1])
@@ -40,18 +51,10 @@ class Test(StringTestCase):
         self.assertEvalEqual("min(where(dead, age + 15, age))", 20)
 
 
-class FakeEntity(object):
-    def __init__(self, name, links=None, data=None):
-        self.name = name
-        self.links = links
-        self.array = data
-        self.array_period = None
-        self.temp_variables = {}
-        self.id_to_rownum = array([0, 1, 2, 3])
-
-
-class TestLink(ArrayTestCase): 
+class TestLink(StringExprTestCase):
     def setUp(self):
+        entities = {}
+
         hh_link = links.Many2One('household', 'hh_id', 'household')
         mother_link = links.Many2One('mother', 'mother_id', 'person')
         child_link = links.One2Many('children', 'mother_id', 'person')
@@ -81,11 +84,6 @@ class TestLink(ArrayTestCase):
                                'mother': mother_link,
                                'children': child_link},
                         array=persons)
-#         person = FakeEntity('person',
-#                             links={'household': hh_link,
-#                                    'mother': mother_link,
-#                                    'children': child_link},
-#                             data=persons)
 
         dt = np.dtype([('period', int), ('id', int)])
 #        households = array([(2000, 0),
@@ -101,74 +99,105 @@ class TestLink(ArrayTestCase):
                             (2002, 1),
                             (2002, 2)],
                            dtype=dt)
-#         household = FakeEntity('household',
-#                                links={'persons': persons_link},
-#                                data=households)
         household = Entity('household',
                            links={'persons': persons_link},
                            array=households)
-        entity_registry.add(person)
-        entity_registry.add(household)
+        entities['person'] = person
+        entities['household'] = household
+        self.entities = entities
 
-#    def test_many2one_from_dict(self):
-#        person = entity_registry['person']
-#        context = {'mother_id': array([-1, 0, 0, 2]),
-#                   'period': 2002,
-#                   '__entity__': person}
-#        e = parse("mother.age", person.links, autovariables=True)
-#        self.assertArrayEqual(e.evaluate(context), [-1, 55, 55, 22])
-        
-    def test_many2one_from_entity_context(self):
-        person = entity_registry['person']
-        context = EntityContext(person, {'period': 2002})
-        self.assertEqual(context_length(context), 5)
-        e = parse("mother.age", person.links, autovariables=True)
-        self.assertArrayEqual(e.evaluate(context), [-1, 55, 55, -1, 22])
+        parse_ctx = {'__globals__': {}, '__entities__': entities,
+                     '__entity__': 'person'}
+        parse_ctx.update((entity.name, entity.all_symbols(parse_ctx))
+                         for entity in entities.itervalues())
+        self.parse_ctx = parse_ctx
+        self.eval_ctx = EvaluationContext(entities=entities, period=2002,
+                                          entity_name='person')
 
-    def test_one2many_from_entity_context(self):
-        person = entity_registry['person']
-        context = EntityContext(person, {'period': 2002})
-        e = parse("countlink(children)", person.links, autovariables=True)
-        self.assertArrayEqual(e.evaluate(context), [2, 0, 1, 0, 0])
+    def test_many2one(self):
+        self.assertEvalEqual("mother.age", [-1, 55, 55, -1, 22])
 
-#    def test_past_one2many(self):
-#        person = entity_registry['person']
-#        context = EntityContext(person, {'period': 2001})
-#        e = parse("countlink(children)", person.links, autovariables=True)
-#        self.assertArrayEqual(e.evaluate(context), [2, 0, 1, 0])
+    def test_one2many(self):
+        self.assertEvalEqual("children.count()", [2, 0, 1, 0, 0])
 
-#    def test_multi_entity_in_context_experiment(self):
-#        person = entity_registry['person']
-#        person.array = {'period': array([2002, 2002, 2002, 2002]),
-#                        'age': array([55, 25, 22, 1])}
-#        
-#        data = {'person': {'id':         [ 0,  1,  2, 3,  4],
-#                           'mother_id':  [-1,  0,  0, 2, -1],
-#                           'age':        [55, 25, 22, 1, 45],
-#                           'hh_id':      [ 0,  1,  2, 2,  0],
-#                           'period':     2002,
-#                           '__entity__': person},
-#                'household': {'id': [0, 1, 2]}}
-#        
-#        annoted_expr = person.parse("household.get(persons.count())")
-#        # this would be more or less equivalent to:
-#        # expr = parse(expr, person.links)
-#        # return AnnotedExpr(expr, self)
-#        self.assertArrayEqual(annoted_expr.evaluate(context), [2, 1, 2, 2, 2])
-
-#        OR
-
-#        context = {'data': data, 'period': 2002, 'entity': 'person'}
-#        expr = parse(expr, person.links)
-#        self.assertArrayEqual(expr.evaluate(context), [2, 1, 2, 2, 2])
-
-# pro: - I could pass the context around almost unmodified when changing from
-#        an entity to another
-#      - easier testing 
-# con: - I can't pass the context as-is to numexpr
-
+    # def test_past_one2many(self):
+    #     self.eval_ctx.period = 2001
+    #     self.assertEvalEqual("children.count()", [2, 0, 1, 0, 0])
 
 # short-term data provider contract:
+
+# Q: where do I plug the CascadingContext I need?
+# A: a CascadingContext per entity, but what about periods?
+#      - no CascadingContext anywhere in the data provider:
+#     we build an EntityContext for the last Context in the chain (the one
+#     wrapping the entity "stored" data)
+#     it is the duty of the entity context to transform/present a "full context"
+#     (data (dataprovider) + current_entity + current_period) as a single
+#     "structured array"
+
+# Q: do I need to have access to temporary fields from other entities?
+# A: I think so, at least for temporary globals. The fact that they are stored
+#    or not is irrelevant.
+#    => this implies that they need to be stored in the
+#
+# Q: what about "definitions" and other metadata stored in Entity? If I only
+# have the entity name in the context, I either need to keep a global entity
+# registry or add the registry (or a similar structure) in the context
+
+# Q: what about id_to_rownum? append(), keep()
+#      table.append()/table.flush()
+
+# A: the array vs table dichotomy (or whatever we call them: working_set vs
+#    history) *needs* to be somehow exposed in the object we pass around
+
+# Q: what exactly do I really need for the history?
+# A: I need lag values + fields explicitly saved
+
+# Q: is it even possible to hide id_to_rownum in the implementation?
+# A: for align_link, it seems hard to do. Can't tell if it is possible or not
+
+# * for fill_missing_values, I need MyArray[ids] = values
+#    OR do I want to keep normal indexing? In that case MyArray.set(ids, values)
+#    should work
+# * for M2O links, it works: I need MyThing[col][ids] where ids can contain
+#   duplicates, -1 and invalid ids (ids which map to -1) (like hh_id)
+# * for matching, I need MyThing.set(id, value)
+# * for O2M links and tfunc, it seems more complicated, I'm not sure whether
+#   it is possible to do, but I am sure that even if it is possible, it would
+#   require a complete rewrite of those functions. So it might be a better idea
+#   to have indeed id_to_rownum inside the array, but still have access to it:
+#   array.index or array.id_to_rownum
+
+# Q: where (in which layer) do I plug the fill_missing_values functionality
+#   (which requires knowledge of the "current" period)???
+# A: array or context or ???
+
+
+# !! the context itself needs to support append, because append must happen for
+#    local variables too !!
+# the interface is tricky: the simpler would be to pass a complete array that is
+# simply appended but what about the "id" column? I cannot initialize it without
+# knowing what is the last id ever created
+# A: it's not a huge problem: simply initialize it in the append method.
+#    if an id column is passed, overwrite it, if not add one
+
+# Q: I think I need more/something different than just cascading contexts:
+#    when a procedure calls a function, I don't need/want the context of the
+#    caller to be available to the callee. It only needs access to global
+#    variables and "globals":
+#    I need entity_globals/method_locals/system_or_extra
+# * entity_globals can be stored on disk or not
+# * context.child() needs to copy (or share) entity_globals but not
+#   locals or extra
+# * context needs append & keep/remove methods
+
+# Q: General architecture
+# A1: EntityContext which dispatches to 3 IndexedColumnArray (globals
+#     / locals / extra)
+#    > hmm, not great as they should share the same index
+#    > what about disk storage? (ie array vs table)
+#    > what about lag variables?
+# A2: EntityContext dispatches to 3 ColumnArray and one index
 
 #  data[entity][period][column] = vector
 #  examples:
@@ -179,16 +208,35 @@ class TestLink(ArrayTestCase):
 
 # mid-term 
 
-#  data[entity][period_start:period_end][colname] = vector
-#  data[entity][period_start:period_end][rownum] = row
-#  data[entity][period_start:period_end][rownum][colname] = value
+#  data[entity][period_start:period_end][colname]
+#      = 2d array (num_periods * num_ids)
+#      OR?
+#      = vector with all periods concatenated (like when I filter in vitables)
+#  data[entity][period_start:period_end][rownum]
+#      = struct_array (num_periods * num_columns)
+#      OR?
+#      = single row
+#  data[entity][period_start:period_end][rownum][colname] = vector (num_periods)
 #  data[entity][period][column].get(id) = value
 
 # long-term
 
-#  data[entity][column == value][column] = vector
-#  data[entity][time_obj][column] = vector # < use pandas dataframes?
-#  data[entity][column][time_obj] = vector # < use pandas dataframes?
+#  data[entity][column == value][colname] = 2d array (num_ids x num_periods)
+#  data[entity][time_obj] = 1d array (vector) with structured dtype (ie several
+#                           columns) # < use pandas dataframes?
+#  data[entity][colname][time_obj] = vector # < use pandas dataframes?
+#  data[entity][colname] = sort of 2d array # (time x individuals)
+#  >>> 2darray[time_obj] = vector of individuals
+#  >>> 2darray[id] = time series for individual
+#  >>> 2darray.XXX == 2darray[current_time].XXX ?
+#  >>> 2darray.sum() == 2darray.sum(axis=ind) == scalar
+
+#  >>> 2darray.sum(axis=time) == 1darray (N individuals) ? >>> needs to know
+#      the function before we can know what "2darray.XXX" mean
+#  OR
+#  >>> 2darray[:] == 2darray[time.all()] == fake 2d array
+#  >>> 2darray[:].sum(axis=time) == 1darray (N individuals)
+
 #  examples:
 #  data['person'][Person.period == 2002]['id'] = [0, 1, 3, 5] 
 #  data['person'][Person.period == 2002]['age'] = [25, 45, 1, 37] 

@@ -163,7 +163,7 @@ the **fields** section.
 
 In this example, *isold* and *backfromoldage* are local variables. They can only
 be used in the procedure where they are defined. Because we are trying
-to use the local variable *isold* in another procedure in this example, LIAM 2
+to use the local variable *isold* in another procedure in this example, LIAM2
 will refuse to run, complaining that *isold* is not defined.
 
 Actions
@@ -202,29 +202,34 @@ The name of the process is *age* and what it does is increasing the variable
 
 - Arithmetic operators: +, -, \*, /, \** (exponent), % (modulo)
 
-Note that an integer divided by an integer returns a float. For example "1 / 2"
-will evaluate to 0.5 instead of 0 as in many programming languages. If you are
-only interested in the integer part of that result (for example, if you know the
-result has no decimal part), you can use the *trunc* function: ::
+.. note::
 
-    agegroup5: 5 * trunc(age / 5)
+   An integer divided by an integer returns a float. For example "1 / 2"
+   will evaluate to 0.5 instead of 0 as in many programming languages. If you
+   are only interested in the integer part of that result (for example,
+   if you know the result has no decimal part), you can use the *trunc*
+   function: ::
+
+     agegroup5: 5 * trunc(age / 5)
 
 - Comparison operators: <, <=, ==, !=, >=, >
 - Boolean operators: and, or, not
 
-Note that starting with version 0.6, you do not need to use parentheses when
-you mix *boolean operators* with other operators. ::
+.. note::
 
-    inwork: workstate > 0 and workstate < 5
-    to_give_birth: not gender and age >= 15 and age <= 50
+   Starting with version 0.6, you do not need to use parentheses when
+   you mix *boolean operators* with other operators. ::
+
+     inwork: workstate > 0 and workstate < 5
+     to_give_birth: not gender and age >= 15 and age <= 50
     
-is now equivalent to:
+   is now equivalent to: ::
 
-    inwork: (workstate > 0) and (workstate < 5)
-    to_give_birth: not gender and (age >= 15) and (age <= 50)
+     inwork: (workstate > 0) and (workstate < 5)
+     to_give_birth: not gender and (age >= 15) and (age <= 50)
 
-- Conditional expressions:
-    if(condition, expression_if_true, expression_if_false)
+- Conditional expressions: if(condition, expression_if_true,
+  expression_if_false)
 
 *example* ::
 
@@ -232,12 +237,14 @@ is now equivalent to:
                             5 * trunc(age / 5),
                             10 * trunc(age / 10))
 
-Note that the *if* functions always requires three arguments. If you want to
-leave a variable unchanged if a condition is not met, use the variable in the
-*expression_if_false* ::
+.. note::
 
-    # retire people (set workstate = 9) when aged 65 or more
-    workstate: if(age >= 65, 9, workstate)
+   The *if* function always requires three arguments. If you want to leave a
+   variable unchanged if a condition is not met, use the variable in the
+   *expression_if_false*: ::
+
+      # retire people (set workstate = 9) when aged 65 or more
+      workstate: if(age >= 65, 9, workstate)
 
 You can nest if-statements. The example below retires men (gender = True) over
 64 and women over 61. ::
@@ -317,44 +324,89 @@ mathematical functions
 - min(x, a), max(x, a): the minimum or maximum of x and a.
 
 
-.. index:: count, sum, avg, std, min, max, median, percentile,
-           gini, aggregate functions
+.. index:: aggregate functions
 
 aggregate functions
 -------------------
 
-- count([condition]): count the objects in the entity. If filter is given,
-                         only count the ones satisfying the filter.
-- sum(expr[, filter=condition][, skip_na=True]): sum the expression
-- avg(expr[, filter=condition][, skip_na=True]): average
-- std(expr[, filter=condition][, skip_na=True]): standard deviation
-- min(expr[, filter=condition][, skip_na=True]): min
-- max(expr[, filter=condition][, skip_na=True]): max
-- median(expr[, filter=condition][, skip_na=True]): median
-- percentile(expr, percent[, filter=condition][, skip_na=True]): percentile
-- gini(expr[, filter=condition][, skip_na=True]): gini
+.. index:: count
 
-**sum** sums any expression over all the individuals of the current entity.
-For example *sum(earnings)* will produce the sum of the earnings of all
-persons in the sample.
+- **count([condition])**: count individuals
 
-**count** counts the number of individuals in the current entity, optionally
-satisfying a (boolean) condition. For example, *count(gender)* will produce
-the total number of men in the sample. Contrary to **sum**, the count
-does not require an argument: *count()* will return the total number of
-individuals in the sample.
+It counts the individuals in the current entity. If a (boolean) condition is
+given, it only counts the ones satisfying that condition. For example,
+*count(male and age >= 18)* will produce the number of men in the sample who
+are eighteen years old or older.
 
-Note that, sum and count are exactly equivalent if their only argument
-is a boolean variable (eg. count(ISWIDOW) == sum(ISWIDOW)).
+.. note::
 
-*example* ::
+   count() can be used without any argument: *count()* will return
+   the total number of individuals in the sample for the current entity.
 
-    macros:
-        WIDOW: civilstate == 5
-    processes:
-        cnt_widows: show(count(WIDOW))
+.. index:: sum
 
-.. index:: link methods, count, sum, avg, min, max
+- **sum(expr[, filter=condition][, skip_na=True])**: sum of an expression
+
+It computes the sum of any expression over all individuals of the current
+entity. If a **filter** (boolean condition) is given,
+it only takes into account
+the individuals satisfying the filter. For example *sum(earnings)* will
+produce the sum of the earnings of all persons in the sample,
+while *sum(earnings, age >= 30)* will produce the sum of the earnings
+of all persons in the sample who are 30 or older. **skip_na** determines
+whether missing values (nan) are discarded before the computation or not. It
+defaults to *True*.
+
+.. note::
+
+   sum and count are exactly equivalent if their only argument is a boolean
+   variable (eg. count(age >= 18) == sum(age >= 18)).
+
+.. index:: avg
+
+- **avg(expr[, filter=condition][, skip_na=True])**: average
+
+.. index:: std
+
+- **std(expr[, filter=condition][, skip_na=True])**: standard deviation
+
+.. index:: min
+
+- **min(expr[, filter=condition][, skip_na=True])**: min
+
+.. index:: max
+
+- **max(expr[, filter=condition][, skip_na=True])**: max
+
+.. index:: median
+
+- **median(expr[, filter=condition][, skip_na=True])**: median
+
+.. index:: percentile
+
+- **percentile(expr, percent[, filter=condition][, skip_na=True])**: percentile
+
+.. index:: gini
+
+- **gini(expr[, filter=condition][, skip_na=True])**: gini
+
+.. index:: all
+
+- **all(condition1[, filter=condition2])**: is condition True for all?
+
+Returns True if all individuals who satisfy the optional condition2
+also satisfy condition1, False otherwise. Note that *all(condition1,
+filter=condition2)* is equivalent to *all(condition1 and condition2)*.
+
+.. index:: any
+
+- **any(condition1[, filter=condition2])**: is condition True for any?
+
+Returns True if any individual who satisfy the optional condition2
+also satisfy condition1, False otherwise. Note that *any(condition1,
+filter=condition2)* is equivalent to *any(condition1 and condition2)*.
+
+.. index:: link methods, link.count, link.sum, link.avg, link.min, link.max
 .. _link_methods:
 
 link methods
@@ -405,8 +457,8 @@ temporal functions
 
     lag(age)            # the age each person had last year, -1 if newborn
     lag(age, missing=0) # the age each person had last year, 0 if newborn
-    avg(lag(age))    # average age that the current population had last year
-    lag(avg(age))    # average age of the population of last year
+    avg(lag(age))       # average age that the current population had last year
+    lag(avg(age))       # average age of the population of last year
     lag(age, 2)         # the age each person had two years ago (-1 for
                         # newborns)
     lag(lag(age))       # this is equivalent (but slightly less efficient)
@@ -443,13 +495,15 @@ temporal functions
 - tsum(expr): sum of an expression since the individual was created
 
 
-.. index:: random, uniform, normal, randint
+.. index:: random, uniform, normal, gumbel, randint
 
 random functions
 ----------------
 
 - uniform: random numbers with a uniform distribution [0,1)
 - normal: random numbers with a normal distribution
+- gumbel: random numbers with a Gumbel distribution (also known as the Smallest
+          Extreme Value (SEV) distribution)
 - randint: random integers between bounds
 
 *example* ::
@@ -475,7 +529,7 @@ The expected occurrences of x after, say, 100 runs is then P(x=1) * 100 and
 the expected value is 1xP(1)+0xP(0)=P(1). This type of simulation hinges on the
 confrontation between a random variable and an exogenous probability.
 
-In LIAM 2, such a probabilistic simulation is called a **choice** process.
+In LIAM2, such a probabilistic simulation is called a **choice** process.
 Suppose i=1..n choice options, each with a probability prob_option_i. A
 choice expression then has the following form: ::
 
@@ -490,7 +544,7 @@ the gender of newborns (51% males and 49% females), as such: ::
 
     gender: choice([True, False], [0.51, 0.49])
 
-In the current version of LIAM 2, it is not possible to combine a choice with
+In the current version of LIAM2, it is not possible to combine a choice with
 alignment.
 
 Here is a more complex example of a process using choice. Suppose we want to
@@ -611,15 +665,19 @@ to use alignment so the number of events occuring per category matches a
 proportion defined externaly. 
 
 There are different ways to choose which individuals are taken. The methodology
-used for now by LIAM 2 is called "alignment by sorting", that is, for each
+used for now by LIAM2 is called "alignment by sorting", that is, for each
 category, the N individuals with the highest scores are selected.
 
 The score computation is not done internally by the align() function, but is
 rather computed by an expression given by the modeller. One will usually use
 logit_score() to compute it, but it can be computed in any other way a
-modeller choose. Note that it is usually a good idea to include a random
-component (like in logit_score) in the score expression because otherwise the
-individuals with the smaller scores will never be selected.
+modeller choose.
+
+.. note::
+
+   It is usually a good idea to include a random component (like in
+   logit_score) in the score expression because otherwise the individuals with
+   the smaller scores will never be selected.
 
 To know more about the alignment process reading "Evaluating Alignment Methods
 in Dynamic Microsimulation Models", by Li and O'Donoghue is advised. 
@@ -679,7 +737,7 @@ Now let us examine each argument in turn:
       with the prefix *al_* followed by the name of the endogenous variable
       and a suffix *_m* or *_f*, depending on gender.
 
- * **filter**: an expression specifying which individuals to taken into account
+ * **filter**: an expression specifying which individuals to take into account
    for the alignment. Note that if the align() function is used inside an
    *if()* expression, its filter is adjusted accordingly ("anded" with the
    filter of the if() expression). For example: ::
@@ -716,10 +774,12 @@ Now let us examine each argument in turn:
    A "softer" alternative can be easily achieved by setting a very low score
    for individuals to be taken last.
 
-   Note that even if the score for an individual is -1 (or any other negative
-   number), it *can* still be selected by the alignment expression. This
-   happens when there are not enough candidates (selected by the filter) to
-   meet the alignment needs.
+   .. note::
+
+      Note that even if the score for an individual is -1 (or any other
+      negative number), it *can* still be selected by the alignment expression.
+      This happens when there are not enough candidates (selected by the filter)
+      to meet the alignment needs.
  
  * **expressions**: specify the expressions used to partition the individuals
    into the different alignment categories. If proportions is a file name, the
@@ -1169,7 +1229,7 @@ simulation dataset.
 Output
 ======
 
-LIAM 2 produces simulation output in three ways. First of all, by default, the
+LIAM2 produces simulation output in three ways. First of all, by default, the
 simulated datasets are stored in hdf5 format. These can be accessed at the end
 of the run. You can use several tools to inspect the data.
 
@@ -1302,11 +1362,13 @@ Arguments:
 
         csv(period, avg(income), fname='avg_income.csv', mode='a')
 
-    Note that unless you erase/overwrite the file one way or another between
-    two runs of a simulation, you will append the data of the current
-    simulation to that of the previous one. One way to do overwrite the file
-    automatically at the start of a simulation is to have a procedure in the
-    init section without mode='a'.
+    .. note::
+
+       Unless you erase/overwrite the file one way or another between
+       two runs of a simulation, you will append the data of the current
+       simulation to that of the previous one. One way to do overwrite the file
+       automatically at the start of a simulation is to have a procedure in the
+       init section without mode='a'.
     
     If you want that file to start empty, you can do so this way: ::
 
@@ -1534,14 +1596,294 @@ or ::
            2 |          [47] |          [45 46] |                   [47 45 46]
            4 |          [46] |               [] |                         [46]
        total | [46 47 47 46] | [46 47 47 45 46] | [46 47 47 46 46 47 47 45 46]
-  
+
+.. index:: charts
+.. _charts:
+
+charts
+------
+
+.. versionadded:: 0.8
+
+LIAM2 has some charting capabilities, courtesy of `matplotlib
+<http://matplotlib.org>`_. They are available both during a simulation
+and in the interactive console. Each of the following functions is
+designed around the function of the same name in matplotlib. Even though we
+have tried to stay as close as possible to their API, their implementation in
+LIAM2 has a few differences, in particular we added a few arguments which
+are available in most functions.
+
+* *fname*: name of the file to save the chart to. The file format is
+  automatically deduced from the file extension. You can optionally use the
+  '{entity}' and '{period}' key words to customize the name. You can save the
+  same chart to several formats at once by using '&' in the extension. For
+  example: ``plot(expr, fname='plot03.png&pdf')`` will write the chart to both
+  ``plot03.png`` and ``plot03.pdf``. If the *fname* argument is not used,
+  a window will open to view and interact with the figure using a navigation
+  toolbar. See `matplotlib navigation toolbar documentation
+  <http://matplotlib.org/users/navigation_toolbar.html>`_ for more details.
+
+  .. note::
+     Keyboard shortcuts mentioned on that page currently do not work.
+
+* *suffix*: a more concise alternative to set the name of the file the chart
+  will be saved to. When it is used, the files are named using the following
+  pattern: ``{entity}_{period}_{suffix}.png``. For example: ::
+
+    bar(expr, suffix='income')
+
+  would create "person_2002_income.png", "person_2003_income.png", etc.
+
+* *colors*: a list of the colors to be used for the chart. See `matplotlib
+  colors documentation <http://matplotlib.org/api/colors_api.html>`_
+  for the different ways you can specify colors. For example: ::
+
+    bar(expr, colors=['r', 'g', 'b'])
+
+  will make a bar chart with red, green and blue bars.
+
+  .. note:: *boxplot()* does not support the *colors* argument.
+
+* *grid* (False|True): determine whether to display a grid (in addition to
+  axes ticks). It defaults to *True* for *bar()* and *plot()* and to *False*
+  for *boxplot()* and *stackplot()*.
+
+  .. note:: *pie()* does not support the *grid* argument.
+
+* *maxticks*: limit the number of axes ticks. It defaults to 20 for all
+  charts except bar3d where it defaults to 10.
+
+  .. note:: *pie()* does not support the *maxticks* argument.
+
+
+.. index:: bar, bar charts
+
+bar charts
+~~~~~~~~~~
+
+.. versionadded:: 0.8
+
+**bar** can be used to draw bar charts. It uses `matplotlib.pyplot.bar
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.bar>`_  and
+inherits all of its keyword arguments. There are 3 ways to use it: ::
+
+    bar(1d_expr, ...)
+    bar(1d_expr1, 1d_expr2, ...)
+    bar(2d_expr, ...)
+
+In the first two *1d_expr* is (an expression returning) a one-dimensional
+array (for example an entity field or a groupby expression with only one
+dimension). For example: ::
+
+   bar(groupby(agegroup))
+
+would produce:
+
+.. image:: /charts/bar2.*
+
+If one passes several arrays/expressions, they will be stacked on each
+other. ::
+
+   bar(groupby(agegroup, filter=not gender),
+       groupby(agegroup, filter=gender))
+
+.. image:: /charts/bar5.*
+
+Alternatively, one can pass (an expression returning) a two-dimensional array,
+in which case, the first dimension will be "stacked": for each possible value
+of the first dimension, there will be a bar "part" with a different color. ::
+
+    - bar(groupby(eduach, agegroup))
+
+.. image:: /charts/bar6.*
+
+
+.. index:: plot
+
+plot
+~~~~
+
+.. versionadded:: 0.8
+
+**plot** can be used to draw (line) plots. It uses
+`matplotlib.pyplot.plot <http://matplotlib.org/api/pyplot_api.html#matplotlib
+.pyplot.plot>`_ and inherits all of its keyword arguments. There are 4 ways to
+use it: ::
+
+    plot(1d_expr, ...)
+    plot(1d_expr1, 1d_expr2, ...)
+    plot(2d_expr, ...)
+    plot(1d_expr1, style_str1, 1d_expr2, style_str2, ...)
+
+In the first two *1d_expr* is (an expression returning) a one-dimensional
+array (for example an entity field or a groupby expression with only one
+dimension). For example: ::
+
+   plot(groupby(age))
+
+.. image:: /charts/plot03.*
+
+If one passes several expressions, each will be plotted as a different line. ::
+
+   plot(groupby(age),
+        groupby(age, filter=not gender),
+        groupby(age, filter=gender))
+
+.. image:: /charts/plot04.*
+
+The third option is to pass (an expression returning) a two-dimensional
+array (``plot(2d_expr, ...)``) in which case, there will be one line for each
+possible value of the first dimension and the second dimension will be
+plotted along the x axis. For example: ::
+
+    plot(groupby(gender, age))
+
+.. image:: /charts/plot06.*
+
+and, using a few of the many possible options to customize the appearance: ::
+
+    plot(groupby(gender, agegroup),
+         grid=False, linestyle='dashed', marker='o', linewidth=5)
+
+.. image:: /charts/plot09.*
+
+And the fourth and last option is to alternate expressions returning
+one-dimensional arrays with *styles strings*
+(``plot(1d_expr1, style_str1, 1d_expr2, style_str2, ...)``) which allows each
+line/array to be plotted with a different style. See `plot documentation
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.plot>`_ for a
+description of possible styles strings.
+
+.. note:: Styles including a color (as explained in the matplotlib
+          documentation -- eg 'bo') are **not** supported by our
+          implementation. Colors should rather be set using the *colors*
+          argument (as explained above and shown in the example below).
+
+Example: ::
+
+    plot(groupby(agegroup, expr=count(not gender)), 'o--',
+         groupby(agegroup, expr=count(gender)), 's-.',
+         groupby(agegroup), '*-'
+         colors=['r', 'g', 'b'])
+
+.. image:: /charts/plot12.*
+
+
+.. index:: stackplot
+
+stackplot
+~~~~~~~~~
+
+.. versionadded:: 0.8
+
+**stackplot** can be used to draw stacked (line) plots. It uses
+`matplotlib.pyplot.stackplot
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.stackplot>`_ and
+inherits all of its keyword arguments. There are two ways to use it: ::
+
+    stackplot(1d_expr1, 1d_expr2, ...)
+    stackplot(2d_expr, ...)
+
+Example: ::
+
+    stackplot(groupby(eduach, age))
+
+.. image:: /charts/stackplot2.*
+
+.. index:: pie, pie charts
+
+pie charts
+~~~~~~~~~~
+
+.. versionadded:: 0.8
+
+**pie** can be used to draw pie charts. It uses
+`matplotlib.pyplot.pie
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.pie>`_ and
+inherits all of its keyword arguments. It should be used like this: ::
+
+    pie(1d_expr1, ...)
+
+Where *1d_expr* is (an expression returning) a one-dimensional
+array (for example an entity field or a groupby expression with only one
+dimension). Examples: ::
+
+  pie(groupby(eduach))
+  pie(groupby(eduach),
+      explode=[0.1, 0, 0],
+      labels=['Lower secondary', 'Upper secondary', 'Tertiary'])
+
+.. image:: /charts/pie1.*
+.. image:: /charts/pie2.*
+
+.. index:: scatter, scatter plots
+
+scatter plots
+~~~~~~~~~~~~~
+
+.. versionadded:: 0.8
+
+**scatter** can be used to draw scatter plots. It uses
+`matplotlib.pyplot.scatter
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.scatter>`_ and
+inherits all of its keyword arguments. It should be used like this: ::
+
+    scatter(x_expr, y_expr, ...)
+
+Where both *x_expr* and *y_expr* are (expressions returning) one-dimensional
+arrays (for example an entity field or a groupby expression with only one
+dimension).
+
+Optional keyword arguments include (among others, see above link):
+
+* *c*: to set the color of each circle. A color will be assigned for
+       each different value of this argument.
+* *s*: to set the surface of each circle (mutually exclusive with the *r*
+       argument).
+* *r*: to set the radius of each circle (`r=expr` is equivalent to
+       `s=pi * expr ** 2`). It is mutually exclusive with the *s* argument.
+       The *r* argument is specific to liam2.
+
+Examples: ::
+
+    - salary: 10000 + uniform() * 50000
+    - area: 3.1415 * (4 + 1.5 * children.count()) ** 2
+    - scatter(age, salary, c=eduach, s=area, alpha=0.5s, grid=True)
+    - scatter(normal(), normal(), c=age, r=2 ** eduach)
+
+.. image:: /charts/scatter1.*
+.. image:: /charts/scatter2.*
+
+.. index:: boxplot
+
+boxplot
+~~~~~~~
+
+.. versionadded:: 0.8
+
+**boxplot** can be used to draw `box plots
+<http://en.wikipedia.org/wiki/Box_plot>`_. It uses
+`matplotlib.pyplot.boxplot
+<http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.boxplot>`_ and
+inherits all of its keyword arguments. There are two ways to use it: ::
+
+    boxplot(1d_expr1, 1d_expr2, ...)
+    boxplot(2d_expr, ...)
+
+Examples: ::
+
+    - boxplot(age[gender], age[not gender])
+    - boxplot(groupby(eduach, expr=age, filter=eduach != -1))
+
+.. image:: /charts/bplot1.*
+.. image:: /charts/bplot2.*
 
 .. index:: interactive console, debugging
 
 Debugging and the interactive console
 =====================================
 
-LIAM 2 features an interactive console which allows you to interactively
+LIAM2 features an interactive console which allows you to interactively
 explore the state of the memory either during or after a simulation completed.
 
 You can reach it in two ways. You can either pass "-i" as the last argument
@@ -1604,8 +1946,11 @@ should produce. The behavior when an assertion fails is determined by
 the :ref:`assertions-label` simulation option.
 
 - assertTrue(expr): evaluates the expression and check its result is True.
-- assertEqual(expr1, expr2): evaluates both expressions and check their 
+- assertFalse(expr): evaluates the expression and check its result is False.
+- assertEqual(expr1, expr2): evaluates both expressions and check their
   results are equal.
+- assertNanEqual(expr1, expr2): evaluates both expressions and check their
+  results are equal, even in the presence of nans (because normally nan != nan).
 - assertEquiv(expr1, expr2): evaluates both expressions and check their
   results are equal tolerating a difference in shape (though they must be
   compatible).

@@ -1,0 +1,123 @@
+aftermath
+=========
+
+I am not entirely thrilled by __no_eval__. It might be better to evaluate all
+arguments manually. Since we want it to be as short as possible, we can do it
+like this:
+
+    def _compute(self, context, expr, filter=None, skip_na=True):
+        filter, skip_na = expr_eval((filter, skip_na), context)
+
+
+decision
+========
+* no __init__ for most functions (signature inferred & args checked) by
+  inspect(compute) or manual signature
+* storage in .children because no function, even non-simple should ever need
+  to see it (or maybe in some very rare cases): only the generic code to pass
+  arguments to compute should need it.
+* all args evaluated except those in __no_eval__
+* __fields__ not necessary because .children is used as storage
+
+rough steps to implement
+========================
+
+4) manually add signature for functions using varargs/kw-only args:
+   groupby, show/qshow, csv, charts, min(x, y, z), dump
+5) get signature for (non-numpy) "simple" functions from inspect(compute)
+   if **kw present and no manual signature present => raise
+8) add __no_eval__ field to "non-simple" functions
+9) eval all args (except those in __no_eval__) in non-simple functions
+10) update non-simple functions to use compute(context, *a, **kw) instead of
+    evaluate and not evaluate themselves their "simple arguments"
+
+# optional (ie not needed for cache)
+1) make wrapper(s) for "numpy functions"
+   eg npchangearray(np.clip, coerce)
+   eg nprandom(np.random.normal, always(float),
+               (('loc', 0.0), ('scale', 1.0), ('size', None)))
+2) make wrapper for other "simple functions"
+   gini = make_func(gini, dtype=always(float), base=AggregateFunc)
+   eg make_func(gini, always(float),
+               (('loc', 0.0), ('scale', 1.0), ('size', None)))
+3) provide a few "standard" dtype funcs/factories: always(type), coerce_types,
+   first_arg_dtype. dtpye method in Expr classes should be defined:
+   dtype = always(int)
+
+Random observations which were taken into account:
+
+* groupby, show/qshow, csv, charts, min(x, y, z), dump and NumpyFunction*
+  (but this one could be changed) use *args (and kw-only args).
+  inspect(compute) will not work (on Python2) for those => we need to specify
+  the signature manually (like for builtin funcs) until we switch to (require)
+  Python 3.
+
+* links, tfunc, matching, align(link=), new/clone and groupby fiddle with the
+  context and need __no_eval__.
+
+* we can store everything in args only, provided we know the default values of
+  all optional arguments, even for builtin funcs and funcs with kw-only
+  arguments. For kwargs-only args (like in groupby), we store "normal" args
+  then kw-only args sorted by key/name.
+
+* "non-numpy" simple (all args evaluated in current ctx) functions:
+  - manual aggregates (sum, count, average, gini)
+  - choice, trunc, dump, csv, (q)show, remove, breakpoint, asserts,
+  - align with no "link"
+  - charts
+  - regressions (but those are CompoundExpression)
+
+* exporting "pure python" np functions should only be a matter of:
+  std = npagg(np.std, None, lambda c: float)
+
+* defining a "simple" function should only be a matter of:
+
+    def gini(values):
+        ...
+        return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
+    gini = make_func(gini, dtype=always(float), base=AggregateFunc)
+
+  or, using a decorator:
+
+    @make_func(dtype=always(float), base=AggregateFunc)
+    def gini(values):
+        ...
+        return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
+
+* for builtin/C functions, we need to provide the signature. There are several
+  options to do that:
+  a) normal = nprandom(np.random.normal, None, always(float),
+                       (('loc', 0.0), ('scale', 1.0), ('size', None)))
+  b) normal = nprandom(np.random.normal, None, always(float),
+                       ('loc', 0.0, 'scale', 1.0, 'size', None))
+  c) normal = nprandom(np.random.normal, always(float),
+                      'loc, scale, size', (0.0, 1.0, None))
+  Even though it is the longest (and annoying to type), I think option a) is
+  the best by a long shot because it maps directly to dict, it is more natural
+  and less error-prone than the other syntaxes.
+
+options
+=======
+
+1) __init__ signature:
+   a) explicit args: better behavior with IDE etc. <=> 3c
+      if I know the default values for all (potential) kw arguments,
+      I can convert all the non-kw-only args to (non-kw)args
+   b) *args, **kwargs
+2) storage:
+   a) .children # common for all ops
+   b) .args and .kwargs # common for all functions
+   c) specific fields (eg .expr)
+3) how to know which fields to traverse/cache
+   a) standard hierarchy (.children or .args and .kwargs) (=> 2a or 2b)
+   b) __fields__ manually (=> 2c)
+   c) from __init__ signature (<=> 1a)
+   d) __eval_args__ + __no_eval_args (=> 4d)
+4) how to specify which arguments should be evaluated
+   a) override _eval_args if not all fields should be evaluated
+   b) __no_eval_args__ field
+   c) __eval_args__ field
+   d) __no_eval_args__ + __eval_args__ fields
+   e) wrap in specific obj:
+      def __init__(self, expr, num_periods=1, missing='auto'):
+          FuncExpr.__init__(self, NoEval(expr), num_periods, missing)
