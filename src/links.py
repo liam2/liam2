@@ -231,7 +231,8 @@ class LinkGet(LinkExpression):
                             'mv': missing_value})
 
     def __str__(self):
-        if self.missing_value is None:
+        if (self.missing_value is None and
+                isinstance(self.target_expr, Variable)):
             return '%s.%s' % (self.link, self.target_expr)
         else:
             return super(LinkGet, self).__str__()
@@ -291,7 +292,6 @@ class Aggregate(LinkExpression):
 
     def eval_rows(self, source_rows, expr_value, context):
         raise NotImplementedError()
-
 
 
 class Sum(Aggregate):
