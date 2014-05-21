@@ -175,6 +175,7 @@ class Entity(object):
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}))
 
+    # noinspection PyProtectedMember
     def attach_and_resolve_links(self, entities):
         for link in self.links.itervalues():
             link._attach(self)
@@ -241,10 +242,10 @@ class Entity(object):
             else:
                 # variable-method hybrids are handled by the self.variable
                 # property
-                self._methods = [(k, MethodSymbol(k, self))
-                                 for k, v in self.process_strings.iteritems()
-                                 if self.ismethod(v) and
-                                    k not in self.stored_fields]
+                self._methods = \
+                    [(k, MethodSymbol(k, self))
+                     for k, v in self.process_strings.iteritems()
+                     if self.ismethod(v) and k not in self.stored_fields]
         return self._methods
 
     def all_symbols(self, global_context):
@@ -262,7 +263,8 @@ class Entity(object):
         symbols.update(self.methods)
         return symbols
 
-    def parse_expr(self, k, v, context):
+    @staticmethod
+    def parse_expr(k, v, context):
         if isinstance(v, (bool, int, float)):
             return Assignment(v)
         elif isinstance(v, basestring):

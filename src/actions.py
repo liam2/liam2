@@ -149,7 +149,6 @@ class AssertTrue(Assert):
             return str(self.args[0]) + " is not True"
 
 
-
 class AssertFalse(Assert):
     def eval_assertion(self, context, value):
         if value:
