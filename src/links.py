@@ -11,6 +11,9 @@ from expr import (Expr, Variable, getdtype, expr_eval, missing_values,
 from context import context_length
 from utils import deprecated
 
+#TODO: merge this typemap with the one in tsum
+counting_typemap = {bool: int, int: int, float: float}
+
 
 class Link(object):
     def __init__(self, name, link_field, target_entity_name,
@@ -39,7 +42,7 @@ class Link(object):
     def _target_context(self, context):
         # we need a "fresh" context (fresh_data=True) so that if we come from
         #  a subset context (dict instead of EntityContext, eg in a new()
-        # child), the target_expression must be evaluated on an unfiltered
+        # child), the target_expr must be evaluated on an unfiltered
         # target context (because, even if the current context is filtered,
         # there is no restriction on where the link column ids can point to (
         # they can point to ids outside the filter)
@@ -129,28 +132,28 @@ class LinkExpression(FunctionExpr):
     def traverse(self, context):
         yield self
 
-
-class LinkValue(LinkExpression):
-    funcname = "linkvalue"
-    no_eval = ('target_expression',)
-
-    def traverse(self, context):
-        #XXX: don't we also need the fields within the target expression?
-        #noinspection PyProtectedMember
-        yield Variable(self.link._link_field)
-        yield self
-
     def dtype(self, context):
         target_context = self.target_context(context)
-        return getdtype(self.target_expression, target_context)
+        return getdtype(self.target_expr, target_context)
 
     @property
     def link(self):
         return self.args[0]
 
     @property
-    def target_expression(self):
+    def target_expr(self):
         return self.args[1]
+
+
+class LinkValue(LinkExpression):
+    funcname = "linkvalue"
+    no_eval = ('target_expr',)
+
+    def traverse(self, context):
+        #XXX: don't we also need the fields within the target expression?
+        #noinspection PyProtectedMember
+        yield Variable(self.link._link_field)
+        yield self
 
     @property
     def missing_value(self):
@@ -174,31 +177,31 @@ class LinkValue(LinkExpression):
         lv = self
         link_chain = [lv.link]
         # find the deepest LinkValue
-        while isinstance(lv.target_expression, LinkValue):
-            lv = lv.target_expression
+        while isinstance(lv.target_expr, LinkValue):
+            lv = lv.target_expr
             link_chain.append(lv.link)
-        assert isinstance(lv.target_expression, Link)
+        assert isinstance(lv.target_expr, Link)
 
         # add one more link to the chain. Previously, we modified
-        # lv.target_expression inplace and it was easier but this relied on the
+        # lv.target_expr inplace and it was easier but this relied on the
         # fact that we cannot currently store partial links in variables,
         # eg: "p: partner" then "x: p.household" and this could be supported
         # some day.
-        result = lv.target_expression.get(key, missing_value)
+        result = lv.target_expr.get(key, missing_value)
         for link in link_chain[::-1]:
             result = LinkValue(link, result)
         return result
 
     __getattr__ = get
 
-    def compute(self, context, link, target_expression, missing_value=None):
+    def compute(self, context, link, target_expr, missing_value=None):
         """
         link must be a Link instance
-        target_expression can be any expression (it will be evaluated on the
+        target_expr can be any expression (it will be evaluated on the
                           target rows)
         """
         assert isinstance(link, Link)
-        assert isinstance(target_expression, Expr), str(type(target_expression))
+        assert isinstance(target_expr, Expr), str(type(target_expr))
 
         #noinspection PyProtectedMember
         target_ids = expr_eval(Variable(link._link_field), context)
@@ -209,7 +212,7 @@ class LinkValue(LinkExpression):
         missing_int = missing_values[int]
         target_rows = id_to_rownum[target_ids]
 
-        target_values = expr_eval(target_expression, target_context)
+        target_values = expr_eval(target_expr, target_context)
         if missing_value is None:
             missing_value = get_missing_value(target_values)
 
@@ -222,7 +225,7 @@ class LinkValue(LinkExpression):
                             'mv': missing_value})
 
     def __str__(self):
-        return '%s.%s' % (self.link, self.target_expression)
+        return '%s.%s' % (self.link, self.target_expr)
     __repr__ = __str__
 
 
@@ -230,12 +233,8 @@ class AggregateLink(LinkExpression):
     no_eval = ('target_expr', 'target_filter')
 
     @property
-    def link(self):
-        return self.args[0]
-
-    @property
     def target_filter(self):
-        return self.args[1]
+        return self.args[2]
 
     def compute(self, context, link, target_expr, filter_expr=None):
         # assert isinstance(context, EntityContext), \
@@ -288,14 +287,6 @@ class AggregateLink(LinkExpression):
 class SumLink(AggregateLink):
     funcname = 'sumlink'
 
-    @property
-    def target_expr(self):
-        return self.args[1]
-
-    @property
-    def target_filter(self):
-        return self.args[2]
-
     def eval_rows(self, source_rows, expr_value, context):
         # We can't use a negative value because that is not allowed by
         # bincount, and using a value too high will uselessly increase the size
@@ -330,11 +321,7 @@ class SumLink(AggregateLink):
             return counts * expr_value if expr_value is not 1 else counts
 
     def dtype(self, context):
-        target_context = self.target_context(context)
-        expr_dype = getdtype(self.target_expr, target_context)
-        #TODO: merge this typemap with the one in tsum
-        typemap = {bool: int, int: int, float: float}
-        return typemap[expr_dype]
+        return counting_typemap[super(SumLink, self).dtype(context)]
 
     def __str__(self):
         if self.target_filter is not None:
@@ -349,7 +336,9 @@ class SumLink(AggregateLink):
 class CountLink(SumLink):
     funcname = 'countlink'
 
-    target_expr = None
+    @property
+    def target_expr(self):
+        return 1
 
     @property
     def target_filter(self):
@@ -383,10 +372,6 @@ class AvgLink(SumLink):
 class MinLink(AggregateLink):
     funcname = 'minlink'
     aggregate_func = min
-
-    def dtype(self, context):
-        target_context = self.target_context(context)
-        return getdtype(self.target_expr, target_context)
 
     def eval_rows(self, source_rows, expr_value, context):
         result = np.empty(context_length(context), dtype=expr_value.dtype)

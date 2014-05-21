@@ -241,10 +241,10 @@ class CallNode(Node):
             if isinstance(link, links.LinkValue):
                 # find the link of the deepest LinkValue in the "link chain"
                 lv = link
-                while isinstance(lv.target_expression, links.LinkValue):
-                    lv = lv.target_expression
-                assert isinstance(lv.target_expression, links.Link)
-                link = lv.target_expression
+                while isinstance(lv.target_expr, links.LinkValue):
+                    lv = lv.target_expr
+                assert isinstance(lv.target_expr, links.Link)
+                link = lv.target_expr
             local_context = context.copy()
 
             local_context['__entity__'] = link._target_entity_name
