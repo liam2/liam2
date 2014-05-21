@@ -32,7 +32,7 @@ class Link(object):
             self._target_entity = entities[target_name]
         except KeyError:
             raise Exception("Target of '%s' link in entity '%s' is an "
-                            "unknown entity (%s)" % (self.name,
+                            "unknown entity (%s)" % (self._name,
                                                      self._entity.name,
                                                      target_name))
 
