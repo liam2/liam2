@@ -171,7 +171,7 @@ def ispresent(values):
         raise Exception('%s is not a supported type for ispresent' % dt)
 
 
-# context is needed because in LinkValue we need to know what is the current
+# context is needed because in LinkGet we need to know what is the current
 # entity (so that we can resolve links)
 #TODO: we shouldn't resolve links during the simulation but
 # rather in a "compilation" phase
@@ -725,11 +725,14 @@ class FunctionExpr(EvaluableExpression):
     def kwargs(self):
         return self.children[1]
 
-    def __str__(self):
-        args, kwargs = self.args, self.kwargs
+    @staticmethod
+    def args_str(args, kwargs):
         args = [repr(a) for a in args]
         kwargs = ['%s=%r' % (k, v) for k, v in kwargs]
-        return '%s(%s)' % (self.funcname, ', '.join(args + kwargs))
+        return ', '.join(args + kwargs)
+
+    def __str__(self):
+        return '%s(%s)' % (self.funcname, self.args_str(self.args, self.kwargs))
     __repr__ = __str__
 
 

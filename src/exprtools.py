@@ -236,12 +236,12 @@ class CallNode(Node):
         # evaluated in the context of the target entity
         if (isinstance(callable_ast, types.MethodType) and
                 isinstance(callable_ast.__self__, (links.Link,
-                                                   links.LinkValue))):
+                                                   links.LinkGet))):
             link = callable_ast.__self__
-            if isinstance(link, links.LinkValue):
-                # find the link of the deepest LinkValue in the "link chain"
+            if isinstance(link, links.LinkGet):
+                # find the link of the deepest LinkGet in the "link chain"
                 lv = link
-                while isinstance(lv.target_expr, links.LinkValue):
+                while isinstance(lv.target_expr, links.LinkGet):
                     lv = lv.target_expr
                 assert isinstance(lv.target_expr, links.Link)
                 link = lv.target_expr

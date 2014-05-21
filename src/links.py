@@ -70,26 +70,26 @@ class Many2One(Link):
             else:
                 key = Variable(key)
 
-        return LinkValue(self, key, missing_value)
+        return LinkGet(self, key, missing_value)
 
     __getattr__ = get
 
 
 class One2Many(Link):
     def count(self, target_filter=None):
-        return CountLink(self, target_filter)
+        return Count(self, target_filter)
 
     def sum(self, target_expr, target_filter=None):
-        return SumLink(self, target_expr, target_filter)
+        return Sum(self, target_expr, target_filter)
 
     def avg(self, target_expr, target_filter=None):
-        return AvgLink(self, target_expr, target_filter)
+        return Avg(self, target_expr, target_filter)
 
     def min(self, target_expr, target_filter=None):
-        return MinLink(self, target_expr, target_filter)
+        return Min(self, target_expr, target_filter)
 
     def max(self, target_expr, target_filter=None):
-        return MaxLink(self, target_expr, target_filter)
+        return Max(self, target_expr, target_filter)
 
 
 class PrefixingLink(object):
@@ -144,9 +144,16 @@ class LinkExpression(FunctionExpr):
     def target_expr(self):
         return self.args[1]
 
+    def __str__(self):
+        link, args = self.args[0], self.args[1:]
+        #noinspection PyProtectedMember
+        return '%s.%s(%s)' % (link._name, self.funcname,
+                              self.args_str(args, self.kwargs))
+    __repr__ = __str__
 
-class LinkValue(LinkExpression):
-    funcname = "linkvalue"
+
+class LinkGet(LinkExpression):
+    funcname = "get"
     no_eval = ('target_expr',)
 
     def traverse(self, context):
@@ -165,19 +172,18 @@ class LinkValue(LinkExpression):
         # partner is
         #   ManyToOne
         # partner.mother is (after __init__)
-        #   LinkValue(Link('partner'), Variable('mother'))
+        #   LinkGet(Link('partner'), Link('mother'))
         # partner.mother.household is
-        #   LinkValue(Link('partner'),
-        #             LinkValue(Link('mother'), Variable('household')))
+        #   LinkGet(Link('partner'),
+        #           LinkGet(Link('mother'), Link('household')))
         # partner.mother.household.region is
-        #   LinkValue(Link('partner'),
-        #             LinkValue(Link('mother'),
-        #                       LinkValue(Link('household'),
-        #                                 Variable('region'))))
+        #   LinkGet(Link('partner'),
+        #           LinkGet(Link('mother'),
+        #                   LinkGet(Link('household'), Link('region'))))
         lv = self
         link_chain = [lv.link]
-        # find the deepest LinkValue
-        while isinstance(lv.target_expr, LinkValue):
+        # find the deepest LinkGet
+        while isinstance(lv.target_expr, LinkGet):
             lv = lv.target_expr
             link_chain.append(lv.link)
         assert isinstance(lv.target_expr, Link)
@@ -189,7 +195,7 @@ class LinkValue(LinkExpression):
         # some day.
         result = lv.target_expr.get(key, missing_value)
         for link in link_chain[::-1]:
-            result = LinkValue(link, result)
+            result = LinkGet(link, result)
         return result
 
     __getattr__ = get
@@ -225,11 +231,14 @@ class LinkValue(LinkExpression):
                             'mv': missing_value})
 
     def __str__(self):
-        return '%s.%s' % (self.link, self.target_expr)
+        if self.missing_value is None:
+            return '%s.%s' % (self.link, self.target_expr)
+        else:
+            return super(LinkGet, self).__str__()
     __repr__ = __str__
 
 
-class AggregateLink(LinkExpression):
+class Aggregate(LinkExpression):
     no_eval = ('target_expr', 'target_filter')
 
     @property
@@ -284,9 +293,8 @@ class AggregateLink(LinkExpression):
         raise NotImplementedError()
 
 
-class SumLink(AggregateLink):
-    funcname = 'sumlink'
 
+class Sum(Aggregate):
     def eval_rows(self, source_rows, expr_value, context):
         # We can't use a negative value because that is not allowed by
         # bincount, and using a value too high will uselessly increase the size
@@ -321,21 +329,10 @@ class SumLink(AggregateLink):
             return counts * expr_value if expr_value is not 1 else counts
 
     def dtype(self, context):
-        return counting_typemap[super(SumLink, self).dtype(context)]
-
-    def __str__(self):
-        if self.target_filter is not None:
-            target_filter = ", target_filter=%s" % self.target_filter
-        else:
-            target_filter = ""
-        #noinspection PyProtectedMember
-        return '%s(%s, %s%s)' % (self.funcname, self.link._name,
-                                 self.target_expr, target_filter)
+        return counting_typemap[super(Sum, self).dtype(context)]
 
 
-class CountLink(SumLink):
-    funcname = 'countlink'
-
+class Count(Sum):
     @property
     def target_expr(self):
         return 1
@@ -345,32 +342,19 @@ class CountLink(SumLink):
         return self.args[1]
 
     def compute(self, context, link, target_filter=None):
-        return super(CountLink, self).compute(context, link, 1, target_filter)
-
-    #FIXME: str() should return the new syntax: link.count() instead of
-    # countlink(link)
-    def __str__(self):
-        if self.target_filter is not None:
-            target_filter = ", target_filter=%s" % self.target_filter
-        else:
-            target_filter = ""
-        #noinspection PyProtectedMember
-        return '%s(%s%s)' % (self.funcname, self.link._name, target_filter)
+        return super(Count, self).compute(context, link, 1, target_filter)
 
 
-class AvgLink(SumLink):
-    funcname = 'avglink'
-
+class Avg(Sum):
     def count(self, source_rows, expr_value):
-        sums = super(AvgLink, self).count(source_rows, expr_value)
+        sums = super(Avg, self).count(source_rows, expr_value)
         count = np.bincount(source_rows)
         return sums / count
 
     dtype = always(float)
 
 
-class MinLink(AggregateLink):
-    funcname = 'minlink'
+class Min(Aggregate):
     aggregate_func = min
 
     def eval_rows(self, source_rows, expr_value, context):
@@ -389,30 +373,19 @@ class MinLink(AggregateLink):
             result[rownum] = aggregate_func(v[1] for v in values)
         return result
 
-    def __str__(self):
-        #FIXME: this is the old syntax
-        if self.target_filter is not None:
-            target_filter = ", target_filter=%s" % self.target_filter
-        else:
-            target_filter = ""
-        #noinspection PyProtectedMember
-        return '%s(%s, %s%s)' % (self.funcname, self.link._name,
-                                 self.target_expr, target_filter)
 
-
-class MaxLink(MinLink):
-    funcname = 'maxlink'
+class Max(Min):
     aggregate_func = max
 
 
 def deprecated_functions():
     # all these functions are deprecated
     to_deprecate = [
-        ('countlink', CountLink),
-        ('sumlink', SumLink),
-        ('avglink', AvgLink),
-        ('minlink', MinLink),
-        ('maxlink', MaxLink)
+        ('countlink', Count),
+        ('sumlink', Sum),
+        ('avglink', Avg),
+        ('minlink', Min),
+        ('maxlink', Max)
     ]
     funcs = {}
     for name, func in to_deprecate:

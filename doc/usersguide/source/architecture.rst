@@ -116,9 +116,9 @@ links.py
     contains all link-related code: 
 
     * the *Link* class stores the definition of links
-    * the *LinkValue* class handles ManyToOne links
-    * link functions to handle OneToMany links: countlink, sumlink, avglink,
-      minlink and maxlink
+    * the *LinkGet* class handles ManyToOne links
+    * one class for each method of OneToMany links: *Count*, *Sum*, *Avg*,
+      *Min* and *Max*.
 
 matching.py
     handles the matching() function

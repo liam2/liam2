@@ -386,7 +386,7 @@ class Entity(object):
 
     def compute_lagged_fields(self):
         from tfunc import Lag
-        from links import LinkValue
+        from links import LinkGet
 
         lag_vars = set()
         for p in self.processes.itervalues():
@@ -395,7 +395,7 @@ class Entity(object):
                     for v in node.all_of(Variable):
                         if not isinstance(v, GlobalVariable):
                             lag_vars.add(v.name)
-                    for lv in node.all_of(LinkValue):
+                    for lv in node.all_of(LinkGet):
                         #noinspection PyProtectedMember
                         lag_vars.add(lv.link._link_field)
                         #noinspection PyProtectedMember

@@ -12,7 +12,7 @@ from expr import Expr, Variable, expr_eval, traverse_expr, missing_values, \
     always
 from exprbases import FilteredExpression
 from groupby import GroupBy
-from links import LinkValue, Many2One
+from links import LinkGet, Many2One
 from partition import partition_nd, filter_to_indices
 from importer import load_ndarray
 from utils import PrettyTable, LabeledArray
@@ -405,7 +405,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if filter_expr is not None:
             reverse_link = Many2One("reverse", link._link_field,
                                     context.entity.name)
-            target_filter = LinkValue(reverse_link, filter_expr, False)
+            target_filter = LinkGet(reverse_link, filter_expr, False)
             target_filter_value = expr_eval(target_filter, target_context)
 
             # It is often not a good idea to pre-filter columns like this
