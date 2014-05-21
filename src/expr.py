@@ -641,6 +641,9 @@ class FunctionExpr(EvaluableExpression):
                                's' if nmissing > 1 else '',
                                englishenum(repr(a) for a in missing)))
 
+        # save original arguments before we mess with them
+        self.original_args = args, sorted(kwargs.iteritems())
+
         # move all "non-kwonly" kwargs to args
         # def func(a, b, c, d, e=1, f=1):
         #     pass
@@ -732,7 +735,7 @@ class FunctionExpr(EvaluableExpression):
         return ', '.join(args + kwargs)
 
     def __str__(self):
-        return '%s(%s)' % (self.funcname, self.args_str(self.args, self.kwargs))
+        return '%s(%s)' % (self.funcname, self.args_str(*self.original_args))
     __repr__ = __str__
 
 

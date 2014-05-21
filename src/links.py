@@ -76,20 +76,20 @@ class Many2One(Link):
 
 
 class One2Many(Link):
-    def count(self, target_filter=None):
-        return Count(self, target_filter)
+    def count(self, *args, **kwargs):
+        return Count(self, *args, **kwargs)
 
-    def sum(self, target_expr, target_filter=None):
-        return Sum(self, target_expr, target_filter)
+    def sum(self, *args, **kwargs):
+        return Sum(self, *args, **kwargs)
 
-    def avg(self, target_expr, target_filter=None):
-        return Avg(self, target_expr, target_filter)
+    def avg(self, *args, **kwargs):
+        return Avg(self, *args, **kwargs)
 
-    def min(self, target_expr, target_filter=None):
-        return Min(self, target_expr, target_filter)
+    def min(self, *args, **kwargs):
+        return Min(self, *args, **kwargs)
 
-    def max(self, target_expr, target_filter=None):
-        return Max(self, target_expr, target_filter)
+    def max(self, *args, **kwargs):
+        return Max(self, *args, **kwargs)
 
 
 class PrefixingLink(object):
@@ -145,10 +145,11 @@ class LinkExpression(FunctionExpr):
         return self.args[1]
 
     def __str__(self):
-        link, args = self.args[0], self.args[1:]
+        args, kwargs = self.original_args
+        link, args = args[0], args[1:]
         #noinspection PyProtectedMember
         return '%s.%s(%s)' % (link._name, self.funcname,
-                              self.args_str(args, self.kwargs))
+                              self.args_str(args, kwargs))
     __repr__ = __str__
 
 
