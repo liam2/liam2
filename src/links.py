@@ -58,7 +58,7 @@ class Link(object):
 
 
 class Many2One(Link):
-    def get(self, key, missing_value=None):
+    def get(self, key, *args, **kwargs):
         if isinstance(key, basestring):
             entity = self._target_entity
 
@@ -70,7 +70,7 @@ class Many2One(Link):
             else:
                 key = Variable(key)
 
-        return LinkGet(self, key, missing_value)
+        return LinkGet(self, key, *args, **kwargs)
 
     __getattr__ = get
 
