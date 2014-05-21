@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, division
 
 from itertools import izip, groupby
 from operator import itemgetter
@@ -375,10 +375,7 @@ class AvgLink(SumLink):
     def count(self, source_rows, expr_value):
         sums = super(AvgLink, self).count(source_rows, expr_value)
         count = np.bincount(source_rows)
-        #XXX; use from future import division instead?
-        # this is slightly sub optimal if the value column contains integers
-        # as the data is converted from float to int then back to float
-        return sums.astype(float) / count
+        return sums / count
 
     dtype = always(float)
 
