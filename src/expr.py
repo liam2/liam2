@@ -356,7 +356,13 @@ class Expr(object):
         return SubscriptedExpr(self, key)
 
     def __getattr__(self, key):
-        return ExprAttribute(self, key)
+        if key in {'shape', 'ndim',
+                   'dim_names', 'pvalues', 'row_totals', 'col_totals',
+                   '__len__',
+                   'sum', 'prod', 'std', 'max', 'min'}:
+            return ExprAttribute(self, key)
+        else:
+            raise AttributeError(key)
 
     def traverse(self, context):
         for child in self.children:
