@@ -4,9 +4,9 @@ from itertools import izip, chain
 
 import numpy as np
 
-from expr import (Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
+from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
-                  as_string, collect_variables, traverse_expr,
+                  as_string, collect_variables,
                   get_missing_record, get_missing_vector, FunctionExpr,
                   always, firstarg_dtype)
 from exprbases import (FilteredExpression, CompoundExpression, NumexprFunction,
@@ -244,17 +244,17 @@ class Trunc(FunctionExpr):
 
 
 class Abs(NumexprFunction):
-    funcname = 'abs'
+    argspec = argspec('expr')
     dtype = always(float)
 
 
 class Log(NumexprFunction):
-    funcname = 'log'
+    argspec = argspec('expr')
     dtype = always(float)
 
 
 class Exp(NumexprFunction):
-    funcname = 'exp'
+    argspec = argspec('expr')
     dtype = always(float)
 
 
@@ -404,8 +404,6 @@ class Clone(New):
 
 
 class Dump(TableExpression):
-    funcname = 'dump'
-
     no_eval = ('args',)
     kwonlyargs = {'filter': None, 'missing': None, 'header': True}
 
@@ -472,21 +470,19 @@ class Dump(TableExpression):
     dtype = always(None)
 
 
-#TODO: inherit from NumexprFunction
-class Where(Expr):
-    def __init__(self, cond, iftrue, iffalse):
-        self.cond = cond
-        self.iftrue = iftrue
-        self.iffalse = iffalse
+class Where(NumexprFunction):
+    funcname = 'if'
+    argspec = argspec('cond', 'iftrue', 'iffalse')
 
-    def traverse(self, context):
-        for node in traverse_expr(self.cond, context):
-            yield node
-        for node in traverse_expr(self.iftrue, context):
-            yield node
-        for node in traverse_expr(self.iffalse, context):
-            yield node
-        yield self
+    @property
+    def cond(self):
+        return self.args[0]
+    @property
+    def iftrue(self):
+        return self.args[1]
+    @property
+    def iffalse(self):
+        return self.args[2]
 
     def as_simple_expr(self, context):
         cond = as_simple_expr(self.cond, context)
@@ -511,14 +507,7 @@ class Where(Expr):
         return Where(cond, iftrue, iffalse)
 
     def as_string(self):
-        return "where(%s, %s, %s)" % (as_string(self.cond),
-                                      as_string(self.iftrue),
-                                      as_string(self.iffalse))
-
-    def __str__(self):
-        return "if(%s, %s, %s)" % (self.cond, self.iftrue, self.iffalse)
-
-    __repr__ = __str__
+        return 'where(%s)' % self.format_args_str(*as_string(self.children))
 
     def dtype(self, context):
         assert getdtype(self.cond, context) == bool

@@ -6,9 +6,9 @@ import numpy as np
 
 import config
 from context import context_length
-from expr import (Expr, FunctionExpr, EvaluableExpression, expr_eval,
+from expr import (Expr, FunctionExpr, expr_eval,
                   traverse_expr, getdtype, as_simple_expr, as_string,
-                  get_missing_value, ispresent, LogicalOp)
+                  get_missing_value, ispresent, LogicalOp, AbstractFunction)
 from utils import classproperty
 
 
@@ -203,25 +203,16 @@ class NumpyAggregate(NumpyFunction):
         return func(*args, **kwargs)
 
 
-class NumexprFunction(Expr):
+class NumexprFunction(AbstractFunction):
     """For functions which are present as-is in numexpr"""
-    funcname = None
-
-    def __init__(self, expr):
-        self.expr = expr
 
     def as_simple_expr(self, context):
-        return self.__class__(as_simple_expr(self.expr, context))
+        args, kwargs = as_simple_expr(self.children, context)
+        return self.__class__(*args, **dict(kwargs))
 
     def as_string(self):
-        return '%s(%s)' % (self.funcname, as_string(self.expr))
-
-    def __str__(self):
-        return '%s(%s)' % (self.funcname, self.expr)
-
-    def traverse(self, context):
-        for node in traverse_expr(self.expr, context):
-            yield node
+        args, kwargs = as_string(self.children)
+        return '%s(%s)' % (self.funcname, self.format_args_str(args, kwargs))
 
 
 class TableExpression(FunctionExpr):

@@ -103,6 +103,10 @@ def coerce_types(context, *args):
 def as_simple_expr(expr, context):
     if isinstance(expr, Expr):
         return expr.as_simple_expr(context)
+    elif isinstance(expr, list):
+        return [as_simple_expr(e, context) for e in expr]
+    elif isinstance(expr, tuple):
+        return tuple([as_simple_expr(e, context) for e in expr])
     else:
         return expr
 
@@ -110,6 +114,10 @@ def as_simple_expr(expr, context):
 def as_string(expr):
     if isinstance(expr, Expr):
         return expr.as_string()
+    elif isinstance(expr, list):
+        return [as_string(e) for e in expr]
+    elif isinstance(expr, tuple):
+        return tuple([as_string(e) for e in expr])
     else:
         return str(expr)
 
@@ -508,11 +516,21 @@ class ExprAttribute(EvaluableExpression):
 
 
 # we need to inherit from ExplainTypeError, so that TypeError exceptions are
-# also "explained" for functions using FillArgSpecMeta
-#XXX: it might be a good idea to merge both
-class FillArgSpecMeta(ExplainTypeError):
+# also "explained" for functions using FillFuncNameMeta
+class FillFuncNameMeta(ExplainTypeError):
     def __init__(cls, name, bases, dct):
-        super(FillArgSpecMeta, cls).__init__(name, bases, dct)
+        ExplainTypeError.__init__(cls, name, bases, dct)
+
+        funcname = dct.get('funcname')
+        if funcname is None:
+            funcname = cls.__name__.lower()
+            cls.funcname = funcname
+
+
+#XXX: it might be a good idea to merge both
+class FillArgSpecMeta(FillFuncNameMeta):
+    def __init__(cls, name, bases, dct):
+        FillFuncNameMeta.__init__(cls, name, bases, dct)
 
         compute = cls.get_compute_func()
 
@@ -520,10 +538,10 @@ class FillArgSpecMeta(ExplainTypeError):
         if compute is None:
             return
 
-        funcname = dct.get('funcname')
-        if funcname is None:
-            funcname = cls.__name__.lower()
-            cls.funcname = funcname
+        # funcname = dct.get('funcname')
+        # if funcname is None:
+        #     funcname = cls.__name__.lower()
+        #     cls.funcname = funcname
 
         argspec = dct.get('argspec')
         if argspec is None:
@@ -556,32 +574,13 @@ class FillArgSpecMeta(ExplainTypeError):
         raise NotImplementedError()
 
 
-# this needs to stay in the expr module because of ExprAttribute, which uses
-# DynamicFunctionCall -> GenericFunctionCall -> FunctionExpr
-class FunctionExpr(EvaluableExpression):
-    """
-    Base class for defining (python-level) functions. That is, if you want to
-    make a new function available in LIAM2 models, you should inherit from this
-    class. In most cases, overriding the compute and dtype methods is
-    enough, but your mileage may vary.
-    """
-    __metaclass__ = FillArgSpecMeta
+class AbstractFunction(Expr):
+    __metaclass__ = FillFuncNameMeta
 
     funcname = None
-
-    # argspec is set automatically for pure-python functions, but needs to
-    # be set manually for builtin/C functions.
     argspec = None
-    kwonlyargs = {}
-    kwonlyandvarkw = False
-    no_eval = ()
-
-    @classmethod
-    def get_compute_func(cls):
-        return cls.compute
 
     def __init__(self, *args, **kwargs):
-        #TODO: move this whole thing in a function (in utils?)
         # The behavior/error messages match Python 3.4 (and probably other 3.x)
         argnames = self.argspec.args
         maxargs = len(argnames)
@@ -663,6 +662,63 @@ class FunctionExpr(EvaluableExpression):
 
         args = args + tuple(extra_args)
         Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
+
+    @property
+    def args(self):
+        return self.children[0]
+
+    @args.setter
+    def args(self, value):
+        self.children = (value, self.kwargs)
+
+    @property
+    def kwargs(self):
+        return self.children[1]
+
+    @staticmethod
+    def format_args_str(args, kwargs):
+        """
+        :param args: list of strings
+        :param kwargs: list of (k, v) where both k and v are strings
+        :return: a single string
+        """
+        return ', '.join(list(args) + ['%s=%s' % (k, v) for k, v in kwargs])
+
+    @staticmethod
+    def args_str(args, kwargs):
+        args = [repr(a) for a in args]
+        kwargs = [(str(k), repr(v)) for k, v in kwargs]
+        return AbstractFunction.format_args_str(args, kwargs)
+
+    def __str__(self):
+        return '%s(%s)' % (self.funcname, self.args_str(*self.original_args))
+    __repr__ = __str__
+
+
+# this needs to stay in the expr module because of ExprAttribute, which uses
+# DynamicFunctionCall -> GenericFunctionCall -> FunctionExpr
+class FunctionExpr(EvaluableExpression, AbstractFunction):
+    """
+    Base class for defining (python-level) functions. That is, if you want to
+    make a new function available in LIAM2 models, you should inherit from this
+    class. In most cases, overriding the compute and dtype methods is
+    enough, but your mileage may vary.
+    """
+    __metaclass__ = FillArgSpecMeta
+
+    # argspec is set automatically for pure-python functions, but needs to
+    # be set manually for builtin/C functions.
+    argspec = None
+    kwonlyargs = {}
+    kwonlyandvarkw = False
+    no_eval = ()
+
+    @classmethod
+    def get_compute_func(cls):
+        return cls.compute
+
+    def __init__(self, *args, **kwargs):
+        AbstractFunction.__init__(self, *args, **kwargs)
         self.post_init()
 
     def post_init(self):
@@ -711,27 +767,6 @@ class FunctionExpr(EvaluableExpression):
         args, kwargs = self._eval_args(context)
         return self.compute(context, *args, **kwargs)
 
-    @property
-    def args(self):
-        return self.children[0]
-
-    @args.setter
-    def args(self, value):
-        self.children = (value, self.kwargs)
-
-    @property
-    def kwargs(self):
-        return self.children[1]
-
-    @staticmethod
-    def args_str(args, kwargs):
-        args = [repr(a) for a in args]
-        kwargs = ['%s=%r' % (k, v) for k, v in kwargs]
-        return ', '.join(args + kwargs)
-
-    def __str__(self):
-        return '%s(%s)' % (self.funcname, self.args_str(*self.original_args))
-    __repr__ = __str__
 
 
 class GenericFunctionCall(FunctionExpr):
