@@ -167,7 +167,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
         self.past_error = None
 
     def collect_variables(self, context):
-        if self.link is None:
+        # args[9] is the "link" argument
+        # if self.args.link is None:
+        if self.args[9] is None:
             return FilteredExpression.collect_variables(self, context)
         else:
             # in this case, it's tricky
@@ -286,8 +288,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
                            for row in range(num_rows) if unaligned[row]]))
 
     def compute(self, context, score, need, filter=None, take=None, leave=None,
-                 expressions=None, possible_values=None, errors='default',
-                 frac_need='uniform', link=None, secondary_axis=None):
+                expressions=None, possible_values=None, errors='default',
+                frac_need='uniform', link=None, secondary_axis=None):
         # need is a single scalar
         # if not isinstance(need, (tuple, list, np.ndarray)):
         if np.isscalar(need):
