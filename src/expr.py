@@ -6,9 +6,11 @@ from collections import Counter
 
 import numpy as np
 
+from cache import Cache
 from utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray,
                    FullArgSpec, englishenum)
 from context import EntityContext, EvaluationContext
+
 
 try:
     import numexpr
@@ -37,7 +39,7 @@ except ImportError:
         complete_globals.update(eval_context)
         return eval(expr, complete_globals, {})
 
-expr_cache = {}
+expr_cache = Cache()
 num_tmp = 0
 timings = Counter()
 
@@ -266,21 +268,23 @@ class Expr(object):
                         "displayed but it contains: '%s'." % str(self))
 
     def evaluate(self, context):
-        # period = context.period
+        period = context.period
 
-        # if isinstance(period, np.ndarray):
-        #     assert np.isscalar(period) or not period.shape
-        #     period = int(period)
-        # cache_key = (self, period, context.entity_name, context.filter_expr)
-        # try:
-        #     # check that the key is hashable
-        #     h = hash(cache_key)
-        #     cached_result = expr_cache.get(cache_key, None)
-        #     if cached_result is not None:
-        #         print("CACHE HIT for %s !" % str(cache_key))
-        #     #     return cached_result
-        # except TypeError:
-        #     print("ERROR: %s is not hashable" % str(cache_key))
+        if isinstance(period, np.ndarray):
+            assert np.isscalar(period) or not period.shape
+            period = int(period)
+        cache_key = (self, period, context.entity_name, context.filter_expr)
+        # s = str(cache_key)
+        try:
+            # check that the key is hashable
+            hash(cache_key)
+            cached_result = expr_cache.get(cache_key, None)
+
+            if cached_result is not None:
+                print("CACHE HIT for %s !" % str(cache_key))
+                # return cached_result
+        except TypeError:
+            print("ERROR: %s is not hashable" % str(cache_key))
 
         simple_expr = self.as_simple_expr(context)
         if isinstance(simple_expr, Variable) and simple_expr.name in context:
@@ -331,12 +335,12 @@ class Expr(object):
                 # array shapes, but if we ever use numexpr reduction
                 # capabilities, we will be in trouble
                 res = LabeledArray(res, labels[0], labels[1])
-            # expr_cache[cache_key] = res
-            # if cached_result is not None:
-            #     print("bad cache for key", cache_key)
-            #     eq = np.array_equal(res, cached_result)
-            #     assert eq, "%s != %s" % (res, cached_result)
-            #     return cached_result
+            expr_cache[cache_key] = res
+            if cached_result is not None:
+                assert np.array_equal(res, cached_result), \
+                    "%s != %s" % (res, cached_result)
+                print(">>> OK (match actual result)")
+                # return cached_result
             return res
         # except KeyError, e:
         #     raise add_context(e, s)
@@ -390,27 +394,37 @@ class Expr(object):
         # return set.union(*child_vars) if child_vars else set()
 
     def __eq__(self, other):
-        # if self.astType == 'alias':
-        #     self = self.value
-        # if other.astType == 'alias':
-        #     other = other.value
-        # if not isinstance(other, ASTNode):
-        #     return False
         if not isinstance(other, Expr):
-            # print("bad expr type", self, "vs %s (%s)" % (other, type(other)))
             return False
-        return False
+
+        if not isinstance(other, self.__class__):
+            return False
+
+        def strict_equal(a, b):
+            return isinstance(b, a.__class__) and a == b
+
+        def strict_equal_tuple(t1, t2):
+            return all(strict_equal(e1, e2) for e1, e2 in zip(t1, t2))
+
+        res = self.value == other.value and \
+            strict_equal_tuple(self.children, other.children)
+        if res:
+            if str(self) != str(other):
+                print()
+                print('SHOULD NOT COMPARE EQUAL!')
+                print(str(self).ljust(40), '>>>', self.value, self.children)
+                print(str(other).ljust(40), '>>>', other.value, other.children)
+                raise Exception("should not compare equal")
+        return res
 
     def __hash__(self):
-        # if self.astType == 'alias':
-        #     self = self.value
-        # return hash((self.astType, self.astKind, self.value, self.children))
-        # print("hash", self)
-        # if hasattr(self, 'value'):
-        #     print("we got an attr")
-        #     return hash((self.kind, self.value, self.children))
-        # else:
-        return id(self)
+        return hash((self.__class__.__name__, self.value, self.children))
+
+    def __contains__(self, expr):
+        for node in self.traverse(None):
+            if expr == node:
+                return True
+        return False
 
 
 class EvaluableExpression(Expr):
@@ -661,7 +675,8 @@ class AbstractFunction(Expr):
                                       defaults[nposopt:])])
 
         args = args + tuple(extra_args)
-        Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
+        kwargs = tuple(sorted(kwargs.items()))
+        Expr.__init__(self, 'call', children=(args, kwargs))
 
     @property
     def args(self):
@@ -768,7 +783,6 @@ class FunctionExpr(EvaluableExpression, AbstractFunction):
         return self.compute(context, *args, **kwargs)
 
 
-
 class GenericFunctionCall(FunctionExpr):
     """
     GenericFunctionCall handles calling expressions where the function to run is
@@ -801,6 +815,15 @@ class DynamicFunctionCall(GenericFunctionCall):
     # so we deliberately do not call FunctionExpr.__init__ which does both
     def __init__(self, *args, **kwargs):
         Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
+
+    @property
+    def original_args(self):
+        return self.args, self.kwargs
+
+    def __str__(self):
+        #FIXME
+        r = super(DynamicFunctionCall, self).__str__()
+        return '**DFC** // %s' % r
 
 
 #############
@@ -930,6 +953,7 @@ class ShortLivedVariable(Variable):
 class GlobalVariable(Variable):
     def __init__(self, tablename, name, dtype=None):
         Variable.__init__(self, name, dtype)
+        #FIXME!!!
         self.tablename = tablename
 
     #XXX: inherit from EvaluableExpression?
@@ -1047,6 +1071,8 @@ class SubscriptedGlobal(GlobalVariable):
         return expr_eval(self.key, context)
 
 
+#TODO: this class shouldn't be needed. GlobalArray should be handled in the
+# context
 class GlobalArray(Variable):
     def __init__(self, name, dtype=None):
         Variable.__init__(self, name, dtype)
@@ -1084,6 +1110,7 @@ class GlobalTable(object):
 
 
 #XXX: can we factorise this with FunctionExpr et al.?
+#FIXME: use Expr.__init___
 class MethodCall(EvaluableExpression):
     def __init__(self, entity, name, args, kwargs):
         self.entity = entity

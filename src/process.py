@@ -84,15 +84,7 @@ class Assignment(Process):
         if isinstance(period, np.ndarray):
             assert np.isscalar(period) or not period.shape
             period = int(period)
-        cache_key = (Variable(self.name), period, context.entity_name,
-                     context.filter_expr)
-        if self.expr == BinaryOp('+', Variable('age'), 1):
-            print('!!! removing dirty cache for', cache_key)
-
-        if cache_key in expr_cache:
-            print('!!! removing dirty cache for', cache_key)
-            del expr_cache[cache_key]
-        # expr_cache.pop(cache_key, None)
+        expr_cache.invalidate(Variable(self.name), period, context.entity_name)
 
     def store_result(self, result):
         if result is None:
