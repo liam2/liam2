@@ -239,11 +239,6 @@ def binop(opname, kind='binary', reversed=False):
 
 
 class Expr(object):
-    __fields__ = None
-
-    # TODO: add a check in the metaclass that the class instances effectively
-    # have those fields/attributes defined !!
-
     # we cannot do this in __new__ (args are verified in metaclass.__call__)
     __metaclass__ = ExplainTypeError
 
@@ -397,10 +392,6 @@ class Expr(object):
             # print("bad expr type", self, "vs %s (%s)" % (other, type(other)))
             return False
         return False
-        # for name in self.__fields__:
-        #     if getattr(self, name) != getattr(other, name):
-        #         return False
-        # return True
 
     def __hash__(self):
         # if self.astType == 'alias':
@@ -415,8 +406,6 @@ class Expr(object):
 
 
 class EvaluableExpression(Expr):
-    __fields__ = ('kind', 'value', 'children')
-
     def evaluate(self, context):
         raise NotImplementedError()
 
