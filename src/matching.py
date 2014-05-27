@@ -79,7 +79,7 @@ class Matching(FilteredExpression):
 #            optimized_expr = optimized_exprs.get(pk)
 #            if optimized_expr is None:
 #                for name in pk_names:
-#                    fake_set1['__f_%s' % name].value = individual1[name]
+#                    fake_set1['__f_%s' % name] = individual1[name]
 #                optimized_expr = str(symbolic_expr.simplify())
 #                optimized_exprs[pk] = optimized_expr
 #            set2_scores = evaluate(optimized_expr, mm_dict, set2)
