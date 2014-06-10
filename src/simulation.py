@@ -479,11 +479,9 @@ class Simulation(object):
                             self.longitudinal[varname] = DataFrame({'id':id, period:var})
                     else:
                         self.longitudinal[varname] = DataFrame({'id':id, period:var})
-                else:        
-                    table = DataFrame({'id':id, period:var})       
-                    self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
-    #             pdb.set_trace()
-                #self.entities[2].table
+                        
+                table = DataFrame({'id':id, period:var})       
+                self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
 
             print("- storing period data")
             for entity in entities:
