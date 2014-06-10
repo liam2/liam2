@@ -711,25 +711,10 @@ class Retraite(FilteredExpression):
     def evaluate(self, context):
         expr = self.expr
         values = expr_eval(expr, context)
-        sali = context['longitudinal']['sali']
-        workstate = context['longitudinal']['workstate']
-
-        # Pour l'instant selection a ce niveau des individus ayant plus de 60 ans pour lancer le calcul des retraites
-        info_ind = pd.DataFrame({'id':context['id'], 'agem': context['agem'], 'sexe' : context['sexe'], 
-                                  'nb_born': context['nb_born'], 'nb_pac': context['nb_pac']})
-        #print (context.keys())
-        info_ind  = info_ind.loc[(info_ind['agem'] > 708), :] # 708 = 59 *12
-        info_ind.set_index('id', inplace=True)
-        
-        workstate = workstate.loc[workstate['id'].isin(info_ind.index), :]
-        workstate.set_index('id', inplace=True)
-        sali = sali.loc[sali['id'].isin(info_ind.index), :]
-        sali.set_index('id', inplace=True)
-        
         module = importlib.import_module('run_pension')
-        module.til_pension(sali, workstate, info_ind, yearsim=context['period']//100)
+        module.run_pension(context, yearleg=context['period']//100, cProfile=True)
         values = np.asarray(values)
-        return 'salut'
+        return 'TODO'
         
     def dtype(self, context):
         return float
