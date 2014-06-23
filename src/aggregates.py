@@ -223,7 +223,7 @@ class Gini(FilteredExpression):
         values_sum = cumsum[-1]
         if values_sum == 0:
             print("gini(%s, filter=%s): expression is all zeros (or nan) "
-                  "for filter" % (self.expr, filter_expr))
+                  "for filter" % (self.args[0], filter))
         return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
 
     dtype = always(float)
