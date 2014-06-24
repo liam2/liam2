@@ -5,6 +5,7 @@ from __future__ import print_function
 #import ttk
 import re
 import sys
+import math
 import time
 import operator
 import itertools
@@ -16,6 +17,11 @@ import warnings
 import numpy as np
 import numexpr as ne
 #import psutil
+try:
+    from PyQt4 import QtGui
+    qtavailable = True
+except ImportError:
+    qtavailable = False
 
 import config
 
@@ -80,7 +86,7 @@ class AutoFlushFile(object):
         self.f.flush()
 
 
-def time2str(seconds):
+def time2str(seconds, precise=True):
     minutes = seconds // 60
     hours = minutes // 60
     seconds %= 60
@@ -90,10 +96,15 @@ def time2str(seconds):
         l.append("%d hour%s" % (hours, 's' if hours > 1 else ''))
     if minutes > 0:
         l.append("%d minute%s" % (minutes, 's' if minutes > 1 else ''))
-    if seconds >= 0.005:
-        l.append("%.2f second%s" % (seconds, 's' if seconds > 1 else ''))
-    if not l:
-        l = ["%d ms" % (seconds * 1000)]
+    if precise:
+        if seconds >= 0.005:
+            l.append("%.2f second%s" % (seconds, 's' if seconds > 1 else ''))
+        elif not l:
+            l = ["%d ms" % (seconds * 1000)]
+    else:
+        if int(seconds) or not l:
+            l.append("%d second%s" % (seconds, 's' if seconds > 1 else ''))
+
     return ' '.join(l)
 
 
@@ -528,7 +539,7 @@ def aslabeledarray(data):
 
 
 class ProgressBar(object):
-    def __init__(self):
+    def __init__(self, maximum=100, title=''):
         pass
 
     def update(self, value):
@@ -539,7 +550,7 @@ class ProgressBar(object):
 
 
 class TextProgressBar(ProgressBar):
-    def __init__(self, maximum=100):
+    def __init__(self, maximum=100, title=''):
         ProgressBar.__init__(self)
         self.percent = 0
         self.maximum = maximum
@@ -559,7 +570,7 @@ class TextProgressBar(ProgressBar):
 
 
 #class TkProgressBar(ProgressBar):
-#    def __init__(self, maximum=100):
+#    def __init__(self, maximum=100, title=''):
 #        self.master = tk.Tk()
 #        self.progress = ttk.Progressbar(self.master, orient="horizontal",
 #                                        length=400, mode="determinate")
@@ -575,7 +586,49 @@ class TextProgressBar(ProgressBar):
 #        self.master.destroy()
 
 
-def loop_wh_progress(func, sequence, pbclass=TextProgressBar):
+if qtavailable:
+    class QtProgressBarDialog(QtGui.QDialog):
+        def __init__(self, parent=None, maximum=100, title="Progress"):
+            super(QtProgressBarDialog, self).__init__(parent)
+            self.setWindowTitle(title)
+
+            self.bar = QtGui.QProgressBar()
+            self.bar.setRange(0, maximum)
+            self.bar.setValue(0)
+
+            timeleft_hbox = QtGui.QHBoxLayout()
+            timeleft_hbox.addWidget(QtGui.QLabel("Estimated time left:"))
+            self.label = QtGui.QLabel("n/a")
+            timeleft_hbox.addWidget(self.label)
+
+            vbox = QtGui.QVBoxLayout()
+            vbox.addWidget(self.bar)
+            vbox.addLayout(timeleft_hbox)
+            self.setLayout(vbox)
+
+
+class QtProgressBar(ProgressBar):
+    def __init__(self, maximum=100, title='Progress'):
+        self.app = QtGui.QApplication(sys.argv)
+        self.dialog = QtProgressBarDialog(maximum=maximum, title=title)
+        self.dialog.show()
+        self.maximum = maximum
+        self.start_time = time.time()
+
+    def update(self, value):
+        elapsed = time.time() - self.start_time
+        remaining = elapsed * (self.maximum - value) / value
+        self.dialog.bar.setValue(value)
+        self.dialog.label.setText(time2str(math.ceil(remaining), precise=False))
+        QtGui.qApp.processEvents()
+
+    def destroy(self):
+        self.app.quit()
+
+
+def loop_wh_progress(func, sequence, title='Progress', pbclass=None):
+    if pbclass is None:
+        pbclass = QtProgressBar if qtavailable else TextProgressBar
     pb = pbclass(len(sequence))
     for i, value in enumerate(sequence, start=1):
         try:
@@ -584,11 +637,6 @@ def loop_wh_progress(func, sequence, pbclass=TextProgressBar):
         except StopIteration:
             break
     pb.destroy()
-
-
-#def loop_wh_progress(func, sequence):
-#    app = ProgressBar(func, sequence)
-#    app.mainloop()
 
 
 def count_occurrences(seq):
