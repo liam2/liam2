@@ -1428,6 +1428,8 @@ entities:
                                       abs(age - avg_age_men),
                                       nan)
                 - workless: not work
+                # Note that using links in the score expression slows things
+                # down a lot. See https://github.com/liam2/liam2/issues/128.
                 - partner_id:
                     if(to_marry,
                        matching(set1filter=not gender,
@@ -2177,7 +2179,7 @@ entities:
                 - assertEquiv(imported_field1, -1)
                 - assertEqual(imported_field2, age + 2)
 
-            generate: new('person', number=10000000,
+            generate: new('person', number=100000,
                           age=randint(0, 98),
                           dead=False,
                           gender=choice([False, True]),
@@ -2191,7 +2193,7 @@ simulation:
     init:
         - household: [init_region]
         - person: [
-#            generate,
+            generate,
             test_init,
             test_dump_init
         ]

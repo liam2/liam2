@@ -65,6 +65,10 @@ class Matching(EvaluableExpression):
         used_variables2 = ['id'] + [v[8:] for v in used_variables
                                     if v.startswith('__other_')]
 
+        #TODO: we should detect whether or not we are using non-simple
+        # expressions (EvaluableExpression children) and pre-evaluate them,
+        # because otherwise they are re-evaluated on all of set2 for each
+        # individual in set1. See https://github.com/liam2/liam2/issues/128
         set1 = context_subset(context, set1filter, used_variables1)
         set2 = context_subset(context, set2filter, used_variables2)
         orderby = expr_eval(self.orderby, context)
