@@ -727,13 +727,13 @@ class Depart_Retraite(FilteredExpression):
         expr = self.expr
         values = expr_eval(expr, context)
         module = importlib.import_module('depart_retirement')
-        depart = module.depart_retirment(context, yearleg=context['period']//100, 
+        depart = module.depart_retirement(context, yearleg=context['period']//100, 
                                          cProfile=True, behavior='taux_plein')
         values = np.asarray(values)
-        return 'TODO'
+        return depart
         
     def dtype(self, context):
-        return float
+        return bool
     
 functions = {
     # random
@@ -766,6 +766,6 @@ functions = {
     'new': CreateIndividual,
     'clone': Clone,
     'dump': Dump,
-    'start_retirement': Depart_Retraite,
+    'new_retired': Depart_Retraite,
     'pension_func': Retraite
 }
