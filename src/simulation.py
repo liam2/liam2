@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, division
 
 import time
 import os.path
@@ -22,24 +22,25 @@ import config
 import expr
 
 
-def show_top_times(what, times):
-    count = len(times)
+def show_top_times(what, times, count):
+    total = sum(t for n, t in times)
     print("top %d %s:" % (count, what))
-    for name, timing in times:
-        print(" - %s: %s" % (name, time2str(timing)))
+    for name, timing in times[:count]:
+        percent = 100.0 * timing / total
+        print(" - %s: %s (%d%%)" % (name, time2str(timing), percent))
     print("total for top %d %s:" % (count, what), end=' ')
-    print(time2str(sum(timing for name, timing in times)))
+    print(time2str(sum(timing for name, timing in times[:count])))
 
 
 def show_top_processes(process_time, count):
     process_times = sorted(process_time.iteritems(),
                            key=operator.itemgetter(1),
                            reverse=True)
-    show_top_times('processes', process_times[:count])
+    show_top_times('processes', process_times, count)
 
 
 def show_top_expr(count=None):
-    show_top_times('expressions', expr.timings.most_common(count))
+    show_top_times('expressions', expr.timings.most_common(count), count)
 
 
 def handle_imports(content, directory):
@@ -292,7 +293,7 @@ class Simulation(object):
         return timed(self.data_source.load, self.globals_def,
                      entity_registry)
 
-    def run(self, run_console=False):
+    def run(self, run_console=False, gui=None):
         start_time = time.time()
         h5in, h5out, globals_data = timed(self.data_source.run,
                                           self.globals_def,
@@ -387,12 +388,16 @@ class Simulation(object):
                                          for entity in entities)
 
         try:
+            if gui is not None:
+                gui.notifyProgress.emit(-1, str(self.start_period - 1))
             simulate_period(0, self.start_period - 1, self.init_processes,
                             self.entities, init=True)
             main_start_time = time.time()
             periods = range(self.start_period,
                             self.start_period + self.periods)
             for period_idx, period in enumerate(periods):
+                if gui is not None:
+                    gui.notifyProgress.emit(period_idx, str(period))
                 period_start_time = time.time()
                 simulate_period(period_idx, period,
                                 self.processes, self.entities)
@@ -402,7 +407,9 @@ class Simulation(object):
                     print("(%s elapsed)." % time2str(time_elapsed))
                 else:
                     print()
-
+            if gui is not None:
+                gui.notifyProgress.emit(self.periods, 'n/a')
+                gui.notifyEnd.emit()
             total_objects = sum(period_objects[period] for period in periods)
             total_time = time.time() - main_start_time
             try:
@@ -437,6 +444,8 @@ class Simulation(object):
             h5out.close()
             if h5_autodump is not None:
                 h5_autodump.close()
+            if gui is not None:
+                gui.notifyEnd.emit()
 
     @property
     def console_entity(self):
