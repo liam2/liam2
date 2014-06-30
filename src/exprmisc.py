@@ -709,12 +709,11 @@ class Retraite(FilteredExpression):
         FilteredExpression.__init__(self, expr, filter)
 
     def evaluate(self, context):
-        expr = self.expr
-        values = expr_eval(expr, context)
         module = importlib.import_module('run_pension')
-        module.run_pension(context, yearleg=context['period']//100, cProfile=True)
-        values = np.asarray(values)
-        return 'TODO'
+        pension = module.run_pension(context, yearleg=context['period']//100, 
+                                     output='pension',
+                                     cProfile=True)
+        return pension
         
     def dtype(self, context):
         return float
@@ -724,13 +723,10 @@ class DepartRetraite(FilteredExpression):
         FilteredExpression.__init__(self, expr, filter)
 
     def evaluate(self, context):
-        expr = self.expr
-        values = expr_eval(expr, context)
         module = importlib.import_module('depart_retirement')
-        depart = module.depart_retirement(context, yearleg=context['period']//100, 
+        dates_depart = module.depart_retirement(context, yearleg=context['period']//100, 
                                          cProfile=True, behavior='taux_plein')
-        values = np.asarray(values)
-        return depart
+        return dates_depart
         
     def dtype(self, context):
         return int
