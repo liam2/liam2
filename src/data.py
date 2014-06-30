@@ -451,7 +451,8 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         output_table.flush()
 
     if show_progress:
-        loop_wh_progress(copy_chunk, range(num_chunks))
+        loop_wh_progress(copy_chunk, range(num_chunks),
+                         title="Copying table...")
     else:
         for chunk in range(num_chunks):
             copy_chunk(chunk, chunk)

@@ -93,7 +93,7 @@ def merge_h5(input1_path, input2_path, output_path):
             output_table.append(output_array)
             output_table.flush()
 
-        loop_wh_progress(merge_period, output_periods)
+        loop_wh_progress(merge_period, output_periods, title="Merging...")
         print(" done.")
 
     input1_file.close()

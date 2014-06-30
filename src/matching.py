@@ -120,7 +120,8 @@ class Matching(EvaluableExpression):
             result[id_to_rownum[id1]] = id2
             result[id_to_rownum[id2]] = id1
 
-        loop_wh_progress(match_one_set1_individual, set1tomatch)
+        loop_wh_progress(match_one_set1_individual, set1tomatch,
+                         title="Matching...")
         return result
 
     #noinspection PyUnusedLocal

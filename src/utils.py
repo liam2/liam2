@@ -5,6 +5,7 @@ from __future__ import print_function
 #import ttk
 import re
 import sys
+import math
 import time
 import operator
 import itertools
@@ -16,6 +17,12 @@ import warnings
 import numpy as np
 import numexpr as ne
 #import psutil
+try:
+    from PyQt4 import QtGui, QtCore
+    QtAvailable = True
+except ImportError:
+    QtGui, QtCore = None, None
+    QtAvailable = False
 
 import config
 
@@ -80,7 +87,7 @@ class AutoFlushFile(object):
         self.f.flush()
 
 
-def time2str(seconds):
+def time2str(seconds, precise=True):
     minutes = seconds // 60
     hours = minutes // 60
     seconds %= 60
@@ -90,10 +97,15 @@ def time2str(seconds):
         l.append("%d hour%s" % (hours, 's' if hours > 1 else ''))
     if minutes > 0:
         l.append("%d minute%s" % (minutes, 's' if minutes > 1 else ''))
-    if seconds >= 0.005:
-        l.append("%.2f second%s" % (seconds, 's' if seconds > 1 else ''))
-    if not l:
-        l = ["%d ms" % (seconds * 1000)]
+    if precise:
+        if seconds >= 0.005:
+            l.append("%.2f second%s" % (seconds, 's' if seconds > 1 else ''))
+        elif not l:
+            l = ["%d ms" % (seconds * 1000)]
+    else:
+        if int(seconds) or not l:
+            l.append("%d second%s" % (seconds, 's' if seconds > 1 else ''))
+
     return ' '.join(l)
 
 
@@ -528,7 +540,7 @@ def aslabeledarray(data):
 
 
 class ProgressBar(object):
-    def __init__(self):
+    def __init__(self, maximum=100, title=''):
         pass
 
     def update(self, value):
@@ -539,7 +551,7 @@ class ProgressBar(object):
 
 
 class TextProgressBar(ProgressBar):
-    def __init__(self, maximum=100):
+    def __init__(self, maximum=100, title=''):
         ProgressBar.__init__(self)
         self.percent = 0
         self.maximum = maximum
@@ -559,7 +571,7 @@ class TextProgressBar(ProgressBar):
 
 
 #class TkProgressBar(ProgressBar):
-#    def __init__(self, maximum=100):
+#    def __init__(self, maximum=100, title=''):
 #        self.master = tk.Tk()
 #        self.progress = ttk.Progressbar(self.master, orient="horizontal",
 #                                        length=400, mode="determinate")
@@ -575,8 +587,93 @@ class TextProgressBar(ProgressBar):
 #        self.master.destroy()
 
 
-def loop_wh_progress(func, sequence, pbclass=TextProgressBar):
-    pb = pbclass(len(sequence))
+if QtAvailable:
+    class TaskThread(QtCore.QThread):
+        notifyProgress = QtCore.pyqtSignal(int, str)
+        notifyEnd = QtCore.pyqtSignal()
+
+        def __init__(self, func, *args, **kwargs):
+            super(TaskThread, self).__init__()
+            self.func = func
+            self.args = args
+            self.kwargs = kwargs
+
+        def run(self):
+            return self.func(*self.args, **self.kwargs)
+
+    class QtProgressBarDialog(QtGui.QWidget):
+        notifyProgress = QtCore.pyqtSignal(int, str)
+        notifyEnd = QtCore.pyqtSignal()
+
+        def __init__(self, parent=None, maximum=100, title="Progress",
+                     valuelabel=''):
+            super(QtProgressBarDialog, self).__init__(parent)
+            self.setWindowTitle(title)
+
+            self.bar = QtGui.QProgressBar()
+            self.bar.setRange(0, maximum)
+            self.bar.setValue(0)
+
+            timeleft_hbox = QtGui.QHBoxLayout()
+            timeleft_hbox.addWidget(QtGui.QLabel("Estimated time left:"))
+            self.timeleft_label = QtGui.QLabel("n/a")
+            timeleft_hbox.addWidget(self.timeleft_label)
+
+            if valuelabel:
+                valuelabel_hbox = QtGui.QHBoxLayout()
+                valuelabel_hbox.addWidget(QtGui.QLabel("Current %s:"
+                                                       % valuelabel))
+                self.uservalue_label = QtGui.QLabel("n/a")
+                valuelabel_hbox.addWidget(self.uservalue_label)
+
+            vbox = QtGui.QVBoxLayout()
+            vbox.addWidget(self.bar)
+            if valuelabel:
+                vbox.addLayout(valuelabel_hbox)
+            vbox.addLayout(timeleft_hbox)
+            self.setLayout(vbox)
+
+
+class QtProgressBar(ProgressBar):
+    def __init__(self, maximum=100, title='Progress', valuelabel=''):
+        # make sure we have a global Qt application running
+        if QtGui.QApplication.instance() is None:
+            self.app = QtGui.QApplication(sys.argv)
+        else:
+            self.app = None
+
+        self.dialog = QtProgressBarDialog(maximum=maximum, title=title,
+                                          valuelabel=valuelabel)
+        self.dialog.show()
+        self.maximum = maximum
+        self.start_time = time.time()
+
+    def update(self, idx, uservalue=None):
+        elapsed = time.time() - self.start_time
+        if idx >= 0:
+            self.dialog.bar.setValue(idx)
+        if idx > 0:
+            remaining = math.ceil(elapsed * (self.maximum - idx) / idx)
+            self.dialog.timeleft_label.setText(time2str(remaining,
+                                                        precise=False))
+        if uservalue is not None:
+            self.dialog.uservalue_label.setText(str(uservalue))
+        QtGui.qApp.processEvents()
+
+    def destroy(self):
+        self.dialog.close()
+        if self.app is not None:
+            self.app.quit()
+
+    @property
+    def value(self):
+        return self.dialog.bar.value()
+
+
+def loop_wh_progress(func, sequence, title='Progress', pbclass=None):
+    if pbclass is None:
+        pbclass = QtProgressBar if QtAvailable else TextProgressBar
+    pb = pbclass(len(sequence), title=title)
     for i, value in enumerate(sequence, start=1):
         try:
             func(i, value)
@@ -584,11 +681,6 @@ def loop_wh_progress(func, sequence, pbclass=TextProgressBar):
         except StopIteration:
             break
     pb.destroy()
-
-
-#def loop_wh_progress(func, sequence):
-#    app = ProgressBar(func, sequence)
-#    app.mainloop()
 
 
 def count_occurrences(seq):
@@ -1083,3 +1175,5 @@ class FileProducer(object):
             suffix = "_" + suffix if suffix else ""
             fname = "{entity}_{period}" + suffix + self.ext
         return fname
+
+
