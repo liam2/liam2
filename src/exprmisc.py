@@ -719,7 +719,7 @@ class Retraite(FilteredExpression):
     def dtype(self, context):
         return float
     
-class Depart_Retraite(FilteredExpression):
+class DepartRetraite(FilteredExpression):
     def __init__(self, expr = None, filter=None):
         FilteredExpression.__init__(self, expr, filter)
 
@@ -733,7 +733,7 @@ class Depart_Retraite(FilteredExpression):
         return depart
         
     def dtype(self, context):
-        return bool
+        return int
     
 functions = {
     # random
@@ -766,6 +766,6 @@ functions = {
     'new': CreateIndividual,
     'clone': Clone,
     'dump': Dump,
-    'new_retired': Depart_Retraite,
+    'date_retired': DepartRetraite,
     'pension_func': Retraite
 }
