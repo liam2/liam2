@@ -954,16 +954,20 @@ def expand_wild_tuple(keys, d):
 
 def expand_wild(wild_key, d):
     """
-    expands a multi-level string key (separated by '/') containing wildcards
-    (*) with the keys actually present in a multi-level dictionary.
+    expands a multi-level string key (separated by '/') optionally containing
+    wildcards (*) with the keys actually present in a multi-level dictionary.
 
-    >>> expand_wild('a/*/c', {'a': {'one': {'c': 0}, 'two': {'c': 0}}})
-    ['a/one/c', 'a/two/c']
-
-    >>> expand_wild('a/*/*', {'a': {'one': {'c': 0}, 'two': {'d': 0}}})
+    >>> d = {'a': {'one': {'c': 0}, 'two': {'d': 0}}}
+    >>> expand_wild('a/*/c', d)
+    set(['a/one/c'])
+    >>> sorted(expand_wild('a/*/*', d))
     ['a/one/c', 'a/two/d']
+    >>> expand_wild('a/one/c', d)
+    set(['a/one/c'])
+    >>> expand_wild('a/one/d', d)
+    set([])
     """
-    return ['/'.join(r) for r in expand_wild_tuple(wild_key.split('/'), d)]
+    return {'/'.join(r) for r in expand_wild_tuple(wild_key.split('/'), d)}
 
 
 def multi_get(d, key, default=None):
@@ -1092,7 +1096,8 @@ def field_str_to_type(str_type, context):
     Converts a (field) string type to its Python type.
     """
     if str_type not in str_to_type:
-        raise SyntaxError("'%s' is not a valid type for %s." % context)
+        raise SyntaxError("'%s' is not a valid type for %s."
+                          % (str_type, context))
     return str_to_type[str_type]
 
 
