@@ -35,7 +35,8 @@ def global_variables(globals_def):
     # entity. I guess they should have a class of their own
     # TODO: rename to symbols
     variables = {}
-    for name, global_type in globals_def.iteritems():
+    for name, global_def in globals_def.iteritems():
+        global_type = global_def.get('fields')
         if isinstance(global_type, list):
             # add namespace for table
             variables[name] = GlobalTable(name, global_type)
@@ -46,7 +47,8 @@ def global_variables(globals_def):
                     (name, GlobalVariable('periodic', name, type_))
                     for name, type_ in global_type)
         else:
-            assert isinstance(global_type, type)
+            global_type = global_def['type']
+            assert isinstance(global_type, type), "not a type: %s" % global_type
             variables[name] = GlobalArray(name, global_type)
     return variables
 

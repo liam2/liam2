@@ -43,6 +43,13 @@ def show_top_expr(count=None):
     show_top_times('expressions', expr.timings.most_common(count), count)
 
 
+def expand_periodic_fields(content):
+    periodic = multi_get(content, 'globals/periodic')
+    if isinstance(periodic, list) and \
+            all(isinstance(f, dict) for f in periodic):
+        multi_set(content, 'globals/periodic', {'fields': periodic})
+
+
 def handle_imports(content, directory):
     import_files = content.get('import', [])
     if isinstance(import_files, basestring):
@@ -53,8 +60,8 @@ def handle_imports(content, directory):
         import_directory = os.path.dirname(import_path)
         with open(import_path) as f:
             import_content = handle_imports(yaml.load(f), import_directory)
-            for wild_key in ('globals/periodic', 'globals/*/fields',
-                             'entities/*/fields'):
+            expand_periodic_fields(import_content)
+            for wild_key in ('globals/*/fields', 'entities/*/fields'):
                 multi_keys = expand_wild(wild_key, import_content)
                 for multi_key in multi_keys:
                     import_fields = multi_get(import_content, multi_key)
@@ -76,14 +83,22 @@ class Simulation(object):
     yaml_layout = {
         'import': None,
         'globals': {
-            'periodic': [{
-                '*': str
-            }],
+            'periodic': None,  # either full-blown (dict) description or list
+                               # of fields
             '*': {
+                'path': str,
+                'type': str,
                 'fields': [{
                     '*': None  # Or(str, {'type': str, 'initialdata': bool})
                 }],
-                'type': str
+                'oldnames': {
+                    '*': str
+                },
+                'newnames': {
+                    '*': str
+                },
+                'invert': [str],
+                'transposed': bool
             }
         },
         '#entities': {
@@ -137,8 +152,9 @@ class Simulation(object):
     def __init__(self, globals_def, periods, start_period,
                  init_processes, init_entities, processes, entities,
                  data_source, default_entity=None):
+        #FIXME: what if period has been declared explicitly?
         if 'periodic' in globals_def:
-            globals_def['periodic'].insert(0, ('PERIOD', int))
+            globals_def['periodic']['fields'].insert(0, ('PERIOD', int))
 
         self.globals_def = globals_def
         self.periods = periods
@@ -163,27 +179,22 @@ class Simulation(object):
         with open(fpath) as f:
             content = yaml.load(f)
 
+        expand_periodic_fields(content)
         content = handle_imports(content, simulation_dir)
         validate_dict(content, cls.yaml_layout)
 
         # the goal is to get something like:
         # globals_def = {'periodic': [('a': int), ...],
         #                'MIG': int}
-        globals_def = {}
+        globals_def = content.get('globals', {})
         for k, v in content.get('globals', {}).iteritems():
-            # periodic is a special case
-            if k == 'periodic':
-                type_ = fields_yaml_to_type(v)
+            if "type" in v:
+                v["type"] = field_str_to_type(v["type"], "array '%s'" % k)
             else:
-                # "fields" and "type" are synonyms
-                type_def = v.get('fields') or v.get('type')
-                if isinstance(type_def, basestring):
-                    type_ = field_str_to_type(type_def, "array '%s'" % k)
-                else:
-                    if not isinstance(type_def, list):
-                        raise SyntaxError("invalid structure for globals")
-                    type_ = fields_yaml_to_type(type_def)
-            globals_def[k] = type_
+                #TODO: fields should be optional (would use all the fields
+                # provided in the file)
+                v["fields"] = fields_yaml_to_type(v["fields"])
+            globals_def[k] = v
 
         simulation_def = content['simulation']
         seed = simulation_def.get('random_seed')

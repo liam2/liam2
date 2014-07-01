@@ -4,15 +4,22 @@ import:
 
 globals:
     periodic:
-        - MINR: float
-        - MIG_PERCENT: float
+        path: param\globals.csv
+        transposed: true
+        fields:
+            # PERIOD is implicit
+            # WEMRA is defined in imported1.yml
+            - MINR: float
+            - MIG_PERCENT: float
 
-#    MIG:
-#        type: float
-    MIG: {type: float}
+    MIG:
+        path: param\mig.csv
+        type: float
 
     othertable:
+        path: param\othertable.csv
         fields:
+            - PERIOD: int
             - INTFIELD: int
             - FLOATFIELD: float
 
@@ -2193,7 +2200,7 @@ simulation:
     init:
         - household: [init_region]
         - person: [
-            generate,
+#            generate,
             test_init,
             test_dump_init
         ]

@@ -293,6 +293,21 @@ def compression_str2filter(compression):
         return "uncompressed", None
 
 
+def stream_to_array(fields, datastream, numlines=None, invert=()):
+    # make sure datastream is an iterator, not a list, otherwise it could
+    # loop indefinitely as it will never be consumed.
+    # Note that, contrary to what I thought, we shouldn't make a special case
+    # for that as np.fromiter(islice(iter(l), max_rows)) is faster than
+    # np.array(l[:max_rows])
+    datastream = iter(datastream)
+    dtype = np.dtype(fields)
+    count = -1 if numlines is None else numlines
+    array = fromiter(datastream, dtype=dtype, count=count)
+    for field in invert:
+        array[field] = ~array[field]
+    return array
+
+
 def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
                     title=None, invert=(), buffersize=10 * 2 ** 20,
                     compression=None):
@@ -535,10 +550,12 @@ def load_def(localdir, ent_name, section_def, required_fields):
     if 'type' in section_def:
         csv_filename = section_def.get('path', ent_name + ".csv")
         csv_filepath = complete_path(localdir, csv_filename)
-        str_type = section_def.get('type')
-        celltype = None
-        if str_type is not None:
+        str_type = section_def['type']
+        if isinstance(str_type, basestring):
             celltype = field_str_to_type(str_type, "array '%s'" % ent_name)
+        else:
+            assert isinstance(str_type, type)
+            celltype = str_type
         return 'ndarray', load_ndarray(csv_filepath, celltype)
 
     fields_def = section_def.get('fields')
@@ -547,10 +564,13 @@ def load_def(localdir, ent_name, section_def, required_fields):
             if isinstance(fdef, basestring):
                 raise SyntaxError("invalid field declaration: '%s', you are "
                                   "probably missing a ':'" % fdef)
-        fields = fields_yaml_to_type(fields_def)
+        if all(isinstance(fdef, dict) for fdef in fields_def):
+            fields = fields_yaml_to_type(fields_def)
+        else:
+            assert all(isinstance(fdef, tuple) for fdef in fields_def)
+            fields = fields_def
     else:
         fields = None
-
     newnames = merge_dicts(invert_dict(section_def.get('oldnames', {})),
                            section_def.get('newnames', {}))
     transpose = section_def.get('transposed', False)
@@ -675,6 +695,9 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
                 'oldnames': {
                     '*': str
                 },
+                'newnames': {
+                    '*': str
+                },
                 'invert': [str],
                 'transposed': bool
             },
@@ -685,6 +708,9 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
                     '*': str
                 }],
                 'oldnames': {
+                    '*': str
+                },
+                'newnames': {
                     '*': str
                 },
                 'invert': [str],
@@ -752,6 +778,7 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
                                     datastream, numlines,
                                     title="%s table" % global_name,
                                     buffersize=buffersize,
+                                    #FIXME: handle invert
                                     compression=compression)
                     if csvfile is not None:
                         csvfile.close()
