@@ -53,6 +53,21 @@ def global_variables(globals_def):
     return variables
 
 
+# This is an awful workaround for the fact that tables.Array does not support
+# fancy indexes with negative indices.
+# See https://github.com/PyTables/PyTables/issues/360
+class DiskBackedArray(object):
+    def __init__(self, arr):
+        self.arr = arr
+
+    def __getitem__(self, item):
+        # load the array entirely in memory before indexing it
+        return self.arr[:][item]
+
+    def __getattr__(self, item):
+        return getattr(self.arr, item)
+
+
 class Entity(object):
     """
     fields is a list of tuple (name, type)
@@ -117,11 +132,16 @@ class Entity(object):
         self.input_rows = {}
         #TODO: it is unnecessary to keep periods which have already been
         # simulated, because (currently) when we go back in time, we always go
-        # back using the output table.
+        # back using the output table... but periods before the start_period
+        # are only present in input_index
+        #FIXME: the proper way to fix this is to copy the input_index into
+        # the output_index during H5Date.run() and not keep input_index
+        # beyond that point.
         self.input_index = {}
 
         self.output_rows = {}
         self.output_index = {}
+        self.output_index_node = None
 
         self.base_period = None
         # we need a separate field, instead of using array['period'] to be able
@@ -469,6 +489,24 @@ class Entity(object):
         for var in local_var_names:
             del temp_vars[var]
 
+    def flush_index(self, period):
+        # keep an in-memory copy of the index for the current period
+        self.output_index[period] = self.id_to_rownum
+
+        # also flush it to disk
+        h5file = self.output_index_node._v_file
+        h5file.createArray(self.output_index_node, "_%d" % period,
+                           self.id_to_rownum, "Period %d index" % period)
+
+        # if an old index exists (this is not the case for the first period!),
+        # point to the one on the disk, instead of the one in memory,
+        # effectively clearing the one in memory
+        idxname = '_%d' % (period - 1)
+        if idxname in self.output_index_node:
+            prev_disk_array = getattr(self.output_index_node, idxname)
+            # DiskBackedArray is a workaround for pytables#360 (see above)
+            self.output_index[period - 1] = DiskBackedArray(prev_disk_array)
+
     def store_period_data(self, period):
         if config.debug:
             temp_mem = sum(v.nbytes for v in self.temp_variables.itervalues()
@@ -484,11 +522,11 @@ class Entity(object):
 
         if period in self.output_rows:
             raise Exception("trying to modify already simulated rows")
-        else:
-            startrow = self.table.nrows
-            self.array.append_to_table(self.table)
-            self.output_rows[period] = (startrow, self.table.nrows)
-            self.output_index[period] = self.id_to_rownum
+
+        startrow = self.table.nrows
+        self.array.append_to_table(self.table)
+        self.output_rows[period] = (startrow, self.table.nrows)
+        self.flush_index(period)
         self.table.flush()
 
 #    def compress_period_data(self, level):

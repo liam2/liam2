@@ -603,6 +603,7 @@ def index_table_light(table):
     """
     table is an iterable of rows, each row is a mapping (name -> value)
     Rows must contain at least a 'period' column and must be sorted by period.
+    Returns a dict: {period: start_row, stop_row}
     """
     rows_per_period = {}
     current_period = None
@@ -781,6 +782,7 @@ class H5Data(DataSource):
             entities_tables = dataset['entities']
             output_entities = output_file.createGroup("/", "entities",
                                                       "Entities")
+            output_indexes = output_file.createGroup("/", "indexes", "Indexes")
             print(" * copying tables")
             for ent_name, entity in entities.iteritems():
                 print(ent_name, "...")
@@ -789,6 +791,8 @@ class H5Data(DataSource):
 
                 table = entities_tables[ent_name]
 
+                index_node = output_file.createGroup("/indexes", ent_name)
+                entity.output_index_node = index_node
                 entity.input_index = table.id2rownum_per_period
                 entity.input_rows = table.period_index
                 entity.input_table = table.table

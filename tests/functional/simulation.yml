@@ -1510,6 +1510,10 @@ entities:
 
                 - assertEqual(lag(age, 2), lag(lag(age)))
 
+                # this tests whether id2rownum works correctly for lags of more
+                # than one period
+                - prev_p_age: lag(partner.age, 2)
+
                 # for clones lag(age, 2) is -1, even if the parent of the clone
                 # is alive in period - 2
                 - cloned: (m_id == f_id) and (m_id != -1)
@@ -2270,22 +2274,22 @@ simulation:
                    test_clone,
 
                    # aggregates
-                   test_all,
-                   test_any,
-                   test_count,
-                   test_sum,
-                   test_avg,
-                   test_std,
-                   test_min,
-                   test_max,
-                   test_median,
-                   test_percentile,
-                   test_gini,
+#                   test_all,
+#                   test_any,
+#                   test_count,
+#                   test_sum,
+#                   test_avg,
+#                   test_std,
+#                   test_min,
+#                   test_max,
+#                   test_median,
+#                   test_percentile,
+#                   test_gini,
 
                    # regressions
                    test_logit_regr,
-                   test_cont_regr,
-                   test_log_regr,
+#                   test_cont_regr,
+#                   test_log_regr,
 
                    # temporal
                    test_lag,
@@ -2293,27 +2297,28 @@ simulation:
                    test_duration,
 
                    # links
-                   test_o2m,
-                   test_mixed_links,
+ #                  test_o2m,
+ #                  test_mixed_links,
 
                    # output
-                   test_groupby,
+#                   test_groupby,
 #                   test_dump,
-                   test_csv,
+#                   test_csv,
                    
                    imported_process,
                    test_imported_process,
                    
                    # alignment
-                   test_align,
+#                   test_align,
                    test_align_abs,
                    
                    # misc
                    test_choice,
                    show_weight,
-                   [marriage, 4],
+#                   [marriage, 4],
         ]
-        - household: [num_persons, nch, maxnch, test_align_link
+        - household: [num_persons, nch, maxnch,
+#                      test_align_link,
 #                      dump_csv_h,
                      ]
 
@@ -2327,5 +2332,5 @@ simulation:
 #    autodiff: True
 
     random_seed: 0
-    periods: 1
+    periods: 20
 #    skip_shows: True
