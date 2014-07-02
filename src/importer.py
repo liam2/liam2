@@ -426,9 +426,9 @@ def interpolate(target, arrays, id_periods, fields):
         # 10, 2004, 6200.0
         # 10, 2005, 7300.0
         prev_row = input_stream.next()
-        fields_to_set = [name for name in prev_row.dtype.names
-                                 if name in target.dtype.names and
-                                    name not in ('id', 'period')]
+        fields_to_set = \
+            [name for name in prev_row.dtype.names
+             if name in target.dtype.names and name not in ('id', 'period')]
         fields_to_interpolate = [name for name in fields_to_set
                                  if name in fields]
         fields_to_copy = [name for name in fields_to_set
