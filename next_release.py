@@ -5,8 +5,7 @@
 from os.path import join
 from make_release import relname2fname
 
-changes_template = """
-New features
+changes_template = """New features
 ------------
 
 * added a feature.
