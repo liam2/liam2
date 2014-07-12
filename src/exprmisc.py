@@ -725,16 +725,13 @@ class DepartRetraite(FilteredExpression):
     def evaluate(self, context):
         selected = expr_eval(self.filter, context)
         context = context_subset(context, selected)
-        dates_tauxplein = run_pension(context, context['period']//100, 'year', False, 'dates_taux_plein', False)
-        dates = np.maximum(dates_tauxplein['RSI'], dates_tauxplein['RG'], dates_tauxplein['FP'])
+        dates_taux_plein = run_pension(context, context['period']//100, 'year', False, 'dates_taux_plein', False)
         output = -1*np.ones(len(selected))
-        output[selected] = dates.astype(int)
+        output[selected] = dates_taux_plein
         return output
         
     def dtype(self, context):
         return int
-    
-
     
 functions = {
     # random
