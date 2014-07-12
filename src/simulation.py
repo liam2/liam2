@@ -497,9 +497,6 @@ class Simulation(object):
             period_objects[period] = sum(len(entity.array)
                                          for entity in entities)
             
-            
-            
-
         try:
             assert(self.time_scale in time_period)
             month_periodicity = time_period[self.time_scale]

@@ -4,8 +4,7 @@ from collections import Sequence
 from itertools import izip, chain
 
 import numpy as np
-import pandas as pd
-import importlib
+from til.pgm.run_pension import run_pension
 
 import config
 from expr import (Expr, Variable,
@@ -709,11 +708,12 @@ class Retraite(FilteredExpression):
         FilteredExpression.__init__(self, expr, filter)
 
     def evaluate(self, context):
-        module = importlib.import_module('run_pension')
-        pension = module.run_pension(context, yearleg=context['period']//100, 
-                                     output='pension',
-                                     cProfile=True)
-        return pension
+        selected = expr_eval(self.filter, context)
+        context = context_subset(context, selected)
+        result = run_pension(context, context['period']//100, 'year', False, 'pension', False)
+        output = -1*np.ones(len(selected))
+        output[selected] = result
+        return output
         
     def dtype(self, context):
         return float
@@ -723,13 +723,18 @@ class DepartRetraite(FilteredExpression):
         FilteredExpression.__init__(self, expr, filter)
 
     def evaluate(self, context):
-        module = importlib.import_module('depart_retirement')
-        dates_depart = module.depart_retirement(context, yearleg=context['period']//100, 
-                                         cProfile=True, behavior='taux_plein')
-        return dates_depart
+        selected = expr_eval(self.filter, context)
+        context = context_subset(context, selected)
+        dates_tauxplein = run_pension(context, context['period']//100, 'year', False, 'dates_taux_plein', False)
+        dates = np.maximum(dates_tauxplein['RSI'], dates_tauxplein['RG'], dates_tauxplein['FP'])
+        output = -1*np.ones(len(selected))
+        output[selected] = dates.astype(int)
+        return output
         
     def dtype(self, context):
         return int
+    
+
     
 functions = {
     # random
