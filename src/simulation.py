@@ -9,6 +9,8 @@ import random
 import numpy as np
 import tables
 import yaml
+              
+from pandas import DataFrame, HDFStore
 
 from data import H5Data, Void
 from entities import Entity
@@ -461,8 +463,8 @@ class Simulation(object):
                         print("done.")
                     self.start_console(process.entity, period,
                                        globals_data)
-            # update longitudinal                 
-            from pandas import DataFrame, HDFStore
+
+            # update longitudinal
             person = [x for x in entities if x.name == 'person'][0] # maybe we have a get_entity or anything more nice than that #TODO: check
             id = person.array.columns['id'] 
 
@@ -475,13 +477,21 @@ class Simulation(object):
                         input_longitudinal = input_file.root.longitudinal
                         if varname in input_longitudinal:
                             self.longitudinal[varname] = input_file['/longitudinal/' + varname]
+                            if period not in self.longitudinal[varname].columns:
+                                table = DataFrame({'id':id, period:var})
+                                self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
                         else:
+                            # when one variable is not in the input_file
                             self.longitudinal[varname] = DataFrame({'id':id, period:var})
                     else:
+                        # when there is no longitudinal in the dataset
                         self.longitudinal[varname] = DataFrame({'id':id, period:var})
-                        
-                table = DataFrame({'id':id, period:var})       
-                self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
+                else:
+                    table = DataFrame({'id':id, period:var})
+                    if period in self.longitudinal[varname]:
+                        import pdb
+                        pdb.set_trace()
+                    self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
 
             print("- storing period data")
             for entity in entities:
