@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, division
 
 import time
 import os.path
@@ -26,24 +26,32 @@ import config
 import expr
 
 
-def show_top_times(what, times):
-    count = len(times)
+def show_top_times(what, times, count):
+    total = sum(t for n, t in times)
     print("top %d %s:" % (count, what))
-    for name, timing in times:
-        print(" - %s: %s" % (name, time2str(timing)))
+    for name, timing in times[:count]:
+        percent = 100.0 * timing / total
+        print(" - %s: %s (%d%%)" % (name, time2str(timing), percent))
     print("total for top %d %s:" % (count, what), end=' ')
-    print(time2str(sum(timing for name, timing in times)))
+    print(time2str(sum(timing for name, timing in times[:count])))
 
 
 def show_top_processes(process_time, count):
     process_times = sorted(process_time.iteritems(),
                            key=operator.itemgetter(1),
                            reverse=True)
-    show_top_times('processes', process_times[:count])
+    show_top_times('processes', process_times, count)
 
 
 def show_top_expr(count=None):
-    show_top_times('expressions', expr.timings.most_common(count))
+    show_top_times('expressions', expr.timings.most_common(count), count)
+
+
+def expand_periodic_fields(content):
+    periodic = multi_get(content, 'globals/periodic')
+    if isinstance(periodic, list) and \
+            all(isinstance(f, dict) for f in periodic):
+        multi_set(content, 'globals/periodic', {'fields': periodic})
 
 
 def handle_imports(content, directory):
@@ -56,8 +64,8 @@ def handle_imports(content, directory):
         import_directory = os.path.dirname(import_path)
         with open(import_path) as f:
             import_content = handle_imports(yaml.load(f), import_directory)
-            for wild_key in ('globals/periodic', 'globals/*/fields',
-                             'entities/*/fields'):
+            expand_periodic_fields(import_content)
+            for wild_key in ('globals/*/fields', 'entities/*/fields'):
                 multi_keys = expand_wild(wild_key, import_content)
                 for multi_key in multi_keys:
                     import_fields = multi_get(import_content, multi_key)
@@ -79,14 +87,22 @@ class Simulation(object):
     yaml_layout = {
         'import': None,
         'globals': {
-            'periodic': [{
-                '*': str
-            }],
+            'periodic': None,  # either full-blown (dict) description or list
+                               # of fields
             '*': {
+                'path': str,
+                'type': str,
                 'fields': [{
                     '*': None  # Or(str, {'type': str, 'initialdata': bool, 'default': type})
                 }],
-                'type': str
+                'oldnames': {
+                    '*': str
+                },
+                'newnames': {
+                    '*': str
+                },
+                'invert': [str],
+                'transposed': bool
             }
         },
         '#entities': {
@@ -150,8 +166,9 @@ class Simulation(object):
                  init_processes, init_entities, processes, entities,
                  data_source, default_entity=None, legislation=None, final_stat=False,
                   time_scale='year', retro = False):
+        #FIXME: what if period has been declared explicitly?
         if 'periodic' in globals_def:
-            globals_def['periodic'].insert(0, ('PERIOD', int))
+            globals_def['periodic']['fields'].insert(0, ('PERIOD', int))
 
         self.globals_def = globals_def
         self.periods = periods
@@ -185,27 +202,22 @@ class Simulation(object):
         with open(fpath) as f:
             content = yaml.load(f)
 
+        expand_periodic_fields(content)
         content = handle_imports(content, simulation_dir)
         validate_dict(content, cls.yaml_layout)
 
         # the goal is to get something like:
         # globals_def = {'periodic': [('a': int), ...],
         #                'MIG': int}
-        globals_def = {}
+        globals_def = content.get('globals', {})
         for k, v in content.get('globals', {}).iteritems():
-            # periodic is a special case
-            if k == 'periodic':
-                type_ = fields_yaml_to_type(v)
+            if "type" in v:
+                v["type"] = field_str_to_type(v["type"], "array '%s'" % k)
             else:
-                # "fields" and "type" are synonyms
-                type_def = v.get('fields') or v.get('type')
-                if isinstance(type_def, basestring):
-                    type_ = field_str_to_type(type_def, "array '%s'" % k)
-                else:
-                    if not isinstance(type_def, list):
-                        raise SyntaxError("invalid structure for globals")
-                    type_ = fields_yaml_to_type(type_def)
-            globals_def[k] = type_
+                #TODO: fields should be optional (would use all the fields
+                # provided in the file)
+                v["fields"] = fields_yaml_to_type(v["fields"])
+            globals_def[k] = v
 
         simulation_def = content['simulation']
         seed = simulation_def.get('random_seed')
@@ -358,7 +370,7 @@ class Simulation(object):
         return timed(self.data_source.load, self.globals_def,
                      entity_registry)
 
-    def run(self, run_console=False):
+    def run(self, run_console=False, gui=None):
         start_time = time.time()
         
         h5in, h5out, globals_data = timed(self.data_source.run,
@@ -520,13 +532,17 @@ class Simulation(object):
             print("simulated period are going to be: ",periods)
             
             init_start_time = time.time()
-            simulate_period(0, self.init_period, [None,periods[0]], self.init_processes,
-                            self.entities, init=True)
+            if gui is not None:
+                gui.notifyProgress.emit(-1, str(self.start_period - 1))
+            simulate_period(0, self.init_period, [None,periods[0]], 
+                            self.init_processes, self.entities, init=True)
             
             time_init = time.time() - init_start_time
             main_start_time = time.time()
-        
+
             for period_idx, period in enumerate(periods[1:]):
+                if gui is not None:
+                    gui.notifyProgress.emit(period_idx, str(period))
                 period_start_time = time.time()
                 simulate_period(period_idx, period, periods,
                                 self.processes, self.entities)
@@ -548,8 +564,12 @@ class Simulation(object):
                     print("(%s elapsed)." % time2str(time_elapsed))
                 else:
                     print()
-                    
+
+            if gui is not None:
+                gui.notifyProgress.emit(self.periods, 'n/a')
+                gui.notifyEnd.emit()
             total_objects = sum(period_objects[period] for period in periods)
+            total_time = time.time() - main_start_time                    
  
 #             if self.legislation:           
 #                 if self.legislation['ex_post']:
@@ -577,8 +597,7 @@ class Simulation(object):
                 nb_year_approx = periods[-1]/100 - periods[1]/100
                 if nb_year_approx > 0 : 
                     time_year = total_time/nb_year_approx
-               
-            total_time = time.time() - main_start_time
+
             try:
                 ind_per_sec = str(int(total_objects / total_time))
             except ZeroDivisionError:
@@ -617,6 +636,8 @@ class Simulation(object):
             h5out.close()
             if h5_autodump is not None:
                 h5_autodump.close()
+            if gui is not None:
+                gui.notifyEnd.emit()
 
     @property
     def console_entity(self):

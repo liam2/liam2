@@ -340,9 +340,13 @@ class Function(AbstractProcessGroup):
             raise TypeError("takes exactly %d arguments (%d given)" %
                             (len(self.argnames), len(args)))
 
-        const_dict = const_dict.copy()
+        # add arguments to the local namespace
         for name, value in zip(self.argnames, args):
-            const_dict[name] = value
+            # backup the variable if it existed in the caller namespace
+            if name in self.entity.temp_variables:
+                backup[name] = self.entity.temp_variables.pop(name)
+            self.entity.temp_variables[name] = value
+
         self.code.run_guarded(simulation, const_dict)
         context = EntityContext(self.entity, const_dict)
         result = expr_eval(self.result, context)

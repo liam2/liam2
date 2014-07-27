@@ -42,7 +42,7 @@ class Matching(EvaluableExpression):
         return expr_vars
 
     def evaluate(self, context):
-        global local_ctx
+        global matching_ctx
 
         ctx_filter = context.get('__filter__')
 
@@ -65,6 +65,10 @@ class Matching(EvaluableExpression):
         used_variables2 = ['id'] + [v[8:] for v in used_variables
                                     if v.startswith('__other_')]
 
+        #TODO: we should detect whether or not we are using non-simple
+        # expressions (EvaluableExpression children) and pre-evaluate them,
+        # because otherwise they are re-evaluated on all of set2 for each
+        # individual in set1. See https://github.com/liam2/liam2/issues/128
         set1 = context_subset(context, set1filter, used_variables1)
         set2 = context_subset(context, set2filter, used_variables2)
         orderby = expr_eval(self.orderby, context)
@@ -85,18 +89,18 @@ class Matching(EvaluableExpression):
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
 
-        local_ctx = dict(('__other_' + k if k in used_variables2 else k, v)
-                         for k, v in set2.iteritems())
+        matching_ctx = dict(('__other_' + k if k in used_variables2 else k, v)
+                            for k, v in set2.iteritems())
 
         #noinspection PyUnusedLocal
         def match_one_set1_individual(idx, sorted_idx):
-            global local_ctx
+            global matching_ctx
 
-            if not context_length(local_ctx):
+            if not context_length(matching_ctx):
                 raise StopIteration
 
+            local_ctx = matching_ctx.copy()
             local_ctx.update((k, set1[k][sorted_idx]) for k in used_variables1)
-
 #            pk = tuple(individual1[fname] for fname in pk_names)
 #            optimized_expr = optimized_exprs.get(pk)
 #            if optimized_expr is None:
@@ -105,20 +109,19 @@ class Matching(EvaluableExpression):
 #                optimized_expr = str(symbolic_expr.simplify())
 #                optimized_exprs[pk] = optimized_expr
 #            set2_scores = evaluate(optimized_expr, mm_dict, set2)
-
             set2_scores = expr_eval(score_expr, local_ctx)
 
             individual2_idx = np.argmax(set2_scores)
 
             id1 = local_ctx['id']
-            id2 = local_ctx['__other_id'][individual2_idx]
-
-            local_ctx = context_delete(local_ctx, individual2_idx)
+            id2 = matching_ctx['__other_id'][individual2_idx]
+            matching_ctx = context_delete(matching_ctx, individual2_idx)
 
             result[id_to_rownum[id1]] = id2
             result[id_to_rownum[id2]] = id1
 
-        loop_wh_progress(match_one_set1_individual, set1tomatch)
+        loop_wh_progress(match_one_set1_individual, set1tomatch,
+                         title="Matching...")
         return result
 
     #noinspection PyUnusedLocal

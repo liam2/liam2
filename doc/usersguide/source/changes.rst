@@ -3,7 +3,6 @@
 Change log
 ##########
 
-<<<<<<< HEAD
 Version 0.8-rc1
 ===============
 
@@ -52,11 +51,19 @@ New features:
 
 * added *assertFalse* assert function.
 =======
+=======
+Version 0.8.2
+=============
+
+Released on 2014-07-07.
+
+.. include:: changes/version_0_8_2.rst.inc
+
+
 Version 0.8.1
 =============
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 
-Released on 2014-02-xx.
+Released on 2014-03-19.
 
 .. include:: changes/version_0_8_1.rst.inc
 
@@ -64,7 +71,6 @@ Released on 2014-02-xx.
 Version 0.8
 ===========
 
-<<<<<<< HEAD
 * give a hint to use assertNanEqual when it would make a failing assertEqual
   pass.
 
@@ -83,7 +89,6 @@ Fixes:
 ------
 =======
 Released on 2014-02-05.
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 
 .. include:: changes/version_0_8.rst.inc
 
@@ -93,7 +98,7 @@ Version 0.7
 
 Released on 2013-06-18.
 
-<<<<<<< HEAD
+
 New features:
 -------------
 
@@ -208,7 +213,6 @@ Fixes:
   different in the two sets.
 =======
 .. include:: changes/version_0_7.rst.inc
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 
 
 Version 0.6.2

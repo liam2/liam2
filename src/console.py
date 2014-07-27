@@ -139,10 +139,9 @@ class Console(object):
 
         cond_context = entity.conditional_context
         variables = entity.all_symbols(self.globals_def)
-        # add all currently defined temp_variables because otherwise
-        # local variables (defined within a procedure) wouldn't be available
+        # add local variables (defined within a procedure)
         variables.update((name, Variable(name))
-                         for name in entity.temp_variables.keys())
+                         for name in entity.local_var_names)
         expr = parse(s, variables, cond_context, interactive=True)
         ctx = EntityContext(entity, {'period': period,
                                      'nan': np.nan,
