@@ -9,13 +9,13 @@ import random
 import numpy as np
 import tables
 import yaml
-              
+
 from pandas import DataFrame, HDFStore
 
 from data import H5Data, Void
 from entities import Entity
 from registry import entity_registry
-from utils import (time_period, addmonth, 
+from utils import (time_period, addmonth,
                    time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
                    merge_dicts, merge_items,
@@ -145,7 +145,7 @@ class Simulation(object):
             'legislation': {
                 '#ex_post': bool,
                 '#annee': int
-            },            
+            },
             'final_stat': bool,
             'time_scale': str,
             'retro': bool,
@@ -159,7 +159,7 @@ class Simulation(object):
             'autodump': None,
             'autodiff': None
         }
-                   
+
     }
 
     def __init__(self, globals_def, periods, init_period,
@@ -175,7 +175,7 @@ class Simulation(object):
         #TODO: work on it for start with seme
         if (time_scale not in ['year','year0']) and \
             (init_period % 100 > 12 or init_period % 100 == 0 or init_period < 9999) :
-            raise Exception("Non valid start period") 
+            raise Exception("Non valid start period")
         self.init_period = init_period
         self.retro = retro
         # init_processes is a list of tuple: (process, 1)
@@ -190,7 +190,7 @@ class Simulation(object):
         self.final_stat = final_stat
         self.time_scale = time_scale
         self.longitudinal = {}
-        self.retro = retro 
+        self.retro = retro
         self.stepbystep = False
 
     @classmethod
@@ -230,22 +230,22 @@ class Simulation(object):
         periods = simulation_def['periods']
         time_scale = simulation_def.get('time_scale', 'year')
         retro = simulation_def.get('retro', False)
-        
+
         start_period = simulation_def.get('start_period',None)
         init_period = simulation_def.get('init_period',None)
         if start_period is None and init_period is None:
             raise Exception("Either start_period either init_period should be given.")
         if start_period is not None:
-            if init_period is not None: 
+            if init_period is not None:
                 raise Exception("Start_period can't be given if init_period is.")
-            step = time_period[time_scale]*(1 - 2*(retro))           
+            step = time_period[time_scale]*(1 - 2*(retro))
             init_period = addmonth(start_period, step)
-        
+
         config.skip_shows = simulation_def.get('skip_shows', False)
         #TODO: check that the value is one of "raise", "skip", "warn"
         config.assertions = simulation_def.get('assertions', 'raise')
         config.show_timings = simulation_def.get('timings', True)
-        
+
         autodump = simulation_def.get('autodump', None)
         if autodump is True:
             autodump = 'autodump.h5'
@@ -264,7 +264,7 @@ class Simulation(object):
 
         legislation = simulation_def.get('legislation', None)
         final_stat = simulation_def.get('final_stat', None)
-        
+
         input_def = simulation_def['input']
         input_directory = input_dir if input_dir is not None \
                                     else input_def.get('path', '')
@@ -285,7 +285,7 @@ class Simulation(object):
         if output_file is None:
             output_file = output_def['file']
         output_path = os.path.join(output_directory, output_file)
-    
+
         method = input_def.get('method', 'h5')
 
         #need to be before processes because in case of legislation, we need input_table for now.
@@ -298,30 +298,30 @@ class Simulation(object):
             input_path = None
             data_source = Void(output_path)
         else:
-            print(method, type(method))    
-    
-    
-    
+            print(method, type(method))
+
+
+
         for k, v in content['entities'].iteritems():
             entity_registry.add(Entity.from_yaml(k, v))
-            
+
         for entity in entity_registry.itervalues():
             entity.check_links()
             entity.parse_processes(globals_def)
             entity.compute_lagged_fields()
-            
+
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()
         for ent_name, proc_names in init_def:
             if ent_name != 'legislation':
                 if ent_name not in entity_registry:
                     raise Exception("Entity '%s' not found" % ent_name)
-                
+
                 entity = entity_registry[ent_name]
                 init_entities.add(entity)
                 init_processes.extend([(entity.processes[proc_name], 1, 1)
                                        for proc_name in proc_names])
-            else: 
+            else:
 #                 proc1 = ExtProcess('liam2of',['simulation',None])
                 proc2 = ExtProcess('of_on_liam',['simulation',2009,'period'])
 #                 proc3 = ExtProcess('merge_leg',['simulation',data_source.output_path,
@@ -346,10 +346,10 @@ class Simulation(object):
                         if len(proc_def) == 3:
                             proc_name, periodicity, start = proc_def
                         elif len(proc_def) == 2:
-                            proc_name, periodicity = proc_def 
+                            proc_name, periodicity = proc_def
                             start = 1
                     processes.append((entity.processes[proc_name], periodicity, start))
-            else: 
+            else:
 #                 proc1 = ExtProcess('liam2of',['simulation',None])
                 proc2 = ExtProcess('of_on_liam',['simulation',proc_defs[0],'period'])
 #                 proc3 = ExtProcess('merge_leg',['simulation',data_source.output_path,
@@ -372,12 +372,12 @@ class Simulation(object):
 
     def run(self, run_console=False, gui=None):
         start_time = time.time()
-        
+
         h5in, h5out, globals_data = timed(self.data_source.run,
                                           self.globals_def,
                                           entity_registry,
                                           self.init_period)
-        
+
         if config.autodump or config.autodiff:
             if config.autodump:
                 fname, _ = config.autodump
@@ -390,7 +390,7 @@ class Simulation(object):
             config.autodump_file = h5_autodump
         else:
             h5_autodump = None
-            
+
 #        input_dataset = self.data_source.run(self.globals_def,
 #                                             entity_registry)
 #        output_dataset = self.data_sink.prepare(self.globals_def,
@@ -404,7 +404,7 @@ class Simulation(object):
 
         process_time = defaultdict(float)
         period_objects = {}
-        
+
         def simulate_period(period_idx, period, periods, processes, entities,
                             init=False):
             print("\nperiod", period)
@@ -453,21 +453,21 @@ class Simulation(object):
                         assert (periodicity  in time_period)
                         periodicity_process = time_period[periodicity]
                         periodicity_simul = time_period[self.time_scale]
-                        month_idx = period % 100  
+                        month_idx = period % 100
                         # first condition, to run a process with start == 12
                         # each year even if year are yyyy01
                         #modify start if periodicity_simul is not month
                         start = int(start/periodicity_simul-0.01)*periodicity_simul + 1
-                        
+
                         if (periodicity_process <= periodicity_simul and self.time_scale != 'year0') or \
                                  month_idx % periodicity_process == start % periodicity_process:
                             const_dict['periodicity'] = periodicity_process*(1 - 2*(self.retro))
                             elapsed, _ = gettime(process.run_guarded, self,
-                                                 const_dict)                        
+                                                 const_dict)
                         else:
                             elapsed = 0
                             print("skipped (periodicity)")
-                            
+
                     process_time[process.name] += elapsed
                     if config.show_timings:
                         print("done (%s elapsed)." % time2str(elapsed))
@@ -478,10 +478,10 @@ class Simulation(object):
 
             # update longitudinal
             person = [x for x in entities if x.name == 'person'][0] # maybe we have a get_entity or anything more nice than that #TODO: check
-            id = person.array.columns['id'] 
+            id = person.array.columns['id']
 
             for varname in ['sali', 'workstate']:
-                var = person.array.columns[varname]              
+                var = person.array.columns[varname]
                 if init:
                     fpath = self.data_source.input_path
                     input_file = HDFStore(fpath, mode="r")
@@ -518,25 +518,25 @@ class Simulation(object):
 #                    timed(entity.compress_period_data, level)
             period_objects[period] = sum(len(entity.array)
                                          for entity in entities)
-            
+
         try:
             assert(self.time_scale in time_period)
             month_periodicity = time_period[self.time_scale]
             time_direction = 1 - 2*(self.retro)
             time_step = month_periodicity*time_direction
-            
-            periods = [ self.init_period + int(t/12)*100 + t%12   
+
+            periods = [ self.init_period + int(t/12)*100 + t%12
                         for t in range(0, (self.periods+1)*time_step, time_step)]
             if self.time_scale == 'year0':
                 periods = [ self.init_period + t for t in range(0, (self.periods+1))]
             print("simulated period are going to be: ",periods)
-            
+
             init_start_time = time.time()
             if gui is not None:
                 gui.notifyProgress.emit(-1, str(self.start_period - 1))
-            simulate_period(0, self.init_period, [None,periods[0]], 
+            simulate_period(0, self.init_period, [None,periods[0]],
                             self.init_processes, self.entities, init=True)
-            
+
             time_init = time.time() - init_start_time
             main_start_time = time.time()
 
@@ -547,15 +547,15 @@ class Simulation(object):
                 simulate_period(period_idx, period, periods,
                                 self.processes, self.entities)
 
-#                 if self.legislation:                
+#                 if self.legislation:
 #                     if not self.legislation['ex_post']:
-#           
+#
 #                         elapsed, _ = gettime(liam2of.main,period)
 #                         process_time['liam2of'] += elapsed
 #                         elapsed, _ = gettime(of_on_liam.main,self.legislation['annee'],[period])
 #                         process_time['legislation'] += elapsed
 #                         elapsed, _ = gettime(merge_leg.merge_h5,self.data_source.output_path,
-#                                              "C:/Til/output/"+"simul_leg.h5",period)                            
+#                                              "C:/Til/output/"+"simul_leg.h5",period)
 #                         process_time['merge_leg'] += elapsed
 
                 time_elapsed = time.time() - period_start_time
@@ -569,33 +569,33 @@ class Simulation(object):
                 gui.notifyProgress.emit(self.periods, 'n/a')
                 gui.notifyEnd.emit()
             total_objects = sum(period_objects[period] for period in periods)
-            total_time = time.time() - main_start_time                    
- 
-#             if self.legislation:           
+            total_time = time.time() - main_start_time
+
+#             if self.legislation:
 #                 if self.legislation['ex_post']:
-#                        
+#
 #                     elapsed, _ = gettime(liam2of.main)
 #                     process_time['liam2of'] += elapsed
 #                     elapsed, _ = gettime(of_on_liam.main,self.legislation['annee'])
 #                     process_time['legislation'] += elapsed
 #                     # TODO: faire un programme a part, so far ca ne marche pas pour l'ensemble
-#                     # adapter n'est pas si facile, comme on veut economiser une table, 
+#                     # adapter n'est pas si facile, comme on veut economiser une table,
 #                     # on ne peut pas faire de append directement parce qu on met 2010 apres 2011
 #                     # a un moment dans le calcul
 #                     elapsed, _ = gettime(merge_leg.merge_h5,self.data_source.output_path,
-#                                          "C:/Til/output/"+"simul_leg.h5",None)                            
+#                                          "C:/Til/output/"+"simul_leg.h5",None)
 #                     process_time['merge_leg'] += elapsed
 
 
             if self.final_stat:
                 elapsed, _ = gettime(start, period)
-                process_time['Stat'] += elapsed              
+                process_time['Stat'] += elapsed
 
             total_time = time.time() - main_start_time
             time_year = 0
             if len(periods)>1:
                 nb_year_approx = periods[-1]/100 - periods[1]/100
-                if nb_year_approx > 0 : 
+                if nb_year_approx > 0 :
                     time_year = total_time/nb_year_approx
 
             try:
@@ -606,10 +606,10 @@ class Simulation(object):
 ==========================================
  simulation done
 ==========================================
- * %s elapsed 
- * %d individuals on average 
+ * %s elapsed
+ * %d individuals on average
  * %s individuals/s/period on average
- 
+
  * %s second for init_process
  * %s time/period in average
  * %s time/year in average
@@ -620,7 +620,7 @@ class Simulation(object):
         time2str(time_init),
         time2str(total_time / self.periods),
         time2str(time_year)))
-           
+
             show_top_processes(process_time, 10)
 #            if config.debug:
 #                show_top_expr()
