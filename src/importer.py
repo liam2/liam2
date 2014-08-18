@@ -131,7 +131,7 @@ def detect_column_types(iterable):
     for i, colname in enumerate(header):
         coltype = coltypes[i]
         if coltype == 0:
-            print("Warning: column %s is all empty, assuming it is float" \
+            print("Warning: column %s is all empty, assuming it is float"
                   % colname)
             coltypes[i] = 3
     num2type = [None, bool, int, float]
@@ -249,14 +249,12 @@ class CSV(object):
             fields = self.fields
             positions = None
         else:
-            missing_fields = set(name for name, _ in fields) - \
-                                 set(self.field_names)
-            if missing_fields:
+            available = self.field_names
+            missing = set(name for name, _ in fields) - set(available)
+            if missing:
                 raise Exception("%s does not contain any field(s) named: %s"
-                                % (self.fpath, ", ".join(missing_fields)))
-            available_fields = self.field_names
-            positions = [available_fields.index(name)
-                         for name, _ in fields]
+                                % (self.fpath, ", ".join(missing)))
+            positions = [available.index(name) for name, _ in fields]
         self.rewind()
         self.next()
         return convert(self.data_stream, fields, positions)
