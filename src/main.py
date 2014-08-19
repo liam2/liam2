@@ -18,7 +18,7 @@ from data import populate_registry, H5Data
 from upgrade import upgrade
 from view import viewhdf
 
-__version__ = "0.8.2"
+__version__ = "0.8.2pre1"
 
 
 def eat_traceback(func, *args, **kwargs):
@@ -312,6 +312,8 @@ def main():
         args = upgrade, parsed_args.input, parsed_args.output
     elif action == "view":
         args = display, parsed_args.file
+    else:
+        raise Exception("invalid action: %s" % action)
     wrapper(*args)
 
 
