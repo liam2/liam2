@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-#import carray as ca
+#import bcolz
 import numpy as np
 import tables
 
@@ -19,7 +19,7 @@ max_vars = 0
 
 
 #def compress_column(a, level):
-#    arr = ca.carray(a, cparams=ca.cparams(level))
+#    arr = bcolz.carray(a, cparams=bcolz.cparams(level))
 #    print "%d -> %d (%.2f)" % (arr.nbytes, arr.cbytes,
 #                               float(arr.nbytes) / arr.cbytes),
 #    return arr
@@ -487,7 +487,7 @@ class Entity(object):
         self.table.flush()
 
     #     def compress_period_data(self, level):
-    #     compressed = ca.ctable(self.array, cparams=ca.cparams(level))
+    #     compressed = bcolz.ctable(self.array, cparams=bcolz.cparams(level))
     #     print "%d -> %d (%f)" % compressed._get_stats()
 
     @staticmethod

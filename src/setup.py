@@ -102,5 +102,5 @@ setup(name="liam2",
 
       options={"build_ext": build_ext_options, "build_exe": build_exe_options},
       executables=[Executable("main.py")],
-      requires=['numpy', 'numexpr', 'tables', 'carray'])
+      requires=['numpy', 'numexpr', 'tables', 'bcolz'])
 # also recommends 'matplotlib' and 'vitables'
