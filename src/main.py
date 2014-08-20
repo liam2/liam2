@@ -215,7 +215,7 @@ class PrintVersionsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         import numpy
         import numexpr
-        import carray
+        import bcolz
         import tables
 
         try:
@@ -234,10 +234,10 @@ python {py}
 numpy {np}
 numexpr {ne}
 pytables {pt}
-carray {ca}
+bcolz {ca}
 pyyaml {yml}""".format(py=py_version, np=numpy.__version__,
                        ne=numexpr.__version__, pt=tables.__version__,
-                       ca=carray.__version__, yml=yaml.__version__))
+                       ca=bcolz.__version__, yml=yaml.__version__))
         parser.exit()
 
 

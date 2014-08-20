@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-#import carray as ca
+#import bcolz
 import numpy as np
 import tables
 
@@ -20,7 +20,7 @@ max_vars = 0
 
 
 #def compress_column(a, level):
-#    arr = ca.carray(a, cparams=ca.cparams(level))
+#    arr = bcolz.carray(a, cparams=ca.cparams(level))
 #    print "%d -> %d (%.2f)" % (arr.nbytes, arr.cbytes,
 #                               float(arr.nbytes) / arr.cbytes),
 #    return arr
