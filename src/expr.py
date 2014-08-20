@@ -250,7 +250,7 @@ def binop(opname, kind='binary', reversed=False):
 
 class Expr(object):
     # we cannot do this in __new__ (args are verified in metaclass.__call__)
-    __metaclass__ = ExplainTypeError
+    # __metaclass__ = ExplainTypeError
 
     kind = 'generic'
 
@@ -389,7 +389,7 @@ class Expr(object):
         badvar = lambda v: isinstance(v, ShortLivedVariable) or \
                            (isinstance(v, GlobalVariable) and
                             v.tablename != 'periodic')
-        return set(v.value for v in allvars if not badvar(v))
+        return set(v.name for v in allvars if not badvar(v))
         # child_vars = [collect_variables(c, context) for c in self.children]
         # return set.union(*child_vars) if child_vars else set()
 
@@ -411,6 +411,9 @@ class Expr(object):
         if res:
             if str(self) != str(other):
                 print()
+                print(type(self), len(self.children), len(other.children))
+                print([(x, type(x)) for x in self.children])
+                print([(x, type(x)) for x in other.children])
                 print('SHOULD NOT COMPARE EQUAL!')
                 print(str(self).ljust(40), '>>>', self.value, self.children)
                 print(str(other).ljust(40), '>>>', other.value, other.children)
@@ -418,6 +421,8 @@ class Expr(object):
         return res
 
     def __hash__(self):
+        print("hash", type(self))
+        print("hash", self)
         return hash((self.__class__.__name__, self.value, self.children))
 
     def __contains__(self, expr):
@@ -931,7 +936,7 @@ class Variable(Expr):
         return self.value
 
     def __str__(self):
-        return self.value
+        return self.name
     __repr__ = __str__
     as_string = __str__
 
@@ -950,19 +955,39 @@ class ShortLivedVariable(Variable):
     pass
 
 
-class GlobalVariable(Variable):
+#TODO: document in the "migration guide" and "gotcha" that subclasses MUST
+# NOT call their parent __init__ but rather Expr.__init__
+# class GlobalVariable(Variable):
+class GlobalVariable(Expr):
     def __init__(self, tablename, name, dtype=None):
-        Variable.__init__(self, name, dtype)
-        #FIXME!!!
-        self.tablename = tablename
+        # Variable.__init__(self, name, dtype)
+        Expr.__init__(self, (tablename, name))
+        self._dtype = dtype
+        print("GV>>", name, self.name)
+
+    @property
+    def tablename(self):
+        return self.value[0]
+
+    @property
+    def name(self):
+        return self.value[1]
+
+    def __str__(self):
+        if self.tablename == "globals":
+            return self.name
+        else:
+            return "%s.%s" % (self.tablename, self.name)
+    __repr__ = __str__
 
     #XXX: inherit from EvaluableExpression?
     def as_simple_expr(self, context):
+        print("@@", self.name)
         result = self.evaluate(context)
         period = self._eval_key(context)
         if isinstance(period, int):
             #XXX: is self.value valid?
-            tmp_varname = '__%s_%s' % (self.value, period)
+            tmp_varname = '__%s_%s' % (self.name, period)
             if tmp_varname in context:
                 # should be consistent but nan != nan
                 assert result != result or context[tmp_varname] == result
@@ -977,6 +1002,7 @@ class GlobalVariable(Variable):
         return context.period
 
     def evaluate(self, context):
+        print(">>", self.name)
         key = self._eval_key(context)
         globals_data = context.global_tables
         globals_table = globals_data[self.tablename]
@@ -998,9 +1024,10 @@ class GlobalVariable(Variable):
                 translated_key = key - base_period
         else:
             translated_key = key
-        if self.value not in globals_table.dtype.fields:
+        if self.name not in globals_table.dtype.fields:
+            print(self.name)
             raise Exception("Unknown global: %s" % self.name)
-        column = globals_table[self.value]
+        column = globals_table[self.name]
         numrows = len(column)
         missing_value = get_missing_value(column)
 
@@ -1055,13 +1082,20 @@ class GlobalVariable(Variable):
                 else missing_value
 
     def __getitem__(self, key):
-        return SubscriptedGlobal(self.tablename, self.value, self._dtype, key)
+        return SubscriptedGlobal(self.tablename, self.name, key, self._dtype)
 
 
 class SubscriptedGlobal(GlobalVariable):
-    def __init__(self, tablename, name, dtype, key):
-        GlobalVariable.__init__(self, tablename, name, dtype)
-        self.key = key
+    def __init__(self, tablename, name, key, dtype):
+        Expr.__init__(self, (tablename, name, key))
+        self._dtype = dtype
+        print("SGV", name, self.name)
+        # GlobalVariable.__init__(self, tablename, name, dtype)
+        # self.key = key
+
+    @property
+    def key(self):
+        return self.value[2]
 
     def __str__(self):
         return '%s[%s]' % (self.name, self.key)
@@ -1110,13 +1144,25 @@ class GlobalTable(object):
 
 
 #XXX: can we factorise this with FunctionExpr et al.?
-#FIXME: use Expr.__init___
 class MethodCall(EvaluableExpression):
     def __init__(self, entity, name, args, kwargs):
-        self.entity = entity
-        self.name = name
-        self.args = args
-        self.kwargs = kwargs
+        Expr.__init__(self, (entity, name), children=(args, kwargs))
+
+    @property
+    def entity(self):
+        return self.value[0]
+
+    @property
+    def name(self):
+        return self.value[1]
+
+    @property
+    def args(self):
+        return self.children[0]
+
+    @property
+    def kwargs(self):
+        return self.children[1]
 
     def evaluate(self, context):
         from process import Assignment, Function
@@ -1129,26 +1175,26 @@ class MethodCall(EvaluableExpression):
                       for k, v in self.kwargs.iteritems())
         return method.run_guarded(context, *args, **kwargs)
 
+    #TODO: use AbstractFunction?
     def __str__(self):
         args = [repr(a) for a in self.args]
         kwargs = ['%s=%r' % (k, v) for k, v in self.kwargs.iteritems()]
         return '%s(%s)' % (self.name, ', '.join(args + kwargs))
     __repr__ = __str__
 
-    def traverse(self, context):
-        for arg in self.args:
-            for node in traverse_expr(arg, context):
-                yield node
-        for kwarg in self.kwargs.itervalues():
-            for node in traverse_expr(kwarg, context):
-                yield node
-        yield self
-
 
 class VariableMethodHybrid(Variable):
     def __init__(self, name, entity, dtype=None):
-        Variable.__init__(self, name, dtype)
-        self.entity = entity
+        Expr.__init__(self, (name, entity))
+        self._dtype = dtype
+
+    @property
+    def name(self):
+        return self.value[0]
+
+    @property
+    def entity(self):
+        return self.value[1]
 
     def __call__(self, *args, **kwargs):
         return MethodCall(self.entity, self.name, args, kwargs)
