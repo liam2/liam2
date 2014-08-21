@@ -67,8 +67,15 @@ class GroupBy(TableExpression):
             return LabeledArray([], labels, possible_values)
 
         # evaluate the expression on each group
-        #TODO: each subset/sub context should have their .filter_expr set,
-        # so that we can add it to the cache_key
+        # FIXME: the second group of indices hits the cache because the context
+        # subset / hard filter is not taken into account by the cache.
+        # We should either:
+        # a) add an "__ids__" key to context and cache_key (but that will
+        # slow things down in the case of a groupby() because we do not
+        # need to compute it currently)
+        # b) somehow disable the cache when using context subsets
+        # c) use a filter_expr (and set it in the context and use it in the
+        # cache_key) for each group instead of using a "hard" subset
         data = [expr_eval(expr, filtered_context.subset(indices, expr_vars))
                 for indices in groups]
 

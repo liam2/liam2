@@ -430,7 +430,7 @@ entities:
                         lag(avg(work), 3), lag(avg(work), 2),
                         lag(avg(work)), avg(work)), fname='plot05.png')
                 - plot(groupby(age, gender), fname='plot06.png&pdf')
-                - plot(groupby(age, gender), colors=['g', 'b'],
+                - plot(groupby(age, gender), colors=('g', 'b'),
                        fname='plot07.png')
                 - plot(groupby(agegroup, gender), styles=['--', '-'],
                        fname='plot08.png')

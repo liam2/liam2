@@ -8,7 +8,7 @@ from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
                   as_string, collect_variables,
                   get_missing_record, get_missing_vector, FunctionExpr,
-                  always, firstarg_dtype)
+                  always, firstarg_dtype, Expr)
 from exprbases import (FilteredExpression, CompoundExpression, NumexprFunction,
                        TableExpression, NumpyRandom, NumpyChangeArray)
 from context import context_length
@@ -19,14 +19,13 @@ from utils import PrettyTable, argspec
 # less painful
 class Min(CompoundExpression):
     def __init__(self, *args):
-        CompoundExpression.__init__(self)
         assert len(args) >= 2
-        self.args = args
+        CompoundExpression.__init__(self, *args)
 
-    def build_expr(self):
-        expr1, expr2 = self.args[:2]
+    def build_expr(self, *args):
+        expr1, expr2 = args[:2]
         expr = Where(ComparisonOp('<', expr1, expr2), expr1, expr2)
-        for arg in self.args[2:]:
+        for arg in args[2:]:
             expr = Where(ComparisonOp('<', expr, arg), expr, arg)
 
             # args = [Symbol('x%d' % i) for i in range(len(self.args))]
@@ -87,15 +86,14 @@ class Min(CompoundExpression):
 
 class Max(CompoundExpression):
     def __init__(self, *args):
-        CompoundExpression.__init__(self)
         assert len(args) >= 2
-        self.args = args
+        CompoundExpression.__init__(self, *args)
 
-    def build_expr(self):
-        expr1, expr2 = self.args[:2]
+    def build_expr(self, *args):
+        expr1, expr2 = args[:2]
         # if(x > y, x, y)
         expr = Where(ComparisonOp('>', expr1, expr2), expr1, expr2)
-        for arg in self.args[2:]:
+        for arg in args[2:]:
             # if(e > z, e, z)
             expr = Where(ComparisonOp('>', expr, arg), expr, arg)
         return expr
@@ -105,50 +103,34 @@ class Max(CompoundExpression):
 
 
 class Logit(CompoundExpression):
-    def __init__(self, expr):
-        CompoundExpression.__init__(self)
-        self.expr = expr
-
-    def build_expr(self):
+    def build_expr(self, expr):
         # log(x / (1 - x))
-        return Log(DivisionOp('/', self.expr, BinaryOp('-', 1.0, self.expr)))
+        return Log(DivisionOp('/', expr, BinaryOp('-', 1.0, expr)))
 
     def __str__(self):
-        return 'logit(%s)' % self.expr
+        return 'logit(%s)' % self.args[0]
 
 
 class Logistic(CompoundExpression):
-    def __init__(self, expr):
-        CompoundExpression.__init__(self)
-        self.expr = expr
-
-    def build_expr(self):
+    def build_expr(self, expr):
         # 1 / (1 + exp(-x))
         return DivisionOp('/', 1.0,
-                          BinaryOp('+', 1.0, Exp(UnaryOp('-', self.expr))))
+                          BinaryOp('+', 1.0, Exp(UnaryOp('-', expr))))
 
     def __str__(self):
-        return 'logistic(%s)' % self.expr
+        return 'logistic(%s)' % self.args[0]
 
 
 class ZeroClip(CompoundExpression):
-    def __init__(self, expr, expr_min, expr_max):
-        CompoundExpression.__init__(self)
-        self.expr = expr
-        self.expr_min = expr_min
-        self.expr_max = expr_max
-
-    def build_expr(self):
-        expr = self.expr
+    def build_expr(self, expr, expr_min, expr_max):
         # if(minv <= x <= maxv, x, 0)
-        return Where(LogicalOp('&', ComparisonOp('>=', expr, self.expr_min),
-                               ComparisonOp('<=', expr, self.expr_max)), expr,
+        return Where(LogicalOp('&', ComparisonOp('>=', expr, expr_min),
+                               ComparisonOp('<=', expr, expr_max)), expr,
                      0)
 
-    def dtype(self, context):
-        # We do not have to coerce with self.expr_min & expr_max because they
-        # are only used in the comparisons, not in the result.
-        return getdtype(self.expr, context)
+    # We do not have to coerce with self.expr_min & expr_max because they
+    # are only used in the comparisons, not in the result.
+    dtype = firstarg_dtype
 
 
 # >>> mi = 1

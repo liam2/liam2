@@ -8,7 +8,7 @@ import numpy as np
 
 from cache import Cache
 from utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray,
-                   FullArgSpec, englishenum)
+                   FullArgSpec, englishenum, make_hashable)
 from context import EntityContext, EvaluationContext
 
 
@@ -421,9 +421,10 @@ class Expr(object):
         return res
 
     def __hash__(self):
-        print("hash", type(self))
-        print("hash", self)
-        return hash((self.__class__.__name__, self.value, self.children))
+        # print("hash", type(self))
+        # print("hash", self)
+        return hash((self.__class__.__name__, self.value,
+                     make_hashable(self.children)))
 
     def __contains__(self, expr):
         for node in self.traverse(None):
@@ -944,8 +945,8 @@ class Variable(Expr):
         return self
 
     def dtype(self, context):
-        if self._dtype is None and self.value in context:
-            type_ = context[self.value].dtype.type
+        if self._dtype is None and self.name in context:
+            type_ = context[self.name].dtype.type
             return normalize_type(type_)
         else:
             return self._dtype
@@ -982,11 +983,9 @@ class GlobalVariable(Expr):
 
     #XXX: inherit from EvaluableExpression?
     def as_simple_expr(self, context):
-        print("@@", self.name)
         result = self.evaluate(context)
         period = self._eval_key(context)
         if isinstance(period, int):
-            #XXX: is self.value valid?
             tmp_varname = '__%s_%s' % (self.name, period)
             if tmp_varname in context:
                 # should be consistent but nan != nan
@@ -1002,7 +1001,6 @@ class GlobalVariable(Expr):
         return context.period
 
     def evaluate(self, context):
-        print(">>", self.name)
         key = self._eval_key(context)
         globals_data = context.global_tables
         globals_table = globals_data[self.tablename]
@@ -1089,7 +1087,6 @@ class SubscriptedGlobal(GlobalVariable):
     def __init__(self, tablename, name, key, dtype):
         Expr.__init__(self, (tablename, name, key))
         self._dtype = dtype
-        print("SGV", name, self.name)
         # GlobalVariable.__init__(self, tablename, name, dtype)
         # self.key = key
 

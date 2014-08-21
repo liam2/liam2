@@ -12,36 +12,82 @@ from expr import (Expr, FunctionExpr, expr_eval,
 from utils import classproperty
 
 
+# class CompoundExpression(Expr):
+#     """function expression written in terms of other expressions"""
+#     def __init__(self):
+#         self._complete_expr = None
+#
+#     def evaluate(self, context):
+#         context = self.build_context(context)
+#         return expr_eval(self.complete_expr, context)
+#
+#     def as_simple_expr(self, context):
+#         context = self.build_context(context)
+#         return self.complete_expr.as_simple_expr(context)
+#
+#     def build_context(self, context):
+#         return context
+#
+#     def build_expr(self):
+#         raise NotImplementedError()
+#
+#     def traverse(self, context):
+#         for node in traverse_expr(self.complete_expr, context):
+#             yield node
+#         yield self
+#
+#     @property
+#     def complete_expr(self):
+#         if self._complete_expr is None:
+#             self._complete_expr = self.build_expr()
+#         return self._complete_expr
+
+
+# FIXME: we need to review all CompoundExpression because they do not use
+# Expr.__init__ and thus are not compatible with .value and .children
 class CompoundExpression(Expr):
-    """expression written in terms of other expressions"""
+    """function expression written in terms of other expressions"""
 
-    def __init__(self):
-        self._complete_expr = None
+    def __init__(self, *args, **kwargs):
+        kwargs = tuple(sorted(kwargs.items()))
+        Expr.__init__(self, 'compound', children=(args, kwargs))
+        # self._complete_expr = None
 
-    def evaluate(self, context):
-        context = self.build_context(context)
-        return expr_eval(self.complete_expr, context)
-
-    def as_simple_expr(self, context):
-        context = self.build_context(context)
-        return self.complete_expr.as_simple_expr(context)
-
-    def build_context(self, context):
-        return context
-
-    def build_expr(self):
-        raise NotImplementedError()
-
-    def traverse(self, context):
-        for node in traverse_expr(self.complete_expr, context):
-            yield node
-        yield self
+    # def evaluate(self, context):
+    #     context = self.build_context(context)
+    #     return expr_eval(self.complete_expr, context)
 
     @property
-    def complete_expr(self):
-        if self._complete_expr is None:
-            self._complete_expr = self.build_expr()
-        return self._complete_expr
+    def args(self):
+        return self.children[0]
+
+    @property
+    def kwargs(self):
+        return self.children[1]
+
+    def as_simple_expr(self, context):
+        # This will effectively trigger evaluation of expressions arguments
+        # which are not handled by numexpr functions such has all expressions
+        # inheriting from EvaluableExpression (e.g, uniform()) and their result
+        # will be stored as a temporary variables in the context. The subtlety
+        # to remember is that if a CompoundExpression "duplicates" arguments
+        # (such as Logit), those must be either duplicate-safe or
+        # EvaluableExpression. For example, if numexpr someday supports random
+        # generators, we will be in trouble if we use it as-is. This means we
+        # cannot keep the "compiled" expression, because the "temporary
+        # variables" would only have a value in the first period, when the
+        # expr is "compiled". This would tick the balance in favor of keeping a
+        # build_context method.
+        args = [as_simple_expr(arg, context) for arg in self.args]
+        kwargs = {name: as_simple_expr(arg, context)
+                  for name, arg in self.kwargs}
+        expr = self.build_expr(*args, **kwargs)
+        # We need this because self.build_expr returns an Expr which can
+        # contain CompoundExpressions
+        return expr.as_simple_expr(context)
+
+    def build_expr(self, *args, **kwargs):
+        raise NotImplementedError()
 
 
 class FilteredExpression(FunctionExpr):

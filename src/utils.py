@@ -20,6 +20,13 @@ import numexpr as ne
 import config
 
 
+def make_hashable(obj):
+    if isinstance(obj, (list, tuple)):
+        return tuple(make_hashable(e) for e in obj)
+    else:
+        return obj
+
+
 class classproperty(property):
     def __get__(self, cls, owner):
         return self.fget.__get__(None, owner)()
@@ -78,7 +85,7 @@ def find_first(char, s, depth=0):
 
 def englishenum(iterable):
     """
-    Returns an "english enumeration" of the strings in the iterable iterable.
+    Returns an "english enumeration" of the strings in the iterable.
     >>> englishenum(['a', 'b', 'c'])
     'a, b, and c'
     >>> englishenum('abc')
