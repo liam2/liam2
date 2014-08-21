@@ -42,8 +42,27 @@ Third party packages:
 Optional dependencies:
 - to view hdf5 files: vitables 2.0 (and its dependency PyQt)
   WARNING: liam2 currently does NOT support vitables 2.1 !
+
+  !!!!!! TODO: this is NOT true (only bundle) !!!!!!
+
   http://vitables.org
   http://www.riverbankcomputing.com/software/pyqt/download
+
+  2.0 and 2.1 are not pip installable in any way (they are not on pypi but,
+  pip installing them from their tar.gz or from git tag does not work either)
+  2.2a1 (the only version on pypi is not pip installable either
+  so we are left with two options:
+
+  * pip install git+https://github.com/uvemas/ViTables@master (work on Python 2
+   only)
+
+  * grab a copy of the source (tar.gz/git checkout/whatever) and use python
+  setup.py install
+
+  * use one of the available .exe installers (probably gohlke's), although
+    this option does not play well with virtual envs/conda envs as it can only
+    install in the "system" python (aka root environment) referenced in Windows
+    registry.
 
 - to generate plots and charts: matplotlib (and its dependencies:
   python-dateutil and pyparsing at the minimum)
