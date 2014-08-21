@@ -64,6 +64,8 @@ Optional dependencies:
     install in the "system" python (aka root environment) referenced in Windows
     registry.
 
+  https://silab-redmine.physik.uni-bonn .de/projects/pybar/wiki/ViTables_with_PySide
+
 - to generate plots and charts: matplotlib (and its dependencies:
   python-dateutil and pyparsing at the minimum)
   http://matplotlib.org/
