@@ -1,13 +1,8 @@
 from __future__ import print_function
 
-import numpy as np
-
 from alignment import Alignment
-import config
-from context import context_length
-from expr import (Expr, Variable, ShortLivedVariable, BinaryOp, ComparisonOp,
-                  get_tmp_varname, missing_values, getdtype, expr_eval,
-                  always, as_simple_expr)
+from expr import (Expr, Variable, BinaryOp, ComparisonOp, missing_values,
+                  getdtype, always)
 from exprbases import CompoundExpression
 from exprmisc import Exp, Normal, Max, Where, Logit, Logistic, Uniform
 

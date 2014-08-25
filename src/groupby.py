@@ -2,9 +2,9 @@ from __future__ import print_function
 
 import numpy as np
 
-from expr import expr_eval, collect_variables, traverse_expr
+from expr import expr_eval, collect_variables
 from exprbases import TableExpression
-from utils import prod, LabeledArray, argspec
+from utils import prod, LabeledArray
 from aggregates import Count
 from partition import partition_nd
 

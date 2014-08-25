@@ -8,7 +8,7 @@ from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
                   as_string, collect_variables,
                   get_missing_record, get_missing_vector, FunctionExpr,
-                  always, firstarg_dtype, Expr)
+                  always, firstarg_dtype)
 from exprbases import (FilteredExpression, CompoundExpression, NumexprFunction,
                        TableExpression, NumpyRandom, NumpyChangeArray)
 from context import context_length
