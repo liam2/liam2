@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import numpy as np
 
-from expr import expr_eval, collect_variables
+from expr import expr_eval, collect_variables, not_hashable
 from exprbases import TableExpression
 from utils import prod, LabeledArray
 from aggregates import Count
@@ -51,7 +51,9 @@ class GroupBy(TableExpression):
                                 if isinstance(col, np.ndarray) and col.shape
                                 else [col]
                                 for col in columns]
-            filtered_context = context.subset(filter_value, expr_vars)
+            #FIXME: use the actual filter_expr instead of not_hashable
+            filtered_context = context.subset(filter_value, expr_vars,
+                                              not_hashable)
         else:
             filtered_columns = columns
             filtered_context = context
@@ -67,17 +69,10 @@ class GroupBy(TableExpression):
             return LabeledArray([], labels, possible_values)
 
         # evaluate the expression on each group
-        # FIXME: the second group of indices hits the cache because the context
-        # subset / hard filter is not taken into account by the cache.
-        # We should either:
-        # a) add an "__ids__" key to context and cache_key (but that will
-        # slow things down in the case of a groupby() because we do not
-        # need to compute it currently)
-        # b) somehow disable the cache when using context subsets
-        # c) use a filter_expr (and set it in the context and use it in the
-        # cache_key) for each group instead of using a "hard" subset
-        data = [expr_eval(expr, filtered_context.subset(indices, expr_vars))
-                for indices in groups]
+        # we use not_hashable to avoid storing the subset in the cache
+        contexts = [filtered_context.subset(indices, expr_vars, not_hashable)
+                    for indices in groups]
+        data = [expr_eval(expr, c) for c in contexts]
 
         #TODO: use group_indices_nd directly to avoid using np.unique
         # this is twice as fast (unique is very slow) but breaks because
@@ -112,12 +107,12 @@ class GroupBy(TableExpression):
         cols_indices.append(np.concatenate(cols_indices))
 
         # evaluate the expression on each "combined" group (ie compute totals)
-        row_totals = [expr_eval(expr, filtered_context.subset(indices,
-                                                              expr_vars))
-                      for indices in rows_indices]
-        col_totals = [expr_eval(expr, filtered_context.subset(indices,
-                                                              expr_vars))
-                      for indices in cols_indices]
+        row_ctxs = [filtered_context.subset(indices, expr_vars, not_hashable)
+                    for indices in rows_indices]
+        row_totals = [expr_eval(expr, ctx) for ctx in row_ctxs]
+        col_ctxs = [filtered_context.subset(indices, expr_vars, not_hashable)
+                    for indices in cols_indices]
+        col_totals = [expr_eval(expr, ctx) for ctx in col_ctxs]
 
         if percent:
             # convert to np.float64 to get +-inf if total_value is int(0)

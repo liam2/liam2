@@ -106,7 +106,7 @@ class EvaluationContext(object):
     def __len__(self):
         return self.length()
 
-    def subset(self, index=None, keys=None):
+    def subset(self, index=None, keys=None, filter_expr=None):
         """
         returns a copy of the context with only a subset of the current entity.
         The main use case is to take a subset of rows. Since this is a
@@ -114,10 +114,12 @@ class EvaluationContext(object):
         columns he needs are filtered.
         :param index:
         :param keys: list of column names or None (take all)
+        :param filter_expr: expression used to compute the index. This is
+        only used to compute the cache key
         :return:
         """
-        return self.clone(entity_data=context_subset(self.entity_data, index,
-                                                     keys))
+        data_subset = context_subset(self.entity_data, index, keys)
+        return self.clone(entity_data=data_subset, filter_expr=filter_expr)
 
     def empty(self, length=None):
         """

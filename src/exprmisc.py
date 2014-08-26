@@ -352,7 +352,8 @@ class New(FilteredExpression):
                 assert not used_variables
                 child_context = context.empty(num_birth)
             else:
-                child_context = context.subset(to_give_birth, used_variables)
+                child_context = context.subset(to_give_birth, used_variables,
+                                               filter_expr)
             for k, v in kwargs.iteritems():
                 children[k] = expr_eval(v, child_context)
 

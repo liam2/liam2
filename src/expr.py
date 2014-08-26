@@ -284,7 +284,11 @@ class Expr(object):
                 print("CACHE HIT for %s !" % str(cache_key))
                 # return cached_result
         except TypeError:
-            print("ERROR: %s is not hashable" % str(cache_key))
+            # Some expr (eg not_hashable) are intentionally not hashable,
+            # so that they are not cacheable either
+            if cache_key[3] is not not_hashable:
+                print("ERROR: %s is not hashable" % str(cache_key))
+            cache_key = None
 
         simple_expr = self.as_simple_expr(context)
         if isinstance(simple_expr, Variable) and simple_expr.name in context:
@@ -335,12 +339,13 @@ class Expr(object):
                 # array shapes, but if we ever use numexpr reduction
                 # capabilities, we will be in trouble
                 res = LabeledArray(res, labels[0], labels[1])
-            expr_cache[cache_key] = res
-            if cached_result is not None:
-                assert np.array_equal(res, cached_result), \
-                    "%s != %s" % (res, cached_result)
-                print(">>> OK (match actual result)")
-                # return cached_result
+            if cache_key is not None:
+                expr_cache[cache_key] = res
+                if cached_result is not None:
+                    assert np.array_equal(res, cached_result), \
+                        "%s != %s" % (res, cached_result)
+                    print(">>> OK (match actual result)")
+                    # return cached_result
             return res
         # except KeyError, e:
         #     raise add_context(e, s)
@@ -1228,3 +1233,8 @@ class MethodSymbol(object):
         # have yet.
         # return MethodCallToResolve(self.entity, self.name, args, kwargs)
         return MethodCall(self.entity, self.name, args, kwargs)
+
+
+class NotHashable(Expr):
+    __hash__ = None
+not_hashable = NotHashable()

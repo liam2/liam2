@@ -32,8 +32,10 @@ class Matching(FilteredExpression):
 
         id_to_rownum = context.id_to_rownum
 
-        set1filter = expr_eval(self._getfilter(context, set1filter), context)
-        set2filter = expr_eval(self._getfilter(context, set2filter), context)
+        set1filterexpr = self._getfilter(context, set1filter)
+        set1filtervalue = expr_eval(set1filterexpr, context)
+        set2filterexpr = self._getfilter(context, set2filter)
+        set2filtervalue = expr_eval(set2filterexpr, context)
 
         used_variables = score.collect_variables(context)
         used_variables1 = ['id'] + [v for v in used_variables
@@ -41,15 +43,15 @@ class Matching(FilteredExpression):
         used_variables2 = ['id'] + [v[8:] for v in used_variables
                                     if v.startswith('__other_')]
 
-        set1 = context.subset(set1filter, used_variables1)
-        set2 = context.subset(set2filter, used_variables2)
+        set1 = context.subset(set1filtervalue, used_variables1, set1filterexpr)
+        set2 = context.subset(set2filtervalue, used_variables2, set2filterexpr)
         set1 = set1.entity_data
         set2 = set2.entity_data
 
-        set1len = set1filter.sum()
-        set2len = set2filter.sum()
+        set1len = set1filtervalue.sum()
+        set2len = set2filtervalue.sum()
         tomatch = min(set1len, set2len)
-        sorted_set1_indices = orderby[set1filter].argsort()[::-1]
+        sorted_set1_indices = orderby[set1filtervalue].argsort()[::-1]
         set1tomatch = sorted_set1_indices[:tomatch]
         print("matching with %d/%d individuals" % (set1len, set2len))
 
