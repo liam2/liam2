@@ -392,6 +392,8 @@ class Expr(object):
         # child_vars = [collect_variables(c, context) for c in self.children]
         # return set.union(*child_vars) if child_vars else set()
 
+    #TODO: make equivalent/commutative expressions compare equal and hash to the
+    # same thing.
     def __eq__(self, other):
         if not isinstance(other, Expr):
             return False
@@ -420,8 +422,6 @@ class Expr(object):
         return res
 
     def __hash__(self):
-        # print("hash", type(self))
-        # print("hash", self)
         return hash((self.__class__.__name__, self.value,
                      make_hashable(self.children)))
 
