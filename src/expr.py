@@ -273,21 +273,16 @@ class Expr(object):
         if isinstance(period, np.ndarray):
             assert np.isscalar(period) or not period.shape
             period = int(period)
-        cache_key = (self, period, context.entity_name, context.filter_expr)
-        # s = str(cache_key)
-        try:
-            # check that the key is hashable
-            hash(cache_key)
-            cached_result = expr_cache.get(cache_key, None)
 
+        cache_key = (self, period, context.entity_name, context.filter_expr)
+        try:
+            cached_result = expr_cache.get(cache_key, None)
             if cached_result is not None:
-                print("CACHE HIT for %s !" % str(cache_key))
-                # return cached_result
+                return cached_result
         except TypeError:
-            # Some expr (eg not_hashable) are intentionally not hashable,
-            # so that they are not cacheable either
-            if cache_key[3] is not not_hashable:
-                print("ERROR: %s is not hashable" % str(cache_key))
+            # The cache_key failed to hash properly, so the expr is not
+            # cacheable. It *should* be because of a not_hashable expr
+            # somewhere within cache_key[3].
             cache_key = None
 
         simple_expr = self.as_simple_expr(context)
@@ -339,13 +334,12 @@ class Expr(object):
                 # array shapes, but if we ever use numexpr reduction
                 # capabilities, we will be in trouble
                 res = LabeledArray(res, labels[0], labels[1])
+
             if cache_key is not None:
                 expr_cache[cache_key] = res
                 if cached_result is not None:
                     assert np.array_equal(res, cached_result), \
                         "%s != %s" % (res, cached_result)
-                    print(">>> OK (match actual result)")
-                    # return cached_result
             return res
         # except KeyError, e:
         #     raise add_context(e, s)
@@ -966,10 +960,8 @@ class ShortLivedVariable(Variable):
 # class GlobalVariable(Variable):
 class GlobalVariable(Expr):
     def __init__(self, tablename, name, dtype=None):
-        # Variable.__init__(self, name, dtype)
         Expr.__init__(self, (tablename, name))
         self._dtype = dtype
-        print("GV>>", name, self.name)
 
     @property
     def tablename(self):
