@@ -6,7 +6,7 @@ import numpy as np
 
 import config
 from context import context_length
-from expr import (Expr, FunctionExpr, expr_eval,
+from expr import (Expr, FunctionExpr, expr_eval, not_hashable,
                   traverse_expr, getdtype, as_simple_expr, as_string,
                   get_missing_value, ispresent, LogicalOp, AbstractFunction)
 from utils import classproperty
@@ -94,7 +94,14 @@ class FilteredExpression(FunctionExpr):
     @staticmethod
     def _getfilter(context, filter):
         ctx_filter = context.filter_expr
-        if filter is not None and ctx_filter is not None:
+        #FIXME: this is a hack and shows that the not_hashable filter_expr in
+        #  context is not really a good solution. We should rather add a flag
+        # in the context "ishardsubset" or something like that.
+        if filter is not_hashable:
+            filter_expr = ctx_filter
+        elif ctx_filter is not_hashable:
+            filter_expr = filter
+        elif filter is not None and ctx_filter is not None:
             filter_expr = LogicalOp('&', ctx_filter, filter)
         elif filter is not None:
             filter_expr = filter
