@@ -490,21 +490,22 @@ class Simulation(object):
                         if varname in input_longitudinal:
                             self.longitudinal[varname] = input_file['/longitudinal/' + varname]
                             if period not in self.longitudinal[varname].columns:
-                                table = DataFrame({'id':id, period:var})
+                                table = DataFrame({'id': id, period: var})
                                 self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
                         else:
                             # when one variable is not in the input_file
-                            self.longitudinal[varname] = DataFrame({'id':id, period:var})
+                            self.longitudinal[varname] = DataFrame({'id': id, period: var})
                     else:
                         # when there is no longitudinal in the dataset
-                        self.longitudinal[varname] = DataFrame({'id':id, period:var})
+                        self.longitudinal[varname] = DataFrame({'id': id, period: var})
                 else:
-                    table = DataFrame({'id':id, period:var})
+                    table = DataFrame({'id': id, period: var})
                     if period in self.longitudinal[varname]:
                         import pdb
                         pdb.set_trace()
                     self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
-
+                    
+                    
             print("- storing period data")
             for entity in entities:
                 print("  *", entity.name, "...", end=' ')
