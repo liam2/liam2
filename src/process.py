@@ -179,12 +179,16 @@ class ProcessGroup(AbstractProcessGroup):
     def run_guarded(self, simulation, const_dict):
         period = const_dict['period']
 
-        print()
+        if config.log_level == "processes":
+            print()
         for k, v in self.subprocesses:
-            print("    *", end=' ')
-            if k is not None:
-                print(k, end=' ')
-            utils.timed(v.run_guarded, simulation, const_dict)
+            if config.log_level == "processes":
+                print("    *", end=' ')
+                if k is not None:
+                    print(k, end=' ')
+                utils.timed(v.run_guarded, simulation, const_dict)
+            else:
+                v.run_guarded(simulation, const_dict)
 #            print "done."
             simulation.start_console(v.entity, period,
                                      const_dict['__globals__'])

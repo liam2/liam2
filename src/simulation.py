@@ -211,19 +211,17 @@ class Simulation(object):
 
         periods = simulation_def['periods']
         start_period = simulation_def['start_period']
-        config.skip_shows = simulation_def.get('skip_shows', False)
+        config.skip_shows = simulation_def.get('skip_shows', config.skip_shows)
         #TODO: check that the value is one of "raise", "skip", "warn"
-        config.assertions = simulation_def.get('assertions', 'raise')
+        config.assertions = simulation_def.get('assertions', config.assertions)
 
         logging_def = simulation_def.get('logging', {})
-        config.log_level = logging_def.get('level', True)
+        config.log_level = logging_def.get('level', config.log_level)
         if 'timings' in simulation_def:
             warnings.warn("simulation.timings is deprecated, please use "
                           "simulation.logging.timings instead",
                           DeprecationWarning)
             config.show_timings = simulation_def['timings']
-        else:
-            config.show_timings = True
         config.show_timings = logging_def.get('timings', config.show_timings)
 
         autodump = simulation_def.get('autodump', None)
@@ -355,17 +353,25 @@ class Simulation(object):
 
         def simulate_period(period_idx, period, processes, entities,
                             init=False):
-            print("\nperiod", period)
-            if init:
+            period_start_time = time.time()
+            if config.log_level in ("procedures", "processes"):
+                print()
+            print("period", period,
+                  end=" " if config.log_level == "periods" else "\n")
+            if init and config.log_level in ("procedures", "processes"):
                 for entity in entities:
                     print("  * %s: %d individuals" % (entity.name,
                                                       len(entity.array)))
             else:
-                print("- loading input data")
-                for entity in entities:
-                    print("  *", entity.name, "...", end=' ')
-                    timed(entity.load_period_data, period)
-                    print("    -> %d individuals" % len(entity.array))
+                if config.log_level in ("procedures", "processes"):
+                    print("- loading input data")
+                    for entity in entities:
+                        print("  *", entity.name, "...", end=' ')
+                        timed(entity.load_period_data, period)
+                        print("    -> %d individuals" % len(entity.array))
+                else:
+                    for entity in entities:
+                        entity.load_period_data(period)
             for entity in entities:
                 entity.array_period = period
                 entity.array['period'] = period
@@ -380,30 +386,36 @@ class Simulation(object):
                 num_processes = len(processes)
                 for p_num, process_def in enumerate(processes, start=1):
                     process, periodicity = process_def
-
-                    print("- %d/%d" % (p_num, num_processes), process.name,
-                          end=' ')
-                    print("...", end=' ')
+                    if config.log_level in ("procedures", "processes"):
+                        print("- %d/%d" % (p_num, num_processes), process.name,
+                              end=' ')
+                        print("...", end=' ')
                     if period_idx % periodicity == 0:
                         elapsed, _ = gettime(process.run_guarded, self,
                                              const_dict)
                     else:
                         elapsed = 0
-                        print("skipped (periodicity)")
+                        if config.log_level in ("procedures", "processes"):
+                            print("skipped (periodicity)")
 
                     process_time[process.name] += elapsed
-                    if config.show_timings:
-                        print("done (%s elapsed)." % time2str(elapsed))
-                    else:
-                        print("done.")
+                    if config.log_level in ("procedures", "processes"):
+                        if config.show_timings:
+                            print("done (%s elapsed)." % time2str(elapsed))
+                        else:
+                            print("done.")
                     self.start_console(process.entity, period,
                                        globals_data)
 
-            print("- storing period data")
-            for entity in entities:
-                print("  *", entity.name, "...", end=' ')
-                timed(entity.store_period_data, period)
-                print("    -> %d individuals" % len(entity.array))
+            if config.log_level in ("procedures", "processes"):
+                print("- storing period data")
+                for entity in entities:
+                    print("  *", entity.name, "...", end=' ')
+                    timed(entity.store_period_data, period)
+                    print("    -> %d individuals" % len(entity.array))
+            else:
+                for entity in entities:
+                    entity.store_period_data(period)
 #            print " - compressing period data"
 #            for entity in entities:
 #                print "  *", entity.name, "...",
@@ -412,7 +424,30 @@ class Simulation(object):
 #                    timed(entity.compress_period_data, level)
             period_objects[period] = sum(len(entity.array)
                                          for entity in entities)
+            period_elapsed_time = time.time() - period_start_time
+            if config.log_level in ("procedures", "processes"):
+                print("period %d" % period, end=' ')
+            print("done", end=' ')
+            if config.show_timings:
+                print("(%s elapsed)" % time2str(period_elapsed_time), end="")
+                if init:
+                    print(".")
+                else:
+                    main_elapsed_time = time.time() - main_start_time
+                    periods_done = period_idx + 1
+                    remaining_periods = self.periods - periods_done
+                    avg_time = main_elapsed_time / periods_done
+                    # future_time = period_elapsed_time * 0.4 + avg_time * 0.6
+                    remaining_time = avg_time * remaining_periods
+                    print(" - estimated remaining time: %s."
+                          % time2str(remaining_time))
+            else:
+                print()
 
+        print("""
+=====================
+ starting simulation
+=====================""")
         try:
             simulate_period(0, self.start_period - 1, self.init_processes,
                             self.entities, init=True)
@@ -420,23 +455,8 @@ class Simulation(object):
             periods = range(self.start_period,
                             self.start_period + self.periods)
             for period_idx, period in enumerate(periods):
-                period_start_time = time.time()
                 simulate_period(period_idx, period,
                                 self.processes, self.entities)
-                period_elapsed_time = time.time() - period_start_time
-                print("period %d done" % period, end=' ')
-                if config.show_timings:
-                    print("(%s elapsed)." % time2str(period_elapsed_time))
-
-                    main_elapsed_time = time.time() - main_start_time
-                    periods_done = period_idx + 1
-                    remaining_time = (main_elapsed_time *
-                                      (self.periods - periods_done) /
-                                      periods_done)
-                    print("estimated remaining time: %s"
-                          % time2str(remaining_time))
-                else:
-                    print()
 
             total_objects = sum(period_objects[period] for period in periods)
             total_time = time.time() - main_start_time
