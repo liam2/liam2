@@ -412,12 +412,21 @@ class Simulation(object):
                 period_start_time = time.time()
                 simulate_period(period_idx, period,
                                 self.processes, self.entities)
-                time_elapsed = time.time() - period_start_time
+                period_elapsed_time = time.time() - period_start_time
                 print("period %d done" % period, end=' ')
                 if config.show_timings:
-                    print("(%s elapsed)." % time2str(time_elapsed))
+                    print("(%s elapsed)." % time2str(period_elapsed_time))
+
+                    main_elapsed_time = time.time() - main_start_time
+                    periods_done = period_idx + 1
+                    remaining_time = (main_elapsed_time *
+                                      (self.periods - periods_done) /
+                                      periods_done)
+                    print("estimated remaining time: %s"
+                          % time2str(remaining_time))
                 else:
                     print()
+
             total_objects = sum(period_objects[period] for period in periods)
             total_time = time.time() - main_start_time
             try:
