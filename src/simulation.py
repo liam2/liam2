@@ -138,10 +138,14 @@ class Simulation(object):
                 'path': str,
                 '#file': str
             },
+            'logging': {
+                'timings': bool,
+                'level': str,  # Or('periods', 'procedures', 'processes')
+            },
             '#periods': int,
             '#start_period': int,
             'skip_shows': bool,
-            'timings': bool,
+            'timings': bool,      # deprecated
             'assertions': str,
             'default_entity': str,
             'autodump': None,
@@ -304,7 +308,7 @@ class Simulation(object):
         return timed(self.data_source.load, self.globals_def,
                      entity_registry)
 
-    def run(self, run_console=False, gui=None):
+    def run(self, run_console=False):
         start_time = time.time()
         h5in, h5out, globals_data = timed(self.data_source.run,
                                           self.globals_def,
@@ -399,16 +403,12 @@ class Simulation(object):
                                          for entity in entities)
 
         try:
-            if gui is not None:
-                gui.notifyProgress.emit(-1, str(self.start_period - 1))
             simulate_period(0, self.start_period - 1, self.init_processes,
                             self.entities, init=True)
             main_start_time = time.time()
             periods = range(self.start_period,
                             self.start_period + self.periods)
             for period_idx, period in enumerate(periods):
-                if gui is not None:
-                    gui.notifyProgress.emit(period_idx, str(period))
                 period_start_time = time.time()
                 simulate_period(period_idx, period,
                                 self.processes, self.entities)
@@ -418,9 +418,6 @@ class Simulation(object):
                     print("(%s elapsed)." % time2str(time_elapsed))
                 else:
                     print()
-            if gui is not None:
-                gui.notifyProgress.emit(self.periods, 'n/a')
-                gui.notifyEnd.emit()
             total_objects = sum(period_objects[period] for period in periods)
             total_time = time.time() - main_start_time
             try:
@@ -455,8 +452,6 @@ class Simulation(object):
             h5out.close()
             if h5_autodump is not None:
                 h5_autodump.close()
-            if gui is not None:
-                gui.notifyEnd.emit()
 
     @property
     def console_entity(self):
