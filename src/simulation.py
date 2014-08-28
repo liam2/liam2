@@ -5,6 +5,7 @@ import os.path
 import operator
 from collections import defaultdict
 import random
+import warnings
 
 import numpy as np
 import tables
@@ -213,7 +214,17 @@ class Simulation(object):
         config.skip_shows = simulation_def.get('skip_shows', False)
         #TODO: check that the value is one of "raise", "skip", "warn"
         config.assertions = simulation_def.get('assertions', 'raise')
-        config.show_timings = simulation_def.get('timings', True)
+
+        logging_def = simulation_def.get('logging', {})
+        config.log_level = logging_def.get('level', True)
+        if 'timings' in simulation_def:
+            warnings.warn("simulation.timings is deprecated, please use "
+                          "simulation.logging.timings instead",
+                          DeprecationWarning)
+            config.show_timings = simulation_def['timings']
+        else:
+            config.show_timings = True
+        config.show_timings = logging_def.get('timings', config.show_timings)
 
         autodump = simulation_def.get('autodump', None)
         if autodump is True:
