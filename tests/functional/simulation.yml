@@ -2332,5 +2332,5 @@ simulation:
 #    autodiff: True
 
     random_seed: 0
-    periods: 20
+    periods: 2
 #    skip_shows: True
