@@ -12,28 +12,29 @@ from utils import loop_wh_progress
 #TODO:  
 class RankingMatching(EvaluableExpression):
     ''' 
-    Matching based on rank 
-        set 1 is ranked by ascending rank1 
-        set 2 is ranked by ascending rank2
+    Matching based on score 
+        set 1 is ranked by decreasing score1 
+        set 2 is ranked by decreasing score2
         Then individuals in the nth position in each list are matched together.
-        The ascending options allow, if False, to sort by decreasing rank
+        The reverse options allow, if True, to sort by increasing score
     '''
-    def __init__(self, set1filter, set2filter, rank1, rank2, ascending1=True, ascending2=True):
+    def __init__(self, set1filter, set2filter, score1, score2,
+                  reverse1=False, reverse2=True):
         self.set1filter = set1filter
         self.set2filter = set2filter
-        self.rank1_expr = rank1
-        self.rank2_expr = rank2
-        self.ascending1 = ascending1
-        self.ascending2 = ascending2
+        self.score1_expr = score1
+        self.score2_expr = score2
+        self.reverse1 = reverse1
+        self.reverse2 = reverse2
         
     def traverse(self, context):
         for node in traverse_expr(self.set1filter, context):
             yield node
         for node in traverse_expr(self.set2filter, context):
             yield node
-        for node in traverse_expr(self.rank1_expr, context):
+        for node in traverse_expr(self.score1_expr, context):
             yield node
-        for node in traverse_expr(self.rank2_expr, context):
+        for node in traverse_expr(self.score2_expr, context):
             yield node
         yield self
 
@@ -44,8 +45,8 @@ class RankingMatching(EvaluableExpression):
         # because the presence of variables is done in expr.expr_eval before
         # the evaluate method is called and the context is completed during
         # evaluation (__other_xxx is added during evaluation).
-#        expr_vars |= collect_variables(self.rank1_expr, context)
-#        expr_vars |= collect_variables(self.rank2_expr, context)
+#        expr_vars |= collect_variables(self.score1_expr, context)
+#        expr_vars |= collect_variables(self.score2_expr, context)
         return expr_vars
 
     def evaluate(self, context):
@@ -61,10 +62,10 @@ class RankingMatching(EvaluableExpression):
             set1filter = expr_eval(self.set1filter, context)
             set2filter = expr_eval(self.set2filter, context)
 
-        rank1_expr = self.rank1_expr
-        rank2_expr = self.rank2_expr
-        used_variables1 = rank1_expr.collect_variables(context)
-        used_variables2 = rank2_expr.collect_variables(context)
+        score1_expr = self.score1_expr
+        score2_expr = self.score2_expr
+        used_variables1 = score1_expr.collect_variables(context)
+        used_variables2 = score2_expr.collect_variables(context)
         used_variables1.add('id')
         used_variables2.add('id')
         set1 = context_subset(context, set1filter, used_variables1)
@@ -72,12 +73,12 @@ class RankingMatching(EvaluableExpression):
         set1len = set1filter.sum()
         set2len = set2filter.sum()
         tomatch = min(set1len, set2len)
-        order1 = expr_eval(rank1_expr, context)
-        order2 = expr_eval(rank2_expr, context)
-        if not self.ascending1: 
-            order1 = - order1       # reverse sorting
-        if not self.ascending2:
-            order2 = - order2       # reverse sorting
+        order1 = expr_eval(score1_expr, context)
+        order2 = expr_eval(score2_expr, context)
+        if not self.reverse1: 
+            order1 = - order1  # reverse sorting
+        if not self.reverse2:
+            order2 = - order2  # reverse sorting
 
         sorted_set1_indices = order1[set1filter].argsort()
         sorted_set2_indices = order2[set2filter].argsort()
