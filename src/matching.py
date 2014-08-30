@@ -9,24 +9,20 @@ from exprbases import EvaluableExpression
 from context import context_length, context_subset, context_delete
 from utils import loop_wh_progress
 
-#TODO:  
-class RankingMatching(EvaluableExpression):
-    ''' 
-    Matching based on score 
-        set 1 is ranked by decreasing score1 
-        set 2 is ranked by decreasing score2
-        Then individuals in the nth position in each list are matched together.
-        The reverse options allow, if True, to sort by increasing score
-    '''
-    def __init__(self, set1filter, set2filter, score1, score2,
-                  reverse1=False, reverse2=True):
+# TODO: a quoi sert le collect variable ? 
+
+class ScoreMatching(EvaluableExpression):
+    ''' General framework for a Matching based on score '''
+    def __init__(self, set1filter, set2filter, score1, score2):
         self.set1filter = set1filter
         self.set2filter = set2filter
         self.score1_expr = score1
         self.score2_expr = score2
-        self.reverse1 = reverse1
-        self.reverse2 = reverse2
-        
+        if isinstance(score1, basestring) | isinstance(score2, basestring):
+            raise Exception("Using a string for the score expression is not "
+                            "supported anymore. You should use a normal "
+                            "expression (ie simply remove the quotes).")
+
     def traverse(self, context):
         for node in traverse_expr(self.set1filter, context):
             yield node
@@ -45,9 +41,30 @@ class RankingMatching(EvaluableExpression):
         # because the presence of variables is done in expr.expr_eval before
         # the evaluate method is called and the context is completed during
         # evaluation (__other_xxx is added during evaluation).
-#        expr_vars |= collect_variables(self.score1_expr, context)
-#        expr_vars |= collect_variables(self.score2_expr, context)
+#        expr_vars |= collect_variables(self.score_expr, context)
         return expr_vars
+
+    def evaluate(self, context):
+        raise NotImplementedError
+
+    #noinspection PyUnusedLocal
+    def dtype(self, context):
+        return int
+    
+
+class RankingMatching(ScoreMatching):
+    ''' 
+    Matching based on score 
+        set 1 is ranked by decreasing score1 
+        set 2 is ranked by decreasing score2
+        Then individuals in the nth position in each list are matched together.
+        The reverse options allow, if True, to sort by increasing score
+    '''
+    def __init__(self, set1filter, set2filter, score1, score2,
+                  reverse1=False, reverse2=True):
+        ScoreMatching.__init__(set1filter, set2filter, score1, score2)
+        self.reverse1 = reverse1
+        self.reverse2 = reverse2
 
     def evaluate(self, context):
         ctx_filter = context.get('__filter__')
@@ -75,13 +92,13 @@ class RankingMatching(EvaluableExpression):
         tomatch = min(set1len, set2len)
         order1 = expr_eval(score1_expr, context)
         order2 = expr_eval(score2_expr, context)
-        if not self.reverse1: 
+        if self.reverse1: 
             order1 = - order1  # reverse sorting
-        if not self.reverse2:
+        if self.reverse2:
             order2 = - order2  # reverse sorting
 
-        sorted_set1_indices = order1[set1filter].argsort()
-        sorted_set2_indices = order2[set2filter].argsort()
+        sorted_set1_indices = order1[set1filter].argsort()[::-1]
+        sorted_set2_indices = order2[set2filter].argsort()[::-1]
         idx1 = sorted_set1_indices[:tomatch]
         idx2 = sorted_set2_indices[:tomatch]
         print("matching with %d/%d individuals" % (set1len, set2len))
@@ -95,47 +112,8 @@ class RankingMatching(EvaluableExpression):
         result[id_to_rownum[id2]] = id1
 
         return result
-        
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return int
-                      
-class ScoreMatching(EvaluableExpression):
-    ''' General framework for a Matching based on score '''
-    def __init__(self, set1filter, set2filter, score):
-        self.set1filter = set1filter
-        self.set2filter = set2filter
-        self.score_expr = score
-        if isinstance(score, basestring):
-            raise Exception("Using a string for the score expression is not "
-                            "supported anymore. You should use a normal "
-                            "expression (ie simply remove the quotes).")
-        
-    def traverse(self, context):
-        for node in traverse_expr(self.set1filter, context):
-            yield node
-        for node in traverse_expr(self.set2filter, context):
-            yield node
-        for node in traverse_expr(self.score_expr, context):
-            yield node
-        yield self
 
-    def collect_variables(self, context):
-        expr_vars = collect_variables(self.set1filter, context)
-        expr_vars |= collect_variables(self.set2filter, context)
-        #FIXME: add variables from score_expr. This is not done currently,
-        # because the presence of variables is done in expr.expr_eval before
-        # the evaluate method is called and the context is completed during
-        # evaluation (__other_xxx is added during evaluation).
-#        expr_vars |= collect_variables(self.score_expr, context)
-        return expr_vars
 
-    def evaluate(self, context):
-        raise NotImplementedError
-
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return int
 
 difficulty_methods = ['EDtM', 'SDtOM']  
 class SequentialMatching(ScoreMatching):
@@ -155,10 +133,11 @@ class SequentialMatching(ScoreMatching):
             The SDtOM is the most relevant distance.
     '''
     def __init__(self, set1filter, set2filter, score, orderby, pool_size=None):
-        ScoreMatching.__init__(self, set1filter, set2filter, score)
+        ScoreMatching.__init__(self, set1filter, set2filter, score, None)
         
         if pool_size is not None:
-            assert isinstance(pool_size, int) and pool_size > 0 
+            assert isinstance(pool_size, int)
+            assert pool_size > 0 
         if isinstance(orderby, str):
             if orderby not in difficulty_methods:
                 raise Exception("The given method is not implemented, you can try with "
@@ -167,7 +146,8 @@ class SequentialMatching(ScoreMatching):
         self.pool_size = pool_size
         
     def traverse(self, context):
-        return itertools.chain(traverse_expr(self.orderby, context), ScoreMatching.traverse(self,context))
+        return itertools.chain(traverse_expr(self.orderby, context),
+                               ScoreMatching.traverse(self,context))
                 
     def collect_variables(self, context):
         expr_vars = ScoreMatching.collect_variables(self, context)
@@ -176,11 +156,8 @@ class SequentialMatching(ScoreMatching):
 
     def evaluate(self, context):
         global local_ctx
-
         ctx_filter = context.get('__filter__')
-
         id_to_rownum = context.id_to_rownum
-
         # at some point ctx_filter will be cached automatically, so we don't
         # need to take care of it manually here
         if ctx_filter is not None:
@@ -190,7 +167,7 @@ class SequentialMatching(ScoreMatching):
             set1filter = expr_eval(self.set1filter, context)
             set2filter = expr_eval(self.set2filter, context)
 
-        score_expr = self.score_expr
+        score_expr = self.score1_expr
 
         used_variables = score_expr.collect_variables(context)
         used_variables1 = [v for v in used_variables
