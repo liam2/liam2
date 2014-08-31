@@ -1419,6 +1419,41 @@ entities:
                             if(gender, partner.newhousehold, newhousehold),
                             hh_id)
 
+            test_matching:
+    
+                - married: partner_id != -1
+                - to_marry: (age >= 18) and (age <= 90) and not married
+                - pooled_matching:
+                    if(to_marry,
+                       matching(set1filter=not gender,
+                                set2filter=gender,
+                                score=- 0.4893 * other.age
+                                      + 0.0131 * other.age ** 2
+                                      - 0.0001 * other.age ** 3
+                                      + 0.0467 * (other.age - age)
+                                      - 0.0189 * (other.age - age) ** 2
+                                      + 0.0003 * (other.age - age) ** 3
+                                      - 0.9087 * (other.work and workless)
+                                      - 1.3286 * (other.workless and not workless)
+                                      - 0.6549 * (other.work and work)
+                                      - 0.7939 * ((other.eduach == 3) and TERTIARY_EDU)
+                                      - 1.4128 * ((other.eduach == 2) and TERTIARY_EDU)
+                                      - 0.8984 * ((other.eduach == 4) and UPPER_SECONDARY_EDU)
+                                      - 1.5530 * ((other.eduach == 4) and LOWER_SECONDARY_EDU)
+                                      - 0.5451 * ((other.eduach == 2) and LOWER_SECONDARY_EDU)
+                                      + 0.0015 * abs(household.num_persons - other.household.num_persons),
+                                orderby=difficult_match
+                                pool_size=10),
+                       partner_id)    
+                                 
+                - order_matching:
+                    if(to_marry,
+                       matching(set1filter=not gender,
+                                set2filter=gender,
+                                orderby1=age,
+                                orderby2=age),
+                       partner_id)                
+                
             test_compound:
                 - show(min(age, 10))
                 - show(max(min(age, 10)))
