@@ -76,7 +76,7 @@ class RankingMatching(ScoreMatching):
         The reverse options allow, if True, to sort by increasing orderby
     '''
     def __init__(self, set1filter, set2filter, orderby1, orderby2,
-                 reverse1=False, reverse2=True):
+                 reverse1=False, reverse2=False):
         ScoreMatching.__init__(self, set1filter, set2filter, orderby1, orderby2)
         self.reverse1 = reverse1
         self.reverse2 = reverse2
