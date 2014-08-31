@@ -103,14 +103,13 @@ class RankingMatching(ScoreMatching):
         sorted_set2_indices = orderby2[set2filter].argsort()[::-1]
         return sorted_set1_indices, sorted_set2_indices
 
-    def _match(self, set1, set2, sorted_set1_indices,
-              sorted_set2_indices, context):
+    def _match(self, set1tomatch, set2tomatch, set1, set2, context):
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
 
         id_to_rownum = context.id_to_rownum
-        id1 = set1['id'][sorted_set1_indices]
-        id2 = set2['id'][sorted_set2_indices]
+        id1 = set1['id'][set1tomatch]
+        id2 = set2['id'][set2tomatch]
         result[id_to_rownum[id1]] = id2
         result[id_to_rownum[id2]] = id1
         return result
@@ -131,7 +130,7 @@ class RankingMatching(ScoreMatching):
         set2 = context_subset(context, set2filter, used_variables2)
 
         print("matching with %d/%d individuals" % (set1len, set2len))
-        return self._match(set1, set2, set1tomatch, set2tomatch, context)
+        return self._match(set1tomatch, set2tomatch, set1, set2, context)
 
 class SequentialMatching(ScoreMatching):
     '''
