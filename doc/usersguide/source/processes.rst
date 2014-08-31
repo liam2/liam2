@@ -1117,19 +1117,19 @@ rank_matching
 
 The ranking matching matches works in three step : 
 
-Set 1 is ranked by ascending rank 1 
-Set 2 is ranked by ascending rank 2
+Set 1 is ranked by decreasing orderby1 
+Set 2 is ranked by decreasing orderby2
 Then individuals in the nth position in each list are matched together.
 
 *generic setup* ::
 
     matching(set1filter=boolean_expr,
              set2filter=boolean_expr,
-             rank1=expression, rank2=expression,
-             ascending1=boolean, ascending2=boolean)
+             orderby1=expression, orberby2=expression,
+             reverse1=boolean, reverse2=boolean)
 
-The ascending options allow, if False, to sort by decreasing rank. Default
-values are True.
+The reverse options allow, if True, to sort by ascending score. Default
+values are False.
         
 
 .. index:: lifecycle functions
