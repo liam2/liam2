@@ -215,9 +215,9 @@ class SequentialMatching(ScoreMatching):
 
         score_expr = self.score_expr
         result = np.empty(context_length(context), dtype=int)
-        id_to_rownum = context.id_to_rownum
-        used_variables1
         result.fill(-1)
+        id_to_rownum = context.id_to_rownum
+        
 
         matching_ctx = dict(('__other_' + k if k in used_variables2 else k, v)
                             for k, v in set2.iteritems())
@@ -288,4 +288,7 @@ class SequentialMatching(ScoreMatching):
         return self._match(set1tomatch, set1, set2,
                           used_variables1, used_variables2, context)
 
-functions = {'matching': SequentialMatching, 'rank_matching': RankingMatching}
+
+functions = {'matching': SequentialMatching,
+             'rank_matching': RankingMatching
+}

@@ -1423,6 +1423,12 @@ entities:
     
                 - married: partner_id != -1
                 - to_marry: (age >= 18) and (age <= 90) and not married
+                - workless: not work
+                - avg_age_men: avg(age, filter=to_marry and gender)
+                - difficult_match: if(to_marry and not gender,
+                                      abs(age - avg_age_men),
+                                      nan)
+                
                 - pooled_matching:
                     if(to_marry,
                        matching(set1filter=not gender,
@@ -1442,13 +1448,13 @@ entities:
                                       - 1.5530 * ((other.eduach == 4) and LOWER_SECONDARY_EDU)
                                       - 0.5451 * ((other.eduach == 2) and LOWER_SECONDARY_EDU)
                                       + 0.0015 * abs(household.num_persons - other.household.num_persons),
-                                orderby=difficult_match
+                                orderby=difficult_match,
                                 pool_size=10),
                        partner_id)    
                                  
                 - order_matching:
                     if(to_marry,
-                       matching(set1filter=not gender,
+                       rank_matching(set1filter=not gender,
                                 set2filter=gender,
                                 orderby1=age,
                                 orderby2=age),
@@ -2214,8 +2220,7 @@ simulation:
         - region: [dummy]
         - person: [
 #                   bp,
-                   cleanup,
-
+                   cleanup,                 
                    # basic
                    temp_global,
                    temp_global_modify,
@@ -2295,6 +2300,7 @@ simulation:
                    # misc
                    test_choice,
                    show_weight,
+                   test_matching,
                    [marriage, 4],
         ]
         - household: [num_persons, nch, maxnch, test_align_link
