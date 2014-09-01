@@ -249,12 +249,13 @@ class SequentialMatching(ScoreMatching):
             # optimized_exprs[pk] = optimized_expr
             # set2_scores = evaluate(optimized_expr, mm_dict, set2)
             set2_scores = expr_eval(score_expr, local_ctx)
-
             individual2_idx = np.argmax(set2_scores)
-
+#             import pdb
+#             pdb.set_trace()
             id1 = local_ctx['id']
             id2 = local_ctx['__other_id'][individual2_idx]
-
+            if pool_size is not None and set2_size > pool_size:
+                individual2_idx = pool[individual2_idx]
             matching_ctx = context_delete(matching_ctx, individual2_idx)
 
             result[id_to_rownum[id1]] = id2
