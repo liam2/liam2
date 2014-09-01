@@ -8,12 +8,14 @@ from exprbases import EvaluableExpression
 from context import context_length, context_subset, context_delete
 from utils import loop_wh_progress
 
-# TODO: a quoi sert le collect variable ?
 implemented_difficulty_methods = ['EDtM', 'SDtOM']
 
 class ScoreMatching(EvaluableExpression):
     ''' General framework for a Matching based on score
-        That kind of matching doesn't
+        In general that kind of matching doesn't provide the best matching meaning
+        it doesn't optimize an overall penalty function. For example, if we have 
+        a distance function, the function doesn't always return the match with the
+        lowest sum of distanced between all matched pairs. 
         A Score matching need two things :
           - an order for the two sets
           - a way of selecting a match
