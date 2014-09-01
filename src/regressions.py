@@ -4,7 +4,8 @@ from alignment import Alignment
 from expr import (Expr, Variable, BinaryOp, ComparisonOp, missing_values,
                   getdtype, always)
 from exprbases import CompoundExpression
-from exprmisc import Exp, Normal, Max, Where, Logit, Logistic, Uniform
+from exprmisc import Exp, Max, Where, Logit, Logistic
+from exprrandom import Normal, Uniform
 
 
 class Regression(CompoundExpression):

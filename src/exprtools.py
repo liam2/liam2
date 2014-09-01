@@ -14,13 +14,14 @@ import groupby
 import links
 import matching
 import exprmisc
+import exprrandom
 import regressions
 import tfunc
 
 
 functions = {}
 for module in (actions, aggregates, alignment, charts, groupby, links, matching,
-               exprmisc, regressions, tfunc):
+               exprmisc, exprrandom, regressions, tfunc):
     functions.update(module.functions)
 
 

@@ -10,7 +10,7 @@ from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   get_missing_record, get_missing_vector, FunctionExpr,
                   always, firstarg_dtype)
 from exprbases import (FilteredExpression, CompoundExpression, NumexprFunction,
-                       TableExpression, NumpyRandom, NumpyChangeArray)
+                       TableExpression, NumpyChangeArray)
 from context import context_length
 from utils import PrettyTable, argspec
 
@@ -154,54 +154,7 @@ class Sort(NumpyChangeArray):
 #------------------------------------
 
 
-class Uniform(NumpyRandom):
-    np_func = np.random.uniform
-    # The docstring was wrong in np1.7: the default size is None instead of 1.
-    # Issue reported as: https://github.com/numpy/numpy/pull/4611
-    argspec = argspec(('low', 0.0), ('high', 1.0), ('size', None),
-                      **NumpyRandom.kwonlyargs)
 
-
-class Normal(NumpyRandom):
-    np_func = np.random.normal
-    argspec = argspec(('loc', 0.0), ('scale', 1.0), ('size', None),
-                      **NumpyRandom.kwonlyargs)
-
-
-class Gumbel(NumpyRandom):
-    np_func = np.random.gumbel
-    argspec = argspec(('loc', 0.0), ('scale', 1.0), ('size', None),
-                      **NumpyRandom.kwonlyargs)
-
-
-class RandInt(NumpyRandom):
-    np_func = np.random.randint
-    argspec = argspec('low', ('high', None), ('size', None),
-                      **NumpyRandom.kwonlyargs)
-    dtype = always(int)
-
-
-# not inheriting from NumpyRandom as it would get the argspec from an
-# nonexistent np_func
-class Choice(FunctionExpr):
-    funcname = 'choice'
-
-    def compute(self, context, choices, p=None, size=None, replace=True):
-        #TODO: __init__ should detect when all args are constants and run
-        # a "check_arg_values" method if present
-        #TODO: document the change in behavior for the case where the sum of
-        # probabilities is != 1
-        # random.choice only checks that the error is < 1e-8 but always
-        # divides probabilities by sum(p). It is probably a better choice
-        # because it distributes the error to all bins instead of only
-        # adjusting the probability of the last choice.
-        if size is None:
-            size = len(context)
-        return np.random.choice(choices, size=size, replace=replace, p=p)
-
-    dtype = firstarg_dtype
-
-#------------------------------------
 
 
 class Round(NumpyChangeArray):
@@ -498,12 +451,6 @@ class Where(NumexprFunction):
 
 
 functions = {
-    # random
-    'uniform': Uniform,
-    'normal': Normal,
-    'gumbel': Gumbel,
-    'choice': Choice,
-    'randint': RandInt,
     # element-wise functions
     # Min and Max are in aggregates.py.functions (because of the dispatcher)
     'abs': Abs,
