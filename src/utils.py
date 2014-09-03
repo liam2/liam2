@@ -4,6 +4,7 @@ from __future__ import print_function
 #import Tkinter as tk
 #import ttk
 import re
+import ast
 import sys
 import time
 import operator
@@ -1133,21 +1134,21 @@ FullArgSpec = namedtuple('FullArgSpec',
                          'kwonlydefaults, annotations')
 
 
-def argspec(*args, **kwonlyargs):
+def _argspec(*args, **kwonlyargs):
     """
     args = argument names. Arguments with a default value must be given as a
     ('name', value) tuple. varargs and varkw argument names, if any, should be
     prefixed with '*' and '**' respectively and must be the last positional
     arguments.
-    >>> argspec('a', 'b', ('c', 1), '*d', '**e', f=None)
+    >>> _argspec('a', 'b', ('c', 1), '*d', '**e', f=None)
     ... # doctest: +NORMALIZE_WHITESPACE
     FullArgSpec(args=['a', 'b', 'c'], varargs='d', varkw='e', defaults=(1,),
                 kwonlyargs=['f'], kwonlydefaults={'f': None}, annotations={})
-    >>> argspec('a', '*', '**b', c=None)
+    >>> _argspec('a', '*', '**b', c=None)
     ... # doctest: +NORMALIZE_WHITESPACE
     FullArgSpec(args=['a'], varargs=None, varkw='b', defaults=None,
                 kwonlyargs=['c'], kwonlydefaults={'c': None}, annotations={})
-    >>> argspec('a', 'b', ('c', 1), d=None)
+    >>> _argspec('a', 'b', ('c', 1), d=None)
     ... # doctest: +NORMALIZE_WHITESPACE
     FullArgSpec(args=['a', 'b', 'c'], varargs=None, varkw=None, defaults=(1,),
                 kwonlyargs=['d'], kwonlydefaults={'d': None}, annotations={})
@@ -1169,6 +1170,39 @@ def argspec(*args, **kwonlyargs):
     return FullArgSpec(args, varargs, varkw, defaults,
                        kwonlyargs=kwonlyargs.keys(), kwonlydefaults=kwonlyargs,
                        annotations={})
+
+
+def argspec(*args, **kwonlyargs):
+    """
+    >>> argspec('a, b, c=1, *d, **e, f=None')
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a', 'b', 'c'], varargs='d', varkw='e', defaults=(1,),
+                kwonlyargs=['f'], kwonlydefaults={'f': None}, annotations={})
+    >>> argspec('a, *, **b, c=None')
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a'], varargs=None, varkw='b', defaults=None,
+                kwonlyargs=['c'], kwonlydefaults={'c': None}, annotations={})
+    >>> argspec('a, b, c=1, d=None')
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a', 'b', 'c', 'd'], varargs=None, varkw=None,
+                defaults=(1, None), kwonlyargs=[], kwonlydefaults={},
+                annotations={})
+    """
+    if len(args) == 1 and isinstance(args[0], basestring):
+        assert not kwonlyargs
+        str_args = [a.strip().split('=') for a in args[0].split(',')]
+        args = [(a[0], ast.literal_eval(a[1])) if len(a) > 1 else a[0]
+                for a in str_args]
+
+        def star(a):
+            return isinstance(a, basestring) and '*' in a
+        if any(star(a) for a in args):
+            assert not kwonlyargs
+            kwonlyargs = {}
+            while not star(args[-1]):
+                k, v = args.pop()
+                kwonlyargs[k] = v
+    return _argspec(*args, **kwonlyargs)
 
 
 # miscellaneous tools
