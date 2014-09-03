@@ -1,7 +1,11 @@
 from __future__ import print_function
 
 import numpy as np
+import pandas as pd
 import random
+import pdb
+
+from scipy.stats import itemfreq
 
 from expr import expr_eval, collect_variables, traverse_expr
 from exprbases import EvaluableExpression
@@ -9,6 +13,21 @@ from context import context_length, context_subset, context_delete
 from utils import loop_wh_progress
 
 implemented_difficulty_methods = ['EDtM', 'SDtOM']
+
+
+def array_by_cell(used_variables, setfilter, context):    
+    subset = context_subset(context, setfilter, used_variables)
+    used_set = dict((k, subset[k])
+                  for k in used_variables)
+    used_set = pd.DataFrame(used_set)
+    used_variables.remove('id')
+    grouped = used_set.groupby(used_variables)
+    array = grouped.size().reset_index()
+    
+    assert 'size_cell' not in array.columns
+    array.rename(columns={0: 'size_cell'}, inplace=True)
+    return array, grouped, used_set['id']
+
 
 class ScoreMatching(EvaluableExpression):
     ''' General framework for a Matching based on score
@@ -64,6 +83,17 @@ class ScoreMatching(EvaluableExpression):
             set2filter = expr_eval(self.set2filter, context)
         return set1filter, set2filter
 
+    def _get_used_variables_order(self, context):
+        orderby1_expr = self.orderby1_expr
+        used_variables1 = orderby1_expr.collect_variables(context)
+        used_variables1.add('id')
+        if self.orderby2_expr is None:
+            return used_variables1
+        orderby2_expr = self.orderby2_expr
+        used_variables2 = orderby2_expr.collect_variables(context)
+        used_variables2.add('id')
+        return used_variables1, used_variables2
+    
     #noinspection PyUnusedLocal
     def dtype(self, context):
         return int
@@ -82,15 +112,7 @@ class RankingMatching(ScoreMatching):
         ScoreMatching.__init__(self, set1filter, set2filter, orderby1, orderby2)
         self.reverse1 = reverse1
         self.reverse2 = reverse2
-
-    def _get_used_variables_order(self, context):
-        orderby1_expr = self.orderby1_expr
-        orderby2_expr = self.orderby2_expr
-        used_variables1 = orderby1_expr.collect_variables(context)
-        used_variables2 = orderby2_expr.collect_variables(context)
-        used_variables1.add('id')
-        used_variables2.add('id')
-        return used_variables1, used_variables2
+        
 
     def _get_sorted_indices(self, set1filter, set2filter, context):
         orderby1_expr = self.orderby1_expr
@@ -164,16 +186,6 @@ class SequentialMatching(ScoreMatching):
             assert pool_size > 0
         self.pool_size = pool_size
 
-    def _get_used_variable_order(self, context):
-        orderby1_expr = self.orderby1_expr
-        used_variables1 = orderby1_expr.collect_variables(context)
-        used_variables1 += ['id']
-        if self.orderby2_expr is None:
-            return used_variables1, None
-        orderby2_expr = self.orderby2_expr
-        used_variables2 = orderby2_expr.collect_variables(context)
-        used_variables2 += ['id']
-        return used_variables1, used_variables2
 
     def _get_used_variables_match(self, context):
         score_expr = self.score_expr
@@ -292,6 +304,140 @@ class SequentialMatching(ScoreMatching):
                           used_variables1, used_variables2, context)
 
 
+class OptimizedSequentialMatching(SequentialMatching):
+    ''' Here, the matching is optimzed since we work on 
+        sets grouped with values. Doing so, we work with 
+        smaller sets and we can improve running time.
+    '''
+    def __init__(self, set1filter, set2filter, score, orderby):
+        SequentialMatching.__init__(self, set1filter, set2filter, score,
+                                    orderby, pool_size=None)
+        
+    def evaluate(self, context):
+        set1filter, set2filter = self._get_filters(context)
+        set1len = set1filter.sum()
+        set2len = set2filter.sum()
+        tomatch = min(set1len, set2len)
+        
+        sorted_set1_indices, _ = \
+                self._get_sorted_indices(set1filter, set2filter, context)
+        set1tomatch = sorted_set1_indices[:tomatch] 
+        print("matching with %d/%d individuals" % (set1len, set2len))
+
+        order_variables1 = self._get_used_variables_order(context)
+        used_variables1, used_variables2 = self._get_used_variables_match(context)
+        if all([x in used_variables1 for x in order_variables1]):
+            return self._evaluate_two_groups(used_variables1, set1filter,
+                                             used_variables2, set2filter,
+                                             context)
+        
+    
+    def _evaluate_two_groups(self, used_variables1, set1filter, 
+                             used_variables2, set2filter, context):
+        array1, grouped1, idx1 = array_by_cell(used_variables1, set1filter, context)
+        global array2, grouped2
+        array2, grouped2, idx2 = array_by_cell(used_variables2, set2filter, context)
+        
+        array2.rename(columns=dict((k, '__other_' + k) for k in array2.columns), inplace=True)
+        array2['id_cell'] = range(len(array2))
+        score = self.score_expr
+        
+        result_cell = np.empty(context_length(context), dtype=int)
+        result_cell.fill(-1)
+        id_to_rownum = context.id_to_rownum
+        
+        def match_cell(idx, array1, idx1, idx2):
+            global array2, grouped2
+            size1 = array1['size_cell'].iloc[idx]
+            
+            for var in array1.columns:
+                array2[var] = array1[var].iloc[idx]
+            cell_idx = array2[array2['__other_size_cell'] > 0].eval(score).argmax()
+
+            size2 = array2['__other_size_cell'].iloc[cell_idx]
+            nb_match = min(size1, size2)
+
+            # we could introduce a random choice her but it's not
+            # much necessary
+            indexes1 = grouped1.groups[idx][:nb_match]
+            indexes1 = idx1[indexes1].values
+            
+            result_cell[id_to_rownum[indexes1]] = cell_idx
+            
+            array2['__other_size_cell'].iloc[cell_idx] -= nb_match
+
+            if nb_match < size1:
+                grouped1.groups[idx] = grouped1.groups[idx][nb_match:]
+                array1['size_cell'].iloc[idx] -= nb_match
+                if sum(array2['__other_size_cell']) > 0:
+                    match_cell(idx, array1, idx1, idx2)                
+ 
+        for k in range(len(array1)):
+            if sum(array2['__other_size_cell']) == 0:
+                break
+            match_cell(k, array1, idx1, idx2)
+
+        # in result_cell we have only people of set1 matched with a group of set2
+        
+        result = np.empty(context_length(context), dtype=int)
+        result.fill(-1)
+        
+        freq = itemfreq(result_cell)
+        for k in range(len(freq) - 1):     #we know that first value is -1
+            group_idx = freq[k + 1][0]
+            size_match = int(freq[k + 1][1])
+            # we could do some random choice here but it's worthless if set2 is 
+            # randomly ordered
+            matched = grouped2.groups[group_idx][:size_match]
+            try:
+                result[result_cell == group_idx] = matched
+                result[id_to_rownum[matched]] = id_to_rownum[result_cell == group_idx]
+            except: 
+                pdb.set_trace()
+            
+        return result
+            
+#         while array1[0].sum() > 0 and array1[0].sum() > 0:
+#         def match_cells(array1, array2, score):
+#             if len(array1[0]) == 0 or len(array2[0]) == 0:
+#                 return
+#             cell_to_match = array1.iloc[0,:]
+#         
+#         for k in xrange(len(array1)):   
+# #           real_match_cells(k,cells)
+#             temp = table1[k]
+#             try: 
+#                 score = eval(score_str)
+#             except:
+#                 pdb.set_trace()
+#             try:
+#                 idx = score.argmax()
+#             except:
+#                 pdb.set_trace()
+#             idx2 = cells[idx, nvar + 2]
+#             match[k] = idx2 
+#             cells[idx, nvar + 1] -= 1
+#             if cells[idx,nvar + 1]==0:
+#                 cells = np.delete(cells, idx, 0)     
+#             # update progress bar
+#             percent_done = (k * 100) / n
+#             to_display = percent_done - percent
+#             if to_display:
+#                 chars_to_write = list("." * to_display)
+#                 offset = 9 - (percent % 10)
+#                 while offset < to_display:
+#                     chars_to_write[offset] = '|'
+#                     offset += 10
+#                 sys.stdout.write(''.join(chars_to_write))
+#             percent = percent_done         
+        # metch 
+
+
+        return result
+
+
 functions = {'matching': SequentialMatching,
-             'rank_matching': RankingMatching
+             'rank_matching': RankingMatching,
+             'optimized_matching': OptimizedSequentialMatching
+            
 }

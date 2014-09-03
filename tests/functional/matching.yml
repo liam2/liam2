@@ -107,6 +107,17 @@ entities:
                 - diff: if(INCOUPLE and male, partner.age - age, 0)
                 - assertEqual(max(diff), 0)  
 
+                - partner_id: -1
+                - partner_id: matching(set1filter=male,
+                                       set2filter=not male,
+                                       orderby=age,
+                                       score = - (other.age - age)**2
+                                       )
+                - assertEqual(count(partner_id > -1 and male), 200)                                
+                - assertEqual(count(partner_id > -1 and not male), 200)
+                - diff: if(INCOUPLE, abs(partner.age - age), 0)
+                - assertEqual(max(diff), 0) 
+                
                 # now we just reverse set1 and set2, we know that almost
                 # certainly they are three women with same age (and age < 99)
                 # so one of them must choose a partner with a different age
@@ -121,8 +132,18 @@ entities:
                 - diff: if(INCOUPLE, abs(partner.age - age), 0)
                 - assertTrue(max(diff) != 0)   
                 
-
-
+                # matching
+                - partner_id: -1
+                - partner_id: optimized_matching(set1filter=not male,
+                                       set2filter=male,
+                                       orderby=age,
+                                       score = - (other.age - age)**2
+                                       )
+                - assertEqual(count(partner_id > -1 and male), 200)                                
+                - assertEqual(count(partner_id > -1 and not male), 200)
+                - diff: if(INCOUPLE, abs(partner.age - age), 0)
+                - assertTrue(max(diff) != 0)  
+                
 simulation:
     processes:
         - person: [birth, earnings, marriage]
