@@ -582,12 +582,19 @@ def loop_wh_progress(func, sequence, pbclass=TextProgressBar, **kwargs):
             func(i, value, **kwargs)
             pb.update(i)
         except StopIteration:
-            import pdb
-            pdb.set_trace()
             break
     pb.destroy()
 
-
+def loop_wh_progress_for_pandas(func, sequence, pbclass=TextProgressBar, **kwargs):
+    pb = pbclass(len(sequence))
+    for i, value in sequence.iterrows():
+        try:
+            func(i, value, **kwargs)
+            pb.update(i)
+        except StopIteration:
+            break
+    pb.destroy()
+    
 #def loop_wh_progress(func, sequence):
 #    app = ProgressBar(func, sequence)
 #    app.mainloop()

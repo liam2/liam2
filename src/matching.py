@@ -10,7 +10,7 @@ from scipy.stats import itemfreq
 from expr import expr_eval, collect_variables, traverse_expr
 from exprbases import EvaluableExpression
 from context import context_length, context_subset, context_delete
-from utils import loop_wh_progress
+from utils import loop_wh_progress, loop_wh_progress_for_pandas
 
 implemented_difficulty_methods = ['EDtM', 'SDtOM']
 
@@ -346,12 +346,14 @@ class OptimizedSequentialMatching(SequentialMatching):
         result_cell.fill(-1)
         id_to_rownum = context.id_to_rownum
         
-        def match_cell(idx, array1, idx1, idx2):
+        def match_cell(idx, row, idx1, idx2):
             global array2, grouped2
-            size1 = array1['size_cell'].iloc[idx]
+            if sum(array2['__other_size_cell']) == 0:
+                raise StopIteration()
+            size1 = row['size_cell']
             
             for var in array1.columns:
-                array2[var] = array1[var].iloc[idx]
+                array2[var] = row[var]
             cell_idx = array2[array2['__other_size_cell'] > 0].eval(score).argmax()
 
             size2 = array2['__other_size_cell'].iloc[cell_idx]
@@ -368,14 +370,12 @@ class OptimizedSequentialMatching(SequentialMatching):
 
             if nb_match < size1:
                 grouped1.groups[idx] = grouped1.groups[idx][nb_match:]
-                array1['size_cell'].iloc[idx] -= nb_match
+                row['size_cell'] -= nb_match
                 if sum(array2['__other_size_cell']) > 0:
-                    match_cell(idx, array1, idx1, idx2)                
- 
-        for k in range(len(array1)):
-            if sum(array2['__other_size_cell']) == 0:
-                break
-            match_cell(k, array1, idx1, idx2)
+                    match_cell(idx, row, idx1, idx2)                
+                    
+        loop_wh_progress_for_pandas(match_cell, array1,
+                         idx1=idx1, idx2=idx2) 
 
         # in result_cell we have only people of set1 matched with a group of set2
         
@@ -389,11 +389,9 @@ class OptimizedSequentialMatching(SequentialMatching):
             # we could do some random choice here but it's worthless if set2 is 
             # randomly ordered
             matched = grouped2.groups[group_idx][:size_match]
-            try:
-                result[result_cell == group_idx] = matched
-                result[id_to_rownum[matched]] = id_to_rownum[result_cell == group_idx]
-            except: 
-                pdb.set_trace()
+
+            result[result_cell == group_idx] = matched
+            result[id_to_rownum[matched]] = id_to_rownum[result_cell == group_idx]
             
         return result
             
