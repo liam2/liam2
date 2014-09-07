@@ -3,30 +3,26 @@ from __future__ import print_function
 import numpy as np
 import pandas as pd
 import random
-import pdb
-
-from scipy.stats import itemfreq
 
 from expr import expr_eval, collect_variables, traverse_expr
 from exprbases import EvaluableExpression
 from context import context_length, context_subset, context_delete
-from utils import loop_wh_progress, loop_wh_progress_for_pandas
+from utils import loop_wh_progress
 
 implemented_difficulty_methods = ['EDtM', 'SDtOM']
 
 
-def array_by_cell(used_variables, setfilter, context):    
+def df_by_cell(used_variables, setfilter, context):
+    ''' return a DataFrame, with id list and group size ''' 
     subset = context_subset(context, setfilter, used_variables)
     used_set = dict((k, subset[k])
                   for k in used_variables)
     used_set = pd.DataFrame(used_set)
     used_variables.remove('id')
     grouped = used_set.groupby(used_variables)
-    array = grouped.size().reset_index()
-    
-    assert 'size_cell' not in array.columns
-    array.rename(columns={0: 'size_cell'}, inplace=True)
-    return array, grouped, used_set['id']
+    idx = grouped.apply(lambda x: list(x['id'].values)).reset_index()
+    idx.rename(columns={0: 'idx'}, inplace=True)
+    return idx
 
 
 class ScoreMatching(EvaluableExpression):
@@ -262,8 +258,6 @@ class SequentialMatching(ScoreMatching):
             # set2_scores = evaluate(optimized_expr, mm_dict, set2)
             set2_scores = expr_eval(score_expr, local_ctx)
             individual2_idx = np.argmax(set2_scores)
-#             import pdb
-#             pdb.set_trace()
             id1 = local_ctx['id']
             id2 = local_ctx['__other_id'][individual2_idx]
             if pool_size is not None and set2_size > pool_size:
@@ -334,103 +328,54 @@ class OptimizedSequentialMatching(SequentialMatching):
     
     def _evaluate_two_groups(self, used_variables1, set1filter, 
                              used_variables2, set2filter, context):
-        array1, grouped1, idx1 = array_by_cell(used_variables1, set1filter, context)
-        global array2, grouped2
-        array2, grouped2, idx2 = array_by_cell(used_variables2, set2filter, context)
-        
-        array2.rename(columns=dict((k, '__other_' + k) for k in array2.columns), inplace=True)
-        array2['id_cell'] = range(len(array2))
-        score = self.score_expr
-        
-        result_cell = np.empty(context_length(context), dtype=int)
-        result_cell.fill(-1)
+        global matching_ctx
+
+        score_expr = self.score_expr
+        result = np.empty(context_length(context), dtype=int)
+        result.fill(-1)
         id_to_rownum = context.id_to_rownum
         
-        def match_cell(idx, row, idx1, idx2):
-            global array2, grouped2
-            if sum(array2['__other_size_cell']) == 0:
-                raise StopIteration()
-            size1 = row['size_cell']
-            
-            for var in array1.columns:
-                array2[var] = row[var]
-            cell_idx = array2[array2['__other_size_cell'] > 0].eval(score).argmax()
+        df1 = df_by_cell(used_variables1, set1filter, context)
+        df2 = df_by_cell(used_variables2, set2filter, context)
+        
+        matching_ctx = dict(('__other_' + k, v.values) for k, v in df2.iteritems())
+        matching_ctx['__len__'] = len(df2)
+        for varname, col in df1.iteritems():
+            matching_ctx[varname] = np.empty(1, dtype=col.dtype)
 
-            size2 = array2['__other_size_cell'].iloc[cell_idx]
+
+        def match_cell(idx, row):
+            global matching_ctx
+            if matching_ctx['__len__'] == 0:
+                raise StopIteration()
+            
+            size1 = len(row['idx'])
+            for var in df1.columns:
+                matching_ctx[var] = row[var]
+    
+            cell_idx = expr_eval(score_expr, matching_ctx).argmax()
+            size2 = len(matching_ctx['__other_idx'][cell_idx])
             nb_match = min(size1, size2)
 
             # we could introduce a random choice her but it's not
-            # much necessary
-            indexes1 = grouped1.groups[idx][:nb_match]
-            indexes1 = idx1[indexes1].values
+            # much necessary. In that case, it should be done in df_by_cell
+            idx1 = row['idx'][:nb_match]
+            idx2 = matching_ctx['__other_idx'][cell_idx][:nb_match]
             
-            result_cell[id_to_rownum[indexes1]] = cell_idx
+            result[id_to_rownum[idx1]] = idx2
+            result[id_to_rownum[idx2]] = idx1
             
-            array2['__other_size_cell'].iloc[cell_idx] -= nb_match
+            if nb_match == size2:
+                matching_ctx = context_delete(matching_ctx, cell_idx)
+            else:
+                matching_ctx['__other_idx'][cell_idx] = \
+                    matching_ctx['__other_idx'][cell_idx][nb_match:]
 
             if nb_match < size1:
-                grouped1.groups[idx] = grouped1.groups[idx][nb_match:]
-                row['size_cell'] -= nb_match
-                if sum(array2['__other_size_cell']) > 0:
-                    match_cell(idx, row, idx1, idx2)                
+                row['idx'] = row['idx'][nb_match:]
+                match_cell(idx, row)
                     
-        loop_wh_progress_for_pandas(match_cell, array1,
-                         idx1=idx1, idx2=idx2) 
-
-        # in result_cell we have only people of set1 matched with a group of set2
-        
-        result = np.empty(context_length(context), dtype=int)
-        result.fill(-1)
-        
-        freq = itemfreq(result_cell)
-        for k in range(len(freq) - 1):     #we know that first value is -1
-            group_idx = freq[k + 1][0]
-            size_match = int(freq[k + 1][1])
-            # we could do some random choice here but it's worthless if set2 is 
-            # randomly ordered
-            matched = grouped2.groups[group_idx][:size_match]
-
-            result[result_cell == group_idx] = matched
-            result[id_to_rownum[matched]] = id_to_rownum[result_cell == group_idx]
-            
-        return result
-            
-#         while array1[0].sum() > 0 and array1[0].sum() > 0:
-#         def match_cells(array1, array2, score):
-#             if len(array1[0]) == 0 or len(array2[0]) == 0:
-#                 return
-#             cell_to_match = array1.iloc[0,:]
-#         
-#         for k in xrange(len(array1)):   
-# #           real_match_cells(k,cells)
-#             temp = table1[k]
-#             try: 
-#                 score = eval(score_str)
-#             except:
-#                 pdb.set_trace()
-#             try:
-#                 idx = score.argmax()
-#             except:
-#                 pdb.set_trace()
-#             idx2 = cells[idx, nvar + 2]
-#             match[k] = idx2 
-#             cells[idx, nvar + 1] -= 1
-#             if cells[idx,nvar + 1]==0:
-#                 cells = np.delete(cells, idx, 0)     
-#             # update progress bar
-#             percent_done = (k * 100) / n
-#             to_display = percent_done - percent
-#             if to_display:
-#                 chars_to_write = list("." * to_display)
-#                 offset = 9 - (percent % 10)
-#                 while offset < to_display:
-#                     chars_to_write[offset] = '|'
-#                     offset += 10
-#                 sys.stdout.write(''.join(chars_to_write))
-#             percent = percent_done         
-        # metch 
-
-
+        loop_wh_progress(match_cell, df1.to_records())
         return result
 
 

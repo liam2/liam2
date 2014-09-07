@@ -1,0 +1,94 @@
+entities:
+    household:
+        fields:
+            # period and id are implicit
+            - income:  float
+
+    person:
+        fields:
+            # period and id are implicit
+            - age:          int
+            - earnings:     float
+            - errsal:       float
+            - male:         bool
+            - work:         bool
+            - eduach:       int
+            - chronicill:   bool
+
+            - partner_id:   int
+            - hh_id:        int
+
+        links:
+            partner: {type: many2one, target: person, field: partner_id}
+
+        processes:
+            birth: new('person', number=100000,
+                       age=randint(0, 98),
+                       errsal=normal(0.0, 10.0),
+                       male=choice([False, True]),
+                       work=choice([False, True]),
+                       eduach=randint(1, 4),
+                       chronicill=False,
+                       partner_id=-1,
+                       hh_id=-1)
+
+            earnings: 40 + age
+
+            marriage:
+                - to_marry: logit_regr(0.0, filter=age >= 20)
+                
+                # 20024/19646 individuals : 0.85 second           
+                - partner1: optimized_matching(set1filter=to_marry and not male,
+                                       set2filter=to_marry and male,
+                                       orderby=id,
+                                       score=- 0.4893 * other.age
+                                             + 0.0131 * other.age ** 2
+                                             - 0.0001 * other.age ** 3
+                                             + 0.0467 * (other.age - age)
+                                             - 0.0189 * (other.age - age) ** 2
+                                             + 0.0003 * (other.age - age) ** 3
+                                             - 0.9087 * (other.work and not work)
+                                             - 1.3286 * (not other.work and work)
+                                             - 0.6549 * (other.work and work)
+                                             - 0.7939 * ((other.eduach == 3) and (eduach == 4))
+                                             - 1.4128 * ((other.eduach == 2) and (eduach == 4))
+                                             - 0.8984 * ((other.eduach == 4) and (eduach == 3))
+                                             - 1.5530 * ((other.eduach == 4) and (eduach == 2))
+                                             - 0.5451 * ((other.eduach == 2) and (eduach == 2)),
+                                       )
+                                       
+                                       
+                # 20024/19646 individuals : 22.9 seconds
+                - partner_id: matching(set1filter=to_marry and not male,
+                                       set2filter=to_marry and male,
+                                       orderby=id,
+                                       score=- 0.4893 * other.age
+                                             + 0.0131 * other.age ** 2
+                                             - 0.0001 * other.age ** 3
+                                             + 0.0467 * (other.age - age)
+                                             - 0.0189 * (other.age - age) ** 2
+                                             + 0.0003 * (other.age - age) ** 3
+                                             - 0.9087 * (other.work and not work)
+                                             - 1.3286 * (not other.work and work)
+                                             - 0.6549 * (other.work and work)
+                                             - 0.7939 * ((other.eduach == 3) and (eduach == 4))
+                                             - 1.4128 * ((other.eduach == 2) and (eduach == 4))
+                                             - 0.8984 * ((other.eduach == 4) and (eduach == 3))
+                                             - 1.5530 * ((other.eduach == 4) and (eduach == 2))
+                                             - 0.5451 * ((other.eduach == 2) and (eduach == 2)),
+                                       )
+                                       
+
+simulation:
+    processes:
+        - person: [birth, earnings, marriage]
+
+    input:
+        method: void
+        file: none
+
+    output:
+        file: generated.h5
+
+    start_period: 2001   # first simulated period
+    periods: 1
