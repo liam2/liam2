@@ -236,7 +236,7 @@ class Choice(EvaluableExpression):
         return bins
 
     def evaluate(self, context):
-        if config.debug:
+        if config.debug and config.log_level == "processes":
             print()
             print("random sequence position before:", np.random.get_state()[2])
         num = context_length(context)
@@ -256,7 +256,7 @@ class Choice(EvaluableExpression):
         else:
             choices_idx = []
 
-        if config.debug:
+        if config.debug and config.log_level == "processes":
             print("random sequence position after:", np.random.get_state()[2])
 
         if any(isinstance(c, Expr) for c in choices):
@@ -346,9 +346,10 @@ def add_individuals(target_context, children):
     array = target_entity.array
     num_rows = len(array)
     num_birth = len(children)
-    print("%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name,
-                                       num_rows, num_rows + num_birth),
-          end=' ')
+    if config.log_level == "processes":
+        print("%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name,
+                                           num_rows, num_rows + num_birth),
+              end=' ')
 
     target_entity.array.append(children)
 

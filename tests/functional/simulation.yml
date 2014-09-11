@@ -2342,4 +2342,7 @@ simulation:
 
     random_seed: 0
     periods: 2
+    logging:
+        level: processes
+#    timings: False
 #    skip_shows: True
