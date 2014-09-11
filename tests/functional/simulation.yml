@@ -434,7 +434,8 @@ entities:
 #                    done = min(age) >= 10
 
             test_charts:
-                - plot(groupby(age))
+# commented so that the tests can run without interaction
+#                - plot(groupby(age))
                 - plot(groupby(age), suffix='test')
 
                 - boxplot(age[gender], age[not gender],
@@ -450,8 +451,8 @@ entities:
                 - plot(age, 'o', fname='plot02.png')
                 - plot(groupby(age), fname='plot03.png&pdf')
                 - plot(groupby(age),
-                       groupby(age, filter=not gender),
-                       groupby(age, filter=gender),
+                       groupby(age, expr=count(not gender)),
+                       groupby(age, expr=count(gender)),
                        fname='plot04.png&pdf')
                 - plot((lag(avg(work), 5), lag(avg(work), 4),
                         lag(avg(work), 3), lag(avg(work), 2),
@@ -477,8 +478,8 @@ entities:
                 - stackplot(groupby(eduach, gender),
                             colors=['g', 'b'], baseline='sym',
                             fname='stackplot3.png')
-                - stackplot(groupby(age, filter=not gender),
-                            groupby(age, filter=gender),
+                - stackplot(groupby(age, expr=count(not gender)),
+                            groupby(age, expr=count(gender)),
                             fname='stackplot4.png')
 
                 - byage: groupby(age, percent=True)
@@ -1324,6 +1325,7 @@ entities:
                 # with no filter/parent (number=) 
                 - new_id: new('person', number=10,
                               age=0,
+                              eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
                               gender=choice([True, False], [0.51, 0.49]))
 
                 # with explicit filter
@@ -1334,6 +1336,7 @@ entities:
                               hh_id=hh_id,
                               m_id=id,
                               f_id=partner.id,
+                              eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
                               gender=choice([True, False], [0.51, 0.49]))
 
                 # with implicit filter
@@ -1347,6 +1350,7 @@ entities:
                                     hh_id=hh_id,
                                     m_id=id,
                                     f_id=-1,
+                                    eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
                                     gender=choice([True, False], [0.51, 0.49])),
                                 new('person',
                                     age=0,
@@ -1354,6 +1358,7 @@ entities:
                                     hh_id=hh_id,
                                     m_id=id,
                                     f_id=partner.id,
+                                    eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
                                     gender=logit_regr(0.0))),
                              -1)
 
@@ -2264,7 +2269,7 @@ simulation:
                    agegroup,
 
                    # test the charts before test_new messes the demography
-#                   test_charts,
+                   test_charts,
 
                    # ...
                    test_logit,
