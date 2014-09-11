@@ -270,6 +270,11 @@ entities:
                     - result: result * 2
                 return: result * 2
 
+            func_args_conflict_fields:
+                args: age
+                code:
+                    - qshow(age)
+
             # issue 119: function arguments not available in interactive console
             issue119callee:
                 args: arg
@@ -356,6 +361,12 @@ entities:
                 # called *after* the "temp_global" process !
                 - show("type 'age' and see if produces a warning")
                 - breakpoint()
+
+            # issue126: prevent function arguments named like fields
+            test_issue126:
+                - age_backup: age
+                - func_args_conflict_fields(age + 10)
+                - assertEqual(age, age_backup)
 
             hybrid_test:
                 - hybrid_test: age + 1
@@ -2263,6 +2274,7 @@ simulation:
                    test_subscript,
                    test_call,
 #                   test_issue119,
+#                   test_issue126,
                    hybrid_test,
                    test_hybrids,
 
@@ -2283,22 +2295,22 @@ simulation:
                    test_clone,
 
                    # aggregates
-#                   test_all,
-#                   test_any,
-#                   test_count,
-#                   test_sum,
-#                   test_avg,
-#                   test_std,
-#                   test_min,
-#                   test_max,
-#                   test_median,
-#                   test_percentile,
-#                   test_gini,
+                   test_all,
+                   test_any,
+                   test_count,
+                   test_sum,
+                   test_avg,
+                   test_std,
+                   test_min,
+                   test_max,
+                   test_median,
+                   test_percentile,
+                   test_gini,
 
                    # regressions
                    test_logit_regr,
-#                   test_cont_regr,
-#                   test_log_regr,
+                   test_cont_regr,
+                   test_log_regr,
 
                    # temporal
                    test_lag,
@@ -2306,28 +2318,28 @@ simulation:
                    test_duration,
 
                    # links
- #                  test_o2m,
- #                  test_mixed_links,
+                   test_o2m,
+                   test_mixed_links,
 
                    # output
-#                   test_groupby,
-#                   test_dump,
-#                   test_csv,
+                   test_groupby,
+                   test_dump,
+                   test_csv,
                    
                    imported_process,
                    test_imported_process,
                    
                    # alignment
-#                   test_align,
+                   test_align,
                    test_align_abs,
                    
                    # misc
                    test_choice,
                    show_weight,
-#                   [marriage, 4],
+                   [marriage, 4],
         ]
         - household: [num_persons, nch, maxnch,
-#                      test_align_link,
+                      test_align_link,
 #                      dump_csv_h,
                      ]
 

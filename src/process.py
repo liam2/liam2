@@ -309,6 +309,12 @@ class Function(AbstractProcessGroup):
             raise TypeError("takes exactly %d arguments (%d given)" %
                             (len(self.argnames), len(args)))
 
+        for name in self.argnames:
+            if name in self.entity.stored_fields:
+                raise ValueError("function '%s' cannot have an argument named "
+                                 "'%s' because there is a field with the "
+                                 "same name" % (self.name, name))
+
         # add arguments to the local namespace
         for name, value in zip(self.argnames, args):
             # backup the variable if it existed in the caller namespace
