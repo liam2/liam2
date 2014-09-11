@@ -8,9 +8,18 @@ globals:
         transposed: true
         fields:
             # PERIOD is implicit
-            # WEMRA is defined in imported1.yml
+
+            # WEMRA is defined in imported1.yml. It works even though no "path"
+            # key is specified in imported1.yml (as if the periodic table was in
+            # the H5 file) and even though it is specified using the "shortcut
+            # syntax" for periodic globals because that syntax is expanded
+            # before merging imported models, so it just do the right thing.
+
             - MINR: float
             - MIG_PERCENT: float
+
+    ARRAY:
+        type: float
 
     MIG:
         path: param\mig.csv
@@ -2332,5 +2341,5 @@ simulation:
 #    autodiff: True
 
     random_seed: 0
-    periods: 20
+    periods: 2
 #    skip_shows: True

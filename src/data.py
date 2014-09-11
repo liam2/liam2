@@ -692,8 +692,12 @@ def index_tables(globals_def, entities, fpath):
 
                 global_type = global_def.get('type', global_def.get('fields'))
                 assert_valid_type(global_data, global_type, context=name)
-
-                array = add_and_drop_fields(global_data.read(), global_type)
+                array = global_data.read()
+                if isinstance(global_type, list):
+                    # make sure we do not keep in memory columns which are
+                    # present in the input file but where not asked for by the
+                    # modeller. They are not accessible anyway.
+                    array = add_and_drop_fields(array, global_type)
                 attrs = global_data.attrs
                 dim_names = getattr(attrs, 'dimensions', None)
                 if dim_names is not None:
