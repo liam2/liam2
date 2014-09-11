@@ -405,9 +405,16 @@ level
 ~~~~~
 
 Sets logging level. If set, it should be one of the three following values (by
-increasing level of verbosity): *periods*, *procedures* or *processes*.
-TODO: descriptions like in assertions
-Defaults to *procedures*.
+increasing level of verbosity):
+
+periods
+  show only periods.
+
+procedures
+  show periods and procedures (this is the default).
+
+processes
+  show periods, procedures and individual processes.
 
 timings
 ~~~~~~~
