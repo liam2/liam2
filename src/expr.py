@@ -930,6 +930,7 @@ class Variable(Expr):
         # self.name = self.value
         self._dtype = dtype
         self.version = 0
+        self.used = 0
 
     @property
     def name(self):

@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import collections
+
 #import bcolz
 import numpy as np
 import tables
@@ -380,9 +382,10 @@ class Entity(object):
     #                 node.resolve()
 
     def ssa(self):
+        fields_versions = collections.defaultdict(int)
         for p in self.processes.itervalues():
             if isinstance(p, ProcessGroup):
-                p.ssa()
+                p.ssa(fields_versions)
 
     def compute_lagged_fields(self):
         from tfunc import Lag
