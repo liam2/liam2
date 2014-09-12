@@ -370,7 +370,7 @@ class Expr(object):
         else:
             raise AttributeError(key)
 
-    def traverse(self, context):
+    def traverse(self, context=None):
         for child in self.children:
             for node in traverse_expr(child, context):
                 yield node
