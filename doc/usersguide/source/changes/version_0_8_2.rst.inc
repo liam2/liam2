@@ -16,6 +16,7 @@ New features
 
 Miscellaneous improvements
 --------------------------
+
 * decreased memory usage for models with many periods. It used to keep the
   index of individuals of past periods forever in memory, which had
   approximately the same effect than adding one column for each period.
