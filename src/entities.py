@@ -530,5 +530,43 @@ class Entity(object):
         else:
             return result
 
+    def optimize_processes(self):
+        """
+        Common subexpression elimination
+        """
+        #XXX:
+        # * we either need to do SSA first, or for each assignment process,
+        #   "forget" all expressions containing the assigned variable
+        #   doing it using SSA seems cleaner, but in the end it shouldn't
+        #   change much.
+        # * I don't know if it is a good idea to optimize cross-procedures.
+        #   On one hand it offers much more possibilities for optimizations
+        #   but, on the other hand the optimization pass might just take too
+        #   much time... If we do not do it globally, we should move the method
+        #   to ProcessGroup instead. But let's try it cross-procedures first.
+        # * cross-procedures might get tricky when we take function calls
+        #   into account.
+
+        #FIXME:
+        # * we need to iterate on the processes in the same order than the
+        #   simulation
+        #TODO:
+        # * it will be simpler and better to do this in two passes: first
+        #   find duplicated expr, and number of occurrences of each expr, then
+        #   proceed with the factorization
+        seen = {}
+        for p in self.processes.itervalues():
+            for expr in p.expressions():
+                for subexpr in expr.traverse():
+                    if subexpr in seen:
+                        original = seen[subexpr]
+                        # 1) add an assignment process before the process of
+                        # the "original" expression to compute a temporary
+                        # variable
+                        # 2) modify "original" expr to use the temp var
+                        # 3) modify the current expr to use the temp var
+                    else:
+                        seen[subexpr] = subexpr
+
     def __repr__(self):
         return "<Entity '%s'>" % self.name
