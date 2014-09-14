@@ -4,7 +4,7 @@ from collections import Sequence
 from itertools import izip, chain
 
 import numpy as np
-from til.pgm.run_pension import run_pension
+from til.pgm.run_pension import get_pension
 
 import config
 from expr import (Expr, Variable,
@@ -703,35 +703,49 @@ class Where(Expr):
         iffalsevars = collect_variables(self.iffalse, context)
         return condvars | iftruevars | iffalsevars
     
-class Retraite(FilteredExpression):
-    def __init__(self, expr = None, filter=None):
+class Pension(FilteredExpression):
+    def __init__(self, varname, regime, expr=None, filter=None, yearleg=None):
         FilteredExpression.__init__(self, expr, filter)
+        self.varname = varname
+        self.regime = regime     
+        self.yearleg = yearleg
 
     def evaluate(self, context):
         selected = expr_eval(self.filter, context)
         context = context_subset(context, selected)
-        result = run_pension(context, context['period']//100, 'year', False, 'pension', False)
+        
+        if self.yearleg is None:
+            self.yearleg = context['period'] // 100
+            if self.yearleg > 2009:  # TODO: remove
+                self.yearleg = 2009
+
+        reload = False
+        if context['pension'] is None:
+            reload = True
+        else:
+            if context['pension']['context'] != context:
+                reload = True
+            if context['pension']['year'] != context['period']:
+                reload = True
+
+        if reload:
+            simul = get_pension(context, self.yearleg)
+            context['pension'] = {
+                                  'context': context,
+                                  'year': context['period'],
+                                  'simul': simul
+                                  }
+        
+        simul = context['pension']['simul']
+        result = simul.calculate(self.varname, self.regime)
+            
         output = -1*np.ones(len(selected))
         output[selected] = result
         return output
         
     def dtype(self, context):
         return float
-    
-class DepartRetraite(FilteredExpression):
-    def __init__(self, expr = None, filter=None):
-        FilteredExpression.__init__(self, expr, filter)
 
-    def evaluate(self, context):
-        selected = expr_eval(self.filter, context)
-        context = context_subset(context, selected)
-        dates_taux_plein = run_pension(context, context['period']//100, 'year', False, 'dates_taux_plein', False)
-        output = -1*np.ones(len(selected))
-        output[selected] = dates_taux_plein
-        return output
-        
-    def dtype(self, context):
-        return int
     
 functions = {
     # random
@@ -764,6 +778,5 @@ functions = {
     'new': CreateIndividual,
     'clone': Clone,
     'dump': Dump,
-    'date_retired': DepartRetraite,
-    'pension_func': Retraite
+    'pension': Pension
 }

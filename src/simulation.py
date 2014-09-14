@@ -424,16 +424,17 @@ class Simulation(object):
 
             if processes:
                 # build context for this period:
-                const_dict = {'period_idx': period_idx+1,
+                const_dict = {'period_idx': period_idx + 1,
                               'periods': periods,
                               'periodicity': time_period[self.time_scale]*(1 - 2*(self.retro)),
                               'longitudinal': self.longitudinal,
                               'format_date': self.time_scale,
+                              'pension' : None,
                               '__simulation__': self,
                               'period': period,
                               'nan': float('nan'),
                               '__globals__': globals_data}
-                assert(periods[period_idx+1] == period)
+                assert(periods[period_idx + 1] == period)
 
                 num_processes = len(processes)
                 for p_num, process_def in enumerate(processes, start=1):
