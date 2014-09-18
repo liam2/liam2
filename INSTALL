@@ -1,82 +1,99 @@
 Introduction
 ------------
 
-To run a simulation from source, you first need to install all the
+To run LIAM2 from source, you first need to install all the
 dependencies (see below), then (optionally) build the C extensions for
 maximum performance, then simply run LIAM2 using:
 
 python main.py import [your_import_file]
 python main.py run [your_simulation_file]
 
+
+List of dependencies
+~~~~~~~~~~~~~~~~~~~~
+
+LIAM2 uses a number of other open-source packages.
+
+Required dependencies:
+- Python 2.7.x (32b or 64b) - http://www.python.org/
+- Numpy 1.7.0 or later - http://www.numpy.org/
+- PyTables 2.2.1 or later - http://www.pytables.org
+- Numexpr 2.0 or later - https://github.com/pydata/numexpr
+- PyYAML 3.0.8 or later - http://pyyaml.org
+- bcolz 0.7 or later - https://github.com/Blosc/bcolz
+
+Optional dependencies:
+- to view hdf5 files: vitables 2.1 - http://vitables.org
+  It requires PyQt4 - http://www.riverbankcomputing.com/software/pyqt/download
+- to generate plots and charts: matplotlib 1.2 or later - http://matplotlib.org/
+  It requires python-dateutil - http://labix.org/python-dateutil
+          and pyparsing - http://pyparsing.wikispaces.com/
+- to build the C extensions (see below):
+  Cython 0.16 or later - http://www.cython.org/
+- to build the documentation to html (other formats need additional packages):
+  sphinx 1.0 or later - http://www.sphinx-doc.org/
+- to create standalone executables:
+  cx-freeze 4.3 or later - http://cx-freeze.sourceforge.net/
+
+
 Installation
 ------------
 
-First install Python:
+There are several options to install all those packages.
 
-- Python 2.7.x (either 32 bits or 64 bits version): 
-  http://www.python.org/download/releases/
+In order of increasing difficulty:
+* using (ana)conda
+* getting binary packages from Christoph Gohlke (Windows only)
+* getting third-party packages directly from their authors
 
-Then you need to install all our other dependencies (third-party packages for
-Python). If you are on Windows, the easiest way to install them is to use the
-(unoffical) binary packages from Christoph Gohlke at: 
 
-  http://www.lfd.uci.edu/~gohlke/pythonlibs/
+Using (ana)conda
+~~~~~~~~~~~~~~~~
 
-Third party packages:
+1) Install (ana)conda (Python 2.7). You can choose the 32-bit or 64-bit version.
 
-- Numpy 1.7.0 or later (for your version of python): 
-  http://sourceforge.net/projects/numpy/files/NumPy/
+2) Install bcolz. In a command prompt, type:
 
-- PyTables 2.2.1 or later (for your version of python):
-  http://sourceforge.net/projects/pytables/files/pytables/
-  
-- Numexpr 2.0 or later (for your version of python):
-  http://code.google.com/p/numexpr/downloads/
-  
-- PyYAML 3.0.8 or later (for your version of python):
-  http://pyyaml.org/wiki/PyYAML
-  
-- carray 0.4 or later (for your version of python):  
-  http://carray.pytables.org/download/
+   conda install bcolz
 
-Optional dependencies:
-- to view hdf5 files: vitables 2.0 (and its dependency PyQt)
-  WARNING: liam2 currently does NOT support vitables 2.1 !
+3) Install ViTables. In a command prompt, type:
 
-  !!!!!! TODO: this is NOT true (only bundle) !!!!!!
+   pip install https://vitables.googlecode.com/files/ViTables-2.1.tar.gz
 
-  http://vitables.org
-  http://www.riverbankcomputing.com/software/pyqt/download
+Note that using other Python distributions should probably work, but we have
+not tested that. As of this writing, Python(x,y) and WinPython are both missing
+the "bcolz" package, so it would need to be installed from another source.
 
-  2.0 and 2.1 are not pip installable in any way (they are not on pypi but,
-  pip installing them from their tar.gz or from git tag does not work either)
-  2.2a1 (the only version on pypi is not pip installable either
-  so we are left with two options:
 
-  * pip install git+https://github.com/uvemas/ViTables@master (work on Python 2
-   only)
+Getting binary packages from Christoph Gohlke (Windows only)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  * grab a copy of the source (tar.gz/git checkout/whatever) and use python
-  setup.py install
+1) Install Python 2.7.x (either 32 bits or 64 bits version):
+   http://www.python.org/download/releases/
 
-  * use one of the available .exe installers (probably gohlke's), although
-    this option does not play well with virtual envs/conda envs as it can only
-    install in the "system" python (aka root environment) referenced in Windows
-    registry.
+2) Get and use the installers for all LIAM2 dependencies from:
+   http://www.lfd.uci.edu/~gohlke/pythonlibs/
 
-  https://silab-redmine.physik.uni-bonn .de/projects/pybar/wiki/ViTables_with_PySide
+   Make sure you take the version of each package which match the version of
+   Python you have chosen.
 
-- to generate plots and charts: matplotlib (and its dependencies:
-  python-dateutil and pyparsing at the minimum)
-  http://matplotlib.org/
-  http://pypi.python.org/pypi/python-dateutil
-  http://pyparsing.wikispaces.com/
 
-- to build the C extensions (see below): Cython 0.16 or later
-  http://www.cython.org/
+Getting third-party packages directly from their authors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- to build the documentation to html or pdf: sphinx 1.0 or later
-  http://www.sphinx-doc.org/
+1) Install Python 2.7.x (either 32 bits or 64 bits version):
+   http://www.python.org/download/releases/
+
+2) Install all third-party packages manually. The problem with this approach
+   is that there is not a single way which works for all our dependencies.
+   Some packages provide binary installers for Windows (but often not for
+   64-bit), some do not. Some require a C compiler and have some dependencies
+   of their own before they can be installed. Some can be installed via
+   "pip install [package_name]" but some do not. In that case one usually has
+   to download the source and do "python setup.py install". In short, this
+   approach takes a lot of time, so I would only recommend it as a last resort,
+   especially if you want a 64-bit version of LIAM2 on Windows.
+
 
 Building the C extensions
 -------------------------
@@ -90,6 +107,7 @@ go to the src/ directory of LIAM2 and type:
   python setup.py build_ext --inplace
 
 If all goes according to plan, you should then be up and running.
+
 
 Building the documentation
 --------------------------
