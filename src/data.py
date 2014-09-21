@@ -30,6 +30,12 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
         for name in dtype.names:
             chunk[name] = array[name][start:stop]
         table.append(chunk)
+        #TODO: try flushing after each chunk, this should reduce memory
+        # use on large models, and (hopefully) should not be much slower
+        # given our chunks are rather large
+        # >>> on our 300k sample, it does not seem to make any difference
+        #     either way. I'd like to test this on the 2000k sample, but
+        #     that will have to wait for 0.8
         numlines -= buffer_rows
         start += buffer_rows
         stop += buffer_rows
@@ -698,8 +704,12 @@ def index_tables(globals_def, entities, fpath):
 
                 global_type = global_def.get('type', global_def.get('fields'))
                 assert_valid_type(global_data, global_type, context=name)
-
-                array = add_and_drop_fields(global_data.read(), global_type)
+                array = global_data.read()
+                if isinstance(global_type, list):
+                    # make sure we do not keep in memory columns which are
+                    # present in the input file but where not asked for by the
+                    # modeller. They are not accessible anyway.
+                    array = add_and_drop_fields(array, global_type)
                 attrs = global_data.attrs
                 dim_names = getattr(attrs, 'dimensions', None)
                 if dim_names is not None:

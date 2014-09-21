@@ -6,7 +6,7 @@ import re
 from itertools import islice, chain
 
 import numpy as np
-import carray as ca
+import bcolz
 import tables
 import yaml
 
@@ -394,7 +394,7 @@ def interpolate(target, arrays, id_periods, fields):
     row_for_id = {}
     for period in periods:
         # this might seem very wasteful but when compressed through
-        # carray it is much smaller than an (id, rownum) dict, while
+        # bcolz it is much smaller than an (id, rownum) dict, while
         # being only a bit slower
         row_for_id[period] = np.empty(max_id + 1, dtype=int)
         row_for_id[period].fill(-1)
@@ -402,7 +402,7 @@ def interpolate(target, arrays, id_periods, fields):
     numrows = len(id_periods)
     lastrow_for_id = {}
 
-    # compressing this with carray yield interesting compression but
+    # compressing this with bcolz yield interesting compression but
     # is really too slow to use afterwards because access is
     # not sequential at all.
     nextrow_for_id = np.empty(numrows, dtype=int)
@@ -421,7 +421,7 @@ def interpolate(target, arrays, id_periods, fields):
     size = sum(row_for_id[period].nbytes for period in periods)
     print(" * compressing index (%.2f Mb)..." % (size / MB), end=' ')
     for period in periods:
-        row_for_id[period] = ca.carray(row_for_id[period])
+        row_for_id[period] = bcolz.carray(row_for_id[period])
     csize = sum(row_for_id[period].cbytes for period in periods)
     print("done. (%.2f Mb)" % (csize / MB))
 

@@ -214,12 +214,16 @@ class ProcessGroup(AbstractProcessGroup):
     def run_guarded(self, simulation, const_dict):
         period = const_dict['period']
 
-        print()
+        if config.log_level == "processes":
+            print()
         for k, v in self.subprocesses:
-            print("    *", end=' ')
-            if k is not None:
-                print(k, end=' ')
-            utils.timed(v.run_guarded, simulation, const_dict)
+            if config.log_level == "processes":
+                print("    *", end=' ')
+                if k is not None:
+                    print(k, end=' ')
+                utils.timed(v.run_guarded, simulation, const_dict)
+            else:
+                v.run_guarded(simulation, const_dict)
 #            print "done."
             simulation.start_console(v.entity, period,
                                      const_dict['__globals__'])
@@ -339,6 +343,12 @@ class Function(AbstractProcessGroup):
             print(self.argnames)
             raise TypeError("takes exactly %d arguments (%d given)" %
                             (len(self.argnames), len(args)))
+
+        for name in self.argnames:
+            if name in self.entity.stored_fields:
+                raise ValueError("function '%s' cannot have an argument named "
+                                 "'%s' because there is a field with the "
+                                 "same name" % (self.name, name))
 
         # add arguments to the local namespace
         for name, value in zip(self.argnames, args):

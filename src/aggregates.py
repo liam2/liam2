@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import numpy as np
+
 from expr import (Variable, getdtype, expr_eval,
                   collect_variables, traverse_expr, get_tmp_varname,
                   ispresent)
@@ -273,6 +274,7 @@ class Gini(FilteredExpression):
     def dtype(self, context):
         return float
 
+
 def make_dispatcher(agg_func, elem_func):
     def dispatcher(*args, **kwargs):
         func = agg_func if len(args) == 1 else elem_func
@@ -291,7 +293,7 @@ functions = {
     'std': Std,
     'median': Median,
     'percentile': Percentile,
-    'gini': Gini
+    'gini': Gini,
 }
 
 for k, v in functions.items():

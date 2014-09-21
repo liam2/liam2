@@ -362,8 +362,15 @@ class Expr(object):
                 res = LabeledArray(res, labels[0], labels[1])
             return res
         except KeyError, e:
+            import pdb
+            pdb.set_trace()
             raise add_context(e, s)
         except Exception:
+            import pdb
+            pdb.set_trace()
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            evaluate('age', context, {}, truediv='auto')
+            evaluate('conj', context, {}, truediv='auto')
             raise
 
     def as_simple_expr(self, context):

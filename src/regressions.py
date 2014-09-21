@@ -55,12 +55,12 @@ class LogitScore(CompoundExpression):
         self.u_varname = get_tmp_varname()
 
     def build_context(self, context):
-        if config.debug:
+        if config.debug and config.log_level == "processes":
             print()
             print("random sequence position before:", np.random.get_state()[2])
         context[self.u_varname] = \
             np.random.uniform(size=context_length(context))
-        if config.debug:
+        if config.debug and config.log_level == "processes":
             print("random sequence position after:", np.random.get_state()[2])
         return context
 

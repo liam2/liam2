@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-#import carray as ca
+#import bcolz
 import numpy as np
 import tables
 
@@ -20,7 +20,7 @@ max_vars = 0
 
 
 #def compress_column(a, level):
-#    arr = ca.carray(a, cparams=ca.cparams(level))
+#    arr = bcolz.carray(a, cparams=ca.cparams(level))
 #    print "%d -> %d (%.2f)" % (arr.nbytes, arr.cbytes,
 #                               float(arr.nbytes) / arr.cbytes),
 #    return arr
@@ -497,10 +497,11 @@ class Entity(object):
             max_vars = max(max_vars, num_locals)
             temp_mem = sum(v.nbytes for v in local_vars)
             avgsize = sum(v.dtype.itemsize for v in local_vars) / num_locals
-            print(("purging {} variables (max {}), will free {} of memory "
-                   "(avg field size: {} b)".format(num_locals, max_vars,
-                                                   size2str(temp_mem),
-                                                   avgsize)))
+            if config.log_level in ("procedures", "processes"):
+                print(("purging {} variables (max {}), will free {} of memory "
+                       "(avg field size: {} b)".format(num_locals, max_vars,
+                                                       size2str(temp_mem),
+                                                       avgsize)))
         for var in local_var_names:
             del temp_vars[var]
 
@@ -523,7 +524,7 @@ class Entity(object):
             self.output_index[period - 1] = DiskBackedArray(prev_disk_array)
 
     def store_period_data(self, period):
-        if config.debug:
+        if config.debug and config.log_level in ("procedures", "processes"):
             temp_mem = sum(v.nbytes for v in self.temp_variables.itervalues()
                            if isinstance(v, np.ndarray))
             main_mem = self.array.nbytes

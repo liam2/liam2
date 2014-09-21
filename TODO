@@ -22,7 +22,11 @@ misc
   but from my quick glance at it, it seems to be exactly what I have been
   dreaming for but would have been unable to achieve by myself.
 
+- cytoolz: groupby, reduceby, join, ... composable and optimized "functional"
+  operations. Many are "streaming" (or partially streaming).
+
 - Odin (equivalent of Blaze from Enthought)
+  https://github.com/enthought/distarray
 
 - mosaik: https://mosaik.offis.de/ integrate multiple simulators
 
