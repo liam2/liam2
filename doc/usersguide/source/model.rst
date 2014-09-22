@@ -299,6 +299,9 @@ and composition is again used.
         random_seed: 5235       # optional
         assertions: warn        # optional
         default_entity: person  # optional
+        logging:                # optional
+            timings: True       # optional
+            level: procedures   # optional
         autodump: False         # optional
         autodiff: False         # optional
 
@@ -395,8 +398,26 @@ default_entity
 If set to the name of an entity, the interactive console will start in that
 entity.
 
-timings
+logging
 -------
+
+level
+~~~~~
+
+Sets logging level. If set, it should be one of the three following values (by
+increasing level of verbosity):
+
+periods
+  show only periods.
+
+procedures
+  show periods and procedures (this is the default).
+
+processes
+  show periods, procedures and individual processes.
+
+timings
+~~~~~~~
 
 If set to *False*, hide all timings from the simulation log, so that two
 simulation log files are more easily comparable (for example with "diff"

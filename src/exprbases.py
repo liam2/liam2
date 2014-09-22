@@ -201,11 +201,11 @@ class NumpyCreateArray(NumpyFunction):
 
 class NumpyRandom(NumpyCreateArray):
     def compute(self, *args, **kwargs):
-        if config.debug:
+        if config.debug and config.log_level == "processes":
             print()
             print("random sequence position before:", np.random.get_state()[2])
         res = super(NumpyRandom, self).compute(*args, **kwargs)
-        if config.debug:
+        if config.debug and config.log_level == "processes":
             print("random sequence position after:", np.random.get_state()[2])
         return res
 

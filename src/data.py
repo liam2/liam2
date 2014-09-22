@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+from os.path import dirname
 import time
 
 import tables
@@ -8,6 +9,7 @@ import numpy as np
 from expr import (normalize_type, get_missing_value, get_missing_record,
                   get_missing_vector, gettype)
 from utils import loop_wh_progress, time2str, safe_put, LabeledArray
+from importer import load_def, stream_to_array
 
 MB = 2 ** 20
 
@@ -451,7 +453,8 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         output_table.flush()
 
     if show_progress:
-        loop_wh_progress(copy_chunk, range(num_chunks))
+        loop_wh_progress(copy_chunk, range(num_chunks),
+                         title="Copying table...")
     else:
         for chunk in range(num_chunks):
             copy_chunk(chunk, chunk)
@@ -600,6 +603,7 @@ def index_table_light(table):
     """
     table is an iterable of rows, each row is a mapping (name -> value)
     Rows must contain at least a 'period' column and must be sorted by period.
+    Returns a dict: {period: start_row, stop_row}
     """
     rows_per_period = {}
     current_period = None
@@ -657,30 +661,43 @@ def index_tables(globals_def, entities, fpath):
         #TODO: move the checking (assertValidType) to a separate function
         globals_data = {}
         if globals_def:
-            if 'globals' not in input_root:
-                raise Exception('could not find any globals in the input data '
-                                'file (but they are declared in the '
-                                'simulation file)')
-            globals_node = input_root.globals
-            for name, global_type in globals_def.iteritems():
+            # is a globals node needed?
+            if any('path' not in g_def for g_def in globals_def.itervalues()):
+                if 'globals' in input_root:
+                    globals_node = input_root.globals
+                else:
+                    raise Exception('could not find any globals in the input '
+                                    'data file (but some are declared in the '
+                                    'simulation file)')
+            else:
+                globals_node = None
+            for name, global_def in globals_def.iteritems():
+                if 'path' in global_def:
+                    fdir = dirname(fpath)
+                    kind, info = load_def(fdir, name, global_def, [])
+                    if kind == 'table':
+                        fields, numlines, datastream, csvfile = info
+                        array = stream_to_array(fields, datastream, numlines)
+                    else:
+                        assert kind == 'ndarray'
+                        array = info
+                    globals_data[name] = array
+                    continue
+
                 if name not in globals_node:
-                    raise Exception('could not find %s in the input data file '
-                                    'globals' % name)
+                    raise Exception("could not find 'globals/%s' in the input "
+                                    "data file" % name)
 
                 global_data = getattr(globals_node, name)
-                # load globals in memory
-                if name == 'periodic':
-                    periodic_fields = set(global_data.dtype.names)
-                    if ('period' not in periodic_fields and
-                        'PERIOD' not in periodic_fields):
-                        raise Exception("Table 'periodic' in hdf5 input file "
-                                        "is missing a field named 'PERIOD'")
-                    allowed_missing = ('period', 'PERIOD')
-                else:
-                    allowed_missing = None
-                assert_valid_type(global_data, global_type, allowed_missing,
-                                  name)
+
+                global_type = global_def.get('type', global_def.get('fields'))
+                assert_valid_type(global_data, global_type, context=name)
                 array = global_data.read()
+                if isinstance(global_type, list):
+                    # make sure we do not keep in memory columns which are
+                    # present in the input file but where not asked for by the
+                    # modeller. They are not accessible anyway.
+                    array = add_and_drop_fields(array, global_type)
                 attrs = global_data.attrs
                 dim_names = getattr(attrs, 'dimensions', None)
                 if dim_names is not None:
@@ -755,20 +772,21 @@ class H5Data(DataSource):
         output_file = tables.openFile(self.output_path, mode="w")
 
         try:
-            globals_data = dataset['globals']
-            if globals_data:
-                globals_node = input_file.root.globals
+            globals_node = getattr(input_file.root, 'globals', None)
+            if globals_node is not None:
                 output_globals = output_file.createGroup("/", "globals",
                                                          "Globals")
                 # index_tables already checks whether all tables exist and
                 # are coherent with globals_def
                 for name in globals_def:
-                    #noinspection PyProtectedMember
-                    getattr(globals_node, name)._f_copy(output_globals)
+                    if name in globals_node:
+                        #noinspection PyProtectedMember
+                        getattr(globals_node, name)._f_copy(output_globals)
 
             entities_tables = dataset['entities']
             output_entities = output_file.createGroup("/", "entities",
                                                       "Entities")
+            output_indexes = output_file.createGroup("/", "indexes", "Indexes")
             print(" * copying tables")
             for ent_name, entity in entities.iteritems():
                 print(ent_name, "...")
@@ -777,6 +795,8 @@ class H5Data(DataSource):
 
                 table = entities_tables[ent_name]
 
+                index_node = output_file.createGroup("/indexes", ent_name)
+                entity.output_index_node = index_node
                 entity.input_index = table.id2rownum_per_period
                 entity.input_rows = table.period_index
                 entity.input_table = table.table

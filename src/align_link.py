@@ -17,7 +17,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
     still_needed = need.copy()
     still_available = num_candidates.copy()
 
-    rel_need = still_needed.astype(float) / still_available
+    rel_need = still_needed.astype(np.float64) / still_available
 
     unfillable_bins = still_needed > still_available
     overfilled_bins = still_needed <= 0
@@ -109,7 +109,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
                 # unfillable stays unchanged in this case
                 overfilled_bins[values] = sn <= 0
 
-                rel_need[values] = float(sn) / sa
+                rel_need[values] = np.float64(sn) / sa
         else:
             for values in zip(*persons_in_hh):
                 sa = still_available[values] - 1
@@ -118,6 +118,6 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
 
                 unfillable_bins[values] = sn > sa
 
-                rel_need[values] = float(sn) / sa
+                rel_need[values] = np.float64(sn) / sa
     print("missing %d individuals" % np.sum(still_needed))
     return aligned, still_needed

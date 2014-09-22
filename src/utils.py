@@ -5,6 +5,7 @@ from __future__ import print_function
 #import ttk
 import re
 import sys
+import math
 import time
 import operator
 import itertools
@@ -16,6 +17,12 @@ import warnings
 import numpy as np
 import numexpr as ne
 #import psutil
+try:
+    from PyQt4 import QtGui, QtCore
+    QtAvailable = True
+except ImportError:
+    QtGui, QtCore = None, None
+    QtAvailable = False
 
 import config
 
@@ -80,7 +87,7 @@ class AutoFlushFile(object):
         self.f.flush()
 
 
-def time2str(seconds):
+def time2str(seconds, precise=True):
     minutes = seconds // 60
     hours = minutes // 60
     seconds %= 60
@@ -90,10 +97,15 @@ def time2str(seconds):
         l.append("%d hour%s" % (hours, 's' if hours > 1 else ''))
     if minutes > 0:
         l.append("%d minute%s" % (minutes, 's' if minutes > 1 else ''))
-    if seconds >= 0.005:
-        l.append("%.2f second%s" % (seconds, 's' if seconds > 1 else ''))
-    if not l:
-        l = ["%d ms" % (seconds * 1000)]
+    if precise:
+        if seconds >= 0.005:
+            l.append("%.2f second%s" % (seconds, 's' if seconds > 1 else ''))
+        elif not l:
+            l = ["%d ms" % (seconds * 1000)]
+    else:
+        if int(seconds) or not l:
+            l.append("%d second%s" % (seconds, 's' if seconds > 1 else ''))
+
     return ' '.join(l)
 
 
@@ -183,7 +195,7 @@ def safe_take(a, indices, missing_value):
     """
     like np.take but out-of-bounds indices return the missing value
     """
-    indexed = a.take(indices, mode='wrap')
+    indexed = a.take(indices, mode='clip')
     return ne.evaluate('where((idx < 0) | (idx >= maxidx), missing, indexed)',
                        {'idx': indices, 'maxidx': len(a),
                         'missing': missing_value, 'indexed': indexed})
@@ -528,7 +540,7 @@ def aslabeledarray(data):
 
 
 class ProgressBar(object):
-    def __init__(self):
+    def __init__(self, maximum=100, title=''):
         pass
 
     def update(self, value):
@@ -539,7 +551,7 @@ class ProgressBar(object):
 
 
 class TextProgressBar(ProgressBar):
-    def __init__(self, maximum=100):
+    def __init__(self, maximum=100, title=''):
         ProgressBar.__init__(self)
         self.percent = 0
         self.maximum = maximum
@@ -584,10 +596,6 @@ def loop_wh_progress(func, sequence, pbclass=TextProgressBar, **kwargs):
         except StopIteration:
             break
     pb.destroy()
-    
-#def loop_wh_progress(func, sequence):
-#    app = ProgressBar(func, sequence)
-#    app.mainloop()
 
 
 def count_occurrences(seq):
@@ -861,16 +869,20 @@ def expand_wild_tuple(keys, d):
 
 def expand_wild(wild_key, d):
     """
-    expands a multi-level string key (separated by '/') containing wildcards
-    (*) with the keys actually present in a multi-level dictionary.
+    expands a multi-level string key (separated by '/') optionally containing
+    wildcards (*) with the keys actually present in a multi-level dictionary.
 
-    >>> expand_wild('a/*/c', {'a': {'one': {'c': 0}, 'two': {'c': 0}}})
-    ['a/one/c', 'a/two/c']
-
-    >>> expand_wild('a/*/*', {'a': {'one': {'c': 0}, 'two': {'d': 0}}})
+    >>> d = {'a': {'one': {'c': 0}, 'two': {'d': 0}}}
+    >>> expand_wild('a/*/c', d)
+    set(['a/one/c'])
+    >>> sorted(expand_wild('a/*/*', d))
     ['a/one/c', 'a/two/d']
+    >>> expand_wild('a/one/c', d)
+    set(['a/one/c'])
+    >>> expand_wild('a/one/d', d)
+    set([])
     """
-    return ['/'.join(r) for r in expand_wild_tuple(wild_key.split('/'), d)]
+    return {'/'.join(r) for r in expand_wild_tuple(wild_key.split('/'), d)}
 
 
 def multi_get(d, key, default=None):
@@ -999,7 +1011,8 @@ def field_str_to_type(str_type, context):
     Converts a (field) string type to its Python type.
     """
     if str_type not in str_to_type:
-        raise SyntaxError("'%s' is not a valid type for %s." % context)
+        raise SyntaxError("'%s' is not a valid type for %s."
+                          % (str_type, context))
     return str_to_type[str_type]
 
 
@@ -1082,3 +1095,5 @@ class FileProducer(object):
             suffix = "_" + suffix if suffix else ""
             fname = "{entity}_{period}" + suffix + self.ext
         return fname
+
+

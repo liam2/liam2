@@ -25,6 +25,7 @@ WEBSITE = 'liam2.plan.be'
 # - feature_branch
 # - make_release, detects hotfix or release
 
+
 #---------------#
 # generic tools #
 #---------------#
@@ -67,6 +68,11 @@ def call(*args, **kwargs):
     except CalledProcessError, e:
         print(e.output)
         raise e
+
+
+def echocall(*args, **kwargs):
+    print(' '.join(args))
+    return call(*args, **kwargs)
 
 
 def git_remote_last_rev(url, branch=None):
@@ -171,7 +177,8 @@ def update_changelog(release_name):
         lines[5:5] = this_version
     with open(fpath, 'w') as f:
         f.writelines(lines)
-    call('git commit %s' % fpath)
+    call('git commit -m "include release changes (%s) in changes.rst" %s'
+         % (fname, fpath))
     do('pushing changes.rst', call, 'git push')
 
 
@@ -212,22 +219,25 @@ def create_bundles(release_name):
 def test_bundle(archivefname, dest):
     zip_unpack(archivefname, dest)
     # we use --debug so that errorlevel is set
-    call(dest + r'\liam2\main --debug run src\tests\functional\generate.yml')
-    call(dest + r'\liam2\main --debug import src\tests\functional\import.yml')
-    call(dest + r'\liam2\main --debug run src\tests\functional\simulation.yml')
-    call(dest + r'\liam2\main --debug run src\tests\functional\variant.yml')
+    main_dbg = dest + r'\liam2\main --debug '
+    echocall(main_dbg + r'run src\tests\functional\generate.yml')
+    echocall(main_dbg + r'import src\tests\functional\import.yml')
+    echocall(main_dbg + r'run src\tests\functional\simulation.yml')
+    echocall(main_dbg + r'run src\tests\functional\variant.yml')
     try:
         chdir(dest)
-        call(r'liam2\main --debug run examples\demo01.yml')
-        call(r'liam2\main --debug import examples\demo_import.yml')
-        call(r'liam2\main --debug run examples\demo01.yml')
-        call(r'liam2\main --debug run examples\demo02.yml')
-        call(r'liam2\main --debug run examples\demo03.yml')
-        call(r'liam2\main --debug run examples\demo04.yml')
-        call(r'liam2\main --debug run examples\demo05.yml')
-        call(r'liam2\main --debug run examples\demo06.yml')
-        call(r'liam2\main --debug run examples\demo07.yml')
-        call(r'liam2\main --debug run examples\demo08.yml')
+        main_dbg = r'liam2\main --debug '
+        echocall(main_dbg + r'run examples\demo01.yml')
+        echocall(main_dbg + r'import examples\demo_import.yml')
+        echocall(main_dbg + r'run examples\demo01.yml')
+        echocall(main_dbg + r'run examples\demo02.yml')
+        echocall(main_dbg + r'run examples\demo03.yml')
+        echocall(main_dbg + r'run examples\demo04.yml')
+        echocall(main_dbg + r'run examples\demo05.yml')
+        echocall(main_dbg + r'run examples\demo06.yml')
+        echocall(main_dbg + r'run examples\demo07.yml')
+        echocall(main_dbg + r'run examples\demo08.yml')
+        echocall(main_dbg + r'run examples\demo09.yml')
     finally:
         chdir('..')
 
@@ -258,7 +268,8 @@ def build_website(release_name):
              version=release_name, short_version=short(release_name))
 
     title = 'Version %s released' % short(release_name)
-    fname = call('tinker -f -p "%s"' % title)
+    # strip is important otherwise it contains a \n and git chokes on it
+    fname = call('tinker -f -p "%s"' % title).strip()
 
     call('buildall.bat')
 
@@ -269,7 +280,9 @@ def build_website(release_name):
     if no('Does the website look good?'):
         exit(1)
 
-    call('git commit %s' % fname)
+    call('git add master.rst')
+    call('git add %s' % fname)
+    call('git commit -m "announce version %s on website"' % short(release_name))
     do('Git-pushing website', call, 'git push')
 
     chdir(r'..\..\..')
@@ -290,12 +303,12 @@ def upload(release_name):
     # website
     chdir(r'build\doc\website\blog\html')
     subprocess.call(r'pscp -r * %s' % base_url)
-    chdir(r'..')
+    chdir(r'..\..\..\..\..')
 
 
 def announce(release_name, changes):
     body = """\
-I am pleased to announce that version 0.8 of LIAM2 is now available.
+I am pleased to announce that version %s of LIAM2 is now available.
 
 The highlights of this release are:
 - x
@@ -304,14 +317,14 @@ The highlights of this release are:
 More details and the complete list of changes are available below.
 
 This new release can be downloaded on our website:
-http://liam2.plan.be
+http://liam2.plan.be/pages/download.html
 
 As always, *any* feedback is very welcome, preferably on the liam2-users
-mailing list: liam2-users@googlegroups.com (you need to register to be able to
-post).
+mailing list: liam2-users@googlegroups.com (you need to register to be
+able to post).
 
 %s
-""" % changes
+""" % (short(release_name), changes)
     # preselectid='id1' selects the first "identity" for the "from" field
     # We do not use our usual call because the command returns an exit status
     # of 1 (failure) instead of 0, even if it works, so we simply ignore
@@ -333,7 +346,7 @@ def relname2fname(release_name):
     return r"version_%s.rst.inc" % short(release_name).replace('.', '_')
 
 
-def make_release(release_name=None, branch=None):
+def make_release(release_name=None, branch='master'):
     # Since git is a dvcs, we could make this script work locally, but it would
     # not be any more useful because making a release is usually to distribute
     # it to someone, and for that I need network access anyway.
@@ -344,10 +357,9 @@ def make_release(release_name=None, branch=None):
     # the only drawback I see is that I could miss changes from others, but
     # we are not there yet :)
 
-    # git config --get remote.origin.url
+    # git ls-remote does not seem to support user-tagged urls
+    # repository = call('git config --get remote.origin.url')
     repository = 'https://github.com/liam2/liam2.git'
-    if branch is None:
-        branch = 'master'
 
     status = call('git status -s')
     lines = status.splitlines()
@@ -403,7 +415,7 @@ def make_release(release_name=None, branch=None):
         test_release = True
         fpath = "doc\usersguide\source\changes\\" + relname2fname(release_name)
         with open(fpath) as f:
-            changes = f.read()
+            changes = f.read().decode('utf-8-sig')
             print(changes)
         if no('Does this changelog look good?'):
             exit(1)
@@ -462,6 +474,7 @@ if __name__ == '__main__':
 
     # chdir(r'c:\tmp')
     # chdir('liam2_new_release')
+    # test_bundles(*argv[1:])
     # build_website(*argv[1:])
     # upload(*argv[1:])
     # announce(*argv[1:])

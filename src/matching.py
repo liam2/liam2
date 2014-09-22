@@ -67,6 +67,7 @@ class ScoreMatching(EvaluableExpression):
 #        expr_vars |= collect_variables(self.score_expr, context)
         return expr_vars
 
+
     def _get_filters(self, context):
         ctx_filter = context.get('__filter__')
         # at some point ctx_filter will be cached automatically, so we don't
@@ -267,9 +268,9 @@ class SequentialMatching(ScoreMatching):
             result[id_to_rownum[id1]] = id2
             result[id_to_rownum[id2]] = id1
 
-
         loop_wh_progress(match_one_set1_individual, set1tomatch,
                          pool_size=self.pool_size)
+
         return result
 
     def evaluate(self, context):

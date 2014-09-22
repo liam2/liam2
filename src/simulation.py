@@ -1,10 +1,11 @@
-from __future__ import print_function
+from __future__ import print_function, division
 
 import time
 import os.path
 import operator
 from collections import defaultdict
 import random
+import warnings
 
 import numpy as np
 import tables
@@ -22,24 +23,32 @@ import config
 import expr
 
 
-def show_top_times(what, times):
-    count = len(times)
+def show_top_times(what, times, count):
+    total = sum(t for n, t in times)
     print("top %d %s:" % (count, what))
-    for name, timing in times:
-        print(" - %s: %s" % (name, time2str(timing)))
+    for name, timing in times[:count]:
+        percent = 100.0 * timing / total
+        print(" - %s: %s (%d%%)" % (name, time2str(timing), percent))
     print("total for top %d %s:" % (count, what), end=' ')
-    print(time2str(sum(timing for name, timing in times)))
+    print(time2str(sum(timing for name, timing in times[:count])))
 
 
 def show_top_processes(process_time, count):
     process_times = sorted(process_time.iteritems(),
                            key=operator.itemgetter(1),
                            reverse=True)
-    show_top_times('processes', process_times[:count])
+    show_top_times('processes', process_times, count)
 
 
 def show_top_expr(count=None):
-    show_top_times('expressions', expr.timings.most_common(count))
+    show_top_times('expressions', expr.timings.most_common(count), count)
+
+
+def expand_periodic_fields(content):
+    periodic = multi_get(content, 'globals/periodic')
+    if isinstance(periodic, list) and \
+            all(isinstance(f, dict) for f in periodic):
+        multi_set(content, 'globals/periodic', {'fields': periodic})
 
 
 def handle_imports(content, directory):
@@ -52,8 +61,8 @@ def handle_imports(content, directory):
         import_directory = os.path.dirname(import_path)
         with open(import_path) as f:
             import_content = handle_imports(yaml.load(f), import_directory)
-            for wild_key in ('globals/periodic', 'globals/*/fields',
-                             'entities/*/fields'):
+            expand_periodic_fields(import_content)
+            for wild_key in ('globals/*/fields', 'entities/*/fields'):
                 multi_keys = expand_wild(wild_key, import_content)
                 for multi_key in multi_keys:
                     import_fields = multi_get(import_content, multi_key)
@@ -75,14 +84,22 @@ class Simulation(object):
     yaml_layout = {
         'import': None,
         'globals': {
-            'periodic': [{
-                '*': str
-            }],
+            'periodic': None,  # either full-blown (dict) description or list
+                               # of fields
             '*': {
+                'path': str,
+                'type': str,
                 'fields': [{
                     '*': None  # Or(str, {'type': str, 'initialdata': bool})
                 }],
-                'type': str
+                'oldnames': {
+                    '*': str
+                },
+                'newnames': {
+                    '*': str
+                },
+                'invert': [str],
+                'transposed': bool
             }
         },
         '#entities': {
@@ -122,10 +139,14 @@ class Simulation(object):
                 'path': str,
                 '#file': str
             },
+            'logging': {
+                'timings': bool,
+                'level': str,  # Or('periods', 'procedures', 'processes')
+            },
             '#periods': int,
             '#start_period': int,
             'skip_shows': bool,
-            'timings': bool,
+            'timings': bool,      # deprecated
             'assertions': str,
             'default_entity': str,
             'autodump': None,
@@ -136,8 +157,9 @@ class Simulation(object):
     def __init__(self, globals_def, periods, start_period,
                  init_processes, init_entities, processes, entities,
                  data_source, default_entity=None):
+        #FIXME: what if period has been declared explicitly?
         if 'periodic' in globals_def:
-            globals_def['periodic'].insert(0, ('PERIOD', int))
+            globals_def['periodic']['fields'].insert(0, ('PERIOD', int))
 
         self.globals_def = globals_def
         self.periods = periods
@@ -162,27 +184,22 @@ class Simulation(object):
         with open(fpath) as f:
             content = yaml.load(f)
 
+        expand_periodic_fields(content)
         content = handle_imports(content, simulation_dir)
         validate_dict(content, cls.yaml_layout)
 
         # the goal is to get something like:
         # globals_def = {'periodic': [('a': int), ...],
         #                'MIG': int}
-        globals_def = {}
+        globals_def = content.get('globals', {})
         for k, v in content.get('globals', {}).iteritems():
-            # periodic is a special case
-            if k == 'periodic':
-                type_ = fields_yaml_to_type(v)
+            if "type" in v:
+                v["type"] = field_str_to_type(v["type"], "array '%s'" % k)
             else:
-                # "fields" and "type" are synonyms
-                type_def = v.get('fields') or v.get('type')
-                if isinstance(type_def, basestring):
-                    type_ = field_str_to_type(type_def, "array '%s'" % k)
-                else:
-                    if not isinstance(type_def, list):
-                        raise SyntaxError("invalid structure for globals")
-                    type_ = fields_yaml_to_type(type_def)
-            globals_def[k] = type_
+                #TODO: fields should be optional (would use all the fields
+                # provided in the file)
+                v["fields"] = fields_yaml_to_type(v["fields"])
+            globals_def[k] = v
 
         simulation_def = content['simulation']
         seed = simulation_def.get('random_seed')
@@ -194,10 +211,18 @@ class Simulation(object):
 
         periods = simulation_def['periods']
         start_period = simulation_def['start_period']
-        config.skip_shows = simulation_def.get('skip_shows', False)
+        config.skip_shows = simulation_def.get('skip_shows', config.skip_shows)
         #TODO: check that the value is one of "raise", "skip", "warn"
-        config.assertions = simulation_def.get('assertions', 'raise')
-        config.show_timings = simulation_def.get('timings', True)
+        config.assertions = simulation_def.get('assertions', config.assertions)
+
+        logging_def = simulation_def.get('logging', {})
+        config.log_level = logging_def.get('level', config.log_level)
+        if 'timings' in simulation_def:
+            warnings.warn("simulation.timings is deprecated, please use "
+                          "simulation.logging.timings instead",
+                          DeprecationWarning)
+            config.show_timings = simulation_def['timings']
+        config.show_timings = logging_def.get('timings', config.show_timings)
 
         autodump = simulation_def.get('autodump', None)
         if autodump is True:
@@ -328,17 +353,25 @@ class Simulation(object):
 
         def simulate_period(period_idx, period, processes, entities,
                             init=False):
-            print("\nperiod", period)
-            if init:
+            period_start_time = time.time()
+            if config.log_level in ("procedures", "processes"):
+                print()
+            print("period", period,
+                  end=" " if config.log_level == "periods" else "\n")
+            if init and config.log_level in ("procedures", "processes"):
                 for entity in entities:
                     print("  * %s: %d individuals" % (entity.name,
                                                       len(entity.array)))
             else:
-                print("- loading input data")
-                for entity in entities:
-                    print("  *", entity.name, "...", end=' ')
-                    timed(entity.load_period_data, period)
-                    print("    -> %d individuals" % len(entity.array))
+                if config.log_level in ("procedures", "processes"):
+                    print("- loading input data")
+                    for entity in entities:
+                        print("  *", entity.name, "...", end=' ')
+                        timed(entity.load_period_data, period)
+                        print("    -> %d individuals" % len(entity.array))
+                else:
+                    for entity in entities:
+                        entity.load_period_data(period)
             for entity in entities:
                 entity.array_period = period
                 entity.array['period'] = period
@@ -353,30 +386,36 @@ class Simulation(object):
                 num_processes = len(processes)
                 for p_num, process_def in enumerate(processes, start=1):
                     process, periodicity = process_def
-
-                    print("- %d/%d" % (p_num, num_processes), process.name,
-                          end=' ')
-                    print("...", end=' ')
+                    if config.log_level in ("procedures", "processes"):
+                        print("- %d/%d" % (p_num, num_processes), process.name,
+                              end=' ')
+                        print("...", end=' ')
                     if period_idx % periodicity == 0:
                         elapsed, _ = gettime(process.run_guarded, self,
                                              const_dict)
                     else:
                         elapsed = 0
-                        print("skipped (periodicity)")
+                        if config.log_level in ("procedures", "processes"):
+                            print("skipped (periodicity)")
 
                     process_time[process.name] += elapsed
-                    if config.show_timings:
-                        print("done (%s elapsed)." % time2str(elapsed))
-                    else:
-                        print("done.")
+                    if config.log_level in ("procedures", "processes"):
+                        if config.show_timings:
+                            print("done (%s elapsed)." % time2str(elapsed))
+                        else:
+                            print("done.")
                     self.start_console(process.entity, period,
                                        globals_data)
 
-            print("- storing period data")
-            for entity in entities:
-                print("  *", entity.name, "...", end=' ')
-                timed(entity.store_period_data, period)
-                print("    -> %d individuals" % len(entity.array))
+            if config.log_level in ("procedures", "processes"):
+                print("- storing period data")
+                for entity in entities:
+                    print("  *", entity.name, "...", end=' ')
+                    timed(entity.store_period_data, period)
+                    print("    -> %d individuals" % len(entity.array))
+            else:
+                for entity in entities:
+                    entity.store_period_data(period)
 #            print " - compressing period data"
 #            for entity in entities:
 #                print "  *", entity.name, "...",
@@ -385,7 +424,30 @@ class Simulation(object):
 #                    timed(entity.compress_period_data, level)
             period_objects[period] = sum(len(entity.array)
                                          for entity in entities)
+            period_elapsed_time = time.time() - period_start_time
+            if config.log_level in ("procedures", "processes"):
+                print("period %d" % period, end=' ')
+            print("done", end=' ')
+            if config.show_timings:
+                print("(%s elapsed)" % time2str(period_elapsed_time), end="")
+                if init:
+                    print(".")
+                else:
+                    main_elapsed_time = time.time() - main_start_time
+                    periods_done = period_idx + 1
+                    remaining_periods = self.periods - periods_done
+                    avg_time = main_elapsed_time / periods_done
+                    # future_time = period_elapsed_time * 0.4 + avg_time * 0.6
+                    remaining_time = avg_time * remaining_periods
+                    print(" - estimated remaining time: %s."
+                          % time2str(remaining_time))
+            else:
+                print()
 
+        print("""
+=====================
+ starting simulation
+=====================""")
         try:
             simulate_period(0, self.start_period - 1, self.init_processes,
                             self.entities, init=True)
@@ -393,15 +455,8 @@ class Simulation(object):
             periods = range(self.start_period,
                             self.start_period + self.periods)
             for period_idx, period in enumerate(periods):
-                period_start_time = time.time()
                 simulate_period(period_idx, period,
                                 self.processes, self.entities)
-                time_elapsed = time.time() - period_start_time
-                print("period %d done" % period, end=' ')
-                if config.show_timings:
-                    print("(%s elapsed)." % time2str(time_elapsed))
-                else:
-                    print()
 
             total_objects = sum(period_objects[period] for period in periods)
             total_time = time.time() - main_start_time
