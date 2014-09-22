@@ -26,7 +26,7 @@ call activate liam2
 rem cxfreezing an app which loads .ui files fails
 rem https://bitbucket.org/anthony_tuininga/cx_freeze/issue/103
 rem cx-freeze 4.3.4 should fix this, but in the meantime:
-rem rm -rf %ANACONDA_ENVS%\%CONDA_DEFAULT_ENV%\Lib\site-packages\PyQt4\uic\port_v3\
+rem rd /s /q %ANACONDA_ENVS%\%CONDA_DEFAULT_ENV%\Lib\site-packages\PyQt4\uic\port_v3\
 python setup.py build
 
 set BDIR32=build\exe.win32-2.7
@@ -40,7 +40,7 @@ rem ======== 64 bits =========
 call c64.bat
 call activate liam2
 
-rem rm -rf %ANACONDA_ENVS%\%CONDA_DEFAULT_ENV%\Lib\site-packages\PyQt4\uic\port_v3\
+rem rd /s /q %ANACONDA_ENVS%\%CONDA_DEFAULT_ENV%\Lib\site-packages\PyQt4\uic\port_v3\
 python setup.py build
 
 rem upx does not support 64b files
