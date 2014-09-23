@@ -9,7 +9,7 @@ from make_release import relname2fname
 def add_release(release_name):
     # create "empty" change file for that release
     fname = relname2fname(release_name)
-    with open(r'doc\usersguide\source\changes\template.rst') as f:
+    with open(r'doc\usersguide\source\changes\template.rst.inc') as f:
         changes_template = f.read()
     with open(join(r'doc\usersguide\source\changes', fname), 'w') as f:
         f.write(changes_template)
