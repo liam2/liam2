@@ -20,6 +20,6 @@ rem pushd website
 rem call buildall.bat
 rem popd
 
-echo
+echo.
 echo Build finished: all documentation built
 popd
