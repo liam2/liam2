@@ -27,37 +27,44 @@ def allfiles(pattern, path='.'):
 
 def int_version(release_name):
     """
-    converts a release name to a version number with only dots and integers
-    :param release_name: the release to convert
-    :return: a release name with -pre and -rc parts stripped
-
+    converts a release name to a version string with only dots and integers
+    :param release_name: the release name to convert
+    :return: a release name with prerelease tags (beta, rc, ...) stripped.
+    unrecognised tags are left intact, even if that means returning an invalid
+    version string
     >>> int_version('0.8')
     '0.8'
     >>> int_version('0.8.1')
     '0.8.1'
-    >>> int_version('0.8-pre1')
-    '0.7.99801'
-    >>> int_version('0.8-rc2')
+    >>> int_version('0.8-alpha1')
+    '0.7.99701'
+    >>> int_version('0.8rc2')
     '0.7.99902'
-    >>> int_version('0.8.1-pre2')
-    '0.8.0.99802'
+    >>> int_version('0.8.1a2')
+    '0.8.0.99702'
+    >>> int_version('0.8.1beta3')
+    '0.8.0.99803'
     >>> int_version('0.8.1-rc1')
     '0.8.0.99901'
     """
-    pre_pos = release_name.find('-pre')
-    rc_pos = release_name.find('-rc')
-    if pre_pos != -1:
-        head, tail = release_name[:pre_pos], release_name[pre_pos + 4:]
-        prefix = '8'
-    elif rc_pos != -1:
-        head, tail = release_name[:rc_pos], release_name[rc_pos + 3:]
-        prefix = '9'
-    else:
-        return release_name
-    assert tail.isdigit()
-    patch = '.99' + prefix + tail.rjust(2, '0')
-    head, middle = head.rsplit('.', 1)
-    return head + '.' + str(int(middle) - 1) + patch
+    if 'pre' in release_name:
+        raise ValueError("'pre' is not supported anymore, use 'alpha' or "
+                         "'beta' instead")
+    # 'a' needs to be searched for after 'beta'
+    tags = [('rc', 9), ('c', 9),
+            ('beta', 8), ('b', 8),
+            ('alpha', 7), ('a', 7)]
+    # first check for -TAG then TAG
+    tags = [('-' + tag, num) for tag, num in tags] + tags
+    for tag, num in tags:
+        tag_pos = release_name.find(tag)
+        if tag_pos != -1:
+            head, tail = release_name[:tag_pos], release_name[tag_pos + len(tag):]
+            assert tail.isdigit()
+            patch = '.99' + str(num) + tail.rjust(2, '0')
+            head, middle = head.rsplit('.', 1)
+            return head + '.' + str(int(middle) - 1) + patch
+    return release_name
 
 
 #================#
