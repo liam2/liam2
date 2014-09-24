@@ -22,8 +22,8 @@ Miscellaneous improvements
   index of individuals of past periods forever in memory, which had
   approximately the same effect than adding one column for each period.
   Since it is only useful when going back in time more than one period, it now
-  flushes it to disk for periods < period - 1. This as two consequences: it
-  will decrease memory use for models with many periods but will slow down
+  flushes it to disk for periods < period - 1. This change has two consequences:
+  it will decrease memory use for models with many periods but will slow down
   models going back in time more than one period. This closes :issue:`130`.
 
 * the "top times" at the end of the simulation now also include the % of total.
