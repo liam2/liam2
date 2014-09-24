@@ -36,7 +36,7 @@ def int_version(release_name):
     '0.8'
     >>> int_version('0.8.1')
     '0.8.1'
-    >>> int_version('0.8-alpha1')
+    >>> int_version('0.8alpha1')
     '0.7.99701'
     >>> int_version('0.8rc2')
     '0.7.99902'
@@ -44,22 +44,22 @@ def int_version(release_name):
     '0.8.0.99702'
     >>> int_version('0.8.1beta3')
     '0.8.0.99803'
-    >>> int_version('0.8.1-rc1')
+    >>> int_version('0.8.1rc1')
     '0.8.0.99901'
     """
     if 'pre' in release_name:
         raise ValueError("'pre' is not supported anymore, use 'alpha' or "
                          "'beta' instead")
+    if '-' in release_name:
+        raise ValueError("- is not supported anymore")
     # 'a' needs to be searched for after 'beta'
     tags = [('rc', 9), ('c', 9),
             ('beta', 8), ('b', 8),
             ('alpha', 7), ('a', 7)]
-    # first check for -TAG then TAG
-    tags = [('-' + tag, num) for tag, num in tags] + tags
     for tag, num in tags:
-        tag_pos = release_name.find(tag)
-        if tag_pos != -1:
-            head, tail = release_name[:tag_pos], release_name[tag_pos + len(tag):]
+        pos = release_name.find(tag)
+        if pos != -1:
+            head, tail = release_name[:pos], release_name[pos + len(tag):]
             assert tail.isdigit()
             patch = '.99' + str(num) + tail.rjust(2, '0')
             head, middle = head.rsplit('.', 1)
