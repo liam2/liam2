@@ -859,6 +859,7 @@ class Void(DataSource):
 
     def run(self, globals_def, entities, start_period):
         output_file = tables.openFile(self.output_path, mode="w")
+        output_indexes = output_file.createGroup("/", "indexes", "Indexes")
         output_entities = output_file.createGroup("/", "entities", "Entities")
         for entity in entities.itervalues():
             dtype = np.dtype(entity.fields)
@@ -871,6 +872,8 @@ class Void(DataSource):
 
             entity.input_table = None
             entity.table = output_table
+            index_node = output_file.createGroup(output_indexes, entity.name)
+            entity.output_index_node = index_node
         return None, output_file, None
 
 

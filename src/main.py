@@ -6,6 +6,12 @@ from os.path import splitext
 import platform
 import warnings
 
+# this is needed for vitables and needs to happen BEFORE matplotlib is
+# imported (and imports PyQt)
+import sip
+sip.setapi('QString', 2)
+sip.setapi('QVariant', 2)
+
 import yaml
 
 import config
@@ -18,7 +24,7 @@ from data import populate_registry, H5Data
 from upgrade import upgrade
 from view import viewhdf
 
-__version__ = "0.8.2pre1"
+__version__ = "0.8.2rc1"
 
 
 def eat_traceback(func, *args, **kwargs):

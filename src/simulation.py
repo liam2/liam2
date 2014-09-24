@@ -24,10 +24,24 @@ import expr
 
 
 def show_top_times(what, times, count):
+    """
+    >>> show_top_times("letters", [('a', 0.1), ('b', 0.2)], 5)
+    top 5 letters:
+     - a: 0.10 second (33%)
+     - b: 0.20 second (66%)
+    total for top 5 letters: 0.30 second
+    >>> show_top_times("zeros", [('a', 0)], 5)
+    top 5 zeros:
+     - a: 0 ms (100%)
+    total for top 5 zeros: 0 ms
+    """
     total = sum(t for n, t in times)
     print("top %d %s:" % (count, what))
     for name, timing in times[:count]:
-        percent = 100.0 * timing / total
+        try:
+            percent = 100.0 * timing / total
+        except ZeroDivisionError:
+            percent = 100
         print(" - %s: %s (%d%%)" % (name, time2str(timing), percent))
     print("total for top %d %s:" % (count, what), end=' ')
     print(time2str(sum(timing for name, timing in times[:count])))

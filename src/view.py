@@ -60,5 +60,5 @@ def viewhdf(filepaths):
 
     # Start the application
     vtapp = VTApp(mode='a', h5files=filepaths)
-    vtapp.show()
+    vtapp.gui.show()
     app.exec_()

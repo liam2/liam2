@@ -3,6 +3,9 @@ rem change directory to the location of this batch file
 rem (but remember original directory)
 pushd %~dp0
 
+call c64.bat
+call activate liam2
+
 rem pushd reference
 rem call buildall.bat
 rem popd
@@ -17,6 +20,6 @@ rem pushd website
 rem call buildall.bat
 rem popd
 
-echo
+echo.
 echo Build finished: all documentation built
 popd

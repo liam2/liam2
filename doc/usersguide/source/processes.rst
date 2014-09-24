@@ -263,9 +263,8 @@ globals
 -------
 
 Globals can be used in expressions in any entity. LIAM2 currently supports
-two kinds of globals: tables and multi-dimensional arrays. They both need to
-be imported (see the :ref:`import_data` section) and declared (see
-the :ref:`globals_declaration` section) before they can be used.
+two kinds of globals: tables and multi-dimensional arrays. They both declared
+(see the :ref:`globals_declaration` section) before they can be used.
 
 Globals tables come in two variety: those with a PERIOD column and those
 without. 
