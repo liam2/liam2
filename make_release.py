@@ -202,7 +202,7 @@ def update_changelog(release_name):
                          date=date.today().isoformat(),
                          fpath='changes/' + fname)
         this_version = changelog_template.format(**variables)
-        lines[5:5] = this_version.splitlines(keepends=True)
+        lines[5:5] = this_version.splitlines(True)
     with open(fpath, 'w') as f:
         f.writelines(lines)
     call('git commit -m "include release changes (%s) in changes.rst" %s'
