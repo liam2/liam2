@@ -10,6 +10,7 @@ import os
 import stat
 import subprocess
 import zipfile
+import re
 
 from datetime import date
 from os import chdir, makedirs
@@ -134,13 +135,36 @@ def short(rel_name):
     return rel_name[:-2] if rel_name.endswith('.0') else rel_name
 
 
+def strip_pretags(release_name):
+    """
+    removes pre-release tags from a version string
+
+    >>> strip_pretags('0.8')
+    '0.8'
+    >>> strip_pretags('0.8alpha25')
+    '0.8'
+    >>> strip_pretags('0.8.1rc1')
+    '0.8.1'
+    """
+    if 'pre' in release_name:
+        raise ValueError("'pre' is not supported anymore, use 'alpha' or "
+                         "'beta' instead")
+    if '-' in release_name:
+        raise ValueError("- is not supported anymore")
+
+    # 'a' needs to be searched for after 'beta'
+    for tag in ('rc', 'c', 'beta', 'b', 'alpha', 'a'):
+        release_name = re.sub(tag + '\d+', '', release_name)
+    return release_name
+
+
 #----------------------#
 # end of generic tools #
 #----------------------#
 
 
-changelog_template = """Version {short_version}
-=============
+changelog_template = """{title}
+{underline}
 
 Released on {date}.
 
@@ -169,12 +193,16 @@ def update_changelog(release_name):
     fpath = r'doc\usersguide\source\changes.rst'
     with open(fpath) as f:
         lines = f.readlines()
-
-        variables = dict(short_version=short(release_name),
+        title = "Version %s" % short(release_name)
+        if lines[5] == title:
+            print("changes.rst not modified (it already contains %s)" % title)
+            return
+        variables = dict(title=title,
+                         underline="=" * len(title),
                          date=date.today().isoformat(),
                          fpath='changes/' + fname)
         this_version = changelog_template.format(**variables)
-        lines[5:5] = this_version
+        lines[5:5] = this_version.splitlines(keepends=True)
     with open(fpath, 'w') as f:
         f.writelines(lines)
     call('git commit -m "include release changes (%s) in changes.rst" %s'
@@ -343,7 +371,8 @@ def cleanup():
 
 
 def relname2fname(release_name):
-    return r"version_%s.rst.inc" % short(release_name).replace('.', '_')
+    short_version = short(strip_pretags(release_name))
+    return r"version_%s.rst.inc" % short_version.replace('.', '_')
 
 
 def make_release(release_name=None, branch='master'):
