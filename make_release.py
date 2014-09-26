@@ -146,16 +146,25 @@ def strip_pretags(release_name):
     >>> strip_pretags('0.8.1rc1')
     '0.8.1'
     """
-    if 'pre' in release_name:
-        raise ValueError("'pre' is not supported anymore, use 'alpha' or "
-                         "'beta' instead")
-    if '-' in release_name:
-        raise ValueError("- is not supported anymore")
-
     # 'a' needs to be searched for after 'beta'
     for tag in ('rc', 'c', 'beta', 'b', 'alpha', 'a'):
         release_name = re.sub(tag + '\d+', '', release_name)
     return release_name
+
+
+def isprerelease(release_name):
+    """
+    tests whether the release name contains any pre-release tag
+
+    >>> isprerelease('0.8')
+    False
+    >>> isprerelease('0.8alpha25')
+    True
+    >>> isprerelease('0.8.1rc1')
+    True
+    """
+    return any(tag in release_name
+               for tag in ('rc', 'c', 'beta', 'b', 'alpha', 'a'))
 
 
 #----------------------#
@@ -163,15 +172,15 @@ def strip_pretags(release_name):
 #----------------------#
 
 
-changelog_template = """{title}
-{underline}
-
-Released on {date}.
-
-.. include:: {fpath}
+def relname2fname(release_name):
+    short_version = short(strip_pretags(release_name))
+    return r"version_%s.rst.inc" % short_version.replace('.', '_')
 
 
-"""
+def release_changes(release_name):
+    fpath = "doc\usersguide\source\changes\\" + relname2fname(release_name)
+    with open(fpath) as f:
+        return f.read().decode('utf-8-sig')
 
 
 def update_versions(release_name):
@@ -189,8 +198,22 @@ def update_versions(release_name):
 def update_changelog(release_name):
     fname = relname2fname(release_name)
 
+    print(release_changes(release_name))
+    if no('Does this changelog look good?'):
+        exit(1)
+
     # include it in changes.rst
     fpath = r'doc\usersguide\source\changes.rst'
+    changelog_template = """{title}
+    {underline}
+
+    Released on {date}.
+
+    .. include:: {fpath}
+
+
+    """
+
     with open(fpath) as f:
         lines = f.readlines()
         title = "Version %s" % short(release_name)
@@ -296,7 +319,7 @@ def build_website(release_name):
              version=release_name, short_version=short(release_name))
 
     title = 'Version %s released' % short(release_name)
-    # strip is important otherwise it contains a \n and git chokes on it
+    # strip is important otherwise fname contains a \n and git chokes on it
     fname = call('tinker -f -p "%s"' % title).strip()
 
     call('buildall.bat')
@@ -329,12 +352,13 @@ def upload(release_name):
     chdir(r'..')
 
     # website
-    chdir(r'build\doc\website\blog\html')
-    subprocess.call(r'pscp -r * %s' % base_url)
-    chdir(r'..\..\..\..\..')
+    if not isprerelease(release_name):
+        chdir(r'build\doc\website\blog\html')
+        subprocess.call(r'pscp -r * %s' % base_url)
+        chdir(r'..\..\..\..\..')
 
 
-def announce(release_name, changes):
+def announce(release_name):
     body = """\
 I am pleased to announce that version %s of LIAM2 is now available.
 
@@ -352,7 +376,7 @@ mailing list: liam2-users@googlegroups.com (you need to register to be
 able to post).
 
 %s
-""" % (short(release_name), changes)
+""" % (short(release_name), release_changes(release_name))
     # preselectid='id1' selects the first "identity" for the "from" field
     # We do not use our usual call because the command returns an exit status
     # of 1 (failure) instead of 0, even if it works, so we simply ignore
@@ -370,12 +394,14 @@ def cleanup():
     rmtree('build')
 
 
-def relname2fname(release_name):
-    short_version = short(strip_pretags(release_name))
-    return r"version_%s.rst.inc" % short_version.replace('.', '_')
-
-
 def make_release(release_name=None, branch='master'):
+    if release_name is not None:
+        if 'pre' in release_name:
+            raise ValueError("'pre' is not supported anymore, use 'alpha' or "
+                             "'beta' instead")
+        if '-' in release_name:
+            raise ValueError("- is not supported anymore")
+
     # Since git is a dvcs, we could make this script work locally, but it would
     # not be any more useful because making a release is usually to distribute
     # it to someone, and for that I need network access anyway.
@@ -442,17 +468,10 @@ def make_release(release_name=None, branch='master'):
 
     if public_release:
         test_release = True
-        fpath = "doc\usersguide\source\changes\\" + relname2fname(release_name)
-        with open(fpath) as f:
-            changes = f.read().decode('utf-8-sig')
-            print(changes)
-        if no('Does this changelog look good?'):
-            exit(1)
         update_changelog(release_name)
     else:
         test_release = yes('Do you want to test the bundles after they are '
                            'created?')
-        changes = ''
 
     do('Creating source archive', call,
        r'git archive --format zip --output ..\LIAM2-%s-src.zip %s'
@@ -470,9 +489,9 @@ def make_release(release_name=None, branch='master'):
         do('Testing bundles', test_bundles, release_name)
 
     if public_release:
-        do('Building website (news, download and documentation pages)',
-           build_website, release_name)
-
+        if not isprerelease(release_name):
+            do('Building website (news, download and documentation pages)',
+               build_website, release_name)
         if no('Is the release looking good? If so, the tag will be created and '
               'pushed, everything will be uploaded to the production server '
               'and the release will be announced.'):
@@ -492,8 +511,7 @@ def make_release(release_name=None, branch='master'):
         # ------- #
 
         do('Uploading', upload, release_name)
-
-        do('Announcing', announce, release_name, changes)
+        do('Announcing', announce, release_name)
 
     do('Cleaning up', cleanup)
 
