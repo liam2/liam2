@@ -78,8 +78,9 @@ def echocall(*args, **kwargs):
 
 def git_remote_last_rev(url, branch=None):
     """
-    url of the remote repository
-    branch is an optional branch (defaults to 'refs/heads/master')
+    :param url: url of the remote repository
+    :param branch: an optional branch (defaults to 'refs/heads/master')
+    :return: name/hash of the last revision
     """
     if branch is None:
         branch = 'refs/heads/master'
@@ -183,6 +184,18 @@ def release_changes(release_name):
         return f.read().decode('utf-8-sig')
 
 
+def build_exe():
+    chdir('src')
+    call('buildall.bat')
+    chdir('..')
+
+
+def build_doc():
+    chdir('doc')
+    call('buildall.bat')
+    chdir('..')
+
+
 def update_versions(release_name):
     # git clone + install will fail sauf si post-release (mais meme dans ce
     # cas là, ce ne sera pas précis)
@@ -198,11 +211,7 @@ def update_versions(release_name):
 def update_changelog(release_name):
     fname = relname2fname(release_name)
 
-    print(release_changes(release_name))
-    if no('Does this changelog look good?'):
-        exit(1)
-
-    # include it in changes.rst
+    # include version changelog in changes.rst
     fpath = r'doc\usersguide\source\changes.rst'
     changelog_template = """{title}
     {underline}
@@ -230,7 +239,6 @@ def update_changelog(release_name):
         f.writelines(lines)
     call('git commit -m "include release changes (%s) in changes.rst" %s'
          % (fname, fpath))
-    do('pushing changes.rst', call, 'git push')
 
 
 def copy_release(release_name):
@@ -246,7 +254,7 @@ def copy_release(release_name):
           r'win32\documentation\LIAM2UserGuide.chm')
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
           r'win64\documentation\LIAM2UserGuide.chm')
-    # standalone docs
+    # doc not in the bundles
     copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
           r'LIAM2UserGuide-%s.pdf' % release_name)
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
@@ -267,39 +275,45 @@ def create_bundles(release_name):
     chdir(r'..\..')
 
 
-def test_bundle(archivefname, dest):
-    zip_unpack(archivefname, dest)
+def test_executable(relpath):
+    """
+    test an executable with relative path *relpath*
+    """
     # we use --debug so that errorlevel is set
-    main_dbg = dest + r'\liam2\main --debug '
-    echocall(main_dbg + r'run src\tests\functional\generate.yml')
-    echocall(main_dbg + r'import src\tests\functional\import.yml')
-    echocall(main_dbg + r'run src\tests\functional\simulation.yml')
-    echocall(main_dbg + r'run src\tests\functional\variant.yml')
-    try:
-        chdir(dest)
-        main_dbg = r'liam2\main --debug '
-        echocall(main_dbg + r'run examples\demo01.yml')
-        echocall(main_dbg + r'import examples\demo_import.yml')
-        echocall(main_dbg + r'run examples\demo01.yml')
-        echocall(main_dbg + r'run examples\demo02.yml')
-        echocall(main_dbg + r'run examples\demo03.yml')
-        echocall(main_dbg + r'run examples\demo04.yml')
-        echocall(main_dbg + r'run examples\demo05.yml')
-        echocall(main_dbg + r'run examples\demo06.yml')
-        echocall(main_dbg + r'run examples\demo07.yml')
-        echocall(main_dbg + r'run examples\demo08.yml')
-        echocall(main_dbg + r'run examples\demo09.yml')
-    finally:
-        chdir('..')
+    main_dbg = relpath + r'\main --debug '
+    echocall(main_dbg + r'run tests\functional\generate.yml')
+    echocall(main_dbg + r'import tests\functional\import.yml')
+    echocall(main_dbg + r'run tests\functional\simulation.yml')
+    echocall(main_dbg + r'run tests\functional\variant.yml')
+    echocall(main_dbg + r'run tests\examples\demo01.yml')
+    echocall(main_dbg + r'import tests\examples\demo_import.yml')
+    echocall(main_dbg + r'run tests\examples\demo01.yml')
+    echocall(main_dbg + r'run tests\examples\demo02.yml')
+    echocall(main_dbg + r'run tests\examples\demo03.yml')
+    echocall(main_dbg + r'run tests\examples\demo04.yml')
+    echocall(main_dbg + r'run tests\examples\demo05.yml')
+    echocall(main_dbg + r'run tests\examples\demo06.yml')
+    echocall(main_dbg + r'run tests\examples\demo07.yml')
+    echocall(main_dbg + r'run tests\examples\demo08.yml')
+    echocall(main_dbg + r'run tests\examples\demo09.yml')
 
 
-def test_bundles(release_name):
+def test_executables():
+    """
+    assumes to be in build
+    """
+    for arch in ('win32', 'win-amd64'):
+        test_executable(r'src\build\exe.%s-2.7' % arch)
+
+
+def check_bundles(release_name):
+    """
+    checks the bundles unpack correctly
+    """
     makedirs('test')
-    chdir('test')
-    zip_unpack(r'..\LIAM2-%s-src.zip' % release_name, 'src')
-    for arch in ('win32', 'win64'):
-        test_bundle(r'..\LIAM2Suite-%s-%s.zip' % (release_name, arch), arch)
-    chdir('..')
+    zip_unpack('LIAM2Suite-%s-win32.zip' % release_name, r'test\win32')
+    zip_unpack('LIAM2Suite-%s-win64.zip' % release_name, r'test\win64')
+    zip_unpack('LIAM2-%s-src.zip' % release_name, r'test\src')
     rmtree('test')
 
 
@@ -334,7 +348,6 @@ def build_website(release_name):
     call('git add master.rst')
     call('git add %s' % fname)
     call('git commit -m "announce version %s on website"' % short(release_name))
-    do('Git-pushing website', call, 'git push')
 
     chdir(r'..\..\..')
 
@@ -394,7 +407,7 @@ def cleanup():
     rmtree('build')
 
 
-def make_release(release_name=None, branch='master'):
+def make_release(release_name=None, branch='master', repository=None):
     if release_name is not None:
         if 'pre' in release_name:
             raise ValueError("'pre' is not supported anymore, use 'alpha' or "
@@ -402,19 +415,14 @@ def make_release(release_name=None, branch='master'):
         if '-' in release_name:
             raise ValueError("- is not supported anymore")
 
-    # Since git is a dvcs, we could make this script work locally, but it would
-    # not be any more useful because making a release is usually to distribute
-    # it to someone, and for that I need network access anyway.
-    # Furthermore, cloning from the remote repository makes sure we do not
-    # include any untracked file
-    # Note, that it is exactly the same syntax, except that repository is a path
-    # instead of an URL 'git clone -b %s %s build' % (branch, repository)
-    # the only drawback I see is that I could miss changes from others, but
-    # we are not there yet :)
-
     # git ls-remote does not seem to support user-tagged urls
-    # repository = call('git config --get remote.origin.url')
-    repository = 'https://github.com/liam2/liam2.git'
+    if repository is None:
+        # repository = call('git config --get remote.origin.url')
+        repository = 'https://github.com/liam2/liam2.git'
+    else:
+        repository = abspath(repository)
+        s = "Using local repository at: %s !" % repository
+        print("\n", s, "\n", "=" * len(s), "\n", sep='')
 
     status = call('git status -s')
     lines = status.splitlines()
@@ -447,6 +455,7 @@ def make_release(release_name=None, branch='master'):
     if no('Release version %s (%s)?' % (release_name, rev)):
         exit(1)
 
+    cwd = os.getcwd()
     chdir(r'c:\tmp')
     if exists('liam2_new_release'):
         rmtree('liam2_new_release')
@@ -467,17 +476,29 @@ def make_release(release_name=None, branch='master'):
         exit(1)
 
     if public_release:
+        print(release_changes(release_name))
+        if no('Does this changelog look right?'):
+            exit(1)
+
+    if public_release:
         test_release = True
-        update_changelog(release_name)
     else:
-        test_release = yes('Do you want to test the bundles after they are '
+        test_release = yes('Do you want to test the executables after they are '
                            'created?')
+
+    do('Building executables', build_exe)
+
+    if test_release:
+        do('Testing executables', test_executables)
+
+    if public_release:
+        do('Updating changelog', update_changelog, release_name)
+
+    do('Building doc', build_doc)
 
     do('Creating source archive', call,
        r'git archive --format zip --output ..\LIAM2-%s-src.zip %s'
        % (release_name, rev))
-
-    do('Building everything', call, 'buildall.bat')
 
     # ------- #
     chdir('..')
@@ -485,8 +506,7 @@ def make_release(release_name=None, branch='master'):
 
     do('Moving stuff around', copy_release, release_name)
     do('Creating bundles', create_bundles, release_name)
-    if test_release:
-        do('Testing bundles', test_bundles, release_name)
+    do('Testing bundles', check_bundles, release_name)
 
     if public_release:
         if not isprerelease(release_name):
@@ -514,7 +534,7 @@ def make_release(release_name=None, branch='master'):
         do('Announcing', announce, release_name)
 
     do('Cleaning up', cleanup)
-
+    chdir(cwd)
 
 if __name__ == '__main__':
     from sys import argv
