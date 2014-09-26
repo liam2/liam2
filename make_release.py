@@ -279,6 +279,7 @@ def test_executable(relpath):
     """
     test an executable with relative path *relpath*
     """
+    print()
     # we use --debug so that errorlevel is set
     main_dbg = relpath + r'\main --debug '
     echocall(main_dbg + r'run tests\functional\generate.yml')
