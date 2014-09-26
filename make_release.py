@@ -532,7 +532,13 @@ def make_release(release_name=None, branch='master', repository=None):
         # ------- #
 
         do('Uploading', upload, release_name)
+        # ---------- #
+        chdir('build')
+        # ---------- #
         do('Announcing', announce, release_name)
+        # ------- #
+        chdir('..')
+        # ------- #
 
     do('Cleaning up', cleanup)
     chdir(cwd)
