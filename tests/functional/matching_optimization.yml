@@ -37,14 +37,16 @@ entities:
             marriage:
                 - to_marry: logit_regr(0.0, filter=age >= 20)
                 
-                # 20024/19646 individuals : 0.85 second           
+                # 20024/19646 individuals : 0.85 second
+                - errsal_round: round(errsal, -2)
                 - partner1: optimized_matching(set1filter=to_marry and not male,
                                        set2filter=to_marry and male,
-                                       orderby=id,
+                                       orderby='EDtM',
                                        score=- 0.4893 * other.age
                                              + 0.0131 * other.age ** 2
                                              - 0.0001 * other.age ** 3
                                              + 0.0467 * (other.age - age)
+                                             + errsal_round
                                              - 0.0189 * (other.age - age) ** 2
                                              + 0.0003 * (other.age - age) ** 3
                                              - 0.9087 * (other.work and not work)
@@ -68,7 +70,7 @@ entities:
                                              + 0.0467 * (other.age - age)
                                              - 0.0189 * (other.age - age) ** 2
                                              + 0.0003 * (other.age - age) ** 3
-                                             - 0.9087 * (other.work and not work)
+                                            - 0.9087 * (other.work and not work)
                                              - 1.3286 * (not other.work and work)
                                              - 0.6549 * (other.work and work)
                                              - 0.7939 * ((other.eduach == 3) and (eduach == 4))

@@ -9,7 +9,7 @@ from exprbases import EvaluableExpression
 from context import context_length, context_subset, context_delete
 from utils import loop_wh_progress
 
-implemented_difficulty_methods = ['EDtM', 'SDtOM']
+implemented_difficulty_methods = ['EDtM']  #,'SDtOM'
 
 
 def df_by_cell(used_variables, setfilter, context):
@@ -176,6 +176,7 @@ class SequentialMatching(ScoreMatching):
             The SDtOM is the most relevant distance.
     '''
     def __init__(self, set1filter, set2filter, score, orderby, pool_size=None):
+        # Why not to have a second order ?
         ScoreMatching.__init__(self, set1filter, set2filter, orderby, None)
         self.score_expr = score
         if pool_size is not None:
@@ -307,38 +308,52 @@ class OptimizedSequentialMatching(SequentialMatching):
     def __init__(self, set1filter, set2filter, score, orderby):
         SequentialMatching.__init__(self, set1filter, set2filter, score,
                                     orderby, pool_size=None)
+
         
     def evaluate(self, context):
         set1filter, set2filter = self._get_filters(context)
         set1len = set1filter.sum()
         set2len = set2filter.sum()
-        tomatch = min(set1len, set2len)
-        
-        sorted_set1_indices, _ = \
-                self._get_sorted_indices(set1filter, set2filter, context)
-        set1tomatch = sorted_set1_indices[:tomatch] 
         print("matching with %d/%d individuals" % (set1len, set2len))
-
-        order_variables1 = self._get_used_variables_order(context)
-        used_variables1, used_variables2 = self._get_used_variables_match(context)
-        if all([x in used_variables1 for x in order_variables1]):
-            return self._evaluate_two_groups(used_variables1, set1filter,
-                                             used_variables2, set2filter,
-                                             context)
         
-    
-    def _evaluate_two_groups(self, used_variables1, set1filter, 
-                             used_variables2, set2filter, context):
-        global matching_ctx
+        used_variables1, used_variables2 = self._get_used_variables_match(context)
+        order = self.orderby1_expr
+        if not isinstance(order, str):
+            var_match = order.collect_variables(context)
+            used_variables1 += list(var_match)
 
+        df1 = df_by_cell(used_variables1, set1filter, context)
+        df2 = df_by_cell(used_variables2, set2filter, context)
+
+        # Sort df1: 
+        if not isinstance(order, str):
+            orderby = df1.eval(order)
+        else:
+            orderby = pd.Series(len(df1), dtype=int)
+            if order == 'EDtM':
+                for var in used_variables1:
+                    orderby += (df1[var] - df1[var].mean())**2 / df1[var].var()
+#             if order == 'SDtOM':
+#                 raise(NotImplementedError)
+#                 orderby_ctx = dict((k if k in used_variables1 else k, v)
+#                                  for k, v in df1.iteritems())
+#                 orderby_ctx.update(('__other_' + k, df2[k].mean())
+#                                  for k in used_variables2)
+#                 import pdb
+#                 pdb.set_trace()
+#                 score_expr = self.score_expr
+#                 orderby = expr_eval(score_expr, orderby_ctx)
+        
+        df1 = df1.loc[orderby.order().index]
+        
+
+        global matching_ctx
         score_expr = self.score_expr
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
         id_to_rownum = context.id_to_rownum
         
-        df1 = df_by_cell(used_variables1, set1filter, context)
-        df2 = df_by_cell(used_variables2, set2filter, context)
-        
+                
         matching_ctx = dict(('__other_' + k, v.values) for k, v in df2.iteritems())
         matching_ctx['__len__'] = len(df2)
         for varname, col in df1.iteritems():
