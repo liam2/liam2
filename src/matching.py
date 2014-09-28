@@ -395,8 +395,8 @@ class OptimizedSequentialMatching(SequentialMatching):
         return result
 
 
-functions = {'matching': SequentialMatching,
+functions = {'origin_matching': SequentialMatching,
              'rank_matching': RankingMatching,
-             'optimized_matching': OptimizedSequentialMatching
+             'matching': OptimizedSequentialMatching
             
 }
