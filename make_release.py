@@ -14,7 +14,7 @@ import re
 
 from datetime import date
 from os import chdir, makedirs
-from os.path import exists, getsize, abspath
+from os.path import exists, getsize, abspath, dirname
 from shutil import copytree, copy2, rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
 
@@ -408,7 +408,7 @@ def cleanup():
     rmtree('build')
 
 
-def make_release(release_name=None, branch='master', repository=None):
+def make_release(release_name=None, branch='master'):
     if release_name is not None:
         if 'pre' in release_name:
             raise ValueError("'pre' is not supported anymore, use 'alpha' or "
@@ -416,14 +416,11 @@ def make_release(release_name=None, branch='master', repository=None):
         if '-' in release_name:
             raise ValueError("- is not supported anymore")
 
-    # git ls-remote does not seem to support user-tagged urls
-    if repository is None:
-        # repository = call('git config --get remote.origin.url')
-        repository = 'https://github.com/liam2/liam2.git'
-    else:
-        repository = abspath(repository)
-        s = "Using local repository at: %s !" % repository
-        print("\n", s, "\n", "=" * len(s), "\n", sep='')
+    # releasing from the local clone has the advantage I can prepare the
+    # release offline and only push and upload it when I get back online
+    repository = abspath(dirname(__file__))
+    s = "Using local repository at: %s !" % repository
+    print("\n", s, "\n", "=" * len(s), "\n", sep='')
 
     status = call('git status -s')
     lines = status.splitlines()
@@ -456,13 +453,23 @@ def make_release(release_name=None, branch='master', repository=None):
     if no('Release version %s (%s)?' % (release_name, rev)):
         exit(1)
 
-    cwd = os.getcwd()
     chdir(r'c:\tmp')
     if exists('liam2_new_release'):
         rmtree('liam2_new_release')
     makedirs('liam2_new_release')
     chdir('liam2_new_release')
 
+    # make a temporary clone in /tmp. The goal is to make sure we do not
+    # include extra/unversioned files. For the -src archive, I don't think
+    # there is a risk given that we do it via git, but the risk is there for
+    # the bundles (src/build is not always clean, examples, editor, ...)
+
+    # Since this script updates files (update_changelog and build_website), we
+    # need to get those changes propagated to GitHub. I do that by updating the
+    # temporary clone then push twice: first from the temporary clone to the
+    # "working copy clone" (eg ~/devel/liam2) then to GitHub from there. The
+    # alternative to modify the "working copy clone" directly is worse because
+    # it needs more complicated path handling that the 2 push approach.
     do('Cloning', call, 'git clone -b %s %s build' % (branch, repository))
 
     # ---------- #
@@ -525,7 +532,8 @@ def make_release(release_name=None, branch='master', repository=None):
         do('Tagging release', call,
            'git tag -a %(name)s -m "tag release %(name)s"'
            % {'name': release_name})
-        do('Pushing tag', call, 'git push origin %s' % release_name)
+        do('Pushing to %s' % repository, call,
+           'git push origin %s' % release_name)
 
         # ------- #
         chdir('..')
@@ -541,7 +549,9 @@ def make_release(release_name=None, branch='master', repository=None):
         # ------- #
 
     do('Cleaning up', cleanup)
-    chdir(cwd)
+    if public_release:
+        chdir(repository)
+        do('Pushing to GitHub', call, 'git push origin %s' % release_name)
 
 if __name__ == '__main__':
     from sys import argv
