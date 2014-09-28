@@ -6,13 +6,16 @@ import re
 from itertools import islice, chain
 
 import numpy as np
-import bcolz
+try:
+    from bcolz import carray
+except:
+    from tables import carray
 import tables
 import yaml
 
 from pandas import HDFStore
 import pdb
-# import pandas.rpy.common as com 
+# import pandas.rpy.common as com
 # import rpy2.rpy_classic as rpy
 
 from utils import (validate_dict, merge_dicts, merge_items, invert_dict,
@@ -48,7 +51,7 @@ def to_time(v):
     if isinstance(v,np.int32):
         return v
     if isinstance(v,int):
-        return np.int32(v)  
+        return np.int32(v)
 
 converters = {bool: to_bool,
               int: to_int,
@@ -421,7 +424,7 @@ def interpolate(target, arrays, id_periods, fields):
     size = sum(row_for_id[period].nbytes for period in periods)
     print(" * compressing index (%.2f Mb)..." % (size / MB), end=' ')
     for period in periods:
-        row_for_id[period] = bcolz.carray(row_for_id[period])
+        row_for_id[period] = carray(row_for_id[period])
     csize = sum(row_for_id[period].cbytes for period in periods)
     print("done. (%.2f Mb)" % (csize / MB))
 
@@ -690,7 +693,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         return 'table', (target_fields, total_lines, iter(target), None)
 
 
-def file2h5(fpath, input_dir='',  
+def file2h5(fpath, input_dir='',
                   buffersize=10 * 2 ** 20):
     with open(fpath) as f:
         content = yaml.load(f)
@@ -753,7 +756,7 @@ def file2h5(fpath, input_dir='',
             }
         }
     }
-                                    
+
     validate_dict(content, yaml_layout)
     localdir = os.path.dirname(os.path.abspath(fpath))
 
@@ -802,12 +805,12 @@ def file2h5(fpath, input_dir='',
             print()
             print(" %s" % ent_name)
             input_filename = entity_def.get('path', input_dir + ent_name + ".csv")
-            if input_filename[-4:]=='.csv': 
+            if input_filename[-4:]=='.csv':
                 kind, info = load_def(localdir, ent_name,
                                       entity_def, [('period', int), ('id', int)])
                 assert kind == "table"
                 fields, numlines, datastream, csvfile = info
-                
+
                 stream_to_table(h5file, ent_node, ent_name, fields,
                                 datastream, numlines,
                                 title="%s table" % ent_name,
@@ -815,17 +818,17 @@ def file2h5(fpath, input_dir='',
                                 buffersize=buffersize, compression=compression)
                 if csvfile is not None:
                     csvfile.close()
-                        
-            if input_filename[-6:]=='.Rdata': 
-                
+
+            if input_filename[-6:]=='.Rdata':
+
                 files_def = entity_def.get('files')
                 if files_def is None:
-                    files_def = ent_name               
+                    files_def = ent_name
                 print(" - reading", input_filename, ",file", files_def)
                 rpy.set_default_mode(rpy.NO_CONVERSION)
                 msg, filters = compression_str2filter(compression)
 
-                try: 
+                try:
                     rpy.r.load(input_dir + input_filename)
                 except:
                     rpy.r.load(input_filename)
@@ -843,15 +846,15 @@ def file2h5(fpath, input_dir='',
                 else:
                     fields = None
                     columns = array_pandas.columns
-                
+
                 array_pandas = array_pandas.loc[:,columns]
                 dtype = np.dtype(fields)
                 #TODO: gerer les conflits
-                
+
                 dtype = array_pandas.to_records(index=False).dtype
                 filters=None
-                table = h5file.createTable(ent_node, ent_name, dtype, 
-                                           title="%s table" % ent_name, filters=filters)                     
+                table = h5file.createTable(ent_node, ent_name, dtype,
+                                           title="%s table" % ent_name, filters=filters)
                 table.append(array_pandas.to_records(index=False))
                 table.flush()
     finally:
