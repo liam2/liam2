@@ -5,7 +5,6 @@ from __future__ import print_function
 #import ttk
 import re
 import sys
-import math
 import time
 import operator
 import itertools
