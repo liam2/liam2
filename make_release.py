@@ -260,7 +260,9 @@ def copy_release(release_name):
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
           r'LIAM2UserGuide-%s.chm' % release_name)
     copytree(r'build\doc\usersguide\build\html',
-             r'html\%s' % short(release_name))
+             r'htmldoc')
+    copytree(r'build\doc\usersguide\build\web',
+             r'webdoc\%s' % short(release_name))
 
 
 def create_bundles(release_name):
@@ -270,7 +272,7 @@ def create_bundles(release_name):
     chdir('win64')
     zip_pack(r'..\LIAM2Suite-%s-win64.zip' % release_name, '*')
     chdir('..')
-    chdir(r'html\%s' % short(release_name))
+    chdir('htmldoc')
     zip_pack(r'..\..\LIAM2UserGuide-%s-html.zip' % release_name, '*')
     chdir(r'..\..')
 
@@ -356,16 +358,16 @@ def build_website(release_name):
 def upload(release_name):
     # pscp is the scp provided in PuTTY's installer
     base_url = '%s@%s:%s' % ('cic', WEBSITE, WEBSITE)
-    # archives
+    # 1) archives
     subprocess.call(r'pscp * %s/download' % base_url)
 
-    # documentation
-    chdir(r'html')
+    # 2) documentation
+    chdir(r'webdoc')
     subprocess.call(r'pscp -r %s %s/documentation' % (short(release_name),
                                                       base_url))
     chdir(r'..')
 
-    # website
+    # 3) website
     if not isprerelease(release_name):
         chdir(r'build\doc\website\blog\html')
         subprocess.call(r'pscp -r * %s' % base_url)

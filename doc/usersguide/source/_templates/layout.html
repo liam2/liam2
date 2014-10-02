@@ -2,5 +2,7 @@
 
 {% block footer %}
 {{ super() }}
+{% if piwik %}
 {% include "piwik.html" %}
+{% endif %}
 {% endblock %}
