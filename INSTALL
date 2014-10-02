@@ -42,21 +42,18 @@ Installation
 There are several options to install all those packages.
 
 In order of increasing difficulty:
-* using (ana)conda
+* using Anaconda
 * getting binary packages from Christoph Gohlke (Windows only)
 * getting third-party packages directly from their authors
 
 
-Using (ana)conda
-~~~~~~~~~~~~~~~~
+Using Anaconda
+~~~~~~~~~~~~~~
 
-1) Install (ana)conda (Python 2.7). You can choose the 32-bit or 64-bit version.
+1) Install Anaconda 2.1 or later (Python 2.7). You can choose the 32-bit or
+   64-bit version.
 
-2) Install bcolz. In a command prompt, type:
-
-   conda install bcolz
-
-3) Install ViTables. In a command prompt, type:
+2) Install ViTables. In a command prompt, type:
 
    pip install https://vitables.googlecode.com/files/ViTables-2.1.tar.gz
 
