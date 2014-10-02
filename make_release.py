@@ -266,7 +266,6 @@ def copy_release(release_name):
     copytree(r'build\doc\usersguide\build\html', 'htmldoc')
     copytree(r'build\doc\usersguide\build\web',
              r'webdoc\%s' % short(release_name))
-    copytree(r'build\doc\website\blog\html', 'website')
 
 
 def create_bundles(release_name):
@@ -358,6 +357,7 @@ def build_website(release_name):
     call('git commit -m "announce version %s on website"' % short(release_name))
 
     chdir(r'..\..\..')
+    copytree(r'build\doc\website\blog\html', 'website')
 
 
 def upload(release_name):
