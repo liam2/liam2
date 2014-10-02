@@ -779,7 +779,7 @@ def countlines(filepath):
 
 class WarnOverrideDict(dict):
     def update(self, other=None, **kwargs):
-        # copy the items to not lose them in case it is an exhaustable
+        # copy the items to not lose them in case it is an exhaustible
         # iterable
         # also converts list and tuple to dict
         if not isinstance(other, dict):
@@ -853,7 +853,6 @@ def expand_wild(wild_key, d):
     """
     expands a multi-level string key (separated by '/') optionally containing
     wildcards (*) with the keys actually present in a multi-level dictionary.
-
     >>> d = {'a': {'one': {'c': 0}, 'two': {'d': 0}}}
     >>> expand_wild('a/*/c', d)
     set(['a/one/c'])
@@ -1023,7 +1022,7 @@ def add_context(exception, s):
         # most SyntaxError are clearer if left unmodified since they already
         # contain the faulty string but some do not (eg non-keyword arg after
         # keyword arg).
-        # SyntaxeError instances have 'filename', 'lineno', 'offset' and 'text'
+        # SyntaxError instances have 'filename', 'lineno', 'offset' and 'text'
         # attributes.
         return exception
     msg = exception.args[0] if exception.args else ''
@@ -1065,7 +1064,7 @@ class FileProducer(object):
     def _get_fname(self, kwargs):
         """
         Returns a filename depending on the given kwargs.
-        Note that kwargs are **pop'ed in-place** !
+        Note that kwargs are **popped in-place** !
         """
         suffix = kwargs.pop('suffix', '')
         fname = kwargs.pop('fname', None)
