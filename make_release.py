@@ -273,8 +273,8 @@ def create_bundles(release_name):
     zip_pack(r'..\LIAM2Suite-%s-win64.zip' % release_name, '*')
     chdir('..')
     chdir('htmldoc')
-    zip_pack(r'..\..\LIAM2UserGuide-%s-html.zip' % release_name, '*')
-    chdir(r'..\..')
+    zip_pack(r'..\LIAM2UserGuide-%s-html.zip' % release_name, '*')
+    chdir('..')
 
 
 def test_executable(relpath):
@@ -316,6 +316,7 @@ def check_bundles(release_name):
     makedirs('test')
     zip_unpack('LIAM2Suite-%s-win32.zip' % release_name, r'test\win32')
     zip_unpack('LIAM2Suite-%s-win64.zip' % release_name, r'test\win64')
+    zip_unpack('LIAM2UserGuide-%s-html.zip' % release_name, r'test\htmldoc')
     zip_unpack('LIAM2-%s-src.zip' % release_name, r'test\src')
     rmtree('test')
 
