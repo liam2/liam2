@@ -214,19 +214,19 @@ def update_changelog(release_name):
     # include version changelog in changes.rst
     fpath = r'doc\usersguide\source\changes.rst'
     changelog_template = """{title}
-    {underline}
+{underline}
 
-    Released on {date}.
+Released on {date}.
 
-    .. include:: {fpath}
+.. include:: {fpath}
 
 
-    """
+"""
 
     with open(fpath) as f:
         lines = f.readlines()
         title = "Version %s" % short(release_name)
-        if lines[5] == title:
+        if lines[5] == title + '\n':
             print("changes.rst not modified (it already contains %s)" % title)
             return
         variables = dict(title=title,
@@ -237,6 +237,10 @@ def update_changelog(release_name):
         lines[5:5] = this_version.splitlines(True)
     with open(fpath, 'w') as f:
         f.writelines(lines)
+    with open(fpath) as f:
+        print('\n'.join(f.read().decode('utf-8-sig').splitlines()[:20]))
+    if no('Does the full changelog look right?'):
+        exit(1)
     call('git commit -m "include release changes (%s) in changes.rst" %s'
          % (fname, fpath))
 
@@ -254,15 +258,15 @@ def copy_release(release_name):
           r'win32\documentation\LIAM2UserGuide.chm')
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
           r'win64\documentation\LIAM2UserGuide.chm')
-    # doc not in the bundles
+    # stuff not in the bundles
     copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
           r'LIAM2UserGuide-%s.pdf' % release_name)
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
           r'LIAM2UserGuide-%s.chm' % release_name)
-    copytree(r'build\doc\usersguide\build\html',
-             r'htmldoc')
+    copytree(r'build\doc\usersguide\build\html', 'htmldoc')
     copytree(r'build\doc\usersguide\build\web',
              r'webdoc\%s' % short(release_name))
+    copytree(r'build\doc\website\blog\html', 'website')
 
 
 def create_bundles(release_name):
@@ -363,16 +367,16 @@ def upload(release_name):
     subprocess.call(r'pscp * %s/download' % base_url)
 
     # 2) documentation
-    chdir(r'webdoc')
+    chdir('webdoc')
     subprocess.call(r'pscp -r %s %s/documentation' % (short(release_name),
                                                       base_url))
-    chdir(r'..')
+    chdir('..')
 
     # 3) website
     if not isprerelease(release_name):
-        chdir(r'build\doc\website\blog\html')
+        chdir('website')
         subprocess.call(r'pscp -r * %s' % base_url)
-        chdir(r'..\..\..\..\..')
+        chdir('..')
 
 
 def announce(release_name):
@@ -488,7 +492,7 @@ def make_release(release_name=None, branch='master'):
 
     if public_release:
         print(release_changes(release_name))
-        if no('Does this changelog look right?'):
+        if no('Does the release changelog look right?'):
             exit(1)
 
     if public_release:
@@ -561,9 +565,5 @@ if __name__ == '__main__':
 
     # chdir(r'c:\tmp')
     # chdir('liam2_new_release')
-    # test_bundles(*argv[1:])
-    # build_website(*argv[1:])
-    # upload(*argv[1:])
-    # announce(*argv[1:])
 
     make_release(*argv[1:])
