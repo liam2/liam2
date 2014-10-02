@@ -34,6 +34,8 @@ Miscellaneous improvements
 
 * updated all dependencies provided in the bundle.
 
+* improved the release script.
+
 Fixes
 -----
 
