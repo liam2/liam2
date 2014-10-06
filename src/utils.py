@@ -17,6 +17,12 @@ import warnings
 import numpy as np
 import numexpr as ne
 #import psutil
+try:
+    from PyQt4 import QtGui, QtCore
+    QtAvailable = True
+except ImportError:
+    QtGui, QtCore = None, None
+    QtAvailable = False
 
 import config
 
@@ -113,7 +119,7 @@ class AutoFlushFile(object):
         self.f.flush()
 
 
-def time2str(seconds):
+def time2str(seconds, precise=True):
     minutes = seconds // 60
     hours = minutes // 60
     seconds %= 60
@@ -123,10 +129,15 @@ def time2str(seconds):
         l.append("%d hour%s" % (hours, 's' if hours > 1 else ''))
     if minutes > 0:
         l.append("%d minute%s" % (minutes, 's' if minutes > 1 else ''))
-    if seconds >= 0.005:
-        l.append("%.2f second%s" % (seconds, 's' if seconds > 1 else ''))
-    if not l:
-        l = ["%d ms" % (seconds * 1000)]
+    if precise:
+        if seconds >= 0.005:
+            l.append("%.2f second%s" % (seconds, 's' if seconds > 1 else ''))
+        elif not l:
+            l = ["%d ms" % (seconds * 1000)]
+    else:
+        if int(seconds) or not l:
+            l.append("%d second%s" % (seconds, 's' if seconds > 1 else ''))
+
     return ' '.join(l)
 
 
@@ -563,7 +574,7 @@ def aslabeledarray(data):
 
 
 class ProgressBar(object):
-    def __init__(self):
+    def __init__(self, maximum=100, title=''):
         pass
 
     def update(self, value):
@@ -574,7 +585,7 @@ class ProgressBar(object):
 
 
 class TextProgressBar(ProgressBar):
-    def __init__(self, maximum=100):
+    def __init__(self, maximum=100, title=''):
         ProgressBar.__init__(self)
         self.percent = 0
         self.maximum = maximum
@@ -593,25 +604,8 @@ class TextProgressBar(ProgressBar):
         self.percent = percent_done
 
 
-#class TkProgressBar(ProgressBar):
-#    def __init__(self, maximum=100):
-#        self.master = tk.Tk()
-#        self.progress = ttk.Progressbar(self.master, orient="horizontal",
-#                                        length=400, mode="determinate")
-#        self.progress.pack()
-#        self.progress["value"] = 0
-#        self.progress["maximum"] = maximum
-#
-#    def update(self, value):
-#        self.progress["value"] = value
-#        self.master.update()
-#
-#    def destroy(self):
-#        self.master.destroy()
-
-
-def loop_wh_progress(func, sequence, pbclass=TextProgressBar):
-    pb = pbclass(len(sequence))
+def loop_wh_progress(func, sequence, title='Progress'):
+    pb = TextProgressBar(len(sequence), title=title)
     for i, value in enumerate(sequence, start=1):
         try:
             func(i, value)
@@ -619,11 +613,6 @@ def loop_wh_progress(func, sequence, pbclass=TextProgressBar):
         except StopIteration:
             break
     pb.destroy()
-
-
-#def loop_wh_progress(func, sequence):
-#    app = ProgressBar(func, sequence)
-#    app.mainloop()
 
 
 def count_occurrences(seq):
@@ -825,7 +814,7 @@ def countlines(filepath):
 
 class WarnOverrideDict(dict):
     def update(self, other=None, **kwargs):
-        # copy the items to not lose them in case it is an exhaustable
+        # copy the items to not lose them in case it is an exhaustible
         # iterable
         # also converts list and tuple to dict
         if not isinstance(other, dict):
@@ -904,11 +893,16 @@ def expand_wild(wild_key, d):
     >>> sorted(res) # expand_wild result ordering is random
     ['a/one/c', 'a/two/c']
 
-    >>> res = expand_wild('a/*/*', {'a': {'one': {'c': 0}, 'two': {'d': 0}}})
+    >>> d = {'a': {'one': {'c': 0}, 'two': {'d': 0}}}
+    >>> res = expand_wild('a/*/*', d)
     >>> sorted(res) # expand_wild result ordering is random
     ['a/one/c', 'a/two/d']
+    >>> expand_wild('a/one/c', d)
+    set(['a/one/c'])
+    >>> expand_wild('a/one/d', d)
+    set([])
     """
-    return ['/'.join(r) for r in expand_wild_tuple(wild_key.split('/'), d)]
+    return {'/'.join(r) for r in expand_wild_tuple(wild_key.split('/'), d)}
 
 
 def multi_get(d, key, default=None):
@@ -1037,7 +1031,8 @@ def field_str_to_type(str_type, context):
     Converts a (field) string type to its Python type.
     """
     if str_type not in str_to_type:
-        raise SyntaxError("'%s' is not a valid type for %s." % context)
+        raise SyntaxError("'%s' is not a valid type for %s."
+                          % (str_type, context))
     return str_to_type[str_type]
 
 
@@ -1066,7 +1061,7 @@ def add_context(exception, s):
         # most SyntaxError are clearer if left unmodified since they already
         # contain the faulty string but some do not (eg non-keyword arg after
         # keyword arg).
-        # SyntaxeError instances have 'filename', 'lineno', 'offset' and 'text'
+        # SyntaxError instances have 'filename', 'lineno', 'offset' and 'text'
         # attributes.
         return exception
     msg = exception.args[0] if exception.args else ''
@@ -1219,7 +1214,7 @@ class FileProducer(object):
     def _get_fname(self, kwargs):
         """
         Returns a filename depending on the given kwargs.
-        Note that kwargs are **pop'ed in-place** !
+        Note that kwargs are **popped in-place** !
         """
         suffix = kwargs.pop('suffix', '')
         fname = kwargs.pop('fname', None)

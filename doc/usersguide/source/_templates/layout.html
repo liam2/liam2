@@ -1,7 +1,8 @@
-{% extends "!page.html" %}
+{% extends "!layout.html" %}
 
 {% block footer %}
 {{ super() }}
-{% include "github-banner.html" %}
+{% if piwik %}
 {% include "piwik.html" %}
+{% endif %}
 {% endblock %}

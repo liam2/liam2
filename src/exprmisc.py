@@ -4,6 +4,7 @@ from itertools import izip, chain
 
 import numpy as np
 
+import config
 from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
                   as_string, collect_variables,
@@ -154,9 +155,6 @@ class Sort(NumpyChangeArray):
 #------------------------------------
 
 
-
-
-
 class Round(NumpyChangeArray):
     funcname = 'round'  # np.round redirects to np.round_
     np_func = np.round
@@ -199,8 +197,10 @@ def add_individuals(target_context, children):
     array = target_entity.array
     num_rows = len(array)
     num_birth = len(children)
-    print("%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name, num_rows,
-                                       num_rows + num_birth), end=' ')
+    if config.log_level == "processes":
+        print("%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name,
+                                           num_rows, num_rows + num_birth),
+              end=' ')
 
     target_entity.array.append(children)
 

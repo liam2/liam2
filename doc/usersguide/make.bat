@@ -3,8 +3,7 @@
 REM Command file for Sphinx documentation
 
 if "%SPHINXBUILD%" == "" (
-rem	set SPHINXBUILD=sphinx-build
-    set SPHINXBUILD=python c:\soft\Python27-32b\Scripts\sphinx-build-script.py
+	set SPHINXBUILD=sphinx-build
 )
 set BUILDDIR=build
 set ALLSPHINXOPTS=-d %BUILDDIR%/doctrees %SPHINXOPTS% source
@@ -18,6 +17,7 @@ if "%1" == "help" (
 	:help
 	echo.Please use `make ^<target^>` where ^<target^> is one of
 	echo.  html       to make standalone HTML files
+	echo.  web        to make HTML files for our website/includes piwik
 	echo.  dirhtml    to make HTML files named index.html in directories
 	echo.  singlehtml to make a single large HTML file
 	echo.  pickle     to make pickle files
@@ -47,6 +47,14 @@ if "%1" == "html" (
 	echo.
 	echo.Build finished. The HTML pages are in %BUILDDIR%/html.
 	goto end
+)
+
+if "%1" == "web" (
+    %SPHINXBUILD% -b html -A piwik=1 %ALLSPHINXOPTS% %BUILDDIR%/web
+    if errorlevel 1 exit /b 1
+    echo.
+    echo.Build finished. The HTML pages are in %BUILDDIR%/web.
+    goto end
 )
 
 if "%1" == "pdf" (
@@ -176,4 +184,6 @@ results in %BUILDDIR%/doctest/output.txt.
 	goto end
 )
 
+echo yada before end
 :end
+echo yada end

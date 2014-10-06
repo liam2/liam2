@@ -11,12 +11,12 @@ entities:
             ISCHILD: age < 15
 
         processes:
-            # override process
+            # override procedure
             agegroup:
                 - show('this is agegroup from the variant')
                 - agegroup: 10 * trunc(age / 10)
 
-            # new processes
+            # new procedures
             init_variant_field:
                 - variant_field: choice([0, 1, 2], [0.1, 0.8, 0.1])
 
@@ -34,7 +34,11 @@ simulation:
         - person: [init_variant_field]
 
     processes:
-        - person: [agegroup, check_macros]
+        - person: [
+            test_expr,   # unmodified procedure
+            agegroup,    # overridden procedure
+            check_macros # new procedure
+        ]
 
     output:
         file: variant.h5

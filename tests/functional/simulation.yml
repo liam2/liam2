@@ -4,15 +4,31 @@ import:
 
 globals:
     periodic:
-        - MINR: float
-        - MIG_PERCENT: float
+        path: param\globals.csv
+        transposed: true
+        fields:
+            # PERIOD is implicit
 
-#    MIG:
-#        type: float
-    MIG: {type: float}
+            # WEMRA is defined in imported1.yml. It works even though no "path"
+            # key is specified in imported1.yml (as if the periodic table was in
+            # the H5 file) and even though it is specified using the "shortcut
+            # syntax" for periodic globals because that syntax is expanded
+            # before merging imported models, so it just do the right thing.
+
+            - MINR: float
+            - MIG_PERCENT: float
+
+    ARRAY:
+        type: float
+
+    MIG:
+        path: param\mig.csv
+        type: float
 
     othertable:
+        path: param\othertable.csv
         fields:
+            - PERIOD: int
             - INTFIELD: int
             - FLOATFIELD: float
 
@@ -254,6 +270,11 @@ entities:
                     - result: result * 2
                 return: result * 2
 
+            func_args_conflict_fields:
+                args: age
+                code:
+                    - qshow(age)
+
             # issue 119: function arguments not available in interactive console
             issue119callee:
                 args: arg
@@ -341,6 +362,12 @@ entities:
                 - show("type 'age' and see if produces a warning")
                 - breakpoint()
 
+            # issue126: prevent function arguments named like fields
+            test_issue126:
+                - age_backup: age
+                - func_args_conflict_fields(age + 10)
+                - assertEqual(age, age_backup)
+
             hybrid_test:
                 - hybrid_test: age + 1
                 - assertEqual(hybrid_test, age + 1)
@@ -407,7 +434,8 @@ entities:
 #                    done = min(age) >= 10
 
             test_charts:
-                - plot(groupby(age))
+# commented so that the tests can run without interaction
+#                - plot(groupby(age))
                 - plot(groupby(age), suffix='test')
 
                 - boxplot(age[gender], age[not gender],
@@ -423,8 +451,8 @@ entities:
                 - plot(age, 'o', fname='plot02.png')
                 - plot(groupby(age), fname='plot03.png&pdf')
                 - plot(groupby(age),
-                       groupby(age, filter=not gender),
-                       groupby(age, filter=gender),
+                       groupby(age, expr=count(not gender)),
+                       groupby(age, expr=count(gender)),
                        fname='plot04.png&pdf')
                 - plot((lag(avg(work), 5), lag(avg(work), 4),
                         lag(avg(work), 3), lag(avg(work), 2),
@@ -450,8 +478,8 @@ entities:
                 - stackplot(groupby(eduach, gender),
                             colors=['g', 'b'], baseline='sym',
                             fname='stackplot3.png')
-                - stackplot(groupby(age, filter=not gender),
-                            groupby(age, filter=gender),
+                - stackplot(groupby(age, expr=count(not gender)),
+                            groupby(age, expr=count(gender)),
                             fname='stackplot4.png')
 
                 - byage: groupby(age, percent=True)
@@ -1345,6 +1373,7 @@ entities:
                 # with number
                 - new_id: new('person', number=10,
                               age=0,
+                              eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
                               gender=choice([True, False], [0.51, 0.49]))
 
                 # with explicit filter
@@ -1355,6 +1384,7 @@ entities:
                               hh_id=hh_id,
                               m_id=id,
                               f_id=partner.id,
+                              eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
                               gender=choice([True, False], [0.51, 0.49]))
 
                 # with implicit filters
@@ -1368,6 +1398,7 @@ entities:
                                     hh_id=hh_id,
                                     m_id=id,
                                     f_id=-1,
+                                    eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
                                     gender=choice([True, False], [0.51, 0.49])),
                                 new('person',
                                     age=0,
@@ -1375,6 +1406,7 @@ entities:
                                     hh_id=hh_id,
                                     m_id=id,
                                     f_id=partner.id,
+                                    eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
                                     gender=logit_regr(0.0))),
                              -1)
 
@@ -1487,6 +1519,8 @@ entities:
                                       abs(age - avg_age_men),
                                       nan)
                 - workless: not work
+                # Note that using links in the score expression slows things
+                # down a lot. See https://github.com/liam2/liam2/issues/128.
                 - partner_id:
                     if(to_marry,
                        matching(set1filter=not gender,
@@ -1559,6 +1593,10 @@ entities:
 #                              num1yearold + num_birth)
 
                 - assertEqual(lag(age, 2), lag(lag(age)))
+
+                # this tests whether id2rownum works correctly for lags of more
+                # than one period
+                - prev_p_age: lag(partner.age, 2)
 
                 # for clones lag(age, 2) is -1, even if the parent of the clone
                 # is alive in period - 2
@@ -2249,7 +2287,7 @@ entities:
                 - assertEquiv(imported_field1, -1)
                 - assertEqual(imported_field2, age + 2)
 
-            generate: new('person', number=10000000,
+            generate: new('person', number=100000,
                           age=randint(0, 98),
                           dead=False,
                           gender=choice([False, True]),
@@ -2304,7 +2342,7 @@ simulation:
                    agegroup,
 
                    # test the charts before test_new messes the demography
-#                   test_charts,
+                   test_charts,
 
                    # ...
                    test_logit,
@@ -2314,6 +2352,7 @@ simulation:
                    test_subscript,
                    test_call,
 #                   test_issue119,
+#                   test_issue126,
                    hybrid_test,
                    test_hybrids,
 
@@ -2362,7 +2401,7 @@ simulation:
 
                    # output
                    test_groupby,
-#                   test_dump,
+                   test_dump,
                    test_csv,
                    
                    imported_process,
@@ -2377,7 +2416,8 @@ simulation:
                    show_weight,
                    [marriage, 4],
         ]
-        - household: [num_persons, nch, maxnch, test_align_link
+        - household: [num_persons, nch, maxnch,
+                      test_align_link,
 #                      dump_csv_h,
                      ]
 
@@ -2391,5 +2431,8 @@ simulation:
 #    autodiff: True
 
     random_seed: 0
-    periods: 1
+    periods: 2
+    logging:
+        level: processes
+#    timings: False
 #    skip_shows: True

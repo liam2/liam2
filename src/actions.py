@@ -15,7 +15,8 @@ from utils import LabeledArray, FileProducer, merge_dicts, PrettyTable
 class Show(FunctionExpr):
     def evaluate(self, context):
         if config.skip_shows:
-            print("show skipped", end=' ')
+            if config.log_level == "processes":
+                print("show skipped", end=' ')
         else:
             super(Show, self).evaluate(context)
 
@@ -55,7 +56,8 @@ class CSV(FunctionExpr, FileProducer):
         entity = context.entity
         period = context.period
         fname = fname.format(entity=entity.name, period=period)
-        print("writing to", fname, "...", end=' ')
+        if config.log_level in ("procedures", "processes"):
+            print("writing to", fname, "...", end=' ')
 
         file_path = os.path.join(config.output_directory, fname)
         with open(file_path, mode + 'b') as f:
@@ -112,10 +114,11 @@ class RemoveIndividuals(FunctionExpr):
 #        id_to_rownum.fill(-1)
 #        id_to_rownum[ids] = np.arange(len(ids), dtype=int)
 #        entity.id_to_rownum = id_to_rownum
-
-        print("%d %s(s) removed (%d -> %d)" % (filter_value.sum(), entity.name,
-                                               len_before, len(entity.array)),
-              end=' ')
+        if config.log_level == "processes":
+            print("%d %s(s) removed (%d -> %d)"
+                  % (filter_value.sum(), entity.name, len_before,
+                     len(entity.array)),
+                  end=' ')
 
 
 class Breakpoint(FunctionExpr):
@@ -130,17 +133,21 @@ class Assert(FunctionExpr):
 
     def compute(self, context, *args):
         if config.assertions == "skip":
-            print("assertion skipped", end=' ')
+            if config.log_level == "processes":
+                print("assertion skipped", end=' ')
         else:
-            print("assertion", end=' ')
+            if config.log_level == "processes":
+                print("assertion", end=' ')
             failure = self.eval_assertion(context, *args)
             if failure:
                 if config.assertions == "warn":
+                    # if config.log_level == "processes":
                     print("FAILED:", failure, end=' ')
                 else:
                     raise AssertionError(failure)
             else:
-                print("ok", end=' ')
+                if config.log_level == "processes":
+                    print("ok", end=' ')
 
 
 class AssertTrue(Assert):

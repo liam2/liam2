@@ -51,6 +51,24 @@ misc
   of the features I want to develop (and more), but this would need such a
   major refactoring that I am uneager to start it :)
 
+- Blaze (http://blaze.pydata.org/) is a generalisation of ndarray with more
+  data layouts -- potentially distributed), a delayed-evaluation system
+  (like I have done in liam2) and a built-in code generation framework based
+  on LLVM (using Numba I think). Documentation is a bit scarce at this point,
+  but from my quick glance at it, it seems to be exactly what I have been
+  dreaming for but would have been unable to achieve by myself.
+
+- cytoolz: groupby, reduceby, join, ... composable and optimized "functional"
+  operations. Many are "streaming" (or partially streaming).
+
+- Odin (equivalent of Blaze from Enthought)
+  https://github.com/enthought/distarray
+
+- mosaik: https://mosaik.offis.de/ integrate multiple simulators
+
+speed
+-----
+
 - Julia (http://julialang.org): a language specifically tailored for
   scientific computing. It seem to have a very interesting feature set
   (optional typing, fast resulting code, builtin parallelisation primitives,

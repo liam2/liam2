@@ -45,14 +45,11 @@ For details, see the :ref:`import_models` section.
 globals
 =======
 
-*globals* are variables (aka. parameters) that do not relate to any 
-particular *entity* defined in the model. They can be used in expressions
-in any entity.
+*globals* are variables (aka. parameters) that do not relate to any particular
+*entity* defined in the model. They can be used in expressions in any entity.
 
 LIAM2 currently supports two kinds of globals: tables and multi-dimensional
-arrays. Both kinds need their data to be imported (as explained in the
-:ref:`import_data` section) before they can be used. They also need to be
-declared in the simulation file, as follow: ::
+arrays. Both kinds need to be declared in the simulation file, as follow: ::
 
     globals:
         mytable:
@@ -64,7 +61,26 @@ declared in the simulation file, as follow: ::
             type: float
 
 Please see the :ref:`globals_usage` usage section for how to use them in 
-you expressions. 
+you expressions.
+
+Globals can be loaded from either .csv files during the simulation, or from
+the HDF5 input file, along with the entities data. In the later case,
+they need to be imported (as explained in the :ref:`import_data` section)
+before they can be used. If globals need to be loaded from .csv files during
+the simulation, the path to the files need to be given like ::
+
+    globals:
+        mytable:
+            path: mytable.csv
+            fields:
+                - MYINTFIELD: int
+                - MYFLOATFIELD: float
+
+        MYARRAY:
+            path: path\to\myarray.csv
+            type: float
+
+If no path is specified, the globals are assumed to be in the HDF5 file.
 
 There are globals with a special status: **periodic globals**. Those globals
 have a different value for each period. *periodic* is thus a reserved word
@@ -299,6 +315,9 @@ and composition is again used.
         random_seed: 5235       # optional
         assertions: warn        # optional
         default_entity: person  # optional
+        logging:                # optional
+            timings: True       # optional
+            level: procedures   # optional
         autodump: False         # optional
         autodiff: False         # optional
 
@@ -395,8 +414,26 @@ default_entity
 If set to the name of an entity, the interactive console will start in that
 entity.
 
-timings
+logging
 -------
+
+level
+~~~~~
+
+Sets logging level. If set, it should be one of the three following values (by
+increasing level of verbosity):
+
+periods
+  show only periods.
+
+procedures
+  show periods and procedures (this is the default).
+
+processes
+  show periods, procedures and individual processes.
+
+timings
+~~~~~~~
 
 If set to *False*, hide all timings from the simulation log, so that two
 simulation log files are more easily comparable (for example with "diff"

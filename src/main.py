@@ -6,6 +6,12 @@ from os.path import splitext
 import platform
 import warnings
 
+# this is needed for vitables and needs to happen BEFORE matplotlib is
+# imported (and imports PyQt)
+import sip
+sip.setapi('QString', 2)
+sip.setapi('QVariant', 2)
+
 import yaml
 
 import config
@@ -258,7 +264,7 @@ def main():
     elif action == "view":
         args = display, parsed_args.file
     else:
-        raise ValueError("invalid action")
+        raise ValueError("invalid action: %s" % action)
     wrapper(*args)
 
 

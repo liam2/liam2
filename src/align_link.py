@@ -17,7 +17,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
     still_needed = need.copy()
     still_available = num_candidates.copy()
 
-    rel_need = still_needed.astype(float) / still_available
+    rel_need = still_needed.astype(np.float64) / still_available
 
     unfillable_bins = still_needed > still_available
     overfilled_bins = still_needed <= 0

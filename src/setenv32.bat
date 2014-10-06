@@ -18,7 +18,3 @@ rem https://www.microsoft.com/en-us/download/details.aspx?id=8442
 rem tell distutils to use the SDK to compile
 set DISTUTILS_USE_SDK=1
 set MSSdk=1
-
-rem make sure we use the correct version of python
-set PYTHONROOT="c:\soft\Python27-32b"
-set PYTHONPATH=%PYTHONROOT%\Lib\site-packages\;

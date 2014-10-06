@@ -2,27 +2,16 @@ output: small.h5
 #compression: zlib
 
 globals:
-    periodic:
-        path: param\globals.csv
-        transposed: true
-        fields:
-            # PERIOD is implicit
-            - MINR: float
-            - WEMRA: int
-            - MIG_PERCENT: float
-
-    MIG:
+    ARRAY:
         path: param\mig.csv
         type: float
-
-    othertable:
-        path: param\othertable.csv
 
     othertable_noperiod:
         path: param\othertable.csv
         fields:
             # PERIOD is *not* implicit
             - INTFIELD: int
+            - FLOATFIELD: float
 
 entities:
     region:
