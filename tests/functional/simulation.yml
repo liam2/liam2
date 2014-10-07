@@ -569,6 +569,7 @@ entities:
                 - age: backup
 
             test_trunc:
+                - assertTrue(all(age >= 0))
                 - diff: (age / 5) - trunc(age / 5)
                 - assertTrue(all(0.0 <= diff and diff < 1.0))
                 - assertTrue(any(diff > 0.0) and any(diff == 0.0))
@@ -1570,6 +1571,8 @@ entities:
                                       + 0.0015 * abs(household.num_persons - other.household.num_persons),
                                 orderby=difficult_match),
                        partner_id)
+                - assertTrue(all(partner.partner.id == id,
+                                 filter=partner_id != -1))
 
                 - just_married: to_marry and (partner_id != -1)
 
