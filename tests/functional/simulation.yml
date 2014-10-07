@@ -162,6 +162,7 @@ entities:
         fields:
             # period and id are implicit
             - age:          int
+            # we only use the dead field to remove dead persons in init
             - dead:         bool
             - gender:       bool
             - work:         bool
@@ -524,6 +525,25 @@ entities:
 #                      gender=choice([True, False], [0.5, 0.5]),
 #                      work=choice([True, False], [0.5, 0.5]),
 #                      partner_id=1)
+                # fix incoherent partners
+                - bad_partner: partner_id != -1 and partner.partner.id != id
+                - partner_id: if(bad_partner, -1, partner_id)
+                - assertTrue(all(partner.partner.id == id,
+                                 filter=partner_id != -1))
+
+            test_remove_init:
+                # dead True only comes from the input
+                - numdead: count(dead)
+                - total: count()
+                - partner_id: if(partner.dead, -1, partner_id)
+                - f_id: if(father.dead, -1, f_id)
+                - m_id: if(mother.dead, -1, m_id)
+                - remove(dead)
+                - assertEqual(count(), total - numdead)
+                - assertTrue(all(not dead))
+                - assertTrue(all(age >= 0))
+                - assertTrue(all(partner.partner.id == id,
+                                 filter=partner_id != -1))
 
             temp_global: age + 10
             temp_global_modify:
@@ -1076,22 +1096,21 @@ entities:
                 # alignment with an implicit filter
                 # ---------------------------------
 
-                # the "dead" variable is also used for the cleanup process
-                - dead: if(gender,
-                           align(take=age > 95, leave=ISCHILD,
-                                 fname='al_p_dead_m.csv'),
-                           align(take=age > 95, leave=ISCHILD,
-                                 fname='al_p_dead_f.csv'))
+                - dead1: if(gender,
+                            align(take=age > 95, leave=ISCHILD,
+                                  fname='al_p_dead_m.csv'),
+                            align(take=age > 95, leave=ISCHILD,
+                                  fname='al_p_dead_f.csv'))
 
-                - assertEqual(count(not dead and (age > 95)), 0)
-                - assertEqual(count(dead and ISCHILD), 0)
+                - assertEqual(count(not dead1 and (age > 95)), 0)
+                - assertEqual(count(dead1 and ISCHILD), 0)
 
                 # 3d alignment (gender, age, period)
                 # ----------------------------------
                 - dead2: align(take=age > 95, leave=ISCHILD,
                                fname='al_p_dead.csv')
 
-                - assertTrue(count(dead != dead2) <= 105)
+                - assertTrue(count(dead1 != dead2) <= 105)
                 
                 # 2d alignment with period not last
                 # ---------------------------------
@@ -1685,7 +1704,24 @@ entities:
                 # empty groupby
                 - csv(groupby(gender, filter=age > 200))
 
-            cleanup: remove(lag(dead))
+            test_remove:
+                - assertTrue(all(partner.partner.id == id,
+                                 filter=partner_id != -1))
+                - to_remove: age >= 100
+
+                # break links
+                - partner_id: if(partner.to_remove, -1, partner_id)
+                - f_id: if(father.to_remove, -1, f_id)
+                - m_id: if(mother.to_remove, -1, m_id)
+
+                - num_to_remove: count(to_remove)
+                - total: count()
+                - remove(to_remove)
+                - assertTrue(all(0 <= age and age <= 99))
+                - assertTrue(all(not to_remove))
+                - assertEqual(count(), total - num_to_remove)
+                - assertTrue(all(partner.partner.id == id,
+                                 filter=partner_id != -1))
 
             test_all:
                 # scalars
@@ -2231,16 +2267,16 @@ entities:
                 
                 - num_persons_weight_percent: show(groupby(agegroup, gender, expr=sum(weight), percent=True))
                 - num_persons_csv: csv(groupby(agegroup, gender), suffix='groupby')
-                - num_persons3: show(groupby(agegroup, dead, gender))
+                - num_persons3: show(groupby(agegroup, work, gender))
 
                 - ismarried: partner_id != -1
                 - num_persons3t: show(groupby(agegroup, gender, ismarried))
-                - num_alive: show(groupby(agegroup, gender,
-                                          expr=count(not dead)))
+                - num_workless: show(groupby(agegroup, gender,
+                                          expr=count(not work)))
                 - num_married: show(groupby(agegroup, gender,
                                             expr=count(ismarried)))
-                - num_widows: show(groupby(agegroup, gender,
-                                           expr=count(partner.dead)))
+                - num_partner_work: show(groupby(agegroup, gender,
+                                                 expr=count(partner.work)))
                 - num_bad_partner: show(groupby(agegroup, gender,
                                                 expr=count((partner_id != -1) and (partner.partner.id != id))))
                 - agediff: show(groupby(agegroup, gender,
@@ -2312,7 +2348,8 @@ simulation:
         - person: [
 #            generate,
             test_init,
-            test_dump_init
+            test_dump_init,
+            test_remove_init
         ]
 #        - household: [setweight, check]
 #        # pass 1: weight up to 2
@@ -2337,7 +2374,7 @@ simulation:
         - region: [dummy]
         - person: [
 #                   bp,
-                   cleanup,
+                   test_remove,
 
                    # basic
                    temp_global,
