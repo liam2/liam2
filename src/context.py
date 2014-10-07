@@ -103,6 +103,9 @@ class EvaluationContext(object):
         else:
             return entity_data.keys()
 
+    def update(self, other, **kwargs):
+        self.entity_data.update(other, **kwargs)
+
     def __len__(self):
         return self.length()
 
