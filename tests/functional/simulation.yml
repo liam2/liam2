@@ -1609,16 +1609,16 @@ entities:
 
                 # this fails if we cloned adults: they are missing in last
                 # period but have an age != 0 this period
-#                - assertEqual(lag(age, missing=0), if(age == 0, 0, age - 1))
+                - assertEqual(lag(age, missing=0), if(age == 0, 0, age - 1))
 
                 - num_birth: count(age == 0)
                 # fails with clones
-#                - assertEqual(count(lag(age) == -1), num_birth)
+                - assertEqual(count(lag(age) == -1), num_birth)
                 - assertEqual(count(lag(age, missing=0) == -1), 0)
 
                 - num1yearold: count(age == 1)
-#                - assertEqual(count(lag(age, missing=0) == 0),
-#                              num1yearold + num_birth)
+                - assertEqual(count(lag(age, missing=0) == 0),
+                              num1yearold + num_birth)
 
                 - assertEqual(lag(age, 2), lag(lag(age)))
 
