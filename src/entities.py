@@ -424,7 +424,7 @@ class Entity(object):
                         #noinspection PyProtectedMember
                         lag_vars.add(lv.link._link_field)
                         #noinspection PyProtectedMember
-                        target_entity = lv.link._target_entity()
+                        target_entity = lv.link._target_entity
                         if target_entity == self:
                             target_vars = lv.target_expr.all_of(Variable)
                             lag_vars.update(v.name for v in target_vars)

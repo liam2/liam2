@@ -1622,6 +1622,13 @@ entities:
 
                 - assertEqual(lag(age, 2), lag(lag(age)))
 
+                # link in a lag
+                # first make sure couples of last period still hold
+                - assertTrue(all(partner_id != -1, filter=lag(partner_id) != -1))
+                - prev_p_age1: lag(partner.age)
+                - prev_p_age2: if(lag(partner_id) != -1, partner.age - 1, -1)
+                - assertEqual(prev_p_age1, prev_p_age2)
+
                 # this tests whether id2rownum works correctly for lags of more
                 # than one period
                 - prev_p_age: lag(partner.age, 2)
