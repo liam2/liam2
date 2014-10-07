@@ -1507,9 +1507,17 @@ entities:
 #                expr: age
 
             test_clone:
+                - count95: count(age == 95)
+                - total: count()
                 - clone(filter = age == 95,
                         f_id = id,
                         m_id = id)
+                - assertEqual(count(), total + count95)
+                - isclone: f_id != -1 and f_id == m_id
+                - assertEqual(count(isclone), count95)
+                - assertTrue(all(age == 95, filter=isclone))
+                - remove(isclone)
+                - assertEqual(count(), total)
 
             marriage:
                 - married: partner_id != -1
