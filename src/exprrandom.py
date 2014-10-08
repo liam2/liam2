@@ -31,23 +31,20 @@ class Gumbel(NumpyRandom):
                       **NumpyRandom.kwonlyargs)
 
 
-# not inheriting from NumpyRandom as it would get the argspec from an
-# nonexistent np_func
-class Choice(FunctionExpr):
-    funcname = 'choice'
+class Choice(NumpyRandom):
+    np_func = np.random.choice
+    argspec = argspec('choices', ('p', None), ('size', None), ('replace', True),
+                      **NumpyRandom.kwonlyargs)
 
-    def compute(self, context, choices, p=None, size=None, replace=True):
-        #TODO: __init__ should detect when all args are constants and run
-        # a "check_arg_values" method if present
-        #TODO: document the change in behavior for the case where the sum of
-        # probabilities is != 1
-        # random.choice only checks that the error is < 1e-8 but always
-        # divides probabilities by sum(p). It is probably a better choice
-        # because it distributes the error to all bins instead of only
-        # adjusting the probability of the last choice.
-        if size is None:
-            size = len(context)
-        return np.random.choice(choices, size=size, replace=replace, p=p)
+    #TODO: document the change in behavior for the case where the sum of
+    # probabilities is != 1
+    # random.choice only checks that the error is < 1e-8 but always
+    # divides probabilities by sum(p). It is probably a better choice
+    # because it distributes the error to all bins instead of only
+    # adjusting the probability of the last choice.
+    def _eval_args(self, context):
+        (a, p, size, replace), kwargs = NumpyRandom._eval_args(self, context)
+        return (a, size, replace, p), kwargs
 
     dtype = firstarg_dtype
 
