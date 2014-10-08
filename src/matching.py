@@ -4,7 +4,7 @@ import numpy as np
 
 from expr import expr_eval, always
 from exprbases import FilteredExpression
-from context import context_length, context_delete
+from context import context_length, context_delete, EvaluationContext
 from utils import loop_wh_progress
 
 
@@ -49,6 +49,9 @@ class Matching(FilteredExpression):
         # individual in set1. See https://github.com/liam2/liam2/issues/128
         set1 = context.subset(set1filtervalue, used_variables1, set1filterexpr)
         set2 = context.subset(set2filtervalue, used_variables2, set2filterexpr)
+
+        # subset creates a dict for the current entity, so .entity_data is a
+        # dict
         set1 = set1.entity_data
         set2 = set2.entity_data
 
@@ -81,6 +84,8 @@ class Matching(FilteredExpression):
 
             local_ctx = matching_ctx.copy()
             local_ctx.update((k, set1[k][sorted_idx]) for k in used_variables1)
+            eval_ctx = context.clone(entity_data=local_ctx)
+
 #            pk = tuple(individual1[fname] for fname in pk_names)
 #            optimized_expr = optimized_exprs.get(pk)
 #            if optimized_expr is None:
@@ -89,7 +94,7 @@ class Matching(FilteredExpression):
 #                optimized_expr = str(symbolic_expr.simplify())
 #                optimized_exprs[pk] = optimized_expr
 #            set2_scores = evaluate(optimized_expr, mm_dict, set2)
-            set2_scores = expr_eval(score, local_ctx)
+            set2_scores = expr_eval(score, eval_ctx)
 
             individual2_idx = np.argmax(set2_scores)
 
