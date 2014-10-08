@@ -277,6 +277,7 @@ class Expr(object):
         cache_key = (self, period, context.entity_name, context.filter_expr)
         try:
             cached_result = expr_cache.get(cache_key, None)
+            #FIXME: lifecycle functions should invalidate all variables!
             if cached_result is not None:
                 return cached_result
         except TypeError:
@@ -745,6 +746,14 @@ class FunctionExpr(EvaluableExpression, AbstractFunction):
         pass
 
     def _eval_args(self, context):
+        """
+        evaluates arguments to the function except those in no_eval
+        returns args, {kwargs}
+
+        At this point "normal" args passed as kwargs have already been
+        transferred to positional args by AbstractFunction.__init__, so kwargs
+        are either kwonlyargs or varkwargs
+        """
         if self.no_eval:
             no_eval = self.no_eval
             assert isinstance(no_eval, tuple) and \
@@ -755,16 +764,20 @@ class FunctionExpr(EvaluableExpression, AbstractFunction):
 
             argspec = self.argspec
             args, kwargs = self.children
-
             varargs = args[len(argspec.args):]
+
+            # evaluate positional args
             args = [expr_eval(arg, context) if name not in no_eval else arg
                     for name, arg in zip(argspec.args, args)]
+
+            # evaluate *args
             if varargs:
                 assert argspec.varargs is not None
                 if argspec.varargs not in no_eval:
                     varargs = [expr_eval(arg, context) for arg in varargs]
                 args.extend(varargs)
 
+            # check whether extra kwargs (from **kwargs) should be evaluated
             if argspec.varkw is not None and argspec.varkw in no_eval:
                 allkwnames = set(name for name, _ in kwargs)
                 # "normal" args passed as kwargs have been transferred to
@@ -772,6 +785,8 @@ class FunctionExpr(EvaluableExpression, AbstractFunction):
                 # or varkwargs
                 varkwnames = allkwnames - set(argspec.kwonlyargs)
                 no_eval |= varkwnames
+
+            # evaluate all kwargs
             kwargs = [(name, expr_eval(arg, context))
                       if name not in no_eval else (name, arg)
                       for name, arg in kwargs]
