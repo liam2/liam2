@@ -42,6 +42,9 @@ class Choice(NumpyRandom):
     # divides probabilities by sum(p). It is probably a better choice
     # because it distributes the error to all bins instead of only
     # adjusting the probability of the last choice.
+
+    # We override _eval_args only to change the order of arguments because we
+    # do not use the same order than numpy
     def _eval_args(self, context):
         (a, p, size, replace), kwargs = NumpyRandom._eval_args(self, context)
         return (a, size, replace, p), kwargs

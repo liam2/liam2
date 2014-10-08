@@ -2172,7 +2172,7 @@ entities:
                 - num_total: count()
                 - assertEqual(num0 + num5 + num10, num_total)
 
-                # test choices and probablities being expressions
+                # test choices and probabilities being expressions
                 - zero: avg(age) - avg(age)
 
                 - p0: zero + 0.1
