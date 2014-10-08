@@ -31,7 +31,8 @@ class EvaluationContext(object):
 
     def copy(self, fresh_data=False):
         entities_data = None if fresh_data else self.entities_data.copy()
-        #FIXME: when switching entities, filter should not come along
+        #FIXME: when switching entities, filter should not come along, or maybe
+        # filter should be a per-entity dict?
         return EvaluationContext(self.simulation, self.entities,
                                  self.global_tables, self.period,
                                  self.entity_name, self.filter_expr,
@@ -163,7 +164,7 @@ class EntityContext(object):
                 if (self.entity.array_lag is not None and
                     array_period is not None and
                     period == array_period - 1 and
-                    key in self.entity.array_lag.dtype.fields):
+                        key in self.entity.array_lag.dtype.fields):
                     return self.entity.array_lag[key]
 
                 bounds = self.entity.output_rows.get(period)
