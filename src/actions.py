@@ -6,7 +6,7 @@ import csv
 import numpy as np
 
 import config
-from expr import FunctionExpr
+from expr import FunctionExpr, expr_cache
 from process import BreakpointException
 from partition import filter_to_indices
 from utils import LabeledArray, FileProducer, merge_dicts, PrettyTable
@@ -119,6 +119,12 @@ class RemoveIndividuals(FunctionExpr):
                   % (filter_value.sum(), entity.name, len_before,
                      len(entity.array)),
                   end=' ')
+
+        #TODO: in the case of remove(), we should update (take a subset of) all
+        # the cache keys matching the entity, but with the current code,
+        # it is most likely not worth it because the cache probably contains
+        # mostly stuff we will never use.
+        expr_cache.invalidate(context.period, context.entity_name)
 
 
 class Breakpoint(FunctionExpr):

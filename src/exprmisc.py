@@ -9,7 +9,7 @@ from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
                   as_string, collect_variables,
                   get_missing_record, get_missing_vector, FunctionExpr,
-                  always, firstarg_dtype)
+                  always, firstarg_dtype, expr_cache)
 from exprbases import (FilteredExpression, CompoundExpression, NumexprFunction,
                        TableExpression, NumpyChangeArray)
 from context import context_length
@@ -311,6 +311,8 @@ class New(FilteredExpression):
                 children[k] = expr_eval(v, child_context)
 
         add_individuals(target_context, children)
+
+        expr_cache.invalidate(context.period, context.entity_name)
 
         # result is the ids of the new individuals corresponding to the source
         # entity

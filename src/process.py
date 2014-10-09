@@ -83,7 +83,7 @@ class Assignment(Process):
         if isinstance(period, np.ndarray):
             assert np.isscalar(period) or not period.shape
             period = int(period)
-        expr_cache.invalidate(Variable(self.name), period, context.entity_name)
+        expr_cache.invalidate(period, context.entity_name, Variable(self.name))
 
     def store_result(self, result):
         if result is None:
