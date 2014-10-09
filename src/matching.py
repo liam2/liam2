@@ -2,9 +2,9 @@ from __future__ import print_function
 
 import numpy as np
 
-from expr import expr_eval, always
+from expr import expr_eval, always, expr_cache
 from exprbases import FilteredExpression
-from context import context_length, context_delete, EvaluationContext
+from context import context_length, context_delete
 from utils import loop_wh_progress
 
 
@@ -86,6 +86,19 @@ class Matching(FilteredExpression):
             id1 = local_ctx['id']
             id2 = matching_ctx['__other_id'][individual2_idx]
             matching_ctx = context_delete(matching_ctx, individual2_idx)
+
+            #FIXME: the expr gets cached for the full matching_ctx at the
+            # beginning and then when another women with the same values is
+            # found, it thinks it can reuse the expr but it breaks because it
+            # has not the correct length.
+
+            # the current workaround is to invalidate the whole cache for the
+            # current entity but this is not the right way to go.
+            # * disable the cache for matching?
+            # * use a local cache so that methods after matching() can use
+            # what was in the cache before matching(). Shouldn't the cache be
+            # stored inside the context anyway?
+            expr_cache.invalidate(context.period, context.entity_name)
 
             result[id_to_rownum[id1]] = id2
             result[id_to_rownum[id2]] = id1
