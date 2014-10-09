@@ -62,13 +62,6 @@ class Matching(FilteredExpression):
         set1tomatch = sorted_set1_indices[:tomatch]
         print("matching with %d/%d individuals" % (set1len, set2len))
 
-        #TODO: compute pk_names automatically: variables which are either
-        # boolean, or have very few possible values and which are used more
-        # than once in the expression and/or which are used in boolean
-        # expressions
-#        pk_names = ('eduach', 'work')
-#        optimized_exprs = {}
-
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
 
@@ -84,16 +77,8 @@ class Matching(FilteredExpression):
 
             local_ctx = matching_ctx.copy()
             local_ctx.update((k, set1[k][sorted_idx]) for k in used_variables1)
-            eval_ctx = context.clone(entity_data=local_ctx)
 
-#            pk = tuple(individual1[fname] for fname in pk_names)
-#            optimized_expr = optimized_exprs.get(pk)
-#            if optimized_expr is None:
-#                for name in pk_names:
-#                    fake_set1['__f_%s' % name] = individual1[name]
-#                optimized_expr = str(symbolic_expr.simplify())
-#                optimized_exprs[pk] = optimized_expr
-#            set2_scores = evaluate(optimized_expr, mm_dict, set2)
+            eval_ctx = context.clone(entity_data=local_ctx)
             set2_scores = expr_eval(score, eval_ctx)
 
             individual2_idx = np.argmax(set2_scores)
