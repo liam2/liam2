@@ -410,7 +410,7 @@ class Dump(TableExpression):
 
 class Where(NumexprFunction):
     funcname = 'if'
-    argspec = argspec('cond', 'iftrue', 'iffalse')
+    argspec = argspec('cond, iftrue, iffalse')
 
     @property
     def cond(self):
