@@ -1010,7 +1010,7 @@ other regressions
 .. index:: matching
 
 Matching functions
------------------
+------------------
 
 **matching**: (aka Marriage market) matches individuals from set 1 with
 individuals from set 2. There is many different ways to realise a matching.
