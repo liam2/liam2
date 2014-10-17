@@ -1007,7 +1007,7 @@ other regressions
 - Log continuous (exponential of continuous): log_regr(expr[, filter=None, mult=0.0, error_var=None])
 
 
-.. index:: matching
+.. index:: matching functions
 
 Matching functions
 ------------------
@@ -1072,9 +1072,9 @@ simply ignored.
 
     matching(set1filter=boolean_expr,
              set2filter=boolean_expr,
-             orderby=difficult_match,	# expression or 'EDtM' or 'SDtOM' 
+             orderby=difficult_match,  # expression or 'EDtM' or 'SDtOM'
              score=coef1 * field1 + coef2 * other.field2 + ...,
-             pool_size = int)    # or None by default.
+             pool_size=int)            # or None by default.
 
 *example* ::
 
@@ -1112,7 +1112,7 @@ work status of the potential partners.
 .. index:: rank_matching
 
 rank_matching
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
 
 The ranking matching matches works in three step : 
 
