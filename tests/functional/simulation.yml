@@ -1733,6 +1733,19 @@ entities:
                 - assertTrue(all(partner.partner.id == id,
                                  filter=partner_id != -1))
 
+            test_uniform:
+                - u: uniform()
+                - assertEqual(u.__len__(), count())
+                - assertTrue(all(0.0 <= u and u < 1.0))
+
+                - u: uniform(size=200)
+                - assertEqual(u.__len__(), 200)
+
+                - u: uniform(filter=gender)
+                - assertTrue(all(0.0 <= u and u < 1.0, filter=gender))
+                # nan outside the filter
+                - assertTrue(all(u != u, filter=not gender))
+
             test_all:
                 # scalars
                 - assertTrue(all(True))
@@ -2427,6 +2440,9 @@ simulation:
                    # lifecycle
                    test_new,
                    test_clone,
+
+                   # random
+                   test_uniform,
 
                    # aggregates
                    test_all,
