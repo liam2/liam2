@@ -1148,9 +1148,9 @@ def _argspec(*args, **kwonlyargs):
     FullArgSpec(args=['a', 'b', 'c'], varargs=None, varkw=None, defaults=(1,),
                 kwonlyargs=['d'], kwonlydefaults={'d': None}, annotations={})
     """
-    args = list(args)
     def lastitem_startswith(l, s):
         return l and isinstance(l[-1], basestring) and l[-1].startswith(s)
+    args = list(args)
     varkw = args.pop()[2:] if lastitem_startswith(args, '**') else None
     varargs = args.pop()[1:] if lastitem_startswith(args, '*') else None
     if not varargs:
@@ -1163,7 +1163,8 @@ def _argspec(*args, **kwonlyargs):
         assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
     args = [a[0] if isinstance(a, tuple) else a for a in args]
     return FullArgSpec(args, varargs, varkw, defaults,
-                       kwonlyargs=kwonlyargs.keys(), kwonlydefaults=kwonlyargs,
+                       kwonlyargs=sorted(kwonlyargs.keys()),
+                       kwonlydefaults=kwonlyargs,
                        annotations={})
 
 
@@ -1173,6 +1174,11 @@ def argspec(*args, **kwonlyargs):
     ... # doctest: +NORMALIZE_WHITESPACE
     FullArgSpec(args=['a', 'b', 'c'], varargs='d', varkw='e', defaults=(1,),
                 kwonlyargs=['f'], kwonlydefaults={'f': None}, annotations={})
+    >>> a = argspec('*, f=None', g=None)
+    >>> a.kwonlyargs
+    ['f', 'g']
+    >>> sorted(a.kwonlydefaults.items())
+    [('f', None), ('g', None)]
     >>> argspec('a, *, **b, c=None')
     ... # doctest: +NORMALIZE_WHITESPACE
     FullArgSpec(args=['a'], varargs=None, varkw='b', defaults=None,
@@ -1184,7 +1190,6 @@ def argspec(*args, **kwonlyargs):
                 annotations={})
     """
     if len(args) == 1 and isinstance(args[0], basestring):
-        assert not kwonlyargs
         str_args = [a.strip().split('=') for a in args[0].split(',')]
         args = [(a[0], ast.literal_eval(a[1])) if len(a) > 1 else a[0]
                 for a in str_args]
@@ -1192,10 +1197,9 @@ def argspec(*args, **kwonlyargs):
         def star(a):
             return isinstance(a, basestring) and '*' in a
         if any(star(a) for a in args):
-            assert not kwonlyargs
-            kwonlyargs = {}
             while not star(args[-1]):
                 k, v = args.pop()
+                assert k not in kwonlyargs, "several kwonlyargs named %s" % k
                 kwonlyargs[k] = v
     return _argspec(*args, **kwonlyargs)
 
