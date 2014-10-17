@@ -291,6 +291,7 @@ def test_executable(relpath):
     echocall(main_dbg + r'import tests\functional\import.yml')
     echocall(main_dbg + r'run tests\functional\simulation.yml')
     echocall(main_dbg + r'run tests\functional\variant.yml')
+    echocall(main_dbg + r'run tests\functional\matching.yml')
     echocall(main_dbg + r'run tests\examples\demo01.yml')
     echocall(main_dbg + r'import tests\examples\demo_import.yml')
     echocall(main_dbg + r'run tests\examples\demo01.yml')
