@@ -1,39 +1,20 @@
+from __future__ import division, print_function
+
 import numpy as np
-from expr import always, FunctionExpr, firstarg_dtype
-from exprbases import NumpyRandom
+
+from expr import firstarg_dtype
+from exprbases import NumpyRandom, make_np_class, make_np_classes
 from utils import argspec
 
 
-class Uniform(NumpyRandom):
-    np_func = np.random.uniform
-    # The docstring was wrong in np1.7: the default size is None instead of 1.
-    # Issue reported as: https://github.com/numpy/numpy/pull/4611
-    argspec = argspec(('low', 0.0), ('high', 1.0), ('size', None),
-                      **NumpyRandom.kwonlyargs)
-
-
-class Normal(NumpyRandom):
-    np_func = np.random.normal
-    argspec = argspec(('loc', 0.0), ('scale', 1.0), ('size', None),
-                      **NumpyRandom.kwonlyargs)
-
-
-class RandInt(NumpyRandom):
-    np_func = np.random.randint
-    argspec = argspec('low', ('high', None), ('size', None),
-                      **NumpyRandom.kwonlyargs)
-    dtype = always(int)
-
-
-class Gumbel(NumpyRandom):
-    np_func = np.random.gumbel
-    argspec = argspec(('loc', 0.0), ('scale', 1.0), ('size', None),
-                      **NumpyRandom.kwonlyargs)
+def make_random(docstring, dtypefunc=None):
+    return make_np_class(NumpyRandom, docstring, dtypefunc)
 
 
 class Choice(NumpyRandom):
     np_func = np.random.choice
-    argspec = argspec('choices', ('p', None), ('size', None), ('replace', True),
+    # choice(a, size=None, replace=True, p=None)
+    argspec = argspec('choices, p=None, size=None, replace=True',
                       **NumpyRandom.kwonlyargs)
 
     #TODO: document the change in behavior for the case where the sum of
@@ -51,13 +32,87 @@ class Choice(NumpyRandom):
 
     dtype = firstarg_dtype
 
-#------------------------------------
+# need to be explicitly defined because used internally
+Normal = make_random("normal(loc=0.0, scale=1.0, size=None)")
+# WARNING: the docstring was wrong (size is None instead of 1) in numpy < 1.9 !
+# Issue: https://github.com/numpy/numpy/pull/4611
+Uniform = make_random("uniform(low=0.0, high=1.0, size=None)")
 
 functions = {
-    # random
-    'uniform': Uniform,
-    'normal': Normal,
-    'gumbel': Gumbel,
     'choice': Choice,
-    'randint': RandInt,
+    'normal': Normal,
+    'uniform': Uniform,
 }
+
+functions.update(make_np_classes(NumpyRandom, """
+beta(a, b, size=None)
+chisquare(df, size=None)
+dirichlet(alpha, size=None)
+exponential(scale=1.0, size=None)
+f(dfnum, dfden, size=None)
+gamma(shape, scale=1.0, size=None)
+geometric(p, size=None)
+gumbel(loc=0.0, scale=1.0, size=None)
+hypergeometric(ngood, nbad, nsample, size=None)
+laplace(loc=0.0, scale=1.0, size=None)
+lognormal(mean=0.0, sigma=1.0, size=None)
+multivariate_normal(mean, cov, size=None)
+noncentral_chisquare(df, nonc, size=None)
+noncentral_f(dfnum, dfden, nonc, size=None)
+pareto(a, size=None)
+power(a, size=None)
+rayleigh(scale=1.0, size=None)
+standard_cauchy(size=None)
+standard_exponential(size=None)
+standard_gamma(shape, size=None)
+standard_normal(size=None)
+standard_t(df, size=None)
+triangular(left, mode, right, size=None)
+vonmises(mu, kappa, size=None)
+wald(mean, scale, size=None)
+weibull(a, size=None)
+zipf(a, size=None)"""))
+
+# return integers
+functions.update(make_np_classes(NumpyRandom, """
+binomial(n, p, size=None)
+logseries(p, size=None)
+negative_binomial(n, p, size=None)
+poisson(lam=1.0, size=None)
+randint(low, high=None, size=None)""", int))
+
+# returns an array of integers (not sure it will work)
+functions.update(make_np_classes(NumpyRandom, """
+multinomial(n, pvals, size=None)""", int))
+
+if __name__ == '__main__':
+    import types
+
+    # set_state(state)
+    # get_state()
+    # seed(seed=None)
+    # rand(d0, d1, ..., dn)
+    # randn(d0, d1, ..., dn)
+    # bytes(length)
+    # shuffle(x)
+    # permutation(x)
+    # logistic(loc=0.0, scale=1.0, size=None)
+    to_ignore = {
+        # internal stuff I am not sure I should expose
+        "set_state", "get_state",
+        # functions with a special signature, which we should probably support
+        # but for which make_np_classes would not work
+        "seed", "rand", "randn", "bytes", "shuffle", "permutation",
+        # aliases we do not want to support (just use randint/uniform)
+        "random_integers", "ranf", "random_sample", "random", "sample",
+        # we use specific classes to handle them (for various reasons)
+        "choice",  'normal', 'uniform', 'randint',
+        # we provide a function with the same name
+        "logistic"
+    }
+    d = np.random.__dict__
+    for name in sorted(d.keys()):
+        if name not in to_ignore:
+            func = d[name]
+            if isinstance(func, types.BuiltinMethodType):
+                print(func.__doc__.splitlines()[1].strip())

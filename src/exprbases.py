@@ -6,10 +6,12 @@ import numpy as np
 
 import config
 from context import context_length
-from expr import (Expr, FunctionExpr, expr_eval, not_hashable,
-                  traverse_expr, getdtype, as_simple_expr, as_string,
-                  get_missing_value, ispresent, LogicalOp, AbstractFunction)
-from utils import classproperty
+from expr import (Expr, FunctionExpr, not_hashable,
+                  getdtype, as_simple_expr, as_string,
+                  get_missing_value, ispresent, LogicalOp, AbstractFunction,
+                  always)
+from utils import classproperty, argspec
+
 
 
 # class CompoundExpression(Expr):
@@ -270,3 +272,27 @@ class NumexprFunction(AbstractFunction):
 
 class TableExpression(FunctionExpr):
     pass
+
+
+def make_np_class(baseclass, docstring, dtypefunc=None):
+    pos = docstring.find('(')
+    name = docstring[:pos]
+    args = docstring[pos + 1:-1]
+    if isinstance(dtypefunc, type):
+        dtypefunc = always(dtypefunc)
+
+    class FuncClass(baseclass):
+        np_func = getattr(np.random, name)
+        argspec = argspec(args, **baseclass.kwonlyargs)
+        if dtypefunc is not None:
+            dtype = dtypefunc
+    FuncClass.__name__ = name.capitalize()
+    return FuncClass
+
+
+def make_np_classes(baseclass, s, dtypefunc=None):
+    for line in s.splitlines():
+        if line:
+            c = make_np_class(baseclass, line, dtypefunc)
+            yield c.__name__.lower(), c
+
