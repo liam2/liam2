@@ -1746,6 +1746,19 @@ entities:
                 # nan outside the filter
                 - assertTrue(all(u != u, filter=not gender))
 
+            test_otherrandom:
+                - g: gumbel()
+                - g: gumbel(filter=gender)
+                # nan outside the filter
+                - assertTrue(all(g != g, filter=not gender))
+                - p: poisson()
+                - assertTrue(all(p >= 0))
+                - p: poisson(filter=gender)
+                - assertTrue(all(p >= 0, filter=gender))
+                - assertTrue(all(p == -1, filter=not gender))
+                - mn: multivariate_normal([0, 0], [[1.5, 1], [1, 1.5]])
+                - assertEqual(mn.shape, (count(), 2))
+
             test_all:
                 # scalars
                 - assertTrue(all(True))
@@ -2443,6 +2456,7 @@ simulation:
 
                    # random
                    test_uniform,
+                   test_otherrandom,
 
                    # aggregates
                    test_all,
