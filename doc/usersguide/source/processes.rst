@@ -1009,14 +1009,26 @@ other regressions
 
 .. index:: matching
 
-Matching function
+Matching functions
 -----------------
 
 **matching**: (aka Marriage market) matches individuals from set 1 with
-individuals from set 2. For each individual in set 1 following a particular
-order (given by the expression in the *orderby* argument), the function
+individuals from set 2. There is many different ways to realise a matching.
+
+
+.. index:: matching
+
+matching
+~~~~~~~~
+
+For each individual in set 1 following a particular
+order (given by the *orderby* argument), the function
 computes the score of all (unmatched) individuals in set 2 and take the best
-scoring one.
+scoring one. That particular matching method can be called sequential matching
+referring to the fact the individual of set 1 are matched one by one. An other
+way of matching is for example to minimize an overall distance depending on 
+each match. However that technique, even if better in theory, increases 
+calculation time and is not implemented yet.
 
 One has to specify the boolean filters which provide the two sets to match
 (set1filter and set2filter), the criterion to decide in which order the
@@ -1028,6 +1040,28 @@ In the score expression the fields of the set 1 individual can be used normally
 and the fields of its possible partners can be used by prefixing them by
 "**other.**".
 
+The parameter *orderby* to set the order in which the individuals of the first set
+are matched can be an expression or a string giving the name of a method to
+generate automaticaly an order. The general idea in that case is to match first 
+"unusual individuals". Two options are possible : 
+- 'EDtM' : 'Euclidian Distance to the Mean'
+Using only variables relative to set 1 in the score expression, the euclidian
+distance to the center of set 1 is used as an order. Note that during the 
+computation all value are divide by their variance in order not to favour
+variables with higest numerical values. 
+- 'SDtOM' : 'Score Distance to the Other Mean'
+The "unusual individuals" are relative to an implicit distance which is defined
+by the score. That method defines the difficulty to match someone in set 1 by
+how far he or she is from the center of set2 according to the score. 
+
+An optional parameter *pool_size* can set an slightly different process of
+matching. If a positive integer is entered, the best match for an individual
+of set 1 won't be searched in all remaining set 2 but in a random subset of
+size pool_size. That way sounds closer to "reality" where usually people doesn't
+meet every one in the "market". When there is less the remaining number of 
+candidates in the set 2 is lower than pool_size, the match is looked for among
+all set 2.
+
 The matching function returns the identification number of the matched
 individual for individuals which were matched, -1 for others.
 
@@ -1038,8 +1072,9 @@ simply ignored.
 
     matching(set1filter=boolean_expr,
              set2filter=boolean_expr,
-             orderby=difficult_match,
-             score=coef1 * field1 + coef2 * other.field2 + ...)
+             orderby=difficult_match,	# expression or 'EDtM' or 'SDtOM' 
+             score=coef1 * field1 + coef2 * other.field2 + ...,
+             pool_size = int)    # or None by default.
 
 *example* ::
 
@@ -1074,6 +1109,27 @@ a score and the man with the highest score is matched with that woman.
 This score depends on his age, his difference in age with the woman and the
 work status of the potential partners.
 
+.. index:: rank_matching
+
+rank_matching
+~~~~~~~~~~~~~~~~
+
+The ranking matching matches works in three step : 
+
+Set 1 is ranked by decreasing orderby1 
+Set 2 is ranked by decreasing orderby2
+Then individuals in the nth position in each list are matched together.
+
+*generic setup* ::
+
+    rank_matching(set1filter=boolean_expr,
+             set2filter=boolean_expr,
+             orderby1=expression, orberby2=expression,
+             reverse1=boolean, reverse2=boolean)
+
+The reverse options allow, if True, to sort by ascending score. Default
+values are False.
+        
 
 .. index:: lifecycle functions
 

@@ -1,0 +1,138 @@
+entities:
+    household:
+        fields:
+            # period and id are implicit
+            - income:  float
+
+    person:
+        fields:
+            # period and id are implicit
+            - age:          int
+            - earnings:     float
+            - errsal:       float
+            - male:         bool
+            - work:         bool
+            - eduach:       int
+            - chronicill:   bool
+
+            - partner_id:   int
+            - hh_id:        int
+
+        macros: 
+            INCOUPLE: partner_id > -1
+            
+        links:
+            partner: {type: many2one, target: person, field: partner_id}
+
+        processes:
+            birth: 
+              - new('person', number=200,
+                       age=randint(0, 98),
+                       errsal=normal(0.0, 10.0),
+                       male=True,
+                       work=choice([False, True]),
+                       eduach=randint(1, 4),
+                       chronicill=False,
+                       partner_id=-1,
+                       hh_id=-1)
+                       
+              - new('person', number=250,
+                       age=randint(0, 98),
+                       errsal=normal(0.0, 10.0),
+                       male=False,
+                       work=choice([False, True]),
+                       eduach=randint(1, 4),
+                       chronicill=False,
+                       partner_id=-1,
+                       hh_id=-1)
+                       
+            earnings: 40 + age
+
+            marriage:
+                - age: if(male, id - min(id, filter=male), id - min(id, filter= not male))
+                - age: if(age > 99, age - 100, age)
+                - age: if(age > 99, randint(0, 98), age)
+                
+                # we have now tow men of each age between 0 and 99, and two or more women
+                # so, if we match male in set1 with female in set two, each man can chose a
+                # woman of his exact age
+                - partner_id: -1
+                - partner_id: matching(set1filter=male,
+                                       set2filter=not male,
+                                       orderby=age,
+                                       score = - (other.age - age)**2
+                                       )
+                - assertEqual(count(partner_id > -1 and male), 200)                                
+                - assertEqual(count(partner_id > -1 and not male), 200)
+                - diff: if(INCOUPLE, abs(partner.age - age), 0)
+                - assertEqual(max(diff), 0)
+                
+                # with pool, we know that almost certainly we'll match a man 
+                # with some of an different age.
+                - partner_id: -1
+                - partner_id: matching(set1filter=male,
+                                       set2filter=not male,
+                                       orderby=age,
+                                       score = - (other.age - age)**2,
+                                       pool_size = 10)
+                - assertEqual(count(partner_id > -1 and male), 200)                                
+                - assertEqual(count(partner_id > -1 and not male), 200)
+                - diff: if(INCOUPLE, abs(partner.age - age), 0)                
+                - assertTrue(max(diff) != 0)
+                # if pool_size is big enough, we know there is always at 
+                # least one person with the right age so we can match them
+                - partner_id: -1
+                - partner_id: matching(set1filter=male,
+                                       set2filter=not male,
+                                       orderby=age,
+                                       score = - (other.age - age)**2,
+                                       pool_size = 249)
+                # Note: here the pooling occurs only once for the first match
+                - assertEqual(count(partner_id > -1 and male), 200)                                
+                - assertEqual(count(partner_id > -1 and not male), 200)
+                - diff: if(INCOUPLE, abs(partner.age - age), 0)                
+                - assertEqual(max(diff), 0)               
+                
+                # ordering both men and women by increasing age, we know that as
+                # there is more women than men, men will be match with women
+                # at most as older as they are
+                - partner_id: -1
+                - partner_id: rank_matching(set1filter=male,
+                                       set2filter=not male,
+                                       orderby1= - age,
+                                       orderby2= - age
+                                       )
+                - assertEqual(count(partner_id > -1 and male), 200)                                
+                - assertEqual(count(partner_id > -1 and not male), 200)
+                - diff: if(INCOUPLE and male, partner.age - age, 0)
+                - assertEqual(max(diff), 0)  
+
+                # now we just reverse set1 and set2, we know that almost
+                # certainly they are three women with same age (and age < 99)
+                # so one of them must choose a partner with a different age
+                - partner_id: -1
+                - partner_id: matching(set1filter=not male,
+                                       set2filter=male,
+                                       orderby=age,
+                                       score = - (other.age - age)**2
+                                       )
+                - assertEqual(count(partner_id > -1 and male), 200)                                
+                - assertEqual(count(partner_id > -1 and not male), 200)
+                - diff: if(INCOUPLE, abs(partner.age - age), 0)
+                - assertTrue(max(diff) != 0)   
+                
+
+
+simulation:
+    processes:
+        - person: [birth, earnings, marriage]
+
+    input:
+        method: void
+        file: none
+
+    output:
+        file: generated.h5
+
+    start_period: 2001   # first simulated period
+    periods: 1

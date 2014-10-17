@@ -123,7 +123,7 @@ links.py
       minlink and maxlink
 
 matching.py
-    handles the matching() function
+    handles the matching functions: matching() and rank_matching()
 
 regressions.py
     handles all the regression functions: logit_score, logit_regr, cont_regr,

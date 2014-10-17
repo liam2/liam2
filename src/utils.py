@@ -569,11 +569,11 @@ class TextProgressBar(ProgressBar):
         self.percent = percent_done
 
 
-def loop_wh_progress(func, sequence, title='Progress'):
+def loop_wh_progress(func, sequence, title='Progress', **kwargs):
     pb = TextProgressBar(len(sequence), title=title)
     for i, value in enumerate(sequence, start=1):
         try:
-            func(i, value)
+            func(i, value, **kwargs)
             pb.update(i)
         except StopIteration:
             break
