@@ -19,9 +19,6 @@ entities:
             # period and id are implicit
             - age:        int
             - male:       bool
-            - work:       bool
-            - eduach:     int
-            - earnings:   float
 
             - partner_id: int
             - region_id:  int
@@ -40,15 +37,11 @@ entities:
                 # men
                 - new('person', number=200,
                       male=True,
-                      work=choice([False, True]),
-                      eduach=randint(1, 4),
                       partner_id=-1,
                       region_id=randint(10))
                 # women
                 - new('person', number=300,
                       male=False,
-                      work=choice([False, True]),
-                      eduach=randint(1, 4),
                       partner_id=-1,
                       region_id=randint(10))
                 # id - 0 / id - num_men
@@ -60,7 +53,6 @@ entities:
                 # normalize age between 0 and 99 (evenly distributed)
                 # we have now two men and three women of each age
                 - age: trunc(tmp * 100 / (maxtmp + 1))
-                - earnings: 40 + age
 
             test_matching:
                 # men in set1 and women in set2, older men first
