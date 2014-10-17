@@ -169,6 +169,8 @@ entities:
 
                 # link in score expression
                 # ========================
+                # Note that using links in the score expression slows things
+                # down a lot. See https://github.com/liam2/liam2/issues/128.
                 - partner_id: matching(set1filter=MALE, set2filter=FEMALE,
                                        orderby=age,
                                        score=region.get(persons.count()) -
