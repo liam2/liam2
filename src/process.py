@@ -40,44 +40,22 @@ class Process(object):
         return "<process '%s'>" % self.name
 
 
-class Compute(Process):
-    """these processes only compute an expression and do not store their
-       result (but they usually have side-effects). No class inherits from
-       this but we use it when a user does not store anywhere the result of
-       an expression (with a side effect) which *does* return a value.
-       new() is a good example for this"""
-
-    def __init__(self, name, entity, expr):
-        super(Compute, self).__init__(name, entity)
-        self.expr = expr
-
-    def run(self, context):
-        expr_eval(self.expr, context)
-
-    def expressions(self):
-        if isinstance(self.expr, Expr):
-            yield self.expr
-
-
 class Assignment(Process):
     def __init__(self, name, entity, expr):
-        if name is None:
-            raise Exception('trying to store None key')
         super(Assignment, self).__init__(name, entity)
         self.expr = expr
         self.temporary = name not in entity.stored_fields
 
     def run(self, context):
         value = expr_eval(self.expr, context)
-        self.store_result(value)
+        # Assignment to a field with a name == None is valid: it simply means
+        # the result must not be stored. This happens when a user does not
+        # store anywhere the result of an expression (it usually has side
+        # effects -- csv, new, remove, ...).
+        if self.name is not None:
+            self.store_result(value, context)
 
-        period = context.period
-        if isinstance(period, np.ndarray):
-            assert np.isscalar(period) or not period.shape
-            period = int(period)
-        expr_cache.invalidate(period, context.entity_name, Variable(self.name))
-
-    def store_result(self, result):
+    def store_result(self, result, context):
         if result is None:
             return
 
@@ -105,6 +83,13 @@ class Assignment(Process):
 
         # the whole column is updated
         target[self.name] = result
+
+        # invalidate cache
+        period = context.period
+        if isinstance(period, np.ndarray):
+            assert np.isscalar(period) or not period.shape
+            period = int(period)
+        expr_cache.invalidate(period, context.entity_name, Variable(self.name))
 
     def expressions(self):
         if isinstance(self.expr, Expr):

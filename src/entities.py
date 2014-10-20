@@ -291,11 +291,7 @@ class Entity(object):
         if isinstance(v, (bool, int, float)):
             return Assignment(k, self, v)
         elif isinstance(v, basestring):
-            expr = parse(v, context)
-            if k is None:
-                return Compute(k, self, expr)
-            else:
-                return Assignment(k, self, expr)
+            return Assignment(k, self, parse(v, context))
         else:
             # lets be explicit about it
             return None

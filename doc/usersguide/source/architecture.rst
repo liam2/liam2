@@ -35,12 +35,8 @@ Process
 file: process.py
 
 The *Process* class stores users processes. The most common kind of process 
-is the *Assignment* which computes the value of an expression and stores the
-result in a variable.
-
-The *Compute* class is used as alternative for Assignment when a user does not
-store the result of an expression (with a side effect) which *does* have a
-return value (as opposed to Actions).
+is the *Assignment* which computes the value of an expression and
+optionally stores the result in a variable.
 
 Another very common process is the *ProcessGroup* (a.k.a procedures) which
 runs a list of processes in order.
