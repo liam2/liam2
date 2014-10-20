@@ -12,7 +12,7 @@ from data import merge_arrays, get_fields, ColumnArray, index_table
 from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
                   GlobalArray, expr_eval, get_missing_value, Expr, MethodSymbol)
 from exprtools import parse
-from process import Assignment, Compute, ProcessGroup, While, Function
+from process import Assignment, ProcessGroup, While, Function
 from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
                    WarnOverrideDict)
 
