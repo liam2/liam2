@@ -17,11 +17,7 @@ class BreakpointException(Exception):
 
 
 class Process(object):
-    def __init__(self):
-        self.name = None
-        self.entity = None
-
-    def attach(self, name, entity):
+    def __init__(self, name, entity):
         self.name = name
         self.entity = entity
 
@@ -51,8 +47,8 @@ class Compute(Process):
        an expression (with a side effect) which *does* return a value.
        new() is a good example for this"""
 
-    def __init__(self, expr):
-        super(Compute, self).__init__()
+    def __init__(self, name, entity, expr):
+        super(Compute, self).__init__(name, entity)
         self.expr = expr
 
     def run(self, context):
@@ -64,15 +60,11 @@ class Compute(Process):
 
 
 class Assignment(Process):
-    def __init__(self, expr):
-        super(Assignment, self).__init__()
-        self.expr = expr
-        self.temporary = True
-
-    def attach(self, name, entity):
-        super(Assignment, self).attach(name, entity)
-        if self.name is None:
+    def __init__(self, name, entity, expr):
+        if name is None:
             raise Exception('trying to store None key')
+        super(Assignment, self).__init__(name, entity)
+        self.expr = expr
         self.temporary = name not in entity.stored_fields
 
     def run(self, context):
@@ -122,20 +114,16 @@ class Assignment(Process):
 class While(Process):
     """this class implements while loops"""
 
-    def __init__(self, cond, code):
+    def __init__(self, name, entity, cond, code):
         """
         cond -- an Expr returning a (single) boolean, it means the condition
                 value must be the same for all individuals
         code -- a ProcessGroup
         """
-        Process.__init__(self)
+        Process.__init__(self, name, entity)
         self.cond = cond
         assert isinstance(code, ProcessGroup)
         self.code = code
-
-    def attach(self, name, entity):
-        Process.attach(self, name, entity)
-        self.code.attach('while:code', entity)
 
     def run_guarded(self, context):
         while True:
@@ -174,19 +162,12 @@ class AbstractProcessGroup(Process):
 
 
 class ProcessGroup(AbstractProcessGroup):
-    def __init__(self, name, subprocesses, purge=True):
-        super(ProcessGroup, self).__init__()
-        self.name = name
+    def __init__(self, name, entity, subprocesses, purge=True):
+        super(ProcessGroup, self).__init__(name, entity)
         self.subprocesses = subprocesses
         self.calls = collections.Counter()
         self.purge = purge
         self.versions = {}
-
-    def attach(self, name, entity):
-        assert name == self.name
-        Process.attach(self, name, entity)
-        for k, v in self.subprocesses:
-            v.attach(k, entity)
 
     def run_guarded(self, context):
         period = context.period
@@ -335,13 +316,13 @@ class ProcessGroup(AbstractProcessGroup):
 class Function(AbstractProcessGroup):
     """this class implements user-defined functions"""
 
-    def __init__(self, argnames, code=None, result=None):
+    def __init__(self, name, entity, argnames, code=None, result=None):
         """
         args -- a list of strings
         code -- a ProcessGroup (or None)
         result -- an Expr (or None)
         """
-        Process.__init__(self)
+        Process.__init__(self, name, entity)
 
         assert isinstance(argnames, list)
         assert all(isinstance(a, basestring) for a in argnames)
@@ -352,10 +333,6 @@ class Function(AbstractProcessGroup):
 
         assert result is None or isinstance(result, Expr)
         self.result = result
-
-    def attach(self, name, entity):
-        Process.attach(self, name, entity)
-        self.code.attach('func:code', entity)
 
     def run_guarded(self, context, *args, **kwargs):
         #XXX: wouldn't some form of cascading context make all this junk much

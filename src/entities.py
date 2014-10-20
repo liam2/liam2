@@ -287,16 +287,15 @@ class Entity(object):
         symbols.update(self.methods)
         return symbols
 
-    @staticmethod
-    def parse_expr(k, v, context):
+    def parse_expr(self, k, v, context):
         if isinstance(v, (bool, int, float)):
-            return Assignment(v)
+            return Assignment(k, self, v)
         elif isinstance(v, basestring):
             expr = parse(v, context)
             if k is None:
-                return Compute(expr)
+                return Compute(k, self, expr)
             else:
-                return Assignment(expr)
+                return Assignment(k, self, expr)
         else:
             # lets be explicit about it
             return None
@@ -318,7 +317,7 @@ class Entity(object):
         group_predictors = self.collect_predictors(group_expressions)
         group_context = self.get_group_context(context, group_predictors)
         sub_processes = self.parse_expressions(group_expressions, group_context)
-        return ProcessGroup(k, sub_processes, purge)
+        return ProcessGroup(k, self, sub_processes, purge)
 
     def parse_expressions(self, items, context):
         """
@@ -335,7 +334,7 @@ class Entity(object):
                 assert isinstance(cond, Expr)
                 code = self.parse_process_group("while:code", v['code'],
                                                 context, purge=False)
-                process = While(cond, code)
+                process = While(k, self, cond, code)
             else:
                 process = self.parse_expr(k, v, context)
                 if process is None:
@@ -370,7 +369,7 @@ class Entity(object):
                             method_context, group_predictors)
                         result = parse(result_def, method_context)
                         assert result is None or isinstance(result, Expr)
-                        process = Function(argnames, code, result)
+                        process = Function(k, self, argnames, code, result)
                     elif isinstance(v, dict) and 'predictor' in v:
                         raise ValueError("Using the 'predictor' keyword is "
                                          "not supported anymore. "
@@ -386,12 +385,6 @@ class Entity(object):
     def parse_processes(self, context):
         processes = self.parse_expressions(self.process_strings.iteritems(),
                                            context)
-        # attach processes
-        # TODO: now that actions inherit from Expr instead of Process it should
-        # be possible to kill attach
-        for k, v in processes:
-            v.attach(k, self)
-
         self.processes = dict(processes)
         # self.ssa()
 
