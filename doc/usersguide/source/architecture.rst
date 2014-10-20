@@ -45,15 +45,6 @@ return value (as opposed to Actions).
 Another very common process is the *ProcessGroup* (a.k.a procedures) which
 runs a list of processes in order.
 
-Action
-------
-
-file: actions.py
-
-Actions are processes which do not have any result (that can be stored in
-variables), but have side-effects. Examples include: csv(), show(), remove(),
-breakpoint()
-
 Expressions
 -----------
 
@@ -99,6 +90,11 @@ a new function:
        gini.
 
 LIAM2 current expressions are implemented in the following files:
+
+actions.py
+    actions are expressions which do not have any result (that can be stored in
+    variables), but have side-effects. Examples include: csv(), show(),
+    remove(), breakpoint()
 
 alignment.py
     handles align() and align_abs() functions
