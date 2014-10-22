@@ -9,17 +9,17 @@ __version__ = "0.1"
 
 
 def dropfields(input_path, output_path, todrop):
-    input_file = tables.openFile(input_path, mode="r")
+    input_file = tables.open_file(input_path, mode="r")
     input_root = input_file.root
 
-    output_file = tables.openFile(output_path, mode="w")
-    output_globals = output_file.createGroup("/", "globals", "Globals")
+    output_file = tables.open_file(output_path, mode="w")
+    output_globals = output_file.create_group("/", "globals", "Globals")
 
     print(" * copying globals ...", end=' ')
     copy_table(input_root.globals.periodic, output_globals)
     print("done.")
 
-    output_entities = output_file.createGroup("/", "entities", "Entities")
+    output_entities = output_file.create_group("/", "entities", "Entities")
     for table in input_file.iterNodes(input_root.entities):
         table_fields = get_fields(table)
         table_fields = [(fname, ftype) for fname, ftype in table_fields

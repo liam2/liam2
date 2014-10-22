@@ -217,7 +217,7 @@ class ProcessGroup(AbstractProcessGroup):
         h5file = config.autodump_file
         name = self._tablename(period)
         dtype = np.dtype([(k, v.dtype) for k, v in fields])
-        table = h5file.createTable('/{}'.format(period), name, dtype,
+        table = h5file.create_table('/{}'.format(period), name, dtype,
                                    createparents=True)
 
         fnames = [k for k, _ in fields]

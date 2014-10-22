@@ -361,7 +361,7 @@ class Simulation(object):
                 fname, _ = config.autodiff
                 mode = 'r'
             fpath = os.path.join(config.output_directory, fname)
-            h5_autodump = tables.openFile(fpath, mode=mode)
+            h5_autodump = tables.open_file(fpath, mode=mode)
             config.autodump_file = h5_autodump
         else:
             h5_autodump = None

@@ -485,7 +485,7 @@ class Entity(object):
 
         # also flush it to disk
         h5file = self.output_index_node._v_file
-        h5file.createArray(self.output_index_node, "_%d" % period,
+        h5file.create_array(self.output_index_node, "_%d" % period,
                            self.id_to_rownum, "Period %d index" % period)
 
         # if an old index exists (this is not the case for the first period!),

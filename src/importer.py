@@ -318,7 +318,7 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
     msg, filters = compression_str2filter(compression)
     print(" - storing %s..." % msg)
     dtype = np.dtype(fields)
-    table = h5file.createTable(node, name, dtype, title=title, filters=filters)
+    table = h5file.create_table(node, name, dtype, title=title, filters=filters)
     # buffered load
     max_buffer_rows = buffersize // dtype.itemsize
     while True:
@@ -351,7 +351,7 @@ def array_to_disk_array(h5file, node, name, array, title='', compression=None):
         disk_array = h5file.createCArray(node, name, array, title,
                                          filters=filters)
     else:
-        disk_array = h5file.createArray(node, name, array, title)
+        disk_array = h5file.create_array(node, name, array, title)
     if isinstance(array, LabeledArray):
         attrs = disk_array.attrs
         # pytables serialises Python lists as pickles but np.arrays as native
@@ -749,14 +749,14 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
     print("Importing in", h5_filepath)
     h5file = None
     try:
-        h5file = tables.openFile(h5_filepath, mode="w", title="CSV import")
+        h5file = tables.open_file(h5_filepath, mode="w", title="CSV import")
 
         globals_def = content.get('globals', {})
         if globals_def:
             print()
             print("globals")
             print("-------")
-            const_node = h5file.createGroup("/", "globals", "Globals")
+            const_node = h5file.create_group("/", "globals", "Globals")
             for global_name, global_def in globals_def.iteritems():
                 print()
                 print(" %s" % global_name)
@@ -784,7 +784,7 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
         print()
         print("entities")
         print("--------")
-        ent_node = h5file.createGroup("/", "entities", "Entities")
+        ent_node = h5file.create_group("/", "entities", "Entities")
         for ent_name, entity_def in content['entities'].iteritems():
             print()
             print(" %s" % ent_name)

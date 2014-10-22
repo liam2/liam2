@@ -89,8 +89,8 @@ def diff_array(array1, array2, numdiff=10, raiseondiff=False):
 
 
 def diff_h5(input1_path, input2_path, numdiff=10):
-    input1_file = tables.openFile(input1_path, mode="r")
-    input2_file = tables.openFile(input2_path, mode="r")
+    input1_file = tables.open_file(input1_path, mode="r")
+    input2_file = tables.open_file(input2_path, mode="r")
 
 #    print "copying globals from", input1_path,
 #    input1_file.root.globals._f_copy(output_file.root, recursive=True)
