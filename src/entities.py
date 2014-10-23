@@ -120,7 +120,10 @@ class Entity(object):
         self.stored_fields = set(name for name, _ in fields)
         self.links = links
 
+        if macro_strings is None:
+            macro_strings = {}
         self.macro_strings = macro_strings
+
         self.process_strings = process_strings
         self.processes = None
 
@@ -279,11 +282,10 @@ class Entity(object):
         local_context = global_context.copy()
         local_context[self.name] = symbols
         local_context['__entity__'] = self.name
-        if self.macro_strings:
-            macros = dict((k, parse(v, local_context))
-                          for k, v in self.macro_strings.iteritems())
-            symbols.update(macros)
-            symbols['other'] = PrefixingLink(macros, self.links, '__other_')
+        macros = dict((k, parse(v, local_context))
+                      for k, v in self.macro_strings.iteritems())
+        symbols.update(macros)
+        symbols['other'] = PrefixingLink(macros, self.links, '__other_')
         symbols.update(self.methods)
         return symbols
 
