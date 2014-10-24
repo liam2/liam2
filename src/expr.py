@@ -1091,14 +1091,14 @@ class GlobalVariable(Expr):
 
 class SubscriptedGlobal(GlobalVariable):
     def __init__(self, tablename, name, key, dtype):
-        Expr.__init__(self, (tablename, name, key))
+        Expr.__init__(self, value=(tablename, name), children=(key,))
         self._dtype = dtype
         # GlobalVariable.__init__(self, tablename, name, dtype)
         # self.key = key
 
     @property
     def key(self):
-        return self.value[2]
+        return self.children[0]
 
     def __str__(self):
         return '%s[%s]' % (self.name, self.key)
