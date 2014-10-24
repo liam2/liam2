@@ -938,6 +938,8 @@ class ComparisonOp(BinaryOp):
 
 class Variable(Expr):
     def __init__(self, entity, name, dtype=None):
+        # from entities import Entity
+        # assert entity is None or isinstance(entity, Entity)
         Expr.__init__(self, (entity, name))
 
         # this would be more efficient but we risk being inconsistent

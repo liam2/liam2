@@ -300,12 +300,13 @@ class Entity(object):
 
     @staticmethod
     def get_group_context(context, varnames):
+        ent_name = context['__entity__']
+        entity = context['__entities__'][ent_name]
         group_context = context.copy()
-        cur_entity = group_context['__entity__']
-        entity_context = group_context[cur_entity].copy()
-        entity_context.update((name, Variable(cur_entity, name))
+        entity_context = group_context[ent_name].copy()
+        entity_context.update((name, Variable(entity, name))
                               for name in varnames)
-        group_context[cur_entity] = entity_context
+        group_context[ent_name] = entity_context
         return group_context
 
     def parse_process_group(self, k, items, context, purge=True):
