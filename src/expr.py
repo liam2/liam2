@@ -175,7 +175,7 @@ def ispresent(values):
     elif np.issubdtype(dt, int):
         return values != missing_values[int]
     elif np.issubdtype(dt, bool):
-#        return values != missing_values[bool]
+        # return values != missing_values[bool]
         return True
     else:
         raise Exception('%s is not a supported type for ispresent' % dt)
