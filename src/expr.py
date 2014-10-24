@@ -159,8 +159,8 @@ def always(type_):
     return dtype
 
 
-def firstarg_dtype(expr, context):
-    return getdtype(expr.args[0], context)
+def firstarg_dtype(self, context):
+    return getdtype(self.args[0], context)
 
 
 def coerce_child_dtypes(expr, context):
