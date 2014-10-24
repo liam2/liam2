@@ -297,7 +297,8 @@ class New(FilteredExpression):
                                        num_individuals + num_birth)
             children['period'] = context.period
 
-            used_variables = self._collect_kwargs_variables(kwargs, context)
+            used_variables = [v.name for v in
+                              self._collect_kwargs_variables(kwargs, context)]
             if to_give_birth is None:
                 assert not used_variables
                 child_context = context.empty(num_birth)

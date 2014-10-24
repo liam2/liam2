@@ -207,10 +207,10 @@ def expr_eval(expr, context):
         else:
             globals_names = set()
 
-        for var_name in expr.collect_variables(context):
-            if var_name not in globals_names and var_name not in context:
+        for var in expr.collect_variables(context):
+            if var.name not in globals_names and var.name not in context:
                 raise Exception("variable '%s' is unknown (it is either not "
-                                "defined or not computed yet)" % var_name)
+                                "defined or not computed yet)" % var)
         return expr.evaluate(context)
 
         # there are several flaws with this approach:
@@ -303,11 +303,17 @@ class Expr(object):
         assert isinstance(context, EvaluationContext)
         local_ctx = context.entity_data
         if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
-            for var_name in simple_expr.collect_variables(context):
+            for var in simple_expr.collect_variables(context):
+                var_name = var.name
+                # # skip variable from other entities
+                # if var.entity is not context.entity:
+                #     continue
+
                 # var_name should always be in the context at this point
                 # because missing temporaries should have been already caught
                 # in expr_eval
                 value = context[var_name]
+                # value = local_ctx[var.name]
                 if isinstance(value, LabeledArray):
                     if labels is None:
                         labels = (value.dim_names, value.pvalues)
@@ -389,7 +395,7 @@ class Expr(object):
         badvar = lambda v: isinstance(v, ShortLivedVariable) or \
                            (isinstance(v, GlobalVariable) and
                             v.tablename != 'periodic')
-        return set(v.name for v in allvars if not badvar(v))
+        return set(v for v in allvars if not badvar(v))
 
     #TODO: make equivalent/commutative expressions compare equal and hash to the
     # same thing.

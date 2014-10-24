@@ -37,7 +37,7 @@ class Matching(FilteredExpression):
         set2filterexpr = self._getfilter(context, set2filter)
         set2filtervalue = expr_eval(set2filterexpr, context)
 
-        used_variables = score.collect_variables(context)
+        used_variables = [v.name for v in score.collect_variables(context)]
         used_variables1 = ['id'] + [v for v in used_variables
                                     if not v.startswith('__other_')]
         used_variables2 = ['id'] + [v[8:] for v in used_variables
