@@ -232,22 +232,22 @@ class CallNode(Node):
                 if expressions is not None:
                     self.kwargs['expressions'] = to_ast(expressions,
                                                         local_context)
-
         # arguments of link methods (M2O.get, O2M.count, ...) need to be
         # evaluated in the context of the target entity
-        if (isinstance(callable_ast, types.MethodType) and
-                isinstance(callable_ast.__self__, (links.Link,
-                                                   links.LinkGet))):
-            link = callable_ast.__self__
-            if isinstance(link, links.LinkGet):
+        link = None
+        if isinstance(callable_ast, types.MethodType):
+            instance = callable_ast.__self__
+            if isinstance(instance, links.Link):
+                link = instance
+            elif isinstance(instance, links.LinkGet):
                 # find the link of the deepest LinkGet in the "link chain"
-                lv = link
+                lv = instance
                 while isinstance(lv.target_expr, links.LinkGet):
                     lv = lv.target_expr
                 assert isinstance(lv.target_expr, links.Link)
                 link = lv.target_expr
+        if link is not None:
             local_context = context.copy()
-
             local_context['__entity__'] = link._target_entity_name
         else:
             local_context = context
