@@ -251,9 +251,6 @@ def binop(opname, kind='binary', reversed=False):
 class Expr(object):
     # we cannot do this in __new__ (args are verified in metaclass.__call__)
     # __metaclass__ = ExplainTypeError
-
-    kind = 'generic'
-
     def __init__(self, value=None, children=None):
         object.__init__(self)
         self.value = value
@@ -853,8 +850,6 @@ class DynamicFunctionCall(GenericFunctionCall):
 #############
 
 class UnaryOp(Expr):
-    kind = 'op'
-
     def __init__(self, op, expr):
         Expr.__init__(self, op, children=(expr,))
 
@@ -877,8 +872,6 @@ class UnaryOp(Expr):
 
 
 class BinaryOp(Expr):
-    kind = 'op'
-
     def __init__(self, op, expr1, expr2):
         Expr.__init__(self, op, children=(expr1, expr2))
 
@@ -938,8 +931,6 @@ class ComparisonOp(BinaryOp):
 #############
 
 class Variable(Expr):
-    kind = 'variable'
-
     def __init__(self, name, dtype=None):
         Expr.__init__(self, name)
 
