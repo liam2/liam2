@@ -388,12 +388,8 @@ def deprecated_functions():
         ('minlink', Min),
         ('maxlink', Max)
     ]
-    funcs = {}
-    for name, func in to_deprecate:
-        funcs[name] = deprecated(func,
-                                 "%s(link, ...) is deprecated, please "
-                                 "use link.%s(...) instead"
-                                 % (name, name[:-4]))
-    return funcs
+    return {name: deprecated(func, "%s(link, ...) is deprecated, please use "
+                                   "link.%s(...) instead" % (name, name[:-4]))
+            for name, func in to_deprecate}
 
 functions = deprecated_functions()
