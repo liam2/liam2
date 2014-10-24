@@ -956,9 +956,11 @@ class Variable(Expr):
     def name(self):
         return self.value[1]
 
+    def __repr__(self):
+        return "%s.%s" % (self.entity, self.name)
+
     def __str__(self):
         return self.name
-    __repr__ = __str__
     as_string = __str__
 
     def as_simple_expr(self, context):
