@@ -606,3 +606,6 @@ class Entity(object):
 
     def __repr__(self):
         return "<Entity '%s'>" % self.name
+
+    def __str__(self):
+        return self.name
