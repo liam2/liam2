@@ -580,7 +580,9 @@ class FillArgSpecMeta(FillFuncNameMeta):
                                 'example' % compute.__name__)
             if isinstance(compute, types.MethodType):
                 # for methods, strip "self" and "context" args
-                spec = (spec.args[2:],) + spec[1:]
+                args = [arg for arg in spec.args
+                        if arg not in {'self', 'context'}]
+                spec = (args,) + spec[1:]
             kwonly = cls.kwonlyargs
             # if we have a varkw variable but it was only needed because of
             # kwonly args

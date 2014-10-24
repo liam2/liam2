@@ -9,9 +9,8 @@ from context import context_length
 from expr import (Expr, FunctionExpr, not_hashable,
                   getdtype, as_simple_expr, as_string,
                   get_missing_value, ispresent, LogicalOp, AbstractFunction,
-                  always)
+                  always, FillArgSpecMeta)
 from utils import classproperty, argspec
-
 
 
 # class CompoundExpression(Expr):
@@ -47,25 +46,18 @@ from utils import classproperty, argspec
 
 # FIXME: we need to review all CompoundExpression because they do not use
 # Expr.__init__ and thus are not compatible with .value and .children
-class CompoundExpression(Expr):
-    """function expression written in terms of other expressions"""
+class CompoundExpression(AbstractFunction):
+    """
+    function expression written in terms of other expressions
+    """
 
-    def __init__(self, *args, **kwargs):
-        kwargs = tuple(sorted(kwargs.items()))
-        Expr.__init__(self, 'compound', children=(args, kwargs))
-        # self._complete_expr = None
+    __metaclass__ = FillArgSpecMeta
 
-    # def evaluate(self, context):
-    #     context = self.build_context(context)
-    #     return expr_eval(self.complete_expr, context)
+    kwonlyargs = {}
 
-    @property
-    def args(self):
-        return self.children[0]
-
-    @property
-    def kwargs(self):
-        return self.children[1]
+    @classmethod
+    def get_compute_func(cls):
+        return cls.build_expr
 
     def as_simple_expr(self, context):
         # This will effectively trigger evaluation of expressions arguments
@@ -260,6 +252,8 @@ class NumpyAggregate(NumpyFunction):
 
 class NumexprFunction(AbstractFunction):
     """For functions which are present as-is in numexpr"""
+    # argspec need to be given manually for each function
+    argspec = None
 
     def as_simple_expr(self, context):
         args, kwargs = as_simple_expr(self.children, context)
