@@ -711,9 +711,8 @@ class AbstractFunction(Expr):
         kwargs = [(str(k), repr(v)) for k, v in kwargs]
         return AbstractFunction.format_args_str(args, kwargs)
 
-    def __str__(self):
+    def __repr__(self):
         return '%s(%s)' % (self.funcname, self.args_str(*self.original_args))
-    __repr__ = __str__
 
 
 # this needs to stay in the expr module because of ExprAttribute, which uses
