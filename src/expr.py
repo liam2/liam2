@@ -271,17 +271,17 @@ class Expr(object):
             assert np.isscalar(period) or not period.shape
             period = int(period)
 
-        cache_key = (self, period, context.entity_name, context.filter_expr)
-        try:
-            cached_result = expr_cache.get(cache_key, None)
-            #FIXME: lifecycle functions should invalidate all variables!
-            if cached_result is not None:
-                return cached_result
-        except TypeError:
-            # The cache_key failed to hash properly, so the expr is not
-            # cacheable. It *should* be because of a not_hashable expr
-            # somewhere within cache_key[3].
-            cache_key = None
+        # cache_key = (self, period, context.entity_name, context.filter_expr)
+        # try:
+        #     cached_result = expr_cache.get(cache_key, None)
+        #     #FIXME: lifecycle functions should invalidate all variables!
+        #     if cached_result is not None:
+        #         return cached_result
+        # except TypeError:
+        #     # The cache_key failed to hash properly, so the expr is not
+        #     # cacheable. It *should* be because of a not_hashable expr
+        #     # somewhere within cache_key[3].
+        #     cache_key = None
 
         simple_expr = self.as_simple_expr(context)
         if isinstance(simple_expr, Variable) and simple_expr.name in context:
@@ -333,11 +333,11 @@ class Expr(object):
                 # capabilities, we will be in trouble
                 res = LabeledArray(res, labels[0], labels[1])
 
-            if cache_key is not None:
-                expr_cache[cache_key] = res
-                if cached_result is not None:
-                    assert np.array_equal(res, cached_result), \
-                        "%s != %s" % (res, cached_result)
+            # if cache_key is not None:
+            #     expr_cache[cache_key] = res
+            #     if cached_result is not None:
+            #         assert np.array_equal(res, cached_result), \
+            #             "%s != %s" % (res, cached_result)
             return res
         # except KeyError, e:
         #     raise add_context(e, s)
