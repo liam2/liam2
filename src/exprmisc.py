@@ -156,24 +156,21 @@ class Sort(NumpyChangeArray):
 
 
 class Round(NumpyChangeArray):
-    funcname = 'round'  # np.round redirects to np.round_
     np_func = np.round
     dtype = firstarg_dtype
 
 
 class Trunc(FunctionExpr):
-    funcname = 'trunc'
-
+    # TODO: check that the dtype is correct at compilation time (__init__ is too
+    # early since we do not have the context yet)
+    # assert getdtype(self.args[0], context) == float
     def compute(self, context, expr):
         return expr.astype(int)
 
-    #TODO: do the check in __init__ and use dtype = always(int)
-    def dtype(self, context):
-        assert getdtype(self.expr, context) == float
-        return int
+    dtype = always(int)
 
 
-#------------------------------------
+# ------------------------------------
 
 
 class Abs(NumexprFunction):
