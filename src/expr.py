@@ -207,8 +207,9 @@ def expr_eval(expr, context):
         else:
             globals_names = set()
 
+        #TODO: also check for globals
         for var in expr.collect_variables(context):
-            if var.name not in globals_names and var.name not in context:
+            if var.name not in globals_names and var not in context:
                 raise Exception("variable '%s' is unknown (it is either not "
                                 "defined or not computed yet)" % var)
         return expr.evaluate(context)
