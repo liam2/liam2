@@ -176,9 +176,11 @@ class AlignmentAbsoluteValues(FilteredExpression):
             # in this case, it's tricky
             return set()
 
-    def _eval_need(self, context, need, expressions, possible_values):
+    def _eval_need(self, context, need, expressions, possible_values,
+                   expressions_context=None):
         assert isinstance(need, np.ndarray)
-
+        if expressions_context is None:
+            expressions_context = context
         # When given a 0d array, we convert it to 1d. This can happen e.g. for
         # >>> b = True; x = ne.evaluate('where(b, 0.1, 0.2)')
         # >>> isinstance(x, np.ndarray)
@@ -190,7 +192,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         if isinstance(need, LabeledArray):
             if not expressions:
-                expressions = [Variable(context.entity, name)
+                expressions = [Variable(expressions_context.entity, name)
                                for name in need.dim_names]
             if not possible_values:
                 possible_values = need.pvalues
@@ -377,8 +379,10 @@ class AlignmentAbsoluteValues(FilteredExpression):
     def align_link(self, context, score, need, filter, take, leave,
                    expressions, possible_values, errors, frac_need, link,
                    secondary_axis):
+        target_context = link._target_context(context)
         need, expressions, possible_values = \
-            self._eval_need(context, need, expressions, possible_values)
+            self._eval_need(context, need, expressions, possible_values,
+                            target_context)
         need = self._handle_frac_need(need, method=frac_need)
         need = self._add_past_error(context, need, method=errors)
 
@@ -399,7 +403,6 @@ class AlignmentAbsoluteValues(FilteredExpression):
                                 % (secondary_axis, need.ndim))
 
         # evaluate columns
-        target_context = link._target_context(context)
         target_columns = [expr_eval(e, target_context) for e in expressions]
         # this is a one2many, so the link column is on the target side
         link_column = target_context[link._link_field]
