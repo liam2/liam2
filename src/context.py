@@ -92,7 +92,15 @@ class EvaluationContext(object):
         self.entity_data[key] = value
 
     def __contains__(self, key):
-        return key in self.entity_data
+        from expr import Variable
+        if isinstance(key, Variable):
+            entity, name = key.entity, key.name
+            if entity is None:
+                return True
+            else:
+                return name in self.entities_data[entity.name]
+        else:
+            return key in self.entity_data
 
     def length(self):
         return context_length(self.entity_data)
