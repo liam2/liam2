@@ -144,7 +144,8 @@ class Average(FilteredExpression):
                 # expr *= 1
                 expr = BinaryOp('*', expr, 1)
             # expr *= filter_values
-            expr = BinaryOp('*', expr, Variable(tmp_varname))
+            tmpvar = Variable(context.entity, tmp_varname)
+            expr = BinaryOp('*', expr, tmpvar)
         else:
             filter = True
 

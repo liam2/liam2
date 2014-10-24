@@ -439,7 +439,7 @@ class EvaluableExpression(Expr):
         tmp_varname = get_tmp_varname()
         result = self.evaluate(context)
         context[tmp_varname] = result
-        return Variable(tmp_varname, gettype(result))
+        return Variable(context.entity, tmp_varname, gettype(result))
 
 
 def non_scalar_array(a):
@@ -931,8 +931,8 @@ class ComparisonOp(BinaryOp):
 #############
 
 class Variable(Expr):
-    def __init__(self, name, dtype=None):
-        Expr.__init__(self, name)
+    def __init__(self, entity, name, dtype=None):
+        Expr.__init__(self, (entity, name))
 
         # this would be more efficient but we risk being inconsistent
         # self.name = self.value
@@ -941,8 +941,12 @@ class Variable(Expr):
         self.used = 0
 
     @property
+    def entity(self):
+        return self.value[0]
+
+    @property
     def name(self):
-        return self.value
+        return self.value[1]
 
     def __str__(self):
         return self.name
@@ -1001,7 +1005,7 @@ class GlobalVariable(Expr):
         else:
             tmp_varname = get_tmp_varname()
             context[tmp_varname] = result
-        return Variable(tmp_varname)
+        return Variable(context.entity, tmp_varname)
 
     def _eval_key(self, context):
         return context.period
@@ -1112,7 +1116,7 @@ class SubscriptedGlobal(GlobalVariable):
 # context
 class GlobalArray(Variable):
     def __init__(self, name, dtype=None):
-        Variable.__init__(self, name, dtype)
+        Variable.__init__(self, None, name, dtype)
 
     def as_simple_expr(self, context):
         globals_data = context.global_tables
@@ -1122,7 +1126,7 @@ class GlobalArray(Variable):
         if tmp_varname in context:
             assert context[tmp_varname] is result
         context[tmp_varname] = result
-        return Variable(tmp_varname)
+        return Variable(None, tmp_varname)
 
 
 class GlobalTable(object):
@@ -1187,16 +1191,16 @@ class MethodCall(EvaluableExpression):
 
 
 class VariableMethodHybrid(Variable):
-    def __init__(self, name, entity, dtype=None):
-        Expr.__init__(self, (name, entity))
+    def __init__(self, entity, name, dtype=None):
+        Expr.__init__(self, (entity, name))
         self._dtype = dtype
 
     @property
-    def name(self):
+    def entity(self):
         return self.value[0]
 
     @property
-    def entity(self):
+    def name(self):
         return self.value[1]
 
     def __call__(self, *args, **kwargs):

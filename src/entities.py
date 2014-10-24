@@ -241,15 +241,15 @@ class Entity(object):
             stored_fields = self.stored_fields
 
             # non-callable fields (no variable-procedure for them)
-            variables = dict((name, Variable(name, type_))
+            variables = dict((name, Variable(self, name, type_))
                              for name, type_ in self.fields
                              if name in stored_fields - process_names)
             # callable fields
-            variables.update((name, VariableMethodHybrid(name, self, type_)) for
-                             name, type_ in self.fields if
-                             name in stored_fields & process_names)
+            variables.update((name, VariableMethodHybrid(self, name, type_))
+                             for name, type_ in self.fields
+                             if name in stored_fields & process_names)
             # global temporaries (they are all callable)
-            variables.update((name, VariableMethodHybrid(name, self))
+            variables.update((name, VariableMethodHybrid(self, name))
                              for name in all_predictors - stored_fields)
             variables.update(self.links)
             self._variables = variables
@@ -285,7 +285,7 @@ class Entity(object):
         macros = dict((k, parse(v, local_context))
                       for k, v in self.macro_strings.iteritems())
         symbols.update(macros)
-        symbols['other'] = PrefixingLink(macros, self.links, '__other_')
+        symbols['other'] = PrefixingLink(self, macros, self.links, '__other_')
         symbols.update(self.methods)
         return symbols
 
@@ -303,7 +303,8 @@ class Entity(object):
         group_context = context.copy()
         cur_entity = group_context['__entity__']
         entity_context = group_context[cur_entity].copy()
-        entity_context.update((name, Variable(name)) for name in varnames)
+        entity_context.update((name, Variable(cur_entity, name))
+                              for name in varnames)
         group_context[cur_entity] = entity_context
         return group_context
 
@@ -555,8 +556,7 @@ class Entity(object):
         sub_context = context.clone(fresh_data=True, period=period)
         result = expr_eval(expr, sub_context)
         if isinstance(result, np.ndarray) and result.shape:
-            #TODO: replace all expr_eval(Variable(v), context) by context[v]
-            ids = expr_eval(Variable('id'), sub_context)
+            ids = sub_context['id']
             if fill is None:
                 return ids, result
             else:

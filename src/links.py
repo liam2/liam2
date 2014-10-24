@@ -68,7 +68,7 @@ class Many2One(Link):
             if key in entity.links:
                 key = entity.links[key]
             else:
-                key = Variable(key)
+                key = Variable(entity, key)
 
         return LinkGet(self, key, *args, **kwargs)
 
@@ -93,7 +93,8 @@ class One2Many(Link):
 
 
 class PrefixingLink(object):
-    def __init__(self, macros, links, prefix):
+    def __init__(self, entity, macros, links, prefix):
+        self.entity = entity
         self.macros = macros
         self.links = links
         self.prefix = prefix
@@ -113,7 +114,7 @@ class PrefixingLink(object):
                                   self.prefix + link._link_field,
                                   link._target_entity_name,
                                   link._target_entity)
-        return Variable(self.prefix + key)
+        return Variable(self.entity, self.prefix + key)
 
 
 class LinkExpression(FunctionExpr):
@@ -160,7 +161,7 @@ class LinkGet(LinkExpression):
     def traverse(self, context):
         #XXX: don't we also need the fields within the target expression?
         #noinspection PyProtectedMember
-        yield Variable(self.link._link_field)
+        yield Variable(self.link._entity, self.link._link_field)
         yield self
 
     @property
@@ -211,7 +212,7 @@ class LinkGet(LinkExpression):
         assert isinstance(target_expr, Expr), str(type(target_expr))
 
         #noinspection PyProtectedMember
-        target_ids = expr_eval(Variable(link._link_field), context)
+        target_ids = context[link._link_field]
         target_context = self.target_context(context)
 
         id_to_rownum = target_context.id_to_rownum
@@ -258,7 +259,7 @@ class Aggregate(LinkExpression):
 
         # this is a one2many, so the link column is on the target side
         #noinspection PyProtectedMember
-        source_ids = expr_eval(Variable(link._link_field), target_context)
+        source_ids = target_context[link._link_field]
         expr_value = expr_eval(target_expr, target_context)
         filter_value = expr_eval(filter_expr, target_context)
         if filter_value is not None:

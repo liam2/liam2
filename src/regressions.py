@@ -66,7 +66,7 @@ class ContRegr(Regression):
     def build_regression_expr(self, expr, mult=0.0, error_var=None):
         if error_var is not None:
             # expr += error_var
-            expr = BinaryOp('+', expr, Variable(error_var))
+            expr = BinaryOp('+', expr, Variable(None, error_var))
         if mult:
             # expr += normal(0, 1) * mult
             expr = BinaryOp('+', expr, BinaryOp('*', Normal(0, 1), mult))

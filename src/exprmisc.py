@@ -347,6 +347,7 @@ class Dump(TableExpression):
         missing = kwargs.pop('missing', None)
         # periods = kwargs.pop('periods', None)
         header = kwargs.pop('header', True)
+        entity = context.entity
 
         if args:
             expressions = list(args)
@@ -355,12 +356,13 @@ class Dump(TableExpression):
             # (nan, period, __xxx__)
             #FIXME: we should also somehow "traverse" expressions in this case
             # too (args is ()) => all keys in the current context
-            expressions = [Variable(name) for name in context.keys(extra=False)]
+            expressions = [Variable(entity, name)
+                           for name in context.keys(extra=False)]
 
         str_expressions = [str(e) for e in expressions]
         if 'id' not in str_expressions:
             str_expressions.insert(0, 'id')
-            expressions.insert(0, Variable('id'))
+            expressions.insert(0, Variable(entity, 'id'))
             id_pos = 0
         else:
             id_pos = str_expressions.index('id')

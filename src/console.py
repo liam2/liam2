@@ -158,7 +158,7 @@ class Console(object):
 
         # add all currently defined temp_variables because otherwise
         # local variables (defined within a procedure) wouldn't be available
-        local_parse_ctx.update((name, Variable(name))
+        local_parse_ctx.update((name, Variable(entity, name))
                                for name in entity.temp_variables.keys())
         parse_ctx[entity_name] = local_parse_ctx
         expr = parse(s, parse_ctx, interactive=True)

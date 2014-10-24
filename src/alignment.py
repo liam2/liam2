@@ -190,7 +190,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         if isinstance(need, LabeledArray):
             if not expressions:
-                expressions = [Variable(name)
+                expressions = [Variable(context.entity, name)
                                for name in need.dim_names]
             if not possible_values:
                 possible_values = need.pvalues
@@ -402,7 +402,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         target_context = link._target_context(context)
         target_columns = [expr_eval(e, target_context) for e in expressions]
         # this is a one2many, so the link column is on the target side
-        link_column = expr_eval(Variable(link._link_field), target_context)
+        link_column = target_context[link._link_field]
 
         filter_expr = self._getfilter(context, filter)
         if filter_expr is not None:
