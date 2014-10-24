@@ -371,6 +371,9 @@ class Expr(object):
         else:
             raise AttributeError(key)
 
+    # the context is needed so that collect_variable we know which entity we are
+    # currently in (even if that not used at the moment). This could be
+    # avoided though. One way would be to store the source entity in links.
     def traverse(self, context=None):
         for child in self.children:
             for node in traverse_expr(child, context):
@@ -390,8 +393,6 @@ class Expr(object):
                            (isinstance(v, GlobalVariable) and
                             v.tablename != 'periodic')
         return set(v.name for v in allvars if not badvar(v))
-        # child_vars = [collect_variables(c, context) for c in self.children]
-        # return set.union(*child_vars) if child_vars else set()
 
     #TODO: make equivalent/commutative expressions compare equal and hash to the
     # same thing.
