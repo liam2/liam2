@@ -10,7 +10,7 @@ from expr import (Variable, BinaryOp, getdtype, expr_eval,
 from exprbases import NumpyAggregate, FilteredExpression
 import exprmisc
 from context import context_length
-from utils import deprecated
+from utils import removed
 
 
 class All(NumpyAggregate):
@@ -247,5 +247,4 @@ functions = {
 }
 
 for k, v in functions.items():
-    functions['grp' + k] = deprecated(v, "%s is deprecated, please use %s "
-                                         "instead" % ('grp' + k, k))
+    functions['grp' + k] = removed(v, 'grp' + k, k)

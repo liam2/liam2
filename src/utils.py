@@ -55,13 +55,32 @@ class UserDeprecationWarning(UserWarning):
     pass
 
 
-def deprecated(f, msg):
+def deprecated(f, old=None, new=None, msg=None):
+    assert old is not None or msg is not None
+    if msg is None:
+        if new is None:
+            new = f.__name__
+        msg = "%s is deprecated, please use %s instead" % (old, new)
+
     def func(*args, **kwargs):
-        #TODO: when we will be able to link expressions to line numbers in the
+        # TODO: when we will be able to link expressions to line numbers in the
         # model, we should use warnings.warn_explicit instead
         warnings.warn(msg, UserDeprecationWarning)
         return f(*args, **kwargs)
-    func.__name__ = f.__name__
+    func.__name__ = "__deprecated_" + f.__name__
+    return func
+
+
+def removed(f, old=None, new=None, msg=None):
+    assert old is not None or msg is not None
+    if msg is None:
+        if new is None:
+            new = f.__name__
+        msg = "%s does not exist anymore, please use %s instead" % (old, new)
+
+    def func(*args, **kwargs):
+        raise SyntaxError(msg)
+    func.__name__ = "__removed_" + f.__name__
     return func
 
 

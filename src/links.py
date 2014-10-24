@@ -9,7 +9,7 @@ import numexpr as ne
 from expr import (Expr, Variable, getdtype, expr_eval, missing_values,
                   get_missing_value, always, FunctionExpr)
 from context import context_length
-from utils import deprecated
+from utils import removed
 
 #TODO: merge this typemap with the one in tsum
 counting_typemap = {bool: int, int: int, float: float}
@@ -379,17 +379,18 @@ class Max(Min):
     aggregate_func = max
 
 
-def deprecated_functions():
-    # all these functions are deprecated
-    to_deprecate = [
+def removed_functions():
+    # all these functions do not exist anymore, but we need to give a hint
+    # to users upgrading
+    to_remove = [
         ('countlink', Count),
         ('sumlink', Sum),
         ('avglink', Avg),
         ('minlink', Min),
         ('maxlink', Max)
     ]
-    return {name: deprecated(func, "%s(link, ...) is deprecated, please use "
-                                   "link.%s(...) instead" % (name, name[:-4]))
-            for name, func in to_deprecate}
+    return {name: removed(func, "%s(link, ...)" % name,
+                          "link.%s(...)" % name[:-4])
+            for name, func in to_remove}
 
-functions = deprecated_functions()
+functions = removed_functions()
