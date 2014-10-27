@@ -984,7 +984,7 @@ class ShortLivedVariable(Variable):
 # NOT call their parent __init__ but rather Expr.__init__
 # class GlobalVariable(Variable):
 class GlobalVariable(Expr):
-    def __init__(self, tablename, name, dtype=None):
+    def __init__(self, tablename, name, dtype):
         Expr.__init__(self, (tablename, name))
         self._dtype = dtype
 
@@ -1103,6 +1103,9 @@ class GlobalVariable(Expr):
 
     def __getitem__(self, key):
         return SubscriptedGlobal(self.tablename, self.name, key, self._dtype)
+
+    def dtype(self, context):
+        return self._dtype
 
 
 class SubscriptedGlobal(GlobalVariable):
