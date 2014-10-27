@@ -433,7 +433,7 @@ class Expr(object):
                      make_hashable(self.children)))
 
     def __contains__(self, expr):
-        for node in self.traverse(None):
+        for node in self.traverse():
             if expr == node:
                 return True
         return False
