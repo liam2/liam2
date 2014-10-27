@@ -373,7 +373,8 @@ class Expr(object):
                    'sum', 'prod', 'std', 'max', 'min'}:
             return ExprAttribute(self, key)
         else:
-            raise AttributeError(key)
+            raise AttributeError("'%s' object has no attribute '%s'"
+                                 % (self.__class__.__name__, key))
 
     # the context is needed so that collect_variable we know which entity we are
     # currently in (even if that not used at the moment). This could be
