@@ -305,15 +305,14 @@ class Expr(object):
         local_ctx = context.entity_data
         if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
             for var in simple_expr.collect_variables(context):
-                var_name = var.name
-                # # skip variable from other entities
-                # if var.entity is not context.entity:
-                #     continue
+                assert var.entity is None or var.entity is context.entity, \
+                    "should not have happened (as_simple_expr should " \
+                    "have transformed non-local variables)"
 
                 # var_name should always be in the context at this point
                 # because missing temporaries should have been already caught
                 # in expr_eval
-                value = context[var_name]
+                value = context[var.name]
                 # value = local_ctx[var.name]
                 if isinstance(value, LabeledArray):
                     if labels is None:
