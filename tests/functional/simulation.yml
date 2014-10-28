@@ -730,11 +730,12 @@ entities:
                 - assertEqual(need.shape, (2, 121, 61))
                 - assertEqual(need.dim_names, ['gender','age', 'period'])
 
-                # nd_mul_nd should have the same characteristics too 
-                - nd_mul_nd: need * MIG
-                - assertEqual(nd_mul_nd.ndim, 3)
-                - assertEqual(nd_mul_nd.shape, (2, 121, 61))
-                - assertEqual(nd_mul_nd.dim_names, ['gender','age', 'period'])
+                # nd_plus_nd should have the same characteristics too 
+                - nd_plus_nd: need + MIG
+                - assertEqual(nd_plus_nd.ndim, 3)
+                - assertEqual(nd_plus_nd.shape, (2, 121, 61))
+                - assertEqual(nd_plus_nd.dim_names, ['gender','age', 'period'])
+                - assertIsClose(nd_plus_nd, 3.5 * MIG)
 
                 # let us take the 2d table for this period
                 # currently, we need to compute the index manually
@@ -757,9 +758,9 @@ entities:
                 - total_need_by_sex: need_by_sex_period.sum(axis=1)
                 - assertEqual(total_need_by_sex.ndim, 1)
                 - assertEqual(total_need_by_sex.shape, (2,))
-#fails since I changed mig.csv
-#                - assertEqual(total_need_by_sex, [7818940, 7692870])
-                
+                - assertIsClose(total_need_by_sex,
+                                [77.6138352312, 74.8861646933])
+
                 # for current period, a 1d table: gender
                 # currently, we need to manually compute the index
                 - need_by_sex: need_by_sex_period[:,period - base_period]
