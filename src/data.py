@@ -651,6 +651,23 @@ class DataSet(object):
     pass
 
 
+def load_path_globals(globals_def, fpath):
+    fdir = dirname(fpath)
+    globals_data = {}
+    for name, global_def in globals_def.iteritems():
+        if 'path' not in global_def:
+            continue
+        kind, info = load_def(fdir, name, global_def, [])
+        if kind == 'table':
+            fields, numlines, datastream, csvfile = info
+            array = stream_to_array(fields, datastream, numlines)
+        else:
+            assert kind == 'ndarray'
+            array = info
+        globals_data[name] = array
+    return globals_data
+
+
 def index_tables(globals_def, entities, fpath):
     print("reading data from %s ..." % fpath)
 
@@ -658,57 +675,45 @@ def index_tables(globals_def, entities, fpath):
     try:
         input_root = input_file.root
 
-        #TODO: move the checking (assertValidType) to a separate function
-        globals_data = {}
-        if globals_def:
-            # is a globals node needed?
-            if any('path' not in g_def for g_def in globals_def.itervalues()):
-                if 'globals' in input_root:
-                    globals_node = input_root.globals
-                else:
-                    raise Exception('could not find any globals in the input '
-                                    'data file (but some are declared in the '
-                                    'simulation file)')
-            else:
-                globals_node = None
-            for name, global_def in globals_def.iteritems():
-                if 'path' in global_def:
-                    fdir = dirname(fpath)
-                    kind, info = load_def(fdir, name, global_def, [])
-                    if kind == 'table':
-                        fields, numlines, datastream, csvfile = info
-                        array = stream_to_array(fields, datastream, numlines)
-                    else:
-                        assert kind == 'ndarray'
-                        array = info
-                    globals_data[name] = array
-                    continue
+        if any('path' not in g_def for g_def in globals_def.itervalues()) and \
+                'globals' not in input_root:
+            raise Exception('could not find any globals in the input data file '
+                            '(but some are declared in the simulation file)')
 
-                if name not in globals_node:
-                    raise Exception("could not find 'globals/%s' in the input "
-                                    "data file" % name)
+        globals_data = load_path_globals(globals_def, fpath)
 
-                global_data = getattr(globals_node, name)
+        globals_node = getattr(input_root, 'globals', None)
+        for name, global_def in globals_def.iteritems():
+            # already loaded from another source (path)
+            if name in globals_data:
+                continue
 
-                global_type = global_def.get('type', global_def.get('fields'))
-                assert_valid_type(global_data, global_type, context=name)
-                array = global_data.read()
-                if isinstance(global_type, list):
-                    # make sure we do not keep in memory columns which are
-                    # present in the input file but where not asked for by the
-                    # modeller. They are not accessible anyway.
-                    array = add_and_drop_fields(array, global_type)
-                attrs = global_data.attrs
-                dim_names = getattr(attrs, 'dimensions', None)
-                if dim_names is not None:
-                    # we serialise dim_names as a numpy array so that it is
-                    # stored as a native hdf type and not a pickle but we
-                    # prefer to work with simple lists
-                    dim_names = list(dim_names)
-                    pvalues = [getattr(attrs, 'dim%d_pvalues' % i)
-                               for i in range(len(dim_names))]
-                    array = LabeledArray(array, dim_names, pvalues)
-                globals_data[name] = array
+            if name not in globals_node:
+                raise Exception("could not find 'globals/%s' in the input "
+                                "data file" % name)
+
+            global_data = getattr(globals_node, name)
+
+            global_type = global_def.get('type', global_def.get('fields'))
+            # TODO: move the checking (assertValidType) to a separate function
+            assert_valid_type(global_data, global_type, context=name)
+            array = global_data.read()
+            if isinstance(global_type, list):
+                # make sure we do not keep in memory columns which are
+                # present in the input file but where not asked for by the
+                # modeller. They are not accessible anyway.
+                array = add_and_drop_fields(array, global_type)
+            attrs = global_data.attrs
+            dim_names = getattr(attrs, 'dimensions', None)
+            if dim_names is not None:
+                # we serialise dim_names as a numpy array so that it is
+                # stored as a native hdf type and not a pickle but we
+                # prefer to work with simple lists
+                dim_names = list(dim_names)
+                pvalues = [getattr(attrs, 'dim%d_pvalues' % i)
+                           for i in range(len(dim_names))]
+                array = LabeledArray(array, dim_names, pvalues)
+            globals_data[name] = array
 
         input_entities = input_root.entities
 
