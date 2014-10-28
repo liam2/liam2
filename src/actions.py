@@ -10,7 +10,7 @@ from expr import Expr, expr_eval
 from exprbases import TableExpression
 from process import Process, BreakpointException
 from partition import filter_to_indices
-from utils import LabeledArray, FileProducer
+from utils import LabeledArray, FileProducer, ndim
 
 
 class Show(Process):
@@ -103,15 +103,16 @@ class CSV(Process, FileProducer):
         with open(file_path, self.mode + 'b') as f:
             writer = csv.writer(f)
             for arg in self.args:
-                #XXX: use py3.4 singledispatch?
-                if isinstance(arg, TableExpression):
-                    data = expr_eval(arg, context)
-                    if isinstance(data, LabeledArray):
-                        data = data.as_table()
-                elif isinstance(arg, (list, tuple)):
-                    data = [[expr_eval(expr, context) for expr in arg]]
+                data = expr_eval(arg, context)
+                # make sure the result is at least two-dimensional
+                if isinstance(data, LabeledArray):
+                    data = data.as_table()
                 else:
-                    data = [[expr_eval(arg, context)]]
+                    dims = ndim(data)
+                    if dims == 0:
+                        data = [[data]]
+                    if dims == 1:
+                        data = [data]
                 writer.writerows(data)
 
 
