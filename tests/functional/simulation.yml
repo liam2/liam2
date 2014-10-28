@@ -1473,22 +1473,32 @@ entities:
                 - assertTrue(sum(ch_minage) < sum(ch_maxage))
 
             test_mixed_links:
-                - show('mother vs step-mother:', mother.age, partner.mother.age)
-                - show('other sex step-parent:',
-                       if(gender, partner.mother.age, partner.father.age))
-                - show('age vs age if married:', age, partner.partner.age)
-                - show('mother.partner.age:', mother.partner.age,
-                       'father.age:', father.age)
-                - show('hh.id:', household.id,
-                       'hh.id+1:', household.get(id + 1),
-                       'edu:', eduach,
-                       'num persons:', household.get(persons.count()),
-                       'num high edu:', household.get(persons.count(eduach == 4)))
-                - show('region', household.region_id)
-                - show('num hh in region', household.region.get(households.count()))
-                - show('long link chain',
-                       partner.partner.household.region.get(households.count()))
-                - show(avg(children.count()))
+                # multi-level
+                - assertEqual(partner.partner.age,
+                              if(partner_id != -1, age, -1))
+                - assertTrue(all(mother.partner.age == father.age,
+                                 filter=mother.partner_id == f_id))
+
+                # get
+                - assertTrue(all(household.id + 1 == household.get(id + 1),
+                                 filter=hh_id != -1))
+
+                # m2o + o2m
+                - persons_in_hh: household.get(persons.count())
+                - highedu_in_hh: household.get(persons.count(eduach == 4))
+                - loweredu_in_hh: household.get(persons.count(eduach < 4))
+                - assertEqual(highedu_in_hh + loweredu_in_hh, persons_in_hh)
+
+                # m2o + m2o + o2m
+                - hh_per_region: household.region.get(households.count())
+                - assertTrue(all(hh_per_region > 0))
+
+                # long link chain
+                - long: partner.partner.household.region.get(households.count())
+                - assertTrue(all(long == hh_per_region,
+                                 filter=partner_id != -1))
+
+                # two links using the same column
                 - hh_count: household.get(persons.count())
                 - hh2_count: household_bis.get(persons.count())
                 - assertEqual(hh_count, hh2_count)
