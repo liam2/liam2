@@ -746,6 +746,14 @@ entities:
                 - assertEqual(mig_period.dim_names, ['gender', 'age'])
                 - assertEqual(mig_period.pvalues.__len__(), 2)
 
+                # test that expressions with more than one dimension (2 in
+                # this case) work when the axes from both sides are not the
+                # same objects (this is case in the need and nd_plus_nd tests
+                # above)
+                - mig_period_bis: MIG[:,:,period - base_period]
+                - mig_period_x2: mig_period + mig_period_bis
+                - assertEqual(mig_period_x2, mig_period * 2)
+
                 # should be a 2d table: gender-period
                 - need_by_sex_period: need.sum(axis=1)
                 - assertEqual(need_by_sex_period.ndim, 2)

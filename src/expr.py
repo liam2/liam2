@@ -341,11 +341,14 @@ class Expr(object):
                                             'labels (dimension names) in the '
                                             'same expression: %s vs %s'
                                             % (labels[0], value.dim_names))
-                        if not np.array_equal(labels[1], value.pvalues):
-                            raise Exception('several arrays with inconsistent '
-                                            'axis values in the same '
-                                            'expression: \n%s\n\nvs\n\n%s'
-                                            % (labels[1], value.pvalues))
+                        # check that for each dimension the labels are the same
+                        for labels1, labels2 in zip(labels[1], value.pvalues):
+                            if not np.array_equal(labels1, labels2):
+                                raise Exception('several arrays with '
+                                                'inconsistent axis values in '
+                                                'the same expression: '
+                                                '\n%s\n\nvs\n\n%s'
+                                                % (labels1, labels2))
 
         s = simple_expr.as_string()
         try:
