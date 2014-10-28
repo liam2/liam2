@@ -1391,10 +1391,11 @@ entities:
                 - assertEqual(count(), pop)
 
                 # with number
-                - new_id: new('person', number=10,
-                              age=0,
-                              eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
-                              gender=choice([True, False], [0.51, 0.49]))
+                - new_id: new('person', number=10, age=999)
+                - assertEqual(count(), pop + 10)
+                - assertEqual(count(age == 999), 10)
+                - remove(age == 999)
+                - assertEqual(count(), pop)
 
                 # with explicit filter
                 - givebirth: not gender and (age >= 16) and (age <= 50)
