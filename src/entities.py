@@ -318,8 +318,9 @@ class Entity(object):
             return None
 
     def parse_process_group(self, k, v, variables, cond_context, purge=True):
-        # v is a procedure
-        # it should be a list of dict (assignment) or string (action)
+        if v is None:
+            raise ValueError("no processes in '%s'" % k)
+        # v is a list of dict (assignment) or string (action)
         group_expressions = [elem.items()[0] if isinstance(elem, dict)
                              else (None, elem)
                              for elem in v]
