@@ -863,6 +863,8 @@ class Void(DataSource):
         self.output_path = output_path
 
     def run(self, globals_def, entities, start_period):
+        #FIXME: this should really be inputpath, but we don't have one in Void
+        globals_data = load_path_globals(globals_def, self.output_path)
         output_file = tables.openFile(self.output_path, mode="w")
         output_indexes = output_file.createGroup("/", "indexes", "Indexes")
         output_entities = output_file.createGroup("/", "entities", "Entities")
@@ -879,7 +881,7 @@ class Void(DataSource):
             entity.table = output_table
             index_node = output_file.createGroup(output_indexes, entity.name)
             entity.output_index_node = index_node
-        return None, output_file, None
+        return None, output_file, globals_data
 
 
 def populate_registry(fpath):
