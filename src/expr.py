@@ -441,10 +441,13 @@ class SubscriptedExpr(EvaluableExpression):
             def fixkey(orig_key, filter_value):
                 if non_scalar_array(orig_key):
                     newkey = orig_key.copy()
+                    newkey[~filter_value] = -1
                 else:
-                    newkey = np.empty(len(filter_value), dtype=int)
-                    newkey.fill(orig_key)
-                newkey[~filter_value] = -1
+                    # avoid crashing on: if(always_false, array[badindex], val)
+                    if np.all(~filter_value):
+                        newkey = -1
+                    else:
+                        newkey = orig_key
                 return newkey
 
             if non_scalar_array(filter_value):
