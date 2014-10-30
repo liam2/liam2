@@ -867,6 +867,7 @@ class UnaryOp(Expr):
     def as_string(self):
         return "(%s%s)" % (self.value, self.children[0].as_string())
 
+    # we cannot use firstarg_dtype because that would be self.children[0][0]
     def dtype(self, context):
         return getdtype(self.children[0], context)
 
@@ -1159,7 +1160,8 @@ class GlobalTable(object):
         yield self
 
     def __str__(self):
-        #XXX: print (a subset of) data instead?
+        # Remember this is the expression (only used via qshow, ...), so we do
+        # not want to print the data in here
         return 'Table(%s)' % ', '.join([name for name, _ in self.fields])
     __repr__ = __str__
 
