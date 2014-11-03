@@ -1444,15 +1444,13 @@ entities:
                              -1)
 
             test_o2m:
-                # new style (link methods)
-
                 # count
                 - nch: children.count()
                 - assertEqual(sum(nch), count(mother.id != -1))
 
                 - nch_012: children.count(age <= 12)
                 - assertTrue(all(nch_012 <= nch))
-                
+
                 # sum
                 - ch_012_age_sum: children.sum(age, age <= 12)
                 - ch_012_age2_sum: children.sum(age * 2, age <= 12)
@@ -1470,6 +1468,13 @@ entities:
                 - ch_maxage: children.max(age)
                 - assertTrue(all(ch_minage <= ch_maxage))
                 - assertTrue(sum(ch_minage) < sum(ch_maxage))
+
+                # test that if there is nobody satisfying the filter, it gets
+                # the missing value for that type
+                - assertEquiv(children.min(age, age > 1000), -1)
+                - all_nan: children.min(float_field1, age > 1000)
+                - assertTrue(all(all_nan != all_nan))
+
 
             test_mixed_links:
                 # multi-level
