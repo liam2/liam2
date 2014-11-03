@@ -248,7 +248,7 @@ class Aggregate(LinkExpression):
     def target_filter(self):
         return self.args[2]
 
-    def compute(self, context, link, target_expr, filter_expr=None):
+    def compute(self, context, link, target_expr, target_filter=None):
         # assert isinstance(context, EntityContext), \
         #         "one2many aggregates in groupby are currently not supported"
         assert isinstance(link, One2Many), "%s (%s)" % (link, type(link))
@@ -261,7 +261,7 @@ class Aggregate(LinkExpression):
         #noinspection PyProtectedMember
         source_ids = target_context[link._link_field]
         expr_value = expr_eval(target_expr, target_context)
-        filter_value = expr_eval(filter_expr, target_context)
+        filter_value = expr_eval(target_filter, target_context)
         if filter_value is not None:
             source_ids = source_ids[filter_value]
             # intentionally not using np.isscalar because of some corner

@@ -1448,7 +1448,6 @@ entities:
 
                 # count
                 - nch: children.count()
-                #- assertEqual(m_id, mother.id)
                 - assertEqual(sum(nch), count(mother.id != -1))
 
                 - nch_012: children.count(age <= 12)
@@ -1488,6 +1487,11 @@ entities:
                 - highedu_in_hh: household.get(persons.count(eduach == 4))
                 - loweredu_in_hh: household.get(persons.count(eduach < 4))
                 - assertEqual(highedu_in_hh + loweredu_in_hh, persons_in_hh)
+
+                # m2o + o2m with filter
+                - age_oldest_child: household.get(persons.max(age, age < 18))
+                - age_youngest_child: household.get(persons.min(age, age < 18))
+                - assertTrue(all(age_oldest_child >= age_youngest_child))
 
                 # m2o + m2o + o2m
                 - hh_per_region: household.region.get(households.count())
@@ -2366,14 +2370,14 @@ simulation:
                    test_groupby,
                    test_dump,
                    test_csv,
-                   
+
                    imported_process,
                    test_imported_process,
-                   
+
                    # alignment
                    test_align,
                    test_align_abs,
-                   
+
                    # misc
                    test_choice,
                    show_weight,
