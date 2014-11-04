@@ -19,11 +19,9 @@ from utils import PrettyTable, argspec
 #TODO: implement functions in expr to generate "Expr" nodes at the python level
 # less painful
 class Min(CompoundExpression):
-    def __init__(self, *args):
-        assert len(args) >= 2
-        CompoundExpression.__init__(self, *args)
-
     def build_expr(self, *args):
+        assert len(args) >= 2
+
         expr1, expr2 = args[:2]
         expr = Where(ComparisonOp('<', expr1, expr2), expr1, expr2)
         for arg in args[2:]:
@@ -81,16 +79,11 @@ class Min(CompoundExpression):
         #        3 where, 6 comp, 3 and = 12 op
         return expr
 
-    def __str__(self):
-        return 'min(%s)' % ', '.join(str(arg) for arg in self.args)
-
 
 class Max(CompoundExpression):
-    def __init__(self, *args):
-        assert len(args) >= 2
-        CompoundExpression.__init__(self, *args)
-
     def build_expr(self, *args):
+        assert len(args) >= 2
+
         expr1, expr2 = args[:2]
         # if(x > y, x, y)
         expr = Where(ComparisonOp('>', expr1, expr2), expr1, expr2)
@@ -99,17 +92,11 @@ class Max(CompoundExpression):
             expr = Where(ComparisonOp('>', expr, arg), expr, arg)
         return expr
 
-    def __str__(self):
-        return 'max(%s)' % ', '.join(str(arg) for arg in self.args)
-
 
 class Logit(CompoundExpression):
     def build_expr(self, expr):
         # log(x / (1 - x))
         return Log(DivisionOp('/', expr, BinaryOp('-', 1.0, expr)))
-
-    def __str__(self):
-        return 'logit(%s)' % self.args[0]
 
 
 class Logistic(CompoundExpression):
@@ -117,9 +104,6 @@ class Logistic(CompoundExpression):
         # 1 / (1 + exp(-x))
         return DivisionOp('/', 1.0,
                           BinaryOp('+', 1.0, Exp(UnaryOp('-', expr))))
-
-    def __str__(self):
-        return 'logistic(%s)' % self.args[0]
 
 
 class ZeroClip(CompoundExpression):
