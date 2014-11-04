@@ -252,10 +252,21 @@ def binop(opname, kind='binary', reversed=False):
 class Expr(object):
     # we cannot do this in __new__ (args are verified in metaclass.__call__)
     # __metaclass__ = ExplainTypeError
-    def __init__(self, value=None, children=None):
-        object.__init__(self)
-        self.value = value
-        self.children = tuple(children) if children is not None else ()
+    __children__ = ()
+
+    def __init__(self):
+        raise NotImplementedError()
+
+    @property
+    def children(self):
+        return tuple(getattr(self, attr) for attr in self.__children__)
+
+    @property
+    def value(self):
+        allnames = self.__dict__.keys()
+        children = set(self.__children__)
+        return tuple(getattr(self, attr) for attr in allnames
+                     if attr not in children)
 
     # makes sure we do not use "normal" python logical operators
     # (and, or, not)
@@ -454,22 +465,26 @@ def non_scalar_array(a):
 
 
 class SubscriptedExpr(EvaluableExpression):
+    __children__ = ('expr', 'key')
+
     def __init__(self, expr, key):
-        Expr.__init__(self, 'subscript', children=(expr, key))
+        self.expr = expr
+        self.key = key
 
     def __str__(self):
-        expr, key = self.children
+        key = self.key
         if isinstance(key, slice):
             key_str = '%s:%s' % (key.start, key.stop)
             if key.step is not None:
                 key_str += ':%s' % key.step
         else:
             key_str = str(key)
-        return '%s[%s]' % (expr, key_str)
+        return '%s[%s]' % (self.expr, key_str)
     __repr__ = __str__
 
     def evaluate(self, context):
-        expr_value, key = [expr_eval(c, context) for c in self.children]
+        expr_value = expr_eval(self.expr, context)
+        key = expr_eval(self.key, context)
         filter_expr = context.filter_expr
 
         # When there is a contextual filter, we modify the key to avoid
@@ -525,16 +540,19 @@ class SubscriptedExpr(EvaluableExpression):
 
 
 class ExprAttribute(EvaluableExpression):
+    __children__ = ('expr', 'key')
+
     def __init__(self, expr, key):
-        Expr.__init__(self, 'attr', children=(expr, key))
+        self.expr = expr
+        self.key = key
 
     def __str__(self):
-        return '%s.%s' % self.children
+        return '%s.%s' % (self.expr, self.key)
     __repr__ = __str__
 
     def evaluate(self, context):
-        expr, key = expr_eval(self.children, context)
-        return getattr(expr, key)
+        return getattr(expr_eval(self.expr, context),
+                       expr_eval(self.key, context))
 
     def __call__(self, *args, **kwargs):
         return DynamicFunctionCall(self, *args, **kwargs)
@@ -602,6 +620,8 @@ class FillArgSpecMeta(FillFuncNameMeta):
 
 
 class AbstractFunction(Expr):
+    __children__ = ('args', 'kwargs')
+
     __metaclass__ = FillFuncNameMeta
 
     funcname = None
@@ -689,19 +709,8 @@ class AbstractFunction(Expr):
 
         args = args + tuple(extra_args)
         kwargs = tuple(sorted(kwargs.items()))
-        Expr.__init__(self, 'call', children=(args, kwargs))
-
-    @property
-    def args(self):
-        return self.children[0]
-
-    @args.setter
-    def args(self, value):
-        self.children = (value, self.kwargs)
-
-    @property
-    def kwargs(self):
-        return self.children[1]
+        self.args = args
+        self.kwargs = kwargs
 
     @staticmethod
     def format_args_str(args, kwargs):
@@ -814,18 +823,6 @@ class GenericFunctionCall(FunctionExpr):
     GenericFunctionCall handles calling expressions where the function to run is
     passed as the first argument.
     """
-    @property
-    def funcname(self):
-        return str(self.children[0][0])
-
-    @property
-    def args(self):
-        return self.children[0][1:]
-
-    @property
-    def kwargs(self):
-        return self.children[1]
-
     def compute(self, context, func, *args, **kwargs):
         return func(*args, **kwargs)
 
@@ -840,7 +837,11 @@ class DynamicFunctionCall(GenericFunctionCall):
     # so we cannot (at this point) check arguments nor convert kwargs to args,
     # so we deliberately do not call FunctionExpr.__init__ which does both
     def __init__(self, *args, **kwargs):
-        Expr.__init__(self, 'call', children=(args, sorted(kwargs.items())))
+        self.args = args
+        self.kwargs = tuple(sorted(kwargs.iteritems()))
+
+    def compute(self, context, func, *args, **kwargs):
+        return func(*args, **kwargs)
 
     @property
     def original_args(self):
@@ -848,7 +849,7 @@ class DynamicFunctionCall(GenericFunctionCall):
 
     def __str__(self):
         #FIXME
-        r = super(DynamicFunctionCall, self).__str__()
+        r = GenericFunctionCall.__str__(self)
         return '**DFC** // %s' % r
 
 
@@ -857,42 +858,47 @@ class DynamicFunctionCall(GenericFunctionCall):
 #############
 
 class UnaryOp(Expr):
+    __children__ = ('expr',)
+
     def __init__(self, op, expr):
-        Expr.__init__(self, op, children=(expr,))
+        self.op = op
+        self.expr = expr
 
     def as_simple_expr(self, context):
-        child = self.children[0].as_simple_expr(context)
-        return self.__class__(self.value, child)
+        return self.__class__(self.op, self.expr.as_simple_expr(context))
 
     def as_string(self):
-        return "(%s%s)" % (self.value, self.children[0].as_string())
+        return "(%s%s)" % (self.op, self.expr.as_string())
 
     # we cannot use firstarg_dtype because that would be self.children[0][0]
     def dtype(self, context):
-        return getdtype(self.children[0], context)
+        return getdtype(self.expr, context)
 
     #FIXME: only add parentheses if necessary
     def __str__(self):
         nicerop = {'~': 'not '}
-        niceop = nicerop.get(self.value, self.value)
-        return "(%s%s)" % (niceop, self.children[0])
+        niceop = nicerop.get(self.op, self.op)
+        return "(%s%s)" % (niceop, self.expr)
     __repr__ = __str__
 
 
 class BinaryOp(Expr):
+    __children__ = ('expr1', 'expr2')
+
     def __init__(self, op, expr1, expr2):
-        Expr.__init__(self, op, children=(expr1, expr2))
+        self.op = op
+        self.expr1 = expr1
+        self.expr2 = expr2
 
     def as_simple_expr(self, context):
-        expr1, expr2 = self.children
-        expr1 = as_simple_expr(expr1, context)
-        expr2 = as_simple_expr(expr2, context)
-        return self.__class__(self.value, expr1, expr2)
+        expr1 = as_simple_expr(self.expr1, context)
+        expr2 = as_simple_expr(self.expr2, context)
+        return self.__class__(self.op, expr1, expr2)
 
     # We can't simply use __str__ because of where vs if
     def as_string(self):
         expr1, expr2 = [as_string(c) for c in self.children]
-        return "(%s %s %s)" % (expr1, self.value, expr2)
+        return "(%s %s %s)" % (expr1, self.op, expr2)
 
     dtype = coerce_child_dtypes
 
@@ -900,7 +906,7 @@ class BinaryOp(Expr):
     def __str__(self):
         expr1, expr2 = self.children
         nicerop = {'&': 'and', '|': 'or'}
-        niceop = nicerop.get(self.value, self.value)
+        niceop = nicerop.get(self.op, self.op)
         return "(%s %s %s)" % (expr1, niceop, expr2)
     __repr__ = __str__
 
@@ -918,17 +924,15 @@ class LogicalOp(BinaryOp):
 
     #TODO: move the tests to a typecheck phase and use dtype = always(bool)
     def dtype(self, context):
-        expr1, expr2 = self.children
-        self.assertbool(expr1, context)
-        self.assertbool(expr2, context)
+        self.assertbool(self.expr1, context)
+        self.assertbool(self.expr2, context)
         return bool
 
 
 class ComparisonOp(BinaryOp):
     #TODO: move the test to a typecheck phase and use dtype = always(bool)
     def dtype(self, context):
-        expr1, expr2 = self.children
-        if coerce_types(context, expr1, expr2) is None:
+        if coerce_types(context, self.expr1, self.expr2) is None:
             raise TypeError("operands to comparison operators need to be of "
                             "compatible types")
         return bool
@@ -939,24 +943,16 @@ class ComparisonOp(BinaryOp):
 #############
 
 class Variable(Expr):
+    __children__ = ()
+
     def __init__(self, entity, name, dtype=None):
         # from entities import Entity
         # assert entity is None or isinstance(entity, Entity)
-        Expr.__init__(self, (entity, name))
-
-        # this would be more efficient but we risk being inconsistent
-        # self.name = self.value
+        self.entity = entity
+        self.name = name
         self._dtype = dtype
         self.version = 0
         self.used = 0
-
-    @property
-    def entity(self):
-        return self.value[0]
-
-    @property
-    def name(self):
-        return self.value[1]
 
     def __repr__(self):
         return "%s.%s" % (self.entity, self.name)
@@ -980,21 +976,14 @@ class ShortLivedVariable(Variable):
     pass
 
 
-#TODO: document in the "migration guide" and "gotcha" that subclasses MUST
-# NOT call their parent __init__ but rather Expr.__init__
 # class GlobalVariable(Variable):
 class GlobalVariable(Expr):
+    __children__ = ()
+
     def __init__(self, tablename, name, dtype):
-        Expr.__init__(self, (tablename, name))
+        self.tablename = tablename
+        self.name = name
         self._dtype = dtype
-
-    @property
-    def tablename(self):
-        return self.value[0]
-
-    @property
-    def name(self):
-        return self.value[1]
 
     def __str__(self):
         if self.tablename == "globals":
@@ -1109,15 +1098,11 @@ class GlobalVariable(Expr):
 
 
 class SubscriptedGlobal(GlobalVariable):
-    def __init__(self, tablename, name, key, dtype):
-        Expr.__init__(self, value=(tablename, name), children=(key,))
-        self._dtype = dtype
-        # GlobalVariable.__init__(self, tablename, name, dtype)
-        # self.key = key
+    __children__ = ('key',)
 
-    @property
-    def key(self):
-        return self.children[0]
+    def __init__(self, tablename, name, key, dtype):
+        GlobalVariable.__init__(self, tablename, name, dtype)
+        self.key = key
 
     def __str__(self):
         return '%s[%s]' % (self.name, self.key)
@@ -1168,24 +1153,13 @@ class GlobalTable(object):
 
 #XXX: can we factorise this with FunctionExpr et al.?
 class MethodCall(EvaluableExpression):
+    __children__ = ('args', 'kwargs')
+
     def __init__(self, entity, name, args, kwargs):
-        Expr.__init__(self, (entity, name), children=(args, kwargs))
-
-    @property
-    def entity(self):
-        return self.value[0]
-
-    @property
-    def name(self):
-        return self.value[1]
-
-    @property
-    def args(self):
-        return self.children[0]
-
-    @property
-    def kwargs(self):
-        return self.children[1]
+        self.entity = entity
+        self.name = name
+        self.args = args
+        self.kwargs = kwargs
 
     def evaluate(self, context):
         from process import Assignment, Function
@@ -1207,18 +1181,6 @@ class MethodCall(EvaluableExpression):
 
 
 class VariableMethodHybrid(Variable):
-    def __init__(self, entity, name, dtype=None):
-        Expr.__init__(self, (entity, name))
-        self._dtype = dtype
-
-    @property
-    def entity(self):
-        return self.value[0]
-
-    @property
-    def name(self):
-        return self.value[1]
-
     def __call__(self, *args, **kwargs):
         return MethodCall(self.entity, self.name, args, kwargs)
 
@@ -1258,4 +1220,8 @@ class MethodSymbol(object):
 
 class NotHashable(Expr):
     __hash__ = None
+
+    def __init__(self):
+        pass
+
 not_hashable = NotHashable()
