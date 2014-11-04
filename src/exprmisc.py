@@ -390,6 +390,7 @@ class Dump(TableExpression):
             numrows = 1
 
         # expand scalar columns to full columns in memory
+        #TODO: handle or explicitly reject columns wh ndim > 1
         for idx, col in enumerate(columns):
             dtype = None
             if not isinstance(col, np.ndarray):
