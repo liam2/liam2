@@ -163,11 +163,6 @@ def firstarg_dtype(self, context):
     return getdtype(self.args[0], context)
 
 
-def coerce_child_dtypes(expr, context):
-    expr1, expr2 = expr.children
-    return coerce_types(context, expr1, expr2)
-
-
 def ispresent(values):
     dt = values.dtype
     if np.issubdtype(dt, float):
@@ -778,7 +773,7 @@ class FunctionExpr(EvaluableExpression, AbstractFunction):
             no_eval = set(no_eval)
 
             argspec = self.argspec
-            args, kwargs = self.children
+            args, kwargs = self.args, self.kwargs
             varargs = args[len(argspec.args):]
 
             # evaluate positional args
@@ -806,7 +801,7 @@ class FunctionExpr(EvaluableExpression, AbstractFunction):
                       if name not in no_eval else (name, arg)
                       for name, arg in kwargs]
         else:
-            args, kwargs = expr_eval(self.children, context)
+            args, kwargs = expr_eval((self.args, self.kwargs), context)
 
         return args, dict(kwargs)
 
@@ -897,17 +892,17 @@ class BinaryOp(Expr):
 
     # We can't simply use __str__ because of where vs if
     def as_string(self):
-        expr1, expr2 = [as_string(c) for c in self.children]
+        expr1, expr2 = as_string(self.expr1), as_string(self.expr2)
         return "(%s %s %s)" % (expr1, self.op, expr2)
 
-    dtype = coerce_child_dtypes
+    def dtype(self, context):
+        return coerce_types(context, self.expr1, self.expr2)
 
     #FIXME: only add parentheses if necessary
     def __str__(self):
-        expr1, expr2 = self.children
         nicerop = {'&': 'and', '|': 'or'}
         niceop = nicerop.get(self.op, self.op)
-        return "(%s %s %s)" % (expr1, niceop, expr2)
+        return "(%s %s %s)" % (self.expr1, niceop, self.expr2)
     __repr__ = __str__
 
 

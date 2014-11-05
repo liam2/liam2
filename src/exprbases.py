@@ -256,11 +256,11 @@ class NumexprFunction(AbstractFunction):
     argspec = None
 
     def as_simple_expr(self, context):
-        args, kwargs = as_simple_expr(self.children, context)
+        args, kwargs = as_simple_expr((self.args, self.kwargs), context)
         return self.__class__(*args, **dict(kwargs))
 
     def as_string(self):
-        args, kwargs = as_string(self.children)
+        args, kwargs = as_string((self.args, self.kwargs))
         return '%s(%s)' % (self.funcname, self.format_args_str(args, kwargs))
 
 

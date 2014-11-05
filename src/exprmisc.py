@@ -430,7 +430,8 @@ class Where(NumexprFunction):
         return Where(cond, iftrue, iffalse)
 
     def as_string(self):
-        return 'where(%s)' % self.format_args_str(*as_string(self.children))
+        args = as_string((self.cond, self.iftrue, self.iffalse))
+        return 'where(%s)' % self.format_args_str(args, [])
 
     def dtype(self, context):
         assert getdtype(self.cond, context) == bool
