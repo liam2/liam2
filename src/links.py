@@ -145,13 +145,12 @@ class LinkExpression(FunctionExpr):
     def target_expr(self):
         return self.args[1]
 
-    def __str__(self):
+    def __repr__(self):
         args, kwargs = self.original_args
         link, args = args[0], args[1:]
         #noinspection PyProtectedMember
         return '%s.%s(%s)' % (link._name, self.funcname,
                               self.args_str(args, kwargs))
-    __repr__ = __str__
 
 
 class LinkGet(LinkExpression):
@@ -232,13 +231,12 @@ class LinkGet(LinkExpression):
                             'values': result_values, 'mi': missing_int,
                             'mv': missing_value})
 
-    def __str__(self):
+    def __repr__(self):
         if (self.missing_value is None and
                 isinstance(self.target_expr, Variable)):
             return '%s.%s' % (self.link, self.target_expr)
         else:
             return super(LinkGet, self).__str__()
-    __repr__ = __str__
 
 
 class Aggregate(LinkExpression):

@@ -466,7 +466,7 @@ class SubscriptedExpr(EvaluableExpression):
         self.expr = expr
         self.key = key
 
-    def __str__(self):
+    def __repr__(self):
         key = self.key
         if isinstance(key, slice):
             key_str = '%s:%s' % (key.start, key.stop)
@@ -475,7 +475,6 @@ class SubscriptedExpr(EvaluableExpression):
         else:
             key_str = str(key)
         return '%s[%s]' % (self.expr, key_str)
-    __repr__ = __str__
 
     def evaluate(self, context):
         expr_value = expr_eval(self.expr, context)
@@ -541,9 +540,8 @@ class ExprAttribute(EvaluableExpression):
         self.expr = expr
         self.key = key
 
-    def __str__(self):
+    def __repr__(self):
         return '%s.%s' % (self.expr, self.key)
-    __repr__ = __str__
 
     def evaluate(self, context):
         return getattr(expr_eval(self.expr, context),
@@ -870,11 +868,10 @@ class UnaryOp(Expr):
         return getdtype(self.expr, context)
 
     #FIXME: only add parentheses if necessary
-    def __str__(self):
+    def __repr__(self):
         nicerop = {'~': 'not '}
         niceop = nicerop.get(self.op, self.op)
         return "(%s%s)" % (niceop, self.expr)
-    __repr__ = __str__
 
 
 class BinaryOp(Expr):
@@ -899,11 +896,10 @@ class BinaryOp(Expr):
         return coerce_types(context, self.expr1, self.expr2)
 
     #FIXME: only add parentheses if necessary
-    def __str__(self):
+    def __repr__(self):
         nicerop = {'&': 'and', '|': 'or'}
         niceop = nicerop.get(self.op, self.op)
         return "(%s %s %s)" % (self.expr1, niceop, self.expr2)
-    __repr__ = __str__
 
 
 class DivisionOp(BinaryOp):
@@ -980,12 +976,11 @@ class GlobalVariable(Expr):
         self.name = name
         self._dtype = dtype
 
-    def __str__(self):
+    def __repr__(self):
         if self.tablename == "globals":
             return self.name
         else:
             return "%s.%s" % (self.tablename, self.name)
-    __repr__ = __str__
 
     #XXX: inherit from EvaluableExpression?
     def as_simple_expr(self, context):
@@ -1099,9 +1094,8 @@ class SubscriptedGlobal(GlobalVariable):
         GlobalVariable.__init__(self, tablename, name, dtype)
         self.key = key
 
-    def __str__(self):
+    def __repr__(self):
         return '%s[%s]' % (self.name, self.key)
-    __repr__ = __str__
 
     def _eval_key(self, context):
         return expr_eval(self.key, context)
@@ -1139,11 +1133,10 @@ class GlobalTable(object):
     def traverse(self, context):
         yield self
 
-    def __str__(self):
+    def __repr__(self):
         # Remember this is the expression (only used via qshow, ...), so we do
         # not want to print the data in here
         return 'Table(%s)' % ', '.join([name for name, _ in self.fields])
-    __repr__ = __str__
 
 
 #XXX: can we factorise this with FunctionExpr et al.?
@@ -1168,11 +1161,10 @@ class MethodCall(EvaluableExpression):
         return method.run_guarded(context, *args, **kwargs)
 
     #TODO: use AbstractFunction?
-    def __str__(self):
+    def __repr__(self):
         args = [repr(a) for a in self.args]
         kwargs = ['%s=%r' % (k, v) for k, v in self.kwargs.iteritems()]
         return '%s(%s)' % (self.name, ', '.join(args + kwargs))
-    __repr__ = __str__
 
 
 class VariableMethodHybrid(Variable):

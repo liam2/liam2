@@ -742,14 +742,13 @@ class PrettyTable(object):
                          for value in row]
             yield formatted
 
-    def __str__(self):
+    def __repr__(self):
         missing = self.missing
         if missing is None:
             missing = 'nan'
         else:
             missing = str(missing)
         return '\n' + table2str(self.data, missing) + '\n'
-    __repr__ = __str__
 
 
 # copied from itertools recipes

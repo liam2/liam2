@@ -187,10 +187,8 @@ class Expr(object):
     def as_string(self, indent):
         raise NotImplementedError()
 
-    def __str__(self):
+    def __repr__(self):
         return self.as_string('')
-
-    __repr__ = __str__
 
     def flatten(self):
         """
@@ -952,9 +950,8 @@ class Link(object):
 
     __getattr__ = get
 
-    def __str__(self):
+    def __repr__(self):
         return self._name
-    __repr__ = __str__
 
 functions = {'lag': makefunc('lag', 'coerce'),
              'countlink': makefunc('countlink', int), 
