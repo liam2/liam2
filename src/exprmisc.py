@@ -307,7 +307,11 @@ class Trunc(FunctionExpression):
     func_name = 'trunc'
 
     def evaluate(self, context):
-        return expr_eval(self.expr, context).astype(int)
+        expr_value = expr_eval(self.expr, context)
+        if isinstance(expr_value, np.ndarray):
+            return expr_value.astype(int)
+        else:
+            return int(expr_value)
 
     def dtype(self, context):
         assert getdtype(self.expr, context) == float

@@ -353,6 +353,8 @@ class Expr(object):
         s = simple_expr.as_string()
         try:
             res = evaluate(s, context, {}, truediv='auto')
+            if isinstance(res, np.ndarray) and not res.shape:
+                res = np.asscalar(res)
             if labels is not None:
                 # This is a hack which relies on the fact that currently
                 # all the expression we evaluate through numexpr preserve
