@@ -863,7 +863,6 @@ class UnaryOp(Expr):
     def as_string(self):
         return "(%s%s)" % (self.op, self.expr.as_string())
 
-    # we cannot use firstarg_dtype because that would be self.children[0][0]
     def dtype(self, context):
         return getdtype(self.expr, context)
 
