@@ -1461,9 +1461,6 @@ entities:
                         m_id = id)
 
             test_compound:
-                - show(min(age, 10))
-                - show(max(min(age, 10)))
-
                 - assertEqual(max(min(age, 10)), 10)
                 - assertEqual(min(max(age, 20)), 20)
 
