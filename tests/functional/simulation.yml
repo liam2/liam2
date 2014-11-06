@@ -1459,6 +1459,9 @@ entities:
                 - clone(filter = age == 95,
                         f_id = id,
                         m_id = id)
+                - isclone: f_id == m_id and f_id != -1
+                - assertTrue(all(age == 95, filter=isclone))
+                - remove(isclone)
 
             test_compound:
                 - assertEqual(max(min(age, 10)), 10)
