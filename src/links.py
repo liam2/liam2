@@ -149,8 +149,7 @@ class LinkExpression(FunctionExpr):
         args, kwargs = self.original_args
         link, args = args[0], args[1:]
         #noinspection PyProtectedMember
-        return '%s.%s(%s)' % (link._name, self.funcname,
-                              self.args_str(args, kwargs))
+        return self.format(link._name + "." + self.funcname, args, kwargs)
 
 
 class LinkGet(LinkExpression):

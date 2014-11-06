@@ -715,13 +715,14 @@ class AbstractFunction(Expr):
         return ', '.join(list(args) + ['%s=%s' % (k, v) for k, v in kwargs])
 
     @staticmethod
-    def args_str(args, kwargs):
+    def format(funcname, args, kwargs):
         args = [repr(a) for a in args]
         kwargs = [(str(k), repr(v)) for k, v in kwargs]
-        return AbstractFunction.format_args_str(args, kwargs)
+        return '%s(%s)' % (funcname,
+                           AbstractFunction.format_args_str(args, kwargs))
 
     def __repr__(self):
-        return '%s(%s)' % (self.funcname, self.args_str(*self.original_args))
+        return self.format(self.funcname, *self.original_args)
 
 
 # this needs to stay in the expr module because of ExprAttribute, which uses
@@ -1158,11 +1159,8 @@ class MethodCall(EvaluableExpression):
                       for k, v in self.kwargs.iteritems())
         return method.run_guarded(context, *args, **kwargs)
 
-    #TODO: use AbstractFunction?
     def __repr__(self):
-        args = [repr(a) for a in self.args]
-        kwargs = ['%s=%r' % (k, v) for k, v in self.kwargs.iteritems()]
-        return '%s(%s)' % (self.name, ', '.join(args + kwargs))
+        return AbstractFunction.format(self.name, self.args, self.kwargs)
 
 
 class VariableMethodHybrid(Variable):
