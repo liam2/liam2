@@ -1500,6 +1500,9 @@ entities:
 
                 - assertEqual(lag(age, 2), lag(lag(age)))
 
+                - prev_newborns: lag(count(age == 0))
+                - assertEqual(prev_newborns, count(age == 1))
+
                 # this tests whether id2rownum works correctly for lags of more
                 # than one period
                 - prev_p_age: lag(partner.age, 2)
