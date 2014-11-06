@@ -1503,6 +1503,9 @@ entities:
 
                 - assertEqual(lag(age, 2), lag(lag(age)))
 
+                - prev_male: count(lag(MALE))
+                - assertEqual(prev_male, count(MALE) - count(age == 0 and MALE))
+
                 - prev_newborns: lag(count(age == 0))
                 - assertEqual(prev_newborns, count(age == 1))
 
