@@ -552,6 +552,8 @@ class LabeledArray(np.ndarray):
             return str(np.asscalar(self))
         else:
             return '\n' + table2str(self.as_table(), 'nan') + '\n'
+    # explicitly defining __str__ is needed here because it exists on ndarray
+    __str__ = __repr__
 
 #    def __array_prepare__(self, arr, context=None):
 #        print 'In __array_prepare__:'
