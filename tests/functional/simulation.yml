@@ -2149,8 +2149,6 @@ entities:
                 - assertEqual(by_age.dim_names, ['age'])
                 - men_prop_by_age: men_by_age / by_age
                 - assertEqual(men_prop_by_age.dim_names, ['age'])
-                - assertEqual(men_prop_by_age,
-                              groupby(age, expr=count(gender) / count()))
 
                 # this does not trigger the same path than men_prop_by_age
                 # (even though both go through ne), but this one creates hidden
@@ -2158,6 +2156,19 @@ entities:
                 # while the other does not
                 - men_prop2: groupby(age, expr=count(gender)) / groupby(age)
                 - assertEqual(men_prop2.dim_names, ['age'])
+
+                # Yet another way to compute it. The division in:
+                # count(gender) / count() is done by numexpr and since those are
+                # scalars, it returns 0d arrays, so the result used to be
+                # (before we special-cased this) an array of 0d arrays, which
+                # caused problems when reused in an expression evaluated by
+                # numexpr
+                - men_prop3: groupby(age, expr=count(gender) / count())
+
+                - assertEqual(men_prop_by_age, men_prop2)
+                - assertEqual(men_prop_by_age, men_prop3)
+                - men_prop_in_expr: men_prop2 + men_prop3
+                - assertEqual(men_prop_in_expr, men_prop2 * 2)
 
                 - min_count_by_gender: min(by_agegroup_gender, axis=0)
                 - qshow(min_count_by_gender)
