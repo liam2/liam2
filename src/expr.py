@@ -1023,7 +1023,6 @@ class GlobalVariable(Expr):
         else:
             translated_key = key
         if self.name not in globals_table.dtype.fields:
-            print(self.name)
             raise Exception("Unknown global: %s" % self.name)
         column = globals_table[self.name]
         numrows = len(column)
