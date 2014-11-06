@@ -130,24 +130,7 @@ class While(Process):
             yield e
 
 
-#TODO: I think I can kill this class by moving the methods to Function
-class AbstractProcessGroup(Process):
-    def backup_and_purge_locals(self):
-        # backup and purge local variables
-        backup = {}
-        for name in self.entity.local_var_names:
-            backup[name] = self.entity.temp_variables.pop(name)
-        return backup
-
-    def purge_and_restore_locals(self, backup):
-        # purge the local from the function we just ran
-        self.entity.purge_locals()
-        # restore local variables for our caller
-        for k, v in backup.iteritems():
-            self.entity.temp_variables[k] = v
-
-
-class ProcessGroup(AbstractProcessGroup):
+class ProcessGroup(Process):
     def __init__(self, name, entity, subprocesses, purge=True):
         super(ProcessGroup, self).__init__(name, entity)
         self.subprocesses = subprocesses
@@ -299,7 +282,7 @@ class ProcessGroup(AbstractProcessGroup):
                 versions[target] += 1
 
 
-class Function(AbstractProcessGroup):
+class Function(Process):
     """this class implements user-defined functions"""
 
     def __init__(self, name, entity, argnames, code=None, result=None):
@@ -328,7 +311,6 @@ class Function(AbstractProcessGroup):
         backup = self.backup_and_purge_locals()
 
         if len(args) != len(self.argnames):
-            print(self.argnames)
             raise TypeError("takes exactly %d arguments (%d given)" %
                             (len(self.argnames), len(args)))
 
@@ -356,3 +338,17 @@ class Function(AbstractProcessGroup):
         #XXX: not sure what to put here as I don't remember what it is used for
         for e in self.code.expressions():
             yield e
+
+    def backup_and_purge_locals(self):
+        # backup and purge local variables
+        backup = {}
+        for name in self.entity.local_var_names:
+            backup[name] = self.entity.temp_variables.pop(name)
+        return backup
+
+    def purge_and_restore_locals(self, backup):
+        # purge the local from the function we just ran
+        self.entity.purge_locals()
+        # restore local variables for our caller
+        for k, v in backup.iteritems():
+            self.entity.temp_variables[k] = v
