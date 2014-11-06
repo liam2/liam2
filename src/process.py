@@ -36,7 +36,7 @@ class Process(object):
     def expressions(self):
         raise NotImplementedError()
 
-    def __str__(self):
+    def __repr__(self):
         return "<process '%s'>" % self.name
 
 

@@ -547,7 +547,7 @@ class LabeledArray(np.ndarray):
             result.append([''] * (self.ndim - 2) + ['total'] + self.col_totals)
         return result
 
-    def __str__(self):
+    def __repr__(self):
         if not self.ndim:
             return str(np.asscalar(self))
         else:

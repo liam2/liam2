@@ -236,7 +236,7 @@ class LinkGet(LinkExpression):
                 isinstance(self.target_expr, Variable)):
             return '%s.%s' % (self.link, self.target_expr)
         else:
-            return super(LinkGet, self).__str__()
+            return super(LinkGet, self).__repr__()
 
 
 class Aggregate(LinkExpression):

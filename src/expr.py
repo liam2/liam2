@@ -840,9 +840,9 @@ class DynamicFunctionCall(GenericFunctionCall):
     def original_args(self):
         return self.args, self.kwargs
 
-    def __str__(self):
+    def __repr__(self):
         #FIXME
-        r = GenericFunctionCall.__str__(self)
+        r = GenericFunctionCall.__repr__(self)
         return '**DFC** // %s' % r
 
 
