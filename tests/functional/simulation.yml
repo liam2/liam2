@@ -1522,6 +1522,8 @@ entities:
 #                              if(period > 2002,
 #                                 if(age >= 2, age - 2, -1),
 #                                 -1))
+                #FIXME: this fails (see issue #146)
+                #- g: groupby(agegroup, gender, expr=count(lag(TERTIARY_EDU)))
 
             test_value_for_period:
                 # period is a constant
