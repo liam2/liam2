@@ -62,20 +62,19 @@ class CSV(FunctionExpr, FileProducer):
         file_path = os.path.join(config.output_directory, fname)
         with open(file_path, mode + 'b') as f:
             writer = csv.writer(f)
-            for arg in self.args:
-                data = expr_eval(arg, context)
+            for arg in args:
                 # make sure the result is at least two-dimensional
-                if isinstance(data, LabeledArray):
-                    data = data.as_table()
+                if isinstance(arg, LabeledArray):
+                    arg = arg.as_table()
                 elif isinstance(arg, PrettyTable):
                     pass
                 else:
-                    dims = ndim(data)
+                    dims = ndim(arg)
                     if dims == 0:
-                        data = [[data]]
+                        arg = [[arg]]
                     if dims == 1:
-                        data = [data]
-                writer.writerows(data)
+                        arg = [arg]
+                writer.writerows(arg)
 
 
 class RemoveIndividuals(FunctionExpr):
