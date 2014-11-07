@@ -84,14 +84,7 @@ class RankingMatching(ScoreMatching):
         set 1 is ranked by decreasing orderby1
         set 2 is ranked by decreasing orderby2
         Then individuals in the nth position in each list are matched together.
-        The reverse options allow, if True, to sort by increasing orderby
     """
-    def __init__(self, set1filter, set2filter, orderby1, orderby2,
-                 reverse1=False, reverse2=False):
-        ScoreMatching.__init__(self, set1filter, set2filter, orderby1, orderby2)
-        self.reverse1 = reverse1
-        self.reverse2 = reverse2
-
     def _match(self, set1tomatch, set2tomatch, set1, set2, context):
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
@@ -111,10 +104,7 @@ class RankingMatching(ScoreMatching):
 
         orderby1 = expr_eval(self.orderby1_expr, context)
         orderby2 = expr_eval(self.orderby2_expr, context)
-        if self.reverse1:
-            orderby1 = - orderby1  # reverse sorting
-        if self.reverse2:
-            orderby2 = - orderby2  # reverse sorting
+
         sorted_set1_indices = orderby1[set1filter].argsort()[::-1]
         sorted_set2_indices = orderby2[set2filter].argsort()[::-1]
 
@@ -267,7 +257,8 @@ class OptimizedSequentialMatching(SequentialMatching):
         set2len = set2filter.sum()
         print("matching with %d/%d individuals" % (set1len, set2len))
         
-        used_variables1, used_variables2 = self._get_used_variables_match(context)
+        used_variables1, used_variables2 = \
+            self._get_used_variables_match(context)
         order = self.orderby1_expr
         if not isinstance(order, str):
             var_match = order.collect_variables(context)

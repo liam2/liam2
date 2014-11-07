@@ -1119,13 +1119,8 @@ Then individuals in the nth position in each list are matched together.
 *generic setup* ::
 
     rank_matching(set1filter=boolean_expr,
-             set2filter=boolean_expr,
-             orderby1=expression, orberby2=expression,
-             reverse1=boolean, reverse2=boolean)
-
-The reverse options allow, if True, to sort by ascending score. Default
-values are False.
-        
+                  set2filter=boolean_expr,
+                  orderby1=expression, orberby2=expression)
 
 .. index:: lifecycle functions
 
