@@ -73,17 +73,6 @@ class ScoreMatching(EvaluableExpression):
             set2filter = expr_eval(self.set2filter, context)
         return set1filter, set2filter
 
-    def _get_used_variables_order(self, context):
-        orderby1_expr = self.orderby1_expr
-        used_variables1 = orderby1_expr.collect_variables(context)
-        used_variables1.add('id')
-        if self.orderby2_expr is None:
-            return used_variables1
-        orderby2_expr = self.orderby2_expr
-        used_variables2 = orderby2_expr.collect_variables(context)
-        used_variables2.add('id')
-        return used_variables1, used_variables2
-
     #noinspection PyUnusedLocal
     def dtype(self, context):
         return int
@@ -103,19 +92,6 @@ class RankingMatching(ScoreMatching):
         self.reverse1 = reverse1
         self.reverse2 = reverse2
 
-    def _get_sorted_indices(self, set1filter, set2filter, context):
-        orderby1_expr = self.orderby1_expr
-        orderby2_expr = self.orderby2_expr
-        orderby1 = expr_eval(orderby1_expr, context)
-        orderby2 = expr_eval(orderby2_expr, context)
-        if self.reverse1:
-            orderby1 = - orderby1  # reverse sorting
-        if self.reverse2:
-            orderby2 = - orderby2  # reverse sorting
-        sorted_set1_indices = orderby1[set1filter].argsort()[::-1]
-        sorted_set2_indices = orderby2[set2filter].argsort()[::-1]
-        return sorted_set1_indices, sorted_set2_indices
-
     def _match(self, set1tomatch, set2tomatch, set1, set2, context):
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
@@ -132,13 +108,24 @@ class RankingMatching(ScoreMatching):
         set1len = set1filter.sum()
         set2len = set2filter.sum()
         tomatch = min(set1len, set2len)
-        
-        sorted_set1_indices, sorted_set2_indices = \
-                self._get_sorted_indices(set1filter, set2filter, context)
+
+        orderby1 = expr_eval(self.orderby1_expr, context)
+        orderby2 = expr_eval(self.orderby2_expr, context)
+        if self.reverse1:
+            orderby1 = - orderby1  # reverse sorting
+        if self.reverse2:
+            orderby2 = - orderby2  # reverse sorting
+        sorted_set1_indices = orderby1[set1filter].argsort()[::-1]
+        sorted_set2_indices = orderby2[set2filter].argsort()[::-1]
+
         set1tomatch = sorted_set1_indices[:tomatch]
         set2tomatch = sorted_set2_indices[:tomatch]
 
-        used_variables1, used_variables2 = self._get_used_variables_order(context)
+        used_variables1 = self.orderby1_expr.collect_variables(context)
+        used_variables1.add('id')
+        used_variables2 = self.orderby2_expr.collect_variables(context)
+        used_variables2.add('id')
+
         #TODO: we should detect whether or not we are using non-simple
         # expressions (EvaluableExpression children) and pre-evaluate them,
         # because otherwise they are re-evaluated on all of set2 for each
@@ -181,34 +168,14 @@ class SequentialMatching(ScoreMatching):
         self.pool_size = pool_size
 
     def _get_used_variables_match(self, context):
-        score_expr = self.score_expr
-        used_variables = score_expr.collect_variables(context)
+        used_variables = self.score_expr.collect_variables(context)
         used_variables1 = [v for v in used_variables
-                                    if not v.startswith('__other_')]
+                           if not v.startswith('__other_')]
         used_variables2 = [v[8:] for v in used_variables
-                                    if v.startswith('__other_')]
+                           if v.startswith('__other_')]
         used_variables1 += ['id']
         used_variables2 += ['id']
         return used_variables1, used_variables2
-
-    def _get_sorted_indices(self, set1filter, set2filter, context):
-        orderby1_expr = self.orderby1_expr
-        if not isinstance(orderby1_expr, str):
-            order = expr_eval(orderby1_expr, context)
-        else:
-            order = np.zeros(context_length(context), dtype=int)
-            used_variables1, used_variables2 = \
-                self._get_used_variables_match(context)
-            set1 = context_subset(context, set1filter, used_variables1)
-            set2 = context_subset(context, set2filter, used_variables2)
-
-            if orderby1_expr == 'EDtM':
-                for var in used_variables1:
-                    col = set1[var]
-                    order[set1filter] += (col - col.mean()) ** 2 / col.var()
-
-        sorted_set1_indices = order[set1filter].argsort()[::-1]
-        return sorted_set1_indices, None
 
     def _match(self, set1tomatch, set1, set2,
                used_variables1, used_variables2, context):
@@ -257,17 +224,28 @@ class SequentialMatching(ScoreMatching):
         set1filter, set2filter = self._get_filters(context)
         set1len = set1filter.sum()
         set2len = set2filter.sum()
-        tomatch = min(set1len, set2len)
-
-        sorted_set1_indices, _ = \
-            self._get_sorted_indices(set1filter, set2filter, context)
-        set1tomatch = sorted_set1_indices[:tomatch]
-        print("matching with %d/%d individuals" % (set1len, set2len))
 
         used_variables1, used_variables2 = \
             self._get_used_variables_match(context)
         set1 = context_subset(context, set1filter, used_variables1)
         set2 = context_subset(context, set2filter, used_variables2)
+
+        orderby1_expr = self.orderby1_expr
+        if isinstance(orderby1_expr, str):
+            assert orderby1_expr == 'EDtM'
+            order = np.zeros(context_length(context), dtype=int)
+            for var in used_variables1:
+                col = set1[var]
+                order[set1filter] += (col - col.mean()) ** 2 / col.var()
+        else:
+            order = expr_eval(orderby1_expr, context)
+
+        sorted_set1_indices = order[set1filter].argsort()[::-1]
+
+        tomatch = min(set1len, set2len)
+        set1tomatch = sorted_set1_indices[:tomatch]
+
+        print("matching with %d/%d individuals" % (set1len, set2len))
         return self._match(set1tomatch, set1, set2,
                            used_variables1, used_variables2, context)
 
