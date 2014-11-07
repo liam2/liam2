@@ -1042,17 +1042,13 @@ and the fields of its possible partners can be used by prefixing them by
 
 The parameter *orderby* to set the order in which the individuals of the first set
 are matched can be an expression or a string giving the name of a method to
-generate automaticaly an order. The general idea in that case is to match first 
+generate automatically an order. The general idea in that case is to match first
 "unusual individuals". Two options are possible : 
-- 'EDtM' : 'Euclidian Distance to the Mean'
-Using only variables relative to set 1 in the score expression, the euclidian
+- 'EDtM' : 'Euclidean Distance to the Mean'
+Using only variables relative to set 1 in the score expression, the euclidean
 distance to the center of set 1 is used as an order. Note that during the 
 computation all value are divide by their variance in order not to favour
-variables with higest numerical values. 
-- 'SDtOM' : 'Score Distance to the Other Mean'
-The "unusual individuals" are relative to an implicit distance which is defined
-by the score. That method defines the difficulty to match someone in set 1 by
-how far he or she is from the center of set2 according to the score. 
+variables with highest numerical values.
 
 An optional parameter *pool_size* can set an slightly different process of
 matching. If a positive integer is entered, the best match for an individual
@@ -1065,14 +1061,14 @@ all set 2.
 The matching function returns the identification number of the matched
 individual for individuals which were matched, -1 for others.
 
-If the two sets are of different sizes, the excedent of the largest set is
+If the two sets are of different sizes, the surplus of the largest set is
 simply ignored.
 
 *generic setup* ::
 
     matching(set1filter=boolean_expr,
              set2filter=boolean_expr,
-             orderby=difficult_match,  # expression or 'EDtM' or 'SDtOM'
+             orderby=difficult_match,  # expression or 'EDtM'
              score=coef1 * field1 + coef2 * other.field2 + ...,
              pool_size=int)            # or None by default.
 
