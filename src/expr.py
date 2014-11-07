@@ -1139,6 +1139,12 @@ class GlobalTable(object):
 
 
 #XXX: can we factorise this with FunctionExpr et al.?
+# for that we need argspec but we currently cannot get it when
+# MethodCall.__init__ is called (the methods are potentially not created yet)
+# so we would have to either: do that in two passes (first collect method
+# signatures then parse method bodies) OR move AbstractFunction's function call
+# arguments normalization functionality to an external function and call it
+# within MethodCall.evaluate
 class MethodCall(EvaluableExpression):
     __children__ = ('args', 'kwargs')
 
