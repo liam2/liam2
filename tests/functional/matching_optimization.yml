@@ -89,6 +89,9 @@ simulation:
         method: void
         file: none
 
+    logging:
+        level: processes
+
     output:
         file: generated.h5
 

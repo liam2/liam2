@@ -404,8 +404,8 @@ class OptimizedSequentialMatching(SequentialMatching):
         return result
 
 
-functions = {'origin_matching': SequentialMatching,
+functions = {'matching': SequentialMatching,
              'rank_matching': RankingMatching,
-             'matching': OptimizedSequentialMatching
+             'optimized_matching': OptimizedSequentialMatching
             
 }
