@@ -3,52 +3,48 @@ from __future__ import print_function
 import numpy as np
 
 from utils import safe_put
-from expr import expr_eval, getdtype, hasvalue
-from exprbases import FunctionExpression
+from expr import (expr_eval, getdtype, hasvalue, FunctionExpr, always,\
+                  firstarg_dtype)
 
 
-class ValueForPeriod(FunctionExpression):
-    func_name = 'value_for_period'
-
-    def __init__(self, expr, period, missing='auto'):
-        FunctionExpression.__init__(self, expr)
-        self.period = period
-        self.missing = missing
-
-    def evaluate(self, context):
-        entity = context['__entity__']
-        period = expr_eval(self.period, context)
-        return entity.value_for_period(self.expr, period, context,
-                                       self.missing)
+class TimeFunction(FunctionExpr):
+    no_eval = ('expr',)
 
 
-class Lag(FunctionExpression):
-    func_name = 'lag'
+class ValueForPeriod(TimeFunction):
+    funcname = 'value_for_period'
 
-    def __init__(self, expr, num_periods=1, missing='auto'):
-        FunctionExpression.__init__(self, expr)
-        self.num_periods = num_periods
-        self.missing = missing
+    def compute(self, context, expr, period, missing='auto'):
+        entity = context.entity
+        return entity.value_for_period(expr, period, context, missing)
 
-    def evaluate(self, context):
-        entity = context['__entity__']
-        period = context['period'] - expr_eval(self.num_periods, context)
-        return entity.value_for_period(self.expr, period, context,
-                                       self.missing)
-
-    def dtype(self, context):
-        return getdtype(self.expr, context)
+    dtype = firstarg_dtype
 
 
-class Duration(FunctionExpression):
-    func_name = 'duration'
+#TODO: this should be a compound expression:
+# Lag(expr, numperiods, missing)
+# ->
+# ValueForPeriod(expr, Subtract(Variable('period'), numperiods), missing)
+class Lag(TimeFunction):
+    funcname = 'lag'
 
-    def evaluate(self, context):
-        entity = context['__entity__']
+    def compute(self, context, expr, num_periods=1, missing='auto'):
+        entity = context.entity
+        period = context.period - num_periods
+        return entity.value_for_period(expr, period, context, missing)
+
+    dtype = firstarg_dtype
+
+
+class Duration(TimeFunction):
+    funcname = 'duration'
+    no_eval = ('bool_expr',)
+
+    def compute(self, context, bool_expr):
+        entity = context.entity
 
         baseperiod = entity.base_period
-        period = context['period'] - 1
-        bool_expr = self.expr
+        period = context.period - 1
         value = expr_eval(bool_expr, context)
 
         # using a full int so that the "store" type check works
@@ -77,26 +73,26 @@ class Duration(FunctionExpression):
             period -= 1
         return result
 
+    #TODO: move the check to __init__ and use dtype = always(int)
     def dtype(self, context):
-        assert getdtype(self.expr, context) == bool
+        assert getdtype(self.args[0], context) == bool
         return int
 
 
-class TimeAverage(FunctionExpression):
-    func_name = 'tavg'
+class TimeAverage(TimeFunction):
+    funcname = 'tavg'
 
-    def evaluate(self, context):
-        entity = context['__entity__']
+    def compute(self, context, expr):
+        entity = context.entity
 
         baseperiod = entity.base_period
-        period = context['period'] - 1
-        expr = self.expr
+        period = context.period - 1
 
         res_size = len(entity.array)
 
         num_values = np.zeros(res_size, dtype=np.int)
         last_period_wh_value = np.empty(res_size, dtype=np.int)
-        last_period_wh_value.fill(context['period'])  # current period
+        last_period_wh_value.fill(context.period)  # current period
 
         sum_values = np.zeros(res_size, dtype=np.float)
         id_to_rownum = context.id_to_rownum
@@ -125,16 +121,17 @@ class TimeAverage(FunctionExpression):
             period -= 1
         return sum_values / num_values
 
+    dtype = always(float)
 
-class TimeSum(FunctionExpression):
-    func_name = 'tsum'
 
-    def evaluate(self, context):
-        entity = context['__entity__']
+class TimeSum(TimeFunction):
+    funcname = 'tsum'
+
+    def compute(self, context, expr):
+        entity = context.entity
 
         baseperiod = entity.base_period
-        period = context['period'] - 1
-        expr = self.expr
+        period = context.period - 1
 
         typemap = {bool: int, int: int, float: float}
         res_type = typemap[getdtype(expr, context)]
@@ -162,10 +159,12 @@ class TimeSum(FunctionExpression):
             period -= 1
         return sum_values
 
+    dtype = firstarg_dtype
+
 functions = {
     'value_for_period': ValueForPeriod,
     'lag': Lag,
     'duration': Duration,
     'tavg': TimeAverage,
-    'tsum': TimeSum,
+    'tsum': TimeSum
 }

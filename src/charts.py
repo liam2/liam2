@@ -6,8 +6,7 @@ import math
 import numpy as np
 
 import config
-from expr import Expr, expr_eval
-from process import Process
+from expr import FunctionExpr
 from utils import (LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim,
                    Axis, FileProducer)
 
@@ -24,7 +23,7 @@ except ImportError, e:
           "'matplotlib.pyplot' could not be imported (%s)." % e)
 
 
-class Chart(Process, FileProducer):
+class Chart(FunctionExpr, FileProducer):
     ext = '.png'
     show_grid = False
     show_axes = True
@@ -33,16 +32,6 @@ class Chart(Process, FileProducer):
     projection = None
     ndim_req = 2
     check_length = True
-
-    def __init__(self, *args, **kwargs):
-        Process.__init__(self)
-        self.args = args
-        self.kwargs = kwargs
-
-    def expressions(self):
-        for arg in self.args:
-            if isinstance(arg, Expr):
-                yield arg
 
     def get_colors(self, n):
         from matplotlib import cm
@@ -61,10 +50,9 @@ class Chart(Process, FileProducer):
         return [cmap(f) for f in ratios]
 
     def prepare(self, args, kwargs):
-        func_name = self.__class__.__name__.lower()
         ndim_req = self.ndim_req
-        dimerror = ValueError("%s only works on %d or %d dimensional data"
-                              % (func_name, ndim_req - 1, ndim_req))
+        dimerror = ValueError("%s() only works on %d or %d dimensional data"
+                              % (self.funcname, ndim_req - 1, ndim_req))
         if self.check_length and len(args) > 1:
             if all(np.isscalar(a) for a in args):
                 args = [np.asarray(args)]
@@ -97,14 +85,11 @@ class Chart(Process, FileProducer):
             raise dimerror
         return data, aslabeledarray(data).axes
 
-    def run(self, context):
-        entity = context['__entity__']
-        period = context['period']
+    def compute(self, context, *args, **kwargs):
+        entity = context.entity
+        period = context.period
 
         fig = plt.figure()
-        args = [expr_eval(arg, context) for arg in self.args]
-        kwargs = dict((k, expr_eval(v, context))
-                      for k, v in self.kwargs.iteritems())
 
         data, axes = self.prepare(args, kwargs)
         colors = kwargs.pop('colors', None)
@@ -160,12 +145,12 @@ class Chart(Process, FileProducer):
     set_yaxis = _set_axis_method('y')
     set_zaxis = _set_axis_method('z')
 
-    def set_legend(self, axis, colors, **kwargs):
+    def set_legend(self, axis, colors):
         # we don't want a legend when there is only one item
         if len(axis) < 2:
             return
         proxies = [plt.Rectangle((0, 0), 1, 1, fc=color) for color in colors]
-        plt.legend(proxies, axis.labels, title=axis.name, **kwargs)
+        plt.legend(proxies, axis.labels, title=axis.name)
 
     def set_axes(self, axes, maxticks=20, projection=None):
         ndim = len(axes)

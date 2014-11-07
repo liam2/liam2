@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import random
 
-from expr import expr_eval, collect_variables, traverse_expr
-from exprbases import EvaluableExpression
-from context import context_length, context_subset, context_delete
+from expr import expr_eval, always, expr_cache
+from exprbases import FilteredExpression
+from context import context_length, context_delete
 from utils import loop_wh_progress
 
 
@@ -23,7 +23,7 @@ def df_by_cell(used_variables, setfilter, context):
     return idx
 
 
-class ScoreMatching(EvaluableExpression):
+class ScoreMatching(FilteredExpression):
     """General framework for a Matching based on score
 
     In general that kind of matching doesn't provide the best matching meaning
@@ -41,41 +41,22 @@ class ScoreMatching(EvaluableExpression):
         self.orderby2_expr = orderby2
 
     def traverse(self, context):
-        for node in traverse_expr(self.set1filter, context):
-            yield node
-        for node in traverse_expr(self.set2filter, context):
-            yield node
-        for node in traverse_expr(self.orderby1_expr, context):
-            yield node
-        for node in traverse_expr(self.orderby2_expr, context):
-            yield node
-        yield self
-
-    def collect_variables(self, context):
-        expr_vars = collect_variables(self.set1filter, context)
-        expr_vars |= collect_variables(self.set2filter, context)
-        #FIXME: add variables from orderby_expr. This is not done currently,
-        # because the presence of variables is done in expr.expr_eval before
+        #FIXME: we should not override the parent traverse method, so that all
+        # "child" expressions are traversed too.
+        # This is not done currently, because it would traverse score_expr.
+        # This is a problem because traverse is used by collect_variables and
+        # the presence of variables is checked in expr.expr_eval() before
         # the evaluate method is called and the context is completed during
         # evaluation (__other_xxx is added during evaluation).
-#        expr_vars |= collect_variables(self.score_expr, context)
-        return expr_vars
+        yield self
 
     def _get_filters(self, context):
-        ctx_filter = context.get('__filter__')
-        # at some point ctx_filter will be cached automatically, so we don't
-        # need to take care of it manually here
-        if ctx_filter is not None:
-            set1filter = expr_eval(ctx_filter & self.set1filter, context)
-            set2filter = expr_eval(ctx_filter & self.set2filter, context)
-        else:
-            set1filter = expr_eval(self.set1filter, context)
-            set2filter = expr_eval(self.set2filter, context)
-        return set1filter, set2filter
+        set1filterexpr = self._getfilter(context, self.set1filter)
+        set2filterexpr = self._getfilter(context, self.set2filter)
+        return expr_eval((set1filterexpr, set1filterexpr), context)
 
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return int
+    dtype = always(int)
+
 
 
 class RankingMatching(ScoreMatching):
@@ -95,6 +76,8 @@ class RankingMatching(ScoreMatching):
         result[id_to_rownum[id1]] = id2
         result[id_to_rownum[id2]] = id1
         return result
+
+    # def compute(self, context, set1filter, set2filter, score, orderby):
 
     def evaluate(self, context):
         set1filter, set2filter = self._get_filters(context)
@@ -123,6 +106,19 @@ class RankingMatching(ScoreMatching):
         set1 = context_subset(context, set1filter, used_variables1)
         set2 = context_subset(context, set2filter, used_variables2)
 
+        # set1 = context.subset(set1filtervalue, used_variables1, set1filterexpr)
+        # set2 = context.subset(set2filtervalue, used_variables2, set2filterexpr)
+        # 
+        # # subset creates a dict for the current entity, so .entity_data is a
+        # # dict
+        # set1 = set1.entity_data
+        # set2 = set2.entity_data
+        # 
+        # set1len = set1filtervalue.sum()
+        # set2len = set2filtervalue.sum()
+        # tomatch = min(set1len, set2len)
+        # sorted_set1_indices = orderby[set1filtervalue].argsort()[::-1]
+        # set1tomatch = sorted_set1_indices[:tomatch]
         print("matching with %d/%d individuals" % (set1len, set2len))
         return self._match(set1tomatch, set2tomatch, set1, set2, context)
 
@@ -149,6 +145,9 @@ class SequentialMatching(ScoreMatching):
                 - 'SDtOM' : 'Score Distance to the Other Mean'
             The SDtOM is the most relevant distance.
     """
+    funcname = 'matching'
+    no_eval = ('set1filter', 'set2filter', 'score')
+    
     def __init__(self, set1filter, set2filter, score, orderby, pool_size=None):
         ScoreMatching.__init__(self, set1filter, set2filter, orderby, None)
         self.score_expr = score
@@ -156,6 +155,9 @@ class SequentialMatching(ScoreMatching):
             assert isinstance(pool_size, int)
             assert pool_size > 0
         self.pool_size = pool_size
+
+#    def compute(self, context, set1filter, set2filter, score, orderby):
+
 
     def _get_used_variables_match(self, context):
         used_variables = self.score_expr.collect_variables(context)
@@ -194,7 +196,10 @@ class SequentialMatching(ScoreMatching):
                 local_ctx = matching_ctx.copy()
 
             local_ctx.update((k, set1[k][sorted_idx]) for k in used_variables1)
-            set2_scores = expr_eval(score_expr, local_ctx)
+
+            eval_ctx = context.clone(entity_data=local_ctx)
+            set2_scores = expr_eval(score, eval_ctx)
+
             individual2_idx = np.argmax(set2_scores)
 
             id1 = local_ctx['id']
@@ -202,6 +207,19 @@ class SequentialMatching(ScoreMatching):
             if pool_size is not None and set2_size > pool_size:
                 individual2_idx = pool[individual2_idx]
             matching_ctx = context_delete(matching_ctx, individual2_idx)
+
+            #FIXME: the expr gets cached for the full matching_ctx at the
+            # beginning and then when another women with the same values is
+            # found, it thinks it can reuse the expr but it breaks because it
+            # has not the correct length.
+
+            # the current workaround is to invalidate the whole cache for the
+            # current entity but this is not the right way to go.
+            # * disable the cache for matching?
+            # * use a local cache so that methods after matching() can use
+            # what was in the cache before matching(). Shouldn't the cache be
+            # stored inside the context anyway?
+            expr_cache.invalidate(context.period, context.entity_name)
 
             result[id_to_rownum[id1]] = id2
             result[id_to_rownum[id2]] = id1
@@ -245,6 +263,8 @@ class OptimizedSequentialMatching(SequentialMatching):
         sets grouped with values. Doing so, we work with
         smaller sets and we can improve running time.
     """
+    funcname = 'optimized_matching'
+
     def __init__(self, set1filter, set2filter, score, orderby):
         SequentialMatching.__init__(self, set1filter, set2filter, score,
                                     orderby, pool_size=None)

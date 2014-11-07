@@ -4,13 +4,14 @@ from __future__ import print_function
 #import Tkinter as tk
 #import ttk
 import re
+import ast
 import sys
 import time
 import operator
 import itertools
 from itertools import izip, product
 from textwrap import wrap
-from collections import defaultdict, deque
+from collections import defaultdict, deque, namedtuple
 import warnings
 
 import numpy as np
@@ -24,6 +25,18 @@ except ImportError:
     QtAvailable = False
 
 import config
+
+
+def make_hashable(obj):
+    if isinstance(obj, (list, tuple)):
+        return tuple(make_hashable(e) for e in obj)
+    else:
+        return obj
+
+
+class classproperty(property):
+    def __get__(self, cls, owner):
+        return self.fget.__get__(None, owner)()
 
 
 class ExceptionOnGetAttr(object):
@@ -42,13 +55,32 @@ class UserDeprecationWarning(UserWarning):
     pass
 
 
-def deprecated(f, msg):
+def deprecated(f, old=None, new=None, msg=None):
+    assert old is not None or msg is not None
+    if msg is None:
+        if new is None:
+            new = f.__name__
+        msg = "%s is deprecated, please use %s instead" % (old, new)
+
     def func(*args, **kwargs):
-        #TODO: when we will be able to link expressions to line numbers in the
+        # TODO: when we will be able to link expressions to line numbers in the
         # model, we should use warnings.warn_explicit instead
         warnings.warn(msg, UserDeprecationWarning)
         return f(*args, **kwargs)
-    func.__name__ = f.__name__
+    func.__name__ = "__deprecated_" + f.__name__
+    return func
+
+
+def removed(f, old=None, new=None, msg=None):
+    assert old is not None or msg is not None
+    if msg is None:
+        if new is None:
+            new = f.__name__
+        msg = "%s does not exist anymore, please use %s instead" % (old, new)
+
+    def func(*args, **kwargs):
+        raise SyntaxError(msg)
+    func.__name__ = "__removed_" + f.__name__
     return func
 
 
@@ -75,6 +107,26 @@ def find_first(char, s, depth=0):
         raise ValueError("syntax error: missing parenthesis or "
                          "bracket in string: %s" % s)
     return -1
+
+
+def englishenum(iterable):
+    """
+    Returns an "english enumeration" of the strings in the iterable.
+    >>> englishenum(['a', 'b', 'c'])
+    'a, b, and c'
+    >>> englishenum('abc')
+    'a, b, and c'
+    >>> englishenum('ab')
+    'a and b'
+    >>> englishenum('a')
+    'a'
+    """
+    l = list(iterable)
+    if len(l) == 2:
+        return '%s and %s' % tuple(l)
+    elif len(l) > 2:
+        l[-1] = 'and ' + l[-1]
+    return ', '.join(l)
 
 
 class AutoFlushFile(object):
@@ -226,7 +278,7 @@ except ImportError:
 # as a bonus, this version is also faster
 def nansum(a, axis=None):
     a = np.asarray(a)
-    if issubclass(a.dtype.type, np.inexact):
+    if np.issubdtype(a.dtype, np.inexact):
         return np.nansum(a, axis)
     else:
         return np.sum(a, axis)
@@ -258,6 +310,18 @@ def isconstant(a, filter_value=None):
         return np.all(filter_value & (a == value))
 
 
+def _make_aggregate(func):
+    def method(self, axis=None):
+        if axis == 1:
+            result = np.empty(len(self.data), dtype=self.data[0].dtype)
+            for i, a in enumerate(self.data):
+                result[i] = func(a)
+            return result
+        else:
+            raise NotImplementedError("axis != 1")
+    return method
+
+
 class IrregularNDArray(object):
     """
     A wrapper for collections of arrays (eg list of arrays or arrays of
@@ -267,20 +331,10 @@ class IrregularNDArray(object):
     def __init__(self, data):
         self.data = data
 
-    def make_aggregate(func):
-        def method(self, axis=None):
-            if axis == 1:
-                result = np.empty(len(self.data), dtype=self.data[0].dtype)
-                for i, a in enumerate(self.data):
-                    result[i] = func(a)
-                return result
-            else:
-                raise NotImplementedError("axis != 1")
-        return method
-    prod = make_aggregate(np.prod)
-    sum = make_aggregate(np.sum)
-    min = make_aggregate(np.min)
-    max = make_aggregate(np.max)
+    prod = _make_aggregate(np.prod)
+    sum = _make_aggregate(np.sum)
+    min = _make_aggregate(np.min)
+    max = _make_aggregate(np.max)
 
     def __getattr__(self, key):
         return getattr(self.data, key)
@@ -493,11 +547,13 @@ class LabeledArray(np.ndarray):
             result.append([''] * (self.ndim - 2) + ['total'] + self.col_totals)
         return result
 
-    def __str__(self):
+    def __repr__(self):
         if not self.ndim:
             return str(np.asscalar(self))
         else:
             return '\n' + table2str(self.as_table(), 'nan') + '\n'
+    # explicitly defining __str__ is needed here because it exists on ndarray
+    __str__ = __repr__
 
 #    def __array_prepare__(self, arr, context=None):
 #        print 'In __array_prepare__:'
@@ -688,14 +744,13 @@ class PrettyTable(object):
                          for value in row]
             yield formatted
 
-    def __str__(self):
+    def __repr__(self):
         missing = self.missing
         if missing is None:
             missing = 'nan'
         else:
             missing = str(missing)
         return '\n' + table2str(self.data, missing) + '\n'
-    __repr__ = __str__
 
 
 # copied from itertools recipes
@@ -851,12 +906,16 @@ def expand_wild_tuple(keys, d):
 
 def expand_wild(wild_key, d):
     """
-    expands a multi-level string key (separated by '/') optionally containing
-    wildcards (*) with the keys actually present in a multi-level dictionary.
+    expands a multi-level string key (separated by '/') containing wildcards
+    (*) with the keys actually present in a multi-level dictionary.
+
+    >>> res = expand_wild('a/*/c', {'a': {'one': {'c': 0}, 'two': {'c': 0}}})
+    >>> sorted(res) # expand_wild result ordering is random
+    ['a/one/c', 'a/two/c']
+
     >>> d = {'a': {'one': {'c': 0}, 'two': {'d': 0}}}
-    >>> expand_wild('a/*/c', d)
-    set(['a/one/c'])
-    >>> sorted(expand_wild('a/*/*', d))
+    >>> res = expand_wild('a/*/*', d)
+    >>> sorted(res) # expand_wild result ordering is random
     ['a/one/c', 'a/two/d']
     >>> expand_wild('a/one/c', d)
     set(['a/one/c'])
@@ -1039,23 +1098,138 @@ class ExplainTypeError(type):
             #noinspection PyArgumentList
             return type.__call__(cls, *args, **kwargs)
         except TypeError, e:
-            if hasattr(cls, 'func_name'):
-                funcname = cls.func_name
-            else:
-                funcname = cls.__name__.lower()
-            if funcname is not None:
-                msg = e.args[0].replace('__init__()', funcname)
-            else:
-                msg = e.args[0]
+            funcname = cls.funcname
+            msg = e.args[0].replace('__init__()', funcname)
 
-            def repl(matchobj):
-                needed, given = int(matchobj.group(1)), int(matchobj.group(2))
-                return "%d arguments (%d given)" % (needed - 1, given - 1)
-            msg = re.sub('(\d+) arguments \((\d+) given\)', repl, msg)
+            def repl_py2(matchobj):
+                needed, given = int(matchobj.group(1)), int(matchobj.group(3))
+                word = matchobj.group(2)
+                return '%d %s (%d given)' % (needed - 1, word, given - 1)
+
+            def repl_py3_toomany_from_to(matchobj):
+                nfrom, nto, given = [int(matchobj.group(n)) for n in (1, 2, 4)]
+                word = matchobj.group(3)
+                verb = 'were' if given != 2 else 'was'
+                return 'from %d to %d positional %s but %d %s given' \
+                       % (nfrom - 1, nto - 1, word, given - 1, verb)
+
+            def repl_py3_toomany(matchobj):
+                needed, given = int(matchobj.group(1)), int(matchobj.group(3))
+                word = matchobj.group(2)
+                verb = 'were' if given != 2 else 'was'
+                return 'takes %d positional %s but %d %s given' \
+                       % (needed - 1, word, given - 1, verb)
+
+            def repl_py3_missing(matchobj):
+                missing = int(matchobj.group(1))
+                return 'missing %d positional argument' % (missing - 1)
+
+            # Python2 style
+            msg = re.sub('(\d+) (arguments?) \((\d+) given\)', repl_py2, msg)
+            # Python3 style for too many args in the presence of default values
+            msg = re.sub('from (\d+) to (\d+) positional (arguments?) but '
+                         '(\d+) were given',
+                         repl_py3_toomany_from_to, msg)
+            # Python3 style for too many args with no default values
+            # "takes" is included to not match from_to again
+            msg = re.sub('takes (\d+) positional (arguments?) but '
+                         '(\d+) were given',
+                         repl_py3_toomany, msg)
+            # Python3 style for missing
+            msg = re.sub('missing (\d+) positional argument',
+                         repl_py3_missing, msg)
             raise TypeError(msg)
 
 
+# function signatures
+# -------------------
+
+FullArgSpec = namedtuple('FullArgSpec',
+                         'args, varargs, varkw, defaults, kwonlyargs, '
+                         'kwonlydefaults, annotations')
+
+
+def _argspec(*args, **kwonlyargs):
+    """
+    args = argument names. Arguments with a default value must be given as a
+    ('name', value) tuple. varargs and varkw argument names, if any, should be
+    prefixed with '*' and '**' respectively and must be the last positional
+    arguments.
+    >>> _argspec('a', 'b', ('c', 1), '*d', '**e', f=None)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a', 'b', 'c'], varargs='d', varkw='e', defaults=(1,),
+                kwonlyargs=['f'], kwonlydefaults={'f': None}, annotations={})
+    >>> _argspec('a', '*', '**b', c=None)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a'], varargs=None, varkw='b', defaults=None,
+                kwonlyargs=['c'], kwonlydefaults={'c': None}, annotations={})
+    >>> _argspec('a', 'b', ('c', 1), d=None)
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a', 'b', 'c'], varargs=None, varkw=None, defaults=(1,),
+                kwonlyargs=['d'], kwonlydefaults={'d': None}, annotations={})
+    """
+    def lastitem_startswith(l, s):
+        return l and isinstance(l[-1], basestring) and l[-1].startswith(s)
+    args = list(args)
+    varkw = args.pop()[2:] if lastitem_startswith(args, '**') else None
+    varargs = args.pop()[1:] if lastitem_startswith(args, '*') else None
+    if not varargs:
+        varargs = None
+    defaults = tuple(a[1] for a in args if isinstance(a, tuple))
+    if not defaults:
+        defaults = None
+    else:
+        assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
+        assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
+    args = [a[0] if isinstance(a, tuple) else a for a in args]
+    return FullArgSpec(args, varargs, varkw, defaults,
+                       kwonlyargs=sorted(kwonlyargs.keys()),
+                       kwonlydefaults=kwonlyargs,
+                       annotations={})
+
+
+def argspec(*args, **kwonlyargs):
+    """
+    >>> argspec('a, b, c=1, *d, **e, f=None')
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a', 'b', 'c'], varargs='d', varkw='e', defaults=(1,),
+                kwonlyargs=['f'], kwonlydefaults={'f': None}, annotations={})
+    >>> a = argspec('*, f=None', g=None)
+    >>> a.kwonlyargs
+    ['f', 'g']
+    >>> sorted(a.kwonlydefaults.items())
+    [('f', None), ('g', None)]
+    >>> argspec('a, *, **b, c=None')
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a'], varargs=None, varkw='b', defaults=None,
+                kwonlyargs=['c'], kwonlydefaults={'c': None}, annotations={})
+    >>> argspec('a, b, c=1, d=None')
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=['a', 'b', 'c', 'd'], varargs=None, varkw=None,
+                defaults=(1, None), kwonlyargs=[], kwonlydefaults={},
+                annotations={})
+    """
+    if len(args) == 1 and isinstance(args[0], basestring):
+        str_args = [a.strip().split('=') for a in args[0].split(',')]
+        args = [(a[0], ast.literal_eval(a[1])) if len(a) > 1 else a[0]
+                for a in str_args]
+
+        def star(a):
+            return isinstance(a, basestring) and '*' in a
+        if any(star(a) for a in args):
+            while not star(args[-1]):
+                k, v = args.pop()
+                assert k not in kwonlyargs, "several kwonlyargs named %s" % k
+                kwonlyargs[k] = v
+    return _argspec(*args, **kwonlyargs)
+
+
+# miscellaneous tools
+# -------------------
+
 class FileProducer(object):
+    argspec = argspec(suffix='', fname=None)
+
     # default extension if only suffix is defined
     ext = None
     # do we need to return a file name if neither suffix nor fname are defined?
@@ -1076,5 +1250,3 @@ class FileProducer(object):
             suffix = "_" + suffix if suffix else ""
             fname = "{entity}_{period}" + suffix + self.ext
         return fname
-
-

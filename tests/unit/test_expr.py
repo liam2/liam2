@@ -3,34 +3,45 @@ import unittest
 import numpy as np
 from numpy import array
 
+from context import EvaluationContext
 from entities import Entity
-from registry import entity_registry
-from context import EntityContext, context_length
-from exprparser import parse
-import links 
+from expr import Variable
+from exprtools import parse
+import links
 
 
 class ArrayTestCase(unittest.TestCase):
     def assertArrayEqual(self, first, other):
         assert np.array_equal(first, other), "got: %s\nexpected: %s" % (first, 
-                                                                        other) 
+                                                                        other)
 
 
-class StringTestCase(ArrayTestCase):
-    context = None
+def evaluate(s, parse_ctx, eval_ctx):
+    expr = parse(s, parse_ctx)
+    return expr.evaluate(eval_ctx)
+
+
+class StringExprTestCase(ArrayTestCase):
+    parse_ctx = None
+    eval_ctx = None
+
+    def evaluate(self, s):
+        return evaluate(s, self.parse_ctx, self.eval_ctx)
 
     def assertEvalEqual(self, s, result):
-        e = parse(s, autovariables=True)
-        self.assertArrayEqual(e.evaluate(self.context), result)
+        self.assertArrayEqual(self.evaluate(s), result)
 
 
-class Test(StringTestCase):
+class TestSimple(StringExprTestCase):
     def setUp(self):
-        self.context = {'age': array([20, 10, 35, 55]),
-                        'dead': array([False, True, False, True])}
-
-    def tearDown(self):
-        pass
+        data = {'person': {'age': array([20, 10, 35, 55]),
+                           'dead': array([False, True, False, True])}}
+        self.eval_ctx = EvaluationContext(entity_name='person',
+                                          entities_data=data)
+        self.parse_ctx = {
+            'person': {'age': Variable('age'), 'dead': Variable('dead')},
+            '__entity__': 'person'
+        }
 
     def test_where(self):
         self.assertEvalEqual("where(dead, 1, 2)", [2, 1, 2, 1])
@@ -40,18 +51,10 @@ class Test(StringTestCase):
         self.assertEvalEqual("min(where(dead, age + 15, age))", 20)
 
 
-class FakeEntity(object):
-    def __init__(self, name, links=None, data=None):
-        self.name = name
-        self.links = links
-        self.array = data
-        self.array_period = None
-        self.temp_variables = {}
-        self.id_to_rownum = array([0, 1, 2, 3])
-
-
-class TestLink(ArrayTestCase): 
+class TestLink(StringExprTestCase):
     def setUp(self):
+        entities = {}
+
         hh_link = links.Many2One('household', 'hh_id', 'household')
         mother_link = links.Many2One('mother', 'mother_id', 'person')
         child_link = links.One2Many('children', 'mother_id', 'person')
@@ -81,11 +84,6 @@ class TestLink(ArrayTestCase):
                                'mother': mother_link,
                                'children': child_link},
                         array=persons)
-#         person = FakeEntity('person',
-#                             links={'household': hh_link,
-#                                    'mother': mother_link,
-#                                    'children': child_link},
-#                             data=persons)
 
         dt = np.dtype([('period', int), ('id', int)])
 #        households = array([(2000, 0),
@@ -101,72 +99,30 @@ class TestLink(ArrayTestCase):
                             (2002, 1),
                             (2002, 2)],
                            dtype=dt)
-#         household = FakeEntity('household',
-#                                links={'persons': persons_link},
-#                                data=households)
         household = Entity('household',
                            links={'persons': persons_link},
                            array=households)
-        entity_registry.add(person)
-        entity_registry.add(household)
+        entities['person'] = person
+        entities['household'] = household
+        self.entities = entities
 
-#    def test_many2one_from_dict(self):
-#        person = entity_registry['person']
-#        context = {'mother_id': array([-1, 0, 0, 2]),
-#                   'period': 2002,
-#                   '__entity__': person}
-#        e = parse("mother.age", person.links, autovariables=True)
-#        self.assertArrayEqual(e.evaluate(context), [-1, 55, 55, 22])
-        
-    def test_many2one_from_entity_context(self):
-        person = entity_registry['person']
-        context = EntityContext(person, {'period': 2002})
-        self.assertEqual(context_length(context), 5)
-        e = parse("mother.age", person.links, autovariables=True)
-        self.assertArrayEqual(e.evaluate(context), [-1, 55, 55, -1, 22])
+        parse_ctx = {'__globals__': {}, '__entities__': entities,
+                     '__entity__': 'person'}
+        parse_ctx.update((entity.name, entity.all_symbols(parse_ctx))
+                         for entity in entities.itervalues())
+        self.parse_ctx = parse_ctx
+        self.eval_ctx = EvaluationContext(entities=entities, period=2002,
+                                          entity_name='person')
 
-    def test_one2many_from_entity_context(self):
-        person = entity_registry['person']
-        context = EntityContext(person, {'period': 2002})
-        e = parse("countlink(children)", person.links, autovariables=True)
-        self.assertArrayEqual(e.evaluate(context), [2, 0, 1, 0, 0])
+    def test_many2one(self):
+        self.assertEvalEqual("mother.age", [-1, 55, 55, -1, 22])
 
-#    def test_past_one2many(self):
-#        person = entity_registry['person']
-#        context = EntityContext(person, {'period': 2001})
-#        e = parse("countlink(children)", person.links, autovariables=True)
-#        self.assertArrayEqual(e.evaluate(context), [2, 0, 1, 0])
+    def test_one2many(self):
+        self.assertEvalEqual("children.count()", [2, 0, 1, 0, 0])
 
-#    def test_multi_entity_in_context_experiment(self):
-#        person = entity_registry['person']
-#        person.array = {'period': array([2002, 2002, 2002, 2002]),
-#                        'age': array([55, 25, 22, 1])}
-#        
-#        data = {'person': {'id':         [ 0,  1,  2, 3,  4],
-#                           'mother_id':  [-1,  0,  0, 2, -1],
-#                           'age':        [55, 25, 22, 1, 45],
-#                           'hh_id':      [ 0,  1,  2, 2,  0],
-#                           'period':     2002,
-#                           '__entity__': person},
-#                'household': {'id': [0, 1, 2]}}
-#        
-#        annoted_expr = person.parse("household.get(persons.count())")
-#        # this would be more or less equivalent to:
-#        # expr = parse(expr, person.links)
-#        # return AnnotedExpr(expr, self)
-#        self.assertArrayEqual(annoted_expr.evaluate(context), [2, 1, 2, 2, 2])
-
-#        OR
-
-#        context = {'data': data, 'period': 2002, 'entity': 'person'}
-#        expr = parse(expr, person.links)
-#        self.assertArrayEqual(expr.evaluate(context), [2, 1, 2, 2, 2])
-
-# pro: - I could pass the context around almost unmodified when changing from
-#        an entity to another
-#      - easier testing 
-# con: - I can't pass the context as-is to numexpr
-
+    # def test_past_one2many(self):
+    #     self.eval_ctx.period = 2001
+    #     self.assertEvalEqual("children.count()", [2, 0, 1, 0, 0])
 
 # short-term data provider contract:
 
@@ -236,7 +192,8 @@ class TestLink(ArrayTestCase):
 # * context needs append & keep/remove methods
 
 # Q: General architecture
-# A1: EntityContext which dispatches to 3 IndexedColumnArray (globals/locals/extra)
+# A1: EntityContext which dispatches to 3 IndexedColumnArray (globals
+#     / locals / extra)
 #    > hmm, not great as they should share the same index
 #    > what about disk storage? (ie array vs table)
 #    > what about lag variables?
@@ -265,7 +222,8 @@ class TestLink(ArrayTestCase):
 # long-term
 
 #  data[entity][column == value][colname] = 2d array (num_ids x num_periods)
-#  data[entity][time_obj] = 1d array (vector) with structured dtype (ie several columns) # < use pandas dataframes?
+#  data[entity][time_obj] = 1d array (vector) with structured dtype (ie several
+#                           columns) # < use pandas dataframes?
 #  data[entity][colname][time_obj] = vector # < use pandas dataframes?
 #  data[entity][colname] = sort of 2d array # (time x individuals)
 #  >>> 2darray[time_obj] = vector of individuals
@@ -273,7 +231,8 @@ class TestLink(ArrayTestCase):
 #  >>> 2darray.XXX == 2darray[current_time].XXX ?
 #  >>> 2darray.sum() == 2darray.sum(axis=ind) == scalar
 
-#  >>> 2darray.sum(axis=time) == 1darray (N individuals) ? >>> needs to know the function before we can know what "2darray.XXX" mean
+#  >>> 2darray.sum(axis=time) == 1darray (N individuals) ? >>> needs to know
+#      the function before we can know what "2darray.XXX" mean
 #  OR
 #  >>> 2darray[:] == 2darray[time.all()] == fake 2d array
 #  >>> 2darray[:].sum(axis=time) == 1darray (N individuals)

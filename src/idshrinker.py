@@ -41,13 +41,13 @@ def map_file(input_file, output_file, entities_map):
         input_file.root.globals._f_copy(output_file.root, recursive=True)
 
     print(" * copying tables")
-    output_entities = output_file.createGroup("/", "entities", "Entities")
+    output_entities = output_file.create_group("/", "entities", "Entities")
     for table in input_file.iterNodes(input_file.root.entities):
         #noinspection PyProtectedMember
         ent_name = table._v_name
         print(ent_name, "...")
         if ent_name in entities_map:
-            output_table = output_file.createTable(output_entities, table.name,
+            output_table = output_file.create_table(output_entities, table.name,
                                                    table.dtype,
                                                    title=table._v_title)
             map_rows(table, output_table, entities_map[ent_name])
@@ -56,8 +56,8 @@ def map_file(input_file, output_file, entities_map):
 
 
 def shrinkids(input_path, output_path, toshrink):
-    input_file = tables.openFile(input_path, mode="r")
-    output_file = tables.openFile(output_path, mode="w")
+    input_file = tables.open_file(input_path, mode="r")
+    output_file = tables.open_file(output_path, mode="w")
     input_entities = input_file.root.entities
     print(" * indexing tables")
     idmaps = {}
@@ -84,8 +84,8 @@ def shrinkids(input_path, output_path, toshrink):
 
 
 def fixlinks(input_path, output_path, tofix):
-    input_file = tables.openFile(input_path, mode="r")
-    output_file = tables.openFile(output_path, mode="w")
+    input_file = tables.open_file(input_path, mode="r")
+    output_file = tables.open_file(output_path, mode="w")
     tochange = {ent_name: {fname: {0: -1} for fname in fnames}
                 for ent_name, fnames in tofix.iteritems()}
     print(" * fixing links")

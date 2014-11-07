@@ -58,7 +58,7 @@ def diff_array(array1, array2, numdiff=10, raiseondiff=False):
             print("missing in file 2")
             continue
         col1, col2 = array1[fname], array2[fname]
-        if issubclass(col1.dtype.type, np.inexact):
+        if np.issubdtype(col1.dtype, np.inexact):
             if len(col1) == len(col2):
                 both_nan = np.isnan(col1) & np.isnan(col2)
                 eq = np.all(both_nan | (col1 == col2))
@@ -89,8 +89,8 @@ def diff_array(array1, array2, numdiff=10, raiseondiff=False):
 
 
 def diff_h5(input1_path, input2_path, numdiff=10):
-    input1_file = tables.openFile(input1_path, mode="r")
-    input2_file = tables.openFile(input2_path, mode="r")
+    input1_file = tables.open_file(input1_path, mode="r")
+    input2_file = tables.open_file(input2_path, mode="r")
 
 #    print "copying globals from", input1_path,
 #    input1_file.root.globals._f_copy(output_file.root, recursive=True)

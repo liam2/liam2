@@ -5,6 +5,42 @@
 # to issues are left here for reference.                 #
 #=========================================================
 
+- pure Python mode. Something like this?
+    class Person(Entity):
+        age = Field(Int)
+
+        def ageing(self):
+            # self.age = self.age + 1
+            self.age += 1
+            self.agegroup = (self.age // 10) * 10
+
+    def main():
+        registry = EntityRegistry((Person, Household))
+        for e in registry:
+            e.load()
+        p = Person()
+        for period in range(start_period, periods):
+            p.ageing()
+
+    s = Simulation((Person, Household), 2010, 10)
+    s.run()
+- upgrade carray to blz
+
+- when the move away from the conditional context is done,
+  I should make macros available via links. Maybe also merge
+  entity.all_symbols and entity.variables?
+
+- replace breakpoint(period) by breakpoint(condition)
+
+- add option to insert a conditional breakpoint for asserts (ie failed
+  assert start the console)
+
+- integrate with Ipython interactive func: it rocks!
+  eg. interactive(func, arg0=rangeofvalues_for_that_arg, ...) and
+  it produces sliders/checkboxes/... for each argument.
+  see http://vimeo.com/79832657 (from 30 minutes onward)
+
+
 projects to keep an eye on
 ==========================
 

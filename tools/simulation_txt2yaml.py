@@ -1,6 +1,6 @@
 import csv
 import itertools
-from itertools import izip, groupby
+from itertools import izip
 import operator
 import os
 from os import path

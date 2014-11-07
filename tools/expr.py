@@ -2,7 +2,6 @@ from __future__ import division
 
 import re
 from orderedset import OrderedSet
-import itertools
 
 VERBOSE_SIMPLIFY = False
 
@@ -74,7 +73,7 @@ def extract_common_subset(e1, e2, flattened=False):
     if len(f2list) == 1:
         f2op, f2list = '&', (r2,)
 
-    if (f1op == f2op and f1op == '&'):
+    if f1op == f2op and f1op == '&':
         e1set = OrderedSet(f1list)
         e2set = OrderedSet(f2list)
         commonset = e1set & e2set
@@ -188,10 +187,8 @@ class Expr(object):
     def as_string(self, indent):
         raise NotImplementedError()
 
-    def __str__(self):
+    def __repr__(self):
         return self.as_string('')
-
-    __repr__ = __str__
 
     def flatten(self):
         """
@@ -236,7 +233,7 @@ class UnaryOp(Expr):
                isequal(self.expr, other.expr)
 
     def flatten(self):
-        return (self.op, (flatten(self.expr),))
+        return self.op, (flatten(self.expr),)
 
 class Not(UnaryOp):
     def simplify(self):
@@ -349,7 +346,7 @@ class BinaryOp(Expr):
             l.extend(f2list)
         else:
             l.append((f2op, f2list))
-        return (self.op, tuple(l))
+        return self.op, tuple(l)
 
 class ComparisonOp(BinaryOp):
     priority = 10
@@ -608,7 +605,7 @@ class Variable(Expr):
             return self.value
 
     def collect_variables(self):
-        return set([(self.name, self._dtype)])
+        return {(self.name, self._dtype)}
 
     def dtype(self):
         return self._dtype
@@ -622,7 +619,7 @@ class Variable(Expr):
             return False
 
     def flatten(self):
-        return ('var', (self.name,))
+        return 'var', (self.name,)
 
 class SubscriptableVariable(Variable):
     def __init__(self, name):
@@ -790,7 +787,7 @@ class Where(Function):
             # if(A, B, if(A, C, D))
             # ->
             # if(A, B, D)
-            if (isequal(cond, iffalse_cond)):
+            if isequal(cond, iffalse_cond):
                 return Where(cond, iftrue, iffalse_iffalse)
 
             # if(A & B, C, if(A & D, E, F))
@@ -854,7 +851,7 @@ class Where(Function):
             # if(A, if(A, B, C), D)
             # ->
             # if(A, B, D)
-            if (isequal(cond, iftrue_cond)):
+            if isequal(cond, iftrue_cond):
                 return Where(cond, iftrue_iftrue, iffalse)
             
             cs, e1, e2 = extract_common_subset(cond, iftrue_cond)
@@ -953,9 +950,8 @@ class Link(object):
 
     __getattr__ = get
 
-    def __str__(self):
+    def __repr__(self):
         return self._name
-    __repr__ = __str__
 
 functions = {'lag': makefunc('lag', 'coerce'),
              'countlink': makefunc('countlink', int), 

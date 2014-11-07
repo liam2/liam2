@@ -166,3 +166,4 @@ Note that the variable *num_kids_in_hh* could also have been
 simulated by just one process, on the "person" level, by using: ::
 
     - num_kids_in_hh: household.get(persons.count(age <= 17))
+

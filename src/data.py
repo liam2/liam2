@@ -474,8 +474,8 @@ def copy_table(input_table, output_node, output_fields=None,
         output_dtype = input_table.dtype
     else:
         output_dtype = np.dtype(output_fields)
-    output_table = output_file.createTable(output_node, input_table.name,
-                                           output_dtype, **complete_kwargs)
+    output_table = output_file.create_table(output_node, input_table.name,
+                                            output_dtype, **complete_kwargs)
     return append_table(input_table, output_table, chunksize, condition,
                         stop=stop, show_progress=show_progress)
 
@@ -671,7 +671,7 @@ def load_path_globals(globals_def, fpath):
 def index_tables(globals_def, entities, fpath):
     print("reading data from %s ..." % fpath)
 
-    input_file = tables.openFile(fpath, mode="r")
+    input_file = tables.open_file(fpath, mode="r")
     try:
         input_root = input_file.root
 
@@ -774,13 +774,13 @@ class H5Data(DataSource):
     def run(self, globals_def, entities, start_period):
         input_file, dataset = index_tables(globals_def, entities,
                                            self.input_path)
-        output_file = tables.openFile(self.output_path, mode="w")
+        output_file = tables.open_file(self.output_path, mode="w")
 
         try:
             globals_node = getattr(input_file.root, 'globals', None)
             if globals_node is not None:
-                output_globals = output_file.createGroup("/", "globals",
-                                                         "Globals")
+                output_globals = output_file.create_group("/", "globals",
+                                                          "Globals")
                 # index_tables already checks whether all tables exist and
                 # are coherent with globals_def
                 for name in globals_def:
@@ -789,9 +789,9 @@ class H5Data(DataSource):
                         getattr(globals_node, name)._f_copy(output_globals)
 
             entities_tables = dataset['entities']
-            output_entities = output_file.createGroup("/", "entities",
-                                                      "Entities")
-            output_indexes = output_file.createGroup("/", "indexes", "Indexes")
+            output_entities = output_file.create_group("/", "entities",
+                                                       "Entities")
+            output_indexes = output_file.create_group("/", "indexes", "Indexes")
             print(" * copying tables")
             for ent_name, entity in entities.iteritems():
                 print(ent_name, "...")
@@ -800,7 +800,7 @@ class H5Data(DataSource):
 
                 table = entities_tables[ent_name]
 
-                index_node = output_file.createGroup("/indexes", ent_name)
+                index_node = output_file.create_group("/indexes", ent_name)
                 entity.output_index_node = index_node
                 entity.input_index = table.id2rownum_per_period
                 entity.input_rows = table.period_index
@@ -865,32 +865,33 @@ class Void(DataSource):
     def run(self, globals_def, entities, start_period):
         #FIXME: this should really be inputpath, but we don't have one in Void
         globals_data = load_path_globals(globals_def, self.output_path)
-        output_file = tables.openFile(self.output_path, mode="w")
-        output_indexes = output_file.createGroup("/", "indexes", "Indexes")
-        output_entities = output_file.createGroup("/", "entities", "Entities")
+        output_file = tables.open_file(self.output_path, mode="w")
+        output_indexes = output_file.create_group("/", "indexes", "Indexes")
+        output_entities = output_file.create_group("/", "entities", "Entities")
         for entity in entities.itervalues():
             dtype = np.dtype(entity.fields)
             entity.array = ColumnArray.empty(0, dtype=dtype)
             entity.array_period = start_period
             entity.id_to_rownum = np.empty(0, dtype=int)
-            output_table = output_file.createTable(
+            output_table = output_file.create_table(
                 output_entities, entity.name, dtype,
                 title="%s table" % entity.name)
 
             entity.input_table = None
             entity.table = output_table
-            index_node = output_file.createGroup(output_indexes, entity.name)
+            index_node = output_file.create_group(output_indexes, entity.name)
             entity.output_index_node = index_node
         return None, output_file, globals_data
 
 
-def populate_registry(fpath):
-    import entities
-    import registry
-    h5in = tables.openFile(fpath, mode="r")
+def entities_from_h5(fpath):
+    from entities import Entity
+    h5in = tables.open_file(fpath)
     h5root = h5in.root
+    entities = {}
     for table in h5root.entities:
-        registry.entity_registry.add(entities.Entity.from_table(table))
+        entity = Entity.from_table(table)
+        entities[entity.name] = entity
     globals_def = {}
     if hasattr(h5root, 'globals'):
         for table in h5root.globals:
@@ -900,4 +901,4 @@ def populate_registry(fpath):
                 global_def = get_fields(table)
             globals_def[table.name] = global_def
     h5in.close()
-    return globals_def
+    return globals_def, entities

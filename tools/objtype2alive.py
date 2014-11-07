@@ -1,6 +1,4 @@
-import os
 import sys
-import csv
 
 from data_main import load_objtype, export_csv_3col
 import numpy as np
