@@ -9,8 +9,6 @@ from exprbases import EvaluableExpression
 from context import context_length, context_subset, context_delete
 from utils import loop_wh_progress
 
-implemented_difficulty_methods = ['EDtM']  #,'SDtOM'
-
 
 def df_by_cell(used_variables, setfilter, context):
     """return a DataFrame, with id list and group size"""
@@ -41,11 +39,6 @@ class ScoreMatching(EvaluableExpression):
         self.set2filter = set2filter
         self.orderby1_expr = orderby1
         self.orderby2_expr = orderby2
-#         TODO: To remove because of case of orderby is in implemented_difficulty_methods
-#         if isinstance(orderby1, basestring) | isinstance(orderby2, basestring):
-#             raise Exception("Using a string for the orderby expression is not "
-#                             "supported anymore. You should use a normal "
-#                             "expression (ie simply remove the quotes).")
 
     def traverse(self, context):
         for node in traverse_expr(self.set1filter, context):
@@ -211,14 +204,8 @@ class SequentialMatching(ScoreMatching):
 
             if orderby1_expr == 'EDtM':
                 for var in used_variables1:
-                    order[set1filter] += (set1[var] - set1[var].mean())**2 \
-                                          / set1[var].var()
-            if orderby1_expr == 'SDtOM':
-                orderby_ctx = dict((k if k in used_variables1 else k, v)
-                                 for k, v in set1.iteritems())
-                orderby_ctx.update(('__other_' + k, set2[k].mean())
-                                 for k in used_variables2)
-                order[set1filter] = expr_eval(orderby1_expr, orderby_ctx)
+                    col = set1[var]
+                    order[set1filter] += (col - col.mean()) ** 2 / col.var()
 
         sorted_set1_indices = order[set1filter].argsort()[::-1]
         return sorted_set1_indices, None
@@ -312,24 +299,14 @@ class OptimizedSequentialMatching(SequentialMatching):
         df2 = df_by_cell(used_variables2, set2filter, context)
 
         # Sort df1: 
-        if not isinstance(order, str):
-            orderby = df1.eval(order)
-        else:
+        if isinstance(order, str):
+            assert order == 'EDtM'
             orderby = pd.Series(len(df1), dtype=int)
-            if order == 'EDtM':
-                for var in used_variables1:
-                    orderby += (df1[var] - df1[var].mean())**2 / df1[var].var()
-#             if order == 'SDtOM':
-#                 raise(NotImplementedError)
-#                 orderby_ctx = dict((k if k in used_variables1 else k, v)
-#                                  for k, v in df1.iteritems())
-#                 orderby_ctx.update(('__other_' + k, df2[k].mean())
-#                                  for k in used_variables2)
-#                 import pdb
-#                 pdb.set_trace()
-#                 score_expr = self.score_expr
-#                 orderby = expr_eval(score_expr, orderby_ctx)
-        
+            for var in used_variables1:
+                orderby += (df1[var] - df1[var].mean())**2 / df1[var].var()
+        else:
+            orderby = df1.eval(order)
+
         df1 = df1.loc[orderby.order().index]
         
         score_expr = self.score_expr
