@@ -13,10 +13,10 @@ implemented_difficulty_methods = ['EDtM']  #,'SDtOM'
 
 
 def df_by_cell(used_variables, setfilter, context):
-    ''' return a DataFrame, with id list and group size ''' 
+    """return a DataFrame, with id list and group size"""
+
     subset = context_subset(context, setfilter, used_variables)
-    used_set = dict((k, subset[k])
-                  for k in used_variables)
+    used_set = dict((k, subset[k]) for k in used_variables)
     used_set = pd.DataFrame(used_set)
     used_variables.remove('id')
     grouped = used_set.groupby(used_variables)
@@ -26,21 +26,22 @@ def df_by_cell(used_variables, setfilter, context):
 
 
 class ScoreMatching(EvaluableExpression):
-    ''' General framework for a Matching based on score
-        In general that kind of matching doesn't provide the best matching meaning
-        it doesn't optimize an overall penalty function. For example, if we have 
-        a distance function, the function doesn't always return the match with the
-        lowest sum of distanced between all matched pairs. 
-        A Score matching need two things :
-          - an order for the two sets
-          - a way of selecting a match
-    '''
+    """General framework for a Matching based on score
+
+    In general that kind of matching doesn't provide the best matching meaning
+    it doesn't optimize an overall penalty function. For example, if we have a
+    distance function, the function doesn't always return the match with the
+    lowest sum of distanced between all matched pairs. A Score matching need two
+    things:
+      - an order for the two sets
+      - a way of selecting a match
+    """
     def __init__(self, set1filter, set2filter, orderby1, orderby2):
         self.set1filter = set1filter
         self.set2filter = set2filter
         self.orderby1_expr = orderby1
         self.orderby2_expr = orderby2
-#         TDOD: To remove because of case of orderby is in implemented_difficulty_methods
+#         TODO: To remove because of case of orderby is in implemented_difficulty_methods
 #         if isinstance(orderby1, basestring) | isinstance(orderby2, basestring):
 #             raise Exception("Using a string for the orderby expression is not "
 #                             "supported anymore. You should use a normal "
@@ -89,14 +90,6 @@ class ScoreMatching(EvaluableExpression):
         used_variables2 = orderby2_expr.collect_variables(context)
         used_variables2.add('id')
         return used_variables1, used_variables2
-    # def _get_used_variables_order(self, context):
-    #     orderby1_expr = self.orderby1_expr
-    #     orderby2_expr = self.orderby2_expr
-    #     used_variables1 = orderby1_expr.collect_variables(context)
-    #     used_variables2 = orderby2_expr.collect_variables(context)
-    #     used_variables1.add('id')
-    #     used_variables2.add('id')
-    #     return used_variables1, used_variables2
 
     #noinspection PyUnusedLocal
     def dtype(self, context):
@@ -104,13 +97,13 @@ class ScoreMatching(EvaluableExpression):
 
 
 class RankingMatching(ScoreMatching):
-    '''
+    """
     Matching based on score
         set 1 is ranked by decreasing orderby1
         set 2 is ranked by decreasing orderby2
         Then individuals in the nth position in each list are matched together.
         The reverse options allow, if True, to sort by increasing orderby
-    '''
+    """
     def __init__(self, set1filter, set2filter, orderby1, orderby2,
                  reverse1=False, reverse2=False):
         ScoreMatching.__init__(self, set1filter, set2filter, orderby1, orderby2)
@@ -163,8 +156,9 @@ class RankingMatching(ScoreMatching):
         print("matching with %d/%d individuals" % (set1len, set2len))
         return self._match(set1tomatch, set2tomatch, set1, set2, context)
 
+
 class SequentialMatching(ScoreMatching):
-    '''
+    """
     Matching base on researching the best match one by one.
         - orderby gives the way individuals of 1 are sorted before matching
         The first on the list will be matched with its absolute best match
@@ -184,7 +178,7 @@ class SequentialMatching(ScoreMatching):
                            than one variable
                 - 'SDtOM' : 'Score Distance to the Other Mean'
             The SDtOM is the most relevant distance.
-    '''
+    """
     def __init__(self, set1filter, set2filter, score, orderby, pool_size=None):
         ScoreMatching.__init__(self, set1filter, set2filter, orderby, None)
         self.score_expr = score
@@ -192,7 +186,6 @@ class SequentialMatching(ScoreMatching):
             assert isinstance(pool_size, int)
             assert pool_size > 0
         self.pool_size = pool_size
-
 
     def _get_used_variables_match(self, context):
         score_expr = self.score_expr
@@ -231,14 +224,13 @@ class SequentialMatching(ScoreMatching):
         return sorted_set1_indices, None
 
     def _match(self, set1tomatch, set1, set2,
-              used_variables1, used_variables2, context):
+               used_variables1, used_variables2, context):
         global matching_ctx
 
         score_expr = self.score_expr
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
         id_to_rownum = context.id_to_rownum
-        
 
         matching_ctx = dict(('__other_' + k if k in used_variables2 else k, v)
                             for k, v in set2.iteritems())
@@ -257,16 +249,7 @@ class SequentialMatching(ScoreMatching):
             else:
                 local_ctx = matching_ctx.copy()
 
-            local_ctx.update((k, set1[k][sorted_idx])
-                                  for k in used_variables1)
-            # pk = tuple(individual1[fname] for fname in pk_names)
-            # optimized_expr = optimized_exprs.get(pk)
-            # if optimized_expr is None:
-            # for name in pk_names:
-            # fake_set1['__f_%s' % name].value = individual1[name]
-            # optimized_expr = str(symbolic_expr.simplify())
-            # optimized_exprs[pk] = optimized_expr
-            # set2_scores = evaluate(optimized_expr, mm_dict, set2)
+            local_ctx.update((k, set1[k][sorted_idx]) for k in used_variables1)
             set2_scores = expr_eval(score_expr, local_ctx)
             individual2_idx = np.argmax(set2_scores)
 
@@ -290,36 +273,30 @@ class SequentialMatching(ScoreMatching):
         tomatch = min(set1len, set2len)
 
         sorted_set1_indices, _ = \
-                self._get_sorted_indices(set1filter, set2filter, context)
+            self._get_sorted_indices(set1filter, set2filter, context)
         set1tomatch = sorted_set1_indices[:tomatch]
         print("matching with %d/%d individuals" % (set1len, set2len))
-
-        #TODO: compute pk_names automatically: variables which are either
-        # boolean, or have very few possible values and which are used more
-        # than once in the expression and/or which are used in boolean
-        # expressions
-#        pk_names = ('eduach', 'work')
-#        optimized_exprs = {}
 
         used_variables1, used_variables2 = \
             self._get_used_variables_match(context)
         set1 = context_subset(context, set1filter, used_variables1)
         set2 = context_subset(context, set2filter, used_variables2)
         return self._match(set1tomatch, set1, set2,
-                          used_variables1, used_variables2, context)
+                           used_variables1, used_variables2, context)
 
 
 class OptimizedSequentialMatching(SequentialMatching):
-    ''' Here, the matching is optimzed since we work on 
-        sets grouped with values. Doing so, we work with 
+    """ Here, the matching is optimized since we work on
+        sets grouped with values. Doing so, we work with
         smaller sets and we can improve running time.
-    '''
+    """
     def __init__(self, set1filter, set2filter, score, orderby):
         SequentialMatching.__init__(self, set1filter, set2filter, score,
                                     orderby, pool_size=None)
 
-        
     def evaluate(self, context):
+        global matching_ctx
+
         set1filter, set2filter = self._get_filters(context)
         set1len = set1filter.sum()
         set2len = set2filter.sum()
@@ -355,19 +332,16 @@ class OptimizedSequentialMatching(SequentialMatching):
         
         df1 = df1.loc[orderby.order().index]
         
-
-        global matching_ctx
         score_expr = self.score_expr
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
         id_to_rownum = context.id_to_rownum
         
-                
-        matching_ctx = dict(('__other_' + k, v.values) for k, v in df2.iteritems())
+        matching_ctx = dict(('__other_' + k, v.values)
+                            for k, v in df2.iteritems())
         matching_ctx['__len__'] = len(df2)
         for varname, col in df1.iteritems():
             matching_ctx[varname] = np.empty(1, dtype=col.dtype)
-
 
         def match_cell(idx, row):
             global matching_ctx
@@ -404,8 +378,8 @@ class OptimizedSequentialMatching(SequentialMatching):
         return result
 
 
-functions = {'matching': SequentialMatching,
-             'rank_matching': RankingMatching,
-             'optimized_matching': OptimizedSequentialMatching
-            
+functions = {
+    'matching': SequentialMatching,
+    'rank_matching': RankingMatching,
+    'optimized_matching': OptimizedSequentialMatching
 }
