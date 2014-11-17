@@ -380,7 +380,7 @@ class Expr(object):
         if key in {'shape', 'ndim',
                    'dim_names', 'pvalues', 'row_totals', 'col_totals',
                    '__len__',
-                   'sum', 'prod', 'std', 'max', 'min'}:
+                   'sum', 'prod', 'std', 'max', 'min', 'reshape'}:
             return ExprAttribute(self, key)
         else:
             raise AttributeError("'%s' object has no attribute '%s'"
