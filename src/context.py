@@ -124,7 +124,7 @@ class EvaluationContext(object):
         The main use case is to take a subset of rows. Since this is a
         costly operation, the user can also provide keys so that only the
         columns he needs are filtered.
-        :param index:
+        :param index: indices to take (list or ndarray)
         :param keys: list of column names or None (take all)
         :param filter_expr: expression used to compute the index. This is
         only used to compute the cache key
