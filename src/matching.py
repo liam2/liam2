@@ -6,7 +6,7 @@ import random
 
 from expr import expr_eval, always, expr_cache
 from exprbases import FilteredExpression
-from context import context_length, context_delete
+from context import context_length, context_delete, context_subset
 from utils import loop_wh_progress
 
 
@@ -34,12 +34,6 @@ class ScoreMatching(FilteredExpression):
       - an order for the two sets
       - a way of selecting a match
     """
-    def __init__(self, set1filter, set2filter, orderby1, orderby2):
-        self.set1filter = set1filter
-        self.set2filter = set2filter
-        self.orderby1_expr = orderby1
-        self.orderby2_expr = orderby2
-
     def traverse(self, context):
         #FIXME: we should not override the parent traverse method, so that all
         # "child" expressions are traversed too.
@@ -53,10 +47,9 @@ class ScoreMatching(FilteredExpression):
     def _get_filters(self, context):
         set1filterexpr = self._getfilter(context, self.set1filter)
         set2filterexpr = self._getfilter(context, self.set2filter)
-        return expr_eval((set1filterexpr, set1filterexpr), context)
+        return expr_eval((set1filterexpr, set2filterexpr), context)
 
     dtype = always(int)
-
 
 
 class RankingMatching(ScoreMatching):
@@ -76,8 +69,6 @@ class RankingMatching(ScoreMatching):
         result[id_to_rownum[id1]] = id2
         result[id_to_rownum[id2]] = id1
         return result
-
-    # def compute(self, context, set1filter, set2filter, score, orderby):
 
     def evaluate(self, context):
         set1filter, set2filter = self._get_filters(context)
@@ -103,19 +94,16 @@ class RankingMatching(ScoreMatching):
         # expressions (EvaluableExpression children) and pre-evaluate them,
         # because otherwise they are re-evaluated on all of set2 for each
         # individual in set1. See https://github.com/liam2/liam2/issues/128
-        set1 = context_subset(context, set1filter, used_variables1)
-        set2 = context_subset(context, set2filter, used_variables2)
+        set1 = context.subset(set1filtervalue, used_variables1, set1filterexpr)
+        set2 = context.subset(set2filtervalue, used_variables2, set2filterexpr)
 
-        # set1 = context.subset(set1filtervalue, used_variables1, set1filterexpr)
-        # set2 = context.subset(set2filtervalue, used_variables2, set2filterexpr)
-        # 
-        # # subset creates a dict for the current entity, so .entity_data is a
-        # # dict
-        # set1 = set1.entity_data
-        # set2 = set2.entity_data
-        # 
-        # set1len = set1filtervalue.sum()
-        # set2len = set2filtervalue.sum()
+        # subset creates a dict for the current entity, so .entity_data is a
+        # dict
+        set1 = set1.entity_data
+        set2 = set2.entity_data
+
+        set1len = set1filtervalue.sum()
+        set2len = set2filtervalue.sum()
         # tomatch = min(set1len, set2len)
         # sorted_set1_indices = orderby[set1filtervalue].argsort()[::-1]
         # set1tomatch = sorted_set1_indices[:tomatch]
@@ -147,33 +135,64 @@ class SequentialMatching(ScoreMatching):
     """
     funcname = 'matching'
     no_eval = ('set1filter', 'set2filter', 'score')
-    
-    def __init__(self, set1filter, set2filter, score, orderby, pool_size=None):
-        ScoreMatching.__init__(self, set1filter, set2filter, orderby, None)
-        self.score_expr = score
+
+    def _get_used_variables_match(self, score_expr, context):
+        used_variables = [v.name for v in score_expr.collect_variables(context)]
+        used_variables1 = ['id'] + [v for v in used_variables
+                                    if not v.startswith('__other_')]
+        used_variables2 = ['id'] + [v[8:] for v in used_variables
+                                    if v.startswith('__other_')]
+        return used_variables1, used_variables2
+
+    def compute(self, context, set1filter, set2filter, score, orderby,
+                pool_size=None):
+        global matching_ctx
+
         if pool_size is not None:
             assert isinstance(pool_size, int)
             assert pool_size > 0
-        self.pool_size = pool_size
 
-#    def compute(self, context, set1filter, set2filter, score, orderby):
+        set1filterexpr = self._getfilter(context, set1filter)
+        set1filtervalue = expr_eval(set1filterexpr, context)
+        set2filterexpr = self._getfilter(context, set2filter)
+        set2filtervalue = expr_eval(set2filterexpr, context)
 
+        set1len = set1filtervalue.sum()
+        set2len = set2filtervalue.sum()
+        tomatch = min(set1len, set2len)
+        print("matching with %d/%d individuals" % (set1len, set2len))
 
-    def _get_used_variables_match(self, context):
-        used_variables = self.score_expr.collect_variables(context)
-        used_variables1 = [v for v in used_variables
-                           if not v.startswith('__other_')]
-        used_variables2 = [v[8:] for v in used_variables
-                           if v.startswith('__other_')]
-        used_variables1 += ['id']
-        used_variables2 += ['id']
-        return used_variables1, used_variables2
+        used_variables1, used_variables2 = \
+            self._get_used_variables_match(score, context)
 
-    def _match(self, set1tomatch, set1, set2,
-               used_variables1, used_variables2, context):
-        global matching_ctx
+        #TODO: we should detect whether or not we are using non-simple
+        # expressions (EvaluableExpression children) and pre-evaluate them,
+        # because otherwise they are re-evaluated on all of set2 for each
+        # individual in set1. See https://github.com/liam2/liam2/issues/128
+        set1 = context.subset(set1filtervalue, used_variables1, set1filterexpr)
+        set2 = context.subset(set2filtervalue, used_variables2, set2filterexpr)
 
-        score_expr = self.score_expr
+        # subset creates a dict for the current entity, so .entity_data is a
+        # dict
+        set1 = set1.entity_data
+        set2 = set2.entity_data
+
+        if isinstance(orderby, str):
+            assert orderby == 'EDtM'
+            order = np.zeros(context_length(context), dtype=int)
+            for var in used_variables1:
+                col = set1[var]
+                order[set1filter] += (col - col.mean()) ** 2 / col.var()
+        else:
+            #XXX: shouldn't orderby be computed only on the filtered set? (
+            # but used_variables might be different than in the set,
+            # so it might not be worth it.
+            order = orderby
+
+        sorted_set1_indices = order[set1filtervalue].argsort()[::-1]
+
+        set1tomatch = sorted_set1_indices[:tomatch]
+
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
         id_to_rownum = context.id_to_rownum
@@ -191,7 +210,7 @@ class SequentialMatching(ScoreMatching):
 
             if pool_size is not None and set2_size > pool_size:
                 pool = random.sample(xrange(set2_size), pool_size)
-                local_ctx = context_subset(matching_ctx, pool, None)
+                local_ctx = context_subset(matching_ctx, pool)
             else:
                 local_ctx = matching_ctx.copy()
 
@@ -225,37 +244,8 @@ class SequentialMatching(ScoreMatching):
             result[id_to_rownum[id2]] = id1
 
         loop_wh_progress(match_one_set1_individual, set1tomatch,
-                         title="Matching...", pool_size=self.pool_size)
+                         pool_size=pool_size, title="Matching...")
         return result
-
-    def evaluate(self, context):
-        set1filter, set2filter = self._get_filters(context)
-        set1len = set1filter.sum()
-        set2len = set2filter.sum()
-
-        used_variables1, used_variables2 = \
-            self._get_used_variables_match(context)
-        set1 = context_subset(context, set1filter, used_variables1)
-        set2 = context_subset(context, set2filter, used_variables2)
-
-        orderby1_expr = self.orderby1_expr
-        if isinstance(orderby1_expr, str):
-            assert orderby1_expr == 'EDtM'
-            order = np.zeros(context_length(context), dtype=int)
-            for var in used_variables1:
-                col = set1[var]
-                order[set1filter] += (col - col.mean()) ** 2 / col.var()
-        else:
-            order = expr_eval(orderby1_expr, context)
-
-        sorted_set1_indices = order[set1filter].argsort()[::-1]
-
-        tomatch = min(set1len, set2len)
-        set1tomatch = sorted_set1_indices[:tomatch]
-
-        print("matching with %d/%d individuals" % (set1len, set2len))
-        return self._match(set1tomatch, set1, set2,
-                           used_variables1, used_variables2, context)
 
 
 class OptimizedSequentialMatching(SequentialMatching):
@@ -278,7 +268,7 @@ class OptimizedSequentialMatching(SequentialMatching):
         print("matching with %d/%d individuals" % (set1len, set2len))
         
         used_variables1, used_variables2 = \
-            self._get_used_variables_match(context)
+            self._get_used_variables_match(self.score_expr, context)
         order = self.orderby1_expr
         if not isinstance(order, str):
             var_match = order.collect_variables(context)
