@@ -324,10 +324,18 @@ class Function(Process):
         # add arguments to the local namespace
         for name, value in zip(self.argnames, args):
             # backup the variable if it existed in the caller namespace
-            # if name in self.entity.temp_variables:
-            #     backup[name] = self.entity.temp_variables.pop(name)
-            # self.entity.temp_variables[name] = value
-            context[name] = value
+            if name in self.entity.temp_variables:
+                # we can safely assign to backup without checking if that name
+                # was already assigned because it is not possible for a variable
+                # to be both in entity.temp_variables and in backup (they are
+                # removed from entity.temp_variables).
+                backup[name] = self.entity.temp_variables.pop(name)
+
+            # cannot use context[name] = value because that would store the
+            # value in .extra, which is wiped at the start of each process
+            # and we need it to be available across all processes of the
+            # function
+            self.entity.temp_variables[name] = value
         self.code.run_guarded(context)
         result = expr_eval(self.result, context)
 
