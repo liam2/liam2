@@ -13,7 +13,7 @@ from utils import loop_wh_progress
 def df_by_cell(used_variables, setfilter, context):
     """return a DataFrame, with id list and group size"""
 
-    subset = context_subset(context, setfilter, used_variables)
+    subset = context.subset(setfilter, used_variables)
     used_set = dict((k, subset[k]) for k in used_variables)
     used_set = pd.DataFrame(used_set)
     used_variables.remove('id')
@@ -227,41 +227,43 @@ class OptimizedSequentialMatching(SequentialMatching):
         smaller sets and we can improve running time.
     """
     funcname = 'optimized_matching'
+    no_eval = ('set1filter', 'set2filter', 'score', 'orderby')
 
     def __init__(self, set1filter, set2filter, score, orderby):
-        SequentialMatching.__init__(self, set1filter, set2filter, score,
-                                    orderby, pool_size=None)
+        ScoreMatching.__init__(self, set1filter, set2filter, score, orderby)
 
-    def evaluate(self, context):
+    def compute(self, context, set1filter, set2filter, score, orderby):
         global matching_ctx
 
-        set1filter, set2filter = self._get_filters(context)
-        set1len = set1filter.sum()
-        set2len = set2filter.sum()
+        set1filterexpr = self._getfilter(context, set1filter)
+        set1filtervalue = expr_eval(set1filterexpr, context)
+        set2filterexpr = self._getfilter(context, set2filter)
+        set2filtervalue = expr_eval(set2filterexpr, context)
+        set1len = set1filtervalue.sum()
+        set2len = set2filtervalue.sum()
         print("matching with %d/%d individuals" % (set1len, set2len))
-        
+
         used_variables1, used_variables2 = \
-            self._get_used_variables_match(self.score_expr, context)
-        order = self.orderby1_expr
-        if not isinstance(order, str):
-            var_match = order.collect_variables(context)
+            self._get_used_variables_match(score, context)
+
+        if not isinstance(orderby, str):
+            var_match = orderby.collect_variables(context)
             used_variables1 += list(var_match)
 
-        df1 = df_by_cell(used_variables1, set1filter, context)
-        df2 = df_by_cell(used_variables2, set2filter, context)
+        df1 = df_by_cell(used_variables1, set1filtervalue, context)
+        df2 = df_by_cell(used_variables2, set2filtervalue, context)
 
         # Sort df1: 
-        if isinstance(order, str):
-            assert order == 'EDtM'
-            orderby = pd.Series(len(df1), dtype=int)
+        if isinstance(orderby, str):
+            assert orderby == 'EDtM'
+            orderbyvalue = pd.Series(len(df1), dtype=int)
             for var in used_variables1:
-                orderby += (df1[var] - df1[var].mean())**2 / df1[var].var()
+                orderbyvalue += (df1[var] - df1[var].mean())**2 / df1[var].var()
         else:
-            orderby = df1.eval(order)
+            orderbyvalue = df1.eval(orderby)
 
-        df1 = df1.loc[orderby.order().index]
+        df1 = df1.loc[orderbyvalue.order().index]
         
-        score_expr = self.score_expr
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
         id_to_rownum = context.id_to_rownum
@@ -276,12 +278,13 @@ class OptimizedSequentialMatching(SequentialMatching):
             global matching_ctx
             if matching_ctx['__len__'] == 0:
                 raise StopIteration()
-            
+
             size1 = len(row['idx'])
             for var in df1.columns:
                 matching_ctx[var] = row[var]
-    
-            cell_idx = expr_eval(score_expr, matching_ctx).argmax()
+
+            eval_ctx = context.clone(entity_data=matching_ctx)
+            cell_idx = expr_eval(score, eval_ctx).argmax()
             size2 = len(matching_ctx['__other_idx'][cell_idx])
             nb_match = min(size1, size2)
 
