@@ -63,29 +63,23 @@ class RankingMatching(ScoreMatching):
         set2filtervalue = expr_eval(set2filterexpr, context)
         set1len = set1filtervalue.sum()
         set2len = set2filtervalue.sum()
-        tomatch = min(set1len, set2len)
-
-        sorted_set1_indices = orderby1[set1filtervalue].argsort()[::-1]
-        sorted_set2_indices = orderby2[set2filtervalue].argsort()[::-1]
-
-        set1tomatch = sorted_set1_indices[:tomatch]
-        set2tomatch = sorted_set2_indices[:tomatch]
-
-        set1 = context.subset(set1filtervalue, ['id'])
-        set2 = context.subset(set2filtervalue, ['id'])
-
-        # subset creates a dict for the current entity, so .entity_data is a
-        # dict
-        set1 = set1.entity_data
-        set2 = set2.entity_data
-
+        numtomatch = min(set1len, set2len)
         print("matching with %d/%d individuals" % (set1len, set2len))
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
+        if not numtomatch:
+            return result
+
+        sorted_set1_indices = orderby1[set1filtervalue].argsort()[-numtomatch:]
+        sorted_set2_indices = orderby2[set2filtervalue].argsort()[-numtomatch:]
+
+        set1ids = context['id'][set1filtervalue]
+        set2ids = context['id'][set2filtervalue]
 
         id_to_rownum = context.id_to_rownum
-        id1 = set1['id'][set1tomatch]
-        id2 = set2['id'][set2tomatch]
+        id1 = set1ids[sorted_set1_indices]
+        id2 = set2ids[sorted_set2_indices]
+        # cannot use sorted_setX_indices because those are "local" indices
         result[id_to_rownum[id1]] = id2
         result[id_to_rownum[id2]] = id1
         return result
