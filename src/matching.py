@@ -44,11 +44,6 @@ class ScoreMatching(FilteredExpression):
         # evaluation (__other_xxx is added during evaluation).
         yield self
 
-    def _get_filters(self, context):
-        set1filterexpr = self._getfilter(context, self.set1filter)
-        set2filterexpr = self._getfilter(context, self.set2filter)
-        return expr_eval((set1filterexpr, set2filterexpr), context)
-
     dtype = always(int)
 
 
@@ -59,7 +54,32 @@ class RankingMatching(ScoreMatching):
         set 2 is ranked by decreasing orderby2
         Then individuals in the nth position in each list are matched together.
     """
-    def _match(self, set1tomatch, set2tomatch, set1, set2, context):
+    no_eval = ('set1filter', 'set2filter')
+
+    def compute(self, context, set1filter, set2filter, orderby1, orderby2):
+        set1filterexpr = self._getfilter(context, set1filter)
+        set1filtervalue = expr_eval(set1filterexpr, context)
+        set2filterexpr = self._getfilter(context, set2filter)
+        set2filtervalue = expr_eval(set2filterexpr, context)
+        set1len = set1filtervalue.sum()
+        set2len = set2filtervalue.sum()
+        tomatch = min(set1len, set2len)
+
+        sorted_set1_indices = orderby1[set1filtervalue].argsort()[::-1]
+        sorted_set2_indices = orderby2[set2filtervalue].argsort()[::-1]
+
+        set1tomatch = sorted_set1_indices[:tomatch]
+        set2tomatch = sorted_set2_indices[:tomatch]
+
+        set1 = context.subset(set1filtervalue, ['id'])
+        set2 = context.subset(set2filtervalue, ['id'])
+
+        # subset creates a dict for the current entity, so .entity_data is a
+        # dict
+        set1 = set1.entity_data
+        set2 = set2.entity_data
+
+        print("matching with %d/%d individuals" % (set1len, set2len))
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
 
@@ -69,46 +89,6 @@ class RankingMatching(ScoreMatching):
         result[id_to_rownum[id1]] = id2
         result[id_to_rownum[id2]] = id1
         return result
-
-    def evaluate(self, context):
-        set1filter, set2filter = self._get_filters(context)
-        set1len = set1filter.sum()
-        set2len = set2filter.sum()
-        tomatch = min(set1len, set2len)
-
-        orderby1 = expr_eval(self.orderby1_expr, context)
-        orderby2 = expr_eval(self.orderby2_expr, context)
-
-        sorted_set1_indices = orderby1[set1filter].argsort()[::-1]
-        sorted_set2_indices = orderby2[set2filter].argsort()[::-1]
-
-        set1tomatch = sorted_set1_indices[:tomatch]
-        set2tomatch = sorted_set2_indices[:tomatch]
-
-        used_variables1 = self.orderby1_expr.collect_variables(context)
-        used_variables1.add('id')
-        used_variables2 = self.orderby2_expr.collect_variables(context)
-        used_variables2.add('id')
-
-        #TODO: we should detect whether or not we are using non-simple
-        # expressions (EvaluableExpression children) and pre-evaluate them,
-        # because otherwise they are re-evaluated on all of set2 for each
-        # individual in set1. See https://github.com/liam2/liam2/issues/128
-        set1 = context.subset(set1filtervalue, used_variables1, set1filterexpr)
-        set2 = context.subset(set2filtervalue, used_variables2, set2filterexpr)
-
-        # subset creates a dict for the current entity, so .entity_data is a
-        # dict
-        set1 = set1.entity_data
-        set2 = set2.entity_data
-
-        set1len = set1filtervalue.sum()
-        set2len = set2filtervalue.sum()
-        # tomatch = min(set1len, set2len)
-        # sorted_set1_indices = orderby[set1filtervalue].argsort()[::-1]
-        # set1tomatch = sorted_set1_indices[:tomatch]
-        print("matching with %d/%d individuals" % (set1len, set2len))
-        return self._match(set1tomatch, set2tomatch, set1, set2, context)
 
 
 class SequentialMatching(ScoreMatching):
@@ -156,7 +136,6 @@ class SequentialMatching(ScoreMatching):
         set1filtervalue = expr_eval(set1filterexpr, context)
         set2filterexpr = self._getfilter(context, set2filter)
         set2filtervalue = expr_eval(set2filterexpr, context)
-
         set1len = set1filtervalue.sum()
         set2len = set2filtervalue.sum()
         tomatch = min(set1len, set2len)
