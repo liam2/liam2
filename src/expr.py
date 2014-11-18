@@ -8,7 +8,7 @@ import numpy as np
 
 from cache import Cache
 from utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray,
-                   FullArgSpec, englishenum, make_hashable)
+                   FullArgSpec, englishenum, make_hashable, add_context)
 from context import EntityContext, EvaluationContext
 
 
