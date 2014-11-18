@@ -965,8 +965,7 @@ class Variable(Expr):
 
     def dtype(self, context):
         if self._dtype is None and self.name in context:
-            type_ = context[self.name].dtype.type
-            return normalize_type(type_)
+            return gettype(context[self.name])
         else:
             return self._dtype
 
