@@ -78,8 +78,13 @@ class CSV(FunctionExpr, FileProducer):
 
 
 class RemoveIndividuals(FunctionExpr):
-    def compute(self, context, filter):
+    def compute(self, context, filter=None):
         filter_value = filter
+        if filter_value is None:
+            # this is pretty inefficient, but remove without filter is not
+            # common enough to bother
+            filter_value = np.ones(len(context), dtype=bool)
+
         if not np.any(filter_value):
             return
 
