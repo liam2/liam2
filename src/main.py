@@ -180,6 +180,19 @@ class PrintVersionsAction(argparse.Action):
             cext = False
         print("C extensions are" + (" NOT" if not cext else "") + " available")
 
+        # optional dependencies
+        try:
+            import vitables
+            vt_version = vitables.__version__
+        except ImportError:
+            vt_version = 'N/A'
+
+        try:
+            import matplotlib
+            mpl_version = matplotlib.__version__
+        except ImportError:
+            mpl_version = 'N/A'
+
         py_version = '{} ({})'.format(platform.python_version(),
                                       platform.architecture()[0])
         print("""
@@ -188,9 +201,13 @@ numpy {np}
 numexpr {ne}
 pytables {pt}
 bcolz {bc}
-pyyaml {yml}""".format(py=py_version, np=numpy.__version__,
+pyyaml {yml}
+vitables {vt}
+matplotlib {mpl}
+""".format(py=py_version, np=numpy.__version__,
                        ne=numexpr.__version__, pt=tables.__version__,
-                       bc=bcolz.__version__, yml=yaml.__version__))
+                       vt=vt_version, mpl=mpl_version, bc=bcolz.__version__,
+                       yml=yaml.__version__))
         parser.exit()
 
 
