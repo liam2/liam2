@@ -234,7 +234,7 @@ class OptimizedSequentialMatching(SequentialMatching):
         set2filtervalue = expr_eval(set2filterexpr, context)
         set1len = set1filtervalue.sum()
         set2len = set2filtervalue.sum()
-        print("matching with %d/%d individuals" % (set1len, set2len))
+        print("matching with %d/%d individuals" % (set1len, set2len), end='')
 
         used_variables1, used_variables2 = \
             self._get_used_variables_match(score, context)
@@ -245,6 +245,7 @@ class OptimizedSequentialMatching(SequentialMatching):
 
         df1 = df_by_cell(used_variables1, set1filtervalue, context)
         df2 = df_by_cell(used_variables2, set2filtervalue, context)
+        print(" (%d/%d groups)" % (len(df1), len(df2)))
 
         # Sort df1: 
         if isinstance(orderby, str):
