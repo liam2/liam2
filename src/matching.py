@@ -87,25 +87,18 @@ class RankingMatching(ScoreMatching):
 
 class SequentialMatching(ScoreMatching):
     """
-    Matching base on researching the best match one by one.
-        - orderby gives the way individuals of 1 are sorted before matching
-        The first on the list will be matched with its absolute best match
-        The last on the list will be matched with the best match among the
-        remaining pool
-        - orederby can be :
-            - an expression (usually a variable name)
-            - a string : the name of a method to sort individuals to be match,
-            it is supposed to be
-             a "difficulty" because it's better (according to a general
-             objective score)
-             to match hard-to-match people first. The possible difficulty order
-             are:
-                - 'EDtM' : 'Euclidian Distance to the Mean', note it is the
-                reduce euclidan distance that is
-                           used which is a common convention when there is more
-                           than one variable
-                - 'SDtOM' : 'Score Distance to the Other Mean'
-            The SDtOM is the most relevant distance.
+    Matching based on searching for the best match one by one.
+    - orderby gives the way individuals of set 1 are sorted before matching.
+      The first individual will be matched with the highest scoring individual
+      from set 2. The next individuals in set 1 will be matched with the highest
+      scoring individual among the remaining individuals in set 2.
+
+    - orderby can be :
+        - an expression (usually a variable name). It is supposed to be
+          a "difficulty" because it's better (according to a general
+          objective score) to match hard-to-match people first.
+        - the string 'EDtM', in which case, the (reduced) "Euclidean Distance to
+          the Mean" is used to order individuals.
     """
     funcname = 'matching'
     no_eval = ('set1filter', 'set2filter', 'score')
@@ -222,9 +215,9 @@ class SequentialMatching(ScoreMatching):
 
 
 class OptimizedSequentialMatching(SequentialMatching):
-    """ Here, the matching is optimized since we work on
-        sets grouped with values. Doing so, we work with
-        smaller sets and we can improve running time.
+    """
+    Here, the matching is optimized since we work on sets grouped by values.
+    Doing so, we work with smaller sets and we can improve running time.
     """
     funcname = 'optimized_matching'
     no_eval = ('set1filter', 'set2filter', 'score', 'orderby')
@@ -276,8 +269,9 @@ class OptimizedSequentialMatching(SequentialMatching):
 
         def match_cell(idx, row):
             global matching_ctx
+
             if matching_ctx['__len__'] == 0:
-                raise StopIteration()
+                raise StopIteration
 
             size1 = len(row['idx'])
             for var in df1.columns:
@@ -288,7 +282,7 @@ class OptimizedSequentialMatching(SequentialMatching):
             size2 = len(matching_ctx['__other_idx'][cell_idx])
             nb_match = min(size1, size2)
 
-            # we could introduce a random choice her but it's not
+            # we could introduce a random choice here but it is not
             # much necessary. In that case, it should be done in df_by_cell
             idx1 = row['idx'][:nb_match]
             idx2 = matching_ctx['__other_idx'][cell_idx][:nb_match]
