@@ -320,7 +320,13 @@ class Function(Process):
                                  "'%s' because there is a field with the "
                                  "same name" % (self.name, name))
 
-        context = context.copy()
+        # contextual filter should not transfer to the called function (even
+        # if that would somewhat make sense) because in many cases the
+        # columns used in the contextual filter are not available within the
+        # called function. This is only relevant for functions called within
+        # an if() expression.
+        context = context.clone(filter_expr=None)
+
         # add arguments to the local namespace
         for name, value in zip(self.argnames, args):
             # backup the variable if it existed in the caller namespace
