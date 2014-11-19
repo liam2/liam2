@@ -27,9 +27,9 @@ WEBSITE = 'liam2.plan.be'
 # - make_release, detects hotfix or release
 
 
-#---------------#
+# ------------- #
 # generic tools #
-#---------------#
+# ------------- #
 
 def size2str(value):
     unit = "bytes"
@@ -168,9 +168,9 @@ def isprerelease(release_name):
                for tag in ('rc', 'c', 'beta', 'b', 'alpha', 'a'))
 
 
-#----------------------#
+# -------------------- #
 # end of generic tools #
-#----------------------#
+# -------------------- #
 
 
 def relname2fname(release_name):
