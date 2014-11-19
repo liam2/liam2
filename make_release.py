@@ -560,8 +560,10 @@ def make_release(release_name=None, branch='master'):
         do('Tagging release', call,
            'git tag -a v%(name)s -m "tag release %(name)s"'
            % {'name': release_name})
+        # push the website & changelog commits to the branch (usually master)
+        # and the release tag (which refers to the last commit)
         do('Pushing to %s' % repository, call,
-           'git push origin %s' % release_name)
+           'git push origin %s --follow-tags' % branch)
 
         # ------- #
         chdir('..')
@@ -579,7 +581,8 @@ def make_release(release_name=None, branch='master'):
     do('Cleaning up', cleanup)
     if public_release:
         chdir(repository)
-        do('Pushing to GitHub', call, 'git push origin %s' % release_name)
+        do('Pushing to GitHub', call,
+           'git push origin %s --follow-tags' % branch)
 
 if __name__ == '__main__':
     from sys import argv
