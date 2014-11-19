@@ -145,7 +145,7 @@ class SequentialMatching(ScoreMatching):
 
         if isinstance(orderby, str):
             assert orderby == 'EDtM'
-            order = np.zeros(context_length(context), dtype=int)
+            order = np.zeros(context_length(context))
             for var in used_variables1:
                 col = set1[var]
                 order[set1filter] += (col - col.mean()) ** 2 / col.var()
