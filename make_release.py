@@ -558,7 +558,7 @@ def make_release(release_name=None, branch='master'):
         # ---------- #
 
         do('Tagging release', call,
-           'git tag -a %(name)s -m "tag release %(name)s"'
+           'git tag -a v%(name)s -m "tag release %(name)s"'
            % {'name': release_name})
         do('Pushing to %s' % repository, call,
            'git push origin %s' % release_name)
