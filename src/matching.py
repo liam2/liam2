@@ -250,7 +250,7 @@ class OptimizedSequentialMatching(SequentialMatching):
         # Sort df1: 
         if isinstance(orderby, str):
             assert orderby == 'EDtM'
-            orderbyvalue = pd.Series(len(df1), dtype=int)
+            orderbyvalue = pd.Series(np.zeros(len(df1)))
             for var in used_variables1:
                 orderbyvalue += (df1[var] - df1[var].mean())**2 / df1[var].var()
         else:
