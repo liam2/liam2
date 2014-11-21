@@ -17,7 +17,7 @@ def df_by_cell(used_variables, setfilter, context):
     used_set = dict((k, subset[k]) for k in used_variables)
     used_set = pd.DataFrame(used_set)
     used_variables.remove('id')
-    grouped = used_set.groupby(used_variables)
+    grouped = used_set.groupby(list(used_variables))
     idx = grouped.apply(lambda x: list(x['id'].values)).reset_index()
     idx.rename(columns={0: 'idx'}, inplace=True)
     return idx
@@ -104,11 +104,11 @@ class SequentialMatching(ScoreMatching):
     no_eval = ('set1filter', 'set2filter', 'score')
 
     def _get_used_variables_match(self, score_expr, context):
-        used_variables = [v.name for v in score_expr.collect_variables(context)]
-        used_variables1 = ['id'] + [v for v in used_variables
-                                    if not v.startswith('__other_')]
-        used_variables2 = ['id'] + [v[8:] for v in used_variables
-                                    if v.startswith('__other_')]
+        used_variables = {v.name for v in score_expr.collect_variables(context)}
+        used_variables1 = {'id'} | {v for v in used_variables
+                                    if not v.startswith('__other_')}
+        used_variables2 = {'id'} | {v[8:] for v in used_variables
+                                    if v.startswith('__other_')}
         return used_variables1, used_variables2
 
     def compute(self, context, set1filter, set2filter, score, orderby,
@@ -241,7 +241,7 @@ class OptimizedSequentialMatching(SequentialMatching):
 
         if not isinstance(orderby, str):
             var_match = orderby.collect_variables(context)
-            used_variables1 += list(var_match)
+            used_variables1 |= {v.name for v in var_match}
 
         df1 = df_by_cell(used_variables1, set1filtervalue, context)
         df2 = df_by_cell(used_variables2, set2filtervalue, context)
