@@ -146,6 +146,7 @@ class SequentialMatching(ScoreMatching):
         if isinstance(orderby, str):
             assert orderby == 'EDtM'
             order = np.zeros(context_length(context))
+            #FIXME: remove "id"
             for var in used_variables1:
                 col = set1[var]
                 order[set1filter] += (col - col.mean()) ** 2 / col.var()
@@ -241,6 +242,9 @@ class OptimizedSequentialMatching(SequentialMatching):
 
         if not isinstance(orderby, str):
             var_match = orderby.collect_variables(context)
+            #FIXME: all used_variables are used in groupby. We need to keep the
+            # orderby variables in the context subset but they should NOT be
+            # used in the groupby.
             used_variables1 |= {v.name for v in var_match}
 
         df1 = df_by_cell(used_variables1, set1filtervalue, context)
@@ -251,6 +255,7 @@ class OptimizedSequentialMatching(SequentialMatching):
         if isinstance(orderby, str):
             assert orderby == 'EDtM'
             orderbyvalue = pd.Series(np.zeros(len(df1)))
+            #FIXME: id should not be in here
             for var in used_variables1:
                 orderbyvalue += (df1[var] - df1[var].mean())**2 / df1[var].var()
         else:
