@@ -671,7 +671,7 @@ def load_path_globals(globals_def, fpath):
 def index_tables(globals_def, entities, fpath):
     print("reading data from %s ..." % fpath)
 
-    input_file = tables.open_file(fpath, mode="r")
+    input_file = tables.open_file(fpath)
     try:
         input_root = input_file.root
 
