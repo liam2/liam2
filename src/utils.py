@@ -595,7 +595,7 @@ def aslabeledarray(data):
 
 
 class ProgressBar(object):
-    def __init__(self, maximum=100, title=''):
+    def __init__(self, maximum=100):
         pass
 
     def update(self, value):
@@ -606,7 +606,7 @@ class ProgressBar(object):
 
 
 class TextProgressBar(ProgressBar):
-    def __init__(self, maximum=100, title=''):
+    def __init__(self, maximum=100):
         ProgressBar.__init__(self)
         self.percent = 0
         self.maximum = maximum
@@ -625,8 +625,8 @@ class TextProgressBar(ProgressBar):
         self.percent = percent_done
 
 
-def loop_wh_progress(func, sequence, title='Progress', **kwargs):
-    pb = TextProgressBar(len(sequence), title=title)
+def loop_wh_progress(func, sequence, **kwargs):
+    pb = TextProgressBar(len(sequence))
     for i, value in enumerate(sequence, start=1):
         try:
             func(i, value, **kwargs)

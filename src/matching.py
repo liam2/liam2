@@ -211,7 +211,7 @@ class SequentialMatching(ScoreMatching):
             result[id_to_rownum[id2]] = id1
 
         loop_wh_progress(match_one_set1_individual, set1tomatch,
-                         pool_size=pool_size, title="Matching...")
+                         pool_size=pool_size)
         return result
 
 
