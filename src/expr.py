@@ -379,7 +379,7 @@ class Expr(object):
     def __getattr__(self, key):
         if key in {'shape', 'ndim',
                    'dim_names', 'pvalues', 'row_totals', 'col_totals',
-                   '__len__',
+                   '__len__', 'nonzero', 'cumsum',
                    'sum', 'prod', 'std', 'max', 'min', 'reshape'}:
             return ExprAttribute(self, key)
         else:
