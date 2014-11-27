@@ -20,7 +20,7 @@ from subprocess import check_output, STDOUT, CalledProcessError
 
 WEBSITE = 'liam2.plan.be'
 
-#TODO: add more scripts to implement the "git flow" model
+# TODO: add more scripts to implement the "git flow" model
 # - hotfix_branch
 # - release_branch
 # - feature_branch
@@ -266,26 +266,6 @@ def copy_release(release_name):
     copytree(r'build\doc\usersguide\build\html', 'htmldoc')
     copytree(r'build\doc\usersguide\build\web',
              r'webdoc\%s' % short(release_name))
-
-
-def allfiles(pattern, path='.'):
-    """
-    like glob.glob(pattern) but also include files in subdirectories
-    """
-    return (os.path.join(dirpath, f)
-            for dirpath, dirnames, files in os.walk(path)
-            for f in fnmatch.filter(files, pattern))
-
-
-def zip_pack(archivefname, filepattern):
-    with zipfile.ZipFile(archivefname, 'w', zipfile.ZIP_DEFLATED) as f:
-        for fname in allfiles(filepattern):
-            f.write(fname)
-
-
-def zip_unpack(archivefname, dest=None):
-    with zipfile.ZipFile(archivefname, 'r') as f:
-        f.extractall(dest)
 
 
 def create_bundles(release_name):
