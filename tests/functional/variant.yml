@@ -22,12 +22,12 @@ entities:
 
             check_macros:
                 # use a new macro
-                - assertEqual(grpcount(VARIANT_MACRO),
-                              grpcount(variant_field == 1))
+                - assertEqual(count(VARIANT_MACRO),
+                              count(variant_field == 1))
                 # use an overridden macro
-                - assertEqual(grpcount(ISCHILD), grpcount(age < 15))
+                - assertEqual(count(ISCHILD), count(age < 15))
                 # use a macro not overridden
-                - assertEqual(grpcount(FEMALE), grpcount(not gender))
+                - assertEqual(count(FEMALE), count(not gender))
 
 simulation:
     init:
