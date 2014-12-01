@@ -5,6 +5,7 @@ import time
 
 import tables
 import numpy as np
+import config
 
 from expr import (normalize_type, get_missing_value, get_missing_record,
                   get_missing_vector, gettype)
@@ -650,13 +651,13 @@ class DataSet(object):
     pass
 
 
-def load_path_globals(globals_def, fpath):
-    fdir = dirname(fpath)
+def load_path_globals(globals_def):
+    localdir = config.input_directory
     globals_data = {}
     for name, global_def in globals_def.iteritems():
         if 'path' not in global_def:
             continue
-        kind, info = load_def(fdir, name, global_def, [])
+        kind, info = load_def(localdir, name, global_def, [])
         if kind == 'table':
             fields, numlines, datastream, csvfile = info
             array = stream_to_array(fields, datastream, numlines)
@@ -679,7 +680,7 @@ def index_tables(globals_def, entities, fpath):
             raise Exception('could not find any globals in the input data file '
                             '(but some are declared in the simulation file)')
 
-        globals_data = load_path_globals(globals_def, fpath)
+        globals_data = load_path_globals(globals_def)
 
         globals_node = getattr(input_root, 'globals', None)
         for name, global_def in globals_def.iteritems():
@@ -862,8 +863,7 @@ class Void(DataSource):
         self.output_path = output_path
 
     def run(self, globals_def, entities, start_period):
-        #FIXME: this should really be inputpath, but we don't have one in Void
-        globals_data = load_path_globals(globals_def, self.output_path)
+        globals_data = load_path_globals(globals_def)
         output_file = tables.open_file(self.output_path, mode="w")
         output_indexes = output_file.create_group("/", "indexes", "Indexes")
         output_entities = output_file.create_group("/", "entities", "Entities")
