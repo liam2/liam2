@@ -1688,6 +1688,25 @@ entities:
                                        ['average age', 'gini'],
                                        fname='person_age_aggregates.csv')
 
+#            test_h5:
+#                # mode='a', append=False: replace table in existing file
+#                                          (default)
+#                # mode='a', append=True: append to existing table
+#                                         (append=True implies mode='a')
+#                # mode='w': replace the whole file
+#                # period is currently stored in array, so we can skip
+#                # temporaries and still have it
+#                - h5(dump(temporaries=False),
+#                     fname='persons.h5', node="/entities/person", append=True)
+#                # node defaults to "/entities/{entity}"
+#                - h5(dump(), fname='persons.h5', append=True)
+#                # fname defaults to output/file
+#                - h5(dump(), append=True)
+#                # I would be nice to also have a builtin method that does
+#                # not need to be defined (something like "__store__"), which
+#                # would be equivalent to the current Entity.store_period_data:
+#                - h5(dump(temporaries=False), append=True)
+
             test_dump:
                 - expr: csv(dump(gender, age, partner_id, partner.age),
                             suffix='partner_ages')
