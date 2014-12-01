@@ -34,25 +34,47 @@ entities:
 
         processes:
             generate:
-                # men
-                - new('person', number=200,
-                      male=True,
-                      partner_id=-1,
-                      region_id=randint(10))
-                # women
-                - new('person', number=300,
-                      male=False,
-                      partner_id=-1,
-                      region_id=randint(10))
-                # id - 0 / id - num_men
-                - tmp: if(male,
-                          id - min(id, filter=MALE),
-                          id - min(id, filter=FEMALE))
-                - maxtmp: if(MALE, max(tmp, filter=MALE),
-                                   max(tmp, filter=FEMALE))
-                # normalize age between 0 and 99 (evenly distributed)
-                # we have now two men and three women of each age
-                - age: trunc(tmp * 100 / (maxtmp + 1))
+                args: newmen, newwomen
+                code:
+                    # men
+                    - new('person', number=newmen,
+                          male=True,
+                          partner_id=-1,
+                          region_id=randint(10))
+                    # women
+                    - new('person', number=newwomen,
+                          male=False,
+                          partner_id=-1,
+                          region_id=randint(10))
+
+                    # interesting trick if we wanted to set the age for all
+                    # individuals in the db (new or not), or all with unset
+                    # age, and support setting age after arbitrary
+                    # interleaving of new(male) and new(not male). However we
+                    # do not need this in this case, and only setting the
+                    # age of individuals which have been actually created seem
+                    # safer.
+                    #- idxbysex: if(MALE, MALE.cumsum(), FEMALE.cumsum()) - 1
+                    #- numbysex: if(MALE, count(MALE), count(FEMALE))
+
+                    - maxid: max(id)
+                    - womenstartid: maxid + 1 - newwomen
+                    - menstartid: womenstartid - newmen
+                    - idxbysex: id - if(male, menstartid, womenstartid)
+                    - numbysex: if(MALE, newmen, newwomen)
+
+                    # normalize age between 0 and 99 (evenly distributed)
+                    - age: if(age == -1, trunc(idxbysex * 100 / numbysex), age)
+                    - show(groupby(age, male))
+
+            generate_few:
+                # generate two men and three women of each age
+                - generate(200, 300)
+
+            generate_many:
+                - remove()
+                # generate 100 men and 100 women of each age
+                - generate(10000, 10000)
 
             test_matching:
                 # men in set1 and women in set2, older men first
@@ -312,10 +334,22 @@ entities:
                 - assertTrue(all(age <= 33, filter=FEMALE and not INCOUPLE))
                 - assertTrue(all(not INCOUPLE, filter=FEMALE and age < 33))
 
+            test_optimized:
+                - normal_id: matching(set1filter=MALE, set2filter=FEMALE,
+                                      orderby=age,
+                                      score=-(other.age - age) ** 2)
+                - opt_id: optimized_matching(set1filter=MALE,
+                                             set2filter=FEMALE,
+                                             orderby=age,
+                                             score=-(other.age - age) ** 2)
+#                - assertEqual(opt_id, normal_id)
+                #TODO: also test the case where all individuals have
+                # different values (as many groups as individuals)
+
 simulation:
     init:
         - region: [generate]
-        - person: [generate]
+        - person: [generate_few]
     processes:
         # make sure region is loaded
         - region: []
@@ -323,6 +357,10 @@ simulation:
             test_matching,
             test_matching_pool,
             test_rank_matching
+        ]
+        - person: [
+            generate_many,
+            test_optimized
         ]
 
     input:
