@@ -125,12 +125,7 @@ build_exe_options = {
         "_codecs_kr", "_codecs_tw",
 
         # common modules
-        "Tkconstants", "Tkinter", "Cython", "_ssl", "base64", "bz2", "compiler",
-        "doctest", "dummy_thread", "dummy_threading", "email", "ftplib",
-        "multiprocessing", "nose", "numpy.distutils",
-        "numpy.core._dotblas", "os2emxpath", "pdb", "pkg_resources",
-        "posixpath", "pydoc", "pydoc_topics", "repr", "scipy", "select",
-        "stringprep", "strptime", "tcl"
+        "Tkconstants", "Tkinter", "scipy", "tcl"
     ],
     'include_files': vitables_data_files(),
 }
