@@ -96,6 +96,8 @@ class EvaluationContext(object):
         if isinstance(key, Variable):
             entity, name = key.entity, key.name
             if entity is None:
+                #FIXME: this is wrong (but currently needed because some
+                # Variable are created without entity)
                 return True
             else:
                 return name in self.entities_data[entity.name]
