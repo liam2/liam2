@@ -529,45 +529,6 @@ class Entity(object):
     #     compressed = bcolz.ctable(self.array, cparams=bcolz.cparams(level))
     #     print "%d -> %d (%f)" % compressed._get_stats()
 
-    @staticmethod
-    def fill_missing_values(ids, values, context, filler='auto'):
-        """
-        ids: ids present in past period
-        context: current period context
-        """
-
-        if filler is 'auto':
-            filler = get_missing_value(values)
-        result = np.empty(context_length(context), dtype=values.dtype)
-        result.fill(filler)
-        if len(ids):
-            id_to_rownum = context.id_to_rownum
-            # if there was more objects in the past than in the current
-            # period. Currently, remove() keeps old ids, so this never
-            # happens, but if we ever change remove(), we'll need to add
-            # such a check everywhere we use id_to_rownum
-            # invalid_ids = ids > len(id_to_rownum)
-            # if np.any(invalid_ids):
-            #     fix ids
-            rows = id_to_rownum[ids]
-            safe_put(result, rows, values)
-        return result
-
-    #TODO: move this to tfunc (as a plain module-level function) as it does
-    # not use "self"
-    def value_for_period(self, expr, period, context, fill='auto'):
-        sub_context = context.clone(fresh_data=True, period=period)
-        result = expr_eval(expr, sub_context)
-        if isinstance(result, np.ndarray) and result.shape:
-            ids = sub_context['id']
-            if fill is None:
-                return ids, result
-            else:
-                # expand values to the current "outer" context
-                return self.fill_missing_values(ids, result, context, fill)
-        else:
-            return result
-
     def optimize_processes(self):
         """
         Common subexpression elimination

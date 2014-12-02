@@ -2,21 +2,61 @@ from __future__ import print_function
 
 import numpy as np
 
+from context import context_length
+from expr import (expr_eval, getdtype, hasvalue, FunctionExpr, always,
+                  firstarg_dtype, get_missing_value)
 from utils import safe_put
-from expr import (expr_eval, getdtype, hasvalue, FunctionExpr, always,\
-                  firstarg_dtype)
 
 
 class TimeFunction(FunctionExpr):
     no_eval = ('expr',)
+
+    @staticmethod
+    def fill_missing_values(ids, values, context, filler='auto'):
+        """
+        ids: ids present in past period
+        values: values in past period
+        context: current period context
+        """
+
+        if filler is 'auto':
+            filler = get_missing_value(values)
+        result = np.empty(context_length(context), dtype=values.dtype)
+        result.fill(filler)
+        if len(ids):
+            id_to_rownum = context.id_to_rownum
+            # if there was more objects in the past than in the current
+            # period. Currently, remove() keeps old ids, so this never
+            # happens, but if we ever change remove(), we'll need to add
+            # such a check everywhere we use id_to_rownum
+            # invalid_ids = ids > len(id_to_rownum)
+            # if np.any(invalid_ids):
+            #     fix ids
+            rows = id_to_rownum[ids]
+            safe_put(result, rows, values)
+        return result
+
+    @staticmethod
+    def value_for_period(expr, period, context, fill='auto'):
+        sub_context = context.clone(fresh_data=True, period=period)
+        result = expr_eval(expr, sub_context)
+        if isinstance(result, np.ndarray) and result.shape:
+            ids = sub_context['id']
+            if fill is None:
+                return ids, result
+            else:
+                # expand values to the current "outer" context
+                return TimeFunction.fill_missing_values(ids, result, context,
+                                                        fill)
+        else:
+            return result
 
 
 class ValueForPeriod(TimeFunction):
     funcname = 'value_for_period'
 
     def compute(self, context, expr, period, missing='auto'):
-        entity = context.entity
-        return entity.value_for_period(expr, period, context, missing)
+        return self.value_for_period(expr, period, context, missing)
 
     dtype = firstarg_dtype
 
@@ -29,9 +69,8 @@ class Lag(TimeFunction):
     funcname = 'lag'
 
     def compute(self, context, expr, num_periods=1, missing='auto'):
-        entity = context.entity
         period = context.period - num_periods
-        return entity.value_for_period(expr, period, context, missing)
+        return self.value_for_period(expr, period, context, missing)
 
     dtype = firstarg_dtype
 
@@ -56,8 +95,8 @@ class Duration(TimeFunction):
         id_to_rownum = context.id_to_rownum
         still_running = value.copy()
         while np.any(still_running) and period >= baseperiod:
-            ids, values = entity.value_for_period(bool_expr, period, context,
-                                                  fill=None)
+            ids, values = self.value_for_period(bool_expr, period, context,
+                                                fill=None)
             missing = np.ones(res_size, dtype=bool)
             period_value = np.zeros(res_size, dtype=bool)
             if len(ids):
@@ -97,8 +136,8 @@ class TimeAverage(TimeFunction):
         sum_values = np.zeros(res_size, dtype=np.float)
         id_to_rownum = context.id_to_rownum
         while period >= baseperiod:
-            ids, values = entity.value_for_period(expr, period, context,
-                                                  fill=None)
+            ids, values = self.value_for_period(expr, period, context,
+                                                fill=None)
 
             # filter out lines which are present because there was a value for
             # that individual at that period but not for that column
@@ -140,8 +179,8 @@ class TimeSum(TimeFunction):
         sum_values = np.zeros(res_size, dtype=res_type)
         id_to_rownum = context.id_to_rownum
         while period >= baseperiod:
-            ids, values = entity.value_for_period(expr, period, context,
-                                                  fill=None)
+            ids, values = self.value_for_period(expr, period, context,
+                                                fill=None)
 
             # filter out lines which are present because there was a value for
             # that individual at that period but not for that column
