@@ -202,9 +202,9 @@ class EntityContext(object):
         keyinarray = (self.is_array_period and
                       (key in entity.temp_variables or
                        key in entity.array.dtype.fields))
-        return (key in self.extra
-                or keyinarray
-                or (entity.table and key in entity.table.dtype.fields))
+        keyintable = (entity.table is not None and
+                      key in entity.table.dtype.fields)
+        return key in self.extra or keyinarray or keyintable
 
     def keys(self, extra=True):
         res = list(self.entity.array.dtype.names)
