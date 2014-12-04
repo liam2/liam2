@@ -30,28 +30,26 @@ max_vars = 0
 #def decompress_column(a):
 #    return a[:]
 
-# TODO: rename to global_symbols
-def global_variables(globals_def):
+def global_symbols(globals_def):
     #FIXME: these should be computed once somewhere else, not for each
     # entity. I guess they should have a class of their own
-    # TODO: rename to symbols
-    variables = {}
+    symbols = {}
     for name, global_def in globals_def.iteritems():
         global_type = global_def.get('fields')
         if isinstance(global_type, list):
             # add namespace for table
-            variables[name] = GlobalTable(name, global_type)
+            symbols[name] = GlobalTable(name, global_type)
             if name == 'periodic':
                 # special case to add periodic variables in the global
                 # namespace
-                variables.update(
+                symbols.update(
                     (name, GlobalVariable('periodic', name, type_))
                     for name, type_ in global_type)
         else:
             global_type = global_def['type']
             assert isinstance(global_type, type), "not a type: %s" % global_type
-            variables[name] = GlobalArray(name, global_type)
-    return variables
+            symbols[name] = GlobalArray(name, global_type)
+    return symbols
 
 
 # This is an awful workaround for the fact that tables.Array does not support

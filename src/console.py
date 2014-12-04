@@ -3,7 +3,7 @@ from __future__ import print_function
 import sys
 
 import config
-from entities import global_variables
+from entities import global_symbols
 from expr import expr_eval, Variable
 from exprtools import parse
 
@@ -40,7 +40,7 @@ class Console(object):
         self.eval_ctx = eval_ctx
 
         globals_def = eval_ctx.simulation.globals_def
-        globals_parse_ctx = {'__globals__': global_variables(globals_def)}
+        globals_parse_ctx = {'__globals__': global_symbols(globals_def)}
         parse_ctx = globals_parse_ctx.copy()
         parse_ctx.update((entity.name, entity.all_symbols(globals_parse_ctx))
                          for entity in eval_ctx.entities.itervalues())

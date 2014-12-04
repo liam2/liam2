@@ -13,7 +13,7 @@ import yaml
 
 from context import EvaluationContext
 from data import H5Data, Void
-from entities import Entity, global_variables
+from entities import Entity, global_symbols
 from utils import (time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
                    merge_dicts, merge_items,
@@ -282,7 +282,7 @@ class Simulation(object):
         for entity in entities.itervalues():
             entity.attach_and_resolve_links(entities)
 
-        global_context = {'__globals__': global_variables(globals_def),
+        global_context = {'__globals__': global_symbols(globals_def),
                           '__entities__': entities}
         parsing_context = global_context.copy()
         parsing_context.update((entity.name, entity.all_symbols(global_context))
