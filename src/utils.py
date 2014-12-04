@@ -1250,3 +1250,14 @@ class FileProducer(object):
             suffix = "_" + suffix if suffix else ""
             fname = "{entity}_{period}" + suffix + self.ext
         return fname
+
+
+def isnan(a):
+    """
+    isnan is equivalent to np.isnan, except that it returns False instead of
+    raising a TypeError if the argument is an array of non-numeric.
+    """
+    if isinstance(a, np.ndarray):
+        return np.issubsctype(a, np.floating) and np.isnan(a)
+    else:
+        return np.isnan(a)

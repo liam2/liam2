@@ -9,7 +9,8 @@ import config
 from expr import FunctionExpr, expr_cache
 from process import BreakpointException
 from partition import filter_to_indices
-from utils import LabeledArray, FileProducer, merge_dicts, PrettyTable, ndim
+from utils import LabeledArray, FileProducer, merge_dicts, PrettyTable, ndim, \
+    isnan
 
 
 class Show(FunctionExpr):
@@ -191,18 +192,6 @@ class ComparisonAssert(Assert):
 
     def compare(self, v1, v2):
         raise NotImplementedError()
-
-
-#TODO: move to utils
-def isnan(a):
-    """
-    isnan is equivalent to np.isnan, except that it returns False instead of
-    raising a TypeError if the argument is an array of non-numeric.
-    """
-    if isinstance(a, np.ndarray):
-        return np.issubsctype(a, np.floating) and np.isnan(a)
-    else:
-        return np.isnan(a)
 
 
 class AssertEqual(ComparisonAssert):
