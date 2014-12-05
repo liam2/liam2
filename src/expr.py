@@ -993,7 +993,7 @@ class GlobalVariable(EvaluableExpression):
     def get_tmp_varname(self, context):
         period = self._eval_key(context)
         if isinstance(period, int):
-            return '__%s_%s' % (self.name, period)
+            return '__%s_%s_%s' % (self.tablename, self.name, period)
         else:
             return EvaluableExpression.get_tmp_varname(self, context)
 
