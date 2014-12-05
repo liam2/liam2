@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-from os.path import dirname
 import time
 
 import tables
