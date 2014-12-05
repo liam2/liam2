@@ -44,8 +44,6 @@ from utils import classproperty, argspec
 #         return self._complete_expr
 
 
-# FIXME: we need to review all CompoundExpression because they do not use
-# Expr.__init__ and thus are not compatible with .value and .children
 class CompoundExpression(AbstractFunction):
     """
     function expression written in terms of other expressions
