@@ -12,7 +12,7 @@ def upgrade_str(content):
                      r"\2.\1(",
                      content)
 
-    # Even though, min/max(xxx) can now have two meanings we do not need a
+    # Even though, min/max(...) can now have two meanings we do not need a
     # special case for them, ie we do not need to explicitly convert:
     # grpmin(expr1, expr2, ...) -> min(expr1, filter=expr2, ...)
     # grpmax(expr1, expr2, ...) -> max(expr1, filter=expr2, ...)
@@ -21,7 +21,7 @@ def upgrade_str(content):
     # if people used: grpmin(expr1, 0) where 0 is the axis number but since
     # this is undocumented it is very unlikely to have been used by anyone.
 
-    # grpXXX(...) -> XXX(...)
+    # grpXYZ(...) -> XYZ(...)
     return re.sub("grp([a-zA-Z]+)\s*\(",
                   r"\1(",
                   content)
