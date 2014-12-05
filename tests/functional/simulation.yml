@@ -715,7 +715,8 @@ entities:
                 - vector_bounds: MINR[yearofbirth:yearofpension]
                 - assertNanEqual(vector_bounds[0],
                                  MINR[yearofbirth[0]:yearofpension[0]])
-                # test IrregularNDArray
+
+                # test IrregularNDArray methods
                 - assertEqual(vector_bounds.prod(axis=1).__len__(), count())
                 - assertEqual(vector_bounds.sum(axis=1).__len__(), count())
 
