@@ -1063,8 +1063,7 @@ class GlobalVariable(EvaluableExpression):
                     # 1D arrays (slice lengths)
                     # each "item" of the result is a view, so we pay "only" for
                     # all the arrays overhead, not for the data itself.
-                    #FIXME: dtype=object?
-                    result = np.empty(len(lengths), dtype=list)
+                    result = np.empty(len(lengths), dtype=object)
                     if not isinstance(stop, np.ndarray) or not stop.shape:
                         stop = np.repeat(stop, len(lengths))
                     for i in range(len(lengths)):
