@@ -349,9 +349,11 @@ class Function(Process):
         return result
 
     def expressions(self):
-        #XXX: not sure what to put here as I don't remember what it is used for
-        for e in self.code.expressions():
-            yield e
+        if self.code is not None:
+            for e in self.code.expressions():
+                yield e
+        if self.result is not None:
+            yield self.result
 
     def backup_and_purge_locals(self):
         # backup and purge local variables
