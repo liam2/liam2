@@ -40,16 +40,7 @@ except ImportError:
         return eval(expr, complete_globals, {})
 
 expr_cache = Cache()
-num_tmp = 0
 timings = Counter()
-
-
-def get_tmp_varname():
-    global num_tmp
-
-    tmp_varname = "temp_%d" % num_tmp
-    num_tmp += 1
-    return tmp_varname
 
 type_to_idx = {bool: 0, np.bool_: 0,
                int: 1, np.int32: 1, np.intc: 1, np.int64: 1, np.longlong: 1,
@@ -450,12 +441,22 @@ class Expr(object):
 
 
 class EvaluableExpression(Expr):
+    num_tmp = 0
+
     def evaluate(self, context):
         raise NotImplementedError()
 
+    def get_tmp_varname(self, context):
+        tmp_varname = "temp_%d" % self.num_tmp
+        self.__class__.num_tmp += 1
+        return tmp_varname
+
     def as_simple_expr(self, context):
-        tmp_varname = get_tmp_varname()
+        tmp_varname = self.get_tmp_varname(context)
         result = self.evaluate(context)
+        if tmp_varname in context:
+            # should be consistent but nan != nan
+            assert result != result or context[tmp_varname] == result
         context[tmp_varname] = result
         return Variable(context.entity, tmp_varname, gettype(result))
 
@@ -975,7 +976,7 @@ class ShortLivedVariable(Variable):
 
 
 # class GlobalVariable(Variable):
-class GlobalVariable(Expr):
+class GlobalVariable(EvaluableExpression):
     __children__ = ()
 
     def __init__(self, tablename, name, dtype):
@@ -984,35 +985,31 @@ class GlobalVariable(Expr):
         self._dtype = dtype
 
     def __repr__(self):
-        if self.tablename == "globals":
-            return self.name
+        if self.name is None:
+            return self.tablename
         else:
             return "%s.%s" % (self.tablename, self.name)
 
-    #XXX: inherit from EvaluableExpression?
-    def as_simple_expr(self, context):
-        result = self.evaluate(context)
+    def get_tmp_varname(self, context):
         period = self._eval_key(context)
         if isinstance(period, int):
-            tmp_varname = '__%s_%s' % (self.name, period)
-            if tmp_varname in context:
-                # should be consistent but nan != nan
-                assert result != result or context[tmp_varname] == result
-            else:
-                context[tmp_varname] = result
+            return '__%s_%s' % (self.name, period)
         else:
-            tmp_varname = get_tmp_varname()
-            context[tmp_varname] = result
-        return Variable(context.entity, tmp_varname)
+            return EvaluableExpression.get_tmp_varname(self, context)
 
     def _eval_key(self, context):
         return context.period
 
     def evaluate(self, context):
-        key = self._eval_key(context)
         globals_data = context.global_tables
         globals_table = globals_data[self.tablename]
+        if self.name is None:
+            return globals_table
 
+        if self.name not in globals_table.dtype.fields:
+            raise Exception("Unknown global: %s" % self.name)
+
+        key = self._eval_key(context)
         #TODO: this row computation should be encapsulated in the
         # globals_table object and the index column should be configurable
         colnames = globals_table.dtype.names
@@ -1030,8 +1027,7 @@ class GlobalVariable(Expr):
                 translated_key = key - base_period
         else:
             translated_key = key
-        if self.name not in globals_table.dtype.fields:
-            raise Exception("Unknown global: %s" % self.name)
+
         column = globals_table[self.name]
         numrows = len(column)
         missing_value = get_missing_value(column)
@@ -1043,8 +1039,8 @@ class GlobalVariable(Expr):
             step = translated_key.step
             if step is not None and step != 1:
                 raise NotImplementedError("step != 1 (%d)" % step)
-            if (isinstance(start, np.ndarray) and start.shape or isinstance(
-                    stop, np.ndarray) and stop.shape):
+            if (isinstance(start, np.ndarray) and start.shape or
+                    isinstance(stop, np.ndarray) and stop.shape):
                 lengths = stop - start
                 length0 = lengths[0]
                 if not isinstance(start, np.ndarray) or not start.shape:
@@ -1067,6 +1063,7 @@ class GlobalVariable(Expr):
                     # 1D arrays (slice lengths)
                     # each "item" of the result is a view, so we pay "only" for
                     # all the arrays overhead, not for the data itself.
+                    #FIXME: dtype=object?
                     result = np.empty(len(lengths), dtype=list)
                     if not isinstance(stop, np.ndarray) or not stop.shape:
                         stop = np.repeat(stop, len(lengths))
@@ -1082,6 +1079,7 @@ class GlobalVariable(Expr):
                 # it for now.
                 return column[translated_key]
         else:
+            # scalar key
             out_of_bounds = (translated_key < 0) or (translated_key >= numrows)
             return column[translated_key] if not out_of_bounds \
                 else missing_value
@@ -1121,7 +1119,7 @@ class GlobalArray(Variable):
         if tmp_varname in context:
             assert context[tmp_varname] is result
         context[tmp_varname] = result
-        return Variable(None, tmp_varname)
+        return Variable(context.entity, tmp_varname)
 
 
 class GlobalTable(object):

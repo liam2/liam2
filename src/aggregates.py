@@ -5,8 +5,7 @@ import inspect
 import numpy as np
 
 from expr import (Variable, BinaryOp, getdtype, expr_eval,
-                  get_tmp_varname, ispresent, FunctionExpr,
-                  always, firstarg_dtype)
+                  ispresent, FunctionExpr, always, firstarg_dtype)
 from exprbases import NumpyAggregate, FilteredExpression
 import exprmisc
 from context import context_length
@@ -135,7 +134,7 @@ class Average(FilteredExpression):
         #FIXME: either take "contextual filter" into account here (by using
         # self._getfilter), or don't do it in sum & gini
         if filter is not None:
-            tmp_varname = get_tmp_varname()
+            tmp_varname = self.get_tmp_varname(context)
             context = context.copy()
             context[tmp_varname] = filter
             if getdtype(expr, context) is bool:
