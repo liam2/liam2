@@ -163,7 +163,7 @@ class SubscriptNode(Node):
 class AttrNode(Node):
     # links
     # array attributes
-    # GlobalTable (othertable.xxx)
+    # GlobalTable (othertable.xyz)
     def __init__(self, node, key):
         self.node = node
         assert isinstance(key, str)
