@@ -11,14 +11,15 @@
   entered the best match for an individual is looked for in a random subset
   of size pool_size.
 
+* optimized_matching
+
 * added most of the random generators provided by Numpy.
 
 Miscellaneous improvements
 --------------------------
 
 * massive internal refactoring
-  - it is now much easier to define new functions (there is much less code to
-    write).
+  - it is now easier to define new functions (there is much less code to write).
 
   - all arguments to all functions can now be expressions.
 
