@@ -46,10 +46,6 @@ Miscellaneous improvements
 Fixes
 -----
 
-* fixed links in lag (specific to devel?)
-
-* fixed O2M functions on a different entity with a filter (specific to devel?)
-
 * fixed expressions between arrays with more than one dimension. It only worked
   if all the arrays involved in the expression were based on the same "source"
   array (which was the case in our tests).
