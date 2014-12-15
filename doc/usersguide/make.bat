@@ -184,6 +184,4 @@ results in %BUILDDIR%/doctest/output.txt.
 	goto end
 )
 
-echo yada before end
 :end
-echo yada end
