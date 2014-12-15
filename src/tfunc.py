@@ -66,8 +66,6 @@ class ValueForPeriod(TimeFunction):
 # ->
 # ValueForPeriod(expr, Subtract(Variable('period'), numperiods), missing)
 class Lag(TimeFunction):
-    funcname = 'lag'
-
     def compute(self, context, expr, num_periods=1, missing='auto'):
         period = context.period - num_periods
         return self.value_for_period(expr, period, context, missing)
@@ -76,7 +74,6 @@ class Lag(TimeFunction):
 
 
 class Duration(TimeFunction):
-    funcname = 'duration'
     no_eval = ('bool_expr',)
 
     def compute(self, context, bool_expr):
