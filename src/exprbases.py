@@ -6,7 +6,7 @@ import numpy as np
 
 import config
 from context import context_length
-from expr import (Expr, FunctionExpr, not_hashable,
+from expr import (FunctionExpr, not_hashable,
                   getdtype, as_simple_expr, as_string,
                   get_missing_value, ispresent, LogicalOp, AbstractFunction,
                   always, FillArgSpecMeta)
@@ -273,8 +273,12 @@ def make_np_class(baseclass, docstring, dtypefunc=None):
     if isinstance(dtypefunc, type):
         dtypefunc = always(dtypefunc)
 
+    # we need to explicitly set funcname, because the usual mechanism of
+    # getting it from the class name during class creation (in the metaclass)
+    # does not work because the class name is not set yet.
     class FuncClass(baseclass):
         np_func = getattr(np.random, name)
+        funcname = name
         argspec = argspec(args, **baseclass.kwonlyargs)
         if dtypefunc is not None:
             dtype = dtypefunc
