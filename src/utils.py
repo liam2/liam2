@@ -1261,3 +1261,14 @@ def isnan(a):
         return np.issubsctype(a, np.floating) and np.isnan(a)
     else:
         return np.isnan(a)
+
+
+def array_nan_equal(a, b):
+    # np.array_equal is not implemented on strings in numpy < 1.9
+    if np.issubdtype(a.dtype, np.str) and np.issubdtype(b.dtype, np.str):
+        try:
+            return (a == b).all()
+        except ValueError:
+            return False
+    else:
+        return np.all((a == b) | (np.isnan(a) & np.isnan(b)))

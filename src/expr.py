@@ -8,7 +8,8 @@ import numpy as np
 
 from cache import Cache
 from utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray,
-                   FullArgSpec, englishenum, make_hashable, add_context)
+                   FullArgSpec, englishenum, make_hashable, add_context,
+                   array_nan_equal)
 from context import EntityContext, EvaluationContext
 
 
@@ -456,7 +457,10 @@ class EvaluableExpression(Expr):
         result = self.evaluate(context)
         if tmp_varname in context:
             # should be consistent but nan != nan
-            assert result != result or context[tmp_varname] == result
+            if isinstance(result, np.ndarray):
+                assert array_nan_equal(context[tmp_varname], result)
+            else:
+                assert result != result or context[tmp_varname] == result
         context[tmp_varname] = result
         return Variable(context.entity, tmp_varname, gettype(result))
 
