@@ -449,7 +449,7 @@ class EvaluableExpression(Expr):
 
     def get_tmp_varname(self, context):
         tmp_varname = "temp_%d" % self.num_tmp
-        self.__class__.num_tmp += 1
+        EvaluableExpression.num_tmp += 1
         return tmp_varname
 
     def as_simple_expr(self, context):
