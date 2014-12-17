@@ -29,6 +29,10 @@
 Miscellaneous improvements
 --------------------------
 
+* updated bundled dependencies to their latest version. The numpy upgrade to
+  version 1.9 brings some performance improvements in various areas (our test
+  simulation runs approximately 15% faster overall).
+
 * large internal refactoring
 
   - it is now easier to define new functions (there is much less code to write).
