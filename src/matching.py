@@ -186,7 +186,7 @@ class SequentialMatching(ScoreMatching):
             eval_ctx = context.clone(entity_data=local_ctx)
             set2_scores = expr_eval(score, eval_ctx)
 
-            individual2_idx = np.argmax(set2_scores)
+            individual2_idx = set2_scores.argmax()
 
             id1 = local_ctx['id']
             id2 = local_ctx['__other_id'][individual2_idx]
@@ -276,31 +276,38 @@ class OptimizedSequentialMatching(SequentialMatching):
             if matching_ctx['__len__'] == 0:
                 raise StopIteration
 
-            size1 = len(row['idx'])
             for var in df1.columns:
                 matching_ctx[var] = row[var]
 
             eval_ctx = context.clone(entity_data=matching_ctx)
-            cell_idx = expr_eval(score, eval_ctx).argmax()
-            size2 = len(matching_ctx['__other_idx'][cell_idx])
-            nb_match = min(size1, size2)
+            set2_scores = expr_eval(score, eval_ctx)
+            cell2_idx = set2_scores.argmax()
+
+            # reverse to mimic non-optimized argsort()[::-1]
+            cell1ids = row['idx'][::-1]
+            cell2ids = matching_ctx['__other_idx'][cell2_idx]
+
+            cell1size = len(cell1ids)
+            cell2size = len(cell2ids)
+            nb_match = min(cell1size, cell2size)
 
             # we could introduce a random choice here but it is not
             # much necessary. In that case, it should be done in df_by_cell
-            idx1 = row['idx'][:nb_match]
-            idx2 = matching_ctx['__other_idx'][cell_idx][:nb_match]
+            ids1 = cell1ids[:nb_match]
+            ids2 = cell2ids[:nb_match]
             
-            result[id_to_rownum[idx1]] = idx2
-            result[id_to_rownum[idx2]] = idx1
+            result[id_to_rownum[ids1]] = ids2
+            result[id_to_rownum[ids2]] = ids1
             
-            if nb_match == size2:
-                matching_ctx = context_delete(matching_ctx, cell_idx)
+            if nb_match == cell2size:
+                matching_ctx = context_delete(matching_ctx, cell2_idx)
             else:
-                matching_ctx['__other_idx'][cell_idx] = \
-                    matching_ctx['__other_idx'][cell_idx][nb_match:]
+                # other variables do not need to be modified since the cell
+                # only got smaller and was not deleted
+                matching_ctx['__other_idx'][cell2_idx] = cell2ids[nb_match:]
 
-            if nb_match < size1:
-                row['idx'] = row['idx'][nb_match:]
+            if nb_match < cell1size:
+                row['idx'] = cell1ids[nb_match:]
                 match_cell(idx, row)
                     
         loop_wh_progress(match_cell, df1.to_records())
