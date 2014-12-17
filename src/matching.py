@@ -261,7 +261,7 @@ class OptimizedSequentialMatching(SequentialMatching):
         else:
             orderbyvalue = df1.eval(orderby)
 
-        df1 = df1.loc[orderbyvalue.order().index]
+        df1 = df1.loc[orderbyvalue.order()[::-1].index]
         
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
