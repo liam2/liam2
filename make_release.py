@@ -211,30 +211,22 @@ def update_versions(release_name):
 def update_changelog(release_name):
     fname = relname2fname(release_name)
 
-    # include version changelog in changes.rst
+    # update release date in changes.rst
     fpath = r'doc\usersguide\source\changes.rst'
-    changelog_template = """{title}
-{underline}
-
-Released on {date}.
-
-.. include:: {fpath}
-
-
-"""
-
     with open(fpath) as f:
         lines = f.readlines()
         title = "Version %s" % short(release_name)
-        if lines[5] == title + '\n':
-            print("changes.rst not modified (it already contains %s)" % title)
+        if lines[5] != title + '\n':
+            print("changes.rst not modified (the last release is not %s)"
+                  % title)
             return
-        variables = dict(title=title,
-                         underline="=" * len(title),
-                         date=date.today().isoformat(),
-                         fpath='changes/' + fname)
-        this_version = changelog_template.format(**variables)
-        lines[5:5] = this_version.splitlines(True)
+        release_date = lines[8]
+        if release_date != "In development.\n":
+            print('changes.rst not modified (the last release date is "%s" '
+                  'instead of "In development.", was it already released?)'
+                  % release_date)
+            return
+        lines[8] = "Released on {}.\n".format(date.today().isoformat())
     with open(fpath, 'w') as f:
         f.writelines(lines)
     with open(fpath) as f:
@@ -570,4 +562,5 @@ if __name__ == '__main__':
     # chdir(r'c:\tmp')
     # chdir('liam2_new_release')
 
-    make_release(*argv[1:])
+    # make_release(*argv[1:])
+    update_changelog(*argv[1:])
