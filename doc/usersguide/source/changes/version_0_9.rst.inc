@@ -1,31 +1,43 @@
 ﻿New features
 ------------
 
-* added the rank_matching() function as an other method to match two sets of
-  individuals.
+* added support for most of the random number generators provided by Numpy
+  which were not already supported by LIAM2: beta, chisquare, dirichlet,
+  exponential, f, gamma, geometric, hypergeometric, laplace, lognormal,
+  multivariate_normal, noncentral_chisquare, noncentral_f, pareto, power,
+  rayleigh, standard_cauchy, standard_exponential, standard_gamma,
+  standard_normal, standard_t, triangular, vonmises, wald, weibull, zipf,
+  binomial, logseries, negative_binomial, poisson and multinomial (see the
+  :ref:`random functions <random_functions>` section for details). Closes
+  :issue:`137`.
 
-* add the possibility to automatically generate an order in matching() by
-  using the special value 'EDtM' for its orderby argument.
+* added the :ref:`rank_matching() <rank_matching>` function as an alternative
+  method to match two sets of individuals. Based on :PR:`136` from Alexis
+  Eidelman.
 
-* add a new 'pool_size' optional parameter in matching(). If an integer is
-  entered the best match for an individual is looked for in a random subset
-  of size pool_size.
+* added the optimized_matching() function as XXX. Based on :PR:`144` from Alexis
+  Eidelman.
 
-* optimized_matching
+* added the possibility to automatically generate an order in matching() by
+  using the special value 'EDtM' for its orderby argument. Based on :PR:`136`
+  from Alexis Eidelman.
 
-* added most of the random generators provided by Numpy.
+* added an optional 'pool_size' argument to :ref:`matching() <matching>`. If
+  used, the best match for an individual is looked for in a random subset of
+  size pool_size. Based on :PR:`136` from Alexis Eidelman.
 
 Miscellaneous improvements
 --------------------------
 
-* massive internal refactoring
+* large internal refactoring
+
   - it is now easier to define new functions (there is much less code to write).
 
-  - all arguments to all functions can now be expressions.
+  - all arguments to all functions can now be expressions. Closes :issue:`5`.
 
   - cleaner variable scopes. Eliminates a whole class of potential problems
     when using two fields with the same name but a different entity (via a
-    link) in the same expression.
+    link) in the same expression. Closes :issue:`41`.
 
 * remove() can now be called without filter argument (it removes all
   individuals)
@@ -47,9 +59,9 @@ Miscellaneous improvements
 Fixes
 -----
 
-* fixed expressions between arrays with more than one dimension. It only worked
-  if all the arrays involved in the expression were based on the same "source"
-  array (which was the case in our tests).
+* fixed computing most expressions involving arrays with more than one
+  dimension. It only worked if all the arrays involved were based on the same
+  "source" array (which was the case in our tests).
 
 * do not expand scalar keys of (global) arrays when the contextual filter is
   an array.
@@ -61,3 +73,6 @@ Fixes
 
 * fixed global fields colliding with fields of the same name from other
   (global) tables.
+
+* fixed the "view" command (to launch ViTables -- via F9 for example) in the 64
+  bit bundle. This was a regression in 0.8.2. Closes :issue:`147`.
