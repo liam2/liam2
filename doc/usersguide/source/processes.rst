@@ -895,7 +895,7 @@ The logit_score function is a logistic with a random part: ::
 where *u* is a random number from an uniform distribution [0, 1). 
 
 *logit_score* is very useful in behavioural equations. A behavioural equation
-starts by creating a score that reflects the risk p*i of an event occuring.
+starts by creating a score that reflects the risk p*i of an event occurring.
 A typical usage is as follow: ::
 
     - score_variable: if(condition_1,
@@ -1116,7 +1116,7 @@ single align() expression: ::
     # or even
     - variable: align(score_expr, 'filename_m_and_f.csv', filter=condition)
 
-In the example below describes the process of getting (or keeping) a job: ::
+The example below describes the process of getting (or keeping) a job: ::
 
     inwork:
         - work_score: -1
