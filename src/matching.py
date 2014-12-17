@@ -17,7 +17,7 @@ def df_by_cell(used_variables, setfilter, context):
     used_set = dict((k, subset[k]) for k in used_variables)
     used_set = pd.DataFrame(used_set)
     used_variables.remove('id')
-    grouped = used_set.groupby(list(used_variables))
+    grouped = used_set.groupby(list(used_variables), sort=False)
     idx = grouped.apply(lambda x: list(x['id'].values)).reset_index()
     idx.rename(columns={0: 'idx'}, inplace=True)
     return idx
