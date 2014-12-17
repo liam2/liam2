@@ -1297,65 +1297,59 @@ other regressions
 Matching functions
 ------------------
 
-**matching**: (aka Marriage market) matches individuals from set 1 with
-individuals from set 2. There is many different ways to realise a matching.
+The goal of matching functions is to match individuals from a set with
+individuals from another set, for example to select spouses for marriage. There
+are many different algorithms to do so. LIAM2 currently implements two:
+**matching** takes the highest scoring individual in set 2 for each
+individual in set1, while **rank_matching** sorts both sets by their own
+ordering expression and match individuals with the same rank.
 
-
+.. _matching:
 .. index:: matching
 
 matching
 ~~~~~~~~
 
-For each individual in set 1 following a particular
-order (given by the *orderby* argument), the function
-computes the score of all (unmatched) individuals in set 2 and take the best
-scoring one. That particular matching method can be called sequential matching
-referring to the fact the individual of set 1 are matched one by one. An other
-way of matching is for example to minimize an overall distance depending on 
-each match. However that technique, even if better in theory, increases 
-calculation time and is not implemented yet.
-
-One has to specify the boolean filters which provide the two sets to match
-(set1filter and set2filter), the criterion to decide in which order the
-individuals of the first set are matched and the expression that will be used
-to assign a score to each individual of the second set (given a particular
-individual in set 1).
-
-In the score expression the fields of the set 1 individual can be used normally
-and the fields of its possible partners can be used by prefixing them by
-"**other.**".
-
-The parameter *orderby* to set the order in which the individuals of the first set
-are matched can be an expression or a string giving the name of a method to
-generate automatically an order. The general idea in that case is to match first
-"unusual individuals". Two options are possible : 
-- 'EDtM' : 'Euclidean Distance to the Mean'
-Using only variables relative to set 1 in the score expression, the euclidean
-distance to the center of set 1 is used as an order. Note that during the 
-computation all value are divide by their variance in order not to favour
-variables with highest numerical values.
-
-An optional parameter *pool_size* can set an slightly different process of
-matching. If a positive integer is entered, the best match for an individual
-of set 1 won't be searched in all remaining set 2 but in a random subset of
-size pool_size. That way sounds closer to "reality" where usually people doesn't
-meet every one in the "market". When there is less the remaining number of 
-candidates in the set 2 is lower than pool_size, the match is looked for among
-all set 2.
-
-The matching function returns the identification number of the matched
-individual for individuals which were matched, -1 for others.
-
-If the two sets are of different sizes, the surplus of the largest set is
-simply ignored.
+For each individual in set 1 following the order given by the *orderby*
+argument, the function computes the score of all (unmatched) individuals in
+set 2 and takes the highest scoring one. The function returns the id of the
+matched individual for each individual which was actually matched, -1 for
+others. If the two sets are of different sizes, the surplus of the largest set
+is ignored.
 
 *generic setup* ::
 
     matching(set1filter=boolean_expr,
              set2filter=boolean_expr,
-             orderby=difficult_match,  # expression or 'EDtM'
              score=coef1 * field1 + coef2 * other.field2 + ...,
-             pool_size=int)            # or None by default.
+             orderby=difficult_match,    # expression or 'EDtM'
+             [pool_size=int])            # or None by default.
+
+*set1filter* and *set2filter* specify the boolean filters which provide the two
+sets to match.
+
+*score* is an expression to assign a value to each individual of set 2
+(given a particular individual in set 1). In the score expression the fields
+of the set 1 individual can be used normally while the fields of its possible
+partners (from set 2) can be used by prefixing them by "**other.**".
+
+*orderby* defines the order in which the individuals of the first set
+are matched. It can be either an expression or the 'EDtM' string. If it is an
+expression, individuals in set 1 will by sorted by its decreasing values. If
+set to 'EDtM' (Euclidean Distance to the Mean), individuals will be sorted by
+decreasing distance to an hypothetical "mean individual" measured on all the
+variables (of set 1) used in the score expression [#footnote1]_. In short,
+"unusual individuals" will be matched first.
+
+The optional *pool_size* argument specifies the size of the subset of set 2
+to use as candidates. If used, it should be a positive integer. In that case,
+the best match for each individual of set 1 will be searched for in a random
+subset of size *pool_size*, instead of in all unmatched individuals in set 2.
+This may be closer to actual marriage where people do not meet every single
+potential partner. When the remaining number of candidates in set 2 is lower
+than pool_size, the match is looked for among all remaining candidates.
+
+.. versionadded:: 0.9
 
 *example* ::
 
@@ -1390,16 +1384,28 @@ a score and the man with the highest score is matched with that woman.
 This score depends on his age, his difference in age with the woman and the
 work status of the potential partners.
 
+.. rubric:: Footnotes
+
+.. [#footnote1] sum((variable - mean(variable)) ** 2 / var(variable))).
+
+
 .. index:: rank_matching
+.. _rank_matching:
 
 rank_matching
 ~~~~~~~~~~~~~
 
-The ranking matching matches works in three step : 
+.. versionadded:: 0.9
 
-Set 1 is ranked by decreasing orderby1 
-Set 2 is ranked by decreasing orderby2
-Then individuals in the nth position in each list are matched together.
+rank_matching works in three steps :
+
+#. Set 1 is sorted by decreasing orderby1
+#. Set 2 is sorted by decreasing orderby2
+#. Individuals in the nth rank (position) in each list are matched together.
+
+The function returns the id of the matched individual for each individual which
+was actually matched, -1 for others. If the two sets are of different sizes,
+the surplus of the largest set is ignored.
 
 *generic setup* ::
 
