@@ -270,9 +270,6 @@ class OptimizedSequentialMatching(SequentialMatching):
         matching_ctx = dict(('__other_' + k, v.values)
                             for k, v in df2.iteritems())
         matching_ctx['__len__'] = len(df2)
-        for varname, col in df1.iteritems():
-            matching_ctx[varname] = np.empty(1, dtype=col.dtype)
-
         def match_cell(idx, row):
             global matching_ctx
 
