@@ -103,12 +103,11 @@ class SequentialMatching(Matching):
         # the evaluate method is called and the context is completed during
         # evaluation (__other_xxx is added during evaluation).
         yield self
-    def _get_used_variables_match(self, score_expr, context):
-        used_variables = {v.name for v in score_expr.collect_variables(context)}
-        used_variables1 = {'id'} | {v for v in used_variables
-                                    if not v.startswith('__other_')}
-        used_variables2 = {'id'} | {v[8:] for v in used_variables
-                                    if v.startswith('__other_')}
+
+    def _get_score_variables(self, score_expr, context):
+        names = {v.name for v in score_expr.collect_variables(context)}
+        used_variables1 = {n for n in names if not n.startswith('__other_')}
+        used_variables2 = {n[8:] for n in names if n.startswith('__other_')}
         return used_variables1, used_variables2
 
     def compute(self, context, set1filter, set2filter, score, orderby,
@@ -129,14 +128,16 @@ class SequentialMatching(Matching):
         print("matching with %d/%d individuals" % (set1len, set2len))
 
         used_variables1, used_variables2 = \
-            self._get_used_variables_match(score, context)
+            self._get_score_variables(score, context)
 
         #TODO: we should detect whether or not we are using non-simple
         # expressions (EvaluableExpression children) and pre-evaluate them,
         # because otherwise they are re-evaluated on all of set2 for each
         # individual in set1. See https://github.com/liam2/liam2/issues/128
-        set1 = context.subset(set1filtervalue, used_variables1, set1filterexpr)
-        set2 = context.subset(set2filtervalue, used_variables2, set2filterexpr)
+        set1 = context.subset(set1filtervalue, {'id'} | used_variables1,
+                              set1filterexpr)
+        set2 = context.subset(set2filtervalue, {'id'} | used_variables2,
+                              set2filterexpr)
 
         # subset creates a dict for the current entity, so .entity_data is a
         # dict
@@ -181,7 +182,8 @@ class SequentialMatching(Matching):
             else:
                 local_ctx = matching_ctx.copy()
 
-            local_ctx.update((k, set1[k][sorted_idx]) for k in used_variables1)
+            local_ctx.update((k, set1[k][sorted_idx])
+                             for k in {'id'} | used_variables1)
 
             eval_ctx = context.clone(entity_data=local_ctx)
             set2_scores = expr_eval(score, eval_ctx)
@@ -235,7 +237,7 @@ class OptimizedSequentialMatching(SequentialMatching):
         print("matching with %d/%d individuals" % (set1len, set2len), end='')
 
         used_variables1, used_variables2 = \
-            self._get_used_variables_match(score, context)
+            self._get_score_variables(score, context)
 
         if not isinstance(orderby, str):
             var_match = orderby.collect_variables(context)
