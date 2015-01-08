@@ -146,18 +146,17 @@ class SequentialMatching(Matching):
 
         if isinstance(orderby, str):
             assert orderby == 'EDtM'
-            order = np.zeros(context_length(context))
-            #FIXME: remove "id"
-            for var in used_variables1:
-                col = set1[var]
-                order[set1filter] += (col - col.mean()) ** 2 / col.var()
+            orderbyvalue = np.zeros(set1len)
+            for name in used_variables1:
+                column = set1[name]
+                orderbyvalue += (column - column.mean()) ** 2 / column.var()
         else:
             #XXX: shouldn't orderby be computed only on the filtered set? (
             # but used_variables might be different than in the set,
             # so it might not be worth it.
-            order = orderby
+            orderbyvalue = orderby[set1filtervalue]
 
-        sorted_set1_indices = order[set1filtervalue].argsort()[::-1]
+        sorted_set1_indices = orderbyvalue.argsort()[::-1]
 
         set1tomatch = sorted_set1_indices[:tomatch]
 
