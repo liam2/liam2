@@ -717,6 +717,9 @@ def group_indices_nd(list columns, object filter_value):
                                        -1,
                                        labels * count + combined_labels)
             count *= len(ids)
+            if count > 2 ** 31:
+                raise Exception("too many combination of values: the "
+                                "combined labels (32bits) overflowed")
             dim_id_maps.append(ids)
 
         # combined_labels can be < 0 for filtered values or NaNs
