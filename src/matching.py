@@ -27,11 +27,11 @@ def df_by_cell(used_variables, setfilter, context):
     # we want a 1d array of arrays, not the 2d array that np.array(d.values())
     # produces if we have a list of arrays with all the same length
     idcol = context['id']
-    idx = np.empty(len(d), dtype=object)
-    idx[:] = [idcol[v] for v in d.values()]
+    ids_by_group = np.empty(len(d), dtype=object)
+    ids_by_group[:] = [idcol[v] for v in d.values()]
 
     result = dict(zip(names, keyarrays))
-    result['idx'] = idx
+    result['__ids__'] = ids_by_group
     result['__len__'] = len(d)
     return result
 
@@ -314,8 +314,8 @@ class OptimizedSequentialMatching(SequentialMatching):
 
             # reverse to mimic non-optimized argsort()[::-1]
             #TODO: reverse in df_by_cell
-            cell1ids = set1['idx'][sorted_idx][::-1]
-            cell2ids = matching_ctx['__other_idx'][cell2_idx]
+            cell1ids = set1['__ids__'][sorted_idx][::-1]
+            cell2ids = matching_ctx['__other___ids__'][cell2_idx]
 
             cell1size = len(cell1ids)
             cell2size = len(cell2ids)
@@ -334,10 +334,10 @@ class OptimizedSequentialMatching(SequentialMatching):
             else:
                 # other variables do not need to be modified since the cell
                 # only got smaller and was not deleted
-                matching_ctx['__other_idx'][cell2_idx] = cell2ids[nb_match:]
+                matching_ctx['__other___ids__'][cell2_idx] = cell2ids[nb_match:]
 
             if nb_match < cell1size:
-                set1['idx'][sorted_idx] = cell1ids[nb_match:]
+                set1['__ids__'][sorted_idx] = cell1ids[nb_match:]
                 match_cell(idx, sorted_idx)
         loop_wh_progress(match_cell, sorted_set1_indices)
         return result
