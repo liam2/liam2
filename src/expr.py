@@ -253,10 +253,10 @@ class Expr(object):
 
     @property
     def value(self):
-        allnames = self.__dict__.keys()
+        d = self.__dict__
+        keys = sorted(d.keys())
         children = set(self.__children__)
-        return tuple(getattr(self, attr) for attr in allnames
-                     if attr not in children)
+        return tuple(d[k] for k in keys if k not in children)
 
     # makes sure we do not use "normal" python logical operators
     # (and, or, not)
