@@ -23,37 +23,22 @@ def df_by_cell(used_variables, setfilter, context):
     return idx
 
 
-class ScoreMatching(FilteredExpression):
-    """General framework for a Matching based on score
 
-    In general that kind of matching doesn't provide the best matching meaning
-    it doesn't optimize an overall penalty function. For example, if we have a
-    distance function, the function doesn't always return the match with the
-    lowest sum of distanced between all matched pairs. A Score matching need two
-    things:
-      - an order for the two sets
-      - a way of selecting a match
+class Matching(FilteredExpression):
     """
-    def traverse(self, context):
-        #FIXME: we should not override the parent traverse method, so that all
-        # "child" expressions are traversed too.
-        # This is not done currently, because it would traverse score_expr.
-        # This is a problem because traverse is used by collect_variables and
-        # the presence of variables is checked in expr.expr_eval() before
-        # the evaluate method is called and the context is completed during
-        # evaluation (__other_xxx is added during evaluation).
-        yield self
-
+    Base class for matching functions
+    """
     dtype = always(int)
 
 
-class RankingMatching(ScoreMatching):
+class RankMatching(Matching):
     """
-    Matching based on score
-        set 1 is ranked by decreasing orderby1
-        set 2 is ranked by decreasing orderby2
-        Then individuals in the nth position in each list are matched together.
+    Matching based on rank/order
+    * set 1 is ranked by decreasing orderby1
+    * set 2 is ranked by decreasing orderby2
+    * individuals in the nth position in each list are matched together.
     """
+    funcname = 'rank_matching'
     no_eval = ('set1filter', 'set2filter')
 
     def compute(self, context, set1filter, set2filter, orderby1, orderby2):
@@ -85,17 +70,23 @@ class RankingMatching(ScoreMatching):
         return result
 
 
-class SequentialMatching(ScoreMatching):
+class SequentialMatching(Matching):
     """
     Matching based on searching for the best match one by one.
+
+    In general that kind of matching does not provide the best matching,
+    because it does not optimize the *overall* distance function (it does not
+    necessarily return the match with the lowest sum of distances between all
+    matched pairs).
+
     - orderby gives the way individuals of set 1 are sorted before matching.
       The first individual will be matched with the highest scoring individual
-      from set 2. The next individuals in set 1 will be matched with the highest
+      from set 2. The next individual in set 1 will be matched with the highest
       scoring individual among the remaining individuals in set 2.
 
     - orderby can be :
         - an expression (usually a variable name). It is supposed to be
-          a "difficulty" because it's better (according to a general
+          a "difficulty" because it is better (according to a general
           objective score) to match hard-to-match people first.
         - the string 'EDtM', in which case, the (reduced) "Euclidean Distance to
           the Mean" is used to order individuals.
@@ -103,6 +94,15 @@ class SequentialMatching(ScoreMatching):
     funcname = 'matching'
     no_eval = ('set1filter', 'set2filter', 'score')
 
+    def traverse(self, context):
+        #FIXME: we should not override the parent traverse method, so that all
+        # "child" expressions are traversed too.
+        # This is not done currently, because it would traverse score_expr.
+        # This is a problem because traverse is used by collect_variables and
+        # the presence of variables is checked in expr.expr_eval() before
+        # the evaluate method is called and the context is completed during
+        # evaluation (__other_xxx is added during evaluation).
+        yield self
     def _get_used_variables_match(self, score_expr, context):
         used_variables = {v.name for v in score_expr.collect_variables(context)}
         used_variables1 = {'id'} | {v for v in used_variables
@@ -223,9 +223,6 @@ class OptimizedSequentialMatching(SequentialMatching):
     funcname = 'optimized_matching'
     no_eval = ('set1filter', 'set2filter', 'score', 'orderby')
 
-    def __init__(self, set1filter, set2filter, score, orderby):
-        ScoreMatching.__init__(self, set1filter, set2filter, score, orderby)
-
     def compute(self, context, set1filter, set2filter, score, orderby):
         global matching_ctx
 
@@ -316,6 +313,6 @@ class OptimizedSequentialMatching(SequentialMatching):
 
 functions = {
     'matching': SequentialMatching,
-    'rank_matching': RankingMatching,
     'optimized_matching': OptimizedSequentialMatching
+    'rank_matching': RankMatching,
 }
