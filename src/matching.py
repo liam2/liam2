@@ -1,27 +1,38 @@
 from __future__ import print_function
 
 import numpy as np
-import pandas as pd
 import random
 
 from expr import expr_eval, always, expr_cache
 from exprbases import FilteredExpression
 from context import context_length, context_delete, context_subset
 from utils import loop_wh_progress
+from cpartition import group_indices_nd
 
 
 def df_by_cell(used_variables, setfilter, context):
-    """return a DataFrame, with id list and group size"""
+    """
+    return a dict of the form:
+    {'field1': array1, 'field2': array2, 'idx': array_of_arrays_of_indices}
+    """
+    names = sorted(used_variables)
+    columns = [context[name] for name in names]
 
-    subset = context.subset(setfilter, used_variables)
-    used_set = dict((k, subset[k]) for k in used_variables)
-    used_set = pd.DataFrame(used_set)
-    used_variables.remove('id')
-    grouped = used_set.groupby(list(used_variables), sort=False)
-    idx = grouped.apply(lambda x: list(x['id'].values)).reset_index()
-    idx.rename(columns={0: 'idx'}, inplace=True)
-    return idx
+    # group_indices_nd returns a dict {value_or_tuple: array_of_indices}
+    d = group_indices_nd(columns, setfilter)
 
+    keylists = zip(*d.keys()) if len(columns) > 1 else [d.keys()]
+    keyarrays = [np.array(c) for c in keylists]
+
+    # we want a 1d array of arrays, not the 2d array that np.array(d.values())
+    # produces if we have a list of arrays with all the same length
+    idx = np.empty(len(d), dtype=object)
+    idx[:] = d.values()
+
+    result = dict(zip(names, keyarrays))
+    result['idx'] = idx
+    result['__len__'] = len(d)
+    return result
 
 
 class Matching(FilteredExpression):
@@ -239,51 +250,70 @@ class OptimizedSequentialMatching(SequentialMatching):
         used_variables1, used_variables2 = \
             self._get_score_variables(score, context)
 
-        if not isinstance(orderby, str):
-            var_match = orderby.collect_variables(context)
-            #FIXME: all used_variables are used in groupby. We need to keep the
-            # orderby variables in the context subset but they should NOT be
-            # used in the groupby.
-            used_variables1 |= {v.name for v in var_match}
-
-        df1 = df_by_cell(used_variables1, set1filtervalue, context)
-        df2 = df_by_cell(used_variables2, set2filtervalue, context)
-        print(" (%d/%d groups)" % (len(df1), len(df2)))
-
-        # Sort df1: 
         if isinstance(orderby, str):
             assert orderby == 'EDtM'
-            orderbyvalue = pd.Series(np.zeros(len(df1)))
-            #FIXME: id should not be in here
-            for var in used_variables1:
-                orderbyvalue += (df1[var] - df1[var].mean())**2 / df1[var].var()
+            orderby_vars = used_variables1
         else:
-            orderbyvalue = df1.eval(orderby)
+            orderby_vars = {v.name for v in orderby.collect_variables(context)}
 
-        df1 = df1.loc[orderbyvalue.order()[::-1].index]
-        
+        # if orderby contains variables that are not used in the score
+        # expression, this will effectively add variables in the
+        # matching context AND group by those variables. This is correct
+        # because otherwise (if we did not group by them), we could have
+        # groups containing individuals with different values of the
+        # ordering variables (ie the ordering would not be respected).
+        set1 = df_by_cell(used_variables1 | orderby_vars, set1filtervalue,
+                          context)
+        set2 = df_by_cell(used_variables2, set2filtervalue, context)
+
+        # we cannot simply take the [:min(set1len, set2len)] indices like in
+        # the non-optimized case and iterate over that because we don't know
+        # how many groups we will need to match.
+        print(" (%d/%d groups)" % (context_length(set1), context_length(set2)))
+
+        if isinstance(orderby, str):
+            orderbyvalue = np.zeros(context_length(set1))
+            for name in used_variables1:
+                column = set1[name]
+                orderbyvalue += (column - column.mean()) ** 2 / column.var()
+        else:
+            orderbyvalue = expr_eval(orderby, context.clone(entity_data=set1))
+
+        # Delete variables which are present in the orderby expr but not in the
+        # score expression because they are no longer needed an would slow
+        # things down.
+        onlyinorderby = orderby_vars - used_variables1
+        if onlyinorderby:
+            for name in onlyinorderby:
+                del set1[name]
+
+        sorted_set1_indices = orderbyvalue.argsort()[::-1]
+
         result = np.empty(context_length(context), dtype=int)
         result.fill(-1)
         id_to_rownum = context.id_to_rownum
-        
-        matching_ctx = dict(('__other_' + k, v.values)
-                            for k, v in df2.iteritems())
-        matching_ctx['__len__'] = len(df2)
-        def match_cell(idx, row):
+
+        # prefix all keys except __len__
+        matching_ctx = {'__other_' + k if k != '__len__' else k: v
+                        for k, v in set2.iteritems()}
+
+        def match_cell(idx, sorted_idx):
             global matching_ctx
 
-            if matching_ctx['__len__'] == 0:
+            set2_size = context_length(matching_ctx)
+            if not set2_size:
                 raise StopIteration
 
-            for var in df1.columns:
-                matching_ctx[var] = row[var]
+            local_ctx = matching_ctx.copy()
+            local_ctx.update((k, set1[k][sorted_idx]) for k in used_variables1)
 
-            eval_ctx = context.clone(entity_data=matching_ctx)
+            eval_ctx = context.clone(entity_data=local_ctx)
             set2_scores = expr_eval(score, eval_ctx)
             cell2_idx = set2_scores.argmax()
 
             # reverse to mimic non-optimized argsort()[::-1]
-            cell1ids = row['idx'][::-1]
+            #TODO: reverse in df_by_cell
+            cell1ids = set1['idx'][sorted_idx][::-1]
             cell2ids = matching_ctx['__other_idx'][cell2_idx]
 
             cell1size = len(cell1ids)
@@ -294,7 +324,7 @@ class OptimizedSequentialMatching(SequentialMatching):
             # much necessary. In that case, it should be done in df_by_cell
             ids1 = cell1ids[:nb_match]
             ids2 = cell2ids[:nb_match]
-            
+
             result[id_to_rownum[ids1]] = ids2
             result[id_to_rownum[ids2]] = ids1
             
@@ -306,10 +336,9 @@ class OptimizedSequentialMatching(SequentialMatching):
                 matching_ctx['__other_idx'][cell2_idx] = cell2ids[nb_match:]
 
             if nb_match < cell1size:
-                row['idx'] = cell1ids[nb_match:]
-                match_cell(idx, row)
-                    
-        loop_wh_progress(match_cell, df1.to_records())
+                set1['idx'][sorted_idx] = cell1ids[nb_match:]
+                match_cell(idx, sorted_idx)
+        loop_wh_progress(match_cell, sorted_set1_indices)
         return result
 
 
