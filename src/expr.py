@@ -194,6 +194,8 @@ def expr_eval(expr, context):
         else:
             globals_names = set()
 
+        #FIXME: systematically checking for the presence of variables has a
+        # non-negligible cost (especially in matching)
         #TODO: also check for globals
         for var in expr.collect_variables(context):
             if var.name not in globals_names and var not in context:
