@@ -89,6 +89,36 @@ entities:
                 # there is exactly one woman of each age not in couple
                 - assertEqual(groupby(age, filter=not INCOUPLE).__len__(), 100)
 
+                # men in set1 and women in set2, ordered by region
+                # ================================================
+                # given we have 3 women for 2 men, each man can chose a woman
+                # of his exact age
+                - partner_id: matching(set1filter=MALE, set2filter=FEMALE,
+                                       orderby=region_id,
+                                       score=-(other.age - age) ** 2)
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+                - assertTrue(all(partner.age == age, filter=INCOUPLE))
+                # there is exactly one woman of each age not in couple
+                - assertEqual(groupby(age, filter=not INCOUPLE).__len__(), 100)
+
+                # women in set1 and men in set2, ordered by region
+                # ================================================
+                # given we have 3 women for 2 men, we have a problem
+                - partner_id: matching(set1filter=FEMALE, set2filter=MALE,
+                                       orderby=region_id,
+                                       score=-(other.age - age) ** 2)
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+                # women from the last region got to choose first (they got
+                # what they wanted)
+                - assertTrue(all(partner.age == age,
+                                 filter=INCOUPLE and region_id == 9))
+                # women from the first region got to choose last... and there
+                # was not any man left
+                - assertTrue(all(not INCOUPLE,
+                                 filter=FEMALE and region_id == 0))
+
                 # men in set1 and women in set2, younger men first
                 # ================================================
                 # reversing the order does not change anything
