@@ -39,13 +39,12 @@ entities:
                     # men
                     - new('person', number=newmen,
                           male=True,
-                          partner_id=-1,
-                          region_id=randint(10))
+                          partner_id=-1)
                     # women
                     - new('person', number=newwomen,
                           male=False,
-                          partner_id=-1,
-                          region_id=randint(10))
+                          partner_id=-1)
+                    - region_id: id % 10
 
                     # interesting trick if we wanted to set the age for all
                     # individuals in the db (new or not), or all with unset
