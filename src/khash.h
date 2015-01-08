@@ -591,7 +591,7 @@ KHASH_SET_INIT_PYOBJECT(pyset)
 #define kh_exist_int32(h, k) (kh_exist(h, k))
 #define kh_exist_int8(h, k) (kh_exist(h, k))
 
-KHASH_MAP_INIT_STR(str, Py_ssize_t)
+// KHASH_MAP_INIT_STR(str, Py_ssize_t)
 
 KHASH_MAP_INIT_INT32(int32, Py_ssize_t)
 KHASH_MAP_INIT_INT64(int64, Py_ssize_t)
