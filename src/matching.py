@@ -165,8 +165,9 @@ class SequentialMatching(Matching):
         result.fill(-1)
         id_to_rownum = context.id_to_rownum
 
-        matching_ctx = dict(('__other_' + k if k in used_variables2 else k, v)
-                            for k, v in set2.iteritems())
+        # prefix all keys except __len__
+        matching_ctx = {'__other_' + k if k != '__len__' else k: v
+                        for k, v in set2.iteritems()}
 
         #noinspection PyUnusedLocal
         def match_one_set1_individual(idx, sorted_idx, pool_size):
