@@ -13,7 +13,7 @@ from cpartition import group_indices_nd
 def df_by_cell(used_variables, setfilter, context):
     """
     return a dict of the form:
-    {'field1': array1, 'field2': array2, 'idx': array_of_arrays_of_indices}
+    {'field1': array1, 'field2': array2, 'idx': array_of_arrays_of_ids}
     """
     names = sorted(used_variables)
     columns = [context[name] for name in names]
@@ -26,8 +26,9 @@ def df_by_cell(used_variables, setfilter, context):
 
     # we want a 1d array of arrays, not the 2d array that np.array(d.values())
     # produces if we have a list of arrays with all the same length
+    idcol = context['id']
     idx = np.empty(len(d), dtype=object)
-    idx[:] = d.values()
+    idx[:] = [idcol[v] for v in d.values()]
 
     result = dict(zip(names, keyarrays))
     result['idx'] = idx
@@ -344,6 +345,6 @@ class OptimizedSequentialMatching(SequentialMatching):
 
 functions = {
     'matching': SequentialMatching,
-    'optimized_matching': OptimizedSequentialMatching
+    'optimized_matching': OptimizedSequentialMatching,
     'rank_matching': RankMatching,
 }
