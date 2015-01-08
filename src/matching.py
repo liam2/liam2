@@ -10,7 +10,7 @@ from utils import loop_wh_progress
 from cpartition import group_indices_nd
 
 
-def df_by_cell(used_variables, setfilter, context):
+def group_context(used_variables, setfilter, context):
     """
     return a dict of the form:
     {'field1': array1, 'field2': array2, 'idx': array_of_arrays_of_ids}
@@ -263,9 +263,9 @@ class OptimizedSequentialMatching(SequentialMatching):
         # because otherwise (if we did not group by them), we could have
         # groups containing individuals with different values of the
         # ordering variables (ie the ordering would not be respected).
-        set1 = df_by_cell(used_variables1 | orderby_vars, set1filtervalue,
+        set1 = group_context(used_variables1 | orderby_vars, set1filtervalue,
                           context)
-        set2 = df_by_cell(used_variables2, set2filtervalue, context)
+        set2 = group_context(used_variables2, set2filtervalue, context)
 
         # we cannot simply take the [:min(set1len, set2len)] indices like in
         # the non-optimized case and iterate over that because we don't know
@@ -313,7 +313,7 @@ class OptimizedSequentialMatching(SequentialMatching):
             cell2_idx = set2_scores.argmax()
 
             # reverse to mimic non-optimized argsort()[::-1]
-            #TODO: reverse in df_by_cell
+            #TODO: reverse in group_context
             cell1ids = set1['__ids__'][sorted_idx][::-1]
             cell2ids = matching_ctx['__other___ids__'][cell2_idx]
 
@@ -322,7 +322,7 @@ class OptimizedSequentialMatching(SequentialMatching):
             nb_match = min(cell1size, cell2size)
 
             # we could introduce a random choice here but it is not
-            # much necessary. In that case, it should be done in df_by_cell
+            # much necessary. In that case, it should be done in group_context
             ids1 = cell1ids[:nb_match]
             ids2 = cell2ids[:nb_match]
 
