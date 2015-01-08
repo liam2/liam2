@@ -248,7 +248,8 @@ class Expr(object):
 
     @property
     def children(self):
-        return tuple(getattr(self, attr) for attr in self.__children__)
+        d = self.__dict__
+        return tuple(d[k] for k in self.__children__)
 
     @property
     def value(self):
