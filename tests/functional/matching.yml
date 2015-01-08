@@ -67,6 +67,9 @@ entities:
                     - show(groupby(age, male))
 
             generate_few:
+                # make sure id != rownum
+                - generate(10, 10)
+                - remove()
                 # generate two men and three women of each age
                 - generate(200, 300)
 
@@ -365,15 +368,13 @@ entities:
 
             test_optimized:
                 - normal_id: matching(set1filter=MALE, set2filter=FEMALE,
-                                      orderby=age,
+                                      orderby=id,
                                       score=-(other.age - age) ** 2)
                 - opt_id: optimized_matching(set1filter=MALE,
                                              set2filter=FEMALE,
-                                             orderby=age,
+                                             orderby=id,
                                              score=-(other.age - age) ** 2)
-#                - assertEqual(opt_id, normal_id)
-                #TODO: also test the case where all individuals have
-                # different values (as many groups as individuals)
+                - assertEqual(normal_id, opt_id)
 
 simulation:
     init:
