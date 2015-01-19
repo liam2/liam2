@@ -5,7 +5,7 @@ import random
 
 from expr import expr_eval, always, expr_cache
 from exprbases import FilteredExpression
-from context import context_length, context_delete, context_subset
+from context import context_length, context_delete, context_subset, context_keep
 from utils import loop_wh_progress
 from cpartition import group_indices_nd
 
@@ -237,8 +237,13 @@ class OptimizedSequentialMatching(SequentialMatching):
     funcname = 'optimized_matching'
     no_eval = ('set1filter', 'set2filter', 'score', 'orderby')
 
-    def compute(self, context, set1filter, set2filter, score, orderby):
+    def compute(self, context, set1filter, set2filter, score, orderby,
+                pool_size=None, algo='byvalue'):
         global matching_ctx
+
+        if pool_size is not None:
+            assert isinstance(pool_size, int)
+            assert pool_size > 0
 
         set1filterexpr = self._getfilter(context, set1filter)
         set1filtervalue = expr_eval(set1filterexpr, context)
@@ -257,20 +262,37 @@ class OptimizedSequentialMatching(SequentialMatching):
         else:
             orderby_vars = {v.name for v in orderby.collect_variables(context)}
 
-        # if orderby contains variables that are not used in the score
-        # expression, this will effectively add variables in the
-        # matching context AND group by those variables. This is correct
-        # because otherwise (if we did not group by them), we could have
-        # groups containing individuals with different values of the
-        # ordering variables (ie the ordering would not be respected).
-        set1 = group_context(used_variables1 | orderby_vars, set1filtervalue,
-                          context)
-        set2 = group_context(used_variables2, set2filtervalue, context)
+        if algo == 'simple':
+            all_vars = {'id'} | used_variables1 | orderby_vars
+            set1 = context.subset(set1filtervalue, all_vars, set1filterexpr)
+            set2 = context.subset(set2filtervalue, {'id'} | used_variables2,
+                                  set2filterexpr)
 
-        # we cannot simply take the [:min(set1len, set2len)] indices like in
-        # the non-optimized case and iterate over that because we don't know
-        # how many groups we will need to match.
-        print(" (%d/%d groups)" % (context_length(set1), context_length(set2)))
+            # subset creates a dict for the current entity, so .entity_data is a
+            # dict
+            set1 = set1.entity_data
+            set2 = set2.entity_data
+
+            set1['__ids__'] = set1['id'].reshape(set1len, 1)
+            set2['__ids__'] = set2['id'].reshape(set2len, 1)
+
+            print()
+        else:
+            # if orderby contains variables that are not used in the score
+            # expression, this will effectively add variables in the
+            # matching context AND group by those variables. This is correct
+            # because otherwise (if we did not group by them), we could have
+            # groups containing individuals with different values of the
+            # ordering variables (ie the ordering would not be respected).
+            set1 = group_context(used_variables1 | orderby_vars,
+                                 set1filtervalue, context)
+            set2 = group_context(used_variables2, set2filtervalue, context)
+
+            # we cannot simply take the [:min(set1len, set2len)] indices like in
+            # the non-optimized case and iterate over that because we don't know
+            # how many groups we will need to match.
+            print(" (%d/%d groups)"
+                  % (context_length(set1), context_length(set2)))
 
         if isinstance(orderby, str):
             orderbyvalue = np.zeros(context_length(set1))
@@ -280,13 +302,11 @@ class OptimizedSequentialMatching(SequentialMatching):
         else:
             orderbyvalue = expr_eval(orderby, context.clone(entity_data=set1))
 
-        # Delete variables which are present in the orderby expr but not in the
-        # score expression because they are no longer needed an would slow
-        # things down.
-        onlyinorderby = orderby_vars - used_variables1
-        if onlyinorderby:
-            for name in onlyinorderby:
-                del set1[name]
+        # Delete variables which are not in the score expression (but in the
+        # orderby expr or possibly "id") because they are no longer needed and
+        # would slow things down.
+        context_keep(set1, used_variables1)
+        context_keep(set2, used_variables2)
 
         sorted_set1_indices = orderbyvalue.argsort()[::-1]
 
@@ -298,24 +318,32 @@ class OptimizedSequentialMatching(SequentialMatching):
         matching_ctx = {'__other_' + k if k != '__len__' else k: v
                         for k, v in set2.iteritems()}
 
-        def match_cell(idx, sorted_idx):
+        def match_cell(idx, sorted_idx, pool_size):
             global matching_ctx
 
             set2_size = context_length(matching_ctx)
             if not set2_size:
                 raise StopIteration
 
-            local_ctx = matching_ctx.copy()
-            local_ctx.update((k, set1[k][sorted_idx]) for k in used_variables1)
+            if pool_size is not None and set2_size > pool_size:
+                pool = random.sample(xrange(set2_size), pool_size)
+                local_ctx = context_subset(matching_ctx, pool)
+            else:
+                local_ctx = matching_ctx.copy()
+
+            local_ctx.update((k, set1[k][sorted_idx])
+                             for k in {'__ids__'} | used_variables1)
 
             eval_ctx = context.clone(entity_data=local_ctx)
             set2_scores = expr_eval(score, eval_ctx)
             cell2_idx = set2_scores.argmax()
 
-            # reverse to mimic non-optimized argsort()[::-1]
-            #TODO: reverse in group_context
-            cell1ids = set1['__ids__'][sorted_idx][::-1]
-            cell2ids = matching_ctx['__other___ids__'][cell2_idx]
+            cell1ids = local_ctx['__ids__']
+            cell2ids = local_ctx['__other___ids__'][cell2_idx]
+
+            if pool_size is not None and set2_size > pool_size:
+                # transform pool-local index to set/matching_ctx index
+                cell2_idx = pool[cell2_idx]
 
             cell1size = len(cell1ids)
             cell2size = len(cell2ids)
@@ -336,10 +364,23 @@ class OptimizedSequentialMatching(SequentialMatching):
                 # only got smaller and was not deleted
                 matching_ctx['__other___ids__'][cell2_idx] = cell2ids[nb_match:]
 
+            #FIXME: the expr gets cached for the full matching_ctx at the
+            # beginning and then when another women with the same values is
+            # found, it thinks it can reuse the expr but it breaks because it
+            # has not the correct length.
+
+            # the current workaround is to invalidate the whole cache for the
+            # current entity but this is not the right way to go.
+            # * disable the cache for matching?
+            # * use a local cache so that methods after matching() can use
+            # what was in the cache before matching(). Shouldn't the cache be
+            # stored inside the context anyway?
+            expr_cache.invalidate(context.period, context.entity_name)
+
             if nb_match < cell1size:
                 set1['__ids__'][sorted_idx] = cell1ids[nb_match:]
-                match_cell(idx, sorted_idx)
-        loop_wh_progress(match_cell, sorted_set1_indices)
+                match_cell(idx, sorted_idx, pool_size)
+        loop_wh_progress(match_cell, sorted_set1_indices, pool_size)
         return result
 
 
