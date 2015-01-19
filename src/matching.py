@@ -262,7 +262,7 @@ class OptimizedSequentialMatching(SequentialMatching):
         else:
             orderby_vars = {v.name for v in orderby.collect_variables(context)}
 
-        if algo == 'simple':
+        if algo == 'onebyone':
             all_vars = {'id'} | used_variables1 | orderby_vars
             set1 = context.subset(set1filtervalue, all_vars, set1filterexpr)
             set2 = context.subset(set2filtervalue, {'id'} | used_variables2,
