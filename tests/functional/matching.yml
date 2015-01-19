@@ -376,6 +376,16 @@ entities:
                                              score=-(other.age - age) ** 2)
                 - assertEqual(normal_id, opt_id)
 
+                - normal_id: matching(set1filter=MALE, set2filter=FEMALE,
+                                      orderby=region_id,
+                                      score=-(other.age - age) ** 2)
+                - opts_id: optimized_matching(set1filter=MALE,
+                                              set2filter=FEMALE,
+                                              orderby=region_id,
+                                              score=-(other.age - age) ** 2,
+                                              algo='onebyone')
+                - assertEqual(normal_id, opts_id)
+
 simulation:
     init:
         - region: [generate]
