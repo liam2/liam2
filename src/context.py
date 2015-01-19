@@ -296,7 +296,9 @@ def context_delete(context, rownum):
         # globals are left unmodified
         if key != '__globals__':
             if isinstance(value, np.ndarray) and value.shape:
-                value = np.delete(value, rownum)
+                # axis=0 so that if value.ndim > 1, treat it as if it was an
+                # array of arrays
+                value = np.delete(value, rownum, axis=0)
         result[key] = value
     result['__len__'] -= 1
     return result
