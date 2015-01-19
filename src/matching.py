@@ -104,7 +104,7 @@ class SequentialMatching(Matching):
           the Mean" is used to order individuals.
     """
     funcname = 'matching'
-    no_eval = ('set1filter', 'set2filter', 'score')
+    no_eval = ('set1filter', 'set2filter', 'score', 'orderby')
 
     def traverse(self, context):
         #FIXME: we should not override the parent traverse method, so that all
@@ -123,122 +123,7 @@ class SequentialMatching(Matching):
         return used_variables1, used_variables2
 
     def compute(self, context, set1filter, set2filter, score, orderby,
-                pool_size=None):
-        global matching_ctx
-
-        if pool_size is not None:
-            assert isinstance(pool_size, int)
-            assert pool_size > 0
-
-        set1filterexpr = self._getfilter(context, set1filter)
-        set1filtervalue = expr_eval(set1filterexpr, context)
-        set2filterexpr = self._getfilter(context, set2filter)
-        set2filtervalue = expr_eval(set2filterexpr, context)
-        set1len = set1filtervalue.sum()
-        set2len = set2filtervalue.sum()
-        tomatch = min(set1len, set2len)
-        print("matching with %d/%d individuals" % (set1len, set2len))
-
-        used_variables1, used_variables2 = \
-            self._get_score_variables(score, context)
-
-        #TODO: we should detect whether or not we are using non-simple
-        # expressions (EvaluableExpression children) and pre-evaluate them,
-        # because otherwise they are re-evaluated on all of set2 for each
-        # individual in set1. See https://github.com/liam2/liam2/issues/128
-        set1 = context.subset(set1filtervalue, {'id'} | used_variables1,
-                              set1filterexpr)
-        set2 = context.subset(set2filtervalue, {'id'} | used_variables2,
-                              set2filterexpr)
-
-        # subset creates a dict for the current entity, so .entity_data is a
-        # dict
-        set1 = set1.entity_data
-        set2 = set2.entity_data
-
-        if isinstance(orderby, str):
-            assert orderby == 'EDtM'
-            orderbyvalue = np.zeros(set1len)
-            for name in used_variables1:
-                column = set1[name]
-                orderbyvalue += (column - column.mean()) ** 2 / column.var()
-        else:
-            #XXX: shouldn't orderby be computed only on the filtered set? (
-            # but used_variables might be different than in the set,
-            # so it might not be worth it.
-            orderbyvalue = orderby[set1filtervalue]
-
-        sorted_set1_indices = orderbyvalue.argsort()[::-1]
-
-        set1tomatch = sorted_set1_indices[:tomatch]
-
-        result = np.empty(context_length(context), dtype=int)
-        result.fill(-1)
-        id_to_rownum = context.id_to_rownum
-
-        # prefix all keys except __len__
-        matching_ctx = {'__other_' + k if k != '__len__' else k: v
-                        for k, v in set2.iteritems()}
-
-        #noinspection PyUnusedLocal
-        def match_one_set1_individual(idx, sorted_idx, pool_size):
-            global matching_ctx
-
-            set2_size = context_length(matching_ctx)
-            if not set2_size:
-                raise StopIteration
-
-            if pool_size is not None and set2_size > pool_size:
-                pool = random.sample(xrange(set2_size), pool_size)
-                local_ctx = context_subset(matching_ctx, pool)
-            else:
-                local_ctx = matching_ctx.copy()
-
-            local_ctx.update((k, set1[k][sorted_idx])
-                             for k in {'id'} | used_variables1)
-
-            eval_ctx = context.clone(entity_data=local_ctx)
-            set2_scores = expr_eval(score, eval_ctx)
-
-            individual2_idx = set2_scores.argmax()
-
-            id1 = local_ctx['id']
-            id2 = local_ctx['__other_id'][individual2_idx]
-            if pool_size is not None and set2_size > pool_size:
-                individual2_idx = pool[individual2_idx]
-            matching_ctx = context_delete(matching_ctx, individual2_idx)
-
-            #FIXME: the expr gets cached for the full matching_ctx at the
-            # beginning and then when another women with the same values is
-            # found, it thinks it can reuse the expr but it breaks because it
-            # has not the correct length.
-
-            # the current workaround is to invalidate the whole cache for the
-            # current entity but this is not the right way to go.
-            # * disable the cache for matching?
-            # * use a local cache so that methods after matching() can use
-            # what was in the cache before matching(). Shouldn't the cache be
-            # stored inside the context anyway?
-            expr_cache.invalidate(context.period, context.entity_name)
-
-            result[id_to_rownum[id1]] = id2
-            result[id_to_rownum[id2]] = id1
-
-        loop_wh_progress(match_one_set1_individual, set1tomatch,
-                         pool_size=pool_size)
-        return result
-
-
-class OptimizedSequentialMatching(SequentialMatching):
-    """
-    Here, the matching is optimized since we work on sets grouped by values.
-    Doing so, we work with smaller sets and we can improve running time.
-    """
-    funcname = 'optimized_matching'
-    no_eval = ('set1filter', 'set2filter', 'score', 'orderby')
-
-    def compute(self, context, set1filter, set2filter, score, orderby,
-                pool_size=None, algo='byvalue'):
+                pool_size=None, algo='onebyone'):
         global matching_ctx
 
         if pool_size is not None:
@@ -278,6 +163,10 @@ class OptimizedSequentialMatching(SequentialMatching):
 
             print()
         else:
+            # optimized matching by grouping sets by values, which usually
+            # means smaller sets and improved running time.
+            assert algo == 'byvalue'
+
             # if orderby contains variables that are not used in the score
             # expression, this will effectively add variables in the
             # matching context AND group by those variables. This is correct
@@ -386,6 +275,5 @@ class OptimizedSequentialMatching(SequentialMatching):
 
 functions = {
     'matching': SequentialMatching,
-    'optimized_matching': OptimizedSequentialMatching,
     'rank_matching': RankMatching,
 }
