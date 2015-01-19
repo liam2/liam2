@@ -288,6 +288,13 @@ def context_subset(context, index=None, keys=None):
     return result
 
 
+def context_keep(context, keys):
+    keep = set(keys)
+    for key in context.keys():
+        if key not in keep and not key.startswith('__'):
+            del context[key]
+
+
 def context_delete(context, rownum):
     result = {}
     # this copies everything including __len__, period, nan, ...
