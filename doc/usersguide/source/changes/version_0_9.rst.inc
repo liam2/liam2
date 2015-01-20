@@ -86,12 +86,11 @@ Fixes
 * do not expand scalar keys of (global) arrays when the contextual filter is
   an array.
 
-* assertEqual fails gracefully when the comparing two arrays with different
-  shapes.
+* assertEqual fails gracefully when comparing two arrays with different shapes.
 
 * convert 0d arrays returned by numexpr to scalars.
 
-* fixed global fields colliding with fields of the same name from other
+* fixed global fields colliding with fields with the same name from other
   (global) tables.
 
 * fixed the "view" command (to launch ViTables -- via F9 for example) in the 64
