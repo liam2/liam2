@@ -367,6 +367,8 @@ entities:
                 - assertTrue(all(not INCOUPLE, filter=FEMALE and age < 33))
 
             test_optimized:
+                # ordering by id is almost the only way to get exactly the same
+                # results for onebyone and byvalue algorithms
                 - normal_id: matching(set1filter=MALE, set2filter=FEMALE,
                                       orderby=id,
                                       score=-(other.age - age) ** 2)
