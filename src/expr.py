@@ -372,10 +372,32 @@ class Expr(object):
         return SubscriptedExpr(self, key)
 
     def __getattr__(self, key):
-        if key in {'shape', 'ndim',
+        if key in {'dtype', 'itemsize', 'nbytes', 'ndim', 'shape', 'size',
                    'dim_names', 'pvalues', 'row_totals', 'col_totals',
-                   '__len__', 'nonzero', 'cumsum',
-                   'sum', 'prod', 'std', 'max', 'min', 'reshape'}:
+                   # aggregates
+                   'all', 'any', 'max', 'mean', 'min', 'prod', 'ptp', 'std',
+                   'sum', 'var', 'cumprod', 'cumsum',
+                   # element-wise
+                   'astype', 'clip', 'copy', 'round',
+                   # inplace
+                   'fill', 'partition', 'sort',
+                   # indirect
+                   'argmax', 'argmin', 'argpartition', 'argsort',
+                   # other
+                   'nonzero', 'reshape', 'transpose',
+                   # should go away when I implement len()
+                   '__len__'}:
+            # excluded (and it would take some convincing to add them):
+            # base, byteswap, ctypes, data, dump, dumps, getfield, item,
+            # itemset, newbyteorder, put, resize, setfield, setflags, swapaxes,
+            # take, trace, view
+
+            # excluded for now (I am open if anybody asks for them):
+            # choose, compress, conj, conjugate, diagonal, dot, flags, flat,
+            # flatten, imag, ravel, real, repeat, squeeze, strides
+
+            # compress (select using a boolean index for one axis) is nice but
+            # I would like to implement a[bool_idx_wh_axis] instead in LArray
             return ExprAttribute(self, key)
         else:
             raise AttributeError("'%s' object has no attribute '%s'"
