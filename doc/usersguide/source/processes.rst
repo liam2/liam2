@@ -1179,15 +1179,15 @@ The general form of align_abs is : ::
 
     align_abs(score,
               need,
-              [, filter=conditions]
-              [, take=conditions]
-              [, leave=conditions]
-              [, expressions=expressions]
-              [, possible_values=pvalues]
-              [, frac_need="uniform"|"round"|"cutoff"]
-              [, link=link_name]
-              [, secondary_axis=column_name]
-              [, errors="default"|"carry"])
+              [filter=conditions,]
+              [take=conditions,]
+              [leave=conditions,]
+              [expressions=expressions,]
+              [possible_values=pvalues,]
+              [frac_need="uniform"|"round"|"cutoff",]
+              [link=link_name,]
+              [secondary_axis=column_name,]
+              [errors="default"|"carry"])
 
 In addition to all the arguments supported by *align()*, *align_abs()* also
 supports an optional "link" argument, which makes it work on a linked entity.
@@ -1261,8 +1261,8 @@ True for individuals which are selected, False for all others.
 Its general form is: :: 
 
   - aligned: logit_regr(expression,
-                        [, filter=conditions]
-                        [, align=proportions])
+                        [filter=conditions,]
+                        [align=proportions])
 
 The *align* argument supports all the same formats than the *proportions*
 argument of align(): filename, percentage, list of values, ...
@@ -1322,34 +1322,63 @@ is ignored.
     matching(set1filter=boolean_expr,
              set2filter=boolean_expr,
              score=coef1 * field1 + coef2 * other.field2 + ...,
-             orderby=difficult_match,    # expression or 'EDtM'
-             [pool_size=int])            # or None by default.
+             orderby=expr,                # expression or 'EDtM'
+             [pool_size=int,]             # None by default
+             [algo="onebyone"|"byvalue"]) # "onebyone" by default
 
-*set1filter* and *set2filter* specify the boolean filters which provide the two
-sets to match.
+Arguments:
 
-*score* is an expression to assign a value to each individual of set 2
-(given a particular individual in set 1). In the score expression the fields
-of the set 1 individual can be used normally while the fields of its possible
-partners (from set 2) can be used by prefixing them by "**other.**".
+ * **set1filter** and **set2filter** specify the boolean filters which provide
+   the two sets to match.
 
-*orderby* defines the order in which the individuals of the first set
-are matched. It can be either an expression or the 'EDtM' string. If it is an
-expression, individuals in set 1 will by sorted by its decreasing values. If
-set to 'EDtM' (Euclidean Distance to the Mean), individuals will be sorted by
-decreasing distance to an hypothetical "mean individual" measured on all the
-variables (of set 1) used in the score expression [#footnote1]_. In short,
-"unusual individuals" will be matched first.
+ * **score** is an expression to assign a value to each individual of set 2
+   (given a particular individual in set 1). In the score expression the fields
+   of the set 1 individual can be used normally while the fields of its possible
+   partners (from set 2) can be used by prefixing them by "**other.**".
 
-The optional *pool_size* argument specifies the size of the subset of set 2
-to use as candidates. If used, it should be a positive integer. In that case,
-the best match for each individual of set 1 will be searched for in a random
-subset of size *pool_size*, instead of in all unmatched individuals in set 2.
-This may be closer to actual marriage where people do not meet every single
-potential partner. When the remaining number of candidates in set 2 is lower
-than pool_size, the match is looked for among all remaining candidates.
+ * **orderby** defines the order in which the individuals of the first set
+   are matched. It can be either an expression or the 'EDtM' string. If it is an
+   expression, individuals in set 1 will by sorted by its decreasing values. If
+   set to 'EDtM' (Euclidean Distance to the Mean), individuals will be sorted by
+   decreasing distance to an hypothetical "mean individual" measured on all the
+   variables (of set 1) used in the score expression [#footnote1]_. In short,
+   "unusual individuals" will be matched first.
 
-.. versionadded:: 0.9
+ * The optional **pool_size** argument specifies the size of the subset of set 2
+   to use as candidates. If used, it should be a positive integer. In that case,
+   the best match for each individual of set 1 will be searched for in a random
+   subset of size *pool_size*, instead of in all unmatched individuals in set 2.
+   This may be closer to actual marriage where people do not meet every single
+   potential partner. When the remaining number of candidates in set 2 is lower
+   than pool_size, the match is looked for among all remaining candidates.
+
+   .. versionadded:: 0.9
+
+ * The optional **algo** argument specifies the algorithm to use. It can be set
+   to either "onebyone" or "byvalue".
+
+   + "onebyone" is the current default and should give the same result than with
+     LIAM2 versions < 0.9.
+
+   + "byvalue" groups individuals by their value for all the variables involved
+     in both the score and orderby expressions, and match groups together.
+     Depending on whether all individuals in each set have many different
+     combinations of values or not, this is usually much faster than matching
+     each individual in turn. It is thus **highly encouraged** to use this
+     option if possible. It will become the default value in version 0.10.
+     This algorithm also scales better (O(N1g*N2g) instead of O(N1*N2) where
+     N1g and N2g are the number of combination of values in each set and N1 and
+     N2 are the number of individuals in each set).
+
+     .. note:: the "byvalue" algorithm is only available if the C extensions are
+               installed.
+
+   .. warning:: The results of the two algorithms are **NOT** exactly the same,
+                hence the switch cannot be done lightly from one to another if
+                comparing simulation results with those of an earlier version
+                of LIAM2 (< 0.9) is of importance.
+
+   .. versionadded:: 0.9
 
 *example* ::
 
