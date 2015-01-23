@@ -24,7 +24,7 @@ from upgrade import upgrade
 from utils import AutoFlushFile
 from view import viewhdf
 
-__version__ = "0.9alpha2"
+__version__ = "0.9rc1"
 
 
 def eat_traceback(func, *args, **kwargs):
