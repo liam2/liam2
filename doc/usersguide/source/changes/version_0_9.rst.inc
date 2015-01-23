@@ -79,19 +79,24 @@ Miscellaneous improvements
 Fixes
 -----
 
+* fixed the "view" command (to launch ViTables -- via F9 for example) in the 64
+  bit bundle. This was a regression in 0.8.2. Closes :issue:`147`.
+
 * fixed computing most expressions involving arrays with more than one
   dimension. It only worked if all the arrays involved were based on the same
   "source" array (which was the case in our tests).
 
-* do not expand scalar keys of (global) arrays when the contextual filter is
-  an array.
-
 * assertEqual fails gracefully when comparing two arrays with different shapes.
-
-* convert 0d arrays returned by numexpr to scalars.
 
 * fixed global fields colliding with fields with the same name from other
   (global) tables.
 
-* fixed the "view" command (to launch ViTables -- via F9 for example) in the 64
-  bit bundle. This was a regression in 0.8.2. Closes :issue:`147`.
+* fixed expressions like: ::
+
+  if(filter_expr, align(..., array[scalar], ...), False)
+
+  and made all if(expr, GLOBAL[scalar_value], ...) expressions faster in the
+  process.
+
+* fixed a rare problem with some expressions using scalars returned by
+  aggregate functions.
