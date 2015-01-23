@@ -562,5 +562,5 @@ if __name__ == '__main__':
     # chdir(r'c:\tmp')
     # chdir('liam2_new_release')
 
-    # make_release(*argv[1:])
-    update_changelog(*argv[1:])
+    make_release(*argv[1:])
+    # update_changelog(*argv[1:])
