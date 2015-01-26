@@ -6,6 +6,7 @@ from __future__ import print_function
 import re
 import ast
 import sys
+import math
 import time
 import operator
 import itertools
@@ -161,16 +162,26 @@ def time2str(seconds, precise=True):
 
 
 def size2str(value):
-    unit = "bytes"
-    if value > 1024.0:
-        value /= 1024.0
-        unit = "Kb"
-        if value > 1024.0:
-            value /= 1024.0
-            unit = "Mb"
-        return "%.2f %s" % (value, unit)
-    else:
-        return "%d %s" % (value, unit)
+    """
+    >>> size2str(0)
+    '0 bytes'
+    >>> size2str(100)
+    '100 bytes'
+    >>> size2str(1023)
+    '1023 bytes'
+    >>> size2str(1024)
+    '1.00 Kb'
+    >>> size2str(2000)
+    '1.95 Kb'
+    >>> size2str(10000000)
+    '9.54 Mb'
+    >>> size2str(1.27 * 1024 ** 3)
+    '1.27 Gb'
+    """
+    units = ["bytes", "Kb", "Mb", "Gb", "Tb", "Pb"]
+    scale = int(math.log(value, 1024)) if value else 0
+    fmt = "%.2f %s" if scale else "%d %s"
+    return fmt % (value / 1024.0 ** scale, units[scale])
 
 
 #def mem_usage():
