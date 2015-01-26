@@ -174,7 +174,7 @@ def ispresent(values):
 # rather in a "compilation" phase
 def collect_variables(expr, context):
     if isinstance(expr, Expr):
-        return expr.collect_variables(context)
+        return expr.collect_variables()
     elif isinstance(expr, (tuple, list)):
         all_vars = [collect_variables(e, context) for e in expr]
         return set.union(*all_vars) if all_vars else set()
@@ -197,7 +197,7 @@ def expr_eval(expr, context):
         #FIXME: systematically checking for the presence of variables has a
         # non-negligible cost (especially in matching)
         #TODO: also check for globals
-        for var in expr.collect_variables(context):
+        for var in expr.collect_variables():
             if var.name not in globals_names and var not in context:
                 raise Exception("variable '%s' is unknown (it is either not "
                                 "defined or not computed yet)" % var)
@@ -305,7 +305,7 @@ class Expr(object):
         assert isinstance(context, EvaluationContext)
         local_ctx = context.entity_data
         if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
-            for var in simple_expr.collect_variables(context):
+            for var in simple_expr.collect_variables():
                 assert var.entity is None or var.entity is context.entity, \
                     "should not have happened (as_simple_expr should " \
                     "have transformed non-local variables)"
@@ -417,8 +417,8 @@ class Expr(object):
             if isinstance(node, node_type):
                 yield node
 
-    def collect_variables(self, context):
-        allvars = list(self.all_of(Variable, context))
+    def collect_variables(self):
+        allvars = list(self.all_of(Variable))
         #FIXME: this is a quick hack to make "othertable" work.
         # We should return prefixed variable instead.
         badvar = lambda v: isinstance(v, ShortLivedVariable) or \

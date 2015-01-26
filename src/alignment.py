@@ -167,11 +167,11 @@ class AlignmentAbsoluteValues(FilteredExpression):
             self.args = (self.args[0], need) + self.args[2:]
         self.past_error = None
 
-    def collect_variables(self, context):
+    def collect_variables(self):
         # args[9] is the "link" argument
         # if self.args.link is None:
         if self.args[9] is None:
-            return FilteredExpression.collect_variables(self, context)
+            return FilteredExpression.collect_variables()
         else:
             # in this case, it's tricky
             return set()

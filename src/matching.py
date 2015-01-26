@@ -117,7 +117,7 @@ class SequentialMatching(Matching):
         yield self
 
     def _get_score_variables(self, score_expr, context):
-        names = {v.name for v in score_expr.collect_variables(context)}
+        names = {v.name for v in score_expr.collect_variables()}
         used_variables1 = {n for n in names if not n.startswith('__other_')}
         used_variables2 = {n[8:] for n in names if n.startswith('__other_')}
         return used_variables1, used_variables2
@@ -145,7 +145,7 @@ class SequentialMatching(Matching):
             assert orderby == 'EDtM'
             orderby_vars = used_variables1
         else:
-            orderby_vars = {v.name for v in orderby.collect_variables(context)}
+            orderby_vars = {v.name for v in orderby.collect_variables()}
 
         if algo == 'onebyone':
             all_vars = {'id'} | used_variables1 | orderby_vars
