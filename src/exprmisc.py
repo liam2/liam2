@@ -233,7 +233,7 @@ class New(FilteredExpression):
         used_variables = set()
         # kwargs are stored as a list of (k, v) pairs
         for k, v in kwargs.iteritems():
-            used_variables.update(collect_variables(v, context))
+            used_variables.update(collect_variables(v))
         return used_variables
 
     def compute(self, context, entity_name=None, filter=None, number=None,

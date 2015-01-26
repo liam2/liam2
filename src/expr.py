@@ -168,15 +168,11 @@ def ispresent(values):
         raise Exception('%s is not a supported type for ispresent' % dt)
 
 
-# context is needed because in LinkGet we need to know what is the current
-# entity (so that we can resolve links)
-#TODO: we shouldn't resolve links during the simulation but
-# rather in a "compilation" phase
-def collect_variables(expr, context):
+def collect_variables(expr):
     if isinstance(expr, Expr):
         return expr.collect_variables()
     elif isinstance(expr, (tuple, list)):
-        all_vars = [collect_variables(e, context) for e in expr]
+        all_vars = [collect_variables(e) for e in expr]
         return set.union(*all_vars) if all_vars else set()
     else:
         return set()

@@ -40,7 +40,7 @@ class GroupBy(TableExpression):
         percent = kwargs.pop('percent', False)
         possible_values = kwargs.pop('pvalues', None)
 
-        expr_vars = [v.name for v in collect_variables(expr, context)]
+        expr_vars = [v.name for v in collect_variables(expr)]
         labels = [str(e) for e in expressions]
         columns = [expr_eval(e, context) for e in expressions]
 
