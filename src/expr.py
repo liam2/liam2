@@ -191,7 +191,8 @@ def expr_eval(expr, context):
             globals_names = set()
 
         #FIXME: systematically checking for the presence of variables has a
-        # non-negligible cost (especially in matching)
+        # non-negligible cost (especially in matching), even when caching
+        # collect_variables result (it is much better than before though).
         #TODO: also check for globals
         for var in expr.collect_variables():
             if var.name not in globals_names and var not in context:
@@ -250,7 +251,8 @@ class Expr(object):
     @property
     def value(self):
         d = self.__dict__
-        keys = sorted(d.keys())
+        # ignore _ keys, for example "_variables"
+        keys = sorted(k for k in d.keys() if not k.startswith('_'))
         children = set(self.__children__)
         return tuple(d[k] for k in keys if k not in children)
 
@@ -411,12 +413,18 @@ class Expr(object):
                 yield node
 
     def collect_variables(self):
-        #FIXME: this is a quick hack to make "othertable" work.
-        # We should return prefixed variable instead.
-        badvar = lambda v: isinstance(v, ShortLivedVariable) or \
-                           (isinstance(v, GlobalVariable) and
-                            v.tablename != 'periodic')
-        return set(v for v in self.all_of(Variable) if not badvar(v))
+        #TODO: it would be cleaner if we initialized _variables in __init__,
+        # however it means each Expr subclass would have to call its parent
+        # __init__ (which is a good thing but too much hassle at this point).
+        if not hasattr(self, "_variables"):
+            #FIXME: this is a quick hack to make "othertable" work.
+            # We should return prefixed variable instead.
+            badvar = lambda v: isinstance(v, ShortLivedVariable) or \
+                               (isinstance(v, GlobalVariable) and
+                                v.tablename != 'periodic')
+            self._variables = set(v for v in self.all_of(Variable)
+                                  if not badvar(v))
+        return self._variables
 
     #TODO: make equivalent/commutative expressions compare equal and hash to the
     # same thing.
