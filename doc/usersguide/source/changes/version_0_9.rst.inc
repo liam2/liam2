@@ -103,7 +103,7 @@ Fixes
 
 * fixed expressions like: ::
 
-  if(filter_expr, align(..., array[scalar], ...), False)
+    if(filter_expr, align(..., array[scalar], ...), False)
 
   and made all if(expr, GLOBAL[scalar_value], ...) expressions faster in the
   process.
