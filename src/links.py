@@ -104,7 +104,7 @@ class PrefixingLink(object):
             raise Exception("Using macros with the 'other' link is not "
                             "supported yet")
 #            macro = self.macros[key]
-#            variables = macro.collect_variables(entity=entity)
+#            variables = macro.collect_variables()
 #            renames = dict((name, self.prefix + name) for name in variables)
 #            return macro.rename_variables(renames)
         if key in self.links:

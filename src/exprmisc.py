@@ -229,7 +229,7 @@ class New(FilteredExpression):
         return children
 
     @classmethod
-    def _collect_kwargs_variables(cls, kwargs, context):
+    def _collect_kwargs_variables(cls, kwargs):
         used_variables = set()
         # kwargs are stored as a list of (k, v) pairs
         for k, v in kwargs.iteritems():
@@ -284,7 +284,7 @@ class New(FilteredExpression):
             children['period'] = context.period
 
             used_variables = [v.name for v in
-                              self._collect_kwargs_variables(kwargs, context)]
+                              self._collect_kwargs_variables(kwargs)]
             if to_give_birth is None:
                 assert not used_variables
                 child_context = context.empty(num_birth)

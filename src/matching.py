@@ -116,7 +116,7 @@ class SequentialMatching(Matching):
         # evaluation (__other_xxx is added during evaluation).
         yield self
 
-    def _get_score_variables(self, score_expr, context):
+    def _get_score_variables(self, score_expr):
         names = {v.name for v in score_expr.collect_variables()}
         used_variables1 = {n for n in names if not n.startswith('__other_')}
         used_variables2 = {n[8:] for n in names if n.startswith('__other_')}
@@ -138,8 +138,7 @@ class SequentialMatching(Matching):
         set2len = set2filtervalue.sum()
         print("matching with %d/%d individuals" % (set1len, set2len), end='')
 
-        used_variables1, used_variables2 = \
-            self._get_score_variables(score, context)
+        used_variables1, used_variables2 = self._get_score_variables(score)
 
         if isinstance(orderby, str):
             assert orderby == 'EDtM'
