@@ -411,13 +411,12 @@ class Expr(object):
                 yield node
 
     def collect_variables(self):
-        allvars = list(self.all_of(Variable))
         #FIXME: this is a quick hack to make "othertable" work.
         # We should return prefixed variable instead.
         badvar = lambda v: isinstance(v, ShortLivedVariable) or \
                            (isinstance(v, GlobalVariable) and
                             v.tablename != 'periodic')
-        return set(v for v in allvars if not badvar(v))
+        return set(v for v in self.all_of(Variable) if not badvar(v))
 
     #TODO: make equivalent/commutative expressions compare equal and hash to the
     # same thing.
