@@ -64,6 +64,11 @@ Miscellaneous improvements
     when using two fields with the same name but a different entity (via a
     link) in the same expression. Closes :issue:`41`.
 
+* cache some internal structure so that it is not recomputed over and over,
+  which improves overall performance by a few percents in some cases, especially
+  when computing many "small" expressions as is often the case in
+  one-by-one matching() (which improved in our tests by 10-20%).
+
 * remove() can now be called without filter argument (it removes all
   individuals)
 
