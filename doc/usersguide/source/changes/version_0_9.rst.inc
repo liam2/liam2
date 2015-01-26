@@ -15,22 +15,27 @@
   method to match two sets of individuals. Based on :PR:`136` from Alexis
   Eidelman.
 
-* added an "algo" argument to the :ref:`matching() <matching>` function, which
-  can be set to either "onebyone" or "byvalue". "onebyone" is the current
-  default and should give the same result as previous versions, albeit a
-  bit slower than before (XX% in our tests). "byvalue" groups individuals by
-  their value for all the variables involved in both the score and orderby
-  expressions, and match groups together. Depending on whether all
-  individuals have different combination of values or not, this can be much
-  faster than matching each individual in turn. It is highly encouraged to
-  use this option as it is much faster in most cases and it scales better (O
-  (N1g*N2g) instead of O(N1*N2) where N1g and N2g are the number of combination
-  of values in each set and N1 and N2 are the number of individuals in each
-  set). However, the results are NOT exactly the same than in previous versions,
-  even though they are both correct. This means that simulation results will be
-  harder to compare against simulation results obtained using previous versions.
-  This will be the new default value for version 0.10. Please also note
-  that this new option is only available if the C extensions are installed.
+* added an optional "algo" argument to the :ref:`matching() <matching>`
+  function, which can be set to either "onebyone" or "byvalue".
+
+  + "onebyone" is the current default and should give the same result as
+    previous versions.
+
+  + "byvalue" groups individuals by their value for all the variables involved
+    in both the score and orderby expressions, and match groups together.
+    Depending on whether all individuals have different combination of values or
+    not, this can be much faster than matching each individual in turn. It is
+    highly encouraged to use this option as it is much faster in most cases and
+    it scales better (O (N1g*N2g) instead of O(N1*N2) where N1g and N2g are the
+    number of combination of values in each set and N1 and N2 are the number of
+    individuals in each set). However, the results are **NOT** exactly the same
+    than in previous versions, even though they are both correct. This means
+    that simulation results will be harder to compare against simulation results
+    obtained using previous versions. This will be the new default value for
+    version 0.10. Please also note that this new option is only available if the
+    C extensions are installed. In our test models on actual data, this version
+    ran from 50% faster to 3x faster.
+
   This code is based on the optimized_matching work from :PR:`144` by Alexis
   Eidelman.
 
