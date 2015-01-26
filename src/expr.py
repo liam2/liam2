@@ -116,13 +116,13 @@ def as_string(expr):
         return str(expr)
 
 
-def traverse_expr(expr, context):
+def traverse_expr(expr):
     if isinstance(expr, Expr):
-        for node in expr.traverse(context):
+        for node in expr.traverse():
             yield node
     elif isinstance(expr, (tuple, list)):
         for e in expr:
-            for node in traverse_expr(e, context):
+            for node in traverse_expr(e):
                 yield node
     else:
         yield expr
@@ -403,17 +403,14 @@ class Expr(object):
             raise AttributeError("'%s' object has no attribute '%s'"
                                  % (self.__class__.__name__, key))
 
-    # the context is needed so that collect_variable we know which entity we are
-    # currently in (even if that not used at the moment). This could be
-    # avoided though. One way would be to store the source entity in links.
-    def traverse(self, context=None):
+    def traverse(self):
         for child in self.children:
-            for node in traverse_expr(child, context):
+            for node in traverse_expr(child):
                 yield node
         yield self
 
-    def all_of(self, node_type, context=None):
-        for node in self.traverse(context):
+    def all_of(self, node_type):
+        for node in self.traverse():
             if isinstance(node, node_type):
                 yield node
 

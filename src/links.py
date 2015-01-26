@@ -130,7 +130,7 @@ class LinkExpression(FunctionExpr):
         return self.link._target_context(context)
 
     #XXX: I think this is not enough. Implement Visitor pattern instead?
-    def traverse(self, context):
+    def traverse(self):
         yield self
 
     def dtype(self, context):
@@ -156,7 +156,7 @@ class LinkGet(LinkExpression):
     funcname = "get"
     no_eval = ('target_expr',)
 
-    def traverse(self, context):
+    def traverse(self):
         #XXX: don't we also need the fields within the target expression?
         #noinspection PyProtectedMember
         yield Variable(self.link._entity, self.link._link_field)
