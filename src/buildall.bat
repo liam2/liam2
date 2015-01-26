@@ -34,7 +34,7 @@ upx -9 %BDIR32%\*.exe
 upx -9 %BDIR32%\*.pyd
 upx -9 %BDIR32%\*.dll
 upx -9 %BDIR32%\imageformats\*.dll
-rem del mpl-data\sample_data?
+rd /s /q %BDIR32%\mpl-data\sample_data
 
 rem ======== 64 bits =========
 call c64.bat
@@ -43,5 +43,10 @@ call activate liam2
 rem rd /s /q %ANACONDA_ENVS%\%CONDA_DEFAULT_ENV%\Lib\site-packages\PyQt4\uic\port_v3\
 python setup.py build
 
+set BDIR64=build\exe.win-amd64-2.7
 rem upx does not support 64b files
-rem set BDIR64=build\exe.win-amd64-2.7
+rem upx -9 %BDIR64%\*.exe
+rem upx -9 %BDIR64%\*.pyd
+rem upx -9 %BDIR64%\*.dll
+rem upx -9 %BDIR64%\imageformats\*.dll
+rd /s /q %BDIR64%\mpl-data\sample_data
