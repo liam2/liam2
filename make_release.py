@@ -7,10 +7,11 @@ from __future__ import print_function
 import errno
 import fnmatch
 import os
+import re
 import stat
 import subprocess
+import urllib
 import zipfile
-import re
 
 from datetime import date
 from os import chdir, makedirs
@@ -166,6 +167,20 @@ def isprerelease(release_name):
     """
     return any(tag in release_name
                for tag in ('rc', 'c', 'beta', 'b', 'alpha', 'a'))
+
+
+def send_outlook(to, subject, body):
+    subprocess.call('outlook /c ipm.note /m "%s&subject=%s&body=%s"'
+                    % (to, urllib.quote(subject), urllib.quote(body)))
+
+
+def send_thunderbird(to, subject, body):
+    # preselectid='id1' selects the first "identity" for the "from" field
+    # We do not use our usual call because the command returns an exit status
+    # of 1 (failure) instead of 0, even if it works, so we simply ignore
+    # the failure.
+    subprocess.call("thunderbird -compose \"preselectid='id1',"
+                    "to='%s',subject='%s',body='%s'\"" % (to, subject, body))
 
 
 # -------------------- #
@@ -397,15 +412,9 @@ able to post).
 """ % (short(release_name), release_highlights(release_name),
        release_changes(release_name))
 
-    # preselectid='id1' selects the first "identity" for the "from" field
-    # We do not use our usual call because the command returns an exit status
-    # of 1 (failure) instead of 0, even if it works, so we simply ignore
-    # the failure.
-    subprocess.call("thunderbird -compose \""
-                    "preselectid='id1',"
-                    "to='liam2-announce@googlegroups.com',"
-                    "subject='Version %s released',"
-                    "body='%s'\"" % (short(release_name), body))
+    send_outlook('liam2-announce@googlegroups.com',
+                 'Version %s released' % short(release_name),
+                 body)
 
 
 def cleanup():
