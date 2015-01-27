@@ -334,7 +334,7 @@ def build_website(release_name):
 
     title = 'Version %s released' % short(release_name)
     # strip is important otherwise fname contains a \n and git chokes on it
-    fname = call('tinker -f -p "%s"' % title).strip()
+    fname = call('tinker --filename --post "%s"' % title).strip()
 
     call('buildall.bat')
 
