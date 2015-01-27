@@ -87,8 +87,12 @@ extensions = ['tinkerer.ext.blog', 'tinkerer.ext.disqus',
 # WARNING: braces need to be escaped (doubled) in the template!
 intersphinx_mapping = {{'doc': ('http://liam2.plan.be/documentation/{version}',
                                'objects.inv')}}
-extlinks = {{'issue': ('https://github.com/liam2/liam2/issues/%s',
-                      'issue ')}}
+extlinks = {{
+    'issue': ('https://github.com/liam2/liam2/issues/%s', 'issue '),
+    'pr': ('https://github.com/liam2/liam2/pull/%s', 'pull request '),
+    'changes': ('http://liam2.plan.be/documentation/{version}/changes.html#%s',
+                None),
+}}
 
 # Add other template paths here
 templates_path = ['_templates']
