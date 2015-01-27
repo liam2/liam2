@@ -21,6 +21,11 @@ from subprocess import check_output, STDOUT, CalledProcessError
 
 WEBSITE = 'liam2.plan.be'
 
+#TODO:
+# - different announce message for pre-releases
+# - announce RC on the website too
+# ? create a download page for the rc
+
 # TODO: add more scripts to implement the "git flow" model
 # - hotfix_branch
 # - release_branch
