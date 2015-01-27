@@ -550,7 +550,7 @@ def make_release(release_name=None, branch='master'):
         # ---------- #
 
         do('Tagging release', call,
-           'git tag -a v%(name)s -m "tag release %(name)s"'
+           'git tag -a %(name)s -m "tag release %(name)s"'
            % {'name': release_name})
         # push the website & changelog commits to the branch (usually master)
         # and the release tag (which refers to the last commit)
