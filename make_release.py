@@ -184,6 +184,12 @@ def release_changes(release_name):
         return f.read().decode('utf-8-sig')
 
 
+def release_highlights(release_name):
+    fpath = "doc\website\highlights\\" + relname2fname(release_name)
+    with open(fpath) as f:
+        return f.read().decode('utf-8-sig')
+
+
 def build_exe():
     chdir('src')
     call('buildall.bat')
@@ -376,9 +382,7 @@ def announce(release_name):
     body = """\
 I am pleased to announce that version %s of LIAM2 is now available.
 
-The highlights of this release are:
-- x
-- y
+%s
 
 More details and the complete list of changes are available below.
 
@@ -390,7 +394,9 @@ mailing list: liam2-users@googlegroups.com (you need to register to be
 able to post).
 
 %s
-""" % (short(release_name), release_changes(release_name))
+""" % (short(release_name), release_highlights(release_name),
+       release_changes(release_name))
+
     # preselectid='id1' selects the first "identity" for the "from" field
     # We do not use our usual call because the command returns an exit status
     # of 1 (failure) instead of 0, even if it works, so we simply ignore
