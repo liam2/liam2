@@ -1186,7 +1186,7 @@ class MethodCall(EvaluableExpression):
         self.entity = entity
         self.name = name
         self.args = args
-        self.kwargs = kwargs
+        self.kwargs = tuple(sorted(kwargs.iteritems()))
 
     def evaluate(self, context):
         from process import Assignment, Function
@@ -1195,8 +1195,7 @@ class MethodCall(EvaluableExpression):
         # hybrid (method & variable) assignment can be called
         assert isinstance(method, (Assignment, Function))
         args = [expr_eval(arg, context) for arg in self.args]
-        kwargs = dict((k, expr_eval(v, context))
-                      for k, v in self.kwargs.iteritems())
+        kwargs = dict((k, expr_eval(v, context)) for k, v in self.kwargs)
         return method.run_guarded(context, *args, **kwargs)
 
     def __repr__(self):
