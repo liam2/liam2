@@ -429,30 +429,31 @@ class Expr(object):
     #TODO: make equivalent/commutative expressions compare equal and hash to the
     # same thing.
     def __eq__(self, other):
-        if not isinstance(other, Expr):
-            return False
-
         if not isinstance(other, self.__class__):
             return False
 
         def strict_equal(a, b):
-            return isinstance(b, a.__class__) and a == b
+            # we are intentionally very picky so that eg. True != 1
+            if type(a) is not type(b):
+                return False
+            if isinstance(a, (tuple, list)):
+                return all(strict_equal(e1, e2) for e1, e2 in zip(a, b))
+            else:
+                return a == b
 
-        def strict_equal_tuple(t1, t2):
-            return all(strict_equal(e1, e2) for e1, e2 in zip(t1, t2))
-
-        res = self.value == other.value and \
-            strict_equal_tuple(self.children, other.children)
+        res = strict_equal(self.value, other.value) and \
+            strict_equal(self.children, other.children)
         if res:
             if str(self) != str(other):
                 print()
-                print(type(self), len(self.children), len(other.children))
-                print([(x, type(x)) for x in self.children])
-                print([(x, type(x)) for x in other.children])
                 print('SHOULD NOT COMPARE EQUAL!')
                 print(str(self).ljust(40), '>>>', self.value, self.children)
                 print(str(other).ljust(40), '>>>', other.value, other.children)
-                raise Exception("should not compare equal")
+                print(type(self), type(other),
+                      len(self.children), len(other.children))
+                print([(x, type(x)) for x in self.children])
+                print([(x, type(x)) for x in other.children])
+                # raise Exception("should not compare equal")
         return res
 
     def __hash__(self):
