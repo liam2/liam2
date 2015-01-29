@@ -323,13 +323,19 @@ class Expr(object):
                                             'same expression: %s vs %s'
                                             % (labels[0], value.dim_names))
                         # check that for each dimension the labels are the same
-                        for labels1, labels2 in zip(labels[1], value.pvalues):
-                            if not np.array_equal(labels1, labels2):
-                                raise Exception('several arrays with '
-                                                'inconsistent axis values in '
-                                                'the same expression: '
-                                                '\n%s\n\nvs\n\n%s'
-                                                % (labels1, labels2))
+                        pvalues1, pvalues2 = labels[1], value.pvalues
+
+                        # None pvalues are simply ignored. This can happen due
+                        # to limitations in LabeledArray (should be lifted when
+                        # we use LArray instead).
+                        if pvalues1 is not None and pvalues2 is not None:
+                            for labels1, labels2 in zip(pvalues1, pvalues2):
+                                if not np.array_equal(labels1, labels2):
+                                    raise Exception('several arrays with '
+                                                    'inconsistent axis values '
+                                                    'in the same expression: '
+                                                    '\n%s\n\nvs\n\n%s'
+                                                    % (labels1, labels2))
 
         s = simple_expr.as_string()
         try:

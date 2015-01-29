@@ -786,8 +786,8 @@ entities:
 
                 # test that expressions with more than one dimension (2 in
                 # this case) work when the axes from both sides are not the
-                # same objects (this is case in the need and nd_plus_nd tests
-                # above)
+                # same objects (this is the case in the need and nd_plus_nd
+                # tests above)
                 - mig_period_bis: MIG[:,:,period - base_period]
                 - mig_period_x2: mig_period + mig_period_bis
                 - assertEqual(mig_period_x2, mig_period * 2)
@@ -846,7 +846,7 @@ entities:
 
                 # use the resulting vector in an expression
 
-                # using the temporary variable
+                # using a temporary variable
                 - remainder_per_person: 1 - percent_per_person
                 - assertIsClose(sum(remainder_per_person),
                                 count() - sum(percent_per_person))
@@ -864,6 +864,11 @@ entities:
                 - assertIsClose(sum(remainder_per_person),
                                 count() - sum(percent_per_person))
 
+                # test an expr with two 3d array
+                - strange: MIG[gender * 1, 0, 0] - MIG[gender * 1, 1, 0]
+                - control1: MIG[:,0,:] - MIG[:,1,:]
+                - control2: control1[gender * 1, 0]
+                - assertIsClose(sum(strange), sum(control2))
 
                 # test combination with if() filter, to test whether the
                 # contextual filter works properly, especially with bad indices
