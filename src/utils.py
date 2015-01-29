@@ -31,6 +31,8 @@ import config
 def make_hashable(obj):
     if isinstance(obj, (list, tuple)):
         return tuple(make_hashable(e) for e in obj)
+    elif isinstance(obj, slice):
+        return (slice, obj.start, obj.stop, obj.step)
     else:
         return obj
 
