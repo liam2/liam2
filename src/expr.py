@@ -715,7 +715,7 @@ class AbstractFunction(Expr):
                                englishenum(repr(a) for a in missing)))
 
         # save original arguments before we mess with them
-        self.original_args = args, sorted(kwargs.iteritems())
+        self._original_args = args, sorted(kwargs.iteritems())
 
         # move all "non-kwonly" kwargs to args
         # def func(a, b, c, d, e=1, f=1):
@@ -761,7 +761,7 @@ class AbstractFunction(Expr):
                            AbstractFunction.format_args_str(args, kwargs))
 
     def __repr__(self):
-        return self.format(self.funcname, *self.original_args)
+        return self.format(self.funcname, *self._original_args)
 
 
 # this needs to stay in the expr module because of ExprAttribute, which uses
@@ -877,7 +877,7 @@ class DynamicFunctionCall(GenericFunctionCall):
         return func(*args, **kwargs)
 
     @property
-    def original_args(self):
+    def _original_args(self):
         return self.args, self.kwargs
 
     def __repr__(self):

@@ -146,7 +146,7 @@ class LinkExpression(FunctionExpr):
         return self.args[1]
 
     def __repr__(self):
-        args, kwargs = self.original_args
+        args, kwargs = self._original_args
         link, args = args[0], args[1:]
         #noinspection PyProtectedMember
         return self.format(link._name + "." + self.funcname, args, kwargs)
