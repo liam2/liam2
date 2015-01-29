@@ -534,7 +534,11 @@ class Entity(object):
         # * we either need to do SSA first, or for each assignment process,
         #   "forget" all expressions containing the assigned variable
         #   doing it using SSA seems cleaner, but in the end it shouldn't
-        #   change much.
+        #   change much. If we do not do SSA, we will need to "forget" about
+        #   expressions which contain an assigned variable at *each step* of
+        #   the process, including when simply counting the number of occurrence
+        #   of expressions. In that case we also need to iterate on the
+        #   processes in the same order than the simulation!
         # * I don't know if it is a good idea to optimize cross-procedures.
         #   On one hand it offers much more possibilities for optimizations
         #   but, on the other hand the optimization pass might just take too
@@ -543,26 +547,38 @@ class Entity(object):
         # * cross-procedures might get tricky when we take function calls
         #   into account.
 
-        #FIXME:
-        # * we need to iterate on the processes in the same order than the
-        #   simulation
         #TODO:
         # * it will be simpler and better to do this in two passes: first
-        #   find duplicated expr, and number of occurrences of each expr, then
+        #   find duplicated expr and number of occurrences of each expr, then
         #   proceed with the factorization
-        seen = {}
+        expr_count = collections.Counter()
         for p in self.processes.itervalues():
             for expr in p.expressions():
                 for subexpr in expr.traverse():
-                    if subexpr in seen:
-                        original = seen[subexpr]
-                        # 1) add an assignment process before the process of
-                        # the "original" expression to compute a temporary
-                        # variable
-                        # 2) modify "original" expr to use the temp var
-                        # 3) modify the current expr to use the temp var
-                    else:
-                        seen[subexpr] = subexpr
+                    if isinstance(subexpr, Expr) and \
+                            not isinstance(subexpr, Variable):
+                        expr_count[subexpr] += 1
+        print()
+        print("most common expressions")
+        print("=" * 20)
+        print(expr_count.most_common(100))
+
+        # if count(larger) <= count(smaller) <= count(larger) + 1: kill smaller
+        # if count(smaller) > count(larger) + 1: do both (larger uses smaller)
+
+        # seen = {}
+        # for p in self.processes.itervalues():
+        #     for expr in p.expressions():
+        #         for subexpr in expr.traverse():
+        #             if subexpr in seen:
+        #                 original = seen[subexpr]
+        #                 # 1) add an assignment process before the process of
+        #                 # the "original" expression to compute a temporary
+        #                 # variable
+        #                 # 2) modify "original" expr to use the temp var
+        #                 # 3) modify the current expr to use the temp var
+        #             else:
+        #                 seen[subexpr] = subexpr
 
     def __repr__(self):
         return "<Entity '%s'>" % self.name
