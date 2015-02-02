@@ -223,15 +223,15 @@ def expr_eval(expr, context):
         return expr
 
 
-def binop(opname, kind='binary', reversed=False):
+def binop(opname, kind='binary', reverse=False):
     def op(self, other):
         classes = {'binary': BinaryOp,
                    'division': DivisionOp,
                    'logical': LogicalOp,
                    'comparison': ComparisonOp}
         class_ = classes[kind]
-        return class_(opname, other, self) if reversed \
-                                           else class_(opname, self, other)
+        return class_(opname, other, self) \
+            if reverse else class_(opname, self, other)
     return op
 
 
@@ -265,11 +265,11 @@ class Expr(object):
                         "displayed but it contains: '%s'." % str(self))
 
     def evaluate(self, context):
-        period = context.period
-
-        if isinstance(period, np.ndarray):
-            assert np.isscalar(period) or not period.shape
-            period = int(period)
+        # period = context.period
+        #
+        # if isinstance(period, np.ndarray):
+        #     assert np.isscalar(period) or not period.shape
+        #     period = int(period)
 
         # cache_key = (self, period, context.entity_name, context.filter_expr)
         # try:
@@ -537,7 +537,7 @@ class SubscriptedExpr(EvaluableExpression):
             # filter_value should be a bool scalar or a bool array
             filter_value = expr_eval(filter_expr, sub_context)
             assert isinstance(filter_value, (bool, np.bool_)) or \
-                   np.issubdtype(filter_value.dtype, bool)
+                np.issubdtype(filter_value.dtype, bool)
 
             def fixkey(orig_key, filter_value):
                 if non_scalar_array(orig_key):

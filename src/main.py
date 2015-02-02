@@ -27,6 +27,10 @@ from view import viewhdf
 __version__ = "0.9rc2"
 
 
+def passthrough(func, *args, **kwargs):
+    return func(*args, **kwargs)
+
+
 def eat_traceback(func, *args, **kwargs):
     # e.context      | while parsing a block mapping
     # e.context_mark | in "import.yml", line 18, column 9
@@ -204,10 +208,9 @@ bcolz {bc}
 pyyaml {yml}
 vitables {vt}
 matplotlib {mpl}
-""".format(py=py_version, np=numpy.__version__,
-                       ne=numexpr.__version__, pt=tables.__version__,
-                       vt=vt_version, mpl=mpl_version, bc=bcolz.__version__,
-                       yml=yaml.__version__))
+""".format(py=py_version, np=numpy.__version__, ne=numexpr.__version__,
+           pt=tables.__version__, vt=vt_version, mpl=mpl_version,
+           bc=bcolz.__version__, yml=yaml.__version__))
         parser.exit()
 
 
@@ -265,7 +268,7 @@ def main():
     # this can happen via the environment variable too!
     if config.debug:
         warnings.simplefilter('default')
-        wrapper = lambda func, *args, **kwargs: func(*args, **kwargs)
+        wrapper = passthrough
     else:
         wrapper = eat_traceback
 
