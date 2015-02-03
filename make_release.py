@@ -155,9 +155,10 @@ def long_release_name(release_name):
     >>> long_release_name('0.8.0rc1')
     '0.8.0rc1'
     """
-    if release_name.count('.') >= 2:
+    dotcount = release_name.count('.')
+    if dotcount >= 2:
         return release_name
-    assert release_name.count('.') == 1
+    assert dotcount == 1, "%s contains %d dots" % (release_name, dotcount)
     pos = pretag_pos(release_name)
     if pos is not None:
         return release_name[:pos] + '.0' + release_name[pos:]
