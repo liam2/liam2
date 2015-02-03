@@ -6,7 +6,7 @@ Change log
 Version 0.9
 ===========
 
-In development.
+Released on 2015-02-03.
 
 .. include:: changes/version_0_9.rst.inc
 
