@@ -138,8 +138,47 @@ def zip_unpack(archivefname, dest=None):
         f.extractall(dest)
 
 
-def short(rel_name):
-    return rel_name[:-2] if rel_name.endswith('.0') else rel_name
+def short(release_name):
+    return release_name[:-2] if release_name.endswith('.0') else release_name
+
+
+def long_release_name(release_name):
+    """
+    transforms a short release name such as 0.8 to a long one such as 0.8.0
+
+    >>> long_release_name('0.8')
+    '0.8.0'
+    >>> long_release_name('0.8.0')
+    '0.8.0'
+    >>> long_release_name('0.8rc1')
+    '0.8.0rc1'
+    >>> long_release_name('0.8.0rc1')
+    '0.8.0rc1'
+    """
+    if release_name.count('.') >= 2:
+        return release_name
+    assert release_name.count('.') == 1
+    pos = pretag_pos(release_name)
+    if pos is not None:
+        return release_name[:pos] + '.0' + release_name[pos:]
+    return release_name + '.0'
+
+
+def pretag_pos(release_name):
+    """
+    gives the position of any pre-release tag
+    >>> pretag_pos('0.8')
+    >>> pretag_pos('0.8alpha25')
+    3
+    >>> pretag_pos('0.8.1rc1')
+    5
+    """
+    # 'a' needs to be searched for after 'beta'
+    for tag in ('rc', 'c', 'beta', 'b', 'alpha', 'a'):
+        match = re.search(tag + '\d+', release_name)
+        if match is not None:
+            return match.start()
+    return None
 
 
 def strip_pretags(release_name):
@@ -153,10 +192,8 @@ def strip_pretags(release_name):
     >>> strip_pretags('0.8.1rc1')
     '0.8.1'
     """
-    # 'a' needs to be searched for after 'beta'
-    for tag in ('rc', 'c', 'beta', 'b', 'alpha', 'a'):
-        release_name = re.sub(tag + '\d+', '', release_name)
-    return release_name
+    pos = pretag_pos(release_name)
+    return release_name[:pos] if pos is not None else release_name
 
 
 def isprerelease(release_name):
@@ -170,8 +207,7 @@ def isprerelease(release_name):
     >>> isprerelease('0.8.1rc1')
     True
     """
-    return any(tag in release_name
-               for tag in ('rc', 'c', 'beta', 'b', 'alpha', 'a'))
+    return pretag_pos(release_name) is not None
 
 
 def send_outlook(to, subject, body):
@@ -435,6 +471,8 @@ def make_release(release_name=None, branch='master'):
                              "'beta' instead")
         if '-' in release_name:
             raise ValueError("- is not supported anymore")
+
+        release_name = long_release_name(release_name)
 
     # releasing from the local clone has the advantage I can prepare the
     # release offline and only push and upload it when I get back online
