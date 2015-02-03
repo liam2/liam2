@@ -4,6 +4,7 @@ Sitemap
 .. toctree::
    :maxdepth: 1
 
+   2015/02/03/version_0_9_released
    2014/10/02/version_0_8_2_released
    2014/03/19/version_0_8_1_released
    2014/02/05/version_0_8_released
