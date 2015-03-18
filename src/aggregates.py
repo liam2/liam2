@@ -11,6 +11,16 @@ import exprmisc
 from context import context_length
 from utils import removed
 
+try:
+    import bottleneck as bn
+    nanmin = bn.nanmin
+    nanmax = bn.nanmax
+    nansum = bn.nansum
+except ImportError:
+    nanmin = np.nanmin
+    nanmax = np.nanmax
+    nansum = np.nansum
+
 
 class All(NumpyAggregate):
     np_func = np.all
@@ -55,8 +65,8 @@ def argsnotsupported(when, notsupported):
     return decorator
 
 limited = argsnotsupported("skip_na=True", [('out', None), ('keepdims', False)])
-nanmin = limited(np.nanmin)
-nanmax = limited(np.nanmax)
+nanmin = limited(nanmin)
+nanmax = limited(nanmax)
 
 
 class Min(NumpyAggregate):
@@ -73,7 +83,7 @@ class Max(NumpyAggregate):
 
 def na_sum(a, overwrite=False):
     if np.issubdtype(a.dtype, np.inexact):
-        func = np.nansum
+        func = nansum
     else:
         func = np.sum
         if overwrite:
