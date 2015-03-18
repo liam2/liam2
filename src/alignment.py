@@ -141,7 +141,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
     # this assertion is only valid in the non weighted case
     assert num_aligned == total_affected + total_overflow - total_underflow
     num_partitioned = sum(len(g) for g in groups)
-    if config.debug and config.log_level == "processes":
+    if config.log_level == "processes":
         print(" %d/%d" % (num_aligned, num_partitioned), end=" ")
         if (take_filter is not None) or (leave_filter is not None):
             print("[take %d, leave %d]" % (take, leave), end=" ")
