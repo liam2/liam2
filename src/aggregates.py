@@ -1,7 +1,5 @@
 from __future__ import print_function
 
-import inspect
-
 import numpy as np
 
 from expr import (Variable, BinaryOp, getdtype, expr_eval,
@@ -9,7 +7,7 @@ from expr import (Variable, BinaryOp, getdtype, expr_eval,
 from exprbases import NumpyAggregate, FilteredExpression
 import exprmisc
 from context import context_length
-from utils import removed
+from utils import removed, argspec
 
 try:
     import bottleneck as bn
@@ -48,37 +46,22 @@ class Count(FunctionExpr):
     dtype = always(int)
 
 
-def argsnotsupported(when, notsupported):
-    when = (' when %s' % when) if when else ''
-    def decorator(func):
-        def decorated(*args, **kwargs):
-            # check that extra args use default values
-            nargs = len(inspect.getargspec(func).args)
-            for (k, defaultvalue), value in zip(notsupported, args[nargs:]):
-                if value is not defaultvalue:
-                    raise NotImplementedError("'%s' argument is not supported "
-                                              "for %s%s"
-                                              % (k, func.__name__, when))
-            args = args[:nargs]
-            return func(*args, **kwargs)
-        return decorated
-    return decorator
-
-limited = argsnotsupported("skip_na=True", [('out', None), ('keepdims', False)])
-nanmin = limited(nanmin)
-nanmax = limited(nanmax)
-
-
 class Min(NumpyAggregate):
     np_func = np.amin
     nan_func = (nanmin,)
     dtype = firstarg_dtype
+    # manually defined argspec so that is works with bottleneck (which is a
+    # builtin function)
+    argspec = argspec('a, axis=None', **NumpyAggregate.kwonlyargs)
 
 
 class Max(NumpyAggregate):
     np_func = np.amax
     nan_func = (nanmax,)
     dtype = firstarg_dtype
+    # manually defined argspec so that is works with bottleneck (which is a
+    # builtin function)
+    argspec = argspec('a, axis=None', **NumpyAggregate.kwonlyargs)
 
 
 def na_sum(a, overwrite=False):
