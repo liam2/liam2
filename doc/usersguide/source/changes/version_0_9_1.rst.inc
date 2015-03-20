@@ -8,8 +8,8 @@
   them (but produce a warning in that case). This used to cause a problem if
   an entity had not process but was used through links (closes :issue:`89`).
 
-* Fixed dump when the filter is False (a scalar), for example in "dump
-  (filter=period == 2100)" (closes :issue:`142`).
+* Fixed dump when the filter is False (a scalar), for example in
+  :code:`dump(filter=period == 2100)` (closes :issue:`142`).
 
 * Fixed the declared return type of many random distributions, which
   caused a problem if they were used with a filter or within an if()
