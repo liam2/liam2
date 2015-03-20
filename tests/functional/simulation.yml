@@ -1731,6 +1731,9 @@ entities:
                 - csv(dump(age, avg(age), age > avg(age), median_age,
                            filter=id < 10),
                       suffix='aggregate_filter')
+                # dump with no row
+                - csv(dump(filter=period == 2100), suffix='norow_scalarfilter')
+                - csv(dump(filter=age > 150), suffix='norow_arrayfilter')
 
             test_csv:
                 - expr: csv(avg(age),

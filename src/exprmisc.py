@@ -362,17 +362,22 @@ class Dump(TableExpression):
 
         columns = []
         for expr in expressions:
-            expr_value = expr_eval(expr, context)
-            if (filter_value is not None and isinstance(expr_value,
-                                                        np.ndarray) and
-                    expr_value.shape):
-                expr_value = expr_value[filter_value]
+            if filter_value is False:
+                # dtype does not matter much
+                expr_value = np.empty(0)
+            else:
+                expr_value = expr_eval(expr, context)
+                if (filter_value is not None and
+                        isinstance(expr_value, np.ndarray) and
+                        expr_value.shape):
+                    expr_value = expr_value[filter_value]
             columns.append(expr_value)
 
         ids = columns[id_pos]
         if isinstance(ids, np.ndarray) and ids.shape:
             numrows = len(ids)
         else:
+            #FIXME: we need a test for this case (no idea how this can happen)
             numrows = 1
 
         # expand scalar columns to full columns in memory
@@ -384,6 +389,9 @@ class Dump(TableExpression):
             elif not col.shape:
                 dtype = col.dtype.type
             if dtype is not None:
+                #TODO: try using itertools.repeat instead as it seems to be a
+                # bit faster and would consume less memory (however, it might
+                # not play very well with Pandas.to_csv)
                 newcol = np.empty(numrows, dtype=dtype)
                 newcol.fill(col)
                 columns[idx] = newcol
