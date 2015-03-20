@@ -295,7 +295,7 @@ class Simulation(object):
 
         # for entity in entities.itervalues():
         #     entity.resolve_method_calls()
-
+        used_entities = set()
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
         init_processes, init_entities = [], set()
         for ent_name, proc_names in init_def:
@@ -303,15 +303,15 @@ class Simulation(object):
                 raise Exception("Entity '%s' not found" % ent_name)
 
             entity = entities[ent_name]
-            init_entities.add(entity)
+            used_entities.add(ent_name)
             init_processes.extend([(entity.processes[proc_name], 1)
                                    for proc_name in proc_names])
 
         processes_def = [d.items()[0] for d in simulation_def['processes']]
-        processes, entity_set = [], set()
+        processes = []
         for ent_name, proc_defs in processes_def:
             entity = entities[ent_name]
-            entity_set.add(entity)
+            used_entities.add(ent_name)
             for proc_def in proc_defs:
                 # proc_def is simply a process name
                 if isinstance(proc_def, basestring):
@@ -320,7 +320,14 @@ class Simulation(object):
                 else:
                     proc_name, periodicity = proc_def
                 processes.append((entity.processes[proc_name], periodicity))
-        entities_list = sorted(entity_set, key=lambda e: e.name)
+
+        entities_list = sorted(entities.values(), key=lambda e: e.name)
+        declared_entities = set(e.name for e in entities_list)
+        unused_entities = declared_entities - used_entities
+        if unused_entities:
+            suffix = 'y' if len(unused_entities) == 1 else 'ies'
+            print("WARNING: entit%s without any executed process:" % suffix,
+                  ','.join(sorted(unused_entities)))
 
         method = input_def.get('method', 'h5')
 

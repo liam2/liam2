@@ -45,10 +45,6 @@ entities:
         links:
             households: {type: one2many, target: household, field: region_id}
 
-        processes:
-            # we need a dummy process so that the entity is loaded & indexed
-            dummy: True
-
     household:
         fields:
             - num_persons:  {type: int, initialdata: False}
@@ -2342,7 +2338,6 @@ simulation:
 #        - household: [check]
 
     processes:
-        - region: [dummy]
         - person: [
 #                   bp,
                    test_remove,
