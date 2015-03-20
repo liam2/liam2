@@ -24,3 +24,8 @@ Fixes
 
 * Fixed dump when the filter is False (a scalar), for example in "dump
   (filter=period == 2100)" (closes :issue:`142`).
+
+* Fixed the declared return type of many random distributions, which
+  caused a problem if they were used with a filter or within an if()
+  expression. This change also fixed cont_regr when both mult and filter
+  arguments are used (closes :issue:`153`).
