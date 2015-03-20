@@ -131,7 +131,7 @@ def explore(fpath):
         data_source = H5Data(None, fpath)
         h5in, _, globals_data = data_source.load(globals_def, entities)
         h5out = None
-        simulation = Simulation(globals_def, None, None, None, None, None,
+        simulation = Simulation(globals_def, None, None, None, None,
                                 entities.values(), None)
         period, entity_name = None, None
     else:

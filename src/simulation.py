@@ -168,9 +168,8 @@ class Simulation(object):
         }
     }
 
-    def __init__(self, globals_def, periods, start_period,
-                 init_processes, init_entities, processes, entities,
-                 data_source, default_entity=None):
+    def __init__(self, globals_def, periods, start_period, init_processes,
+                 processes, entities, data_source, default_entity=None):
         #FIXME: what if period has been declared explicitly?
         if 'periodic' in globals_def:
             globals_def['periodic']['fields'].insert(0, ('PERIOD', int))
@@ -180,7 +179,6 @@ class Simulation(object):
         self.start_period = start_period
         # init_processes is a list of tuple: (process, 1)
         self.init_processes = init_processes
-        self.init_entities = init_entities
         # processes is a list of tuple: (process, periodicity)
         self.processes = processes
         self.entities = entities
@@ -297,7 +295,7 @@ class Simulation(object):
         #     entity.resolve_method_calls()
         used_entities = set()
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
-        init_processes, init_entities = [], set()
+        init_processes = []
         for ent_name, proc_names in init_def:
             if ent_name not in entities:
                 raise Exception("Entity '%s' not found" % ent_name)
@@ -344,8 +342,7 @@ class Simulation(object):
 
         default_entity = simulation_def.get('default_entity')
         return Simulation(globals_def, periods, start_period, init_processes,
-                          init_entities, processes, entities_list, data_source,
-                          default_entity)
+                          processes, entities_list, data_source, default_entity)
 
     def load(self):
         return timed(self.data_source.load, self.globals_def, self.entities_map)
