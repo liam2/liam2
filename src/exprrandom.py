@@ -7,7 +7,7 @@ from exprbases import NumpyRandom, make_np_class, make_np_classes
 from utils import argspec
 
 
-def make_random(docstring, dtypefunc=None):
+def make_random(docstring, dtypefunc):
     return make_np_class(NumpyRandom, docstring, dtypefunc)
 
 
@@ -33,10 +33,10 @@ class Choice(NumpyRandom):
     dtype = firstarg_dtype
 
 # need to be explicitly defined because used internally
-Normal = make_random("normal(loc=0.0, scale=1.0, size=None)")
+Normal = make_random("normal(loc=0.0, scale=1.0, size=None)", float)
 # WARNING: the docstring was wrong (size is None instead of 1) in numpy < 1.9 !
 # Issue: https://github.com/numpy/numpy/pull/4611
-Uniform = make_random("uniform(low=0.0, high=1.0, size=None)")
+Uniform = make_random("uniform(low=0.0, high=1.0, size=None)", float)
 
 functions = {
     'choice': Choice,
@@ -51,9 +51,7 @@ dirichlet(alpha, size=None)
 exponential(scale=1.0, size=None)
 f(dfnum, dfden, size=None)
 gamma(shape, scale=1.0, size=None)
-geometric(p, size=None)
 gumbel(loc=0.0, scale=1.0, size=None)
-hypergeometric(ngood, nbad, nsample, size=None)
 laplace(loc=0.0, scale=1.0, size=None)
 lognormal(mean=0.0, sigma=1.0, size=None)
 multivariate_normal(mean, cov, size=None)
@@ -70,16 +68,18 @@ standard_t(df, size=None)
 triangular(left, mode, right, size=None)
 vonmises(mu, kappa, size=None)
 wald(mean, scale, size=None)
-weibull(a, size=None)
-zipf(a, size=None)"""))
+weibull(a, size=None)""", float))
 
 # return integers
 functions.update(make_np_classes(NumpyRandom, """
 binomial(n, p, size=None)
+geometric(p, size=None)
+hypergeometric(ngood, nbad, nsample, size=None)
 logseries(p, size=None)
 negative_binomial(n, p, size=None)
 poisson(lam=1.0, size=None)
-randint(low, high=None, size=None)""", int))
+randint(low, high=None, size=None)
+zipf(a, size=None)""", int))
 
 # returns an array of integers (not sure it will work)
 functions.update(make_np_classes(NumpyRandom, """

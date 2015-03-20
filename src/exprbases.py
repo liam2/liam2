@@ -266,7 +266,7 @@ class TableExpression(FunctionExpr):
     pass
 
 
-def make_np_class(baseclass, docstring, dtypefunc=None):
+def make_np_class(baseclass, docstring, dtypefunc):
     pos = docstring.find('(')
     name = docstring[:pos]
     args = docstring[pos + 1:-1]
@@ -286,7 +286,7 @@ def make_np_class(baseclass, docstring, dtypefunc=None):
     return FuncClass
 
 
-def make_np_classes(baseclass, s, dtypefunc=None):
+def make_np_classes(baseclass, s, dtypefunc):
     for line in s.splitlines():
         if line:
             c = make_np_class(baseclass, line, dtypefunc)

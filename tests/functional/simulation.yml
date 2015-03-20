@@ -1298,24 +1298,28 @@ entities:
                 - with_file: logit_regr(0.0, align='al_p_one_dim.csv')
 
             test_cont_regr:
-                # expr only
+                - show("expr only")
+                # -----------------
                 - assertEqual(cont_regr(2.4 + 0.22 * age),
                               2.4 + 0.22 * age)
 
-                # with explicit filter
+                - show("explicit filter")
+                # -----------------------
                 - value: cont_regr(2.4 + 0.22 * age, filter=gender)
                 # we can't use assertEqual(value, xxx) because arrays with nans
                 # do not compare equal
                 - check: if(gender,
                             value == 2.4 + 0.22 * age,
                             value != value)
-                - assertEqual(count(check), count())
+                - assertTrue(all(check))
                 
-                # with implicit filter
+                - show("implicit filter")
+                # -----------------------
                 - assertEqual(if(gender, cont_regr(2.4 + 0.22 * age), 42.0),
                               if(gender, 2.4 + 0.22 * age, 42.0))
 
-                # with both implicit and explicit filter
+                - show("both implicit and explicit filter")
+                # -----------------------------------------
                 - value: if(gender,
                             cont_regr(2.4 + 0.22 * age, filter=age > 20),
                             42.0)
@@ -1324,14 +1328,16 @@ entities:
                                value == 2.4 + 0.22 * age,
                                value != value),
                             value == 42.0)
-                - assertEqual(count(check), count())
+                - assertTrue(all(check))
 
-                # with error_var
+                - show("error_var")
+                # -----------------
                 - err: normal()
                 - assertEqual(cont_regr(2.4 + 0.22 * age, error_var='err'),
                               2.4 + 0.22 * age + err)
 
-                # with mult
+                - show("mult")
+                # ------------
                 - value: cont_regr(2.4 + 0.22 * age, mult=2)
                 # this should yield a simple normal random distribution
                 - check: (value - (2.4 + 0.22 * age)) / 2
@@ -1342,6 +1348,21 @@ entities:
                 # the stddev of a normal is sigma (=1)
                 - sigma: 1
                 - assertTrue(abs(sigma - std(check)) < 0.1)
+
+                - show("both mult and filter (issue 153)")
+                # ----------------------------------------
+
+                - value: cont_regr(age, mult=0.5, filter=gender)
+                - assertTrue(all(value != value, filter=not gender))
+                # this should yield a simple normal random distribution
+                - check: (value - age) / 0.5
+
+                # the average of a normal is mu (=0)
+                - mu: 0
+                - assertTrue(abs(mu - avg(check, filter=gender)) < 0.1)
+                # the stddev of a normal is sigma (=1)
+                - sigma: 1
+                - assertTrue(abs(sigma - std(check, filter=gender)) < 0.1)
 
             test_log_regr:
                 # expr only
