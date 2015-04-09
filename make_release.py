@@ -468,6 +468,16 @@ def cleanup():
     rmtree('build')
 
 
+def branchname(statusline):
+    """
+    computes the branch name from a "git status -b -s" line
+    ## master...origin/master
+    """
+    statusline = statusline.replace('#', '').strip()
+    pos = statusline.find('...')
+    return statusline[:pos] if pos != -1 else statusline
+
+
 def make_release(release_name=None, branch='master'):
     if release_name is not None:
         if 'pre' in release_name:
@@ -484,14 +494,21 @@ def make_release(release_name=None, branch='master'):
     s = "Using local repository at: %s !" % repository
     print("\n", s, "\n", "=" * len(s), "\n", sep='')
 
-    status = call('git status -s')
+    status = call('git status -s -b')
     lines = status.splitlines()
+    statusline, lines = lines[0], lines[1:]
+    curbranch = branchname(statusline)
+    if curbranch != branch:
+        print("%s is not the current branch (%s). "
+              "Please use 'git checkout %s'." % (branch, curbranch, branch))
+        exit(1)
+
     if lines:
         uncommited = sum(1 for line in lines if line[1] in 'MDAU')
         untracked = sum(1 for line in lines if line.startswith('??'))
         print('Warning: there are %d files with uncommitted changes '
               'and %d untracked files:' % (uncommited, untracked))
-        print(status)
+        print('\n'.join(lines))
         if no('Do you want to continue?'):
             exit(1)
 
