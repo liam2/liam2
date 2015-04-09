@@ -487,7 +487,7 @@ def make_release(release_name=None, branch='master'):
     status = call('git status -s')
     lines = status.splitlines()
     if lines:
-        uncommited = sum(1 for line in lines if line.startswith(' M'))
+        uncommited = sum(1 for line in lines if line[1] in 'MDAU')
         untracked = sum(1 for line in lines if line.startswith('??'))
         print('Warning: there are %d files with uncommitted changes '
               'and %d untracked files:' % (uncommited, untracked))
