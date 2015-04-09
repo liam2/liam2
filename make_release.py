@@ -612,25 +612,40 @@ def make_release(release_name=None, branch='master'):
         do('Tagging release', call,
            'git tag -a %(name)s -m "tag release %(name)s"'
            % {'name': release_name})
-        # push the website & changelog commits to the branch (usually master)
-        # and the release tag (which refers to the last commit)
-        do('Pushing to %s' % repository, call,
-           'git push origin %s --follow-tags' % branch)
 
         # ------- #
         chdir('..')
         # ------- #
 
         do('Uploading', upload, release_name)
+
         # ---------- #
         chdir('build')
         # ---------- #
+
         do('Announcing', announce, release_name)
+
         # ------- #
         chdir('..')
         # ------- #
 
         chdir(repository)
+
+        # We used to push from /tmp to the local repository but you cannot push
+        # to the currently checked out branch of a repository, so we need to
+        # pull changes instead. However pull (or merge) add changes to the
+        # current branch, hence we make sure at the beginning of the script
+        # that the current git branch is the branch to release. It would be
+        # possible to do so without a checkout by using:
+        # git fetch {tmp_path} {branch}:{branch}
+        # instead but then it only works for fast-forward and non-conflicting
+        # changes. So if the working copy is dirty, you are out of luck.
+
+        # pull the website & changelog commits to the branch (usually master)
+        # and the release tag (which refers to the last commit)
+        do('Pulling changes in %s' % repository, call,
+           'git pull --ff-only %s\\build %s' % (TMP_PATH, branch))
+
         do('Pushing to GitHub', call,
            'git push origin %s --follow-tags' % branch)
 
