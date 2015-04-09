@@ -25,6 +25,10 @@ WEBSITE = 'liam2.plan.be'
 # - different announce message for pre-releases
 # - announce RC on the website too
 # ? create a download page for the rc
+# - create a conda environment to store requirements for the release
+#   create -n liam2-{release} --clone liam2
+#   or better yet, only store package versions:
+#   conda env export > environment.yml
 
 # TODO: add more scripts to implement the "git flow" model
 # - hotfix_branch
