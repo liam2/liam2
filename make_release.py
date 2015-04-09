@@ -276,9 +276,9 @@ def update_versions(release_name):
 
 
 def update_changelog(release_name):
-    fname = relname2fname(release_name)
-
-    # update release date in changes.rst
+    """
+    Update release date in changes.rst
+    """
     fpath = r'doc\usersguide\source\changes.rst'
     with open(fpath) as f:
         lines = f.readlines()
@@ -300,8 +300,7 @@ def update_changelog(release_name):
         print('\n'.join(f.read().decode('utf-8-sig').splitlines()[:20]))
     if no('Does the full changelog look right?'):
         exit(1)
-    call('git commit -m "include release changes (%s) in changes.rst" %s'
-         % (fname, fpath))
+    call('git commit -m "update release date in changes.rst" %s' % fpath)
 
 
 def copy_release(release_name):
