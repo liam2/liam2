@@ -20,6 +20,8 @@ from shutil import copytree, copy2, rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
 
 WEBSITE = 'liam2.plan.be'
+TMP_PATH = r"c:\tmp\liam2_new_release"
+
 
 #TODO:
 # - different announce message for pre-releases
@@ -532,11 +534,10 @@ def make_release(release_name=None, branch='master'):
     if no('Release version %s (%s)?' % (release_name, rev)):
         exit(1)
 
-    chdir(r'c:\tmp')
-    if exists('liam2_new_release'):
-        rmtree('liam2_new_release')
-    makedirs('liam2_new_release')
-    chdir('liam2_new_release')
+    if exists(TMP_PATH):
+        rmtree(TMP_PATH)
+    makedirs(TMP_PATH)
+    chdir(TMP_PATH)
 
     # make a temporary clone in /tmp. The goal is to make sure we do not
     # include extra/unversioned files. For the -src archive, I don't think
