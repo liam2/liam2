@@ -630,11 +630,12 @@ def make_release(release_name=None, branch='master'):
         chdir('..')
         # ------- #
 
-    do('Cleaning up', cleanup)
-    if public_release:
         chdir(repository)
         do('Pushing to GitHub', call,
            'git push origin %s --follow-tags' % branch)
+
+    chdir(TMP_PATH)
+    do('Cleaning up', cleanup)
 
 if __name__ == '__main__':
     from sys import argv
