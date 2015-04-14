@@ -600,9 +600,15 @@ def make_release(release_name=None, branch='master'):
         if not isprerelease(release_name):
             do('Building website (news, download and documentation pages)',
                build_website, release_name)
-        if no('Is the release looking good? If so, the tag will be created and '
-              'pushed, everything will be uploaded to the production server '
-              'and the release will be announced.'):
+
+        msg = """Is the release looking good? If so, the tag will be created and
+pushed, everything will be uploaded to the production server and the release
+will be announced. Stuff to watch out for:
+ * version numbers (executable & doc first page & changelog)
+ * website
+ * ...
+"""
+        if no(msg):
             exit(1)
 
         # ---------- #
