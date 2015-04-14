@@ -236,6 +236,22 @@ def send_thunderbird(to, subject, body):
 # -------------------- #
 
 
+def rst2txt(s):
+    """
+    translates rst to raw text
+
+    >>> rst2txt(":ref:`matching() <matching>`")
+    'matching()'
+    >>> rst2txt(":PR:`123`")
+    'pull request 123'
+    >>> rst2txt(":issue:`123`")
+    'issue 123'
+    """
+    s = re.sub(":ref:`(.+) <.+>`", r"\1", s)
+    s = re.sub(":PR:`(\d+)`", r"pull request \1", s)
+    return re.sub(":issue:`(\d+)`", r"issue \1", s)
+
+
 def relname2fname(release_name):
     short_version = short(strip_pretags(release_name))
     return r"version_%s.rst.inc" % short_version.replace('.', '_')
@@ -441,6 +457,8 @@ def upload(release_name):
 
 
 def announce(release_name):
+    # ideally we should use the html output of the rst file, but this is simpler
+    changes = rst2txt(release_changes(release_name))
     body = """\
 I am pleased to announce that version %s of LIAM2 is now available.
 
@@ -456,8 +474,7 @@ mailing list: liam2-users@googlegroups.com (you need to register to be
 able to post).
 
 %s
-""" % (short(release_name), release_highlights(release_name),
-       release_changes(release_name))
+""" % (short(release_name), release_highlights(release_name), changes)
 
     send_outlook('liam2-announce@googlegroups.com',
                  'Version %s released' % short(release_name),
