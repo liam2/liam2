@@ -30,7 +30,7 @@ TMP_PATH = r"c:\tmp\liam2_new_release"
 # - create a conda environment to store requirements for the release
 #   create -n liam2-{release} --clone liam2
 #   or better yet, only store package versions:
-#   conda env export > environment.yml
+#   conda env export > doc\bundle_environment.yml
 
 # TODO: add more scripts to implement the "git flow" model
 # - hotfix_branch
