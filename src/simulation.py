@@ -82,7 +82,7 @@ def handle_imports(content, directory):
                     multi_set(content, multi_key, merged_fields)
             content = merge_dicts(import_content, content)
     return content
-    
+
 
 class Simulation(object):
     yaml_layout = {
@@ -128,7 +128,7 @@ class Simulation(object):
         },
         '#simulation': {
             'init': [{
-                '*': [None] # Or(str, [str, int])
+                '*': [None]  # Or(str, [str, int])
             }],
             '#processes': [{
                 '*': [None]  # Or(str, [str, int])
@@ -169,17 +169,17 @@ class Simulation(object):
 
     def __init__(self, globals_def, periods, init_period,
                  init_processes, init_entities, processes, entities,
-                 data_source, default_entity=None, legislation=None, final_stat=False,
-                  time_scale='year', retro = False):
-        #FIXME: what if period has been declared explicitly?
+                 data_source, default_entity = None, legislation = None, final_stat = False,
+                 time_scale = 'year', retro = False):
+        # FIXME: what if period has been declared explicitly?
         if 'periodic' in globals_def:
             globals_def['periodic']['fields'].insert(0, ('PERIOD', int))
 
         self.globals_def = globals_def
         self.periods = periods
-        #TODO: work on it for start with seme
-        if (time_scale not in ['year','year0']) and \
-            (init_period % 100 > 12 or init_period % 100 == 0 or init_period < 9999) :
+        # TODO: work on it for start with seme
+        if (time_scale not in ['year', 'year0']) and (
+                init_period % 100 > 12 or init_period % 100 == 0 or init_period < 9999):
             raise Exception("Non valid start period")
         self.init_period = init_period
         self.retro = retro
@@ -236,18 +236,18 @@ class Simulation(object):
         time_scale = simulation_def.get('time_scale', 'year')
         retro = simulation_def.get('retro', False)
 
-        start_period = simulation_def.get('start_period',None)
-        init_period = simulation_def.get('init_period',None)
+        start_period = simulation_def.get('start_period', None)
+        init_period = simulation_def.get('init_period', None)
         if start_period is None and init_period is None:
             raise Exception("Either start_period either init_period should be given.")
         if start_period is not None:
             if init_period is not None:
                 raise Exception("Start_period can't be given if init_period is.")
-            step = time_period[time_scale]*(1 - 2*(retro))
+            step = time_period[time_scale] * (1 - 2 * (retro))
             init_period = addmonth(start_period, step)
 
         config.skip_shows = simulation_def.get('skip_shows', config.skip_shows)
-        #TODO: check that the value is one of "raise", "skip", "warn"
+        # TODO: check that the value is one of "raise", "skip", "warn"
         config.assertions = simulation_def.get('assertions', config.assertions)
 
         logging_def = simulation_def.get('logging', {})
@@ -279,15 +279,14 @@ class Simulation(object):
         final_stat = simulation_def.get('final_stat', None)
 
         input_def = simulation_def['input']
-        input_directory = input_dir if input_dir is not None \
-                                    else input_def.get('path', '')
+        input_directory = input_dir if input_dir is not None else input_def.get('path', '')
         if not os.path.isabs(input_directory):
             input_directory = os.path.join(simulation_dir, input_directory)
         config.input_directory = input_directory
 
         output_def = simulation_def['output']
-        output_directory = output_dir if output_dir is not None \
-                                      else output_def.get('path', '')
+        output_directory = output_dir if output_dir is not None else output_def.get('path', '')
+        assert os.path.isabs(output_directory), "{} is not an absolute path".format(output_directory)
         if not os.path.isabs(output_directory):
             output_directory = os.path.join(simulation_dir, output_directory)
         if not os.path.exists(output_directory):
@@ -301,7 +300,7 @@ class Simulation(object):
 
         method = input_def.get('method', 'h5')
 
-        #need to be before processes because in case of legislation, we need input_table for now.
+        # need to be before processes because in case of legislation, we need input_table for now.
         if method == 'h5':
             if input_file is None:
                 input_file = input_def['file']
@@ -312,8 +311,6 @@ class Simulation(object):
             data_source = Void(output_path)
         else:
             print(method, type(method))
-
-
 
         for k, v in content['entities'].iteritems():
             entity_registry.add(Entity.from_yaml(k, v))
@@ -335,14 +332,13 @@ class Simulation(object):
                 init_processes.extend([(entity.processes[proc_name], 1, 1)
                                        for proc_name in proc_names])
             else:
-#                 proc1 = ExtProcess('liam2of',['simulation',None])
-                proc2 = ExtProcess('of_on_liam',['simulation',2009,'period'])
-#                 proc3 = ExtProcess('merge_leg',['simulation',data_source.output_path,
-#                                                 "C:/Til/output/"+"simul_leg.h5",'period'])
-#                 init_processes.append((proc1, 1))
+                # proc1 = ExtProcess('liam2of', ['simulation', None])
+                proc2 = ExtProcess('of_on_liam', ['simulation', 2009, 'period'])
+                # proc3 = ExtProcess('merge_leg',['simulation',data_source.output_path,
+                #   "C:/Til/output/"+"simul_leg.h5",'period'])
+                # init_processes.append((proc1, 1))
                 init_processes.append((proc2, 1, 1))
-#                 processes.append((proc3, 1))
-
+                # processes.append((proc3, 1))
 
         processes_def = [d.items()[0] for d in simulation_def['processes']]
         processes, entity_set = [], set()
@@ -363,18 +359,18 @@ class Simulation(object):
                             start = 1
                     processes.append((entity.processes[proc_name], periodicity, start))
             else:
-#                 proc1 = ExtProcess('liam2of',['simulation',None])
-                proc2 = ExtProcess('of_on_liam',['simulation',proc_defs[0],'period'])
-#                 proc3 = ExtProcess('merge_leg',['simulation',data_source.output_path,
-#                                                 "C:/Til/output/"+"simul_leg.h5",'period'])
+                # proc1 = ExtProcess('liam2of',['simulation',None])
+                proc2 = ExtProcess('of_on_liam', ['simulation', proc_defs[0], 'period'])
+                # proc3 = ExtProcess('merge_leg',['simulation',data_source.output_path,
+                #   "C:/Til/output/"+"simul_leg.h5",'period'])
 
-#                 processes.append((proc1, 1))
-                processes.append((proc2, 'year',12))
-#                 processes.append((proc3, 1))
+                # processes.append((proc1, 1))
+                processes.append((proc2, 'year', 12))
+                # processes.append((proc3, 1))
         entities = sorted(entity_set, key=lambda e: e.name)
 
         default_entity = simulation_def.get('default_entity')
-        #processes[2][0].subprocesses[0][0]
+        # processes[2][0].subprocesses[0][0]
         return Simulation(globals_def, periods, init_period,
                           init_processes, init_entities, processes, entities,
                           data_source, default_entity, legislation, final_stat, time_scale, retro)
@@ -447,10 +443,10 @@ class Simulation(object):
                 # build context for this period:
                 const_dict = {'period_idx': period_idx + 1,
                               'periods': periods,
-                              'periodicity': time_period[self.time_scale]*(1 - 2*(self.retro)),
+                              'periodicity': time_period[self.time_scale] * (1 - 2 * (self.retro)),
                               'longitudinal': self.longitudinal,
                               'format_date': self.time_scale,
-                              'pension' : None,
+                              'pension': None,
                               '__simulation__': self,
                               'period': period,
                               'nan': float('nan'),
@@ -466,7 +462,7 @@ class Simulation(object):
                               end=' ')
                         print("...", end=' ')
                     # TDOD: change that
-                    if isinstance(periodicity, int ):
+                    if isinstance(periodicity, int):
                         if period_idx % periodicity == 0:
                             elapsed, _ = gettime(process.run_guarded, self,
                                                  const_dict)
@@ -474,20 +470,20 @@ class Simulation(object):
                             elapsed = 0
                             print("skipped (periodicity)")
                     else:
-                        assert (periodicity  in time_period)
+                        assert periodicity in time_period
                         periodicity_process = time_period[periodicity]
                         periodicity_simul = time_period[self.time_scale]
                         month_idx = period % 100
                         # first condition, to run a process with start == 12
                         # each year even if year are yyyy01
-                        #modify start if periodicity_simul is not month
-                        start = int(start/periodicity_simul-0.01)*periodicity_simul + 1
+                        # modify start if periodicity_simul is not month
+                        start = int(start / periodicity_simul - 0.01) * periodicity_simul + 1
 
-                        if (periodicity_process <= periodicity_simul and self.time_scale != 'year0') or \
-                                 month_idx % periodicity_process == start % periodicity_process:
-                            const_dict['periodicity'] = periodicity_process*(1 - 2*(self.retro))
-                            elapsed, _ = gettime(process.run_guarded, self,
-                                                 const_dict)
+                        if (periodicity_process <= periodicity_simul and self.time_scale != 'year0') or (
+                                month_idx % periodicity_process == start % periodicity_process):
+
+                            const_dict['periodicity'] = periodicity_process * (1 - 2 * (self.retro))
+                            elapsed, _ = gettime(process.run_guarded, self, const_dict)
                         else:
                             elapsed = 0
 
@@ -504,7 +500,8 @@ class Simulation(object):
                                        globals_data)
 
             # update longitudinal
-            person = [x for x in entities if x.name == 'person'][0] # maybe we have a get_entity or anything more nice than that #TODO: check
+            person = [x for x in entities if x.name == 'person'][0]
+            # maybe we have a get_entity or anything more nice than that #TODO: check
             id = person.array.columns['id']
 
             for varname in ['sali', 'workstate']:
@@ -518,7 +515,8 @@ class Simulation(object):
                             self.longitudinal[varname] = input_file['/longitudinal/' + varname]
                             if period not in self.longitudinal[varname].columns:
                                 table = DataFrame({'id': id, period: var})
-                                self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
+                                self.longitudinal[varname] = self.longitudinal[varname].merge(
+                                    table, on='id', how='outer')
                         else:
                             # when one variable is not in the input_file
                             self.longitudinal[varname] = DataFrame({'id': id, period: var})
@@ -577,18 +575,19 @@ class Simulation(object):
         try:
             assert(self.time_scale in time_period)
             month_periodicity = time_period[self.time_scale]
-            time_direction = 1 - 2*(self.retro)
-            time_step = month_periodicity*time_direction
+            time_direction = 1 - 2 * (self.retro)
+            time_step = month_periodicity * time_direction
 
-            periods = [ self.init_period + int(t/12)*100 + t%12
-                        for t in range(0, (self.periods+1)*time_step, time_step)]
+            periods = [
+                self.init_period + int(t / 12) * 100 + t % 12
+                for t in range(0, (self.periods + 1) * time_step, time_step)
+                ]
             if self.time_scale == 'year0':
-                periods = [ self.init_period + t for t in range(0, (self.periods+1))]
-            print("simulated period are going to be: ",periods)
+                periods = [self.init_period + t for t in range(0, (self.periods + 1))]
+            print("simulated period are going to be: ", periods)
 
             init_start_time = time.time()
-            simulate_period(0, self.init_period, [None,periods[0]],
-                            self.init_processes, self.entities, init=True)
+            simulate_period(0, self.init_period, [None, periods[0]], self.init_processes, self.entities, init=True)
 
             time_init = time.time() - init_start_time
             main_start_time = time.time()
@@ -634,23 +633,22 @@ class Simulation(object):
 #                                          "C:/Til/output/"+"simul_leg.h5",None)
 #                     process_time['merge_leg'] += elapsed
 
-
             if self.final_stat:
                 elapsed, _ = gettime(start, period)
                 process_time['Stat'] += elapsed
 
             total_time = time.time() - main_start_time
             time_year = 0
-            if len(periods)>1:
-                nb_year_approx = periods[-1]/100 - periods[1]/100
-                if nb_year_approx > 0 :
-                    time_year = total_time/nb_year_approx
+            if len(periods) > 1:
+                nb_year_approx = periods[-1] / 100 - periods[1] / 100
+                if nb_year_approx > 0:
+                    time_year = total_time / nb_year_approx
 
             try:
                 ind_per_sec = str(int(total_objects / total_time))
             except ZeroDivisionError:
                 ind_per_sec = 'inf'
-            print( """
+            print("""
 ==========================================
  simulation done
 ==========================================
@@ -662,16 +660,18 @@ class Simulation(object):
  * %s time/period in average
  * %s time/year in average
 ==========================================
-""" % (time2str(time.time() - start_time),
-        total_objects / self.periods,
-        ind_per_sec,
-        time2str(time_init),
-        time2str(total_time / self.periods),
-        time2str(time_year)))
+""" % (
+                time2str(time.time() - start_time),
+                total_objects / self.periods,
+                ind_per_sec,
+                time2str(time_init),
+                time2str(total_time / self.periods),
+                time2str(time_year))
+            )
 
             show_top_processes(process_time, 10)
-#            if config.debug:
-#                show_top_expr()
+            # if config.debug:
+            #     show_top_expr()
 
             if run_console:
                 c = console.Console(self.console_entity, periods[-1],
@@ -689,9 +689,7 @@ class Simulation(object):
     def console_entity(self):
         '''compute the entity the console should start in (if any)'''
 
-        return entity_registry[self.default_entity] \
-               if self.default_entity is not None \
-               else None
+        return entity_registry[self.default_entity] if self.default_entity is not None else None
 
     def start_console(self, entity, period, globals_data):
         if self.stepbystep:
