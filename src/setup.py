@@ -1,9 +1,14 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from __future__ import print_function
 
 import sys
-from distutils.extension import Extension
+#  from distutils.extension import Extension
 
-from cx_Freeze import setup, Executable
+#  from cx_Freeze import setup, Executable
+from setuptools import setup
+from setuptools.extension import Extension
 from Cython.Distutils import build_ext
 import numpy as np
 
@@ -100,6 +105,6 @@ setup(name="liam2", version=int_version('0.8.1'),
       cmdclass={"build_ext": MyBuildExt}, ext_modules=ext_modules,
 
       options={"build_ext": build_ext_options, "build_exe": build_exe_options},
-      executables=[Executable("main.py")],
+      # executables=[Executable("main.py")],
       requires=['numpy', 'numexpr', 'tables', 'bcolz'])
 # also recommends 'matplotlib' and 'vitables'

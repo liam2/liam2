@@ -4,6 +4,10 @@
 .project
 *.pyc
 *.pyd
+src/cpartition.so
+src/cutils.so
+src/liam2
+src/liam2.egg-info/
 doc/usersguide/build/
 src/build
 src/*.c

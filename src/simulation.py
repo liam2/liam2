@@ -82,7 +82,7 @@ def handle_imports(content, directory):
                     multi_set(content, multi_key, merged_fields)
             content = merge_dicts(import_content, content)
     return content
-
+    
 
 class Simulation(object):
     yaml_layout = {
@@ -459,7 +459,7 @@ class Simulation(object):
 
                 num_processes = len(processes)
                 for p_num, process_def in enumerate(processes, start=1):
-                    
+
                     process, periodicity, start = process_def
                     if config.log_level in ("procedures", "processes"):
                         print("- %d/%d" % (p_num, num_processes), process.name,
@@ -531,7 +531,7 @@ class Simulation(object):
                         import pdb
                         pdb.set_trace()
                     self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
-                    
+
             if config.log_level in ("procedures", "processes"):
                 print("- storing period data")
                 for entity in entities:
