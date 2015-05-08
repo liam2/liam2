@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+
+
 from __future__ import print_function
 
 #import os
@@ -16,7 +19,7 @@ import warnings
 
 import numpy as np
 import numexpr as ne
-#import psutil
+# import psutil
 try:
     from PyQt4 import QtGui, QtCore
     QtAvailable = True
@@ -301,7 +304,7 @@ class Axis(object):
     def __len__(self):
         return len(self.labels)
 
-    
+
 def addmonth(a,b):
     assert isinstance(a,int) #should be a special type
     assert isinstance(b,int)
@@ -586,6 +589,7 @@ class TextProgressBar(ProgressBar):
 
 def loop_wh_progress(func, sequence, title='Progress'):
     pb = TextProgressBar(len(sequence), title=title)
+
     for i, value in enumerate(sequence, start=1):
         try:
             func(i, value)
@@ -1092,5 +1096,3 @@ class FileProducer(object):
             suffix = "_" + suffix if suffix else ""
             fname = "{entity}_{period}" + suffix + self.ext
         return fname
-
-
