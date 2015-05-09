@@ -7,28 +7,41 @@ from __future__ import print_function
 import errno
 import fnmatch
 import os
+import re
 import stat
 import subprocess
+import urllib
 import zipfile
 
 from datetime import date
 from os import chdir, makedirs
-from os.path import exists, getsize, abspath
+from os.path import exists, getsize, abspath, dirname
 from shutil import copytree, copy2, rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
 
 WEBSITE = 'liam2.plan.be'
+TMP_PATH = r"c:\tmp\liam2_new_release"
 
-#TODO: add more scripts to implement the "git flow" model
+
+#TODO:
+# - different announce message for pre-releases
+# - announce RC on the website too
+# ? create a download page for the rc
+# - create a conda environment to store requirements for the release
+#   create -n liam2-{release} --clone liam2
+#   or better yet, only store package versions:
+#   conda env export > doc\bundle_environment.yml
+
+# TODO: add more scripts to implement the "git flow" model
 # - hotfix_branch
 # - release_branch
 # - feature_branch
 # - make_release, detects hotfix or release
 
 
-#---------------#
+# ------------- #
 # generic tools #
-#---------------#
+# ------------- #
 
 def size2str(value):
     unit = "bytes"
@@ -77,9 +90,10 @@ def echocall(*args, **kwargs):
 
 def git_remote_last_rev(url, branch=None):
     """
-url of the remote repository
-branch is an optional branch (defaults to 'refs/heads/master')
-"""
+    :param url: url of the remote repository
+    :param branch: an optional branch (defaults to 'refs/heads/master')
+    :return: name/hash of the last revision
+    """
     if branch is None:
         branch = 'refs/heads/master'
     output = call('git ls-remote %s %s' % (url, branch))
@@ -130,24 +144,141 @@ def zip_unpack(archivefname, dest=None):
         f.extractall(dest)
 
 
-def short(rel_name):
-    return rel_name[:-2] if rel_name.endswith('.0') else rel_name
+def short(release_name):
+    return release_name[:-2] if release_name.endswith('.0') else release_name
 
 
-#----------------------#
+def long_release_name(release_name):
+    """
+    transforms a short release name such as 0.8 to a long one such as 0.8.0
+
+    >>> long_release_name('0.8')
+    '0.8.0'
+    >>> long_release_name('0.8.0')
+    '0.8.0'
+    >>> long_release_name('0.8rc1')
+    '0.8.0rc1'
+    >>> long_release_name('0.8.0rc1')
+    '0.8.0rc1'
+    """
+    dotcount = release_name.count('.')
+    if dotcount >= 2:
+        return release_name
+    assert dotcount == 1, "%s contains %d dots" % (release_name, dotcount)
+    pos = pretag_pos(release_name)
+    if pos is not None:
+        return release_name[:pos] + '.0' + release_name[pos:]
+    return release_name + '.0'
+
+
+def pretag_pos(release_name):
+    """
+    gives the position of any pre-release tag
+    >>> pretag_pos('0.8')
+    >>> pretag_pos('0.8alpha25')
+    3
+    >>> pretag_pos('0.8.1rc1')
+    5
+    """
+    # 'a' needs to be searched for after 'beta'
+    for tag in ('rc', 'c', 'beta', 'b', 'alpha', 'a'):
+        match = re.search(tag + '\d+', release_name)
+        if match is not None:
+            return match.start()
+    return None
+
+
+def strip_pretags(release_name):
+    """
+    removes pre-release tags from a version string
+
+    >>> strip_pretags('0.8')
+    '0.8'
+    >>> strip_pretags('0.8alpha25')
+    '0.8'
+    >>> strip_pretags('0.8.1rc1')
+    '0.8.1'
+    """
+    pos = pretag_pos(release_name)
+    return release_name[:pos] if pos is not None else release_name
+
+
+def isprerelease(release_name):
+    """
+    tests whether the release name contains any pre-release tag
+
+    >>> isprerelease('0.8')
+    False
+    >>> isprerelease('0.8alpha25')
+    True
+    >>> isprerelease('0.8.1rc1')
+    True
+    """
+    return pretag_pos(release_name) is not None
+
+
+def send_outlook(to, subject, body):
+    subprocess.call('outlook /c ipm.note /m "%s&subject=%s&body=%s"'
+                    % (to, urllib.quote(subject), urllib.quote(body)))
+
+
+def send_thunderbird(to, subject, body):
+    # preselectid='id1' selects the first "identity" for the "from" field
+    # We do not use our usual call because the command returns an exit status
+    # of 1 (failure) instead of 0, even if it works, so we simply ignore
+    # the failure.
+    subprocess.call("thunderbird -compose \"preselectid='id1',"
+                    "to='%s',subject='%s',body='%s'\"" % (to, subject, body))
+
+
+# -------------------- #
 # end of generic tools #
-#----------------------#
+# -------------------- #
 
 
-changelog_template = """Version {short_version}
-=============
+def rst2txt(s):
+    """
+    translates rst to raw text
 
-Released on {date}.
+    >>> rst2txt(":ref:`matching() <matching>`")
+    'matching()'
+    >>> rst2txt(":PR:`123`")
+    'pull request 123'
+    >>> rst2txt(":issue:`123`")
+    'issue 123'
+    """
+    s = re.sub(":ref:`(.+) <.+>`", r"\1", s)
+    s = re.sub(":PR:`(\d+)`", r"pull request \1", s)
+    return re.sub(":issue:`(\d+)`", r"issue \1", s)
 
-.. include:: {fpath}
+
+def relname2fname(release_name):
+    short_version = short(strip_pretags(release_name))
+    return r"version_%s.rst.inc" % short_version.replace('.', '_')
 
 
-"""
+def release_changes(release_name):
+    fpath = "doc\usersguide\source\changes\\" + relname2fname(release_name)
+    with open(fpath) as f:
+        return f.read().decode('utf-8-sig')
+
+
+def release_highlights(release_name):
+    fpath = "doc\website\highlights\\" + relname2fname(release_name)
+    with open(fpath) as f:
+        return f.read().decode('utf-8-sig')
+
+
+def build_exe():
+    chdir('src')
+    call('buildall.bat')
+    chdir('..')
+
+
+def build_doc():
+    chdir('doc')
+    call('buildall.bat')
+    chdir('..')
 
 
 def update_versions(release_name):
@@ -163,23 +294,31 @@ def update_versions(release_name):
 
 
 def update_changelog(release_name):
-    fname = relname2fname(release_name)
-
-    # include it in changes.rst
+    """
+    Update release date in changes.rst
+    """
     fpath = r'doc\usersguide\source\changes.rst'
     with open(fpath) as f:
         lines = f.readlines()
-
-        variables = dict(short_version=short(release_name),
-                         date=date.today().isoformat(),
-                         fpath='changes/' + fname)
-        this_version = changelog_template.format(**variables)
-        lines[5:5] = this_version
+        title = "Version %s" % short(release_name)
+        if lines[5] != title + '\n':
+            print("changes.rst not modified (the last release is not %s)"
+                  % title)
+            return
+        release_date = lines[8]
+        if release_date != "In development.\n":
+            print('changes.rst not modified (the last release date is "%s" '
+                  'instead of "In development.", was it already released?)'
+                  % release_date)
+            return
+        lines[8] = "Released on {}.\n".format(date.today().isoformat())
     with open(fpath, 'w') as f:
         f.writelines(lines)
-    call('git commit -m "include release changes (%s) in changes.rst" %s'
-         % (fname, fpath))
-    do('pushing changes.rst', call, 'git push')
+    with open(fpath) as f:
+        print('\n'.join(f.read().decode('utf-8-sig').splitlines()[:20]))
+    if no('Does the full changelog look right?'):
+        exit(1)
+    call('git commit -m "update release date in changes.rst" %s' % fpath)
 
 
 def copy_release(release_name):
@@ -195,13 +334,14 @@ def copy_release(release_name):
           r'win32\documentation\LIAM2UserGuide.chm')
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
           r'win64\documentation\LIAM2UserGuide.chm')
-    # standalone docs
+    # stuff not in the bundles
     copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
           r'LIAM2UserGuide-%s.pdf' % release_name)
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
           r'LIAM2UserGuide-%s.chm' % release_name)
-    copytree(r'build\doc\usersguide\build\html',
-             r'html\%s' % short(release_name))
+    copytree(r'build\doc\usersguide\build\html', 'htmldoc')
+    copytree(r'build\doc\usersguide\build\web',
+             r'webdoc\%s' % short(release_name))
 
 
 def create_bundles(release_name):
@@ -211,44 +351,53 @@ def create_bundles(release_name):
     chdir('win64')
     zip_pack(r'..\LIAM2Suite-%s-win64.zip' % release_name, '*')
     chdir('..')
-    chdir(r'html\%s' % short(release_name))
-    zip_pack(r'..\..\LIAM2UserGuide-%s-html.zip' % release_name, '*')
-    chdir(r'..\..')
-
-
-def test_bundle(archivefname, dest):
-    zip_unpack(archivefname, dest)
-    # we use --debug so that errorlevel is set
-    main_dbg = dest + r'\liam2\main --debug '
-    echocall(main_dbg + r'run src\tests\functional\generate.yml')
-    echocall(main_dbg + r'import src\tests\functional\import.yml')
-    echocall(main_dbg + r'run src\tests\functional\simulation.yml')
-    echocall(main_dbg + r'run src\tests\functional\variant.yml')
-    try:
-        chdir(dest)
-        main_dbg = r'liam2\main --debug '
-        echocall(main_dbg + r'run examples\demo01.yml')
-        echocall(main_dbg + r'import examples\demo_import.yml')
-        echocall(main_dbg + r'run examples\demo01.yml')
-        echocall(main_dbg + r'run examples\demo02.yml')
-        echocall(main_dbg + r'run examples\demo03.yml')
-        echocall(main_dbg + r'run examples\demo04.yml')
-        echocall(main_dbg + r'run examples\demo05.yml')
-        echocall(main_dbg + r'run examples\demo06.yml')
-        echocall(main_dbg + r'run examples\demo07.yml')
-        echocall(main_dbg + r'run examples\demo08.yml')
-        echocall(main_dbg + r'run examples\demo09.yml')
-    finally:
-        chdir('..')
-
-
-def test_bundles(release_name):
-    makedirs('test')
-    chdir('test')
-    zip_unpack(r'..\LIAM2-%s-src.zip' % release_name, 'src')
-    for arch in ('win32', 'win64'):
-        test_bundle(r'..\LIAM2Suite-%s-%s.zip' % (release_name, arch), arch)
+    chdir('htmldoc')
+    zip_pack(r'..\LIAM2UserGuide-%s-html.zip' % release_name, '*')
     chdir('..')
+
+
+def test_executable(relpath):
+    """
+    test an executable with relative path *relpath*
+    """
+    print()
+    # we use --debug so that errorlevel is set
+    main_dbg = relpath + r'\main --debug '
+    echocall(main_dbg + r'run tests\functional\generate.yml')
+    echocall(main_dbg + r'import tests\functional\import.yml')
+    echocall(main_dbg + r'run tests\functional\simulation.yml')
+    echocall(main_dbg + r'run tests\functional\variant.yml')
+    echocall(main_dbg + r'run tests\functional\matching.yml')
+    echocall(main_dbg + r'run tests\examples\demo01.yml')
+    echocall(main_dbg + r'import tests\examples\demo_import.yml')
+    echocall(main_dbg + r'run tests\examples\demo01.yml')
+    echocall(main_dbg + r'run tests\examples\demo02.yml')
+    echocall(main_dbg + r'run tests\examples\demo03.yml')
+    echocall(main_dbg + r'run tests\examples\demo04.yml')
+    echocall(main_dbg + r'run tests\examples\demo05.yml')
+    echocall(main_dbg + r'run tests\examples\demo06.yml')
+    echocall(main_dbg + r'run tests\examples\demo07.yml')
+    echocall(main_dbg + r'run tests\examples\demo08.yml')
+    echocall(main_dbg + r'run tests\examples\demo09.yml')
+
+
+def test_executables():
+    """
+    assumes to be in build
+    """
+    for arch in ('win32', 'win-amd64'):
+        test_executable(r'src\build\exe.%s-2.7' % arch)
+
+
+def check_bundles(release_name):
+    """
+    checks the bundles unpack correctly
+    """
+    makedirs('test')
+    zip_unpack('LIAM2Suite-%s-win32.zip' % release_name, r'test\win32')
+    zip_unpack('LIAM2Suite-%s-win64.zip' % release_name, r'test\win64')
+    zip_unpack('LIAM2UserGuide-%s-html.zip' % release_name, r'test\htmldoc')
+    zip_unpack('LIAM2-%s-src.zip' % release_name, r'test\src')
     rmtree('test')
 
 
@@ -268,8 +417,8 @@ def build_website(release_name):
              version=release_name, short_version=short(release_name))
 
     title = 'Version %s released' % short(release_name)
-    # strip is important otherwise it contains a \n and git chokes on it
-    fname = call('tinker -f -p "%s"' % title).strip()
+    # strip is important otherwise fname contains a \n and git chokes on it
+    fname = call('tinker --filename --post "%s"' % title).strip()
 
     call('buildall.bat')
 
@@ -283,36 +432,37 @@ def build_website(release_name):
     call('git add master.rst')
     call('git add %s' % fname)
     call('git commit -m "announce version %s on website"' % short(release_name))
-    do('Git-pushing website', call, 'git push')
 
     chdir(r'..\..\..')
+    copytree(r'build\doc\website\blog\html', 'website')
 
 
 def upload(release_name):
     # pscp is the scp provided in PuTTY's installer
     base_url = '%s@%s:%s' % ('cic', WEBSITE, WEBSITE)
-    # archives
+    # 1) archives
     subprocess.call(r'pscp * %s/download' % base_url)
 
-    # documentation
-    chdir(r'html')
+    # 2) documentation
+    chdir('webdoc')
     subprocess.call(r'pscp -r %s %s/documentation' % (short(release_name),
                                                       base_url))
-    chdir(r'..')
+    chdir('..')
 
-    # website
-    chdir(r'build\doc\website\blog\html')
-    subprocess.call(r'pscp -r * %s' % base_url)
-    chdir(r'..\..\..\..\..')
+    # 3) website
+    if not isprerelease(release_name):
+        chdir('website')
+        subprocess.call(r'pscp -r * %s' % base_url)
+        chdir('..')
 
 
-def announce(release_name, changes):
+def announce(release_name):
+    # ideally we should use the html output of the rst file, but this is simpler
+    changes = rst2txt(release_changes(release_name))
     body = """\
 I am pleased to announce that version %s of LIAM2 is now available.
 
-The highlights of this release are:
-- x
-- y
+%s
 
 More details and the complete list of changes are available below.
 
@@ -324,16 +474,11 @@ mailing list: liam2-users@googlegroups.com (you need to register to be
 able to post).
 
 %s
-""" % (short(release_name), changes)
-    # preselectid='id1' selects the first "identity" for the "from" field
-    # We do not use our usual call because the command returns an exit status
-    # of 1 (failure) instead of 0, even if it works, so we simply ignore
-    # the failure.
-    subprocess.call("thunderbird -compose \""
-                    "preselectid='id1',"
-                    "to='liam2-announce@googlegroups.com',"
-                    "subject='Version %s released',"
-                    "body='%s'\"" % (short(release_name), body))
+""" % (short(release_name), release_highlights(release_name), changes)
+
+    send_outlook('liam2-announce@googlegroups.com',
+                 'Version %s released' % short(release_name),
+                 body)
 
 
 def cleanup():
@@ -342,33 +487,47 @@ def cleanup():
     rmtree('build')
 
 
-def relname2fname(release_name):
-    return r"version_%s.rst.inc" % short(release_name).replace('.', '_')
+def branchname(statusline):
+    """
+    computes the branch name from a "git status -b -s" line
+    ## master...origin/master
+    """
+    statusline = statusline.replace('#', '').strip()
+    pos = statusline.find('...')
+    return statusline[:pos] if pos != -1 else statusline
 
 
 def make_release(release_name=None, branch='master'):
-    # Since git is a dvcs, we could make this script work locally, but it would
-    # not be any more useful because making a release is usually to distribute
-    # it to someone, and for that I need network access anyway.
-    # Furthermore, cloning from the remote repository makes sure we do not
-    # include any untracked file
-    # Note, that it is exactly the same syntax, except that repository is a path
-    # instead of an URL 'git clone -b %s %s build' % (branch, repository)
-    # the only drawback I see is that I could miss changes from others, but
-    # we are not there yet :)
+    if release_name is not None:
+        if 'pre' in release_name:
+            raise ValueError("'pre' is not supported anymore, use 'alpha' or "
+                             "'beta' instead")
+        if '-' in release_name:
+            raise ValueError("- is not supported anymore")
 
-    # git ls-remote does not seem to support user-tagged urls
-    # repository = call('git config --get remote.origin.url')
-    repository = 'https://github.com/liam2/liam2.git'
+        release_name = long_release_name(release_name)
 
-    status = call('git status -s')
+    # releasing from the local clone has the advantage I can prepare the
+    # release offline and only push and upload it when I get back online
+    repository = abspath(dirname(__file__))
+    s = "Using local repository at: %s !" % repository
+    print("\n", s, "\n", "=" * len(s), "\n", sep='')
+
+    status = call('git status -s -b')
     lines = status.splitlines()
+    statusline, lines = lines[0], lines[1:]
+    curbranch = branchname(statusline)
+    if curbranch != branch:
+        print("%s is not the current branch (%s). "
+              "Please use 'git checkout %s'." % (branch, curbranch, branch))
+        exit(1)
+
     if lines:
-        uncommited = sum(1 for line in lines if line.startswith(' M'))
+        uncommited = sum(1 for line in lines if line[1] in 'MDAU')
         untracked = sum(1 for line in lines if line.startswith('??'))
         print('Warning: there are %d files with uncommitted changes '
               'and %d untracked files:' % (uncommited, untracked))
-        print(status)
+        print('\n'.join(lines))
         if no('Do you want to continue?'):
             exit(1)
 
@@ -392,12 +551,22 @@ def make_release(release_name=None, branch='master'):
     if no('Release version %s (%s)?' % (release_name, rev)):
         exit(1)
 
-    chdir(r'c:\tmp')
-    if exists('liam2_new_release'):
-        rmtree('liam2_new_release')
-    makedirs('liam2_new_release')
-    chdir('liam2_new_release')
+    if exists(TMP_PATH):
+        rmtree(TMP_PATH)
+    makedirs(TMP_PATH)
+    chdir(TMP_PATH)
 
+    # make a temporary clone in /tmp. The goal is to make sure we do not
+    # include extra/unversioned files. For the -src archive, I don't think
+    # there is a risk given that we do it via git, but the risk is there for
+    # the bundles (src/build is not always clean, examples, editor, ...)
+
+    # Since this script updates files (update_changelog and build_website), we
+    # need to get those changes propagated to GitHub. I do that by updating the
+    # temporary clone then push twice: first from the temporary clone to the
+    # "working copy clone" (eg ~/devel/liam2) then to GitHub from there. The
+    # alternative to modify the "working copy clone" directly is worse because
+    # it needs more complicated path handling that the 2 push approach.
     do('Cloning', call, 'git clone -b %s %s build' % (branch, repository))
 
     # ---------- #
@@ -412,24 +581,29 @@ def make_release(release_name=None, branch='master'):
         exit(1)
 
     if public_release:
-        test_release = True
-        fpath = "doc\usersguide\source\changes\\" + relname2fname(release_name)
-        with open(fpath) as f:
-            changes = f.read().decode('utf-8-sig')
-            print(changes)
-        if no('Does this changelog look good?'):
+        print(release_changes(release_name))
+        if no('Does the release changelog look right?'):
             exit(1)
-        update_changelog(release_name)
+
+    if public_release:
+        test_release = True
     else:
-        test_release = yes('Do you want to test the bundles after they are '
+        test_release = yes('Do you want to test the executables after they are '
                            'created?')
-        changes = ''
+
+    do('Building executables', build_exe)
+
+    if test_release:
+        do('Testing executables', test_executables)
+
+    if public_release:
+        do('Updating changelog', update_changelog, release_name)
+
+    do('Building doc', build_doc)
 
     do('Creating source archive', call,
        r'git archive --format zip --output ..\LIAM2-%s-src.zip %s'
        % (release_name, rev))
-
-    do('Building everything', call, 'buildall.bat')
 
     # ------- #
     chdir('..')
@@ -437,16 +611,21 @@ def make_release(release_name=None, branch='master'):
 
     do('Moving stuff around', copy_release, release_name)
     do('Creating bundles', create_bundles, release_name)
-    if test_release:
-        do('Testing bundles', test_bundles, release_name)
+    do('Testing bundles', check_bundles, release_name)
 
     if public_release:
-        do('Building website (news, download and documentation pages)',
-           build_website, release_name)
+        if not isprerelease(release_name):
+            do('Building website (news, download and documentation pages)',
+               build_website, release_name)
 
-        if no('Is the release looking good? If so, the tag will be created and '
-              'pushed, everything will be uploaded to the production server '
-              'and the release will be announced.'):
+        msg = """Is the release looking good? If so, the tag will be created and
+pushed, everything will be uploaded to the production server and the release
+will be announced. Stuff to watch out for:
+ * version numbers (executable & doc first page & changelog)
+ * website
+ * ...
+"""
+        if no(msg):
             exit(1)
 
         # ---------- #
@@ -456,7 +635,6 @@ def make_release(release_name=None, branch='master'):
         do('Tagging release', call,
            'git tag -a %(name)s -m "tag release %(name)s"'
            % {'name': release_name})
-        do('Pushing tag', call, 'git push origin %s' % release_name)
 
         # ------- #
         chdir('..')
@@ -464,19 +642,44 @@ def make_release(release_name=None, branch='master'):
 
         do('Uploading', upload, release_name)
 
-        do('Announcing', announce, release_name, changes)
+        # ---------- #
+        chdir('build')
+        # ---------- #
 
+        do('Announcing', announce, release_name)
+
+        # ------- #
+        chdir('..')
+        # ------- #
+
+        chdir(repository)
+
+        # We used to push from /tmp to the local repository but you cannot push
+        # to the currently checked out branch of a repository, so we need to
+        # pull changes instead. However pull (or merge) add changes to the
+        # current branch, hence we make sure at the beginning of the script
+        # that the current git branch is the branch to release. It would be
+        # possible to do so without a checkout by using:
+        # git fetch {tmp_path} {branch}:{branch}
+        # instead but then it only works for fast-forward and non-conflicting
+        # changes. So if the working copy is dirty, you are out of luck.
+
+        # pull the website & changelog commits to the branch (usually master)
+        # and the release tag (which refers to the last commit)
+        do('Pulling changes in %s' % repository, call,
+           'git pull --ff-only %s\\build %s' % (TMP_PATH, branch))
+
+        do('Pushing to GitHub', call,
+           'git push origin %s --follow-tags' % branch)
+
+    chdir(TMP_PATH)
     do('Cleaning up', cleanup)
-
 
 if __name__ == '__main__':
     from sys import argv
 
     # chdir(r'c:\tmp')
     # chdir('liam2_new_release')
-    # test_bundles(*argv[1:])
-    # build_website(*argv[1:])
-    # upload(*argv[1:])
-    # announce(*argv[1:])
 
     make_release(*argv[1:])
+    # update_changelog(*argv[1:])

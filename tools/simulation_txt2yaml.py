@@ -1,10 +1,9 @@
 import csv
 import itertools
-from itertools import izip, groupby
+from itertools import izip
 import operator
 import os
 from os import path
-import re
 import sys
 
 import yaml
@@ -33,12 +32,13 @@ from align_txt2csv import convert_txt_align
 # ? extract common condition parts in a filter to the choose function?
 # ? implement between
 
-#TODO manually:        
+#TODO manually:
 # - if(p_yob=2003-60, MINR[2003], ...
 #   ->
 #   if((yob >= 1943) & (yob <= 2000), MINR[yob + 60], 0)
 # - divorce function 
 # - KillPerson: what is not handled by normal "kill" function
+
 
 def load_renames(fpath):
     if fpath is not None:
@@ -46,6 +46,7 @@ def load_renames(fpath):
             return yaml.load(f)
     else:
         return {}
+
 
 def load_txt_def(input_path, name_idx):
     with open(input_path, "rb") as f:
@@ -71,8 +72,10 @@ def load_txt_def(input_path, name_idx):
             data[current_obj][name] = dict(zip(colnames, line))
     return data
 
+
 def load_links(input_path):
     return load_txt_def(input_path, 0)['linkage']
+
 
 def load_fields(input_path):
     data = load_txt_def(input_path, 1)
@@ -103,6 +106,7 @@ def load_fields(input_path):
         print "   done"
     return data
 
+
 def transpose_table(data):
     numrows = len(data)
     numcols = len(data[0])
@@ -115,6 +119,7 @@ def transpose_table(data):
     return [[data[rownum][colnum] for rownum in range(numrows)]
             for colnum in range(numcols)]
 
+
 def transpose_and_convert(lines):
     transposed = transpose_table(lines)
     names = transposed.pop(0)
@@ -124,6 +129,7 @@ def transpose_and_convert(lines):
                   for cell, func in izip(row, funcs)])
                  for row in transposed]
     return names, converted
+
 
 def load_av_globals(input_path):
     # macro.av is a csv with tabs OR spaces as separator and a header of 1 line
@@ -145,12 +151,14 @@ def load_av_globals(input_path):
     assert len(data) == num_periods
     return (start, stop), names, data
 
+
 def load_agespine(input_path):
     # read process names until "end_spine"
     with open(input_path, "rb") as f:
         lines = [line.strip() for line in f.read().splitlines() if line]
     # lines are of the form "regr_p_xxx" or "tran_p_xxx"
     return list(itertools.takewhile(lambda l: l != 'end_spine', lines))
+
 
 # ================================
 
@@ -585,7 +593,8 @@ class TransitionImporter(TextImporter):
 
 class TrapImporter(TextImporter):
     pass
-        
+
+
 # =====================
 
 def load_processes(input_path, fnames,
@@ -654,10 +663,12 @@ def load_processes(input_path, fnames,
     print "=" * 40
     return proc_name_per_file, data
 
+
 def convert_all_align(input_path):
     import glob
     for fpath in glob.glob(path.join(input_path, 'al_regr_*.txt')):
         convert_txt_align(fpath)
+
 
 # =====================
 # OUTPUT
@@ -666,6 +677,7 @@ def convert_all_align(input_path):
 def orderedmap2yaml(items, indent):
     sep = '\n' + '    ' * indent
     return sep.join("- %s: %s" % f for f in items)
+
 
 def links2yaml(links):
     if links:
@@ -681,6 +693,7 @@ def links2yaml(links):
     else:
         return ''
     
+
 def process2yaml(processes):
     if processes:
         sep = '\n            '
@@ -706,9 +719,11 @@ def process2yaml(processes):
     else:
         return ''
 
+
 def constants2yaml(constants):
-    constants = [(name, 'float') for name in constants[1]] 
-    return orderedmap2yaml(constants, indent=2)
+    const_defs = [(name, 'float') for name in constants[1]]
+    return orderedmap2yaml(const_defs, indent=2)
+
 
 def entities2yaml(entities):
     entity_tmpl = "    %s:%s%s%s\n"
@@ -728,6 +743,7 @@ def entities2yaml(entities):
                                         process_str))
     return '\n'.join(e_strings)
 
+
 def process_list2yaml(processes):
     s = []
     for ent_name, ent_processes in itertools.groupby(processes, 
@@ -737,7 +753,8 @@ def process_list2yaml(processes):
         s.append('        - %s: [%s]' % (ent_name, p_str))  
     return '\n'.join(s)
 
-def simulation2yaml(constants, entities, process_list):    
+
+def simulation2yaml(constants, entities, process_list):
     constants_str = constants2yaml(constants)
     entities_str = entities2yaml(entities)
     process_list_str = process_list2yaml(process_list)                
@@ -763,15 +780,16 @@ simulation:
 # =====================
 
 if __name__ == '__main__':
-    args = sys.argv
-    if len(args) < 3:
-        print "Usage: %s input_path output_path [rename_file] [filtered]" % args[0]
+    argv = sys.argv
+    if len(argv) < 3:
+        print "Usage: %s input_path output_path [rename_file] [filtered]" \
+              % argv[0]
         sys.exit()
     else:
-        input_path = args[1]
-        output_path = args[2]
-        rename_path = None if len(args) < 4 else args[3]
-        filtered = True if len(args) < 5 else args[4] == "filtered"
+        input_path = argv[1]
+        output_path = argv[2]
+        rename_path = None if len(argv) < 4 else argv[3]
+        filtered = True if len(argv) < 5 else argv[4] == "filtered"
 
     if not path.isdir(input_path):
         input_path, fname = path.split(input_path)
@@ -808,7 +826,7 @@ if __name__ == '__main__':
     proc_per_obj = {}
     for basename in base_names:        
         chunks = basename.split('_', 2)
-        if len(chunks) < 3: # tran_p_x
+        if len(chunks) < 3:  # tran_p_x
             continue
         proc_type, obj_type, name = chunks
         if proc_type == 'al':

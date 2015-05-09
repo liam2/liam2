@@ -1,0 +1,409 @@
+entities:
+    region:
+        fields:
+            # period and id are implicit
+            - x: int
+            - y: int
+
+        links:
+            persons: {type: one2many, target: person, field: region_id}
+
+        processes:
+            generate:
+                - new('region', number=10,
+                      x=randint(100),
+                      y=randint(100))
+
+    person:
+        fields:
+            # period and id are implicit
+            - age:        int
+            - male:       bool
+
+            - partner_id: int
+            - region_id:  int
+
+        macros: 
+            INCOUPLE: partner_id > -1
+            FEMALE: not male
+            MALE: male
+            
+        links:
+            partner: {type: many2one, target: person, field: partner_id}
+            region: {type: many2one, target: region, field: region_id}
+
+        processes:
+            generate:
+                args: newmen, newwomen
+                code:
+                    # men
+                    - new('person', number=newmen,
+                          male=True,
+                          partner_id=-1)
+                    # women
+                    - new('person', number=newwomen,
+                          male=False,
+                          partner_id=-1)
+                    - region_id: id % 10
+
+                    # interesting trick if we wanted to set the age for all
+                    # individuals in the db (new or not), or all with unset
+                    # age, and support setting age after arbitrary
+                    # interleaving of new(male) and new(not male). However we
+                    # do not need this in this case, and only setting the
+                    # age of individuals which have been actually created seem
+                    # safer.
+                    #- idxbysex: if(MALE, MALE.cumsum(), FEMALE.cumsum()) - 1
+                    #- numbysex: if(MALE, count(MALE), count(FEMALE))
+
+                    - maxid: max(id)
+                    - womenstartid: maxid + 1 - newwomen
+                    - menstartid: womenstartid - newmen
+                    - idxbysex: id - if(male, menstartid, womenstartid)
+                    - numbysex: if(MALE, newmen, newwomen)
+
+                    # normalize age between 0 and 99 (evenly distributed)
+                    - age: if(age == -1, trunc(idxbysex * 100 / numbysex), age)
+                    - show(groupby(age, male))
+
+            generate_few:
+                # make sure id != rownum
+                - generate(10, 10)
+                - remove()
+                # generate two men and three women of each age
+                - generate(200, 300)
+
+            generate_many:
+                - remove()
+                # generate 100 men and 100 women of each age
+                - generate(10000, 10000)
+
+            test_matching:
+                # men in set1 and women in set2, older men first
+                # ==============================================
+                # given we have 3 women for 2 men, each man can chose a woman
+                # of his exact age
+                - partner_id: matching(set1filter=MALE, set2filter=FEMALE,
+                                       orderby=age,
+                                       score=-(other.age - age) ** 2)
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+                - assertTrue(all(partner.age == age, filter=INCOUPLE))
+                # there is exactly one woman of each age not in couple
+                - assertEqual(groupby(age, filter=not INCOUPLE).__len__(), 100)
+
+                # men in set1 and women in set2, ordered by region
+                # ================================================
+                # given we have 3 women for 2 men, each man can chose a woman
+                # of his exact age
+                - partner_id: matching(set1filter=MALE, set2filter=FEMALE,
+                                       orderby=region_id,
+                                       score=-(other.age - age) ** 2)
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+                - assertTrue(all(partner.age == age, filter=INCOUPLE))
+                # there is exactly one woman of each age not in couple
+                - assertEqual(groupby(age, filter=not INCOUPLE).__len__(), 100)
+
+                # women in set1 and men in set2, ordered by region
+                # ================================================
+                # given we have 3 women for 2 men, we have a problem
+                - partner_id: matching(set1filter=FEMALE, set2filter=MALE,
+                                       orderby=region_id,
+                                       score=-(other.age - age) ** 2)
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+                # women from the last region got to choose first (they got
+                # what they wanted)
+                - assertTrue(all(partner.age == age,
+                                 filter=INCOUPLE and region_id == 9))
+                # women from the first region got to choose last... and there
+                # was not any man left
+                - assertTrue(all(not INCOUPLE,
+                                 filter=FEMALE and region_id == 0))
+
+                # men in set1 and women in set2, younger men first
+                # ================================================
+                # reversing the order does not change anything
+                - partner_id: matching(set1filter=MALE, set2filter=FEMALE,
+                                       orderby=-age,
+                                       score=-(other.age - age) ** 2)
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+                - assertTrue(all(partner.age == age, filter=INCOUPLE))
+                - assertEqual(groupby(age, filter=not INCOUPLE).__len__(), 100)
+
+                # women in set1 and men in set2, older women first
+                # ================================================
+                # older women will get men closer to their age. Here are the
+                # first few couples:
+                #  F |  M
+                # 99 | 99
+                # 99 | 99
+                # 99 | 98
+                # 98 | 98
+                # 98 | 97
+                # 98 | 97
+                # 97 | 96
+                # 97 | 96
+                # 97 | 95
+                # ...
+                # 33 | 0
+                # 33 | 0
+                # 33 | -1 (not matched)
+                - partner_id: matching(set1filter=FEMALE,
+                                       set2filter=MALE,
+                                       orderby=age,
+                                       score=- (other.age - age) ** 2)
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+                - p_age: partner.age
+                - assertEqual(count(FEMALE and age == 99 and p_age == 99), 2)
+                - assertEqual(count(FEMALE and age == 99 and p_age == 98), 1)
+                - assertEqual(count(FEMALE and age == 98 and p_age == 98), 1)
+                - assertEqual(count(FEMALE and age == 98 and p_age == 97), 2)
+                - assertEqual(count(FEMALE and age == 97 and p_age == 96), 2)
+                - assertEqual(count(FEMALE and age == 97 and p_age == 95), 1)
+                # ...
+                - assertEqual(count(FEMALE and age == 33 and p_age == 0), 2)
+                - assertEqual(count(FEMALE and age == 33 and not INCOUPLE), 1)
+                - assertTrue(all(age <= 33, filter=FEMALE and not INCOUPLE))
+                - assertTrue(all(not INCOUPLE, filter=FEMALE and age < 33))
+                # the maximum age difference is 33
+                - assertEqual(max(abs(partner.age - age), filter=INCOUPLE), 33)
+
+                # women in set1 and men in set2, younger women first
+                # ==================================================
+                # younger women will get men closer to their age. Here are the
+                # first few couples:
+                #  F |  M
+                # 0 | 0
+                # 0 | 0
+                # 0 | 1
+                # 1 | 1
+                # 1 | 2
+                # 1 | 2
+                # 2 | 3
+                # 2 | 3
+                # 2 | 4
+                # ...
+                # 66 | 99
+                # 66 | 99
+                # 66 | -1 (not matched)
+                - partner_id: matching(set1filter=FEMALE,
+                                       set2filter=MALE,
+                                       orderby=-age,
+                                       score=-(other.age - age) ** 2)
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+                - p_age: partner.age
+                - assertEqual(count(FEMALE and age == 0 and p_age == 0), 2)
+                - assertEqual(count(FEMALE and age == 0 and p_age == 1), 1)
+                - assertEqual(count(FEMALE and age == 1 and p_age == 1), 1)
+                - assertEqual(count(FEMALE and age == 1 and p_age == 2), 2)
+                - assertEqual(count(FEMALE and age == 2 and p_age == 3), 2)
+                - assertEqual(count(FEMALE and age == 2 and p_age == 4), 1)
+                # ...
+                - assertEqual(count(FEMALE and age == 66 and p_age == 99), 2)
+                - assertEqual(count(FEMALE and age == 66 and not INCOUPLE), 1)
+                - assertTrue(all(age >= 66, filter=FEMALE and not INCOUPLE))
+                - assertTrue(all(not INCOUPLE, filter=FEMALE and age > 66))
+                # the maximum age difference is 33
+                - assertEqual(max(abs(partner.age - age), filter=INCOUPLE), 33)
+
+                # temporary variable in score expression
+                # ======================================
+                - tmp: age ** 2
+                - partner_id1: matching(set1filter=MALE, set2filter=FEMALE,
+                                        orderby=age, score=tmp - other.tmp)
+                - partner_id2: matching(set1filter=MALE, set2filter=FEMALE,
+                                        orderby=age,
+                                        score=age ** 2 - other.age ** 2)
+                - assertEqual(partner_id1, partner_id2)
+
+                # link in score expression
+                # ========================
+                # Note that using links in the score expression slows things
+                # down a lot. See https://github.com/liam2/liam2/issues/128.
+                - partner_id: matching(set1filter=MALE, set2filter=FEMALE,
+                                       orderby=age,
+                                       score=region.get(persons.count()) -
+                                             other.region.get(persons.count()))
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+
+                # matching in if()
+                # ================
+                - partner_id1: if(age >= 18,
+                                  matching(set1filter=MALE,
+                                           set2filter=FEMALE,
+                                           orderby=age,
+                                           score=- (other.age - age) ** 2),
+                                  -1)
+                - partner_id2: matching(set1filter=MALE and age >= 18,
+                                        set2filter=FEMALE and age >= 18,
+                                        orderby=age,
+                                        score=- (other.age - age) ** 2)
+                - assertEqual(partner_id1, partner_id2)
+
+            test_matching_pool:
+                # small pool, men in set1 and women in set2, older men first
+                # ==========================================================
+                - partner_id: matching(set1filter=MALE,
+                                       set2filter=FEMALE,
+                                       orderby=age,
+                                       score=-(other.age - age) ** 2,
+                                       pool_size=10)
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+
+                # with a small pool, we know that there is a very high chance
+                # that at least one man will be matched with a woman of a
+                # different age. Given we use a fixed seed, we know it will
+                # always be the case for this test.
+                - assertTrue(any(partner.age != age, filter=INCOUPLE))
+
+                # we know that, except for the last "pool_size - 1" men
+                # (the 9 youngest men in this case), there should be *at least*
+                # 10 women with an equal or lower score than the one they were
+                # paired with (OR EQUAL because all the scores of pool
+                # candidates could be equal).
+                - men_age: age[MALE]
+                # score of actual matches (relative to men)
+
+                #FIXME: not allowed by YAML parser (notice the space after -) :(
+                #- score_match: - (partner.age[MALE] - men_age) ** 2
+                - score_match: -(partner.age[MALE] - men_age) ** 2
+
+                # the arrays are small enough in this test that we can build
+                # the whole score matrix in memory
+                - potential_score: -(age[FEMALE].reshape(300, 1) - men_age) ** 2
+
+                # has each man 10 women with a <= potential_score?
+                - has10lower: (potential_score <= score_match).sum(0) >= 10
+                # the last 10 men matched (ie the youngest) are ignored,
+                # because they had to choose in a smaller pool
+                - assertTrue(all(has10lower, filter=age[MALE] < 5))
+
+                # large pool, men in set1 and women in set2, older men first
+                # ==========================================================
+                # if pool_size is big enough, we know there is always at
+                # least one person with the right age so we can match them
+                - partner_id: matching(set1filter=MALE,
+                                       set2filter=FEMALE,
+                                       orderby=age,
+                                       score=-(other.age - age) ** 2,
+                                       pool_size=299)
+                # Note: here the pooling occurs only once for the first match
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+                - assertTrue(all(partner.age == age, filter=INCOUPLE))
+
+            test_rank_matching:
+                # ordering both men and women by decreasing age, we should get
+                # almost the same results as:
+                # matching(set1filter=FEMALE, set2filter=MALE, orderby=age,
+                #          score=- (other.age - age) ** 2)
+                # but individuals with the same age are not sorted the same way
+                # for some reason so we cannot check against that.
+                - partner_id: rank_matching(set1filter=MALE, set2filter=FEMALE,
+                                            orderby1=age, orderby2=age)
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+                - p_age: partner.age
+                - assertEqual(count(FEMALE and age == 99 and p_age == 99), 2)
+                - assertEqual(count(FEMALE and age == 99 and p_age == 98), 1)
+                - assertEqual(count(FEMALE and age == 98 and p_age == 98), 1)
+                - assertEqual(count(FEMALE and age == 98 and p_age == 97), 2)
+                - assertEqual(count(FEMALE and age == 97 and p_age == 96), 2)
+                - assertEqual(count(FEMALE and age == 97 and p_age == 95), 1)
+                # ...
+                - assertEqual(count(FEMALE and age == 33 and p_age == 0), 2)
+                - assertEqual(count(FEMALE and age == 33 and not INCOUPLE), 1)
+                - assertTrue(all(age <= 33, filter=FEMALE and not INCOUPLE))
+                - assertTrue(all(not INCOUPLE, filter=FEMALE and age < 33))
+                # the maximum age difference is 33
+                - assertEqual(max(abs(partner.age - age), filter=INCOUPLE), 33)
+
+                # inverting sets should not change the result
+                - target: partner_id
+                - partner_id: rank_matching(set1filter=FEMALE, set2filter=MALE,
+                                            orderby1=age, orderby2=age)
+                - assertEqual(partner_id, target)
+
+                # inverting one orderby gives some funky results
+                - partner_id: rank_matching(set1filter=FEMALE, set2filter=MALE,
+                                            orderby1=age, orderby2=-age)
+                #  F |  M
+                # 99 | 0
+                # 99 | 0
+                # 99 | 1
+                # 98 | 1
+                # 98 | 2
+                # 98 | 2
+                # 97 | 3
+                # 97 | 3
+                # 97 | 4
+                # ...
+                # 33 | 99
+                # 33 | 99
+                # 33 | -1 (not matched)
+                - assertEqual(count(INCOUPLE and MALE), 200)
+                - assertEqual(count(INCOUPLE and FEMALE), 200)
+                - p_age: partner.age
+                - assertEqual(count(FEMALE and age == 99 and p_age == 0), 2)
+                - assertEqual(count(FEMALE and age == 99 and p_age == 1), 1)
+                - assertEqual(count(FEMALE and age == 98 and p_age == 1), 1)
+                - assertEqual(count(FEMALE and age == 98 and p_age == 2), 2)
+                - assertEqual(count(FEMALE and age == 97 and p_age == 3), 2)
+                - assertEqual(count(FEMALE and age == 97 and p_age == 4), 1)
+                # ...
+                - assertEqual(count(FEMALE and age == 60 and p_age == 59), 2)
+                - assertEqual(count(FEMALE and age == 59 and p_age == 60), 2)
+                # ...
+                - assertEqual(count(FEMALE and age == 33 and p_age == 99), 2)
+                - assertEqual(count(FEMALE and age == 33 and not INCOUPLE), 1)
+                - assertTrue(all(age <= 33, filter=FEMALE and not INCOUPLE))
+                - assertTrue(all(not INCOUPLE, filter=FEMALE and age < 33))
+
+            test_optimized:
+                # ordering by id is almost the only way to get exactly the same
+                # results for onebyone and byvalue algorithms
+                - normal_id: matching(set1filter=MALE, set2filter=FEMALE,
+                                      orderby=id,
+                                      score=-(other.age - age) ** 2)
+                - opt_id: matching(set1filter=MALE, set2filter=FEMALE,
+                                   orderby=id,
+                                   score=-(other.age - age) ** 2,
+                                   algo='byvalue')
+                - assertEqual(normal_id, opt_id)
+
+simulation:
+    init:
+        - region: [generate]
+        - person: [generate_few]
+    processes:
+        # make sure region is loaded
+        - region: []
+        - person: [
+            test_matching,
+            test_matching_pool,
+            test_rank_matching
+        ]
+        - person: [
+            generate_many,
+            test_optimized
+        ]
+
+    input:
+        method: void
+        file: none
+
+    output:
+        file: matching.h5
+
+    logging:
+        level: processes
+    start_period: 2001   # first simulated period
+    periods: 1
+    random_seed: 0

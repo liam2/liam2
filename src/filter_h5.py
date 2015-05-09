@@ -10,14 +10,14 @@ __version__ = "0.3"
 
 def filter_h5(input_path, output_path, condition):
     print("filtering for '%s'" % condition)
-    input_file = tables.openFile(input_path, mode="r")
-    output_file = tables.openFile(output_path, mode="w")
+    input_file = tables.open_file(input_path, mode="r")
+    output_file = tables.open_file(output_path, mode="w")
 
     # copy globals
     #noinspection PyProtectedMember
     input_file.root.globals._f_copy(output_file.root, recursive=True)
 
-    output_entities = output_file.createGroup("/", "entities", "Entities")
+    output_entities = output_file.create_group("/", "entities", "Entities")
     for table in input_file.iterNodes(input_file.root.entities):
         #noinspection PyProtectedMember
         print(table._v_name, "...")

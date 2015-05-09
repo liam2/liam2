@@ -2,14 +2,10 @@ from __future__ import print_function
 
 import sys
 
-import numpy as np
-
 import config
+from entities import global_symbols
 from expr import expr_eval, Variable
-from exprparser import parse
-from context import EntityContext
-from registry import entity_registry
-from process import Process
+from exprtools import parse
 
 entity_required = \
     "current entity is not set. It is required to set one using " \
@@ -40,27 +36,28 @@ class InvalidPeriod(ValueError):
 
 
 class Console(object):
-    def __init__(self, entity=None, period=None,
-                 globals_def=None, globals_data=None):
-        if entity is None and len(entity_registry) == 1:
-            entity = entity_registry.values()[0]
-        self.entity = entity
-        if period is None and entity is not None:
-            period = EntityContext(entity).list_periods()[-1]
-        self.period = period
-        self.globals_def = globals_def
-        self.globals_data = globals_data
+    def __init__(self, eval_ctx):
+        self.eval_ctx = eval_ctx
+
+        globals_def = eval_ctx.simulation.globals_def
+        globals_parse_ctx = {'__globals__': global_symbols(globals_def)}
+        parse_ctx = globals_parse_ctx.copy()
+        parse_ctx.update((entity.name, entity.all_symbols(globals_parse_ctx))
+                         for entity in eval_ctx.entities.itervalues())
+        parse_ctx['__entity__'] = eval_ctx.entity_name
+        self.parse_ctx = parse_ctx
 
     def list_entities(self):
-        ent_names = [repr(k) for k in entity_registry.keys()]
+        ent_names = [repr(k) for k in self.eval_ctx.entities.keys()]
         print("available entities:", ', '.join(ent_names))
 
     def get_entity(self, name):
         try:
-            return entity_registry[name]
+            return self.eval_ctx.entities[name]
         except KeyError:
             print("entity '%s' does not exist" % name)
             self.list_entities()
+            return None
 
     def _display_entity(self):
         if self.entity is None:
@@ -68,19 +65,37 @@ class Console(object):
         else:
             print("current entity set to", self.entity.name)
 
+    @property
+    def entity(self):
+        return self.eval_ctx.entity
+
+    @entity.setter
+    def entity(self, value):
+        self.eval_ctx.entity = value
+
+    @property
+    def period(self):
+        return self.eval_ctx.period
+
+    @period.setter
+    def period(self, value):
+        self.eval_ctx.period = value
+
     def set_entity(self, name):
         entity = self.get_entity(name)
         if entity is not None:
+            self.parse_ctx['__entity__'] = entity.name
             self.entity = entity
             self._display_entity()
-            if self.period is not None:
-                if self.period not in self._list_periods():
-                    self.period = None
-                    raise InvalidPeriod("entity '%s' has no data for period %d"
-                                        % (self.entity.name, self.period))
+
+            period = self.period
+            if period is not None and period not in self._list_periods():
+                self.period = None
+                raise InvalidPeriod("entity '%s' has no data for period %d"
+                                    % (self.entity.name, self.period))
 
     def _list_periods(self):
-        return EntityContext(self.entity).list_periods()
+        return self.eval_ctx.entity_data.list_periods()
 
     def list_periods(self):
         if self.entity is None:
@@ -121,7 +136,7 @@ class Console(object):
 
     def list_globals(self):
         print("globals:")
-        for k, v in self.globals_data.iteritems():
+        for k, v in self.eval_ctx.global_tables.iteritems():
             if v.dtype.names:
                 details = ": " + ", ".join(v.dtype.names)
             else:
@@ -137,20 +152,20 @@ class Console(object):
         if period is None:
             raise Exception(period_required)
 
-        cond_context = entity.conditional_context
-        variables = entity.all_symbols(self.globals_def)
-        # add local variables (defined within a procedure)
-        variables.update((name, Variable(name))
-                         for name in entity.local_var_names)
-        expr = parse(s, variables, cond_context, interactive=True)
-        ctx = EntityContext(entity, {'period': period,
-                                     'nan': np.nan,
-                                     '__globals__': self.globals_data})
-        if isinstance(expr, Process):
-            expr.run(ctx)
+        entity_name = self.entity.name
+        parse_ctx = self.parse_ctx.copy()
+        local_parse_ctx = parse_ctx[entity_name].copy()
+
+        # add all currently defined temp_variables because otherwise
+        # local variables (defined within a procedure) wouldn't be available
+        local_parse_ctx.update((name, Variable(entity, name))
+                               for name in entity.temp_variables.keys())
+        parse_ctx[entity_name] = local_parse_ctx
+        expr = parse(s, parse_ctx, interactive=True)
+        result = expr_eval(expr, self.eval_ctx)
+        if result is None:
             print("done.")
-        else:
-            return expr_eval(expr, ctx)
+        return result
 
     def run(self, debugger=False):
         if debugger:

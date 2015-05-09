@@ -13,8 +13,9 @@ import yaml
 
 from pandas import DataFrame, HDFStore
 
+from context import EvaluationContext
 from data import H5Data, Void
-from entities import Entity
+from entities import Entity, global_symbols
 from registry import entity_registry
 from utils import (time_period, addmonth,
                    time2str, timed, gettime, validate_dict,
@@ -22,16 +23,30 @@ from utils import (time_period, addmonth,
                    merge_dicts, merge_items,
                    field_str_to_type, fields_yaml_to_type)
 from process import ExtProcess
-import console
 import config
+import console
 import expr
 
 
 def show_top_times(what, times, count):
+    """
+    >>> show_top_times("letters", [('a', 0.1), ('b', 0.2)], 5)
+    top 5 letters:
+     - a: 0.10 second (33%)
+     - b: 0.20 second (66%)
+    total for top 5 letters: 0.30 second
+    >>> show_top_times("zeros", [('a', 0)], 5)
+    top 5 zeros:
+     - a: 0 ms (100%)
+    total for top 5 zeros: 0 ms
+    """
     total = sum(t for n, t in times)
     print("top %d %s:" % (count, what))
     for name, timing in times[:count]:
-        percent = 100.0 * timing / total
+        try:
+            percent = 100.0 * timing / total
+        except ZeroDivisionError:
+            percent = 100
         print(" - %s: %s (%d%%)" % (name, time2str(timing), percent))
     print("total for top %d %s:" % (count, what), end=' ')
     print(time2str(sum(timing for name, timing in times[:count])))
@@ -313,15 +328,27 @@ class Simulation(object):
             print(method, type(method))
 
         for k, v in content['entities'].iteritems():
-            entity_registry.add(Entity.from_yaml(k, v))
+            entities[k] = Entity.from_yaml(k, v)
 
-        for entity in entity_registry.itervalues():
-            entity.check_links()
-            entity.parse_processes(globals_def)
+        for entity in entities.itervalues():
+            entity.attach_and_resolve_links(entities)
+
+        global_context = {'__globals__': global_symbols(globals_def),
+                          '__entities__': entities}
+        parsing_context = global_context.copy()
+        parsing_context.update((entity.name, entity.all_symbols(global_context))
+                               for entity in entities.itervalues())
+        for entity in entities.itervalues():
+            parsing_context['__entity__'] = entity.name
+            entity.parse_processes(parsing_context)
             entity.compute_lagged_fields()
+            # entity.optimize_processes()
 
+        # for entity in entities.itervalues():
+        #     entity.resolve_method_calls()
+        used_entities = set()
         init_def = [d.items()[0] for d in simulation_def.get('init', {})]
-        init_processes, init_entities = [], set()
+        init_processes = []
         for ent_name, proc_names in init_def:
             if ent_name != 'legislation':
                 if ent_name not in entity_registry:
@@ -341,7 +368,7 @@ class Simulation(object):
                 # processes.append((proc3, 1))
 
         processes_def = [d.items()[0] for d in simulation_def['processes']]
-        processes, entity_set = [], set()
+        processes = []
         for ent_name, proc_defs in processes_def:
             if ent_name != 'legislation':
                 entity = entity_registry[ent_name]
@@ -376,8 +403,11 @@ class Simulation(object):
                           data_source, default_entity, legislation, final_stat, time_scale, retro)
 
     def load(self):
-        return timed(self.data_source.load, self.globals_def,
-                     entity_registry)
+        return timed(self.data_source.load, self.globals_def, self.entities_map)
+
+    @property
+    def entities_map(self):
+        return {entity.name: entity for entity in self.entities}
 
     def run(self, run_console=False):
         start_time = time.time()
@@ -395,7 +425,7 @@ class Simulation(object):
                 fname, _ = config.autodiff
                 mode = 'r'
             fpath = os.path.join(config.output_directory, fname)
-            h5_autodump = tables.openFile(fpath, mode=mode)
+            h5_autodump = tables.open_file(fpath, mode=mode)
             config.autodump_file = h5_autodump
         else:
             h5_autodump = None
@@ -413,10 +443,15 @@ class Simulation(object):
 
         process_time = defaultdict(float)
         period_objects = {}
+        eval_ctx = EvaluationContext(self, self.entities_map, globals_data)
 
         def simulate_period(period_idx, period, periods, processes, entities,
                             init=False):
             period_start_time = time.time()
+
+            # set current period
+            eval_ctx.period = period
+
             if config.log_level in ("procedures", "processes"):
                 print()
             print("period", period,
@@ -496,8 +531,7 @@ class Simulation(object):
                             print("done (%s elapsed)." % time2str(elapsed))
                         else:
                             print("done.")
-                    self.start_console(process.entity, period,
-                                       globals_data)
+                    self.start_console(eval_ctx)
 
             # update longitudinal
             person = [x for x in entities if x.name == 'person'][0]
@@ -674,8 +708,8 @@ class Simulation(object):
             #     show_top_expr()
 
             if run_console:
-                c = console.Console(self.console_entity, periods[-1],
-                                    self.globals_def, globals_data)
+                console_ctx = eval_ctx.clone(entity_name=self.default_entity)
+                c = console.Console(console_ctx)
                 c.run()
 
         finally:
@@ -693,6 +727,6 @@ class Simulation(object):
 
     def start_console(self, entity, period, globals_data):
         if self.stepbystep:
-            c = console.Console(entity, period, self.globals_def, globals_data)
+            c = console.Console(context)
             res = c.run(debugger=True)
             self.stepbystep = res == "step"

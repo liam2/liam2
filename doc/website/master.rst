@@ -4,6 +4,10 @@ Sitemap
 .. toctree::
    :maxdepth: 1
 
+   2015/04/14/version_0_9_1_1_released
+   2015/03/31/version_0_9_1_released
+   2015/02/03/version_0_9_released
+   2014/10/02/version_0_8_2_released
    2014/03/19/version_0_8_1_released
    2014/02/05/version_0_8_released
    2013/12/17/liam2_is_on_github

@@ -1,10 +1,10 @@
 from __future__ import print_function
 
-from os.path import dirname
 import time
 
 import tables
 import numpy as np
+import config
 
 from expr import (normalize_type, get_missing_value, get_missing_record,
                   get_missing_vector, gettype)
@@ -466,8 +466,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         output_table.flush()
 
     if show_progress:
-        loop_wh_progress(copy_chunk, range(num_chunks),
-                         title="Copying table...")
+        loop_wh_progress(copy_chunk, range(num_chunks))
     else:
         for chunk in range(num_chunks):
             copy_chunk(chunk, chunk)
@@ -487,8 +486,8 @@ def copy_table(input_table, output_node, output_fields=None,
         output_dtype = input_table.dtype
     else:
         output_dtype = np.dtype(output_fields)
-    output_table = output_file.createTable(output_node, input_table.name,
-                                           output_dtype, **complete_kwargs)
+    output_table = output_file.create_table(output_node, input_table.name,
+                                            output_dtype, **complete_kwargs)
     return append_table(input_table, output_table, chunksize, condition,
                         stop=stop, show_progress=show_progress)
 
@@ -663,64 +662,69 @@ class DataSet(object):
     pass
 
 
+def load_path_globals(globals_def):
+    localdir = config.input_directory
+    globals_data = {}
+    for name, global_def in globals_def.iteritems():
+        if 'path' not in global_def:
+            continue
+        kind, info = load_def(localdir, name, global_def, [])
+        if kind == 'table':
+            fields, numlines, datastream, csvfile = info
+            array = stream_to_array(fields, datastream, numlines)
+        else:
+            assert kind == 'ndarray'
+            array = info
+        globals_data[name] = array
+    return globals_data
+
+
 def index_tables(globals_def, entities, fpath):
     print("reading data from %s ..." % fpath)
 
-    input_file = tables.openFile(fpath, mode="r")
+    input_file = tables.open_file(fpath)
     try:
         input_root = input_file.root
 
-        #TODO: move the checking (assertValidType) to a separate function
-        globals_data = {}
-        if globals_def:
-            # is a globals node needed?
-            if any('path' not in g_def for g_def in globals_def.itervalues()):
-                if 'globals' in input_root:
-                    globals_node = input_root.globals
-                else:
-                    raise Exception('could not find any globals in the input '
-                                    'data file (but some are declared in the '
-                                    'simulation file)')
-            else:
-                globals_node = None
-            for name, global_def in globals_def.iteritems():
-                if 'path' in global_def:
-                    fdir = dirname(fpath)
-                    kind, info = load_def(fdir, name, global_def, [])
-                    if kind == 'table':
-                        fields, numlines, datastream, csvfile = info
-                        array = stream_to_array(fields, datastream, numlines)
-                    else:
-                        assert kind == 'ndarray'
-                        array = info
-                    globals_data[name] = array
-                    continue
+        if any('path' not in g_def for g_def in globals_def.itervalues()) and \
+                'globals' not in input_root:
+            raise Exception('could not find any globals in the input data file '
+                            '(but some are declared in the simulation file)')
 
-                if name not in globals_node:
-                    raise Exception("could not find 'globals/%s' in the input "
-                                    "data file" % name)
+        globals_data = load_path_globals(globals_def)
 
-                global_data = getattr(globals_node, name)
+        globals_node = getattr(input_root, 'globals', None)
+        for name, global_def in globals_def.iteritems():
+            # already loaded from another source (path)
+            if name in globals_data:
+                continue
 
-                global_type = global_def.get('type', global_def.get('fields'))
-                assert_valid_type(global_data, global_type, context=name)
-                array = global_data.read()
-                if isinstance(global_type, list):
-                    # make sure we do not keep in memory columns which are
-                    # present in the input file but where not asked for by the
-                    # modeller. They are not accessible anyway.
-                    array = add_and_drop_fields(array, global_type)
-                attrs = global_data.attrs
-                dim_names = getattr(attrs, 'dimensions', None)
-                if dim_names is not None:
-                    # we serialise dim_names as a numpy array so that it is
-                    # stored as a native hdf type and not a pickle but we
-                    # prefer to work with simple lists
-                    dim_names = list(dim_names)
-                    pvalues = [getattr(attrs, 'dim%d_pvalues' % i)
-                               for i in range(len(dim_names))]
-                    array = LabeledArray(array, dim_names, pvalues)
-                globals_data[name] = array
+            if name not in globals_node:
+                raise Exception("could not find 'globals/%s' in the input "
+                                "data file" % name)
+
+            global_data = getattr(globals_node, name)
+
+            global_type = global_def.get('type', global_def.get('fields'))
+            # TODO: move the checking (assertValidType) to a separate function
+            assert_valid_type(global_data, global_type, context=name)
+            array = global_data.read()
+            if isinstance(global_type, list):
+                # make sure we do not keep in memory columns which are
+                # present in the input file but where not asked for by the
+                # modeller. They are not accessible anyway.
+                array = add_and_drop_fields(array, global_type)
+            attrs = global_data.attrs
+            dim_names = getattr(attrs, 'dimensions', None)
+            if dim_names is not None:
+                # we serialise dim_names as a numpy array so that it is
+                # stored as a native hdf type and not a pickle but we
+                # prefer to work with simple lists
+                dim_names = list(dim_names)
+                pvalues = [getattr(attrs, 'dim%d_pvalues' % i)
+                           for i in range(len(dim_names))]
+                array = LabeledArray(array, dim_names, pvalues)
+            globals_data[name] = array
 
         input_entities = input_root.entities
 
@@ -781,13 +785,13 @@ class H5Data(DataSource):
     def run(self, globals_def, entities, start_period):
         input_file, dataset = index_tables(globals_def, entities,
                                            self.input_path)
-        output_file = tables.openFile(self.output_path, mode="w")
+        output_file = tables.open_file(self.output_path, mode="w")
 
         try:
             globals_node = getattr(input_file.root, 'globals', None)
             if globals_node is not None:
-                output_globals = output_file.createGroup("/", "globals",
-                                                         "Globals")
+                output_globals = output_file.create_group("/", "globals",
+                                                          "Globals")
                 # index_tables already checks whether all tables exist and
                 # are coherent with globals_def
                 for name in globals_def:
@@ -796,9 +800,9 @@ class H5Data(DataSource):
                         getattr(globals_node, name)._f_copy(output_globals)
 
             entities_tables = dataset['entities']
-            output_entities = output_file.createGroup("/", "entities",
-                                                      "Entities")
-            output_indexes = output_file.createGroup("/", "indexes", "Indexes")
+            output_entities = output_file.create_group("/", "entities",
+                                                       "Entities")
+            output_indexes = output_file.create_group("/", "indexes", "Indexes")
             print(" * copying tables")
             for ent_name, entity in entities.iteritems():
                 print(ent_name, "...")
@@ -807,7 +811,7 @@ class H5Data(DataSource):
 
                 table = entities_tables[ent_name]
 
-                index_node = output_file.createGroup("/indexes", ent_name)
+                index_node = output_file.create_group("/indexes", ent_name)
                 entity.output_index_node = index_node
                 entity.input_index = table.id2rownum_per_period
                 entity.input_rows = table.period_index
@@ -870,29 +874,34 @@ class Void(DataSource):
         self.output_path = output_path
 
     def run(self, globals_def, entities, start_period):
-        output_file = tables.openFile(self.output_path, mode="w")
-        output_entities = output_file.createGroup("/", "entities", "Entities")
+        globals_data = load_path_globals(globals_def)
+        output_file = tables.open_file(self.output_path, mode="w")
+        output_indexes = output_file.create_group("/", "indexes", "Indexes")
+        output_entities = output_file.create_group("/", "entities", "Entities")
         for entity in entities.itervalues():
             dtype = np.dtype(entity.fields)
             entity.array = ColumnArray.empty(0, dtype=dtype)
             entity.array_period = start_period
             entity.id_to_rownum = np.empty(0, dtype=int)
-            output_table = output_file.createTable(
+            output_table = output_file.create_table(
                 output_entities, entity.name, dtype,
                 title="%s table" % entity.name)
 
             entity.input_table = None
             entity.table = output_table
-        return None, output_file, None
+            index_node = output_file.create_group(output_indexes, entity.name)
+            entity.output_index_node = index_node
+        return None, output_file, globals_data
 
 
-def populate_registry(fpath):
-    import entities
-    import registry
-    h5in = tables.openFile(fpath, mode="r")
+def entities_from_h5(fpath):
+    from entities import Entity
+    h5in = tables.open_file(fpath)
     h5root = h5in.root
+    entities = {}
     for table in h5root.entities:
-        registry.entity_registry.add(entities.Entity.from_table(table))
+        entity = Entity.from_table(table)
+        entities[entity.name] = entity
     globals_def = {}
     if hasattr(h5root, 'globals'):
         for table in h5root.globals:
@@ -902,4 +911,4 @@ def populate_registry(fpath):
                 global_def = get_fields(table)
             globals_def[table.name] = global_def
     h5in.close()
-    return globals_def
+    return globals_def, entities

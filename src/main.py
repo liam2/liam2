@@ -6,19 +6,31 @@ from os.path import splitext
 import platform
 import warnings
 
+# this is needed for vitables and needs to happen BEFORE matplotlib is
+# imported (and imports PyQt)
+import sip
+sip.setapi('QString', 2)
+sip.setapi('QVariant', 2)
+
 import yaml
 
 import config
 from simulation import Simulation
 from importer import file2h5
 from console import Console
-from utils import AutoFlushFile
-import registry
-from data import populate_registry, H5Data
+from context import EvaluationContext
+from data import entities_from_h5, H5Data
+from importer import csv2h5
+from simulation import Simulation
 from upgrade import upgrade
+from utils import AutoFlushFile
 from view import viewhdf
 
-__version__ = "0.8.2pre1"
+__version__ = "0.9.1.1"
+
+
+def passthrough(func, *args, **kwargs):
+    return func(*args, **kwargs)
 
 
 def eat_traceback(func, *args, **kwargs):
@@ -44,8 +56,8 @@ def eat_traceback(func, *args, **kwargs):
                     traceback.print_exc(file=f)
                 error_log_path = error_path
             except IOError, log_ex:
-                print(
-                    "WARNING: %s on '%s'" % (log_ex.strerror, log_ex.filename))
+                print("WARNING: %s on '%s'" % (log_ex.strerror,
+                                               log_ex.filename))
             except Exception, log_ex:
                 print(log_ex)
             raise e
@@ -63,9 +75,8 @@ def eat_traceback(func, *args, **kwargs):
                 msg = e.problem
             mark = e.context_mark
         else:
-            if (
-                e.problem == "found character '\\t' that cannot start any "
-                             "token"):
+            if (e.problem ==
+                    "found character '\\t' that cannot start any token"):
                 msg = "found a TAB character instead of spaces"
             else:
                 msg = ""
@@ -98,20 +109,19 @@ def eat_traceback(func, *args, **kwargs):
 def simulate(args):
     print("Using simulation file: '%s'" % args.file)
 
-    simulation = Simulation.from_yaml(args.file, input_dir=args.input_path,
+    simulation = Simulation.from_yaml(args.file,
+                                      input_dir=args.input_path,
                                       input_file=args.input_file,
                                       output_dir=args.output_path,
                                       output_file=args.output_file)
     simulation.run(args.interactive)
-
-
 #    import cProfile as profile
 #    profile.runctx('simulation.run(args.interactive)', vars(), {},
 #                   'c:\\tmp\\simulation.profile')
-# to use profiling data:
-# import pstats
-# p = pstats.Stats('c:\\tmp\\simulation.profile')
-# p.strip_dirs().sort_stats('cum').print_stats(30)
+    # to use profiling data:
+    # import pstats
+    # p = pstats.Stats('c:\\tmp\\simulation.profile')
+    # p.strip_dirs().sort_stats('cum').print_stats(30)
 
 
 def explore(fpath):
@@ -119,20 +129,28 @@ def explore(fpath):
     ftype = 'data' if ext in ('.h5', '.hdf5') else 'simulation'
     print("Using %s file: '%s'" % (ftype, fpath))
     if ftype == 'data':
-        globals_def = populate_registry(fpath)
+        globals_def, entities = entities_from_h5(fpath)
         data_source = H5Data(None, fpath)
-        h5in, _, globals_data = data_source.load(globals_def,
-                                                 registry.entity_registry)
+        h5in, _, globals_data = data_source.load(globals_def, entities)
         h5out = None
-        entity, period = None, None
+        simulation = Simulation(globals_def, None, None, None, None,
+                                entities.values(), None)
+        period, entity_name = None, None
     else:
         simulation = Simulation.from_yaml(fpath)
         h5in, h5out, globals_data = simulation.load()
-        entity = simulation.console_entity
         period = simulation.start_period + simulation.periods - 1
-        globals_def = simulation.globals_def
+        entity_name = simulation.default_entity
+    entities = simulation.entities_map
+    if entity_name is None and len(entities) == 1:
+        entity_name = entities.keys()[0]
+    if period is None and entity_name is not None:
+        entity = entities[entity_name]
+        period = max(entity.output_index.keys())
+    eval_ctx = EvaluationContext(simulation, entities, globals_data, period,
+                                 entity_name)
     try:
-        c = Console(entity, period, globals_def, globals_data)
+        c = Console(eval_ctx)
         c.run()
     finally:
         h5in.close()
@@ -168,6 +186,19 @@ class PrintVersionsAction(argparse.Action):
             cext = False
         print("C extensions are" + (" NOT" if not cext else "") + " available")
 
+        # optional dependencies
+        try:
+            import vitables
+            vt_version = vitables.__version__
+        except ImportError:
+            vt_version = 'N/A'
+
+        try:
+            import matplotlib
+            mpl_version = matplotlib.__version__
+        except ImportError:
+            mpl_version = 'N/A'
+
         py_version = '{} ({})'.format(platform.python_version(),
                                       platform.architecture()[0])
         print("""
@@ -175,10 +206,13 @@ python {py}
 numpy {np}
 numexpr {ne}
 pytables {pt}
-bcolz {ca}
-pyyaml {yml}""".format(py=py_version, np=numpy.__version__,
-                       ne=numexpr.__version__, pt=tables.__version__,
-                       ca=bcolz.__version__, yml=yaml.__version__))
+bcolz {bc}
+pyyaml {yml}
+vitables {vt}
+matplotlib {mpl}
+""".format(py=py_version, np=numpy.__version__, ne=numexpr.__version__,
+           pt=tables.__version__, vt=vt_version, mpl=mpl_version,
+           bc=bcolz.__version__, yml=yaml.__version__))
         parser.exit()
 
 
@@ -236,7 +270,7 @@ def main():
     # this can happen via the environment variable too!
     if config.debug:
         warnings.simplefilter('default')
-        wrapper = lambda func, *args, **kwargs: func(*args, **kwargs)
+        wrapper = passthrough
     else:
         wrapper = eat_traceback
 
@@ -252,7 +286,7 @@ def main():
     elif action == "view":
         args = display, parsed_args.file
     else:
-        raise Exception("invalid action: %s" % action)
+        raise ValueError("invalid action: %s" % action)
     wrapper(*args)
 
 

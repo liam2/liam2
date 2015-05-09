@@ -1,4 +1,5 @@
 @echo off
+call make web
 call make html
 
 call make htmlhelp

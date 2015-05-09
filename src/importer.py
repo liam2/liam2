@@ -145,7 +145,7 @@ def detect_column_types(iterable):
     for i, colname in enumerate(header):
         coltype = coltypes[i]
         if coltype == 0:
-            print("Warning: column %s is all empty, assuming it is float" \
+            print("Warning: column %s is all empty, assuming it is float"
                   % colname)
             coltypes[i] = 3
     num2type = [None, bool, int, float]
@@ -263,14 +263,12 @@ class CSV(object):
             fields = self.fields
             positions = None
         else:
-            missing_fields = set(name for name, _ in fields) - \
-                                 set(self.field_names)
-            if missing_fields:
+            available = self.field_names
+            missing = set(name for name, _ in fields) - set(available)
+            if missing:
                 raise Exception("%s does not contain any field(s) named: %s"
-                                % (self.fpath, ", ".join(missing_fields)))
-            available_fields = self.field_names
-            positions = [available_fields.index(name)
-                         for name, _ in fields]
+                                % (self.fpath, ", ".join(missing)))
+            positions = [available.index(name) for name, _ in fields]
         self.rewind()
         self.next()
         return convert(self.data_stream, fields, positions)
@@ -334,7 +332,7 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
     msg, filters = compression_str2filter(compression)
     print(" - storing %s..." % msg)
     dtype = np.dtype(fields)
-    table = h5file.createTable(node, name, dtype, title=title, filters=filters)
+    table = h5file.create_table(node, name, dtype, title=title, filters=filters)
     # buffered load
     max_buffer_rows = buffersize // dtype.itemsize
     while True:
@@ -367,7 +365,7 @@ def array_to_disk_array(h5file, node, name, array, title='', compression=None):
         disk_array = h5file.createCArray(node, name, array, title,
                                          filters=filters)
     else:
-        disk_array = h5file.createArray(node, name, array, title)
+        disk_array = h5file.create_array(node, name, array, title)
     if isinstance(array, LabeledArray):
         attrs = disk_array.attrs
         # pytables serialises Python lists as pickles but np.arrays as native
@@ -765,14 +763,14 @@ def file2h5(fpath, input_dir='',
     h5_filepath = complete_path(localdir, h5_filename)
     print("Importing in", h5_filepath)
     try:
-        h5file = tables.openFile(h5_filepath, mode="w", title="CSV import")
+        h5file = tables.open_file(h5_filepath, mode="w", title="CSV import")
 
         globals_def = content.get('globals', {})
         if globals_def:
             print()
             print("globals")
             print("-------")
-            const_node = h5file.createGroup("/", "globals", "Globals")
+            const_node = h5file.create_group("/", "globals", "Globals")
             for global_name, global_def in globals_def.iteritems():
                 print()
                 print(" %s" % global_name)
@@ -800,7 +798,7 @@ def file2h5(fpath, input_dir='',
         print()
         print("entities")
         print("--------")
-        ent_node = h5file.createGroup("/", "entities", "Entities")
+        ent_node = h5file.create_group("/", "entities", "Entities")
         for ent_name, entity_def in content['entities'].iteritems():
             print()
             print(" %s" % ent_name)

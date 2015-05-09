@@ -2,21 +2,25 @@ entities:
     household:
         fields:
             # period and id are implicit
-            - income:  float
+            - income: float
+
+        processes:
+            dummy:
+                - show("dummy")
 
     person:
         fields:
             # period and id are implicit
-            - age:          int
-            - earnings:     float
-            - errsal:       float
-            - male:         bool
-            - work:         bool
-            - eduach:       int
-            - chronicill:   bool
+            - age:        int
+            - earnings:   float
+            - errsal:     float
+            - male:       bool
+            - work:       bool
+            - eduach:     int
+            - chronicill: bool
 
-            - partner_id:   int
-            - hh_id:        int
+            - partner_id: int
+            - hh_id:      int
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -65,6 +69,7 @@ entities:
 simulation:
     processes:
         - person: [birth, earnings, marriage]
+        - household: [dummy]
 
     input:
         method: void

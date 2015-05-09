@@ -2,33 +2,63 @@ from __future__ import print_function
 
 import numpy as np
 
+from context import context_length
+from expr import (expr_eval, getdtype, hasvalue, FunctionExpr, always,
+                  firstarg_dtype, get_missing_value)
 from utils import safe_put
-from expr import expr_eval, getdtype, hasvalue
-from exprbases import FunctionExpression
 
 
-class ValueForPeriod(FunctionExpression):
-    func_name = 'value_for_period'
+class TimeFunction(FunctionExpr):
+    no_eval = ('expr',)
 
-    def __init__(self, expr, period, missing='auto'):
-        FunctionExpression.__init__(self, expr)
-        self.period = period
-        self.missing = missing
+    @staticmethod
+    def fill_missing_values(ids, values, context, filler='auto'):
+        """
+        ids: ids present in past period
+        values: values in past period
+        context: current period context
+        """
 
-    def evaluate(self, context):
-        entity = context['__entity__']
-        period = expr_eval(self.period, context)
-        return entity.value_for_period(self.expr, period, context,
-                                       self.missing)
+        if filler is 'auto':
+            filler = get_missing_value(values)
+        result = np.empty(context_length(context), dtype=values.dtype)
+        result.fill(filler)
+        if len(ids):
+            id_to_rownum = context.id_to_rownum
+            # if there was more objects in the past than in the current
+            # period. Currently, remove() keeps old ids, so this never
+            # happens, but if we ever change remove(), we'll need to add
+            # such a check everywhere we use id_to_rownum
+            # invalid_ids = ids > len(id_to_rownum)
+            # if np.any(invalid_ids):
+            #     fix ids
+            rows = id_to_rownum[ids]
+            safe_put(result, rows, values)
+        return result
+
+    @staticmethod
+    def value_for_period(expr, period, context, fill='auto'):
+        sub_context = context.clone(fresh_data=True, period=period)
+        result = expr_eval(expr, sub_context)
+        if isinstance(result, np.ndarray) and result.shape:
+            ids = sub_context['id']
+            if fill is None:
+                return ids, result
+            else:
+                # expand values to the current "outer" context
+                return TimeFunction.fill_missing_values(ids, result, context,
+                                                        fill)
+        else:
+            return result
 
 
-class Lag(FunctionExpression):
-    func_name = 'lag'
+class ValueForPeriod(TimeFunction):
+    funcname = 'value_for_period'
 
-    def __init__(self, expr, num_periods=1, missing='auto'):
-        FunctionExpression.__init__(self, expr)
-        self.num_periods = num_periods
-        self.missing = missing
+    def compute(self, context, expr, period, missing='auto'):
+        return self.value_for_period(expr, period, context, missing)
+
+    dtype = firstarg_dtype
 
     def evaluate(self, context):
         entity = context['__entity__']
@@ -41,15 +71,23 @@ class Lag(FunctionExpression):
         return entity.value_for_period(self.expr, period, context,
                                        self.missing)
 
-    def dtype(self, context):
-        return getdtype(self.expr, context)
+#TODO: this should be a compound expression:
+# Lag(expr, numperiods, missing)
+# ->
+# ValueForPeriod(expr, Subtract(Variable('period'), numperiods), missing)
+class Lag(TimeFunction):
+    def compute(self, context, expr, num_periods=1, missing='auto'):
+        period = context.period - num_periods
+        return self.value_for_period(expr, period, context, missing)
+
+    dtype = firstarg_dtype
 
 
-class Duration(FunctionExpression):
-    func_name = 'duration'
+class Duration(TimeFunction):
+    no_eval = ('bool_expr',)
 
-    def evaluate(self, context):
-        entity = context['__entity__']
+    def compute(self, context, bool_expr):
+        entity = context.entity
 
         baseperiod = entity.base_period
         lag_idx = context['period_idx'] - 1
@@ -68,8 +106,8 @@ class Duration(FunctionExpression):
         
         print( 'Warning : duration works only with year0 so far')             
         while np.any(still_running) and period >= baseperiod:
-            ids, values = entity.value_for_period(bool_expr, period, context,
-                                                  fill=None)
+            ids, values = self.value_for_period(bool_expr, period, context,
+                                                fill=None)
             missing = np.ones(res_size, dtype=bool)
             period_value = np.zeros(res_size, dtype=bool)
             if len(ids):
@@ -86,32 +124,32 @@ class Duration(FunctionExpression):
         
         return result
 
+    #TODO: move the check to __init__ and use dtype = always(int)
     def dtype(self, context):
-        assert getdtype(self.expr, context) == bool
+        assert getdtype(self.args[0], context) == bool
         return int
 
 
-class TimeAverage(FunctionExpression):
-    func_name = 'tavg'
+class TimeAverage(TimeFunction):
+    funcname = 'tavg'
 
-    def evaluate(self, context):
-        entity = context['__entity__']
+    def compute(self, context, expr):
+        entity = context.entity
 
         baseperiod = entity.base_period
-        period = context['period'] - 1
-        expr = self.expr
+        period = context.period - 1
 
         res_size = len(entity.array)
 
         num_values = np.zeros(res_size, dtype=np.int)
         last_period_wh_value = np.empty(res_size, dtype=np.int)
-        last_period_wh_value.fill(context['period'])  # current period
+        last_period_wh_value.fill(context.period)  # current period
 
         sum_values = np.zeros(res_size, dtype=np.float)
         id_to_rownum = context.id_to_rownum
         while period >= baseperiod:
-            ids, values = entity.value_for_period(expr, period, context,
-                                                  fill=None)
+            ids, values = self.value_for_period(expr, period, context,
+                                                fill=None)
 
             # filter out lines which are present because there was a value for
             # that individual at that period but not for that column
@@ -134,16 +172,17 @@ class TimeAverage(FunctionExpression):
             period -= 1
         return sum_values / num_values
 
+    dtype = always(float)
 
-class TimeSum(FunctionExpression):
-    func_name = 'tsum'
 
-    def evaluate(self, context):
-        entity = context['__entity__']
+class TimeSum(TimeFunction):
+    funcname = 'tsum'
+
+    def compute(self, context, expr):
+        entity = context.entity
 
         baseperiod = entity.base_period
-        period = context['period'] - 1
-        expr = self.expr
+        period = context.period - 1
 
         typemap = {bool: int, int: int, float: float}
         res_type = typemap[getdtype(expr, context)]
@@ -152,8 +191,8 @@ class TimeSum(FunctionExpression):
         sum_values = np.zeros(res_size, dtype=res_type)
         id_to_rownum = context.id_to_rownum
         while period >= baseperiod:
-            ids, values = entity.value_for_period(expr, period, context,
-                                                  fill=None)
+            ids, values = self.value_for_period(expr, period, context,
+                                                fill=None)
 
             # filter out lines which are present because there was a value for
             # that individual at that period but not for that column
@@ -171,10 +210,12 @@ class TimeSum(FunctionExpression):
             period -= 1
         return sum_values
 
+    dtype = firstarg_dtype
+
 functions = {
     'value_for_period': ValueForPeriod,
     'lag': Lag,
     'duration': Duration,
     'tavg': TimeAverage,
-    'tsum': TimeSum,
+    'tsum': TimeSum
 }

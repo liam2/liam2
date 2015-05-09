@@ -162,7 +162,7 @@ def filter_to_indices(ndarray[int8_t, cast=True] values):
     for i in range(n):
         val = values[i]
         if val:
-            indices[count] = i
+            indices[count] = <int32_t>i;
             count += 1
 
     return indices
@@ -196,7 +196,7 @@ def group_count_bool(ndarray[int8_t, cast=True] values, object filter_value):
     if filter_value is True:
         for i in range(n):
             count_true += values[i]
-        count_false = n - count_true
+        count_false = <int32_t>n - count_true
     else:
         assert isinstance(filter_value, np.ndarray) and (
                    filter_value.dtype.type is np.bool8)
@@ -226,7 +226,8 @@ def _group_labels_int32(ndarray[int32_t] values, object filter_value):
         ndarray[int32_t] labels = np.empty(n, dtype=np.int32)
         ndarray[int32_t] counts = np.empty(n, dtype=np.int32)
         dict reverse = {}
-        Py_ssize_t idx, count = 0
+        Py_ssize_t idx
+        int32_t count = 0
         int ret
         int32_t val
         khiter_t k
@@ -235,7 +236,7 @@ def _group_labels_int32(ndarray[int32_t] values, object filter_value):
         int8_t keep_value
 
     table = kh_init_int32()
-    kh_resize_int32(table, n)
+    kh_resize_int32(table, <khint_t>n)
 
     if filter_value is -1:
         # no explicit filter column but filter negative *values*
@@ -248,7 +249,7 @@ def _group_labels_int32(ndarray[int32_t] values, object filter_value):
             k = kh_get_int32(table, val)
             if k != table.n_buckets:
                 idx = table.vals[k]
-                labels[i] = idx
+                labels[i] = <int32_t>idx
                 counts[idx] = counts[idx] + 1
             else:
                 k = kh_put_int32(table, val, &ret)
@@ -267,7 +268,7 @@ def _group_labels_int32(ndarray[int32_t] values, object filter_value):
             k = kh_get_int32(table, val)
             if k != table.n_buckets:
                 idx = table.vals[k]
-                labels[i] = idx
+                labels[i] = <int32_t>idx
                 counts[idx] = counts[idx] + 1
             else:
                 k = kh_put_int32(table, val, &ret)
@@ -291,7 +292,7 @@ def _group_labels_int32(ndarray[int32_t] values, object filter_value):
                 k = kh_get_int32(table, val)
                 if k != table.n_buckets:
                     idx = table.vals[k]
-                    labels[i] = idx
+                    labels[i] = <int32_t>idx
                     counts[idx] = counts[idx] + 1
                 else:
                     k = kh_put_int32(table, val, &ret)
@@ -322,7 +323,8 @@ def _group_labels_int32_light(ndarray[int32_t] values, object filter_value):
         Py_ssize_t i, n = len(values)
         ndarray[int32_t] labels = np.empty(n, dtype=np.int32)
         dict reverse = {}
-        Py_ssize_t idx, count = 0
+        Py_ssize_t idx
+        int32_t count = 0
         int ret
         int32_t val
         khiter_t k
@@ -331,7 +333,7 @@ def _group_labels_int32_light(ndarray[int32_t] values, object filter_value):
         int8_t keep_value
 
     table = kh_init_int32()
-    kh_resize_int32(table, n)
+    kh_resize_int32(table, <khint_t>n)
 
     if filter_value is True:
         for i in range(n):
@@ -339,7 +341,7 @@ def _group_labels_int32_light(ndarray[int32_t] values, object filter_value):
             k = kh_get_int32(table, val)
             if k != table.n_buckets:
                 idx = table.vals[k]
-                labels[i] = idx
+                labels[i] = <int32_t>idx
             else:
                 k = kh_put_int32(table, val, &ret)
                 #XXX: the behavior on put failure seem weird:
@@ -362,7 +364,7 @@ def _group_labels_int32_light(ndarray[int32_t] values, object filter_value):
                 k = kh_get_int32(table, val)
                 if k != table.n_buckets:
                     idx = table.vals[k]
-                    labels[i] = idx
+                    labels[i] = <int32_t>idx
                 else:
                     k = kh_put_int32(table, val, &ret)
                     if not ret:
@@ -559,7 +561,7 @@ def _group_labels(ndarray values, object filter_value):
                "bad value type %s" % value_type
 
     if value_type is np.bool8:
-        n = len(values)
+        n = <int32_t>len(values)
         count_false, count_true = group_count_bool(values, filter_value)
         if count_false == 0:
             # count_true == n - num_missing
@@ -672,10 +674,11 @@ def group_indices_nd(list columns, object filter_value):
        ...}
     '''
     cdef:
-        Py_ssize_t i, j, ndim, n, count
+        Py_ssize_t i, j, ndim, n, totalcount
         ndarray[int32_t] counts, arr, seen
         ndarray values, labels, combined_labels
         ndarray[int32_t] labels32
+        int32_t count
         int32_t loc
         int32_t packed_id
         int32_t divisor
@@ -698,7 +701,7 @@ def group_indices_nd(list columns, object filter_value):
     values = columns[0]
     if ndim > 1:
         ids, labels = _group_labels_light(values, filter_value)
-        count = len(ids)
+        totalcount = len(ids)
         # The tricky case is when count (len(ids)) is 1 but in that case, the
         # labels should all be 0, so we do fine.
         combined_labels = labels
@@ -715,8 +718,11 @@ def group_indices_nd(list columns, object filter_value):
             # negative.
             combined_labels = np.where(combined_labels < 0,
                                        -1,
-                                       labels * count + combined_labels)
-            count *= len(ids)
+                                       labels * totalcount + combined_labels)
+            totalcount *= len(ids)
+            if totalcount > 2 ** 31:
+                raise Exception("too many combination of values: the "
+                                "combined labels (32bits) overflowed")
             dim_id_maps.append(ids)
 
         # combined_labels can be < 0 for filtered values or NaNs
@@ -746,7 +752,7 @@ def group_indices_nd(list columns, object filter_value):
             divisor = 1
             for j in range(ndim):
                 dim_id_map = dim_id_maps[j]
-                count = len(dim_id_map)
+                count = <int32_t>len(dim_id_map)
                 dim_id = (packed_id / divisor) % count
                 dim_val = dim_id_map[dim_id]
                 Py_INCREF(dim_val)
@@ -777,7 +783,7 @@ def group_indices_nd(list columns, object filter_value):
             label = labels32[i]
             if label >= 0:
                 loc = seen[label]
-                vecs[label][loc] = i
+                vecs[label][loc] = <int32_t>i
                 seen[label] = loc + 1
     else:
         bool_filter = filter_value
@@ -788,7 +794,7 @@ def group_indices_nd(list columns, object filter_value):
                 label = labels32[i]
                 if label >= 0:
                     loc = seen[label]
-                    vecs[label][loc] = i
+                    vecs[label][loc] = <int32_t>i
                     seen[label] = loc + 1
 
     free(vecs)

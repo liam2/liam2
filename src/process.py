@@ -1,14 +1,13 @@
 from __future__ import division, print_function
 
 import collections
-from types import NoneType
 
 import numpy as np
 
 import config
 from diff_h5 import diff_array
 from data import append_carray_to_table, ColumnArray
-from expr import Expr, type_to_idx, idx_to_type, expr_eval, Variable
+from expr import Expr, Variable, type_to_idx, idx_to_type, expr_eval, expr_cache
 from context import EntityContext
 import importlib
 import utils
@@ -19,20 +18,18 @@ class BreakpointException(Exception):
 
 
 class Process(object):
-    def __init__(self):
-        self.name = None
-        self.entity = None
-
-    def attach(self, name, entity):
+    def __init__(self, name, entity):
         self.name = name
         self.entity = entity
 
-    def run_guarded(self, simulation, const_dict):
+    def run_guarded(self, context):
         try:
-            context = EntityContext(self.entity, const_dict.copy())
+            # purge extra
+            context.entity_data.extra = {}
             self.run(context)
         except BreakpointException:
-            simulation.stepbystep = True
+            #XXX: store this in the (evaluation) context instead?
+            context.simulation.stepbystep = True
 
     def run(self, context):
         raise NotImplementedError()
@@ -40,7 +37,7 @@ class Process(object):
     def expressions(self):
         raise NotImplementedError()
 
-    def __str__(self):
+    def __repr__(self):
         return "<process '%s'>" % self.name
 
 class ExtProcess(Process):
@@ -78,42 +75,22 @@ class ExtProcess(Process):
         if isinstance(self.expr, Expr):
             yield self.expr
 
-class Compute(Process):
-    """these processes only compute an expression and do not store their
-       result (but they usually have side-effects). No class inherits from
-       this but we use it when a user does not store anywhere the result of
-       an expression (with a side effect) which *does* return a value.
-       new() is a good example for this"""
-
-    def __init__(self, expr):
-        super(Compute, self).__init__()
-        self.expr = expr
-
-    def run(self, context):
-        expr_eval(self.expr, context)
-
-    def expressions(self):
-        if isinstance(self.expr, Expr):
-            yield self.expr
-
-
 class Assignment(Process):
-    def __init__(self, expr):
-        super(Assignment, self).__init__()
+    def __init__(self, name, entity, expr):
+        super(Assignment, self).__init__(name, entity)
         self.expr = expr
-        self.temporary = True
-
-    def attach(self, name, entity):
-        super(Assignment, self).attach(name, entity)
-        if self.name is None:
-            raise Exception('trying to store None key')
         self.temporary = name not in entity.stored_fields
 
     def run(self, context):
         value = expr_eval(self.expr, context)
-        self.store_result(value)
+        # Assignment to a field with a name == None is valid: it simply means
+        # the result must not be stored. This happens when a user does not
+        # store anywhere the result of an expression (it usually has side
+        # effects -- csv, new, remove, ...).
+        if self.name is not None:
+            self.store_result(value, context)
 
-    def store_result(self, result):
+    def store_result(self, result, context):
         if result is None:
             return
 
@@ -142,6 +119,14 @@ class Assignment(Process):
         # the whole column is updated
         target[self.name] = result
 
+        # invalidate cache
+        period = context.period
+        if isinstance(period, np.ndarray):
+            assert np.isscalar(period) or not period.shape
+            period = int(period)
+        expr_cache.invalidate(period, context.entity_name,
+                              Variable(self.entity, self.name))
+
     def expressions(self):
         if isinstance(self.expr, Expr):
             yield self.expr
@@ -150,29 +135,28 @@ class Assignment(Process):
 class While(Process):
     """this class implements while loops"""
 
-    def __init__(self, cond, code):
+    def __init__(self, name, entity, cond, code):
         """
         cond -- an Expr returning a (single) boolean, it means the condition
                 value must be the same for all individuals
         code -- a ProcessGroup
         """
-        Process.__init__(self)
+        Process.__init__(self, name, entity)
         self.cond = cond
         assert isinstance(code, ProcessGroup)
         self.code = code
 
-    def attach(self, name, entity):
-        Process.attach(self, name, entity)
-        self.code.attach('while:code', entity)
-
-    def run_guarded(self, simulation, const_dict):
+    def run_guarded(self, context):
         while True:
-            context = EntityContext(self.entity, const_dict.copy())
             cond_value = expr_eval(self.cond, context)
             if not cond_value:
                 break
 
-            self.code.run_guarded(simulation, const_dict)
+            self.code.run_guarded(context)
+            #FIXME: this is a bit brutal :) This is necessary because
+            # otherwise test_while loops indefinitely (because "values" is
+            # never incremented)
+            expr_cache.clear()
 
     def expressions(self):
         if isinstance(self.cond, Expr):
@@ -181,38 +165,16 @@ class While(Process):
             yield e
 
 
-class AbstractProcessGroup(Process):
-    def backup_and_purge_locals(self):
-        # backup and purge local variables
-        backup = {}
-        for name in self.entity.local_var_names:
-            backup[name] = self.entity.temp_variables.pop(name)
-        return backup
-
-    def purge_and_restore_locals(self, backup):
-        # purge the local from the function we just ran
-        self.entity.purge_locals()
-        # restore local variables for our caller
-        for k, v in backup.iteritems():
-            self.entity.temp_variables[k] = v
-
-
-class ProcessGroup(AbstractProcessGroup):
-    def __init__(self, name, subprocesses, purge=True):
-        super(ProcessGroup, self).__init__()
-        self.name = name
+class ProcessGroup(Process):
+    def __init__(self, name, entity, subprocesses, purge=True):
+        super(ProcessGroup, self).__init__(name, entity)
         self.subprocesses = subprocesses
         self.calls = collections.Counter()
         self.purge = purge
+        self.versions = {}
 
-    def attach(self, name, entity):
-        assert name == self.name
-        Process.attach(self, name, entity)
-        for k, v in self.subprocesses:
-            v.attach(k, entity)
-
-    def run_guarded(self, simulation, const_dict):
-        period = const_dict['period']
+    def run_guarded(self, context):
+        period = context.period
 
         if config.log_level == "processes":
             print()
@@ -221,12 +183,11 @@ class ProcessGroup(AbstractProcessGroup):
                 print("    *", end=' ')
                 if k is not None:
                     print(k, end=' ')
-                utils.timed(v.run_guarded, simulation, const_dict)
+                utils.timed(v.run_guarded, context)
             else:
-                v.run_guarded(simulation, const_dict)
+                v.run_guarded(context)
 #            print "done."
-            simulation.start_console(v.entity, period,
-                                     const_dict['__globals__'])
+            context.simulation.start_console(context)
         if config.autodump is not None:
             self._autodump(period)
 
@@ -265,24 +226,25 @@ class ProcessGroup(AbstractProcessGroup):
         else:
             return self.name
 
-    def _autodump(self, period):
+    def _autodump(self, context):
         fields = self._modified_fields
         if not fields:
             return
 
+        period = context.period
         fname, numrows = config.autodump
         h5file = config.autodump_file
         name = self._tablename(period)
         dtype = np.dtype([(k, v.dtype) for k, v in fields])
-        table = h5file.createTable('/{}'.format(period), name, dtype,
+        table = h5file.create_table('/{}'.format(period), name, dtype,
                                    createparents=True)
 
         fnames = [k for k, _ in fields]
         print("writing {} to {}/{}/{} ...".format(', '.join(fnames),
                                                   fname, period, name))
 
-        context = EntityContext(self.entity, {'period': period})
-        append_carray_to_table(context, table, numrows)
+        entity_context = EntityContext(self.entity, {'period': period})
+        append_carray_to_table(entity_context, table, numrows)
         print("done.")
 
     def _autodiff(self, period, numdiff=10, raiseondiff=False):
@@ -306,17 +268,65 @@ class ProcessGroup(AbstractProcessGroup):
             for e in p.expressions():
                 yield e
 
+    def ssa(self, fields_versions):
+        procedure_vars = set(k for k, p in self.subprocesses if k is not None)
+        global_vars = set(self.entity.variables.keys())
+        local_vars = procedure_vars - global_vars
 
-class Function(AbstractProcessGroup):
+        local_versions = collections.defaultdict(int)
+        for k, p in self.subprocesses:
+            # mark all variables in the expression with their current version
+            for expr in p.expressions():
+                for node in expr.all_of(Variable):
+                    versions = (local_versions if node.name in local_vars
+                                else fields_versions)
+                    #FIXME: for .version to be meaningful, I need to have
+                    # a different variable instance each time the variable
+                    # is used.
+                    #>>> the best solution AFAIK is to parse the expressions
+                    # in the same order as the "agespine".
+                    # That way we will be able to type all temporary variables
+                    # directly, and it would also solve the conditional
+                    # context hack. There is no problem with temporary variables
+                    # having different types over their lifetimes as these
+                    # will actually be different variables (because their
+                    # version will be different). There is no problem with
+                    # a variable being different in two control flow
+                    # "branches", because we do not have that case: if() coerce
+                    # types.
+                    # note that even if a branch is never "taken" (an if
+                    # condition that is always True or always False or a forloop
+                    # without any iteration), the type of the expressions
+                    # that variables are assigned to in that branch will
+                    # influence the type of the variable in subsequent code.
+                    # XXX: what if I have a user-defined function/procedure that
+                    # I call from two different places with an argument of a
+                    # different type? ideally, it should generate two distinct
+                    # procedures, but I am not there yet. Having a check on the
+                    # second call that the argument passed is of the same type
+                    # than the signature type (which was inferred from the
+                    # first call) seems enough for now.
+                    node.version = versions[node.name]
+                    node.used += 1
+            # on assignment, increase the variable version
+            if isinstance(p, Assignment):
+                #XXX: is this always == k?
+                target = p.predictor
+                versions = (local_versions if target in local_vars
+                            else fields_versions)
+                versions[target] += 1
+
+
+class Function(Process):
     """this class implements user-defined functions"""
 
-    def __init__(self, argnames, code=None, result=None):
+    def __init__(self, name, entity, argnames, code=None, result=None):
         """
         args -- a list of strings
         code -- a ProcessGroup (or None)
         result -- an Expr (or None)
         """
-        Process.__init__(self)
+        Process.__init__(self, name, entity)
 
         assert isinstance(argnames, list)
         assert all(isinstance(a, basestring) for a in argnames)
@@ -328,11 +338,7 @@ class Function(AbstractProcessGroup):
         assert result is None or isinstance(result, Expr)
         self.result = result
 
-    def attach(self, name, entity):
-        Process.attach(self, name, entity)
-        self.code.attach('func:code', entity)
-
-    def run_guarded(self, simulation, const_dict, *args, **kwargs):
+    def run_guarded(self, context, *args, **kwargs):
         #XXX: wouldn't some form of cascading context make all this junk much
         # cleaner? Context(globalvars, localvars) (globalvars contain both
         # entity fields and global temporaries)
@@ -340,7 +346,6 @@ class Function(AbstractProcessGroup):
         backup = self.backup_and_purge_locals()
 
         if len(args) != len(self.argnames):
-            print(self.argnames)
             raise TypeError("takes exactly %d arguments (%d given)" %
                             (len(self.argnames), len(args)))
 
@@ -350,21 +355,51 @@ class Function(AbstractProcessGroup):
                                  "'%s' because there is a field with the "
                                  "same name" % (self.name, name))
 
+        # contextual filter should not transfer to the called function (even
+        # if that would somewhat make sense) because in many cases the
+        # columns used in the contextual filter are not available within the
+        # called function. This is only relevant for functions called within
+        # an if() expression.
+        context = context.clone(filter_expr=None)
+
         # add arguments to the local namespace
         for name, value in zip(self.argnames, args):
             # backup the variable if it existed in the caller namespace
             if name in self.entity.temp_variables:
+                # we can safely assign to backup without checking if that name
+                # was already assigned because it is not possible for a variable
+                # to be both in entity.temp_variables and in backup (they are
+                # removed from entity.temp_variables).
                 backup[name] = self.entity.temp_variables.pop(name)
-            self.entity.temp_variables[name] = value
 
-        self.code.run_guarded(simulation, const_dict)
-        context = EntityContext(self.entity, const_dict)
+            # cannot use context[name] = value because that would store the
+            # value in .extra, which is wiped at the start of each process
+            # and we need it to be available across all processes of the
+            # function
+            self.entity.temp_variables[name] = value
+        self.code.run_guarded(context)
         result = expr_eval(self.result, context)
 
         self.purge_and_restore_locals(backup)
         return result
 
     def expressions(self):
-        #XXX: not sure what to put here as I don't remember what it is used for
-        for e in self.code.expressions():
-            yield e
+        if self.code is not None:
+            for e in self.code.expressions():
+                yield e
+        if self.result is not None:
+            yield self.result
+
+    def backup_and_purge_locals(self):
+        # backup and purge local variables
+        backup = {}
+        for name in self.entity.local_var_names:
+            backup[name] = self.entity.temp_variables.pop(name)
+        return backup
+
+    def purge_and_restore_locals(self, backup):
+        # purge the local from the function we just ran
+        self.entity.purge_locals()
+        # restore local variables for our caller
+        for k, v in backup.iteritems():
+            self.entity.temp_variables[k] = v

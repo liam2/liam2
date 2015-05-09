@@ -2,92 +2,71 @@ from __future__ import print_function
 
 import numpy as np
 
-from expr import (Variable, getdtype, expr_eval,
-                  collect_variables, traverse_expr, get_tmp_varname,
-                  ispresent)
-from exprbases import EvaluableExpression, NumpyAggregate, FilteredExpression
+from expr import (Variable, BinaryOp, getdtype, expr_eval,
+                  ispresent, FunctionExpr, always, firstarg_dtype)
+from exprbases import NumpyAggregate, FilteredExpression
 import exprmisc
 from context import context_length
-from utils import deprecated
-#from utils import nansum
+from utils import removed, argspec
+
+try:
+    import bottleneck as bn
+    nanmin = bn.nanmin
+    nanmax = bn.nanmax
+    nansum = bn.nansum
+except ImportError:
+    nanmin = np.nanmin
+    nanmax = np.nanmax
+    nansum = np.nansum
 
 
 class All(NumpyAggregate):
-    func_name = 'all'
-    np_func = (np.all,)
-    arg_names = ('a', 'axis', 'out', 'keepdims')
-
-    #noinspection PyMethodMayBeStatic,PyUnusedLocal
-    def dtype(self, context):
-        return bool
+    np_func = np.all
+    dtype = always(bool)
 
 
 class Any(NumpyAggregate):
-    func_name = 'any'
-    np_func = (np.any,)
-    arg_names = ('a', 'axis', 'out', 'keepdims')
-
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return bool
+    np_func = np.any
+    dtype = always(bool)
 
 
 #XXX: inherit from FilteredExpression instead?
-class Count(EvaluableExpression):
-    def __init__(self, filter=None):
-        self.filter = filter
-
-    def evaluate(self, context):
-        if self.filter is None:
+class Count(FunctionExpr):
+    def compute(self, context, filter=None):
+        if filter is None:
             return context_length(context)
         else:
             #TODO: check this at "compile" time (in __init__), though for
             # that we need to know the type of all temporary variables
             # first
-            if getdtype(self.filter, context) is not bool:
-                raise Exception("count filter must be a boolean expression")
-            return np.sum(expr_eval(self.filter, context))
+            if not np.issubdtype(filter.dtype, bool):
+                raise ValueError("count filter must be a boolean expression")
+            return np.sum(filter)
 
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return int
-
-    def traverse(self, context):
-        for node in traverse_expr(self.filter, context):
-            yield node
-        yield self
-
-    def collect_variables(self, context):
-        return collect_variables(self.filter, context)
-
-    def __str__(self):
-        filter_str = str(self.filter) if self.filter is not None else ''
-        return "count(%s)" % filter_str
+    dtype = always(int)
 
 
 class Min(NumpyAggregate):
-    func_name = 'min'
-    np_func = (np.amin,)
-    nan_func = (np.nanmin,)
-    arg_names = ('a', 'axis', 'out')
-
-    def dtype(self, context):
-        return getdtype(self.args[0], context)
+    np_func = np.amin
+    nan_func = (nanmin,)
+    dtype = firstarg_dtype
+    # manually defined argspec so that is works with bottleneck (which is a
+    # builtin function)
+    argspec = argspec('a, axis=None', **NumpyAggregate.kwonlyargs)
 
 
 class Max(NumpyAggregate):
-    func_name = 'max'
-    np_func = (np.amax,)
-    nan_func = (np.nanmax,)
-    arg_names = ('a', 'axis', 'out')
-
-    def dtype(self, context):
-        return getdtype(self.args[0], context)
+    np_func = np.amax
+    nan_func = (nanmax,)
+    dtype = firstarg_dtype
+    # manually defined argspec so that is works with bottleneck (which is a
+    # builtin function)
+    argspec = argspec('a, axis=None', **NumpyAggregate.kwonlyargs)
 
 
 def na_sum(a, overwrite=False):
-    if issubclass(a.dtype.type, np.inexact):
-        func = np.nansum
+    if np.issubdtype(a.dtype, np.inexact):
+        func = nansum
     else:
         func = np.sum
         if overwrite:
@@ -98,10 +77,8 @@ def na_sum(a, overwrite=False):
 
 
 #class Sum(NumpyAggregate):
-#    func_name = 'sum'
-#    np_func = (np.sum,)
+#    np_func = np.sum
 #    nan_func = (nansum,)
-#    arg_names = ('a', 'axis')
 #
 #    def dtype(self, context):
 #        #TODO: merge this typemap with tsum's
@@ -111,25 +88,17 @@ def na_sum(a, overwrite=False):
 
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Sum(FilteredExpression):
-    func_name = 'sum'
+    no_eval = ('expr', 'filter')
 
-    def __init__(self, expr, filter=None, skip_na=True):
-        FilteredExpression.__init__(self, expr, filter)
-        self.skip_na = skip_na
-
-    def evaluate(self, context):
-        expr = self.expr
-        filter_expr = self._getfilter(context)
+    def compute(self, context, expr, filter=None, skip_na=True):
+        filter_expr = self._getfilter(context, filter)
         if filter_expr is not None:
-            expr *= filter_expr
+            expr = BinaryOp('*', expr, filter_expr)
 
         values = expr_eval(expr, context)
         values = np.asarray(values)
 
-        if self.skip_na:
-            return na_sum(values)
-        else:
-            return np.sum(values)
+        return na_sum(values) if skip_na else np.sum(values)
 
     def dtype(self, context):
         #TODO: merge this typemap with tsum's
@@ -138,114 +107,88 @@ class Sum(FilteredExpression):
 
 
 #class Average(NumpyAggregate):
-#    func_name = 'avg'
-#    np_func = (np.mean,)
-##    nan_func = (nanmean,)
-#    arg_names = ('a', 'axis')
-#
-#    def dtype(self, context):
-#        return float
+#    funcname = 'avg'
+#    np_func = np.mean
+#    nan_func = (nanmean,)
+#    dtype = always(float)
 
 
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Average(FilteredExpression):
-    func_name = 'avg'
+    funcname = 'avg'
+    no_eval = ('expr',)
 
-    def __init__(self, expr, filter=None, skip_na=True):
-        FilteredExpression.__init__(self, expr, filter)
-        self.skip_na = skip_na
-
-    def evaluate(self, context):
-        expr = self.expr
-
+    def compute(self, context, expr, filter=None, skip_na=True):
         #FIXME: either take "contextual filter" into account here (by using
         # self._getfilter), or don't do it in sum & gini
-        if self.filter is not None:
-            filter_values = expr_eval(self.filter, context)
-            tmp_varname = get_tmp_varname()
+        if filter is not None:
+            tmp_varname = self.get_tmp_varname(context)
             context = context.copy()
-            context[tmp_varname] = filter_values
+            context[tmp_varname] = filter
             if getdtype(expr, context) is bool:
                 # convert expr to int because mul_bbb is not implemented in
                 # numexpr
-                expr *= 1
-            expr *= Variable(tmp_varname)
+                # expr *= 1
+                expr = BinaryOp('*', expr, 1)
+            # expr *= filter_values
+            tmpvar = Variable(context.entity, tmp_varname)
+            expr = BinaryOp('*', expr, tmpvar)
         else:
-            filter_values = True
+            filter = True
 
         values = expr_eval(expr, context)
         values = np.asarray(values)
 
-        if self.skip_na:
-            # we should *not* use an inplace operation because filter_values
-            # can be a simple variable
-            filter_values = filter_values & ispresent(values)
+        if skip_na:
+            # we should *not* use an inplace operation because filter can be a
+            # simple variable
+            filter = filter & ispresent(values)
 
-        if filter_values is True:
+        if filter is True:
             numrows = len(values)
         else:
-            numrows = np.sum(filter_values)
+            numrows = np.sum(filter)
 
         if numrows:
-            if self.skip_na:
+            if skip_na:
                 return na_sum(values) / float(numrows)
             else:
                 return np.sum(values) / float(numrows)
         else:
             return float('nan')
 
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 class Std(NumpyAggregate):
-    func_name = 'std'
-    np_func = (np.std,)
-    arg_names = ('a', 'axis', 'dtype', 'out', 'ddof')
-
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return float
+    np_func = np.std
+    dtype = always(float)
 
 
 class Median(NumpyAggregate):
-    func_name = 'median'
-    np_func = (np.median,)
-    arg_names = ('a', 'axis', 'out', 'overwrite_input')
-
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return float
+    np_func = np.median
+    dtype = always(float)
 
 
 class Percentile(NumpyAggregate):
-    func_name = 'percentile'
-    np_func = (np.percentile,)
-    arg_names = ('a', 'q', 'axis', 'out', 'overwrite_input')
-
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return float
+    np_func = np.percentile
+    dtype = always(float)
 
 
+#TODO: filter and skip_na should be provided by an "Aggregate" mixin that is
+# used both here and in NumpyAggregate
 class Gini(FilteredExpression):
-    func_name = 'gini'
+    no_eval = ('filter',)
 
-    def __init__(self, expr, filter=None, skip_na=True):
-        FilteredExpression.__init__(self, expr, filter)
-        self.skip_na = skip_na
+    def compute(self, context, expr, filter=None, skip_na=True):
+        values = np.asarray(expr)
 
-    def evaluate(self, context):
-        values = expr_eval(self.expr, context)
-        values = np.asarray(values)
-
-        filter_expr = self._getfilter(context)
+        filter_expr = self._getfilter(context, filter)
         if filter_expr is not None:
             filter_values = expr_eval(filter_expr, context)
         else:
             filter_values = True
-        if self.skip_na:
+        if skip_na:
             # we should *not* use an inplace operation because filter_values
             # can be a simple variable
             filter_values = filter_values & ispresent(values)
@@ -267,35 +210,28 @@ class Gini(FilteredExpression):
         values_sum = cumsum[-1]
         if values_sum == 0:
             print("gini(%s, filter=%s): expression is all zeros (or nan) "
-                  "for filter" % (self.expr, filter_expr))
+                  "for filter" % (self.args[0], filter))
         return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
 
-    #noinspection PyUnusedLocal
-    def dtype(self, context):
-        return float
+    dtype = always(float)
 
 
 def make_dispatcher(agg_func, elem_func):
     def dispatcher(*args, **kwargs):
         func = agg_func if len(args) == 1 else elem_func
         return func(*args, **kwargs)
+
     return dispatcher
 
 
 functions = {
-    'all': All,
-    'any': Any,
-    'count': Count,
+    'all': All, 'any': Any, 'count': Count,
     'min': make_dispatcher(Min, exprmisc.Min),
     'max': make_dispatcher(Max, exprmisc.Max),
-    'sum': Sum,
-    'avg': Average,
-    'std': Std,
-    'median': Median,
-    'percentile': Percentile,
-    'gini': Gini,
+    'sum': Sum, 'avg': Average, 'std': Std,
+    'median': Median, 'percentile': Percentile,
+    'gini': Gini
 }
 
 for k, v in functions.items():
-    functions['grp' + k] = deprecated(v, "%s is deprecated, please use %s "
-                                         "instead" % ('grp' + k, k))
+    functions['grp' + k] = removed(v, 'grp' + k, k)

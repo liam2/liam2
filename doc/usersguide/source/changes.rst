@@ -3,67 +3,18 @@
 Change log
 ##########
 
-Version 0.8-rc1
+Version 0.9.1.1
 ===============
 
-Released on 2013-01-27.
+Released on 2015-04-14.
 
-* implemented scatter plots.
-
-* implemented "suffix" argument for charts.
-
-* improved the first few demonstration models quite a bit. A recommended read
-  for all users.
-
-* fixed the "view" action (ViTables) which did not work on some computers when
-  launched from within the bundled editor (notepad++).
-
-* made the archive smaller by using Qt as the backend for charts instead of Tk
-  so that we do not need to include the latter in LIAM2 anymore.
-
-* include the documentation only in HTML Help format (.chm) in the bundle.
-  .pdf and "normal" html are still available as separate downloads on the
-  website.
+.. include:: changes/version_0_9_1_1.rst.inc
 
 
-Version 0.8-pre1
-================
-
-Released on 2013-12-17.
-
-New features:
--------------
-
-* added a few functions to create charts (courtesy of `matplotlib
-  <http://matplotlib.org>`_): bar, plot, pie, stackplot, boxplot and scatter.
-  As with all other functions in liam2, they are available both during a
-  simulation and in the interactive console. The charts can either be
-  visualized directly or saved to a file. See the
-  :ref:`charts section <charts>` for details.
-
-* added a "view" command line option to LIAM2 to open ViTables (an hdf5
-  viewer) as well as a corresponding menu entry and keyboard shortcut (F9) in
-  Notepad++. It is meant to be used when editing a *model* file, and it will
-  open both the input dataset and the result file (if any).
-
-* document boolean aggregate functions: all() and any() which were
-  added in 0.7 but were not yet documented.
-
-* added *assertFalse* assert function.
-=======
-=======
-Version 0.8.2
+Version 0.9.1
 =============
 
-Released on 2014-07-07.
-
-.. include:: changes/version_0_8_2.rst.inc
-
-
-Version 0.8.1
-=============
-
-Released on 2014-03-19.
+Released on 2015-03-31.
 
 .. include:: changes/version_0_8_1.rst.inc
 

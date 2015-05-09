@@ -29,32 +29,17 @@ The *Entity* class stores all there is to know about each entity: fields,
 links, processes and data. It serves as a glue class between everything
 data, processes, ...
 
-When entities are created, they are added to a global registry in registry.py
-
 Process
 -------
 
 file: process.py
 
 The *Process* class stores users processes. The most common kind of process 
-is the *Assignment* which computes the value of an expression and stores the
-result in a variable.
-
-The *Compute* class is used as alternative for Assignment when a user does not
-store the result of an expression (with a side effect) which *does* have a
-return value (as opposed to Actions).
+is the *Assignment* which computes the value of an expression and
+optionally stores the result in a variable.
 
 Another very common process is the *ProcessGroup* (a.k.a procedures) which
 runs a list of processes in order.
-
-Action
-------
-
-file: actions.py
-
-Actions are processes which do not have any result (that can be stored in
-variables), but have side-effects. Examples include: csv(), show(), remove(),
-breakpoint()
 
 Expressions
 -----------
@@ -94,13 +79,18 @@ a new function:
      * NumpyAggregate: subclass for aggregate functions. eg. count, min,
        max, std, median.
 
-  b) FunctionExpression: subclass for functions (which take one expression as
-     argument). eg. trunc, lag, duration, ...
+  b) FunctionExpr: subclass for functions. eg. trunc, lag, duration, ...
 
-     * FilteredExpression: subclass for functions which also take a filter
-       argument. eg. align, sum, avg, gini.
+     * FilteredExpression: subclass for functions which have a filter
+       argument and need to support contextual filters. eg. align, sum, avg,
+       gini.
 
 LIAM2 current expressions are implemented in the following files:
+
+actions.py
+    actions are expressions which do not have any result (that can be stored in
+    variables), but have side-effects. Examples include: csv(), show(),
+    remove(), breakpoint()
 
 alignment.py
     handles align() and align_abs() functions
@@ -118,12 +108,12 @@ links.py
     contains all link-related code: 
 
     * the *Link* class stores the definition of links
-    * the *LinkValue* class handles ManyToOne links
-    * link functions to handle OneToMany links: countlink, sumlink, avglink,
-      minlink and maxlink
+    * the *LinkGet* class handles ManyToOne links
+    * one class for each method of OneToMany links: *Count*, *Sum*, *Avg*,
+      *Min* and *Max*.
 
 matching.py
-    handles the matching() function
+    handles the matching functions: matching() and rank_matching()
 
 regressions.py
     handles all the regression functions: logit_score, logit_regr, cont_regr,
@@ -196,7 +186,7 @@ data.py
     uniform interface from different data sources but it is a work in
     progress. 
 
-exprparser.py
+exprtools.py
     parsing code for expressions
 
 importer.py
@@ -215,9 +205,6 @@ main.py
 partition.py 
     handles partitioning objects depending on the possible values of their
     columns. 
-
-registry.py
-    global registry of entities
 
 utils.py
     miscellaneous support functions 
