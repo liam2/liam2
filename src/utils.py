@@ -20,7 +20,7 @@ import warnings
 
 import numpy as np
 import numexpr as ne
-# import psutil
+# import psutil
 try:
     from PyQt4 import QtGui, QtCore
     QtAvailable = True
@@ -656,7 +656,7 @@ class TextProgressBar(ProgressBar):
 
 
 def loop_wh_progress(func, sequence, *args, **kwargs):
-    pb = TextProgressBar(len(sequence)) # title=title
+    pb = TextProgressBar(len(sequence)) # title=title
     for i, value in enumerate(sequence, start=1):
         try:
             func(i, value, *args, **kwargs)
@@ -1280,8 +1280,6 @@ class FileProducer(object):
             suffix = "_" + suffix if suffix else ""
             fname = "{entity}_{period}" + suffix + self.ext
         return fname
-<<<<<<< HEAD
-=======
 
 
 def isnan(a):
@@ -1304,4 +1302,3 @@ def array_nan_equal(a, b):
             return False
     else:
         return np.all((a == b) | (np.isnan(a) & np.isnan(b)))
->>>>>>> liam2/master

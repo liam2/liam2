@@ -6,12 +6,12 @@ import numpy as np
 from til.pgm.run_pension import get_pension
 
 import config
-from expr import (Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
+from expr import (EvaluableExpression, Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
                   as_string, collect_variables, traverse_expr,
                   get_missing_record, get_missing_vector, FunctionExpr,
                   always, firstarg_dtype, expr_cache)
-from exprbases import (EvaluableExpression, CompoundExpression,
+from exprbases import (CompoundExpression,
                        NumexprFunction, FilteredExpression,
                        FunctionExpression, TableExpression,
                        NumpyRandom, NumpyChangeArray)
@@ -104,6 +104,7 @@ class Logit(CompoundExpression):
         # log(x / (1 - x))
         return Log(DivisionOp('/', expr, BinaryOp('-', 1.0, expr)))
 
+
 class Logistic(CompoundExpression):
     def build_expr(self, expr):
         # 1 / (1 + exp(-x))
@@ -176,7 +177,7 @@ class TimeScale(FunctionExpression):
 
     def dtype(self, context):
         return int
-    
+
 class Year(FunctionExpression):
     func_name = 'year'
 
@@ -185,7 +186,7 @@ class Year(FunctionExpression):
 
     def dtype(self, context):
         return int
-    
+
 class Month(FunctionExpression):
     func_name = 'month'
 
@@ -194,7 +195,7 @@ class Month(FunctionExpression):
 
     def dtype(self, context):
         return int
-    
+
 class AddTime(FunctionExpression):
     func_name = 'add_time'
 
@@ -509,12 +510,12 @@ class Where(NumexprFunction):
         iftruevars = collect_variables(self.iftrue, context)
         iffalsevars = collect_variables(self.iffalse, context)
         return condvars | iftruevars | iffalsevars
-    
+
 class Pension(FilteredExpression):
     def __init__(self, varname, regime, expr=None, filter=None, yearleg=None):
         FilteredExpression.__init__(self, expr, filter)
         self.varname = varname
-        self.regime = regime     
+        self.regime = regime
         self.yearleg = yearleg
 
 functions = {
