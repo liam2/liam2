@@ -18,7 +18,7 @@ from partition import partition_nd, filter_to_indices
 from importer import load_ndarray
 from utils import PrettyTable, LabeledArray
 from random import random
-from utils import time_period 
+from utils import time_period
 
 
 def chunks(l, n):
@@ -26,13 +26,8 @@ def chunks(l, n):
     """
     return [l[i:i+n] for i in range(0, len(l), n)]
 
-<<<<<<< HEAD
 def kill_axis(axis_name, value, expressions, possible_values, need, periodicity):
     '''possible_values is a list of ndarrays'''
-=======
-    #When we transition to LArray, this whole function could be replaced by:
-    # need = need.filter(axis[value])
->>>>>>> liam2/master
     str_expressions = [str(e) for e in expressions]
     axis_num = str_expressions.index(axis_name)
     expressions = expressions[:axis_num] + expressions[axis_num + 1:]
@@ -40,14 +35,14 @@ def kill_axis(axis_name, value, expressions, possible_values, need, periodicity)
     axis_values = possible_values.pop(axis_num)
 
     #TODO: make sure possible_values are sorted and use searchsorted instead
-    
+
     str_expressions.pop(axis_num)
     if 'age' in str_expressions:
         axis_age_num = str_expressions.index('age')
 #     if axis_name in ['age']:
-#     import pdb 
+#     import pdb
 #     pdb.set_trace()
-    
+
     if axis_name in ['period']:
         axis_values[axis_values<3000] = axis_values[axis_values<3000]*100 + 1
         if value < 9999:
@@ -63,14 +58,14 @@ def kill_axis(axis_name, value, expressions, possible_values, need, periodicity)
             pdb.set_trace()
             chunk = chunks(value_idx_period, periodicity_axis/periodicity)[value % 10 - 1]
             axis_values[value_idx_period[0]] = value
-            axis_values[value_idx_period[1:]] = int(value/100)*100            
+            axis_values[value_idx_period[1:]] = int(value/100)*100
             need.base[:,value_idx_period[0]] = need.base[:,chunk].sum(axis=1)
-            
+
         if periodicity_axis < periodicity:
             if not isinstance(periodicity/periodicity_axis,int):
                 raise Exception("can't do anything if time period is"
-                                " not a multiple of time given in alignment data")                
-            # which season ? 
+                                " not a multiple of time given in alignment data")
+            # which season ?
             time_value = value % 100
             if time_value > 12:
                 time_value = value % 10
@@ -81,9 +76,9 @@ def kill_axis(axis_name, value, expressions, possible_values, need, periodicity)
                     need.base[:,value_idx_period[season]] * periodicity_axis/periodicity
         else:
             axis_values[value_idx_period] = value
-            
-                    
-    is_wanted_value = axis_values == value               
+
+
+    is_wanted_value = axis_values == value
     value_idx = is_wanted_value.nonzero()[0]
     num_idx = len(value_idx)
     if not num_idx:
@@ -98,6 +93,8 @@ def kill_axis(axis_name, value, expressions, possible_values, need, periodicity)
     need = need[complete_idx]
     return expressions, possible_values, need
 
+    #When we transition to LArray, this whole function could be replaced by:
+    # need = need.filter(axis[value])
 
 def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                          take_filter=None, leave_filter=None, method="default" ):
@@ -199,12 +196,12 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                 elif method=='sidewalk':
                     if maybe_to_take > sum(score[sorted_global_indices]):
                         raise Exception("Can't use Sidewalk with need > sum of probabilities")
-                    U=random()+np.arange(maybe_to_take)             
+                    U=random()+np.arange(maybe_to_take)
                     #on the random sample, score are cumulated and then, we extract indices
                     #of each value before each value of U
                     indices_to_take = np.searchsorted(np.cumsum(score[sorted_global_indices]), U)
-                    indices_to_take = sorted_global_indices[indices_to_take] 
-                    
+                    indices_to_take = sorted_global_indices[indices_to_take]
+
                 underflow = maybe_to_take - len(indices_to_take)
                 if underflow > 0:
                     total_underflow += underflow
@@ -255,7 +252,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if isinstance(need, (tuple, list)) and \
            not any(isinstance(p, Expr) for p in need):
             need = np.array(need)
-            
+
         if need is None and method != 'sidewalk':
             raise Exception("No default value for need if method is not sidewalk")
         self.need = need
@@ -279,7 +276,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 #            self.args = (self.args#[0], need) + self.args[2:]
 #>>>>>>> liam2/master
         self.past_error = None
-        
+
         assert(periodicity_given in time_period)
         self.periodicity_given = time_period[periodicity_given]
 
@@ -300,7 +297,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         if method in ("default","sidewalk") :
             self.method = method
-        else: 
+        else:
             raise Exception("Method for alignment should be either 'default' "
                             "either 'sidewalk'")
 
@@ -340,13 +337,13 @@ class AlignmentAbsoluteValues(FilteredExpression):
                 need = np.array([need])
         else:
             need = self.need
-        
+
         if self.need[0] is None and self.method == "sidewalk":
-        #Note: need is calculated over score and we could think of 
+        #Note: need is calculated over score and we could think of
         # calculate without leave_filter and without take_filter
             if filter_value is not None:
                 scores = scores[filter_value]
-            need = int(sum(scores)) 
+            need = int(sum(scores))
             need = np.array([need])
 
         if isinstance(need, LabeledArray):
@@ -478,7 +475,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         scores = expr_eval(self.expr, context)
         filter_value = expr_eval(self._getfilter(context), context)
-        
+
         need, expressions, possible_values = self._eval_need(context, scores, filter_value)
 
         take_filter = expr_eval(self.take_filter, context)
@@ -517,17 +514,17 @@ class AlignmentAbsoluteValues(FilteredExpression):
         periodicity = context['periodicity']
         if context['format_date'] == 'year0':
             periodicity = periodicity*12 #give right periodicity/self.periodicity_given whereas self.periodicity_given/12 doesn't
-            
+
         #sign(self.periodicity_given) = sign(periodicity)
         self.periodicity_given = \
             self.periodicity_given * (self.periodicity_given*periodicity)/abs(self.periodicity_given*periodicity)
-        if gcd(periodicity,self.periodicity_given) not in [periodicity,self.periodicity_given] : 
+        if gcd(periodicity,self.periodicity_given) not in [periodicity,self.periodicity_given] :
             raise( "mix of quarter and triannual impossible")
-        
+
         need = need*periodicity/self.periodicity_given
-        if scores is not None:            
-            scores = scores*periodicity/self.periodicity_given 
-            
+        if scores is not None:
+            scores = scores*periodicity/self.periodicity_given
+
         #noinspection PyAugmentAssignment
         need = need * self._get_need_correction(groups, possible_values)
         need = self._handle_frac_need(need, method=frac_need)
@@ -696,7 +693,7 @@ class Alignment(AlignmentAbsoluteValues):
                                 "arguments")
             if method=='sidewalk':
                 raise Exception("If alignment on sum of score is wanted "
-                                "then use align_abs")            
+                                "then use align_abs")
         if proportions is not None and fname is not None:
             raise Exception("align() cannot have both fname and proportions "
                             "arguments")
@@ -707,7 +704,7 @@ class Alignment(AlignmentAbsoluteValues):
                                         filter, take, leave,
                                         expressions, possible_values,
                                         errors, frac_need, method, periodicity_given)
-        
+
     def _get_need_correction(self, groups, possible_values):
         data = np.array([len(group) for group in groups])
         len_pvalues = [len(vals) for vals in possible_values]

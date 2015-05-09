@@ -13,7 +13,7 @@ from expr import (EvaluableExpression, Expr, Variable, UnaryOp, BinaryOp, Compar
                   always, firstarg_dtype, expr_cache)
 from exprbases import (CompoundExpression,
                        NumexprFunction, FilteredExpression,
-                       FunctionExpression, TableExpression,
+                       FunctionExpr, TableExpression,
                        NumpyRandom, NumpyChangeArray)
 from context import (EntityContext, context_length, context_subset,
                      new_context_like)
@@ -169,7 +169,7 @@ class Trunc(FunctionExpr):
         assert getdtype(self.expr, context) == float
         return int
 
-class TimeScale(FunctionExpression):
+class TimeScale(FunctionExpr):
     func_name = 'period'
 
     def evaluate(self, context):
@@ -178,7 +178,7 @@ class TimeScale(FunctionExpression):
     def dtype(self, context):
         return int
 
-class Year(FunctionExpression):
+class Year(FunctionExpr):
     func_name = 'year'
 
     def evaluate(self, context):
@@ -187,7 +187,7 @@ class Year(FunctionExpression):
     def dtype(self, context):
         return int
 
-class Month(FunctionExpression):
+class Month(FunctionExpr):
     func_name = 'month'
 
     def evaluate(self, context):
@@ -196,7 +196,7 @@ class Month(FunctionExpression):
     def dtype(self, context):
         return int
 
-class AddTime(FunctionExpression):
+class AddTime(FunctionExpr):
     func_name = 'add_time'
 
     def evaluate(self, context):
@@ -522,11 +522,11 @@ functions = {
     # element-wise functions
     # Min and Max are in aggregates.py.functions (because of the dispatcher)
     # random
-    'uniform': Uniform,
-    'normal': Normal,
-    'gumbel': Gumbel,
-    'choice': Choice,
-    'randint': RandInt,
+#    'uniform': Uniform,
+#    'normal': Normal,
+#    'gumbel': Gumbel,
+#    'choice': Choice,
+#    'randint': RandInt,
     # aggregates/per element combined functions
 #    'min': make_dispatcher(aggregates.Min, Min), should not ...!!!!!
 #    'max': make_dispatcher(aggregates.Max, Max),

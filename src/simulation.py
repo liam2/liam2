@@ -110,65 +110,65 @@ class Simulation(object):
                 'type': str,
                 'fields': [{
                     '*': None  # Or(str, {'type': str, 'initialdata': bool, 'default': type})
-                }],
+                    }],
                 'oldnames': {
                     '*': str
-                },
+                    },
                 'newnames': {
                     '*': str
-                },
+                    },
                 'invert': [str],
                 'transposed': bool
-            }
-        },
+                }
+            },
         '#entities': {
             '*': {
                 'fields': [{
                     '*': None
-                }],
+                    }],
                 'links': {
                     '*': {
                         '#type': str,  # Or('many2one', 'one2many', 'one2one')
                         '#target': str,
                         '#field': str
-                    }
-                },
+                        }
+                    },
                 'macros': {
                     '*': None
-                },
+                    },
                 'processes': {
                     '*': None
+                    }
                 }
-            }
-        },
+            },
         '#simulation': {
             'init': [{
                 '*': [None]  # Or(str, [str, int])
-            }],
+                }],
             '#processes': [{
                 '*': [None]  # Or(str, [str, int])
-            }],
+                }],
             'random_seed': int,
             '#input': {
                 'path': str,
                 '#file': str,
                 'method': str
-            },
+                },
             '#output': {
                 'path': str,
                 '#file': str
-            },
+                },
             'legislation': {
                 '#ex_post': bool,
                 '#annee': int
-            },
+                },
             'final_stat': bool,
             'time_scale': str,
             'retro': bool,
             'logging': {
                 'timings': bool,
                 'level': str,  # Or('periods', 'procedures', 'processes')
-            },
+                },
             '#periods': int,
             'start_period': int,
             'init_period': int,
@@ -178,9 +178,9 @@ class Simulation(object):
             'default_entity': str,
             'autodump': None,
             'autodiff': None
-        }
+            }
 
-    }
+        }
 
     def __init__(self, globals_def, periods, init_period,
                  init_processes, init_entities, processes, entities,
