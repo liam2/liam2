@@ -16,7 +16,6 @@ from pandas import DataFrame, HDFStore
 from context import EvaluationContext
 from data import H5Data, Void
 from entities import Entity, global_symbols
-from registry import entity_registry
 from utils import (time_period, addmonth,
                    time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
@@ -183,7 +182,7 @@ class Simulation(object):
         }
 
     def __init__(self, globals_def, periods, init_period,
-                 init_processes, init_entities, processes, entities,
+                 init_processes, processes, entities,
                  data_source, default_entity = None, legislation = None, final_stat = False,
                  time_scale = 'year', retro = False):
         # FIXME: what if period has been declared explicitly?
@@ -200,7 +199,6 @@ class Simulation(object):
         self.retro = retro
         # init_processes is a list of tuple: (process, 1)
         self.init_processes = init_processes
-        self.init_entities = init_entities
         # processes is a list of tuple: (process, periodicity, start)
         self.processes = processes
         self.entities = entities
@@ -313,21 +311,7 @@ class Simulation(object):
             output_file = output_def['file']
         output_path = os.path.join(output_directory, output_file)
 
-        method = input_def.get('method', 'h5')
-
-        # need to be before processes because in case of legislation, we need input_table for now.
-        if method == 'h5':
-            if input_file is None:
-                input_file = input_def['file']
-            input_path = os.path.join(input_directory, input_file)
-            data_source = H5Data(input_path, output_path)
-        elif method == 'void':
-            input_path = None
-            data_source = Void(output_path)
-        else:
-            print(method, type(method))
-
-        entities = dict()
+        entities = {}
         for k, v in content['entities'].iteritems():
             entities[k] = Entity.from_yaml(k, v)
 
@@ -352,11 +336,11 @@ class Simulation(object):
         init_processes = []
         for ent_name, proc_names in init_def:
             if ent_name != 'legislation':
-                if ent_name not in entity_registry:
+                if ent_name not in entities:
                     raise Exception("Entity '%s' not found" % ent_name)
 
-                entity = entity_registry[ent_name]
-                init_entities.add(entity)
+                entity = entities[ent_name]
+                used_entities.add(ent_name)
                 init_processes.extend([(entity.processes[proc_name], 1, 1)
                                        for proc_name in proc_names])
             else:
@@ -372,8 +356,8 @@ class Simulation(object):
         processes = []
         for ent_name, proc_defs in processes_def:
             if ent_name != 'legislation':
-                entity = entity_registry[ent_name]
-                entity_set.add(entity)
+                entity = entities[ent_name]
+                used_entities.add(ent_name)
                 for proc_def in proc_defs:
                     # proc_def is simply a process name
                     if isinstance(proc_def, basestring):
@@ -395,12 +379,31 @@ class Simulation(object):
                 # processes.append((proc1, 1))
                 processes.append((proc2, 'year', 12))
                 # processes.append((proc3, 1))
-        entities = sorted(entity_set, key=lambda e: e.name)
+        entities_list = sorted(entities.values(), key=lambda e: e.name)
+        declared_entities = set(e.name for e in entities_list)
+        unused_entities = declared_entities - used_entities
+        if unused_entities:
+            suffix = 'y' if len(unused_entities) == 1 else 'ies'
+            print("WARNING: entit%s without any executed process:" % suffix,
+                  ','.join(sorted(unused_entities)))
+
+        method = input_def.get('method', 'h5')
+
+        if method == 'h5':
+            if input_file is None:
+                input_file = input_def['file']
+            input_path = os.path.join(input_directory, input_file)
+            data_source = H5Data(input_path, output_path)
+        elif method == 'void':
+            data_source = Void(output_path)
+        else:
+            raise ValueError("'%s' is an invalid value for 'method'. It should "
+                             "be either 'h5' or 'void'")
 
         default_entity = simulation_def.get('default_entity')
         # processes[2][0].subprocesses[0][0]
         return Simulation(globals_def, periods, init_period,
-                          init_processes, init_entities, processes, entities,
+                          init_processes, processes, entities_list,
                           data_source, default_entity, legislation, final_stat, time_scale, retro)
 
     def load(self):
@@ -412,12 +415,11 @@ class Simulation(object):
 
     def run(self, run_console=False):
         start_time = time.time()
-
         h5in, h5out, globals_data = timed(self.data_source.run,
                                           self.globals_def,
-                                          entity_registry,
+                                          self.entities_map,
                                           self.init_period)
-
+        
         if config.autodump or config.autodiff:
             if config.autodump:
                 fname, _ = config.autodump
