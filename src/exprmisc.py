@@ -17,7 +17,6 @@ from exprbases import (CompoundExpression,
                        NumpyRandom, NumpyChangeArray)
 from context import (EntityContext, context_length, context_subset,
                      new_context_like)
-from registry import entity_registry
 from utils import PrettyTable, argspec
 
 # TODO: implement functions in expr to generate "Expr" nodes at the python level

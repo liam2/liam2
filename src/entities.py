@@ -12,7 +12,6 @@ from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
                   GlobalArray, expr_eval, get_missing_value, Expr, MethodSymbol, missing_values)
 from exprtools import parse
 from process import Assignment, Process, ProcessGroup, While, Function
-from registry import entity_registry
 from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
                    WarnOverrideDict)
 
