@@ -7,7 +7,7 @@ from expr import expr_eval, always, expr_cache
 from exprbases import FilteredExpression
 from context import context_length, context_delete, context_subset, context_keep
 from utils import loop_wh_progress
-from cpartition import group_indices_nd
+#from cpartition import group_indices_nd
 
 
 def group_context(used_variables, setfilter, context):

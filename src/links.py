@@ -52,21 +52,9 @@ class Link(object):
     def __str__(self):
         return self._name
 
-    def _target_entity(self):
-        return entity_registry[self._target_entity_name]
-
-    def _target_context(self, context):
-        target_entity = self._target_entity()
-        return EntityContext(target_entity,
-                         {'periods': context['periods'],
-                          'period': context['period'],
-                          'period_idx': context['period_idx'],
-                         '__globals__': context['__globals__']})
-
     def __repr__(self):
         return "%s(%s, %s, %s)" % (self.__class__.__name__, self._name,
                                    self._link_field, self._target_entity_name)
-
 
 
 class Many2One(Link):
@@ -163,7 +151,7 @@ class LinkExpression(FunctionExpr):
         return self.link._target_context(context)
 
     #XXX: I think this is not enough. Implement Visitor pattern instead?
-    def traverse(self, context = None):
+    def traverse(self):
         yield self
 
     def dtype(self, context):
@@ -189,7 +177,7 @@ class LinkGet(LinkExpression):
     funcname = "get"
     no_eval = ('target_expr',)
 
-    def traverse(self, context = None):
+    def traverse(self):
         #XXX: don't we also need the fields within the target expression?
         #noinspection PyProtectedMember
         yield Variable(self.link._entity, self.link._link_field)
@@ -286,6 +274,7 @@ class Aggregate(LinkExpression):
         # eg (in household entity):
         # persons: {type: one2many, target: person, field: hh_id}
         target_context = link._target_context(context)
+
         # this is a one2many, so the link column is on the target side
         #noinspection PyProtectedMember
         source_ids = target_context[link._link_field]
@@ -302,11 +291,7 @@ class Aggregate(LinkExpression):
 
         id_to_rownum = context.id_to_rownum
         if len(id_to_rownum):
-            try:
-                source_rows = id_to_rownum[source_ids]
-            except:
-                import pdb
-                pdb.set_trace()
+            source_rows = id_to_rownum[source_ids]
             # filter out missing values: those where the value of the link
             # points to nowhere (-1)
             #XXX: use np.putmask(source_rows, source_ids == missing_int,

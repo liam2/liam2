@@ -109,65 +109,65 @@ class Simulation(object):
                 'type': str,
                 'fields': [{
                     '*': None  # Or(str, {'type': str, 'initialdata': bool, 'default': type})
-                    }],
+                }],
                 'oldnames': {
                     '*': str
-                    },
+                },
                 'newnames': {
                     '*': str
-                    },
+                },
                 'invert': [str],
                 'transposed': bool
-                }
-            },
+            }
+        },
         '#entities': {
             '*': {
                 'fields': [{
                     '*': None
-                    }],
+                }],
                 'links': {
                     '*': {
                         '#type': str,  # Or('many2one', 'one2many', 'one2one')
                         '#target': str,
                         '#field': str
-                        }
-                    },
+                    }
+                },
                 'macros': {
                     '*': None
-                    },
+                },
                 'processes': {
                     '*': None
-                    }
                 }
-            },
+            }
+        },
         '#simulation': {
             'init': [{
                 '*': [None]  # Or(str, [str, int])
-                }],
+            }],
             '#processes': [{
                 '*': [None]  # Or(str, [str, int])
-                }],
+            }],
             'random_seed': int,
             '#input': {
                 'path': str,
                 '#file': str,
                 'method': str
-                },
+            },
             '#output': {
                 'path': str,
                 '#file': str
-                },
+            },
             'legislation': {
                 '#ex_post': bool,
                 '#annee': int
-                },
+            },
             'final_stat': bool,
             'time_scale': str,
             'retro': bool,
             'logging': {
                 'timings': bool,
                 'level': str,  # Or('periods', 'procedures', 'processes')
-                },
+            },
             '#periods': int,
             'start_period': int,
             'init_period': int,
@@ -177,13 +177,13 @@ class Simulation(object):
             'default_entity': str,
             'autodump': None,
             'autodiff': None
-            }
-
         }
 
-    def __init__(self, globals_def, periods, init_period,
-                 init_processes, processes, entities,
-                 data_source, default_entity = None, legislation = None, final_stat = False,
+    }
+
+    def __init__(self, globals_def, periods, start_period,init_processes,
+                 processes, entities, data_source, default_entity=None,
+                 legislation = None, final_stat = False,
                  time_scale = 'year', retro = False):
         # FIXME: what if period has been declared explicitly?
         if 'periodic' in globals_def:
@@ -193,10 +193,9 @@ class Simulation(object):
         self.periods = periods
         # TODO: work on it for start with seme
         if (time_scale not in ['year', 'year0']) and (
-                init_period % 100 > 12 or init_period % 100 == 0 or init_period < 9999):
+                start_period % 100 > 12 or start_period % 100 == 0 or start_period < 9999):
             raise Exception("Non valid start period")
-        self.init_period = init_period
-        self.retro = retro
+        self.start_period = start_period
         # init_processes is a list of tuple: (process, 1)
         self.init_processes = init_processes
         # processes is a list of tuple: (process, periodicity, start)
@@ -292,14 +291,15 @@ class Simulation(object):
         final_stat = simulation_def.get('final_stat', None)
 
         input_def = simulation_def['input']
-        input_directory = input_dir if input_dir is not None else input_def.get('path', '')
+        input_directory = input_dir if input_dir is not None \
+                                    else input_def.get('path', '')
         if not os.path.isabs(input_directory):
             input_directory = os.path.join(simulation_dir, input_directory)
         config.input_directory = input_directory
 
         output_def = simulation_def['output']
-        output_directory = output_dir if output_dir is not None else output_def.get('path', '')
-        assert os.path.isabs(output_directory), "{} is not an absolute path".format(output_directory)
+        output_directory = output_dir if output_dir is not None \
+                                      else output_def.get('path', '')
         if not os.path.isabs(output_directory):
             output_directory = os.path.join(simulation_dir, output_directory)
         if not os.path.exists(output_directory):
@@ -402,9 +402,9 @@ class Simulation(object):
 
         default_entity = simulation_def.get('default_entity')
         # processes[2][0].subprocesses[0][0]
-        return Simulation(globals_def, periods, init_period,
-                          init_processes, processes, entities_list,
-                          data_source, default_entity, legislation, final_stat, time_scale, retro)
+        return Simulation(globals_def, periods, init_period, init_processes,
+                          processes, entities_list, data_source, default_entity,
+                          legislation, final_stat, time_scale, retro)
 
     def load(self):
         return timed(self.data_source.load, self.globals_def, self.entities_map)
@@ -418,8 +418,8 @@ class Simulation(object):
         h5in, h5out, globals_data = timed(self.data_source.run,
                                           self.globals_def,
                                           self.entities_map,
-                                          self.init_period)
-        
+                                          self.start_period)
+
         if config.autodump or config.autodiff:
             if config.autodump:
                 fname, _ = config.autodump
@@ -493,8 +493,11 @@ class Simulation(object):
 
                 num_processes = len(processes)
                 for p_num, process_def in enumerate(processes, start=1):
-
                     process, periodicity, start = process_def
+
+                    # set current entity
+                    eval_ctx.entity_name = process.entity.name
+
                     if config.log_level in ("procedures", "processes"):
                         print("- %d/%d" % (p_num, num_processes), process.name,
                               end=' ')
@@ -502,11 +505,11 @@ class Simulation(object):
                     # TDOD: change that
                     if isinstance(periodicity, int):
                         if period_idx % periodicity == 0:
-                            elapsed, _ = gettime(process.run_guarded, self,
-                                                 const_dict)
+                            elapsed, _ = gettime(process.run_guarded, eval_ctx)
                         else:
                             elapsed = 0
-                            print("skipped (periodicity)")
+                            if config.log_level in ("procedures", "processes"):
+                                print("skipped (periodicity)")
                     else:
                         assert periodicity in time_period
                         periodicity_process = time_period[periodicity]
@@ -521,12 +524,11 @@ class Simulation(object):
                                 month_idx % periodicity_process == start % periodicity_process):
 
                             const_dict['periodicity'] = periodicity_process * (1 - 2 * (self.retro))
-                            elapsed, _ = gettime(process.run_guarded, self, const_dict)
+                            elapsed, _ = gettime(process.run_guarded, eval_ctx)
                         else:
                             elapsed = 0
-
-                        if config.log_level in ("procedures", "processes"):
-                            print("skipped (periodicity)")
+                            if config.log_level in ("procedures", "processes"):
+                                print("skipped (periodicity)")
 
                     process_time[process.name] += elapsed
                     if config.log_level in ("procedures", "processes"):
@@ -535,6 +537,7 @@ class Simulation(object):
                         else:
                             print("done.")
                     self.start_console(eval_ctx)
+
 
             # update longitudinal
             person = [x for x in entities if x.name == 'person'][0]
@@ -576,7 +579,6 @@ class Simulation(object):
             else:
                 for entity in entities:
                     entity.store_period_data(period)
-
 #            print " - compressing period data"
 #            for entity in entities:
 #                print "  *", entity.name, "...",
@@ -616,19 +618,19 @@ class Simulation(object):
             time_step = month_periodicity * time_direction
 
             periods = [
-                self.init_period + int(t / 12) * 100 + t % 12
+                self.start_period + int(t / 12) * 100 + t % 12
                 for t in range(0, (self.periods + 1) * time_step, time_step)
                 ]
             if self.time_scale == 'year0':
-                periods = [self.init_period + t for t in range(0, (self.periods + 1))]
+                periods = [self.start_period + t for t in range(0, (self.periods + 1))]
             print("simulated period are going to be: ", periods)
 
             init_start_time = time.time()
-            simulate_period(0, self.init_period, [None, periods[0]], self.init_processes, self.entities, init=True)
-
+            simulate_period(0, self.start_period, [None, periods[0]], self.init_processes,
+                            self.entities, init=True)
             time_init = time.time() - init_start_time
-            main_start_time = time.time()
 
+            main_start_time = time.time()
             for period_idx, period in enumerate(periods[1:]):
                 period_start_time = time.time()
                 simulate_period(period_idx, period, periods,
@@ -685,6 +687,7 @@ class Simulation(object):
                 ind_per_sec = str(int(total_objects / total_time))
             except ZeroDivisionError:
                 ind_per_sec = 'inf'
+
             print("""
 ==========================================
  simulation done
@@ -707,8 +710,8 @@ class Simulation(object):
             )
 
             show_top_processes(process_time, 10)
-            # if config.debug:
-            #     show_top_expr()
+#            if config.debug:
+#                show_top_expr()
 
             if run_console:
                 console_ctx = eval_ctx.clone(entity_name=self.default_entity)
@@ -728,7 +731,7 @@ class Simulation(object):
 
         return entity_registry[self.default_entity] if self.default_entity is not None else None
 
-    def start_console(self, entity, period, globals_data):
+    def start_console(self, context):
         if self.stepbystep:
             c = console.Console(context)
             res = c.run(debugger=True)

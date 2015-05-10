@@ -116,7 +116,7 @@ def as_string(expr):
         return str(expr)
 
 
-def traverse_expr(expr, context = None):
+def traverse_expr(expr):
     if isinstance(expr, Expr):
         for node in expr.traverse():
             yield node
@@ -195,13 +195,9 @@ def expr_eval(expr, context):
         # collect_variables result (it is much better than before though).
         #TODO: also check for globals
         for var in expr.collect_variables():
-            try:
-                if var.name not in globals_names and var not in context:
-                    raise Exception("variable '%s' is unknown (it is either not "
-                                    "defined or not computed yet)" % var)
-            except:
-                import pdb
-                pdb.set_trace()
+            if var.name not in globals_names and var not in context:
+                raise Exception("variable '%s' is unknown (it is either not "
+                                "defined or not computed yet)" % var)
         return expr.evaluate(context)
 
         # there are several flaws with this approach:
@@ -360,15 +356,8 @@ class Expr(object):
             #             "%s != %s" % (res, cached_result)
             return res
         except KeyError, e:
-            import pdb
-            pdb.set_trace()
             raise add_context(e, s)
         except Exception:
-            import pdb
-            pdb.set_trace()
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            evaluate('age', context, {}, truediv='auto')
-            evaluate('conj', context, {}, truediv='auto')
             raise
 
     def as_simple_expr(self, context):
@@ -418,14 +407,15 @@ class Expr(object):
             raise AttributeError("'%s' object has no attribute '%s'"
                                  % (self.__class__.__name__, key))
 
-    def traverse(self, context = None):
+    def traverse(self):
         for child in self.children:
             for node in traverse_expr(child):
                 yield node
         yield self
 
-    def all_of(self, node_type, context = None):
-        for node in self.traverse(context):
+    def all_of(self, node_type):
+        print (type(self))
+        for node in self.traverse():
             if isinstance(node, node_type):
                 yield node
 
@@ -1184,7 +1174,7 @@ class GlobalTable(object):
         return GlobalVariable(self.name, key, self.fields_map[key])
 
     #noinspection PyUnusedLocal
-    def traverse(self, context = None):
+    def traverse(self, context):
         yield self
 
     def __repr__(self):
