@@ -327,6 +327,7 @@ class Simulation(object):
         else:
             print(method, type(method))
 
+        entities = dict()
         for k, v in content['entities'].iteritems():
             entities[k] = Entity.from_yaml(k, v)
 

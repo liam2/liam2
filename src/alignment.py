@@ -237,12 +237,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
                  link=None, secondary_axis=None):
         super(AlignmentAbsoluteValues, self).__init__(score, filter)
 
-    def post_init(self):
-        need = self.args[1]
         if isinstance(need, basestring):
             fpath = os.path.join(config.input_directory, need)
             need = load_ndarray(fpath, float)
-#<<<<<<< HEAD
 
         # need is a single scalar
         if not isinstance(need, (tuple, list, Expr, np.ndarray)):
@@ -271,15 +268,10 @@ class AlignmentAbsoluteValues(FilteredExpression):
         self.leave_filter = leave
 
         self.errors = errors
-#=======
-#            #XXX: store args in a #list so that we can modify it?
-#            self.args = (self.args#[0], need) + self.args[2:]
-#>>>>>>> liam2/master
         self.past_error = None
 
         assert(periodicity_given in time_period)
         self.periodicity_given = time_period[periodicity_given]
-
 
         self.frac_need = frac_need
         if frac_need not in ('uniform', 'cutoff', 'round'):
@@ -295,11 +287,20 @@ class AlignmentAbsoluteValues(FilteredExpression):
                             "an axis name")
         self.secondary_axis = secondary_axis
 
-        if method in ("default","sidewalk") :
+        if method in ("default", "sidewalk"):
             self.method = method
         else:
             raise Exception("Method for alignment should be either 'default' "
                             "either 'sidewalk'")
+
+    def post_init(self):
+        need = self.args[1]
+        if isinstance(need, basestring):
+            fpath = os.path.join(config.input_directory, need)
+            need = load_ndarray(fpath, float)
+            # XXX: store args in a list so that we can modify it?
+            self.args = (self.args[0], need) + self.args[2:]
+        self.past_error = None
 
     def traverse(self, context):
         for node in FilteredExpression.traverse(self, context):

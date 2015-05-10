@@ -88,14 +88,13 @@ class Entity(object):
         else:
             array_period = None
 
-        duplicate_names = [name
-                           for name, num
-                           in count_occurrences(fname for fname, _ in fields)
-                           if num > 1]
+        duplicate_names = [
+            name_ for name_, num in count_occurrences(fname for fname, _ in fields) if num > 1
+            ]
         if duplicate_names:
             raise Exception("duplicate fields in entity '%s': %s"
                             % (self.name, ', '.join(duplicate_names)))
-        fnames = [name for name, _ in fields]
+        fnames = [name_ for name_, _ in fields]
         if 'id' not in fnames:
             fields.insert(0, ('id', int))
         if 'period' not in fnames:

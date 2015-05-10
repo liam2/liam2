@@ -106,7 +106,7 @@ class SequentialMatching(Matching):
     funcname = 'matching'
     no_eval = ('set1filter', 'set2filter', 'score', 'orderby')
 
-    def traverse(self):
+    def traverse(self, context = None):
         #FIXME: we should not override the parent traverse method, so that all
         # "child" expressions are traversed too.
         # This is not done currently, because it would traverse score_expr.
@@ -240,7 +240,7 @@ class SequentialMatching(Matching):
 
             result[id_to_rownum[ids1]] = ids2
             result[id_to_rownum[ids2]] = ids1
-            
+
             if nb_match == cell2size:
                 matching_ctx = context_delete(matching_ctx, cell2_idx)
             else:

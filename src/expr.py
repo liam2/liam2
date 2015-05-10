@@ -116,7 +116,7 @@ def as_string(expr):
         return str(expr)
 
 
-def traverse_expr(expr):
+def traverse_expr(expr, context = None):
     if isinstance(expr, Expr):
         for node in expr.traverse():
             yield node
@@ -195,11 +195,11 @@ def expr_eval(expr, context):
         # collect_variables result (it is much better than before though).
         #TODO: also check for globals
         for var in expr.collect_variables():
-            try: 
+            try:
                 if var.name not in globals_names and var not in context:
                     raise Exception("variable '%s' is unknown (it is either not "
                                     "defined or not computed yet)" % var)
-            except: 
+            except:
                 import pdb
                 pdb.set_trace()
         return expr.evaluate(context)
@@ -418,14 +418,14 @@ class Expr(object):
             raise AttributeError("'%s' object has no attribute '%s'"
                                  % (self.__class__.__name__, key))
 
-    def traverse(self):
+    def traverse(self, context = None):
         for child in self.children:
             for node in traverse_expr(child):
                 yield node
         yield self
 
-    def all_of(self, node_type):
-        for node in self.traverse():
+    def all_of(self, node_type, context = None):
+        for node in self.traverse(context):
             if isinstance(node, node_type):
                 yield node
 
@@ -1067,7 +1067,7 @@ class GlobalVariable(EvaluableExpression):
                 globals_periods = globals_table['period']
             if context['format_date'] != 'year0':
                 if max(globals_periods) < 9999:
-                    globals_periods = [100* x +1 for x in globals_periods]         
+                    globals_periods = [100* x +1 for x in globals_periods]
             row = np.searchsorted(globals_periods, key, side='left')
             base_period = globals_periods[0]
             if isinstance(key, slice):
@@ -1184,7 +1184,7 @@ class GlobalTable(object):
         return GlobalVariable(self.name, key, self.fields_map[key])
 
     #noinspection PyUnusedLocal
-    def traverse(self, context):
+    def traverse(self, context = None):
         yield self
 
     def __repr__(self):

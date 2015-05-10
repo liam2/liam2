@@ -61,7 +61,7 @@ class Link(object):
                          {'periods': context['periods'],
                           'period': context['period'],
                           'period_idx': context['period_idx'],
-                         '__globals__': context['__globals__']})         
+                         '__globals__': context['__globals__']})
 
     def __repr__(self):
         return "%s(%s, %s, %s)" % (self.__class__.__name__, self._name,
@@ -109,7 +109,7 @@ class One2One(Link):
         return LinkValue(self, key, missing_value)
 
     __getattr__ = get
-    
+
     def count(self, target_filter=None):
         return CountLink(self, target_filter)
 
@@ -163,7 +163,7 @@ class LinkExpression(FunctionExpr):
         return self.link._target_context(context)
 
     #XXX: I think this is not enough. Implement Visitor pattern instead?
-    def traverse(self):
+    def traverse(self, context = None):
         yield self
 
     def dtype(self, context):
@@ -189,7 +189,7 @@ class LinkGet(LinkExpression):
     funcname = "get"
     no_eval = ('target_expr',)
 
-    def traverse(self):
+    def traverse(self, context = None):
         #XXX: don't we also need the fields within the target expression?
         #noinspection PyProtectedMember
         yield Variable(self.link._entity, self.link._link_field)
