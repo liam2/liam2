@@ -354,7 +354,7 @@ Specifying the *path* is optional. If it is omitted, it defaults to the
 directory where the simulation file is located.
 
 The hdf5-file format can be browsed with *vitables*
-(http://vitables.berlios.de/) or another hdf5-browser available on the net.
+(http://vitables.org/) or another hdf5-browser available on the net.
 
 output
 ------
