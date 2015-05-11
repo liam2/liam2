@@ -101,5 +101,4 @@ simulation:
 # menu, or the funnel icon on the toolbar to access it. This feature has many
 # uses, from finding individuals with odd values in some fields to tracking
 # particular individuals across all the periods of a simulation (e.g. with
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 # a "id == 42" query condition).
