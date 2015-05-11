@@ -20,7 +20,6 @@ from importer import file2h5
 from console import Console
 from context import EvaluationContext
 from data import entities_from_h5, H5Data
-from importer import csv2h5
 from simulation import Simulation
 from upgrade import upgrade
 from utils import AutoFlushFile
