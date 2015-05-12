@@ -35,7 +35,7 @@ entities:
                                 workstate)
                 - show('new unemployed (ex-students)',
                        count(ISUNEMPLOYED and lag(ISSTUDENT)))
-                       
+
 simulation:
     # use our new process
     init:

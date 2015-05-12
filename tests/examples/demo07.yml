@@ -219,7 +219,7 @@ entities:
             inwork:
                 # retire
                 - workstate: if(age >= RETIREMENTAGE, RETIRED, workstate)
-                
+
                 - work_score: -1
                 # men
                 - work_score: if(ISMALE and ACTIVEAGE and ISINWORK,
@@ -358,4 +358,3 @@ simulation:
     start_period: 2002
     periods: 2
     default_entity: person
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625

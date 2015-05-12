@@ -26,7 +26,7 @@ entities:
                 - nb_persons: persons.count()
                 - nb_children: persons.count(age < 18)
 
-            clean_empty: 
+            clean_empty:
                 - show('empty hh', count(nb_persons == 0))
                 - remove(nb_persons == 0)
 
@@ -83,7 +83,7 @@ entities:
                            logit_regr(0.0, align='al_p_dead_m.csv'),
                            logit_regr(0.0, align='al_p_dead_f.csv'))
                 - civilstate: if(partner.dead, WIDOW, civilstate)
-                
+
                 # We break the link to the partner: the "partner" link is no
                 # longer valid for the concerned individuals after this point.
                 - partner_id: if(partner.dead, UNSET, partner_id)
@@ -161,4 +161,3 @@ simulation:
     start_period: 2002
     periods: 2
     default_entity: person
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
