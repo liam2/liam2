@@ -6,7 +6,10 @@ import re
 from itertools import islice, chain
 
 import numpy as np
-import bcolz
+try:
+    import bcolz
+except ImportError:
+    bcolz = None
 import tables
 import yaml
 
