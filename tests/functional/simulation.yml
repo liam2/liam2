@@ -329,11 +329,10 @@ entities:
 #            func_no_return(a, b) # no return but int_field1: age + 1
 #            func_args_code_result:
 
-#FIXME: these loop infinitely, I don't know why
-#                - assertEqual(factorial(1), 1)
-#                - assertEqual(factorial(2), 2)
-#                - assertEqual(factorial(3), 6)
-#                - assertEqual(factorial(4), 24)
+                - assertEqual(factorial(1), 1)
+                - assertEqual(factorial(2), 2)
+                - assertEqual(factorial(3), 6)
+                - assertEqual(factorial(4), 24)
 
                 # generic call (ndarray methods)
                 # without argument
