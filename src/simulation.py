@@ -134,14 +134,14 @@ class Simulation(object):
                 '*': [None]  # Or(str, [str, int])
             }],
             'random_seed': int,
-            '#input': {
+            'input': {
                 'path': str,
-                '#file': str,
+                'file': str,
                 'method': str
             },
-            '#output': {
+            'output': {
                 'path': str,
-                '#file': str
+                'file': str
             },
             'legislation': {
                 '#ex_post': bool,
@@ -296,6 +296,8 @@ class Simulation(object):
 
         if output_file is None:
             output_file = output_def['file']
+            assert output_file is not None
+
         output_path = os.path.join(output_directory, output_file)
 
         method = input_def.get('method', 'h5')
@@ -304,6 +306,7 @@ class Simulation(object):
         if method == 'h5':
             if input_file is None:
                 input_file = input_def['file']
+            assert input_file is not None
             input_path = os.path.join(input_directory, input_file)
             data_source = H5Data(input_path, output_path)
         elif method == 'void':

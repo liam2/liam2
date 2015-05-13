@@ -45,13 +45,14 @@ class ExceptionOnGetAttr(object):
 # [a,b]: a is number per year and b is the digit in the tens place to identify unit
 time_period = {'month':1, 'bimonth':2, 'quarter':3, 'triannual':4, 'semester':6, 'year':12, 'year0':1}
 
+
 class UserDeprecationWarning(UserWarning):
     pass
 
 
 def deprecated(f, msg):
     def func(*args, **kwargs):
-        #TODO: when we will be able to link expressions to line numbers in the
+        # TODO: when we will be able to link expressions to line numbers in the
         # model, we should use warnings.warn_explicit instead
         warnings.warn(msg, UserDeprecationWarning)
         return f(*args, **kwargs)
