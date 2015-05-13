@@ -172,7 +172,10 @@ class PrintVersionsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         import numpy
         import numexpr
-        import bcolz
+        try:
+            import bcolz
+        except ImportError:
+            bcolz = None
         import tables
 
         try:
@@ -210,7 +213,7 @@ vitables {vt}
 matplotlib {mpl}
 """.format(py=py_version, np=numpy.__version__, ne=numexpr.__version__,
            pt=tables.__version__, vt=vt_version, mpl=mpl_version,
-           bc=bcolz.__version__, yml=yaml.__version__))
+           bc=bcolz.__version__ if bcolz is not None else None, yml=yaml.__version__))
         parser.exit()
 
 

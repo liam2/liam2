@@ -377,6 +377,7 @@ def union1d(arrays):
 
 
 def interpolate(target, arrays, id_periods, fields):
+    assert bcolz is not None, 'bcolz package is required to use interpolate'
     print(" * indexing...")
     periods = np.unique(id_periods['period'])
     max_id = np.max(id_periods['id'])
