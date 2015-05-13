@@ -172,7 +172,6 @@ class PrintVersionsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         import numpy
         import numexpr
-        import bcolz
         import tables
 
         try:
@@ -197,6 +196,12 @@ class PrintVersionsAction(argparse.Action):
         except ImportError:
             mpl_version = 'N/A'
 
+        try:
+            import bcolz
+            bcolz_version = bcolz.__version__
+        except ImportError:
+            bcolz_version = 'N/A'
+
         py_version = '{} ({})'.format(platform.python_version(),
                                       platform.architecture()[0])
         print("""
@@ -210,7 +215,7 @@ vitables {vt}
 matplotlib {mpl}
 """.format(py=py_version, np=numpy.__version__, ne=numexpr.__version__,
            pt=tables.__version__, vt=vt_version, mpl=mpl_version,
-           bc=bcolz.__version__, yml=yaml.__version__))
+           bc=bcolz_version, yml=yaml.__version__))
         parser.exit()
 
 

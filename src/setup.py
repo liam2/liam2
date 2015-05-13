@@ -143,5 +143,12 @@ setup(name="liam2",
       ext_modules=ext_modules,
       options={"build_ext": build_ext_options, "build_exe": build_exe_options},
       executables=[Executable("main.py")],
-      requires=['numpy', 'numexpr', 'tables', 'bcolz'])
+      install_requires=['numpy', 'numexpr', 'tables'],
+      extras_require=dict(
+          interpolation=['bcolz'],
+          plot=['matplotlib'],
+          view=['vitables'],
+          ),
+      )
+
 # also recommends 'matplotlib' and 'vitables'
