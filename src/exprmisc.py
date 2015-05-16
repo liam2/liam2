@@ -3,7 +3,7 @@ from __future__ import print_function
 from itertools import izip, chain
 
 import numpy as np
-from til.pgm.run_pension import get_pension
+#from til.pgm.run_pension import get_pension
 
 import config
 from expr import (EvaluableExpression, Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
@@ -161,46 +161,41 @@ class Trunc(FunctionExpr):
 
     dtype = always(int)
 
-    def evaluate(self, context):
-        return expr_eval(self.expr, context).astype(int)
-
-    def dtype(self, context):
-        assert getdtype(self.expr, context) == float
-        return int
+# ------------------------------------
 
 class TimeScale(FunctionExpr):
     func_name = 'period'
 
-    def evaluate(self, context):
-        return expr_eval(self.expr, context) + context['periodicity']
+    def compute(self, context, expr):
+        return expr_eval(expr, context) + context['periodicity']
 
-    def dtype(self, context):
-        return int
+    dtype = always(int)
+
 
 class Year(FunctionExpr):
     func_name = 'year'
 
-    def evaluate(self, context):
-        return int(expr_eval(self.expr, context)/100)
+    def compute(self, context, expr):
+        return int(expr_eval(expr, context)/100)
 
-    def dtype(self, context):
-        return int
+    dtype = always(int)
+
 
 class Month(FunctionExpr):
     func_name = 'month'
 
-    def evaluate(self, context):
-        return (expr_eval(self.expr, context) % 100)
+    def compute(self, context, expr):
+        return (expr_eval(expr, context) % 100)
 
-    def dtype(self, context):
-        return int
+    dtype = always(int)
+
 
 class AddTime(FunctionExpr):
     func_name = 'add_time'
 
-    def evaluate(self, context):
+    def compute(self, context, expr):
         periodicity = context['periodicity']
-        init_value = expr_eval(self.expr, context)
+        init_value = expr_eval(expr, context)
         #TODO: be more general with periodicity > 12
         if periodicity > 0:
             change_year = (init_value % 100) + periodicity >= 12
@@ -210,8 +205,7 @@ class AddTime(FunctionExpr):
             value = init_value + periodicity*(1-change_year) + (-100+12+periodicity)*(change_year)
         return value
 
-    def dtype(self, context):
-        return int
+    dtype = always(int)
 
 #------------------------------------
 
@@ -504,11 +498,7 @@ class Where(NumexprFunction):
         assert getdtype(self.cond, context) == bool
         return coerce_types(context, self.iftrue, self.iffalse)
 
-    def collect_variables(self, context):
-        condvars = collect_variables(self.cond, context)
-        iftruevars = collect_variables(self.iftrue, context)
-        iffalsevars = collect_variables(self.iffalse, context)
-        return condvars | iftruevars | iffalsevars
+
 
 class Pension(FilteredExpression):
     def __init__(self, varname, regime, expr=None, filter=None, yearleg=None):
@@ -520,15 +510,6 @@ class Pension(FilteredExpression):
 functions = {
     # element-wise functions
     # Min and Max are in aggregates.py.functions (because of the dispatcher)
-    # random
-#    'uniform': Uniform,
-#    'normal': Normal,
-#    'gumbel': Gumbel,
-#    'choice': Choice,
-#    'randint': RandInt,
-    # aggregates/per element combined functions
-#    'min': make_dispatcher(aggregates.Min, Min), should not ...!!!!!
-#    'max': make_dispatcher(aggregates.Max, Max),
     'add_time_scale': TimeScale,
     'add_time': AddTime,
     'year': Year,

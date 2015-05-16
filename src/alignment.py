@@ -302,17 +302,17 @@ class AlignmentAbsoluteValues(FilteredExpression):
             self.args = (self.args[0], need) + self.args[2:]
         self.past_error = None
 
-    def traverse(self, context):
-        for node in FilteredExpression.traverse(self, context):
+    def traverse(self):
+        for node in FilteredExpression.traverse(self):
             yield node
         for expr in self.expressions:
-            for node in traverse_expr(expr, context):
+            for node in traverse_expr(expr):
                 yield node
-        for node in traverse_expr(self.need, context):
+        for node in traverse_expr(self.need):
             yield node
-        for node in traverse_expr(self.take_filter, context):
+        for node in traverse_expr(self.take_filter):
             yield node
-        for node in traverse_expr(self.leave_filter, context):
+        for node in traverse_expr(self.leave_filter):
             yield node
         yield self
 
