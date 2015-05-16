@@ -5,13 +5,17 @@ import numpy as np
 
 class EvaluationContext(object):
     def __init__(self, simulation=None, entities=None, global_tables=None,
-                 period=None, entity_name=None, filter_expr=None,
+                 period=None, periods=None, periodicity=None, period_idx=None,
+                 entity_name=None, filter_expr=None,
                  entities_data=None):
         """
         :param simulation: Simulation
         :param entities: dict of entities {name: entity}
         :param global_tables: dict of ndarrays (structured or not)
         :param period: int of the current period
+        :param periods: list of alls periods
+        :param periodicity: number of months between two periods
+        :param period_idx: idx of current period in periods
         :param entity_name: name (str) of the current entity
         :param filter_expr: contextual filter expression (Expr)
         :param entities_data: dict of data for entities (dict of
@@ -22,6 +26,9 @@ class EvaluationContext(object):
         self.entities = entities
         self.global_tables = global_tables
         self.period = period
+        self.periods = periods
+        self.periodicity = periodicity
+        self.period_idx = period_idx
         self.entity_name = entity_name
         self.filter_expr = filter_expr
         if entities_data is None:
@@ -35,6 +42,8 @@ class EvaluationContext(object):
         # filter should be a per-entity dict?
         return EvaluationContext(self.simulation, self.entities,
                                  self.global_tables, self.period,
+                                 self.periods, self.periodicity,
+                                 self.period_idx,
                                  self.entity_name, self.filter_expr,
                                  entities_data)
 
@@ -42,7 +51,9 @@ class EvaluationContext(object):
         res = self.copy(fresh_data=fresh_data)
         for k, v in kwargs.iteritems():
             allowed_kwargs = ('simulation', 'entities', 'global_tables',
-                              'period', 'entity_name', 'filter_expr',
+                              'period', 'periods', 'periodicity', 
+                              'period_idx',
+                              'entity_name', 'filter_expr',
                               'entities_data', 'entity_data')
             assert k in allowed_kwargs, "%s is not a valid kwarg" % k
             setattr(res, k, v)
@@ -76,8 +87,8 @@ class EvaluationContext(object):
         self.entities_data[self.entity_name] = value
 
     def __getitem__(self, key):
-        if key == 'period':
-            return self.period
+        if key in ['period', 'periods', 'periodicity', 'period_idx']:
+            return getattr(self, key)
         else:
             return self.entity_data[key]
 

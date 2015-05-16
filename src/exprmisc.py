@@ -167,7 +167,7 @@ class TimeScale(FunctionExpr):
     func_name = 'period'
 
     def compute(self, context, expr):
-        return expr_eval(expr, context) + context['periodicity']
+        return expr_eval(expr, context) + context.periodicity
 
     dtype = always(int)
 
@@ -194,15 +194,15 @@ class AddTime(FunctionExpr):
     func_name = 'add_time'
 
     def compute(self, context, expr):
-        periodicity = context['periodicity']
+        periodicity = context.periodicity
         init_value = expr_eval(expr, context)
         #TODO: be more general with periodicity > 12
         if periodicity > 0:
             change_year = (init_value % 100) + periodicity >= 12
-            value = init_value + periodicity*(1-change_year) + (100-12+periodicity)*(change_year)
+            value = init_value + periodicity*(1 - change_year) + (100 - 12 + periodicity)*(change_year)
         if periodicity < 0:
             change_year = (init_value % 100) + periodicity < 1
-            value = init_value + periodicity*(1-change_year) + (-100+12+periodicity)*(change_year)
+            value = init_value + periodicity*(1 - change_year) + (-100 + 12 + periodicity)*(change_year)
         return value
 
     dtype = always(int)

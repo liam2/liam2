@@ -446,7 +446,10 @@ class Simulation(object):
 
         process_time = defaultdict(float)
         period_objects = {}
+        
         eval_ctx = EvaluationContext(self, self.entities_map, globals_data)
+        eval_ctx.periodicity = time_period[self.time_scale] * (1 - 2 * (self.retro))
+        eval_ctx.format_date = self.time_scale
 
         def simulate_period(period_idx, period, periods, processes, entities,
                             init=False):
@@ -454,6 +457,13 @@ class Simulation(object):
 
             # set current period
             eval_ctx.period = period
+            eval_ctx.periods = periods
+            eval_ctx.period_idx = period_idx + 1
+#            # build context for this period:
+#            const_dict = {'period_idx': period_idx + 1,
+#                          'longitudinal': self.longitudinal,
+#                          'pension': None,
+#            assert(periods[period_idx + 1] == period)
 
             if config.log_level in ("procedures", "processes"):
                 print()
@@ -478,19 +488,6 @@ class Simulation(object):
                 entity.array['period'] = period
 
             if processes:
-                # build context for this period:
-                const_dict = {'period_idx': period_idx + 1,
-                              'periods': periods,
-                              'periodicity': time_period[self.time_scale] * (1 - 2 * (self.retro)),
-                              'longitudinal': self.longitudinal,
-                              'format_date': self.time_scale,
-                              'pension': None,
-                              '__simulation__': self,
-                              'period': period,
-                              'nan': float('nan'),
-                              '__globals__': globals_data}
-                assert(periods[period_idx + 1] == period)
-
                 num_processes = len(processes)
                 for p_num, process_def in enumerate(processes, start=1):
                     process, periodicity, start = process_def
@@ -506,6 +503,7 @@ class Simulation(object):
                     if isinstance(periodicity, int):
                         if period_idx % periodicity == 0:
                             elapsed, _ = gettime(process.run_guarded, eval_ctx)
+
                         else:
                             elapsed = 0
                             if config.log_level in ("procedures", "processes"):
@@ -523,7 +521,6 @@ class Simulation(object):
                         if (periodicity_process <= periodicity_simul and self.time_scale != 'year0') or (
                                 month_idx % periodicity_process == start % periodicity_process):
 
-                            const_dict['periodicity'] = periodicity_process * (1 - 2 * (self.retro))
                             elapsed, _ = gettime(process.run_guarded, eval_ctx)
                         else:
                             elapsed = 0
