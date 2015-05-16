@@ -226,12 +226,11 @@ class ProcessGroup(Process):
         else:
             return self.name
 
-    def _autodump(self, context):
+    def _autodump(self, period):
         fields = self._modified_fields
         if not fields:
             return
 
-        period = context.period
         fname, numrows = config.autodump
         h5file = config.autodump_file
         name = self._tablename(period)
