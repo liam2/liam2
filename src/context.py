@@ -5,7 +5,8 @@ import numpy as np
 
 class EvaluationContext(object):
     def __init__(self, simulation=None, entities=None, global_tables=None,
-                 period=None, periods=None, periodicity=None, period_idx=None,
+                 period=None, periods=None, periodicity=None,
+                 period_idx=None, format_date=None,
                  entity_name=None, filter_expr=None,
                  entities_data=None):
         """
@@ -16,6 +17,7 @@ class EvaluationContext(object):
         :param periods: list of alls periods
         :param periodicity: number of months between two periods
         :param period_idx: idx of current period in periods
+        :param period_idx: string for the period format
         :param entity_name: name (str) of the current entity
         :param filter_expr: contextual filter expression (Expr)
         :param entities_data: dict of data for entities (dict of
@@ -29,6 +31,7 @@ class EvaluationContext(object):
         self.periods = periods
         self.periodicity = periodicity
         self.period_idx = period_idx
+        self.format_date = format_date
         self.entity_name = entity_name
         self.filter_expr = filter_expr
         if entities_data is None:
@@ -43,7 +46,7 @@ class EvaluationContext(object):
         return EvaluationContext(self.simulation, self.entities,
                                  self.global_tables, self.period,
                                  self.periods, self.periodicity,
-                                 self.period_idx,
+                                 self.period_idx, self.format_date,
                                  self.entity_name, self.filter_expr,
                                  entities_data)
 
@@ -52,7 +55,7 @@ class EvaluationContext(object):
         for k, v in kwargs.iteritems():
             allowed_kwargs = ('simulation', 'entities', 'global_tables',
                               'period', 'periods', 'periodicity', 
-                              'period_idx',
+                              'period_idx', 'format_date',
                               'entity_name', 'filter_expr',
                               'entities_data', 'entity_data')
             assert k in allowed_kwargs, "%s is not a valid kwarg" % k
@@ -87,7 +90,8 @@ class EvaluationContext(object):
         self.entities_data[self.entity_name] = value
 
     def __getitem__(self, key):
-        if key in ['period', 'periods', 'periodicity', 'period_idx']:
+        if key in ['period', 'periods', 'periodicity',
+                   'period_idx', 'format_date']:
             return getattr(self, key)
         else:
             return self.entity_data[key]
