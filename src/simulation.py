@@ -95,13 +95,13 @@ class Simulation(object):
                 'type': str,
                 'fields': [{
                     '*': None  # Or(str, {'type': str, 'initialdata': bool, 'default': type})
-                }],
+                    }],
                 'oldnames': {
                     '*': str
-                },
+                    },
                 'newnames': {
                     '*': str
-                },
+                    },
                 'invert': [str],
                 'transposed': bool
             }
@@ -278,15 +278,20 @@ class Simulation(object):
         legislation = simulation_def.get('legislation', None)
         final_stat = simulation_def.get('final_stat', None)
 
-        input_def = simulation_def['input']
-        input_directory = input_dir if input_dir is not None else input_def.get('path', '')
+        input_def = simulation_def.get('input')
+        if input_def is not None:
+            input_directory = input_dir if input_dir is not None else input_def.get('path', '')
+        else:
+            input_directory = ''
         if not os.path.isabs(input_directory):
             input_directory = os.path.join(simulation_dir, input_directory)
         config.input_directory = input_directory
 
-        output_def = simulation_def['output']
-        output_directory = output_dir if output_dir is not None else output_def.get('path', '')
-        assert os.path.isabs(output_directory), "{} is not an absolute path".format(output_directory)
+        output_def = simulation_def.get('output')
+        if output_def is not None:
+            output_directory = output_dir if output_dir is not None else output_def.get('path', '')
+        else:
+            output_directory = ''
         if not os.path.isabs(output_directory):
             output_directory = os.path.join(simulation_dir, output_directory)
         if not os.path.exists(output_directory):
@@ -295,16 +300,20 @@ class Simulation(object):
         config.output_directory = output_directory
 
         if output_file is None:
-            output_file = output_def['file']
+            output_file = output_def.get('file')
             assert output_file is not None
 
         output_path = os.path.join(output_directory, output_file)
 
-        method = input_def.get('method', 'h5')
+        if input_def is not None:
+            method = input_def.get('method', 'h5')
+        else:
+            method = 'h5'
 
         # need to be before processes because in case of legislation, we need input_table for now.
         if method == 'h5':
             if input_file is None:
+                assert input_def is not None
                 input_file = input_def['file']
             assert input_file is not None
             input_path = os.path.join(input_directory, input_file)
@@ -320,6 +329,8 @@ class Simulation(object):
 
         for entity in entity_registry.itervalues():
             entity.check_links()
+            print(entity)
+            print(entity.__dict__)
             entity.parse_processes(globals_def)
             entity.compute_lagged_fields()
 

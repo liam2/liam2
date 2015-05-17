@@ -177,22 +177,22 @@ class Entity(object):
                 strtype = fielddef['type']
                 if not fielddef.get('initialdata', True):
                     missing_fields.append(name)
-                    
+
                 fieldtype = field_str_to_type(strtype, "field '%s'" % name)
                 dflt_type = missing_values[fieldtype]
-                default = fielddef.get('default', dflt_type)              
+                default = fielddef.get('default', dflt_type)
                 if fieldtype != type(default):
                     raise Exception("The default value given to %s is %s"
                     " but %s was expected" %(name, type(default), strtype) )
-                    
+
             else:
                 strtype = fielddef
                 fieldtype = field_str_to_type(strtype, "field '%s'" % name)
                 default = missing_values[fieldtype]
-                
+
             fields.append((name, fieldtype))
             default_values[name] = default
-            
+
 
         link_defs = entity_def.get('links', {})
         str2class = {'one2many': One2Many, 'many2one': Many2One, 'one2one': One2One}
@@ -211,7 +211,7 @@ class Entity(object):
 
     @classmethod
     def from_table(cls, table):
-        return Entity(table.name, get_fields(table), missing_fields=[], default_values={}, 
+        return Entity(table.name, get_fields(table), missing_fields=[], default_values={},
                       links={}, macro_strings={}, process_strings={})
 
     @staticmethod
