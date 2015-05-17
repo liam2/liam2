@@ -106,7 +106,7 @@ class SequentialMatching(Matching):
     funcname = 'matching'
     no_eval = ('set1filter', 'set2filter', 'score', 'orderby')
 
-    def traverse(self, context = None):
+    def traverse(self):
         #FIXME: we should not override the parent traverse method, so that all
         # "child" expressions are traversed too.
         # This is not done currently, because it would traverse score_expr.

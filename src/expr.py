@@ -197,7 +197,7 @@ def expr_eval(expr, context):
         for var in expr.collect_variables():
             if var.name not in globals_names and var not in context:
                 raise Exception("variable '%s' is unknown (it is either not "
-                                "defined or not computed yet)" % var)
+                                    "defined or not computed yet)" % var)
         return expr.evaluate(context)
 
         # there are several flaws with this approach:
@@ -414,7 +414,6 @@ class Expr(object):
         yield self
 
     def all_of(self, node_type):
-        print (type(self))
         for node in self.traverse():
             if isinstance(node, node_type):
                 yield node
