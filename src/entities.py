@@ -11,7 +11,7 @@ from data import merge_arrays, get_fields, ColumnArray, index_table
 from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
                   GlobalArray, Expr, MethodSymbol)
 from exprtools import parse
-from process import Assignment, ProcessGroup, While, Function
+from process import Assignment, ProcessGroup, While, Function, Return
 from utils import (count_occurrences, field_str_to_type, size2str,
                    WarnOverrideDict)
 
@@ -342,6 +342,14 @@ class Entity(object):
                 code = self.parse_process_group("while_code", v,
                                                 context, purge=False)
                 process = While(k, self, cond, code)
+            elif k is None and v.startswith('return'):
+                assert len(v) == 6 or v[6] == ' '
+                if len(v) > 6:
+                    result_def = v[7:].strip()
+                else:
+                    result_def = None
+                result_expr = parse(result_def, context)
+                process = Return(None, self, result_expr)
             else:
                 process = self.parse_expr(k, v, context)
                 if process is None:

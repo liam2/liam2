@@ -304,6 +304,14 @@ entities:
                             - n: 0
                 return: r
 
+            factorial2:
+                args: n
+                code:
+                    - while:
+                        cond: n > 1
+                        code:
+                            - return n * factorial(n - 1)
+                    - return n
             test_call:
                 # 1) no args and no result (concise/old style)
                 - temp_var: age * 42
@@ -329,10 +337,17 @@ entities:
 #            func_no_return(a, b) # no return but int_field1: age + 1
 #            func_args_code_result:
 
+                - assertEqual(factorial(0), 0)
                 - assertEqual(factorial(1), 1)
                 - assertEqual(factorial(2), 2)
                 - assertEqual(factorial(3), 6)
                 - assertEqual(factorial(4), 24)
+
+                - assertEqual(factorial2(0), 0)
+                - assertEqual(factorial2(1), 1)
+                - assertEqual(factorial2(2), 2)
+                - assertEqual(factorial2(3), 6)
+                - assertEqual(factorial2(4), 24)
 
                 # generic call (ndarray methods)
                 # without argument

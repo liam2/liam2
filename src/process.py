@@ -16,6 +16,11 @@ class BreakpointException(Exception):
     pass
 
 
+class ReturnException(Exception):
+    def __init__(self, result):
+        self.result = result
+
+
 class Process(object):
     def __init__(self, name, entity):
         self.name = name
@@ -38,6 +43,19 @@ class Process(object):
 
     def __repr__(self):
         return "<process '%s'>" % self.name
+
+
+class Return(Process):
+    def __init__(self, name, entity, result_expr):
+        super(Return, self).__init__(name, entity)
+        self.result_expr = result_expr
+
+    def run_guarded(self, context):
+        raise ReturnException(expr_eval(self.result_expr, context))
+
+    def expressions(self):
+        if isinstance(self.result_expr, Expr):
+            yield self.result_expr
 
 
 class Assignment(Process):
@@ -136,24 +154,27 @@ class ProcessGroup(Process):
 
         if config.log_level == "processes":
             print()
-        for k, v in self.subprocesses:
-            if config.log_level == "processes":
-                print("    *", end=' ')
-                if k is not None:
-                    print(k, end=' ')
-                utils.timed(v.run_guarded, context)
-            else:
-                v.run_guarded(context)
-#            print "done."
-            context.simulation.start_console(context)
-        if config.autodump is not None:
-            self._autodump(period)
 
-        if config.autodiff is not None:
-            self._autodiff(period)
+        try:
+            for k, v in self.subprocesses:
+                if config.log_level == "processes":
+                    print("    *", end=' ')
+                    if k is not None:
+                        print(k, end=' ')
+                    utils.timed(v.run_guarded, context)
+                else:
+                    v.run_guarded(context)
+                    #            print "done."
+                context.simulation.start_console(context)
+        finally:
+            if config.autodump is not None:
+                self._autodump(context)
 
-        if self.purge:
-            self.entity.purge_locals()
+            if config.autodiff is not None:
+                self._autodiff(period)
+
+            if self.purge:
+                self.entity.purge_locals()
 
     @property
     def predictors(self):
@@ -335,9 +356,11 @@ class Function(Process):
             # and we need it to be available across all processes of the
             # function
             self.entity.temp_variables[name] = value
-        self.code.run_guarded(context)
-        result = expr_eval(self.result, context)
-
+        try:
+            self.code.run_guarded(context)
+            result = expr_eval(self.result, context)
+        except ReturnException as r:
+            result = r.result
         self.purge_and_restore_locals(backup)
         return result
 
