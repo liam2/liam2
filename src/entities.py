@@ -331,7 +331,7 @@ class Entity(object):
                     raise ValueError("while is a reserved keyword")
                 cond = parse(v['cond'], context)
                 assert isinstance(cond, Expr)
-                code = self.parse_process_group("while:code", v['code'],
+                code = self.parse_process_group("while_code", v['code'],
                                                 context, purge=False)
                 process = While(k, self, cond, code)
             else:
@@ -352,7 +352,7 @@ class Entity(object):
                             result_def = v.get('return')
                         method_context = self.get_group_context(context,
                                                                 argnames)
-                        code = self.parse_process_group("func:code", code_def,
+                        code = self.parse_process_group(k + "_code", code_def,
                                                         method_context,
                                                         purge=False)
                         #TODO: use code.predictors instead (but it currently
