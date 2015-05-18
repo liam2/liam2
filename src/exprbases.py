@@ -10,7 +10,7 @@ from expr import (FunctionExpr, not_hashable,
                   getdtype, as_simple_expr, as_string,
                   get_missing_value, ispresent, LogicalOp, AbstractFunction,
                   always, FillArgSpecMeta)
-from utils import classproperty, argspec
+from utils import classproperty, argspec, split_signature
 
 
 # class CompoundExpression(Expr):
@@ -267,9 +267,7 @@ class TableExpression(FunctionExpr):
 
 
 def make_np_class(baseclass, docstring, dtypefunc):
-    pos = docstring.find('(')
-    name = docstring[:pos]
-    args = docstring[pos + 1:-1]
+    name, args = split_signature(docstring)
     if isinstance(dtypefunc, type):
         dtypefunc = always(dtypefunc)
 
