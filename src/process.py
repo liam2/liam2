@@ -56,9 +56,6 @@ class Assignment(Process):
             self.store_result(value, context)
 
     def store_result(self, result, context):
-        if result is None:
-            return
-
         if isinstance(result, np.ndarray):
             res_type = result.dtype.type
         else:
@@ -161,7 +158,7 @@ class ProcessGroup(Process):
     @property
     def predictors(self):
         return [v.name for _, v in self.subprocesses
-                if isinstance(v, Assignment)]
+                if isinstance(v, Assignment) and v.name is not None]
 
     @property
     def _modified_fields(self):
@@ -198,13 +195,13 @@ class ProcessGroup(Process):
         name = self._tablename(period)
         dtype = np.dtype([(k, v.dtype) for k, v in fields])
         table = h5file.create_table('/{}'.format(period), name, dtype,
-                                   createparents=True)
+                                    createparents=True)
 
         fnames = [k for k, _ in fields]
         print("writing {} to {}/{}/{} ...".format(', '.join(fnames),
                                                   fname, period, name))
 
-        entity_context = EntityContext(self.entity, {'period': period})
+        entity_context = EntityContext(context, self.entity, {'period': period})
         append_carray_to_table(entity_context, table, numrows)
         print("done.")
 
