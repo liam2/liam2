@@ -92,7 +92,6 @@ class Duration(TimeFunction):
         baseperiod = entity.base_period
         lag_idx = context['period_idx'] - 1
         period = context['periods'][lag_idx]
-        bool_expr = self.expr
         value = expr_eval(bool_expr, context)
 
         # using a full int so that the "store" type check works
@@ -121,7 +120,6 @@ class Duration(TimeFunction):
             still_running &= period_value | missing
             last_period_true[period_value] = period
             period -= 1
-        
         return result
 
     #TODO: move the check to __init__ and use dtype = always(int)
