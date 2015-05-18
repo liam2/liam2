@@ -486,6 +486,39 @@ class Simulation(object):
             for entity in entities:
                 entity.array_period = period
                 entity.array['period'] = period
+                
+            # Longitudinal
+            person = [x for x in entities if x.name == 'person'][0]
+            var_id = person.array.columns['id']
+            # Init
+            if init:
+                for varname in ['sali', 'workstate']:
+                    self.longitudinal[varname] = None
+                    var = person.array.columns[varname]
+                    fpath = self.data_source.input_path
+                    input_file = HDFStore(fpath, mode="r")
+                    if 'longitudinal' in input_file.root:
+                        input_longitudinal = input_file.root.longitudinal
+                        if varname in input_longitudinal:
+                            self.longitudinal[varname] = input_file['/longitudinal/' + varname]
+                            if period not in self.longitudinal[varname].columns:
+                                table = DataFrame({'id': var_id, period: var})
+                                self.longitudinal[varname] = self.longitudinal[varname].merge(
+                                    table, on='id', how='outer')
+                    if self.longitudinal[varname] is None:
+                        self.longitudinal[varname] = DataFrame({'id': var_id, period: var})
+
+            # maybe we have a get_entity or anything nicer than that #TODO: check
+            else:
+                for varname in ['sali', 'workstate']:
+                    var = person.array.columns[varname]
+                    table = DataFrame({'id': var_id, period: var})
+                    if period in self.longitudinal[varname]:
+                        import pdb
+                        pdb.set_trace()
+                    self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
+            
+            eval_ctx.longitudinal = self.longitudinal
 
             if processes:
                 num_processes = len(processes)
@@ -535,37 +568,6 @@ class Simulation(object):
                             print("done.")
                     self.start_console(eval_ctx)
 
-
-            # update longitudinal
-            person = [x for x in entities if x.name == 'person'][0]
-            # maybe we have a get_entity or anything more nice than that #TODO: check
-            id = person.array.columns['id']
-
-            for varname in ['sali', 'workstate']:
-                var = person.array.columns[varname]
-                if init:
-                    fpath = self.data_source.input_path
-                    input_file = HDFStore(fpath, mode="r")
-                    if 'longitudinal' in input_file.root:
-                        input_longitudinal = input_file.root.longitudinal
-                        if varname in input_longitudinal:
-                            self.longitudinal[varname] = input_file['/longitudinal/' + varname]
-                            if period not in self.longitudinal[varname].columns:
-                                table = DataFrame({'id': id, period: var})
-                                self.longitudinal[varname] = self.longitudinal[varname].merge(
-                                    table, on='id', how='outer')
-                        else:
-                            # when one variable is not in the input_file
-                            self.longitudinal[varname] = DataFrame({'id': id, period: var})
-                    else:
-                        # when there is no longitudinal in the dataset
-                        self.longitudinal[varname] = DataFrame({'id': id, period: var})
-                else:
-                    table = DataFrame({'id': id, period: var})
-                    if period in self.longitudinal[varname]:
-                        import pdb
-                        pdb.set_trace()
-                    self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
 
             if config.log_level in ("procedures", "processes"):
                 print("- storing period data")

@@ -8,7 +8,8 @@ class EvaluationContext(object):
                  period=None, periods=None, periodicity=None,
                  period_idx=None, format_date=None,
                  entity_name=None, filter_expr=None,
-                 entities_data=None):
+                 entities_data=None,
+                 longitudinal=None):
         """
         :param simulation: Simulation
         :param entities: dict of entities {name: entity}
@@ -38,6 +39,8 @@ class EvaluationContext(object):
             entities_data = {name: EntityContext(self, entity)
                              for name, entity in entities.iteritems()}
         self.entities_data = entities_data
+        self.longitudinal = longitudinal
+
 
     def copy(self, fresh_data=False):
         entities_data = None if fresh_data else self.entities_data.copy()
@@ -48,7 +51,7 @@ class EvaluationContext(object):
                                  self.periods, self.periodicity,
                                  self.period_idx, self.format_date,
                                  self.entity_name, self.filter_expr,
-                                 entities_data)
+                                 entities_data, self.longitudinal)
 
     def clone(self, fresh_data=False, **kwargs):
         res = self.copy(fresh_data=fresh_data)
@@ -57,7 +60,7 @@ class EvaluationContext(object):
                               'period', 'periods', 'periodicity', 
                               'period_idx', 'format_date',
                               'entity_name', 'filter_expr',
-                              'entities_data', 'entity_data')
+                              'entities_data', 'entity_data', 'longitudinal')
             assert k in allowed_kwargs, "%s is not a valid kwarg" % k
             setattr(res, k, v)
         return res
@@ -91,7 +94,7 @@ class EvaluationContext(object):
 
     def __getitem__(self, key):
         if key in ['period', 'periods', 'periodicity',
-                   'period_idx', 'format_date']:
+                   'period_idx', 'format_date', 'longitudinal']:
             return getattr(self, key)
         else:
             return self.entity_data[key]
@@ -166,8 +169,10 @@ class EntityContext(object):
         self.extra = extra
 
     def __getitem__(self, key):
-        if key == 'period':
-            return self.eval_ctx.period
+
+        if key in ['period', 'periods', 'periodicity',
+                   'period_idx', 'format_date', 'longitudinal']:
+            return getattr(self.eval_ctx, key)
 
         try:
             return self.extra[key]
@@ -312,6 +317,7 @@ def context_subset(context, index=None, keys=None):
         if index is not None and isinstance(value, np.ndarray) and value.shape:
             value = value[index]
         result[key] = value
+        
     return result
 
 
