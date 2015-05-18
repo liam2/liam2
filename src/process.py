@@ -112,11 +112,7 @@ class While(Process):
         self.code = code
 
     def run_guarded(self, context):
-        while True:
-            cond_value = expr_eval(self.cond, context)
-            if not cond_value:
-                break
-
+        while expr_eval(self.cond, context):
             self.code.run_guarded(context)
             #FIXME: this is a bit brutal :) This is necessary because
             # otherwise test_while loops indefinitely (because "values" is
