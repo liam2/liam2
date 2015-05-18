@@ -458,12 +458,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         #sign(self.periodicity_given) = sign(periodicity)
         periodicity_given = time_period[periodicity_given]
-        try: 
-            periodicity_given = \
-                periodicity_given * (periodicity_given*periodicity)/abs(periodicity_given * periodicity)
-        except:
-            import pdb
-            pdb.set_trace()
+        periodicity_given = \
+            periodicity_given * (periodicity_given*periodicity)/abs(periodicity_given * periodicity)
         if gcd(periodicity, periodicity_given) not in [periodicity, periodicity_given]:
             raise( "mix of quarter and triannual impossible")
 
