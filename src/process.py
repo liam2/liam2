@@ -212,7 +212,7 @@ class ProcessGroup(Process):
 
         fname, numrows = config.autodiff
         h5file = config.autodump_file
-        tablepath = '/{}/{}'.format(period, self._tablename(period))
+        tablepath = '/p{}/{}'.format(period, self._tablename(period))
         print("comparing with {}{} ...".format(fname, tablepath))
         if tablepath in h5file:
             table = h5file.getNode(tablepath)
