@@ -366,9 +366,9 @@ class Entity(object):
                             self.collect_predictors(group_expressions)
                         method_context = self.get_group_context(
                             method_context, group_predictors)
-                        result = parse(result_def, method_context)
-                        assert result is None or isinstance(result, Expr)
-                        process = Function(k, self, argnames, code, result)
+                        result_expr = parse(result_def, method_context)
+                        assert result_expr is None or isinstance(result_expr, Expr)
+                        process = Function(k, self, argnames, code, result_expr)
                     elif isinstance(v, dict) and 'predictor' in v:
                         raise ValueError("Using the 'predictor' keyword is "
                                          "not supported anymore. "
