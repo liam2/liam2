@@ -292,25 +292,19 @@ entities:
                 args: n
                 code:
                     - r: 0
-                    - while:
-                        cond: n > 1
-                        code:
-                            - r: n * factorial(n - 1)
-                            - n: 0
-                    - while:
-                        cond: n == 1
-                        code:
-                            - r: 1
-                            - n: 0
+                    - while n > 1:
+                        - r: n * factorial(n - 1)
+                        - n: 0
+                    - while n == 1:
+                        - r: 1
+                        - n: 0
                 return: r
 
             factorial2:
                 args: n
                 code:
-                    - while:
-                        cond: n > 1
-                        code:
-                            - return n * factorial(n - 1)
+                    - while n > 1:
+                        - return n * factorial(n - 1)
                     - return n
 
             factorial3(n):
@@ -441,16 +435,16 @@ entities:
                 # * used in expr
                 - assertEqual(hybrid_test - 1, age)
 
-            test_while:
-                - values: age
-                # => while is a reserved keyword and can't be used as a
-                #    variable name
-                - while:
-                    cond: min(values) < 5
-                    code:
-                        - values: values + 1
+            # should raise an informative error message in 0.10 at least
+#            test_while_oldsyntax:
+#                - values: age
+#                - while:
+#                    cond: min(values) < 5
+#                    code:
+#                        - values: values + 1
 
-            test_while2:
+
+            test_while:
                 - values: age
                 - while min(values) < 5:
                     - values: values + 1
@@ -2457,7 +2451,6 @@ simulation:
                    test_compound,
 
                    test_while,
-                   test_while2,
 
 #                   test_extra_comma,
 #                   test_uninitialized_var,

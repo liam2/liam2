@@ -328,20 +328,26 @@ class Entity(object):
         processes = []
         for k, v in items:
             if k == 'while':
-                if not isinstance(v, dict):
+                if isinstance(v, dict):
+                    raise SyntaxError("""
+This syntax for while is not supported anymore:
+  - while:
+      cond: {cond_expr}
+      code:
+          - ...
+Please use this instead:
+  - while {cond_expr}:
+      - ...
+""".format(cond_expr=v['cond']))
+                else:
                     raise ValueError("while is a reserved keyword")
-                cond = parse(v['cond'], context)
-                assert isinstance(cond, Expr)
-                code = self.parse_process_group("while_code", v['code'],
-                                                context, purge=False)
-                process = While(k, self, cond, code)
             elif k is not None and k.startswith('while '):
                 if not isinstance(v, list):
                     raise ValueError("while is a reserved keyword")
                 cond = parse(k[6:].strip(), context)
                 assert isinstance(cond, Expr)
-                code = self.parse_process_group("while_code", v,
-                                                context, purge=False)
+                code = self.parse_process_group("while_code", v, context,
+                                                purge=False)
                 process = While(k, self, cond, code)
             elif k is None and v.startswith('return'):
                 assert len(v) == 6 or v[6] == ' '
