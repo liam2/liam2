@@ -1237,6 +1237,17 @@ def argspec(*args, **kwonlyargs):
     return _argspec(*args, **kwonlyargs)
 
 
+def split_signature(signature):
+    signature = signature.strip()
+    assert signature.count("(") == 1
+    assert signature.count(")") == 1
+    assert signature[-1] == ')'
+    pos = signature.find('(')
+    name = signature[:pos]
+    args = signature[pos + 1:-1]
+    return name, args
+
+
 # miscellaneous tools
 # -------------------
 
@@ -1285,14 +1296,3 @@ def array_nan_equal(a, b):
             return False
     else:
         return np.all((a == b) | (np.isnan(a) & np.isnan(b)))
-
-
-def split_signature(signature):
-    signature = signature.strip()
-    assert signature.count("(") == 1
-    assert signature.count(")") == 1
-    assert signature[-1] == ')'
-    pos = signature.find('(')
-    name = signature[:pos]
-    args = signature[pos + 1:-1]
-    return name, args
