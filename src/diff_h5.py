@@ -16,7 +16,7 @@ def unique_dupes(a):
     return unique_indices, a[is_dupe]
 
 
-def diff_array(array1, array2, numdiff=10, raiseondiff=False):
+def diff_array(array1, array2, showdiffs=10, raiseondiff=False):
     if len(array1) != len(array2):
         print("length is different: %d vs %d" % (len(array1),
                                                  len(array2)))
@@ -77,8 +77,8 @@ def diff_array(array1, array2, numdiff=10, raiseondiff=False):
                 diff = (col1 != col2).nonzero()[0]
                 print("(%d differences)" % len(diff))
                 ids = array1['id']
-                if len(diff) > numdiff:
-                    diff = diff[:numdiff]
+                if len(diff) > showdiffs:
+                    diff = diff[:showdiffs]
                 print(PrettyTable([['id',
                                     fname + ' (file1)',
                                     fname + ' (file2)']] +
