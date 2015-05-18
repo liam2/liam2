@@ -334,6 +334,14 @@ class Entity(object):
                 code = self.parse_process_group("while_code", v['code'],
                                                 context, purge=False)
                 process = While(k, self, cond, code)
+            elif k is not None and k.startswith('while '):
+                if not isinstance(v, list):
+                    raise ValueError("while is a reserved keyword")
+                cond = parse(k[6:].strip(), context)
+                assert isinstance(cond, Expr)
+                code = self.parse_process_group("while_code", v,
+                                                context, purge=False)
+                process = While(k, self, cond, code)
             else:
                 process = self.parse_expr(k, v, context)
                 if process is None:

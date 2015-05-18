@@ -403,6 +403,17 @@ entities:
                     code:
                         - values: values + 1
 
+            test_while2:
+                - values: age
+                - while min(values) < 5:
+                    - values: values + 1
+
+                - i: 5
+                - assertEqual(i, 5)
+                - while i:
+                    - i: i - 1
+                - assertEqual(i, 0)
+
 #            test_for:
 #                - n: 42
 #                # => for is a reserved keyword and can't be used as a
@@ -2399,6 +2410,7 @@ simulation:
                    test_compound,
 
                    test_while,
+                   test_while2,
 
 #                   test_extra_comma,
 #                   test_uninitialized_var,
@@ -2465,6 +2477,7 @@ simulation:
 
     output:
         file: simulation.h5
+    # does not play nicely with test_while2
 #    autodump: True
 #    autodiff: True
 
