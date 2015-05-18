@@ -312,6 +312,22 @@ entities:
                         code:
                             - return n * factorial(n - 1)
                     - return n
+
+            factorial3(n):
+                - r: 0
+                - while n > 1:
+                    - r: n * factorial2(n - 1)
+                    - n: 0
+                - while n == 1:
+                    - r: 1
+                    - n: 0
+                - return r
+
+            factorial4(n):
+                - while n > 1:
+                    - return n * factorial2(n - 1)
+                - return n
+
             test_call:
                 # 1) no args and no result (concise/old style)
                 - temp_var: age * 42
@@ -348,6 +364,22 @@ entities:
                 - assertEqual(factorial2(2), 2)
                 - assertEqual(factorial2(3), 6)
                 - assertEqual(factorial2(4), 24)
+
+                - assertEqual(factorial3(0), 0)
+                - assertEqual(factorial3(1), 1)
+                - assertEqual(factorial3(2), 2)
+                - assertEqual(factorial3(3), 6)
+                - assertEqual(factorial3(4), 24)
+                # last number to not overflow a 32b int
+                - assertEqual(factorial3(12), 479001600)
+
+                - assertEqual(factorial4(0), 0)
+                - assertEqual(factorial4(1), 1)
+                - assertEqual(factorial4(2), 2)
+                - assertEqual(factorial4(3), 6)
+                - assertEqual(factorial4(4), 24)
+                # last number to not overflow a 32b int
+                - assertEqual(factorial4(12), 479001600)
 
                 # generic call (ndarray methods)
                 # without argument

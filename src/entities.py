@@ -13,7 +13,7 @@ from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
 from exprtools import parse
 from process import Assignment, ProcessGroup, While, Function, Return
 from utils import (count_occurrences, field_str_to_type, size2str,
-                   WarnOverrideDict)
+                   WarnOverrideDict, split_signature, argspec)
 
 
 max_vars = 0
@@ -261,15 +261,16 @@ class Entity(object):
     @property
     def methods(self):
         if self._methods is None:
-            if self.process_strings is None:
-                self._methods = []
-            else:
-                # variable-method hybrids are handled by the self.variable
-                # property
-                self._methods = \
-                    [(k, MethodSymbol(k, self))
-                     for k, v in self.process_strings.iteritems()
-                     if self.ismethod(v) and k not in self.stored_fields]
+            pstrings = self.process_strings
+            items = pstrings.iteritems() if pstrings is not None else ()
+            # variable-method hybrids are handled by the self.variable property
+            methodnames = [k for k, v in items
+                           if self.ismethod(v) and k not in self.stored_fields]
+            # factorial(n) -> factorial
+            methodnames = [split_signature(name)[0] if '(' in name else name
+                           for name in methodnames]
+            self._methods = [(name, MethodSymbol(name, self))
+                             for name in methodnames]
         return self._methods
 
     def all_symbols(self, global_context):
@@ -357,7 +358,12 @@ class Entity(object):
                         if isinstance(v, list):
                             # v should be a list of dicts (assignments) or
                             # strings (actions)
-                            argnames, code_def, result_def = [], v, None
+                            if "(" in k:
+                                k, args = split_signature(k)
+                                argnames = argspec(args).args
+                                code_def, result_def = v, None
+                            else:
+                                argnames, code_def, result_def = [], v, None
                         else:
                             assert isinstance(v, dict)
                             args_def = v.get('args', '')
