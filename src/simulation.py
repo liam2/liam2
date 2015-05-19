@@ -498,23 +498,21 @@ class Simulation(object):
                                 self.processes, self.entities)
 
             total_objects = sum(period_objects[period] for period in periods)
-            total_time = time.time() - main_start_time
-            try:
-                ind_per_sec = str(int(total_objects / total_time))
-            except ZeroDivisionError:
-                ind_per_sec = 'inf'
+            avg_objects = str(total_objects // self.periods) \
+                if self.periods else 'N/A'
+            main_elapsed_time = time.time() - main_start_time
+            ind_per_sec = str(int(total_objects / main_elapsed_time)) \
+                if main_elapsed_time else 'inf'
 
             print("""
 ==========================================
  simulation done
 ==========================================
  * %s elapsed
- * %d individuals on average
+ * %s individuals on average
  * %s individuals/s/period on average
 ==========================================
-""" % (time2str(time.time() - start_time),
-       total_objects / self.periods,
-       ind_per_sec))
+""" % (time2str(time.time() - start_time), avg_objects, ind_per_sec))
 
             show_top_processes(process_time, 10)
 #            if config.debug:
