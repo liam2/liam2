@@ -571,6 +571,10 @@ def load_def(localdir, ent_name, section_def, required_fields):
         else:
             assert all(isinstance(fdef, tuple) for fdef in fields_def)
             fields = fields_def
+        fnames = {name for name, _ in fields}
+        for reqname, reqtype in required_fields[::-1]:
+            if reqname not in fnames:
+                fields.insert(0, (reqname, reqtype))
     else:
         fields = None
     newnames = merge_dicts(invert_dict(section_def.get('oldnames', {})),
@@ -591,8 +595,6 @@ def load_def(localdir, ent_name, section_def, required_fields):
         csv_filepath = complete_path(localdir, csv_filename)
         csv_file = CSV(csv_filepath, newnames,
                        delimiter=',', transpose=transpose)
-        if fields is not None:
-            fields = required_fields + fields
         stream = csv_file.read(fields)
         if fields is None:
             fields = csv_file.fields
@@ -637,10 +639,10 @@ def load_def(localdir, ent_name, section_def, required_fields):
             target_fields = merge_items(*[f.fields for f in files])
             fields_per_file = [None for _ in files]
         else:
-            target_fields = required_fields + fields
+            target_fields = fields
             fields_per_file = [[(name, type_) for name, type_ in target_fields
-                               if name in f.field_names]
-                              for f in files]
+                                if name in f.field_names]
+                               for f in files]
             total_fields = set.union(*[set(f.field_names) for f in files])
             missing = set(name for name, _ in target_fields) - total_fields
             if missing:
