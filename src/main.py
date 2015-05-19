@@ -24,7 +24,7 @@ from upgrade import upgrade
 from utils import AutoFlushFile
 from view import viewhdf
 
-__version__ = "0.9.1.1"
+__version__ = "0.10.0a1"
 
 
 def passthrough(func, *args, **kwargs):
