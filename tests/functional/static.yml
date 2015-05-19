@@ -1,0 +1,19 @@
+entities:
+    dummy:
+        processes:
+            dummy:
+                - a: 0
+
+simulation:
+    init:
+        - dummy: [dummy]
+
+    input:
+        method: void
+        file: none
+
+    output:
+        file: static.h5
+
+    start_period: 2002
+    periods: 0
