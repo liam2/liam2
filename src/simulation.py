@@ -338,14 +338,21 @@ class Simulation(object):
         else:
             print(method, type(method))
 
+        entities = {}
         for k, v in content['entities'].iteritems():
-            entity_registry.add(Entity.from_yaml(k, v))
+            entities[k] = Entity.from_yaml(k, v)
 
-        for entity in entity_registry.itervalues():
-            entity.check_links()
-            print(entity)
-            print(entity.__dict__)
-            entity.parse_processes(globals_def)
+        for entity in entities.itervalues():
+            entity.attach_and_resolve_links(entities)
+
+        global_context = {'__globals__': global_symbols(globals_def),
+                          '__entities__': entities}
+        parsing_context = global_context.copy()
+        parsing_context.update((entity.name, entity.all_symbols(global_context))
+                               for entity in entities.itervalues())
+        for entity in entities.itervalues():
+            parsing_context['__entity__'] = entity.name
+            entity.parse_processes(parsing_context)
             entity.compute_lagged_fields()
             # entity.optimize_processes()
 
