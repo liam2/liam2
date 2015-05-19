@@ -1,3 +1,5 @@
+# -*- coding:utf-8 -*-
+
 from __future__ import print_function, division
 
 import time
@@ -464,7 +466,7 @@ class Simulation(object):
 
         process_time = defaultdict(float)
         period_objects = {}
-        
+
         eval_ctx = EvaluationContext(self, self.entities_map, globals_data)
         eval_ctx.periodicity = time_period[self.time_scale] * (1 - 2 * (self.retro))
         eval_ctx.format_date = self.time_scale
@@ -508,7 +510,7 @@ class Simulation(object):
             for entity in entities:
                 entity.array_period = period
                 entity.array['period'] = period
-                
+
             # Longitudinal
             person = [x for x in entities if x.name == 'person'][0]
             var_id = person.array.columns['id']
@@ -530,7 +532,7 @@ class Simulation(object):
                     if self.longitudinal[varname] is None:
                         self.longitudinal[varname] = DataFrame({'id': var_id, period: var})
 
-            # maybe we have a get_entity or anything nicer than that #TODO: check
+            # maybe we have a get_entity or anything nicer than that # TODO: check
             else:
                 for varname in ['sali', 'workstate']:
                     var = person.array.columns[varname]
@@ -539,7 +541,7 @@ class Simulation(object):
                         import pdb
                         pdb.set_trace()
                     self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
-            
+
             eval_ctx.longitudinal = self.longitudinal
 
             if processes:
@@ -645,6 +647,7 @@ class Simulation(object):
             if self.time_scale == 'year0':
                 periods = [self.start_period + t for t in range(0, (self.periods + 1))]
             print("simulated period are going to be: ", periods)
+
 
             init_start_time = time.time()
             simulate_period(0, self.start_period, [None, periods[0]], self.init_processes,

@@ -44,7 +44,7 @@ class EvaluationContext(object):
 
     def copy(self, fresh_data=False):
         entities_data = None if fresh_data else self.entities_data.copy()
-        #FIXME: when switching entities, filter should not come along, or maybe
+        # FIXME: when switching entities, filter should not come along, or maybe
         # filter should be a per-entity dict?
         return EvaluationContext(self.simulation, self.entities,
                                  self.global_tables, self.period,
@@ -57,7 +57,7 @@ class EvaluationContext(object):
         res = self.copy(fresh_data=fresh_data)
         for k, v in kwargs.iteritems():
             allowed_kwargs = ('simulation', 'entities', 'global_tables',
-                              'period', 'periods', 'periodicity', 
+                              'period', 'periods', 'periodicity',
                               'period_idx', 'format_date',
                               'entity_name', 'filter_expr',
                               'entities_data', 'entity_data', 'longitudinal')
@@ -317,7 +317,7 @@ def context_subset(context, index=None, keys=None):
         if index is not None and isinstance(value, np.ndarray) and value.shape:
             value = value[index]
         result[key] = value
-        
+
     return result
 
 
