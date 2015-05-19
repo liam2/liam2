@@ -14,12 +14,12 @@ def filter_h5(input_path, output_path, condition):
     output_file = tables.open_file(output_path, mode="w")
 
     # copy globals
-    #noinspection PyProtectedMember
+    # noinspection PyProtectedMember
     input_file.root.globals._f_copy(output_file.root, recursive=True)
 
     output_entities = output_file.create_group("/", "entities", "Entities")
     for table in input_file.iterNodes(input_file.root.entities):
-        #noinspection PyProtectedMember
+        # noinspection PyProtectedMember
         print(table._v_name, "...")
         copy_table(table, output_entities, condition=condition)
 
