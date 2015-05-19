@@ -140,7 +140,7 @@ class Simulation(object):
             'init': [{
                 '*': [str]
             }],
-            '#processes': [{
+            'processes': [{
                 '*': [None]  # Or(str, [str, int])
             }],
             'random_seed': int,
@@ -291,10 +291,13 @@ class Simulation(object):
             entity.compute_lagged_fields()
             # entity.optimize_processes()
 
+        if 'init' not in simulation_def and 'processes' not in simulation_def:
+            raise SyntaxError("the 'simulation' section must have at least one "
+                              "of 'processes' or 'init' subsection")
         # for entity in entities.itervalues():
         #     entity.resolve_method_calls()
         used_entities = set()
-        init_def = [d.items()[0] for d in simulation_def.get('init', {})]
+        init_def = [d.items()[0] for d in simulation_def.get('init', [])]
         init_processes = []
         for ent_name, proc_names in init_def:
             if ent_name not in entities:
@@ -305,7 +308,8 @@ class Simulation(object):
             init_processes.extend([(entity.processes[proc_name], 1)
                                    for proc_name in proc_names])
 
-        processes_def = [d.items()[0] for d in simulation_def['processes']]
+        processes_def = [d.items()[0]
+                         for d in simulation_def.get('processes', [])]
         processes = []
         for ent_name, proc_defs in processes_def:
             entity = entities[ent_name]
