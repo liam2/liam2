@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import collections
+import sys
 
 #import bcolz
 import numpy as np
@@ -498,10 +499,13 @@ Please use this instead:
         num_locals = len(local_var_names)
         if config.debug and num_locals:
             local_vars = [v for k, v in temp_vars.iteritems()
-                          if k in local_var_names and isinstance(v, np.ndarray)]
+                          if k in local_var_names]
             max_vars = max(max_vars, num_locals)
-            temp_mem = sum(v.nbytes for v in local_vars)
-            avgsize = sum(v.dtype.itemsize for v in local_vars) / num_locals
+            temp_mem = sum(sys.getsizeof(v) +
+                              (v.nbytes if isinstance(v, np.ndarray) else 0)
+                           for v in local_vars)
+            avgsize = sum(v.dtype.itemsize if isinstance(v, np.ndarray) else 0
+                          for v in local_vars) / num_locals
             if config.log_level in ("procedures", "processes"):
                 print(("purging {} variables (max {}), will free {} of memory "
                        "(avg field size: {} b)".format(num_locals, max_vars,
