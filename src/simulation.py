@@ -464,7 +464,10 @@ class Simulation(object):
 
         process_time = defaultdict(float)
         period_objects = {}
+        
         eval_ctx = EvaluationContext(self, self.entities_map, globals_data)
+        eval_ctx.periodicity = time_period[self.time_scale] * (1 - 2 * (self.retro))
+        eval_ctx.format_date = self.time_scale
 
         def simulate_period(period_idx, period, periods, processes, entities,
                             init=False):
@@ -476,6 +479,13 @@ class Simulation(object):
 
             # set current period
             eval_ctx.period = period
+            eval_ctx.periods = periods
+            eval_ctx.period_idx = period_idx + 1
+#            # build context for this period:
+#            const_dict = {'period_idx': period_idx + 1,
+#                          'longitudinal': self.longitudinal,
+#                          'pension': None,
+#            assert(periods[period_idx + 1] == period)
 
             if config.log_level in ("procedures", "processes"):
                 print()
@@ -498,21 +508,41 @@ class Simulation(object):
             for entity in entities:
                 entity.array_period = period
                 entity.array['period'] = period
+                
+            # Longitudinal
+            person = [x for x in entities if x.name == 'person'][0]
+            var_id = person.array.columns['id']
+            # Init
+            if init:
+                for varname in ['sali', 'workstate']:
+                    self.longitudinal[varname] = None
+                    var = person.array.columns[varname]
+                    fpath = self.data_source.input_path
+                    input_file = HDFStore(fpath, mode="r")
+                    if 'longitudinal' in input_file.root:
+                        input_longitudinal = input_file.root.longitudinal
+                        if varname in input_longitudinal:
+                            self.longitudinal[varname] = input_file['/longitudinal/' + varname]
+                            if period not in self.longitudinal[varname].columns:
+                                table = DataFrame({'id': var_id, period: var})
+                                self.longitudinal[varname] = self.longitudinal[varname].merge(
+                                    table, on='id', how='outer')
+                    if self.longitudinal[varname] is None:
+                        self.longitudinal[varname] = DataFrame({'id': var_id, period: var})
+
+            # maybe we have a get_entity or anything nicer than that #TODO: check
+            else:
+                for varname in ['sali', 'workstate']:
+                    var = person.array.columns[varname]
+                    table = DataFrame({'id': var_id, period: var})
+                    if period in self.longitudinal[varname]:
+                        import pdb
+                        pdb.set_trace()
+                    self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
+            
+            eval_ctx.longitudinal = self.longitudinal
 
             if processes:
-                # build context for this period:
-                const_dict = {'period_idx': period_idx + 1,
-                              'periods': periods,
-                              'periodicity': time_period[self.time_scale] * (1 - 2 * (self.retro)),
-                              'longitudinal': self.longitudinal,
-                              'format_date': self.time_scale,
-                              'pension': None,
-                              '__simulation__': self,
-                              'period': period,
-                              'nan': float('nan'),
-                              '__globals__': globals_data}
-                assert(periods[period_idx + 1] == period)
-
                 num_processes = len(processes)
                 for p_num, process_def in enumerate(processes, start=1):
                     process, periodicity, start = process_def
@@ -528,6 +558,7 @@ class Simulation(object):
                     if isinstance(periodicity, int):
                         if period_idx % periodicity == 0:
                             elapsed, _ = gettime(process.run_guarded, eval_ctx)
+
                         else:
                             elapsed = 0
                             if config.log_level in ("procedures", "processes"):
@@ -545,7 +576,6 @@ class Simulation(object):
                         if (periodicity_process <= periodicity_simul and self.time_scale != 'year0') or (
                                 month_idx % periodicity_process == start % periodicity_process):
 
-                            const_dict['periodicity'] = periodicity_process * (1 - 2 * (self.retro))
                             elapsed, _ = gettime(process.run_guarded, eval_ctx)
                         else:
                             elapsed = 0
@@ -560,37 +590,6 @@ class Simulation(object):
                             print("done.")
                     self.start_console(eval_ctx)
 
-
-            # update longitudinal
-            person = [x for x in entities if x.name == 'person'][0]
-            # maybe we have a get_entity or anything more nice than that #TODO: check
-            id = person.array.columns['id']
-
-            for varname in ['sali', 'workstate']:
-                var = person.array.columns[varname]
-                if init:
-                    fpath = self.data_source.input_path
-                    input_file = HDFStore(fpath, mode="r")
-                    if 'longitudinal' in input_file.root:
-                        input_longitudinal = input_file.root.longitudinal
-                        if varname in input_longitudinal:
-                            self.longitudinal[varname] = input_file['/longitudinal/' + varname]
-                            if period not in self.longitudinal[varname].columns:
-                                table = DataFrame({'id': id, period: var})
-                                self.longitudinal[varname] = self.longitudinal[varname].merge(
-                                    table, on='id', how='outer')
-                        else:
-                            # when one variable is not in the input_file
-                            self.longitudinal[varname] = DataFrame({'id': id, period: var})
-                    else:
-                        # when there is no longitudinal in the dataset
-                        self.longitudinal[varname] = DataFrame({'id': id, period: var})
-                else:
-                    table = DataFrame({'id': id, period: var})
-                    if period in self.longitudinal[varname]:
-                        import pdb
-                        pdb.set_trace()
-                    self.longitudinal[varname] = self.longitudinal[varname].merge(table, on='id', how='outer')
 
             if config.log_level in ("procedures", "processes"):
                 print("- storing period data")
