@@ -470,6 +470,10 @@ class Simulation(object):
                             init=False):
             period_start_time = time.time()
 
+            # period_idx: index of current computed period
+            # periods list of all periods
+            # period = periods[period_idx]
+
             # set current period
             eval_ctx.period = period
 
