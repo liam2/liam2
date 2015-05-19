@@ -1221,9 +1221,14 @@ def argspec(*args, **kwonlyargs):
     FullArgSpec(args=['a', 'b', 'c', 'd'], varargs=None, varkw=None,
                 defaults=(1, None), kwonlyargs=[], kwonlydefaults={},
                 annotations={})
+    >>> argspec('')
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=[], varargs=None, varkw=None, defaults=None, kwonlyargs=[],
+                kwonlydefaults={}, annotations={})
     """
     if len(args) == 1 and isinstance(args[0], basestring):
-        str_args = [a.strip().split('=') for a in args[0].split(',')]
+        str_args = args[0].split(',') if args[0] else []
+        str_args = [a.strip().split('=') for a in str_args]
         args = [(a[0], ast.literal_eval(a[1])) if len(a) > 1 else a[0]
                 for a in str_args]
 
