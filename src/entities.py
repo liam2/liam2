@@ -362,23 +362,42 @@ Please use this instead:
                 process = self.parse_expr(k, v, context)
                 if process is None:
                     if self.ismethod(v):
-                        if isinstance(v, list):
-                            # v should be a list of dicts (assignments) or
-                            # strings (actions)
-                            if "(" in k:
-                                k, args = split_signature(k)
-                                argnames = argspec(args).args
-                                code_def, result_def = v, None
-                            else:
-                                argnames, code_def, result_def = [], v, None
+                        if isinstance(v, dict):
+                            args = v.get('args', '')
+                            code = v.get('code', '')
+                            result = v.get('return', '')
+                            oldargs = "\n      args: {}".format(args) \
+                                if args else ''
+                            oldcode = "\n      code:\n          - ..." \
+                                if code else ''
+                            newcode = "\n      - ..." if code else ''
+                            oldresult = "\n      return: " + result \
+                                if result else ''
+                            newresult = "\n      - return " + result \
+                                if result else ''
+                            template = """
+This syntax for defining functions with arguments or a return value is not
+supported anymore:
+  {funcname}:{oldargs}{oldcode}{oldresult}
+
+Please use this instead:
+  {funcname}({newargs}):{newcode}{newresult}"""
+                            msg = template.format(funcname=k, oldargs=oldargs,
+                                                  oldcode=oldcode,
+                                                  oldresult=oldresult,
+                                                  newargs=args, newcode=newcode,
+                                                  newresult=newresult)
+                            raise SyntaxError(msg)
+
+                        assert isinstance(v, list)
+                        # v should be a list of dicts (assignments) or
+                        # strings (actions)
+                        if "(" in k:
+                            k, args = split_signature(k)
+                            argnames = argspec(args).args
+                            code_def, result_def = v, None
                         else:
-                            assert isinstance(v, dict)
-                            args_def = v.get('args', '')
-                            argnames = [a.strip()
-                                        for a in args_def.split(',')
-                                        if a != '']
-                            code_def = v.get('code', [])
-                            result_def = v.get('return')
+                            argnames, code_def, result_def = [], v, None
                         method_context = self.get_group_context(context,
                                                                 argnames)
                         code = self.parse_process_group(k + "_code", code_def,

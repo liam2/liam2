@@ -223,101 +223,115 @@ entities:
                 # update global variable
                 - int_field1: age + 1
 
-            # should raise a warning because it does not make sense
-            func_only_args:
-                args: a, b
+            # should raise a warning because it does not make sense (but it
+            # is not supported by new syntax)
+#            func_only_args_oldsyntax:
+#                args: a, b
 
-            func_only_code:
-                code:
-                    # same name than in the caller procedure, but should be local
-                    - temp_var: age
-                    - local_var: temp_var * 2
-                    - assertEqual(local_var, age * 2)
-                    # update global variable
-                    - int_field1: age + 1
+#            func_only_code_oldsyntax:
+#                code:
+#                    # same name than in the caller procedure, but should be
+#                    # local
+#                    - temp_var: age
+#                    - local_var: temp_var * 2
+#                    - assertEqual(local_var, age * 2)
+#                    # update global variable
+#                    - int_field1: age + 1
 
-            func_only_return:
-                return: age + 1
+            func_only_code():
+                # same name than in the caller procedure, but should be local
+                - temp_var: age
+                - local_var: temp_var * 2
+                - assertEqual(local_var, age * 2)
+                # update global variable
+                - int_field1: age + 1
 
-            func_no_args:
-                code:
-                    # same name than in the caller procedure, but should be local
-                    - temp_var: age
-                    - local_var: temp_var * 2
-                return: local_var * 2
+#            func_only_return_oldsyntax:
+#                return: age + 1
 
-            func_no_code:
-                args: a, b
-                return: a + b
+            func_only_return():
+                - return age + 1
 
-            func_no_return:
-                args: a, b
-                code:
-                    # same name than in the caller procedure, but should be local
-                    - temp_var: age * 1
-                    - local_var: temp_var * 2
-                    - assertEqual(local_var, age * 2)
-                    # update global variable
-                    - int_field1: age + 1
+#            func_no_args_oldsyntax:
+#                code:
+#                    # same name than in the caller procedure, but should be
+#                    # local
+#                    - temp_var: age
+#                    - local_var: temp_var * 2
+#                return: local_var * 2
 
-            func_args_code_result:
-                args: a, b
-                code:
-                    - result: a + b
-                    - result: result * 2
-                return: result * 2
+            func_no_args():
+                # same name than in the caller procedure, but should be local
+                - temp_var: age
+                - local_var: temp_var * 2
+                - return local_var * 2
 
-            func_args_conflict_fields:
-                args: age
-                code:
-                    - qshow(age)
+#            func_no_code_oldsyntax:
+#                args: a, b
+#                return: a + b
+
+            func_no_code(a, b):
+                - return a + b
+
+#            func_no_return_oldsyntax:
+#                args: a, b
+#                code:
+#                    # same name than in the caller procedure, but should be
+#                    # local
+#                    - temp_var: age * 1
+#                    - local_var: temp_var * 2
+#                    - assertEqual(local_var, age * 2)
+#                    # update global variable
+#                    - int_field1: age + 1
+
+            func_no_return(a, b):
+                # same name than in the caller procedure, but should be local
+                - temp_var: age * 1
+                - local_var: temp_var * 2
+                - assertEqual(local_var, age * 2)
+                # update global variable
+                - int_field1: age + 1
+
+#            func_args_code_result_oldsyntax:
+#                args: a, b
+#                code:
+#                    - result: a + b
+#                    - result: result * 2
+#                return: result * 2
+
+            func_args_code_result(a, b):
+                - result: a + b
+                - result: result * 2
+                - return result * 2
+
+            func_args_conflict_fields(age):
+                - qshow(age)
 
             # issue 119: function arguments not available in interactive console
-            issue119callee:
-                args: arg
-                code:
-                    - localarg: arg
-                    # function arguments are not available in the interactive
-                    # console, but local variables work fine:
-                    # >>> arg
-                    # name 'arg' is not defined
-                    # >>> localarg
-                    # 1.0
-                    - show("type 'arg' and see if it is defined")
-                    - breakpoint()
+            issue119callee(arg):
+                - localarg: arg
+                # function arguments are not available in the interactive
+                # console, but local variables work fine:
+                # >>> arg
+                # name 'arg' is not defined
+                # >>> localarg
+                # 1.0
+                - show("type 'arg' and see if it is defined")
+                - breakpoint()
 
             # this is an awful hack since we do not have an if control flow
             # keyword yet
-            factorial:
-                args: n
-                code:
-                    - r: 0
-                    - while n > 1:
-                        - r: n * factorial(n - 1)
-                        - n: 0
-                    - while n == 1:
-                        - r: 1
-                        - n: 0
-                return: r
-
-            factorial2:
-                args: n
-                code:
-                    - while n > 1:
-                        - return n * factorial(n - 1)
-                    - return n
-
-            factorial3(n):
+            factorial(n):
                 - r: 0
                 - while n > 1:
-                    - r: n * factorial2(n - 1)
+                    - r: n * factorial(n - 1)
                     - n: 0
                 - while n == 1:
                     - r: 1
                     - n: 0
                 - return r
 
-            factorial4(n):
+            factorial2(n):
                 - while n > 1:
                     - return n * factorial2(n - 1)
                 - return n
@@ -352,28 +366,16 @@ entities:
                 - assertEqual(factorial(2), 2)
                 - assertEqual(factorial(3), 6)
                 - assertEqual(factorial(4), 24)
+                # last number to not overflow a 32b int
+                - assertEqual(factorial(12), 479001600)
 
                 - assertEqual(factorial2(0), 0)
                 - assertEqual(factorial2(1), 1)
                 - assertEqual(factorial2(2), 2)
                 - assertEqual(factorial2(3), 6)
                 - assertEqual(factorial2(4), 24)
-
-                - assertEqual(factorial3(0), 0)
-                - assertEqual(factorial3(1), 1)
-                - assertEqual(factorial3(2), 2)
-                - assertEqual(factorial3(3), 6)
-                - assertEqual(factorial3(4), 24)
                 # last number to not overflow a 32b int
-                - assertEqual(factorial3(12), 479001600)
-
-                - assertEqual(factorial4(0), 0)
-                - assertEqual(factorial4(1), 1)
-                - assertEqual(factorial4(2), 2)
-                - assertEqual(factorial4(3), 6)
-                - assertEqual(factorial4(4), 24)
-                # last number to not overflow a 32b int
-                - assertEqual(factorial4(12), 479001600)
+                - assertEqual(factorial2(12), 479001600)
 
                 # generic call (ndarray methods)
                 # without argument
