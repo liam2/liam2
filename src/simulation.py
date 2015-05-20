@@ -183,7 +183,7 @@ class Simulation(object):
 
     }
 
-    def __init__(self, globals_def, periods, start_period,init_processes,
+    def __init__(self, globals_def, periods, start_period, init_processes,
                  processes, entities, data_source, default_entity=None,
                  legislation = None, final_stat = False,
                  time_scale = 'year', retro = False):
@@ -195,7 +195,7 @@ class Simulation(object):
         self.periods = periods
         # TODO: work on it for start with seme
         if (time_scale not in ['year', 'year0']) and (
-                start_period % 100 > 12 or start_period % 100 == 0 or start_period < 9999):
+                (start_period % 10).isin(range(1, 12)) or start_period < 9999):
             raise Exception("Non valid start period")
         self.start_period = start_period
         # init_processes is a list of tuple: (process, 1)
@@ -351,6 +351,7 @@ class Simulation(object):
         parsing_context.update((entity.name, entity.all_symbols(global_context))
                                for entity in entities.itervalues())
         for entity in entities.itervalues():
+            print(entity)
             parsing_context['__entity__'] = entity.name
             entity.parse_processes(parsing_context)
             entity.compute_lagged_fields()
@@ -482,7 +483,7 @@ class Simulation(object):
                             init=False):
             period_start_time = time.time()
 
-            # period_idx: index of current computed period
+            # period_idx: index of current computed period
             # periods list of all periods
             # period = periods[period_idx]
 
@@ -522,7 +523,8 @@ class Simulation(object):
             person = [x for x in entities if x.name == 'person'][0]
             var_id = person.array.columns['id']
             # Init
-            if init:
+            use_logitudinal = any(varname in self.longitudinal for varname in ['sali', 'workstate'])
+            if init and use_logitudinal:
                 for varname in ['sali', 'workstate']:
                     self.longitudinal[varname] = None
                     var = person.array.columns[varname]
@@ -540,7 +542,7 @@ class Simulation(object):
                         self.longitudinal[varname] = DataFrame({'id': var_id, period: var})
 
             # maybe we have a get_entity or anything nicer than that # TODO: check
-            else:
+            elif use_logitudinal:
                 for varname in ['sali', 'workstate']:
                     var = person.array.columns[varname]
                     table = DataFrame({'id': var_id, period: var})
@@ -646,7 +648,6 @@ class Simulation(object):
             month_periodicity = time_period[self.time_scale]
             time_direction = 1 - 2 * (self.retro)
             time_step = month_periodicity * time_direction
-
             periods = [
                 self.start_period + int(t / 12) * 100 + t % 12
                 for t in range(0, (self.periods + 1) * time_step, time_step)
@@ -654,7 +655,6 @@ class Simulation(object):
             if self.time_scale == 'year0':
                 periods = [self.start_period + t for t in range(0, (self.periods + 1))]
             print("simulated period are going to be: ", periods)
-
 
             init_start_time = time.time()
             simulate_period(0, self.start_period, [None, periods[0]], self.init_processes,

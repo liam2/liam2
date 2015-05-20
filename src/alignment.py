@@ -37,41 +37,45 @@ def kill_axis(axis_name, value, expressions, possible_values, need, periodicity)
 #     if axis_name in ['age']:
 #     import pdb
 #     pdb.set_trace()
+    try:
+        if axis_name in ['period']:
+            axis_values[axis_values < 3000] = axis_values[axis_values < 3000] * 100 + 1
+            if value < 9999:
+                value = value * 100 + 1
+            is_wanted_value_period = (axis_values / 100) == (value / 100)
+            print(
+                "is_wanted_value_period \n {} \n".format(is_wanted_value_period)
+                )
+            periodicity_axis = 12 / len(is_wanted_value_period.nonzero()[0])
+            value_idx_period = is_wanted_value_period.nonzero()[0]
 
-    if axis_name in ['period']:
-        axis_values[axis_values<3000] = axis_values[axis_values<3000]*100 + 1
-        if value < 9999:
-            value = value*100 + 1
-        is_wanted_value_period = axis_values/100 == value/100
-        periodicity_axis = 12/len(is_wanted_value_period.nonzero()[0])
-        value_idx_period = is_wanted_value_period.nonzero()[0]
+            if periodicity_axis > periodicity:
+                if not isinstance(periodicity_axis/periodicity,int):
+                    raise Exception("can't do anything if time period is"
+                                    " not a multiple of time given in alignment data")
+                pdb.set_trace()
+                chunk = chunks(value_idx_period, periodicity_axis/periodicity)[value % 10 - 1]
+                axis_values[value_idx_period[0]] = value
+                axis_values[value_idx_period[1:]] = int(value/100)*100
+                need.base[:,value_idx_period[0]] = need.base[:,chunk].sum(axis=1)
 
-        if periodicity_axis > periodicity:
-            if not isinstance(periodicity_axis/periodicity,int):
-                raise Exception("can't do anything if time period is"
-                                " not a multiple of time given in alignment data")
-            pdb.set_trace()
-            chunk = chunks(value_idx_period, periodicity_axis/periodicity)[value % 10 - 1]
-            axis_values[value_idx_period[0]] = value
-            axis_values[value_idx_period[1:]] = int(value/100)*100
-            need.base[:,value_idx_period[0]] = need.base[:,chunk].sum(axis=1)
-
-        if periodicity_axis < periodicity:
-            if not isinstance(periodicity/periodicity_axis,int):
-                raise Exception("can't do anything if time period is"
-                                " not a multiple of time given in alignment data")
-            # which season ?
-            time_value = value % 100
-            if time_value > 12:
-                time_value = value % 10
-            season = int(time_value / periodicity * periodicity_axis-0.01)
-            axis_values[value_idx_period] = int(value/100)*100
-            axis_values[value_idx_period[season]] = value
-            need.base[:,value_idx_period[season]] = \
-                    need.base[:,value_idx_period[season]] * periodicity_axis/periodicity
-        else:
-            axis_values[value_idx_period] = value
-
+            if periodicity_axis < periodicity:
+                if not isinstance(periodicity/periodicity_axis,int):
+                    raise Exception("can't do anything if time period is"
+                                    " not a multiple of time given in alignment data")
+                # which season ?
+                time_value = value % 100
+                if time_value > 12:
+                    time_value = value % 10
+                season = int(time_value / periodicity * periodicity_axis-0.01)
+                axis_values[value_idx_period] = int(value/100)*100
+                axis_values[value_idx_period[season]] = value
+                need.base[:,value_idx_period[season]] = \
+                        need.base[:,value_idx_period[season]] * periodicity_axis/periodicity
+            else:
+                axis_values[value_idx_period] = value
+    except:
+        pass
 
     is_wanted_value = axis_values == value
     value_idx = is_wanted_value.nonzero()[0]
@@ -247,9 +251,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
         #Note: need is calculated over score and we could think of
         # calculate without leave_filter and without take_filter
             need = int(sum(expressions))
-            need = np.array([need]) 
+            need = np.array([need])
 
-        assert isinstance(need, np.ndarray)              
+        assert isinstance(need, np.ndarray)
         if expressions_context is None:
             expressions_context = context
         # When given a 0d array, we convert it to 1d. This can happen e.g. for
@@ -366,10 +370,10 @@ class AlignmentAbsoluteValues(FilteredExpression):
                 expressions=None, possible_values=None, errors='default',
                 frac_need='uniform', link=None, secondary_axis=None,
                 method='default', periodicity_given='year'):
-        
+
         if method not in ("default", "sidewalk"):
             raise Exception("Method for alignment should be either 'default' "
-                            "either 'sidewalk'")   
+                            "either 'sidewalk'")
         if need is None and method != 'sidewalk':
             raise Exception("No default value for need if method is not sidewalk")
         if method != 'sidewalk':
@@ -377,7 +381,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
             # if not isinstance(need, (tuple, list, np.ndarray)):
             if np.isscalar(need):
                 need = [need]
-    
+
             # need is a non-ndarray sequence
             if isinstance(need, (tuple, list)):
                 need = np.array(need)
@@ -420,7 +424,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                             method)
 
         filter_value = expr_eval(self._getfilter(context, filter), context)
-        
+
 
         if filter_value is not None:
             num_to_align = np.sum(filter_value)
@@ -610,7 +614,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                           secondary_axis)
         self.past_error = error
         return aligned
-        
+
 
     def _get_need_correction(self, groups, possible_values):
         return 1
@@ -649,8 +653,8 @@ class Alignment(AlignmentAbsoluteValues):
         super(Alignment, self).__init__(score, proportions,
                                         filter, take, leave,
                                         expressions, possible_values,
-                                        errors, frac_need, 
-                                        method = method, 
+                                        errors, frac_need,
+                                        method = method,
                                         periodicity_given = periodicity_given)
 
     def _get_need_correction(self, groups, possible_values):
