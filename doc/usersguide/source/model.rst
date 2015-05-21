@@ -229,13 +229,9 @@ letters to define macros.
 
             processes:
                 test_macros: 
-                    - ischild: age < 18
-                    - before1: if(ischild, 1, 2)
-                    - before2: if(ISCHILD, 1, 2)  # before1 == before2
+                    - show("before", ISCHILD)
                     - age: age + 1
-                    - after1: if(ischild, 1, 2)
-                    - after2: if(ISCHILD, 1, 2)   # after1 != after2 
-                    
+                    - show("after", ISCHILD)
     simulation:
         processes:
             - person: [test_macros]
@@ -243,15 +239,10 @@ letters to define macros.
                     
 The above example does
 
-- ischild: creates a temporary variable *ischild* and sets it to *True* if the age of the person is under 18 and to *False* if not
-- before1: creates a temporary variable *before1* and sets it to 1 if the value of the temporary variable *ischild* is *True* and to 2 if not.
-- before2: creates a temporary variable *before2* and sets it to 1 if the value age < 18 is *True* and to 2 if not
-- age: the age is changed
-- after1: creates a temporary variable *after1* and sets it to 1 if the value of the temporary variable *ischild* is *True* and to 2 is not.
-- after2: creates a temporary variable *after2* and sets it to 1 if the value age < 18 is *True* and to 2 if not.
-
-It is clear that after1 != after2 since the age has been changed and *ischild* has not been updated since.
-
+- show(): displays whether each person is a child.
+- age: the age is changed.
+- show(): displays again whether each person is a child. This value is different
+          than above, even though we did not explicitly assign it a new value.
 
 processes
 ---------
