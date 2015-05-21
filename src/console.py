@@ -157,7 +157,7 @@ class Console(object):
         local_parse_ctx = parse_ctx[entity_name].copy()
 
         # add all currently defined temp_variables because otherwise
-        # local variables (defined within a procedure) wouldn't be available
+        # local variables (defined within a function) wouldn't be available
         local_parse_ctx.update((name, Variable(entity, name))
                                for name in entity.temp_variables.keys())
         parse_ctx[entity_name] = local_parse_ctx

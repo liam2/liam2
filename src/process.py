@@ -248,9 +248,9 @@ class ProcessGroup(Process):
                 yield e
 
     def ssa(self, fields_versions):
-        procedure_vars = set(k for k, p in self.subprocesses if k is not None)
+        function_vars = set(k for k, p in self.subprocesses if k is not None)
         global_vars = set(self.entity.variables.keys())
-        local_vars = procedure_vars - global_vars
+        local_vars = function_vars - global_vars
 
         local_versions = collections.defaultdict(int)
         for k, p in self.subprocesses:
@@ -278,10 +278,10 @@ class ProcessGroup(Process):
                     # without any iteration), the type of the expressions
                     # that variables are assigned to in that branch will
                     # influence the type of the variable in subsequent code.
-                    # XXX: what if I have a user-defined function/procedure that
+                    # XXX: what if I have a user-defined function that
                     # I call from two different places with an argument of a
                     # different type? ideally, it should generate two distinct
-                    # procedures, but I am not there yet. Having a check on the
+                    # functions, but I am not there yet. Having a check on the
                     # second call that the argument passed is of the same type
                     # than the signature type (which was inferred from the
                     # first call) seems enough for now.

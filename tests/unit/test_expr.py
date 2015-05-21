@@ -182,8 +182,8 @@ class TestLink(StringExprTestCase):
 #    if an id column is passed, overwrite it, if not add one
 
 # Q: I think I need more/something different than just cascading contexts:
-#    when a procedure calls a function, I don't need/want the context of the
-#    caller to be available to the callee. It only needs access to global
+#    when a function calls another function, I don't need/want the context of
+#    the caller to be available to the callee. It only needs access to global
 #    variables and "globals":
 #    I need entity_globals/method_locals/system_or_extra
 # * entity_globals can be stored on disk or not

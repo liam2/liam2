@@ -34,7 +34,7 @@ block of the entity but, as we will see later, it is not always necessary.
 
 In this case, the name of the process equals the name of the *endogenous
 variable*. *Process names* have to be **unique** for each entity. See the
-section about procedures if you need to have several processes which modify the
+section about functions if you need to have several processes which modify the
 same variable.
 
 To run the processes, they have to be specified in the "processes" section of
@@ -104,40 +104,41 @@ result: ::
 
 .. _functions:
 
-Procedures
-==========
+Functions
+=========
 
-A process can consist of sub-processes, in that case we call it a *procedure*.
-Processes within a procedure are executed in the order they are declared.
+One can group several processes in a *function*. Processes within a function
+are executed in the order they are declared. They each start on a new line,
+again with an indentation of four spaces and a -.
 
-Sub-processes each start on a new line, again with an indentation of four spaces
-and a -.
+.. note:: in LIAM2 versions prior to 0.10, functions where called *procedures*.
 
 So the general setup is: ::
 
     processes:
-        variable_name: expression
-        process_name2: action_expression
-        process_name3:
-            - subprocess_31: expression
-            - subprocess_32: expression
+        function_name1:
+            - variable_name1: expression1
+            - variable_name2: expression2
 
-In this example, there are three processes, of which the first two do not have
-sub-processes. The third process is a procedure which consists of two
-sub-processes. If it is executed, subprocess_31 will be executed and then
-subprocess_32.
+        function_name2:
+            - variable_name3: expression3
 
-Contrary to normal processes, sub-processes (processes inside procedures) names
+In this example, there are two functions, one with two processes, and one
+with only one process. If *function_name1* is executed, then both
+processes will be executed in turn (*variable_name1*, then *variable_name2*).
+
+#TODO:
+Contrary to normal processes, sub-processes (processes inside functions) names
 do not need to be unique. In the above example, it is possible for subprocess_31
 and subprocess_32 to have the same name, and hence simulate the same variable.
-Procedure names (process_name3) does not directly refer to a specific endogenous
+function names (process_name3) does not directly refer to a specific endogenous
 variable.
 
 *example* ::
 
     processes:
         ageing:
-            - age: age * 2 # in our world, people age strangely
+            - age: age * 2  # in our world, people age strangely
             - age: age + 1
             - agegroup: trunc(age / 10) * 10
 
@@ -145,15 +146,15 @@ The processes on *age* and *agegroup* are grouped in *ageing*. In the simulation
 block you specify the *ageing*-process if you want to update *age* and
 *agegroup*.
 
-By using procedures, you can actually make *building blocks* or modules in the
+By using functions, you can actually make *building blocks* or modules in the
 model.
 
 Local (temporary) variables
 ---------------------------
 
-Temporary variables defined/computed within a procedure are local to that
-procedure: they are only valid within that procedure. If you want to pass
-variables between procedures you have to make them global by defining them in
+Temporary variables defined/computed within a function are local to that
+function: they are only valid within that function. If you want to pass
+variables between functions you have to make them global by defining them in
 the **fields** section.
 
 **bad** *example* ::
@@ -172,19 +173,19 @@ the **fields** section.
                 - backfromoldage: isold and age < 150  # <-- WRONG !
 
 In this example, *isold* and *backfromoldage* are local variables. They can only
-be used in the procedure where they are defined. Because we are trying
-to use the local variable *isold* in another procedure in this example, LIAM2
+be used in the function where they are defined. Because we are trying
+to use the local variable *isold* in another function in this example, LIAM2
 will refuse to run, complaining that *isold* is not defined.
 
 Actions
 -------
 
-Actions inside procedures don't even need a process name.
+Actions inside functions don't even need a process name.
 
 *example* ::
 
     processes:
-        death_procedure:
+        death:
             - dead: age > 150
             - remove(dead)
 
@@ -866,11 +867,11 @@ our process as follow: ::
                         choice([1, 2], [0.039, 1 - 0.039]) ),
                      collar)
 
-The procedure *collar_process* has collar as the key endogenous variable and
+The function *collar_process* has collar as the key endogenous variable and
 has four sub-processes.
 
 The first sub-process defines a local variable no_collar, which will be used
-to select those that the procedure should apply to. These are all the workers
+to select those that the function should apply to. These are all the workers
 that do not have a value for collar.
 
 The next three sub-processes simulate the actual collar variable. If
@@ -1229,7 +1230,7 @@ Here is a description of the arguments specific to align_abs:
 *example* ::
 
     test_align_link:
-        # this is a procedure defined at the level of households
+        # this is a function defined at the level of households
         - num_persons: persons.count()
         - total_population: sum(num_persons)
 
@@ -1528,7 +1529,7 @@ household number of his/her mother, ... Finally some variables of the child are
 set to specific initial values: the most important of these is its gender,
 which is the result of a simple choice process.
 
-**new** can create individuals of different entities; the below procedure
+**new** can create individuals of different entities; the below function
 *get_a_life* makes sure that all those who are single when they are 24 year
 old, leave their parents’ household for their own household. The region of
 this new household is created randomly through a choice-process.
@@ -1577,10 +1578,10 @@ are not simulated anymore. This will also save some memory and, in some cases,
 improve simulation speed.
 
 
-The procedure below simulates whether an individual survives or not, and what
+The function below simulates whether an individual survives or not, and what
 happens in the latter case. ::
 
-    dead_procedure:
+    dead_function:
         # decide who dies
         - dead: if(gender,
                    logit_regr(0.0, align='al_p_dead_m.csv'),
@@ -1592,14 +1593,14 @@ happens in the latter case. ::
         # remove the dead
         - remove(dead)
 
-The first sub-procedure *dead* simulates whether an individual is ‘scheduled for
+The first sub-process *dead* simulates whether an individual is ‘scheduled for
 death’, using again only a logistic stochastic variable and the
 age-gender-specific alignment process. Next some links are updated for the
 surviving partner.
-The sub-procedure *civilstate* puts the variable of that name equal to 5 (which
+The sub-process *civilstate* puts the variable of that name equal to 5 (which
 means that one is a widow(er) for those individuals whose partner has been
 scheduled for death. Also, in that case, the partner identification code is
-erased. All other procedures describing the heritage process should be included
+erased. All other processes describing the heritage process should be included
 here. Finally, the *remove* command is called to removes the *dead* from the
 simulation dataset.
 
@@ -1811,7 +1812,7 @@ Arguments:
        Unless you erase/overwrite the file one way or another between
        two runs of a simulation, you will append the data of the current
        simulation to that of the previous one. One way to do overwrite the file
-       automatically at the start of a simulation is to have a procedure in the
+       automatically at the start of a simulation is to have a function in the
        init section without mode='a'.
     
     If you want that file to start empty, you can do so this way: ::

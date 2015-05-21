@@ -312,7 +312,7 @@ and composition is again used.
             - household: [household_composition]
             - person: [
                    age, agegroup,
-                   dead_procedure, birth
+                   death, birth
                ]
             - household: [household_composition]
 
@@ -346,8 +346,8 @@ process. Note that you can execute the same process more than once during a
 simulation and that you can alternate between entities in the simulation of a
 period. 
 
-In the example you see that after dead_procedure and birth, the
-household_composition procedure is re-executed.
+In the example you see that after death and birth, the household_composition
+function is re-executed.
 
 init
 ----
@@ -455,8 +455,8 @@ tools like WinMerge). Defaults to *True*.
 autodump
 --------
 
-If this option is used, at the end of each procedure, all (non-scalar)
-variables changed during the procedure (including temporaries) will be dumped
+If this option is used, at the end of each function, all (non-scalar)
+variables changed during the function (including temporaries) will be dumped
 in an hdf5 file (named "autodump.h5" by default). This option can be used
 alone for debugging, or in combination with autodiff (in a later run).
 This option can take either a filename or a boolean (in which case
@@ -465,8 +465,8 @@ This option can take either a filename or a boolean (in which case
 autodiff
 --------
 
-If this option is used, at the end of each procedure, all (non-scalar)
-variables changed during the procedure (including temporaries) will be
+If this option is used, at the end of each function, all (non-scalar)
+variables changed during the function (including temporaries) will be
 compared with the values stored previously by autodump in another run of
 the model (or a variant of it). This can be used to precisely compare two
 versions/variants of a model and see exactly where they start to differ.

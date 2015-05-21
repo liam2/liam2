@@ -106,7 +106,7 @@ variant3.yml.
   entities:
       person:
           processes:
-              # use the "alternate" ageing procedure
+              # use the "alternate" ageing function
               ageing:
                   - age: age + 1
                   - agegroup: if(age < 50,

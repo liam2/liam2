@@ -217,7 +217,7 @@ class Entity(object):
 
     @staticmethod
     def collect_predictors(items):
-        # this excludes lists (procedures) and dict (while, ...)
+        # this excludes lists (functions) and dict (while, ...)
         return [k for k, v in items
                 if k is not None and isinstance(v, (basestring, int, float))]
 
@@ -415,14 +415,15 @@ Please use this instead:
                         method_context = self.get_group_context(
                             method_context, group_predictors)
                         result_expr = parse(result_def, method_context)
-                        assert result_expr is None or isinstance(result_expr, Expr)
+                        assert result_expr is None or \
+                            isinstance(result_expr, Expr)
                         process = Function(k, self, argnames, code, result_expr)
                     elif isinstance(v, dict) and 'predictor' in v:
                         raise ValueError("Using the 'predictor' keyword is "
                                          "not supported anymore. "
                                          "If you need several processes to "
                                          "write to the same variable, you "
-                                         "should rather use procedures.")
+                                         "should rather use functions.")
                     else:
                         raise Exception("unknown expression type for %s: %s"
                                         % (k, type(v)))
@@ -590,12 +591,12 @@ Please use this instead:
         #   the process, including when simply counting the number of occurrence
         #   of expressions. In that case we also need to iterate on the
         #   processes in the same order than the simulation!
-        # * I don't know if it is a good idea to optimize cross-procedures.
+        # * I don't know if it is a good idea to optimize cross-functions.
         #   On one hand it offers much more possibilities for optimizations
         #   but, on the other hand the optimization pass might just take too
         #   much time... If we do not do it globally, we should move the method
-        #   to ProcessGroup instead. But let's try it cross-procedures first.
-        # * cross-procedures might get tricky when we take function calls
+        #   to ProcessGroup instead. But let's try it cross-functions first.
+        # * cross-functions might get tricky when we take function calls
         #   into account.
 
         #TODO:

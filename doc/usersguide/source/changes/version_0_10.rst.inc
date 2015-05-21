@@ -1,13 +1,15 @@
 ﻿New features
 ------------
 
-* implemented user-defined functions (see the :ref:`bla bla section <bla>` for
-  details).
+* implemented support for calling :ref:`user-defined functions
+  <functions>` (previously called procedures) from within user code,
+  optionally passing arguments to them and retrieving their return value.
+  As a consequence of this, every mention of "procedures" in the documentation
+  has been replaced by "functions". Closes :issue:`152`.
 
 * implemented :ref:`while loops <while>` (closes :issue:`151`).
 
 * added support for using the "inf" (infinite) constant.
-.. _bla:
 
 Miscellaneous improvements
 --------------------------
