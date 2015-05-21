@@ -3,22 +3,21 @@
 Model Definition
 ################
 
-To define the model, we have to describe the different *entities*, 
-their *fields*, the way they interact (*links*) and how they behave over time
-(*processes*). This is done in one file. We use the YAML-markup language.
-This format uses the level of indentation to specify objects and sub objects.
+To define the model, we have to describe the different
+:ref:`entities_declaration`, their :ref:`fields_declaration`, the way they
+interact (*links*) and how they behave over time (*processes*).
 
-In a LIAM2 model file, all text following a # is considered to be comments,
-and is therefore ignored.
+LIAM2 model files use a dialect of the YAML format. This format uses the
+level of indentation and colons (**:** characters) to differenciate objects
+from sub objects and **#** characters start comments (the rest of the line is
+ignored).
 
-A LIAM2 model has the following structure: ::
+A LIAM2 model has the following general structure: ::
 
-    # imports are optional (this section can be entirely omitted)
-    import:
+    import:     # optional section (can be entirely omitted)
         ...
 
-    # globals are optional (this section can be entirely omitted)
-    globals:
+    globals:    # optional section
         ...
 
     entities:
@@ -26,6 +25,28 @@ A LIAM2 model has the following structure: ::
 
     simulation:
         ...
+
+Here is an example of what a trivial model looks like: ::
+
+    entities:
+        person:
+            fields:
+                # period and id are implicit
+                - age: int
+
+            processes:
+                ageing:
+                    - age: age + 1
+
+    simulation:
+        processes:
+            - person: [ageing]
+        input:
+            file: input.h5
+        output:
+            file: output.h5
+        start_period: 2015
+        periods: 10
 
 
 import
@@ -39,7 +60,7 @@ duplicate the common parts.
 For details, see the :ref:`import_models` section.
 
 
-.. index:: globals declaration 
+.. index:: globals declaration
 .. _globals_declaration:
 
 globals
@@ -60,7 +81,7 @@ arrays. Both kinds need to be declared in the simulation file, as follow: ::
         MYARRAY:
             type: float
 
-Please see the :ref:`globals_usage` usage section for how to use them in 
+Please see the :ref:`globals_usage` usage section for how to use them in
 you expressions.
 
 Globals can be loaded from either .csv files during the simulation, or from
@@ -98,6 +119,7 @@ therefore been included. ::
 
 
 .. index:: entities
+.. _entities_declaration:
 
 entities
 ========
@@ -112,31 +134,30 @@ they are declared is not important. In the **simulation** block you define if
 and when they have to be executed, this allows to simulate processes of
 different entities in the order you want.
 
-
-LIAM2 declares the entities as follows: ::
+In LIAM2, entities are declared as follows: ::
 
     entities:
         entity-name1:
-            fields:
+            fields:     # optional section (can be omitted)
                 fields definition
             
-            links:
+            links:      # optional section (can be omitted)
                 links definition
                 
-            macros:
+            macros:     # optional section (can be omitted)
                 macros definition
                 
-            processes:
+            processes:  # optional section (can be omitted)
                 processes definition
                 
         entity-name2:
             ...
             
-As we use YAML as the description language, indentation and the use of ":" are
-important.
+As a reminder, indentation and the use of ":" are important.
 
 
 .. index:: fields
+.. _fields_declaration:
 
 fields
 ------
@@ -209,13 +230,14 @@ For details, see the :ref:`links_label` section.
 
 
 .. index:: macros
+.. _macros_declaration:
 
 macros
 ------
 
 Macros are a way to make the code easier to read and maintain. They are defined
-on the entity level. Macros are re-evaluated wherever they appear. Use *capital*
-letters to define macros.
+on the entity level. Macros are re-evaluated wherever they appear. An usual
+convention is to use *capital* letters to define macros.
 
 *example* ::
 
@@ -300,7 +322,7 @@ and composition is again used.
         output:
             path: liam2         # optional  
             file: simulation.h5
-        start_period: 2002
+        start_period: 2015
         periods: 10
         skip_shows: False       # optional
         random_seed: 5235       # optional

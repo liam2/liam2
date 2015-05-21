@@ -46,9 +46,9 @@ as long as the combined model is valid. See the examples below.
   
       # we do not specify output so this model is not valid in itself
       input:
-          file: simple2001.h5
+          file: input.h5
   
-      start_period: 2002
+      start_period: 2015
       periods: 2
                                   
 *example* (variant1.yml) ::

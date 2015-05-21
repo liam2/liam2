@@ -6,13 +6,18 @@
 Processes
 #########
 
-The processes are the core of a model. LIAM2 supports two kinds of processes: 
-*assignments*, which change the value of a variable (predictor) using an
-expression, and *actions* which don't (but have other effects).
+The processes are the core of a model. LIAM2 supports several kinds of
+processes: :ref:`assignments <assignments>`, which change the value of a
+variable (predictor) using an expression, and :ref:`actions <actions>`
+which don't (but have other effects), :ref:`functions <functions>` which
+group several processes together and :ref:`control flow operators <while>`
+which specify which processes need to be executed.
 
 For each entity (for example, "household" and "person"), the block of processes
 starts with the header "processes:". Each process then starts at a new line with
 an indentation of four spaces.
+
+.. _assignments:
 
 Assignments
 ===========
@@ -79,11 +84,13 @@ particular case, we could have bypassed the temporary variable, but when a long
 expression occurs several times, it is often cleaner and more efficient to
 express it (and compute it) only once by using a temporary variable.
 
+.. _actions:
+
 Actions
 =======
 
 Since actions don't return any value, they do not need a variable to store that
-result, and they only ever need the condensed form: ::
+result: ::
 
     processes:
         process_name: action_expression
@@ -93,6 +100,9 @@ result, and they only ever need the condensed form: ::
 
     processes:
         remove_deads: remove(dead)
+
+
+.. _functions:
 
 Procedures
 ==========
@@ -146,7 +156,7 @@ procedure: they are only valid within that procedure. If you want to pass
 variables between procedures you have to make them global by defining them in
 the **fields** section.
 
-*(bad) example* ::
+**bad** *example* ::
 
     person:
         fields:
@@ -159,7 +169,7 @@ the **fields** section.
 
             rejuvenation:
                 - age: age – 1
-                - backfromoldage: isold and age < 150  # WRONG !
+                - backfromoldage: isold and age < 150  # <-- WRONG !
 
 In this example, *isold* and *backfromoldage* are local variables. They can only
 be used in the procedure where they are defined. Because we are trying
@@ -184,7 +194,8 @@ Expressions
 ===========
 
 Expressions can either compute new values for existing individuals, or change
-the number of individuals by using the so-called life-cycle functions. 
+the number of individuals by using the so-called
+:ref:`life-cycle functions <lifecycle>`.
 
 .. index:: simple expressions
 
@@ -192,7 +203,7 @@ simple expressions
 ------------------
 
 Let us start with a simple increment; the following process increases the value
-of a variable by one each simulation period.
+of a variable by one each simulation period. ::
 
     age: age + 1
 
@@ -1443,6 +1454,7 @@ the surplus of the largest set is ignored.
                   orderby1=expression, orberby2=expression)
 
 .. index:: lifecycle functions
+.. _lifecycle:
 
 Lifecycle functions
 -------------------
