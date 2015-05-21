@@ -371,7 +371,8 @@ def _parse(s, interactive=False):
 def parse(s, context, interactive=False):
     globals_context = {'False': False,
                        'True': True,
-                       'nan': float('nan')}
+                       'nan': float('nan'),
+                       'inf': float('inf')}
     globals_context.update(functions)
     globals_context.update(context.get('__globals__', {}))
     # modify in-place

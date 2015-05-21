@@ -6,6 +6,7 @@
 
 * implemented while loops
 
+* added support for using the "inf" (infinite) constant.
 .. _bla:
 
 Miscellaneous improvements
