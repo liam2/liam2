@@ -33,38 +33,36 @@ entities:
             region: {type: many2one, target: region, field: region_id}
 
         processes:
-            generate:
-                args: newmen, newwomen
-                code:
-                    # men
-                    - new('person', number=newmen,
-                          male=True,
-                          partner_id=-1)
-                    # women
-                    - new('person', number=newwomen,
-                          male=False,
-                          partner_id=-1)
-                    - region_id: id % 10
+            generate(newmen, newwomen):
+                # men
+                - new('person', number=newmen,
+                      male=True,
+                      partner_id=-1)
+                # women
+                - new('person', number=newwomen,
+                      male=False,
+                      partner_id=-1)
+                - region_id: id % 10
 
-                    # interesting trick if we wanted to set the age for all
-                    # individuals in the db (new or not), or all with unset
-                    # age, and support setting age after arbitrary
-                    # interleaving of new(male) and new(not male). However we
-                    # do not need this in this case, and only setting the
-                    # age of individuals which have been actually created seem
-                    # safer.
-                    #- idxbysex: if(MALE, MALE.cumsum(), FEMALE.cumsum()) - 1
-                    #- numbysex: if(MALE, count(MALE), count(FEMALE))
+                # interesting trick if we wanted to set the age for all
+                # individuals in the db (new or not), or all with unset
+                # age, and support setting age after arbitrary
+                # interleaving of new(male) and new(not male). However we
+                # do not need this in this case, and only setting the
+                # age of individuals which have been actually created seem
+                # safer.
+                #- idxbysex: if(MALE, MALE.cumsum(), FEMALE.cumsum()) - 1
+                #- numbysex: if(MALE, count(MALE), count(FEMALE))
 
-                    - maxid: max(id)
-                    - womenstartid: maxid + 1 - newwomen
-                    - menstartid: womenstartid - newmen
-                    - idxbysex: id - if(male, menstartid, womenstartid)
-                    - numbysex: if(MALE, newmen, newwomen)
+                - maxid: max(id)
+                - womenstartid: maxid + 1 - newwomen
+                - menstartid: womenstartid - newmen
+                - idxbysex: id - if(male, menstartid, womenstartid)
+                - numbysex: if(MALE, newmen, newwomen)
 
-                    # normalize age between 0 and 99 (evenly distributed)
-                    - age: if(age == -1, trunc(idxbysex * 100 / numbysex), age)
-                    - show(groupby(age, male))
+                # normalize age between 0 and 99 (evenly distributed)
+                - age: if(age == -1, trunc(idxbysex * 100 / numbysex), age)
+                - show(groupby(age, male))
 
             generate_few:
                 # make sure id != rownum
