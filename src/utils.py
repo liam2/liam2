@@ -372,16 +372,17 @@ class Axis(object):
         return len(self.labels)
 
 
-def addmonth(a,b):
-    assert isinstance(a,int) #should be a special type
-    assert isinstance(b,int)
+def addmonth(a, b):
+    assert isinstance(a, int)  # should be a special type
+    assert isinstance(b, int)
     if b >= 0:
         change_year = (a % 100) + b >= 12
-        value = a + b*(1-change_year) + (100-12+b)*(change_year)
+        value = a + b * (1 - change_year) + (100 - 12 + b) * change_year
     if b < 0:
         change_year = (a % 100) + b < 1
-        value = a + b*(1-change_year) + (-100+12+b)*(change_year)
+        value = a + b * (1 - change_year) + (-100 + 12 + b) * change_year
     return value
+
 
 class LabeledArray(np.ndarray):
     #noinspection PyNoneFunctionAssignment
