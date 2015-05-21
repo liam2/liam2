@@ -905,10 +905,10 @@ class UnaryOp(Expr):
         self.expr = expr
 
     def as_simple_expr(self, context):
-        return self.__class__(self.op, self.expr.as_simple_expr(context))
+        return self.__class__(self.op, as_simple_expr(self.expr, context))
 
     def as_string(self):
-        return "(%s%s)" % (self.op, self.expr.as_string())
+        return "(%s%s)" % (self.op, as_string(self.expr))
 
     def dtype(self, context):
         return getdtype(self.expr, context)
