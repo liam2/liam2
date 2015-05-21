@@ -4,7 +4,7 @@
 * implemented user-defined functions (see the :ref:`bla bla section <bla>` for
   details).
 
-* implemented while loops
+* implemented :ref:`while loops <while>` (closes :issue:`151`).
 
 * added support for using the "inf" (infinite) constant.
 .. _bla:

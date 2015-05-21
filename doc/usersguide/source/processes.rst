@@ -1591,6 +1591,72 @@ erased. All other procedures describing the heritage process should be included
 here. Finally, the *remove* command is called to removes the *dead* from the
 simulation dataset.
 
+.. index:: while
+.. _while:
+
+While loops
+===========
+
+.. versionadded:: 0.10
+
+*generic format* ::
+
+    - while scalar_condition:
+        - the_code_to_repeat
+        - ...
+
+.. warning:: the condition must be a scalar expression, that is it must have
+             a single value for all individuals. In other words, the number
+             of iterations is always the same for all individuals. See examples
+             below.
+
+*example 1* ::
+
+    count_to_5:
+        - i: 1
+        - while i <= 5:
+            - show(i)
+            - i: i + 1
+
+Now let us suppose one wants to repeat a computation until some condition is
+met per individual. One could intuitively write it like below.
+
+**bad** *example* ::
+
+    wrong_repeat_while_below_1:
+        - score: age / max(age)
+        - while score < 1:   # <-- this line is WRONG !
+            - score: score + 0.1
+        - show(score)
+
+However, that would result in this error: ::
+
+    ValueError: The truth value of an array with more than one element is
+    ambiguous. Use a.any() or a.all()
+
+The solution is to follow the advice in the error message and use any() in
+this case.
+
+*example 2* ::
+
+    repeat_while_below_1:
+        - score: age / max(age)
+        - while any(score < 1):
+            - score: score + 0.1
+        - show(score)
+
+This will repeat the code until all individuals have reached the target **but**
+individuals who reached it early will continue to be updated, and it might
+not be what is needed. If that is the case, one has to **explicitly** only
+update the individuals which are not "done" yet.
+
+*example 3* ::
+
+    repeat_while_below_1:
+        - score: age / max(age)
+        - while any(score < 1):
+            - score: if(score < 1, score + 0.1, score)
+        - show(score)
 
 Output
 ======
