@@ -336,6 +336,15 @@ entities:
                     - return n * factorial2(n - 1)
                 - return n
 
+            factorial3(n):
+                - while n <= 1:
+                    - return n
+                - r: 1
+                - while n > 1:
+                    - r: r * n
+                    - n: n - 1
+                - return r
+
             test_call:
                 # 1) no args and no result (concise/old style)
                 - temp_var: age * 42
@@ -376,6 +385,14 @@ entities:
                 - assertEqual(factorial2(4), 24)
                 # last number to not overflow a 32b int
                 - assertEqual(factorial2(12), 479001600)
+
+                - assertEqual(factorial3(0), 0)
+                - assertEqual(factorial3(1), 1)
+                - assertEqual(factorial3(2), 2)
+                - assertEqual(factorial3(3), 6)
+                - assertEqual(factorial3(4), 24)
+                # last number to not overflow a 32b int
+                - assertEqual(factorial3(12), 479001600)
 
                 # generic call (ndarray methods)
                 # without argument
@@ -456,6 +473,21 @@ entities:
                 - while i:
                     - i: i - 1
                 - assertEqual(i, 0)
+
+            # pi using the Nilakantha series
+            # pi = 3 + 4/(2*3*4) - 4/(4*5*6) + 4/(6*7*8) - 4/(8*9*10) + ...
+            test_pi_nilakantha:
+                - numiter: 10
+                - pi: 3
+                - n: 4
+                - d: 2
+                - i: 0
+                - while i < numiter:
+                    - pi: pi + n / (d * (d + 1) * (d + 2))
+                    - n: -n
+                    - d: d + 2
+                    - i: i + 1
+                - show("pi approximation after", numiter, "iterations:", pi)
 
 #            test_for:
 #                - n: 42
@@ -2453,6 +2485,7 @@ simulation:
                    test_compound,
 
                    test_while,
+                   test_pi_nilakantha,
 
 #                   test_extra_comma,
 #                   test_uninitialized_var,
