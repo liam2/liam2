@@ -9,10 +9,23 @@ interact (*links*) and how they behave over time (*processes*).
 
 LIAM2 model files use a dialect of the YAML format. This format uses the
 level of indentation and colons (**:** characters) to differenciate objects
-from sub objects and **#** characters start comments (the rest of the line is
-ignored).
+from sub objects.
 
-A LIAM2 model has the following general structure: ::
+.. index:: comments
+
+Comments
+========
+
+Another particularity inherited from YAML is the use of the hash character, `#`,
+to start comments, which extend to the end of the line. A comment may
+appear at the start of a line or following whitespace or a complete line of
+code, but not within an expression. Since comments are only meant to clarify
+code, they are ignored by LIAM2 and may be omitted if typing in examples.
+
+General structure
+=================
+
+A LIAM2 model file has the following general structure: ::
 
     import:     # optional section (can be entirely omitted)
         ...
