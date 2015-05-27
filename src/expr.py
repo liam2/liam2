@@ -179,48 +179,52 @@ def collect_variables(expr):
 
 
 def expr_eval(expr, context):
-    if isinstance(expr, Expr):
-        # assert isinstance(expr.__fields__, tuple)
+    try:
+        if isinstance(expr, Expr):
+            # assert isinstance(expr.__fields__, tuple)
 
-        globals_data = context.global_tables
-        if globals_data is not None:
-            globals_names = set(globals_data.keys())
-            if 'periodic' in globals_data:
-                globals_names |= set(globals_data['periodic'].dtype.names)
+            globals_data = context.global_tables
+            if globals_data is not None:
+                globals_names = set(globals_data.keys())
+                if 'periodic' in globals_data:
+                    globals_names |= set(globals_data['periodic'].dtype.names)
+            else:
+                globals_names = set()
+
+            #FIXME: systematically checking for the presence of variables has a
+            # non-negligible cost (especially in matching), even when caching
+            # collect_variables result (it is much better than before though).
+            #TODO: also check for globals
+            for var in expr.collect_variables():
+                if var.name not in globals_names and var not in context:
+                    raise Exception("variable '%s' is unknown (it is either not "
+                                    "defined or not computed yet)" % var)
+            return expr.evaluate(context)
+
+            # there are several flaws with this approach:
+            # 1) I don't get action times (csv et al)
+            # 2) these are cumulative times (they include child expr/processes)
+            #    we might want to store the timings in a tree (based on call stack
+            #    depth???) so that I could rebuild both cumulative and "real"
+            #    timings.
+            # 3) the sum of timings is wrong since children/nested expr times count
+            #    both for themselves and for all their parents
+    #        time, res = gettime(expr.evaluate, context)
+    #        timings[expr.__class__.__name__] += time
+    #        return res
+        elif isinstance(expr, list):
+            return [expr_eval(e, context) for e in expr]
+        elif isinstance(expr, tuple):
+            return tuple([expr_eval(e, context) for e in expr])
+        elif isinstance(expr, slice):
+            return slice(expr_eval(expr.start, context),
+                         expr_eval(expr.stop, context),
+                         expr_eval(expr.step, context))
         else:
-            globals_names = set()
-
-        #FIXME: systematically checking for the presence of variables has a
-        # non-negligible cost (especially in matching), even when caching
-        # collect_variables result (it is much better than before though).
-        #TODO: also check for globals
-        for var in expr.collect_variables():
-            if var.name not in globals_names and var not in context:
-                raise Exception("variable '%s' is unknown (it is either not "
-                                "defined or not computed yet)" % var)
-        return expr.evaluate(context)
-
-        # there are several flaws with this approach:
-        # 1) I don't get action times (csv et al)
-        # 2) these are cumulative times (they include child expr/processes)
-        #    we might want to store the timings in a tree (based on call stack
-        #    depth???) so that I could rebuild both cumulative and "real"
-        #    timings.
-        # 3) the sum of timings is wrong since children/nested expr times count
-        #    both for themselves and for all their parents
-#        time, res = gettime(expr.evaluate, context)
-#        timings[expr.__class__.__name__] += time
-#        return res
-    elif isinstance(expr, list):
-        return [expr_eval(e, context) for e in expr]
-    elif isinstance(expr, tuple):
-        return tuple([expr_eval(e, context) for e in expr])
-    elif isinstance(expr, slice):
-        return slice(expr_eval(expr.start, context),
-                     expr_eval(expr.stop, context),
-                     expr_eval(expr.step, context))
-    else:
-        return expr
+            return expr
+    except Exception, e:
+        add_context(e, "when evaluating: " + str(expr))
+        raise
 
 
 def binop(opname, kind='binary', reverse=False):
@@ -236,8 +240,6 @@ def binop(opname, kind='binary', reverse=False):
 
 
 class Expr(object):
-    # we cannot do this in __new__ (args are verified in metaclass.__call__)
-    # __metaclass__ = ExplainTypeError
     __children__ = ()
 
     def __init__(self):
@@ -338,28 +340,23 @@ class Expr(object):
                                                     % (labels1, labels2))
 
         s = simple_expr.as_string()
-        try:
-            constants = {'nan': float('nan'), 'inf': float('inf')}
-            res = evaluate(s, local_ctx, constants, truediv='auto')
-            if isinstance(res, np.ndarray) and not res.shape:
-                res = np.asscalar(res)
-            if labels is not None:
-                # This is a hack which relies on the fact that currently
-                # all the expression we evaluate through numexpr preserve
-                # array shapes, but if we ever use numexpr reduction
-                # capabilities, we will be in trouble
-                res = LabeledArray(res, labels[0], labels[1])
+        constants = {'nan': float('nan'), 'inf': float('inf')}
+        res = evaluate(s, local_ctx, constants, truediv='auto')
+        if isinstance(res, np.ndarray) and not res.shape:
+            res = np.asscalar(res)
+        if labels is not None:
+            # This is a hack which relies on the fact that currently
+            # all the expression we evaluate through numexpr preserve
+            # array shapes, but if we ever use numexpr reduction
+            # capabilities, we will be in trouble
+            res = LabeledArray(res, labels[0], labels[1])
 
-            # if cache_key is not None:
-            #     expr_cache[cache_key] = res
-            #     if cached_result is not None:
-            #         assert np.array_equal(res, cached_result), \
-            #             "%s != %s" % (res, cached_result)
-            return res
-        except KeyError, e:
-            raise add_context(e, s)
-        except Exception:
-            raise
+        # if cache_key is not None:
+        #     expr_cache[cache_key] = res
+        #     if cached_result is not None:
+        #         assert np.array_equal(res, cached_result), \
+        #             "%s != %s" % (res, cached_result)
+        return res
 
     def as_simple_expr(self, context):
         """

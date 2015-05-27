@@ -27,9 +27,14 @@ from view import viewhdf
 __version__ = "0.10.0a1"
 
 
-def passthrough(func, *args, **kwargs):
-    return func(*args, **kwargs)
-
+def showcontext_on_exceptions(func, *args, **kwargs):
+    try:
+        return func(*args, **kwargs)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        if hasattr(e, 'liam2context'):
+            print(e.liam2context, file=sys.stderr)
 
 def eat_traceback(func, *args, **kwargs):
     # e.context      | while parsing a block mapping
@@ -37,6 +42,7 @@ def eat_traceback(func, *args, **kwargs):
     # e.problem      | expected <block end>, but found '<block sequence start>'
     # e.problem_mark | in "import.yml", line 29, column 12
     error_log_path = None
+    e = None
     try:
         try:
             return func(*args, **kwargs)
@@ -52,6 +58,8 @@ def eat_traceback(func, *args, **kwargs):
                 error_path = os.path.abspath(error_path)
                 with file(error_path, 'w') as f:
                     traceback.print_exc(file=f)
+                    if hasattr(e, 'liam2context'):
+                        f.write(e.liam2context)
                 error_log_path = error_path
             except IOError, log_ex:
                 print("WARNING: %s on '%s'" % (log_ex.strerror,
@@ -67,10 +75,8 @@ def eat_traceback(func, *args, **kwargs):
         # different when it happens on the first line (no context_mark) and
         # when it happens on a subsequent line.
         if e.context_mark is not None:
-            if e.problem == "could not found expected ':'":
-                msg = "could not find expected ':'"
-            else:
-                msg = e.problem
+            msg = e.problem if e.problem != "could not found expected ':'" \
+                else "could not find expected ':'"
             mark = e.context_mark
         else:
             if (e.problem ==
@@ -98,7 +104,9 @@ def eat_traceback(func, *args, **kwargs):
             print(offset_str + '^')
     except Exception, e:
         print("\nERROR:", str(e))
-
+    if e is not None:
+        if hasattr(e, 'liam2context'):
+            print(e.liam2context)
     if error_log_path is not None:
         print()
         print("the technical error log can be found at", error_log_path)
@@ -273,7 +281,7 @@ def main():
     # this can happen via the environment variable too!
     if config.debug:
         warnings.simplefilter('default')
-        wrapper = passthrough
+        wrapper = showcontext_on_exceptions
     else:
         wrapper = eat_traceback
 

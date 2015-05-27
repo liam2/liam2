@@ -14,6 +14,10 @@
 Miscellaneous improvements
 --------------------------
 
+* improved our error handling code to display the (part of the) line where the
+  error occurred in more cases and to not strip the traceback (error.log) of
+  some important information in the cases where the line was already displayed.
+
 * made bcolz optional (which is only useful for interpolating the dataset
   during import). Thanks to Mahdi Ben Jelloul (:pr:`161`).
 

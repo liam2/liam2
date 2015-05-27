@@ -140,6 +140,9 @@ class AutoFlushFile(object):
         self.f.write(s)
         self.f.flush()
 
+    def __getattr__(self, key):
+        return getattr(self.f, key)
+
 
 def time2str(seconds, precise=True):
     minutes = seconds // 60
@@ -1096,15 +1099,12 @@ def add_context(exception, s):
         # keyword arg).
         # SyntaxError instances have 'filename', 'lineno', 'offset' and 'text'
         # attributes.
-        return exception
-    msg = exception.args[0] if exception.args else ''
+        return
     encoding = sys.getdefaultencoding()
-    expr_str = s.encode(encoding, 'replace')
-    msg = "%s\n%s" % (expr_str, msg)
-    cls = exception.__class__
-    return cls(msg)
+    exception.liam2context = s.encode(encoding, 'replace')
 
 
+# we cannot do this in classes __new__ (args are verified in metaclass.__call__)
 class ExplainTypeError(type):
     def __call__(cls, *args, **kwargs):
         try:

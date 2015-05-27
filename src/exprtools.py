@@ -309,10 +309,7 @@ def _parse(s, interactive=False):
 
     # this prevents any function named something ending in "if"
     str_to_parse = s.replace('if(', 'where(')
-    try:
-        tree = ast.parse(str_to_parse)
-    except Exception, e:
-        raise add_context(e, s)
+    tree = ast.parse(str_to_parse)
     tree = BoolToBitTransformer().visit(tree)
     body = tree.body
 
@@ -336,19 +333,14 @@ def _parse(s, interactive=False):
         assert len(body) == 1 and isinstance(body[0], ast.Expr)
         to_compile = [('eval', ast.Expression(body[0].value))]
 
-    try:
-        to_eval = [(mode, compile(code, '<expr>', mode))
-                   for mode, code in to_compile]
-    except Exception, e:
-        raise add_context(e, s)
-
+    to_eval = [(mode, compile(code, '<expr>', mode))
+               for mode, code in to_compile]
     context = {'__builtins__': None}
     for _, code in to_eval:
         context.update({name: Symbol(name) for name in code.co_names})
 
     for mode, compiled_code in to_eval:
         if mode == 'exec':
-            #XXX: use "add_context" on exceptions?
             exec compiled_code in context
 
             # cleanup result. I tried different things to not get the context
@@ -359,13 +351,7 @@ def _parse(s, interactive=False):
                 del context[funcname]
         else:
             assert mode == 'eval'
-            try:
-                return eval(compiled_code, context)
-            # IOError and such. Those are clearer when left unmodified.
-            except EnvironmentError:
-                raise
-            # except Exception, e:
-            #     raise add_context(e, s)
+            return eval(compiled_code, context)
 
 
 def parse(s, context, interactive=False):
@@ -377,5 +363,9 @@ def parse(s, context, interactive=False):
     globals_context.update(context.get('__globals__', {}))
     # modify in-place
     context['__globals__'] = globals_context
-    node = _parse(s, interactive=interactive)
-    return to_ast(node, context)
+    try:
+        node = _parse(s, interactive=interactive)
+        return to_ast(node, context)
+    except Exception, e:
+        add_context(e, "while parsing: " + s)
+        raise
