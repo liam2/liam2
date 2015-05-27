@@ -1842,12 +1842,18 @@ entities:
                 - csv(dump(filter=age > 150), suffix='norow_arrayfilter')
 
             test_csv:
+                - show("single expr")
+                - csv(avg(age), fname='person_age_aggregates.csv', mode='a')
+
+                - show("single expr with (useless) assign")
                 - expr: csv(avg(age),
                             fname='person_age_aggregates.csv', mode='a')
-                - exprs: csv(avg(age), gini(age),
-                             fname='person_age_aggregates.csv', mode='a')
 
-                # empty groupby
+                - show("several exprs")
+                - csv(avg(age), gini(age),
+                      fname='person_age_aggregates.csv', mode='a')
+
+                - show("empty groupby")
                 - csv(groupby(gender, filter=age > 200))
 
             test_remove:
