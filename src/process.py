@@ -32,7 +32,8 @@ class Process(object):
             context.entity_data.extra = {}
             self.run(context)
         except BreakpointException:
-            #XXX: store this in the (evaluation) context instead?
+            #XXX: store this directly in the (evaluation) context instead of
+            # in the simulation?
             context.simulation.stepbystep = True
 
     def run(self, context):
