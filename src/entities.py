@@ -344,12 +344,18 @@ Please use this instead:
                     raise ValueError("while is a reserved keyword")
             elif k is not None and k.startswith('while '):
                 if not isinstance(v, list):
-                    raise ValueError("while is a reserved keyword")
+                    raise SyntaxError("while is a reserved keyword")
                 cond = parse(k[6:].strip(), context)
                 assert isinstance(cond, Expr)
                 code = self.parse_process_group("while_code", v, context,
                                                 purge=False)
                 process = While(k, self, cond, code)
+            elif k == 'return':
+                e = SyntaxError("return is a reserved keyword. To return "
+                                "from a function, use 'return expr' "
+                                "instead of 'return: expr'")
+                e.liam2context = "while parsing: return: {}".format(v)
+                raise e
             elif k is None and v.startswith('return'):
                 assert len(v) == 6 or v[6] == ' '
                 if len(v) > 6:
