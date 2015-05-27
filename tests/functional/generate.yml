@@ -4,16 +4,32 @@ entities:
             # period and id are implicit
             - income: float
 
+        links:
+            persons: {type: one2many, target: person, field: hh_id}
+
         processes:
-            dummy:
-                - show("dummy")
+            sumlink1:
+                - r: persons.sum(earnings)
+            sumlink2:
+                - r: persons.sum(earnings, age > 1)
+            countlink1:
+                - r: persons.count()
+            countlink2:
+                - r: persons.count(age > 1)
+            minlink1:
+                - r: persons.min(earnings)
+            minlink2:
+                - r: persons.min(earnings, age > 1)
+            avglink1:
+                - r: persons.avg(earnings)
+            avglink2:
+                - r: persons.avg(earnings, age > 1)
 
     person:
         fields:
             # period and id are implicit
             - age:        int
             - earnings:   float
-            - errsal:     float
             - male:       bool
             - work:       bool
             - eduach:     int
@@ -24,11 +40,11 @@ entities:
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
+            household: {type: many2one, target: household, field: hh_id}
 
         processes:
-            birth: new('person', number=1000,
-                       age=randint(0, 98),
-                       errsal=normal(0.0, 10.0),
+            birth: new('person', number=20000000,
+                       age=randint(0, 100),
                        male=choice([False, True]),
                        work=choice([False, True]),
                        eduach=randint(1, 4),
@@ -39,10 +55,10 @@ entities:
             earnings: 40 + age
 
             marriage:
-                - to_marry: logit_regr(0.0, filter=age >= 20)
+                - to_marry: uniform() < 0.5
                 - partner_id: matching(set1filter=to_marry and not male,
                                        set2filter=to_marry and male,
-                                       orderby=id,
+                                       orderby=age,
                                        score=- 0.4893 * other.age
                                              + 0.0131 * other.age ** 2
                                              - 0.0001 * other.age ** 3
@@ -57,7 +73,7 @@ entities:
                                              - 0.8984 * ((other.eduach == 4) and (eduach == 3))
                                              - 1.5530 * ((other.eduach == 4) and (eduach == 2))
                                              - 0.5451 * ((other.eduach == 2) and (eduach == 2)),
-                                       )
+                                       algo='byvalue')
                 - just_married: to_marry and (partner_id != -1)
                 - newhousehold: new('household', filter=just_married and not male,
                                     income=0.0)
@@ -65,11 +81,21 @@ entities:
                 - hh_id: where(just_married,
                                where(male, partner.newhousehold, newhousehold),
                                hh_id)
+            link:
+                - r1: partner.age
+                - r2: household.income
 
 simulation:
-    processes:
+    init:
         - person: [birth, earnings, marriage]
-        - household: [dummy]
+
+    processes:
+        - person: [link]
+        - household: [sumlink1, sumlink2,
+                      countlink1, countlink2]
+#        - household: [sumlink1, sumlink2,
+#                      minlink1, minlink2,
+#                      avglink1, avglink2]
 
     input:
         method: void
@@ -79,4 +105,4 @@ simulation:
         file: generated.h5
 
     start_period: 2001   # first simulated period
-    periods: 1
+    periods: 3

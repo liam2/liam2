@@ -5,6 +5,7 @@ from operator import itemgetter
 
 import numpy as np
 import numexpr as ne
+from numba import njit
 
 from expr import (Expr, Variable, getdtype, expr_eval, missing_values,
                   get_missing_value, always, FunctionExpr)
@@ -152,6 +153,30 @@ class LinkExpression(FunctionExpr):
         return self.format(link._name + "." + self.funcname, args, kwargs)
 
 
+# 2.0
+@njit
+def getlink(result, target_value, target_ids, id_to_rownum):
+    for i in range(len(target_ids)):
+        targetid = target_ids[i]
+        if targetid == -1:
+            continue
+        rownum = id_to_rownum[targetid]
+        if rownum == -1:
+            continue
+
+        result[i] = target_value[rownum]
+    return result
+
+# 2.1
+@njit
+def getlink2(result, target_value, target_ids, id_to_rownum):
+    for i in range(len(target_ids)):
+        targetid = target_ids[i]
+        rownum = id_to_rownum[targetid] if targetid != -1 else -1
+        result[i] = target_value[rownum] if rownum != -1 else -1  # missing
+    return result
+
+
 class LinkGet(LinkExpression):
     funcname = "get"
     no_eval = ('target_expr',)
@@ -200,6 +225,7 @@ class LinkGet(LinkExpression):
 
     __getattr__ = get
 
+    # 4.31 -> 2.0
     def compute(self, context, link, target_expr, missing_value=None):
         """
         link must be a Link instance
@@ -214,6 +240,10 @@ class LinkGet(LinkExpression):
         target_context = self.target_context(context)
 
         id_to_rownum = target_context.id_to_rownum
+        target_values = expr_eval(target_expr, target_context)
+        result = np.zeros(context_length(context), dtype=target_values.dtype)
+        return getlink(result, target_values, target_ids, id_to_rownum)
+        # return getlink2(result, target_values, target_ids, id_to_rownum)
 
         missing_int = missing_values[int]
         target_rows = id_to_rownum[target_ids]
@@ -293,8 +323,109 @@ class Aggregate(LinkExpression):
         raise NotImplementedError()
 
 
+@njit
+def sumlink(hasval, result, source_rows, expr_value):
+    for i in range(len(source_rows)):
+        rownum = source_rows[i]
+        if rownum == -1:
+            continue
+        value = expr_value[i]
+        result[rownum] = result[rownum] + value if hasval[rownum] else value
+        hasval[rownum] = True
+    return result
+
+@njit
+def sumlink2(result, source_rows, expr_value):
+    for i in range(len(source_rows)):
+        rownum = source_rows[i]
+        if rownum == -1:
+            continue
+        result[rownum] += expr_value[i]
+    return result
+
+@njit
+def sumlink3(result, filter_value, expr_value, source_ids, id_to_rownum):
+    for i in range(len(source_ids)):
+        rowid = source_ids[i]
+        if rowid == -1 or not filter_value[i]:
+            continue
+        rownum = id_to_rownum[rowid]
+        if rownum == -1:
+            continue
+
+        result[rownum] += expr_value[i]
+    return result
+
+# 1.44
+@njit
+def sumlink4(result, expr_value, source_ids, id_to_rownum):
+    for i in range(len(source_ids)):
+        rowid = source_ids[i]
+        if rowid == -1:
+            continue
+        rownum = id_to_rownum[rowid]
+        if rownum == -1:
+            continue
+
+        result[rownum] += expr_value[i]
+    return result
+
+# 1.46 (1.37?)
+@njit
+def sumlink5(result, expr_value, source_ids, id_to_rownum):
+    for i in range(len(source_ids)):
+        rowid = source_ids[i]
+        rownum = -1 if rowid == -1 else id_to_rownum[rowid]
+        result[rownum] += expr_value[i]
+    return result
+
+
 class Sum(Aggregate):
+    # 1.51/1.44
+    # def compute(self, context, link, target_expr, target_filter=None):
+    #     # assert isinstance(context, EntityContext), \
+    #     #         "one2many aggregates in groupby are currently not supported"
+    #     assert isinstance(link, One2Many), "%s (%s)" % (link, type(link))
+    #
+    #     # eg (in household entity):
+    #     # persons: {type: one2many, target: person, field: hh_id}
+    #     target_context = link._target_context(context)
+    #
+    #     # this is a one2many, so the link column is on the target side
+    #     #noinspection PyProtectedMember
+    #     source_ids = target_context[link._link_field]
+    #     expr_value = expr_eval(target_expr, target_context)
+    #     filter_value = expr_eval(target_filter, target_context)
+    #     # if filter_value is not None:
+    #     #     source_ids = source_ids[filter_value]
+    #     #     # intentionally not using np.isscalar because of some corner
+    #     #     # cases, eg. None and np.array(1.0)
+    #     #     if isinstance(expr_value, np.ndarray) and expr_value.shape:
+    #     #         expr_value = expr_value[filter_value]
+    #
+    #     missing_int = missing_values[int]
+    #
+    #     id_to_rownum = context.id_to_rownum
+    #     result = np.zeros(context_length(context), dtype=expr_value.dtype)
+    #     if filter_value is not None:
+    #         return sumlink3(result, filter_value, expr_value, source_ids,
+    #                         id_to_rownum)
+    #     else:
+    #         return sumlink4(result, expr_value, source_ids, id_to_rownum)
+            # return sumlink5(result, expr_value, source_ids, id_to_rownum)[:-4]
+
     def eval_rows(self, source_rows, expr_value, context):
+        # 0.23/0.22 // 2.25/1.90
+        # result = np.zeros(context_length(context), dtype=expr_value.dtype)
+        # return sumlink2(result, source_rows, expr_value)
+
+        # 0.27/0.26
+        # result = np.empty(context_length(context), dtype=expr_value.dtype)
+        # result.fill(get_missing_value(expr_value))
+        # hasvalue = np.zeros(len(result), dtype=bool)
+        # return sumlink(hasvalue, result, source_rows, expr_value)
+
+        # 0.29/0.28 // 3.12/2.77
         # We can't use a negative value because that is not allowed by
         # bincount, and using a value too high will uselessly increase the size
         # of the array returned by bincount
@@ -331,7 +462,63 @@ class Sum(Aggregate):
         return counting_typemap[super(Sum, self).dtype(context)]
 
 
+@njit        # h      p             p
+def countlink(result, filter_value, source_ids, id_to_rownum):
+    for i in range(len(source_ids)):
+        rowid = source_ids[i]
+        if rowid == -1 or not filter_value[i]:
+            continue
+        rownum = id_to_rownum[rowid]
+        if rownum == -1:
+            continue
+
+        result[rownum] += 1
+    return result
+
+@njit
+def countlink2(result, source_ids, id_to_rownum):
+    for i in range(len(source_ids)):
+        rowid = source_ids[i]
+        if rowid == -1:
+            continue
+        rownum = id_to_rownum[rowid]
+        if rownum == -1:
+            continue
+
+        result[rownum] += 1
+    return result
+
+# 2.78/2.62 -> 1.45/1.28
 class Count(Sum):
+    def compute(self, context, link, target_filter=None):
+        # assert isinstance(context, EntityContext), \
+        #         "one2many aggregates in groupby are currently not supported"
+        assert isinstance(link, One2Many), "%s (%s)" % (link, type(link))
+
+        # eg (in household entity):
+        # persons: {type: one2many, target: person, field: hh_id}
+        target_context = link._target_context(context)
+
+        # this is a one2many, so the link column is on the target side
+        #noinspection PyProtectedMember
+        source_ids = target_context[link._link_field]
+        filter_value = expr_eval(target_filter, target_context)
+        # if filter_value is not None:
+        #     source_ids = source_ids[filter_value]
+        #     # intentionally not using np.isscalar because of some corner
+        #     # cases, eg. None and np.array(1.0)
+        #     if isinstance(expr_value, np.ndarray) and expr_value.shape:
+        #         expr_value = expr_value[filter_value]
+
+        missing_int = missing_values[int]
+
+        id_to_rownum = context.id_to_rownum
+        result = np.zeros(context_length(context), dtype=np.int32)
+        if filter_value is not None:
+            return countlink(result, filter_value, source_ids, id_to_rownum)
+        else:
+            return countlink2(result, source_ids, id_to_rownum)
+
     @property
     def target_expr(self):
         return 1
@@ -344,13 +531,56 @@ class Count(Sum):
         return super(Count, self).compute(context, link, 1, target_filter)
 
 
+@njit
+def avglink(sum_result, count_result, source_rows, expr_value):
+    for i in range(len(source_rows)):
+        rownum = source_rows[i]
+        if rownum == -1:
+            continue
+        sum_result[rownum] += expr_value[i]
+        count_result[rownum] += 1
+    # return sum_result, count_result
+
+
 class Avg(Sum):
-    def count(self, source_rows, expr_value):
-        sums = super(Avg, self).count(source_rows, expr_value)
-        count = np.bincount(source_rows)
-        return sums / count
+    def eval_rows(self, source_rows, expr_value, context):
+        # 0.24/0.24 // 2.51/2.13
+        sum_result = np.zeros(context_length(context), dtype=expr_value.dtype)
+        count_result = np.zeros(context_length(context), dtype=int)
+        avglink(sum_result, count_result, source_rows, expr_value)
+        return sum_result / count_result
+
+    # 0.36/0.32 // 3.84/3.48
+    # def count(self, source_rows, expr_value):
+    #     sums = super(Avg, self).count(source_rows, expr_value)
+    #     count = np.bincount(source_rows)
+    #     return sums / count
 
     dtype = always(float)
+
+
+@njit
+def minlink(hasval, result, source_rows, expr_value):
+    for i in range(len(source_rows)):
+        rownum = source_rows[i]
+        if rownum == -1:
+            continue
+        value = expr_value[i]
+        result[rownum] = min(value, result[rownum]) if hasval[rownum] else value
+        hasval[rownum] = True
+    return result
+
+
+@njit
+def maxlink(hasval, result, source_rows, expr_value):
+    for i in range(len(source_rows)):
+        rownum = source_rows[i]
+        if rownum == -1:
+            continue
+        value = expr_value[i]
+        result[rownum] = max(value, result[rownum]) if hasval[rownum] else value
+        hasval[rownum] = True
+    return result
 
 
 class Min(Aggregate):
@@ -360,17 +590,21 @@ class Min(Aggregate):
         result = np.empty(context_length(context), dtype=expr_value.dtype)
         result.fill(get_missing_value(expr_value))
 
-        id_sort_indices = np.argsort(source_rows)
-        sorted_rownum = source_rows[id_sort_indices]
-        sorted_values = expr_value[id_sort_indices]
-        groups = groupby(izip(sorted_rownum, sorted_values), key=itemgetter(0))
-        aggregate_func = self.aggregate_func
-        for rownum, values in groups:
-            if rownum == -1:
-                continue
-            # Note that v[n] is faster than using an itemgetter, even with map
-            result[rownum] = aggregate_func(v[1] for v in values)
-        return result
+        # 0.26/0.24
+        hasvalue = np.zeros(len(result), dtype=bool)
+        return minlink(hasvalue, result, source_rows, expr_value)
+
+        # 3.2/3.11
+        # id_sort_indices = np.argsort(source_rows)
+        # sorted_rownum = source_rows[id_sort_indices]
+        # sorted_values = expr_value[id_sort_indices]
+        # groups = groupby(izip(sorted_rownum, sorted_values), key=itemgetter(0))
+        # aggregate_func = self.aggregate_func
+        # for rownum, values in groups:
+        #     if rownum == -1:
+        #         continue
+        #     # Note that v[n] is faster than using an itemgetter, even with map
+        #     result[rownum] = aggregate_func(v[1] for v in values)
 
 
 class Max(Min):
