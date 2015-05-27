@@ -195,7 +195,7 @@ Expressions
 ===========
 
 Expressions can either compute new values for existing individuals, or change
-the number of individuals by using the so-called
+the number of individuals by using so-called
 :ref:`life-cycle functions <lifecycle>`.
 
 .. index:: simple expressions
@@ -211,6 +211,7 @@ of a variable by one each simulation period. ::
 The name of the process is *age* and what it does is increasing the variable
 *age* of each individual by one, each period.
 
+LIAM2 supports many common operators:
 
 - Arithmetic operators: +, -, \*, /, \** (exponent), % (modulo)
 
@@ -383,11 +384,11 @@ defaults to *True*.
 
 .. index:: min
 
-- **min(expr[, filter=condition][, skip_na=True])**: min
+- **min(expr[, filter=condition][, skip_na=True])**: minimum
 
 .. index:: max
 
-- **max(expr[, filter=condition][, skip_na=True])**: max
+- **max(expr[, filter=condition][, skip_na=True])**: maximum
 
 .. index:: median
 
@@ -437,14 +438,15 @@ link methods
             fields:
                 # period and id are implicit
                 - nb_persons: {type: int, initialdata: false}
+
             links:
                 persons: {type: one2many, target: person, field: household_id}
 
             processes:
                 household_composition:
                     - nb_persons: persons.count()
-                    - nb_students: persons.count(workstate == 1)
-                    - nb_children: persons.count(age <= 17)
+                    - nb_children: persons.count(age < 18)
+                    - total_income: persons.sum(income)
                     - avg_age: persons.avg(age)
 
 .. index:: temporal functions, lag, value_for_period, duration, tavg, tsum
