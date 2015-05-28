@@ -1,19 +1,22 @@
 from __future__ import print_function
 
 import numpy as np
+from numba import njit
 
 from expr import (Variable, BinaryOp, getdtype, expr_eval,
                   ispresent, FunctionExpr, always, firstarg_dtype)
 from exprbases import NumpyAggregate, FilteredExpression
 import exprmisc
 from context import context_length
-from utils import removed, argspec
+from utils import removed, argspec, timed
 
 try:
     import bottleneck as bn
     nanmin = bn.nanmin
     nanmax = bn.nanmax
     nansum = bn.nansum
+    # does it exist?
+    # nanmean = bn.nanmean
 except ImportError:
     nanmin = np.nanmin
     nanmax = np.nanmax
@@ -105,14 +108,14 @@ class Sum(FilteredExpression):
         typemap = {bool: int, int: int, float: float}
         return typemap[getdtype(self.args[0], context)]
 
+# 0.07 / 0.12
+class Average(NumpyAggregate):
+   funcname = 'avg'
+   np_func = np.mean
+   nan_func = (np.nanmean,)
+   dtype = always(float)
 
-#class Average(NumpyAggregate):
-#    funcname = 'avg'
-#    np_func = np.mean
-#    nan_func = (nanmean,)
-#    dtype = always(float)
-
-
+# 0.10 / 0.13
 #TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Average(FilteredExpression):
     funcname = 'avg'
@@ -175,6 +178,83 @@ class Percentile(NumpyAggregate):
     dtype = always(float)
 
 
+@njit
+def gini(values, filter_values, skip_na=True):
+    sum_ = np.float32(0.0)
+    cumsum = np.float32(0.0)
+    n = len(values)
+    if skip_na:
+        for i in range(n):
+            val = values[i]
+            if not filter_values[i] or val != val:
+                n -= 1
+                continue
+            sum_ += val
+            cumsum += sum_
+    else:
+        for i in range(n):
+            if not filter_values[i]:
+                n -= 1
+                continue
+            sum_ += values[i]
+            cumsum += sum_
+
+    # if values_sum == 0:
+    #     print("gini(%s, filter=%s): expression is all zeros (or nan) "
+    #           "for filter" % (self.args[0], filter))
+    return (n + 1 - 2 * cumsum / sum_) / n
+
+# @njit
+# def gini(values, filter_values):
+#     sum_ = np.float32(0.0)
+#     cumsum = np.float32(0.0)
+#     n = len(values)
+#     if filter_values is True:
+#         c = n
+#         for i in range(n):
+#             val = values[i]
+#             cumsum += c * val
+#             sum_ += val
+#             c -= 1
+#     else:
+#         c = 1
+#         for i in range(n - 1, -1, -1):  # reversed(range(n))
+#             val = values[i]
+#             if not filter_values[i]:  # or (val != val):
+#                 continue
+#             cumsum += c * val
+#             sum_ += val
+#             c += 1
+#     # if values_sum == 0:
+#     #     print("gini(%s, filter=%s): expression is all zeros (or nan) "
+#     #           "for filter" % (self.args[0], filter))
+#     return (n + 1 - 2 * cumsum / sum_) / n
+
+@njit
+def gini2(values, skip_na=True):
+    sum_ = 0.0
+    cumsum = 0.0
+    n = len(values)
+    if skip_na:
+        for i in range(n):
+            val = values[i]
+            if val != val:
+                n -= 1
+                continue
+            sum_ += val
+            cumsum += sum_
+    else:
+        for i in range(n):
+            sum_ += values[i]
+            cumsum += sum_
+
+    # if values_sum == 0:
+    #     print("gini(%s, filter=%s): expression is all zeros (or nan) "
+    #           "for filter" % (self.args[0], filter))
+    return (n + 1 - 2 * cumsum / sum_) / n
+
+
+# 0.68/0.67 -> 0.55/0.58
 #TODO: filter and skip_na should be provided by an "Aggregate" mixin that is
 # used both here and in NumpyAggregate
 class Gini(FilteredExpression):
@@ -188,12 +268,13 @@ class Gini(FilteredExpression):
             filter_values = expr_eval(filter_expr, context)
         else:
             filter_values = True
-        if skip_na:
-            # we should *not* use an inplace operation because filter_values
-            # can be a simple variable
-            filter_values = filter_values & ispresent(values)
-        if filter_values is not True:
-            values = values[filter_values]
+
+        # if skip_na:
+        #     # we should *not* use an inplace operation because filter_values
+        #     # can be a simple variable
+        #     filter_values = filter_values & ispresent(values)
+        # if filter_values is not True:
+        #     values = values[filter_values]
 
         # from Wikipedia:
         # G = 1/n * (n + 1 - 2 * (sum((n + 1 - i) * a[i]) / sum(a[i])))
@@ -202,7 +283,13 @@ class Gini(FilteredExpression):
         #    i=1..n
         #   = sum((n - i) * a[i] for i in range(n))
         #   = sum(cumsum(a))
-        sorted_values = np.sort(values)
+
+        sorted_values = timed(np.sort, values)
+        if filter_values is True:
+            return timed(gini2, sorted_values)
+        else:
+            return timed(gini, sorted_values, filter_values)
+
         n = len(values)
 
         # force float to avoid overflows with integer input expressions
