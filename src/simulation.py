@@ -537,8 +537,8 @@ class Simulation(object):
             person = [x for x in entities if x.name == person_name][0]
             var_id = person.array.columns['id']
             # Init
-            use_longitudinal = any(varname in self.longitudinal for varname in ['salaire_imposable', 'workstate'])
-            if init and use_longitudinal:
+            use_longitudinal_after_init = any(varname in self.longitudinal for varname in ['salaire_imposable', 'workstate'])
+            if init:
                 for varname in ['salaire_imposable', 'workstate']:
                     self.longitudinal[varname] = None
                     var = person.array.columns[varname]
@@ -556,7 +556,7 @@ class Simulation(object):
                         self.longitudinal[varname] = DataFrame({'id': var_id, period: var})
 
             # maybe we have a get_entity or anything nicer than that # TODO: check
-            elif use_longitudinal:
+            elif use_longitudinal_after_init:
                 for varname in ['salaire_imposable', 'workstate']:
                     var = person.array.columns[varname]
                     table = DataFrame({'id': var_id, period: var})

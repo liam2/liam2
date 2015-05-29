@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+
+
 from __future__ import print_function
 
 from itertools import izip, chain
@@ -513,9 +516,10 @@ class Pension(FilteredExpression):
 
         try:
             # Note that period is in context
-            return (Pension.already_simulated['yearleg'] == yearleg &
-                all(Pension.already_simulated['context']['id'] == context['id']) &
-                Pension.already_simulated['context']['period'] == context['period']
+            return (
+                (Pension.already_simulated['yearleg'] == yearleg) &  # legislation changes
+                (set(Pension.already_simulated['context']['id']) == set(context['id'])) &
+                (Pension.already_simulated['context']['period'] == context['period'])  # period changes
                 )
         except:
             import pdb
@@ -579,3 +583,4 @@ functions = {
     'dump': Dump,
     'pension': Pension
 }
+    
