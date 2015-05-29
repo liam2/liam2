@@ -19,6 +19,11 @@ Miscellaneous improvements
   error occurred in more cases and to not strip the traceback (error.log) of
   some important information in the cases where the line was already displayed.
 
+* configured the bundle editor (Notepad++) to display some warning and
+  error lines in red in the console log. Additionally, when the error message
+  contains a filename and/or a line number (this is currently very rare
+  unfortunately), it is now click-able (to jump directly at the file/line).
+
 * made bcolz optional (which is only useful for interpolating the dataset
   during import). Thanks to Mahdi Ben Jelloul (:pr:`161`).
 
@@ -35,4 +40,4 @@ Fixes
   (closes :issue:`154`).
 
 * fixed autodump (broken in 0.9). Note that it is currently incompatible with
-  while loops and recursive (user) functions.
+  while loops and recursive (user-defined) functions.
