@@ -57,7 +57,7 @@ class CSV(FunctionExpr, FileProducer):
         entity = context.entity
         period = context.period
         fname = fname.format(entity=entity.name, period=period)
-        if config.log_level in ("procedures", "processes"):
+        if config.log_level in ("functions", "processes"):
             print("writing to", fname, "...", end=' ')
 
         file_path = os.path.join(config.output_directory, fname)

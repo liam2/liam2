@@ -155,13 +155,13 @@ class Simulation(object):
             },
             'logging': {
                 'timings': bool,
-                'level': str,  # Or('periods', 'procedures', 'processes')
+                'level': str,  # Or('periods', 'functions', 'processes')
             },
             '#periods': int,
             '#start_period': int,
             'skip_shows': bool,
-            'timings': bool,      # deprecated
-            'assertions': str,
+            'timings': bool,    # deprecated
+            'assertions': str,  # Or('raise', 'warn', 'skip')
             'default_entity': str,
             'autodump': None,
             'autodiff': None,
@@ -229,6 +229,12 @@ class Simulation(object):
 
         logging_def = simulation_def.get('logging', {})
         config.log_level = logging_def.get('level', config.log_level)
+        if config.log_level == 'procedures':
+            config.log_level = 'functions'
+            warnings.warn("'procedures' logging.level is deprecated, "
+                          "please use 'functions' instead",
+                          DeprecationWarning)
+
         if 'timings' in simulation_def:
             warnings.warn("simulation.timings is deprecated, please use "
                           "simulation.logging.timings instead",
@@ -397,16 +403,16 @@ class Simulation(object):
             # set current period
             eval_ctx.period = period
 
-            if config.log_level in ("procedures", "processes"):
+            if config.log_level in ("functions", "processes"):
                 print()
             print("period", period,
                   end=" " if config.log_level == "periods" else "\n")
-            if init and config.log_level in ("procedures", "processes"):
+            if init and config.log_level in ("functions", "processes"):
                 for entity in entities:
                     print("  * %s: %d individuals" % (entity.name,
                                                       len(entity.array)))
             else:
-                if config.log_level in ("procedures", "processes"):
+                if config.log_level in ("functions", "processes"):
                     print("- loading input data")
                     for entity in entities:
                         print("  *", entity.name, "...", end=' ')
@@ -427,7 +433,7 @@ class Simulation(object):
                     # set current entity
                     eval_ctx.entity_name = process.entity.name
 
-                    if config.log_level in ("procedures", "processes"):
+                    if config.log_level in ("functions", "processes"):
                         print("- %d/%d" % (p_num, num_processes), process.name,
                               end=' ')
                         print("...", end=' ')
@@ -435,18 +441,18 @@ class Simulation(object):
                         elapsed, _ = gettime(process.run_guarded, eval_ctx)
                     else:
                         elapsed = 0
-                        if config.log_level in ("procedures", "processes"):
+                        if config.log_level in ("functions", "processes"):
                             print("skipped (periodicity)")
 
                     process_time[process.name] += elapsed
-                    if config.log_level in ("procedures", "processes"):
+                    if config.log_level in ("functions", "processes"):
                         if config.show_timings:
                             print("done (%s elapsed)." % time2str(elapsed))
                         else:
                             print("done.")
                     self.start_console(eval_ctx)
 
-            if config.log_level in ("procedures", "processes"):
+            if config.log_level in ("functions", "processes"):
                 print("- storing period data")
                 for entity in entities:
                     print("  *", entity.name, "...", end=' ')
@@ -464,7 +470,7 @@ class Simulation(object):
             period_objects[period] = sum(len(entity.array)
                                          for entity in entities)
             period_elapsed_time = time.time() - period_start_time
-            if config.log_level in ("procedures", "processes"):
+            if config.log_level in ("functions", "processes"):
                 print("period %d" % period, end=' ')
             print("done", end=' ')
             if config.show_timings:

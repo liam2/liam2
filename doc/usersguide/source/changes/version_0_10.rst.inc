@@ -5,7 +5,8 @@
   <functions>` (previously called procedures) from within user code,
   optionally passing arguments to them and retrieving their return value.
   As a consequence of this, every mention of "procedures" in the documentation
-  has been replaced by "functions". Closes :issue:`152`.
+  has been replaced by "functions", including the name of the "procedures"
+  logging level which is now deprecated. Closes :issue:`152`.
 
 * implemented :ref:`while loops <while>` (closes :issue:`151`).
 

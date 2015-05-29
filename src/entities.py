@@ -238,7 +238,7 @@ class Entity(object):
 
             stored_fields = self.stored_fields
 
-            # non-callable fields (no variable-procedure for them)
+            # non-callable fields (no variable-function for them)
             variables = dict((name, Variable(self, name, type_))
                              for name, type_ in self.fields
                              if name in stored_fields - process_names)
@@ -532,7 +532,7 @@ Please use this instead:
                            for v in local_vars)
             avgsize = sum(v.dtype.itemsize if isinstance(v, np.ndarray) else 0
                           for v in local_vars) / num_locals
-            if config.log_level in ("procedures", "processes"):
+            if config.log_level in ("functions", "processes"):
                 print(("purging {} variables (max {}), will free {} of memory "
                        "(avg field size: {} b)".format(num_locals, max_vars,
                                                        size2str(temp_mem),
@@ -559,7 +559,7 @@ Please use this instead:
             self.output_index[period - 1] = DiskBackedArray(prev_disk_array)
 
     def store_period_data(self, period):
-        if config.debug and config.log_level in ("procedures", "processes"):
+        if config.debug and config.log_level in ("functions", "processes"):
             temp_mem = sum(v.nbytes for v in self.temp_variables.itervalues()
                            if isinstance(v, np.ndarray))
             main_mem = self.array.nbytes

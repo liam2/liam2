@@ -343,7 +343,7 @@ and composition is again used.
         default_entity: person  # optional
         logging:                # optional
             timings: True       # optional
-            level: procedures   # optional
+            level: functions    # optional
         autodump: False         # optional
         autodiff: False         # optional
 
@@ -452,11 +452,18 @@ increasing level of verbosity):
 periods
   show only periods.
 
+functions
+  show periods and functions (this is the default).
+
+  .. versionchanged:: 0.10
+     Renamed from "procedures" to "functions".
+
 procedures
-  show periods and procedures (this is the default).
+  .. deprecated:: 0.10
+     Please use "functions" instead.
 
 processes
-  show periods, procedures and individual processes.
+  show periods, functions and individual processes.
 
 timings
 ~~~~~~~
