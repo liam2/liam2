@@ -13,9 +13,6 @@ change the value of a variable (predictor) using an expression,
 :ref:`control flow operators <while>` which specify which processes need to be
 executed. Processes are usually grouped in :ref:`functions <functions>`.
 
-For each entity (for example, "household" and "person"), the block of processes
-starts with the header "processes:".
-
 .. index:: expressions
 
 Expressions
@@ -113,7 +110,8 @@ the processes within the function are executed in the order they were declared.
 By using functions, one can actually make *building blocks* or modules in the
 model.
 
-.. note:: In LIAM2 versions prior to 0.10, functions were called *procedures*.
+.. versionchanged:: 0.10
+   Functions were previously called "procedures".
 
 Each function definition starts at a new line with an extra indentation of four
 spaces compared to the "processes" keyword of the current entity. Within a
