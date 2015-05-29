@@ -186,17 +186,24 @@ class Simulation(object):
     def __init__(self, globals_def, periods, start_period, init_processes,
                  processes, entities, data_source, default_entity=None,
                  legislation = None, final_stat = False,
-                 time_scale = 'year', retro = False):
+                 time_scale = 'year0', retro = False):
+        # time_scale year0: default liam2
+        # time_scale year: Alexis
         # FIXME: what if period has been declared explicitly?
         if 'periodic' in globals_def:
             globals_def['periodic']['fields'].insert(0, ('PERIOD', int))
 
         self.globals_def = globals_def
         self.periods = periods
+        print(self.periods)
         # TODO: work on it for start with seme
-        if (time_scale not in ['year', 'year0']) and (
-                (start_period % 10).isin(range(1, 12)) or start_period < 9999):
-            raise Exception("Non valid start period")
+        assert(isinstance(start_period, int))
+        if time_scale == 'year0':
+            assert 0 <= start_period <= 9999, "{} is a non valid start period".format(start_period)
+        if time_scale == 'year':
+            assert 0 <= start_period <= 999999, "{} is a non valid start period".format(start_period)
+            assert (start_period % 100) in range(1, 12), "{} is a non valid start period".format(start_period)
+
         self.start_period = start_period
         # init_processes is a list of tuple: (process, 1)
         self.init_processes = init_processes
@@ -223,6 +230,7 @@ class Simulation(object):
 
         expand_periodic_fields(content)
         content = handle_imports(content, simulation_dir)
+
         validate_dict(content, cls.yaml_layout)
 
         # the goal is to get something like:
@@ -247,18 +255,25 @@ class Simulation(object):
             np.random.seed(seed)
 
         periods = simulation_def['periods']
-        time_scale = simulation_def.get('time_scale', 'year')
+        time_scale = simulation_def.get('time_scale', 'year0')
         retro = simulation_def.get('retro', False)
 
         start_period = simulation_def.get('start_period', None)
         init_period = simulation_def.get('init_period', None)
+
         if start_period is None and init_period is None:
             raise Exception("Either start_period either init_period should be given.")
         if start_period is not None:
             if init_period is not None:
                 raise Exception("Start_period can't be given if init_period is.")
             step = time_period[time_scale] * (1 - 2 * (retro))
-            init_period = addmonth(start_period, step)
+            print(time_scale)
+            if time_scale == 'year0':
+                init_period = addmonth(start_period, step)
+            else:
+                init_period = start_period
+            print('init_period')
+            print(init_period)
 
         config.skip_shows = simulation_def.get('skip_shows', config.skip_shows)
         # TODO: check that the value is one of "raise", "skip", "warn"
@@ -351,7 +366,6 @@ class Simulation(object):
         parsing_context.update((entity.name, entity.all_symbols(global_context))
                                for entity in entities.itervalues())
         for entity in entities.itervalues():
-            print(entity)
             parsing_context['__entity__'] = entity.name
             entity.parse_processes(parsing_context)
             entity.compute_lagged_fields()
@@ -414,8 +428,6 @@ class Simulation(object):
             suffix = 'y' if len(unused_entities) == 1 else 'ies'
             print("WARNING: entit%s without any executed process:" % suffix,
                   ','.join(sorted(unused_entities)))
-
-        method = input_def.get('method', 'h5')
 
         if method == 'h5':
             if input_file is None:
@@ -491,6 +503,7 @@ class Simulation(object):
             eval_ctx.period = period
             eval_ctx.periods = periods
             eval_ctx.period_idx = period_idx + 1
+            print(eval_ctx.period_idx)
 #            # build context for this period:
 #            const_dict = {'period_idx': period_idx + 1,
 #                          'longitudinal': self.longitudinal,
@@ -520,12 +533,13 @@ class Simulation(object):
                 entity.array['period'] = period
 
             # Longitudinal
-            person = [x for x in entities if x.name == 'person'][0]
+            person_name = 'individus'
+            person = [x for x in entities if x.name == person_name][0]
             var_id = person.array.columns['id']
             # Init
-            use_logitudinal = any(varname in self.longitudinal for varname in ['sali', 'workstate'])
-            if init and use_logitudinal:
-                for varname in ['sali', 'workstate']:
+            use_longitudinal = any(varname in self.longitudinal for varname in ['salaire_imposable', 'workstate'])
+            if init and use_longitudinal:
+                for varname in ['salaire_imposable', 'workstate']:
                     self.longitudinal[varname] = None
                     var = person.array.columns[varname]
                     fpath = self.data_source.input_path
@@ -542,8 +556,8 @@ class Simulation(object):
                         self.longitudinal[varname] = DataFrame({'id': var_id, period: var})
 
             # maybe we have a get_entity or anything nicer than that # TODO: check
-            elif use_logitudinal:
-                for varname in ['sali', 'workstate']:
+            elif use_longitudinal:
+                for varname in ['salaire_imposable', 'workstate']:
                     var = person.array.columns[varname]
                     table = DataFrame({'id': var_id, period: var})
                     if period in self.longitudinal[varname]:
@@ -566,6 +580,7 @@ class Simulation(object):
                               end=' ')
                         print("...", end=' ')
                     # TDOD: change that
+                    print(periodicity)
                     if isinstance(periodicity, int):
                         if period_idx % periodicity == 0:
                             elapsed, _ = gettime(process.run_guarded, eval_ctx)
@@ -600,7 +615,6 @@ class Simulation(object):
                         else:
                             print("done.")
                     self.start_console(eval_ctx)
-
 
             if config.log_level in ("procedures", "processes"):
                 print("- storing period data")
@@ -648,15 +662,19 @@ class Simulation(object):
             month_periodicity = time_period[self.time_scale]
             time_direction = 1 - 2 * (self.retro)
             time_step = month_periodicity * time_direction
-            periods = [
-                self.start_period + int(t / 12) * 100 + t % 12
-                for t in range(0, (self.periods + 1) * time_step, time_step)
-                ]
             if self.time_scale == 'year0':
                 periods = [self.start_period + t for t in range(0, (self.periods + 1))]
+            elif self.time_scale == 'year':
+                periods = [
+                    self.start_period + int(t / 12) * 100 + t % 12
+                    for t in range(0, (self.periods + 1) * time_step, time_step)
+                    ]
+
             print("simulated period are going to be: ", periods)
 
             init_start_time = time.time()
+            print(self.start_period)
+            print(periods[0])
             simulate_period(0, self.start_period, [None, periods[0]], self.init_processes,
                             self.entities, init=True)
             time_init = time.time() - init_start_time

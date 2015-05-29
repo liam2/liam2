@@ -50,11 +50,12 @@ def kill_axis(axis_name, value, expressions, possible_values, need, periodicity)
             value_idx_period = is_wanted_value_period.nonzero()[0]
 
             if periodicity_axis > periodicity:
-                if not isinstance(periodicity_axis/periodicity,int):
+                if not isinstance(periodicity_axis / periodicity, int):
                     raise Exception("can't do anything if time period is"
                                     " not a multiple of time given in alignment data")
+                import pdb
                 pdb.set_trace()
-                chunk = chunks(value_idx_period, periodicity_axis/periodicity)[value % 10 - 1]
+                chunk = chunks(value_idx_period, periodicity_axis / periodicity)[value % 10 - 1]
                 axis_values[value_idx_period[0]] = value
                 axis_values[value_idx_period[1:]] = int(value/100)*100
                 need.base[:,value_idx_period[0]] = need.base[:,chunk].sum(axis=1)
@@ -67,8 +68,8 @@ def kill_axis(axis_name, value, expressions, possible_values, need, periodicity)
                 time_value = value % 100
                 if time_value > 12:
                     time_value = value % 10
-                season = int(time_value / periodicity * periodicity_axis-0.01)
-                axis_values[value_idx_period] = int(value/100)*100
+                season = int(time_value / periodicity * periodicity_axis - 0.01)
+                axis_values[value_idx_period] = int(value / 100) * 100
                 axis_values[value_idx_period[season]] = value
                 need.base[:,value_idx_period[season]] = \
                         need.base[:,value_idx_period[season]] * periodicity_axis/periodicity
@@ -418,13 +419,11 @@ class AlignmentAbsoluteValues(FilteredExpression):
                       secondary_axis, method, periodicity_given):
         ctx_length = context_length(context)
 
-
         need, expressions, possible_values = \
             self._eval_need(context, need, expressions, possible_values,
                             method)
 
         filter_value = expr_eval(self._getfilter(context, filter), context)
-
 
         if filter_value is not None:
             num_to_align = np.sum(filter_value)
@@ -615,7 +614,6 @@ class AlignmentAbsoluteValues(FilteredExpression):
         self.past_error = error
         return aligned
 
-
     def _get_need_correction(self, groups, possible_values):
         return 1
 
@@ -666,4 +664,4 @@ class Alignment(AlignmentAbsoluteValues):
 functions = {
     'align_abs': AlignmentAbsoluteValues,
     'align': Alignment
-}
+    }

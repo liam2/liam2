@@ -501,24 +501,23 @@ class Where(NumexprFunction):
         return coerce_types(context, self.iftrue, self.iffalse)
 
 
-
 class Pension(FilteredExpression):
-    
+
     no_eval = ('filter', 'varname', 'regime')
     already_simulated = None
-    
+
     @classmethod
     def no_need_to_reload(cls, context, yearleg):
         if Pension.already_simulated is None:
             return False
-        
+
         try:
-            # Note that period is in context        
+            # Note that period is in context
             return (Pension.already_simulated['yearleg'] == yearleg &
                 all(Pension.already_simulated['context']['id'] == context['id']) &
                 Pension.already_simulated['context']['period'] == context['period']
                 )
-        except: 
+        except:
             import pdb
             pdb.set_trace()
 
@@ -526,18 +525,22 @@ class Pension(FilteredExpression):
     def compute(self, context, varname, regime, expr=None, filter=None, yearleg=None):
 
         selected = expr_eval(filter, context)
-        context  = context.subset(selected)
-        # determine yearleg        
+        context = context.subset(selected)
+        # determine yearleg
         if yearleg is None:
             yearleg = context['period'] // 100
-            if yearleg > 2009:  # TODO: remove when yearleg > 2009 possible
-                yearleg = 2009
-
+            # if yearleg > 2009:  # TODO: remove when yearleg > 2009 possible
+            #     yearleg = 2009
 
         if Pension.no_need_to_reload(context, yearleg):
             simul = Pension.already_simulated['simul']
         else:
+            print('yearleg: {}'.format(yearleg))
+            # try:
             simul = get_pension(context, yearleg)
+            # except:
+            #     import pdb
+            #     pdb.set_trace()
 
         result = simul.calculate(varname, regime)
         Pension.already_simulated = {'context': context,
