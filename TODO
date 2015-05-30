@@ -258,7 +258,7 @@ take too much time to implement for very little benefit.
      http://readthedocs.org/docs/validictory/
   A: probably not. I prefer my own solution, as the syntax is more concise and
      (dare I say) more pythonic. It could be extended if needed:
-     - Or(a, b c) to have both enumeration of values or alternate syntaxes:
+     - Or(a, b c) to have both enumeration of values or alternate syntaxes: 
        Or(str, {'type': str, 'initialdata': bool})
        Or('many2one', 'one2many')
      - List(x, y, z, option1=value1) if I need extra options for lists

@@ -1,10 +1,5 @@
-<<<<<<< HEAD
-Welcome to LIAM2 User Guide !
-=============================
-=======
 LIAM2 User Guide
 ================
->>>>>>> 2dc28e10f475f4e0149323b221efe5bb370a4625
 
 .. toctree::
    :maxdepth: 3

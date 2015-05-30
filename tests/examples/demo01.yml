@@ -51,7 +51,7 @@ simulation:
 
 # As you have seen, when a simulation is run, a console window opens within the
 # editor and displays the status of the simulation. After the simulation
-# completes, some statistics about the sim lation are displayed and the console
+# completes, some statistics about the simulation are displayed and the console
 # window becomes interactive. Any expression or command that can be used during
 # the simulation can also be used in that interactive console.
 

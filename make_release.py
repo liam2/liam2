@@ -20,17 +20,12 @@ from shutil import copytree, copy2, rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
 
 WEBSITE = 'liam2.plan.be'
-TMP_PATH = r"c:\tmp\liam2_new_release"
 
 
-#TODO:
+# TODO:
 # - different announce message for pre-releases
 # - announce RC on the website too
 # ? create a download page for the rc
-# - create a conda environment to store requirements for the release
-#   create -n liam2-{release} --clone liam2
-#   or better yet, only store package versions:
-#   conda env export > doc\bundle_environment.yml
 
 # TODO: add more scripts to implement the "git flow" model
 # - hotfix_branch
