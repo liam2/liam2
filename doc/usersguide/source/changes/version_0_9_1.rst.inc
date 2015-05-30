@@ -6,7 +6,7 @@
 
 * Always load all declared entities even if there is no process executed for
   them (but produce a warning in that case). This used to cause a problem if
-  an entity had not process but was used through links (closes :issue:`89`).
+  an entity had no process but was used through links (closes :issue:`89`).
 
 * Fixed dump when the filter is False (a scalar), for example in
   :code:`dump(filter=period == 2100)` (closes :issue:`142`).

@@ -20,12 +20,17 @@ from shutil import copytree, copy2, rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
 
 WEBSITE = 'liam2.plan.be'
+TMP_PATH = r"c:\tmp\liam2_new_release"
 
 
-# TODO:
+#TODO:
 # - different announce message for pre-releases
 # - announce RC on the website too
 # ? create a download page for the rc
+# - create a conda environment to store requirements for the release
+#   create -n liam2-{release} --clone liam2
+#   or better yet, only store package versions:
+#   conda env export > doc\bundle_environment.yml
 
 # TODO: add more scripts to implement the "git flow" model
 # - hotfix_branch
@@ -121,8 +126,8 @@ def do(description, func, *args, **kwargs):
 
 def allfiles(pattern, path='.'):
     """
-like glob.glob(pattern) but also include files in subdirectories
-"""
+    like glob.glob(pattern) but also include files in subdirectories
+    """
     return (os.path.join(dirpath, f)
             for dirpath, dirnames, files in os.walk(path)
             for f in fnmatch.filter(files, pattern))
@@ -358,6 +363,7 @@ def test_executable(relpath):
     print()
     # we use --debug so that errorlevel is set
     main_dbg = relpath + r'\main --debug '
+    echocall(main_dbg + r'run tests\functional\static.yml')
     echocall(main_dbg + r'run tests\functional\generate.yml')
     echocall(main_dbg + r'import tests\functional\import.yml')
     echocall(main_dbg + r'run tests\functional\simulation.yml')
