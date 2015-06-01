@@ -77,21 +77,25 @@ as long as the combined model is valid. See the examples below.
   entities:
       person:
           fields:
-              # adding a new field
-              - dead: {type: bool, initialdata: false}
+              - severe_illness: {type: bool, initialdata: False}
   
           processes:
-              # adding a new process
+              # adding new processes
+              illness:
+                  - severe_illness: uniform() < 0.001
+
               death:
-                  - dead: logit_regr(0.0, align='al_p_dead.csv')
+                  - dead: logit_regr(0.5 * severe_illness,
+                                     align='al_p_dead.csv')
                   - show('Avg age of death', avg(age, filter=dead))
                   - remove(dead)
   
   simulation:
-      # since we have a new process, we have to override the *entire* process
-      # list, as LIAM2 would not know where to insert the new process otherwise.
+      # since we have new processes, we have to override the *entire* process
+      # list, as LIAM2 would not know where to insert the new processes
+      # otherwise.
       processes:
-          - person: [ageing, death]
+          - person: [ageing, illness, death]
   
       output:
           file: variant2.h5
