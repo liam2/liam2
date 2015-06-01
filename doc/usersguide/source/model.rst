@@ -197,16 +197,18 @@ There are two implicit fields that do not have to be defined:
             fields:
                 # period and id are implicit
                 - age:        int
-                - dead:       bool
                 - gender:     bool
                 # 1: single, 2: married, 3: cohabitant, 4: divorced, 5: widowed 
                 - civilstate: int
                 - partner_id: int
                 - earnings:   float
 
-This example defines the entity person. Each person has an age, gender, is dead
-or not, has a civil state, possibly a partner. We use the field civilstate to
-store the marital status as a switch of values.
+This example defines the entity person. Each person has an age, gender, civil
+state and possibly a partner. We use the field civilstate to store the marital
+status which can take one of several predefined values.
+
+Field names must be unique per entity (i.e. several entities may have a field
+with the same name).
 
 By default, all declared fields are supposed to be present in the input file
 (because they are *observed* or computed elsewhere and their value can be
@@ -215,7 +217,7 @@ be stored for each period in the output file.
 
 However, in practice, there are often some fields which are not present in the
 input file. They will need to be calculated later by the model, and you need to
-tell LIAM2 that the field is missing, by using "initialdata: false" in the
+tell LIAM2 that the field is missing, by using `initialdata: False` in the
 definition for that field (see the *agegroup* variable in the example below).
 
 .. _fields_output:
@@ -237,9 +239,6 @@ functions but not stored in the output file.
                 - age:      int
                 - agegroup: {type: int, initialdata: False}
                 - temporary: {type: int, output: False}
-
-Field names must be unique per entity (i.e. several entities may have a field
-with the same name). 
 
 
 links
