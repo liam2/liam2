@@ -48,7 +48,7 @@ entities:
     household:
         fields:
             - num_persons:  {type: int, initialdata: False}
-            - nch:          {type: int, initialdata: False}
+            - nch:          {type: int, initialdata: False, output: False}
             - start_period: {type: int, initialdata: False}
             - clone_id:     {type: int, initialdata: False}
             - weight:       {type: int, initialdata: False}

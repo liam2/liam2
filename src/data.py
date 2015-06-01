@@ -245,7 +245,7 @@ def get_fields(array):
     return [(name, normalize_type(dtype[name].type)) for name in dtype.names]
 
 
-def assert_valid_type(array, wanted_type, allowed_missing=None, context=None):
+def assert_valid_type(array, wanted_type, context=None):
     if isinstance(wanted_type, list):
         wanted_fields = wanted_type
         # extract types from field description and normalise to python types
@@ -254,9 +254,7 @@ def assert_valid_type(array, wanted_type, allowed_missing=None, context=None):
         # check that all required fields are present
         wanted_names = set(name for name, _ in wanted_fields)
         actual_names = set(name for name, _ in actual_fields)
-        allowed_missing = set(allowed_missing) if allowed_missing is not None \
-                                               else set()
-        missing = wanted_names - actual_names - allowed_missing
+        missing = wanted_names - actual_names
         if missing:
             raise Exception("Missing field(s) in hdf5 input file: %s"
                             % ', '.join(missing))
@@ -462,17 +460,15 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
 
 
 #noinspection PyProtectedMember
-def copy_table(input_table, output_node, output_fields=None,
+def copy_table(input_table, output_node, output_dtype=None,
                chunksize=10000, condition=None, stop=None, show_progress=False,
                **kwargs):
     complete_kwargs = {'title': input_table._v_title}
 #                       'filters': input_table.filters}
     output_file = output_node._v_file
     complete_kwargs.update(kwargs)
-    if output_fields is None:
+    if output_dtype is None:
         output_dtype = input_table.dtype
-    else:
-        output_dtype = np.dtype(output_fields)
     output_table = output_file.create_table(output_node, input_table.name,
                                             output_dtype, **complete_kwargs)
     return append_table(input_table, output_table, chunksize, condition,
@@ -722,7 +718,7 @@ def index_tables(globals_def, entities, fpath):
             print("    -", ent_name, "...", end=' ')
 
             table = getattr(input_entities, ent_name)
-            assert_valid_type(table, entity.fields, entity.missing_fields)
+            assert_valid_type(table, list(entity.fields.in_input.name_types))
 
             start_time = time.time()
             rows_per_period, id_to_rownum_per_period = index_table(table)
@@ -825,7 +821,8 @@ class H5Data(DataSource):
                     stoprow = 0
 
                 output_table = copy_table(table.table, output_entities,
-                                          entity.fields, stop=stoprow,
+                                          entity.fields.in_output.dtype,
+                                          stop=stoprow,
                                           show_progress=True)
                 entity.output_rows = output_rows
                 print("done (%s elapsed)." % time2str(time.time() - start_time))
@@ -842,7 +839,8 @@ class H5Data(DataSource):
                 # would be brought back to life. In conclusion, it should be
                 # optional.
                 entity.array, entity.id_to_rownum = \
-                    build_period_array(table.table, entity.fields,
+                    build_period_array(table.table,
+                                       list(entity.fields.name_types),
                                        entity.input_rows,
                                        entity.input_index, start_period)
                 assert isinstance(entity.array, ColumnArray)

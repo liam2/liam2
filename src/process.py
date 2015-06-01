@@ -63,7 +63,7 @@ class Assignment(Process):
     def __init__(self, name, entity, expr):
         super(Assignment, self).__init__(name, entity)
         self.expr = expr
-        self.temporary = name not in entity.stored_fields
+        self.temporary = name not in entity.fields.in_output.names
 
     def run(self, context):
         value = expr_eval(self.expr, context)
@@ -330,7 +330,7 @@ class Function(Process):
                             (len(self.argnames), len(args)))
 
         for name in self.argnames:
-            if name in self.entity.stored_fields:
+            if name in self.entity.fields.names:
                 raise ValueError("function '%s' cannot have an argument named "
                                  "'%s' because there is a field with the "
                                  "same name" % (self.name, name))

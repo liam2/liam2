@@ -67,14 +67,47 @@ class DiskBackedArray(object):
         return getattr(self.arr, item)
 
 
+class Field(object):
+    def __init__(self, name, dtype, input=True, output=True):
+        self.name = name
+        self.dtype = dtype
+        self.input = input
+        self.output = output
+
+
+class FieldCollection(list):
+    def __init__(self, iterable=None):
+        list.__init__(self, iterable)
+
+    @property
+    def in_input(self):
+        return FieldCollection(f for f in self if f.input)
+
+    @property
+    def in_output(self):
+        return FieldCollection(f for f in self if f.output)
+
+    @property
+    def names(self):
+        for f in self:
+            yield f.name
+
+    @property
+    def name_types(self):
+        return [(f.name, f.dtype) for f in self]
+
+    @property
+    def dtype(self):
+        return np.dtype(list(self.name_types))
+
+
 class Entity(object):
     """
     fields is a list of tuple (name, type)
     """
 
-    def __init__(self, name, fields=None, missing_fields=None, links=None,
-                 macro_strings=None, process_strings=None,
-                 array=None):
+    def __init__(self, name, fields=None, links=None, macro_strings=None,
+                 process_strings=None, array=None):
         self.name = name
 
         # we should have exactly one of either array or fields defined
@@ -88,34 +121,23 @@ class Entity(object):
         else:
             array_period = None
 
+        if not isinstance(fields, FieldCollection):
+            fields = FieldCollection(fields)
+
         duplicate_names = [name
                            for name, num
-                           in count_occurrences(fname for fname, _ in fields)
+                           in count_occurrences(fields.names)
                            if num > 1]
         if duplicate_names:
             raise Exception("duplicate fields in entity '%s': %s"
                             % (self.name, ', '.join(duplicate_names)))
-        fnames = [name for name, _ in fields]
+
+        fnames = set(fields.names)
         if 'id' not in fnames:
-            fields.insert(0, ('id', int))
+            fields.insert(0, Field('id', int))
         if 'period' not in fnames:
-            fields.insert(0, ('period', int))
+            fields.insert(0, Field('period', int))
         self.fields = fields
-
-        # only used in data (to check that all "required" fields are present
-        # in the input file)
-
-        # one potential solution would be to split the fields argument and
-        # attribute in input_fields and output_fields (regardless of whether
-        # it is split in the simulation/yaml file).
-
-        # however that might be just a temporary solution as we will soon need
-        # more arguments to fields (default values, ranges, etc...)
-
-        # another solution is to use a Field class
-        # seems like the better long term solution
-        self.missing_fields = missing_fields
-        self.stored_fields = set(name for name, _ in fields)
         self.links = links
 
         if macro_strings is None:
@@ -178,25 +200,26 @@ class Entity(object):
         #entity_def.get('fields', []) returns None and this breaks
         fields_def = [d.items()[0] for d in entity_def.get('fields', [])]
 
-        fields = []
-        missing_fields = []
-        for name, fielddef in fields_def:
+        def fdef2field(name, fielddef):
             if isinstance(fielddef, dict):
                 strtype = fielddef['type']
-                if not fielddef.get('initialdata', True):
-                    missing_fields.append(name)
+                input = fielddef.get('initialdata', True)
+                output = fielddef.get('output', True)
             else:
                 strtype = fielddef
-            fields.append((name,
-                           field_str_to_type(strtype, "field '%s'" % name)))
+                input = True
+                output = True
+            dtype = field_str_to_type(strtype, "field '%s'" % name)
+            return Field(name, dtype, input, output)
 
+        fields = [fdef2field(name, fdef) for name, fdef in fields_def]
         link_defs = entity_def.get('links', {})
         str2class = {'one2many': One2Many, 'many2one': Many2One}
         links = dict((name,
                       str2class[l['type']](name, l['field'], l['target']))
                      for name, l in link_defs.iteritems())
 
-        return Entity(ent_name, fields, missing_fields, links,
+        return Entity(ent_name, fields, links,
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}))
 
@@ -236,15 +259,15 @@ class Entity(object):
             # globally
             all_predictors = set(self.collect_predictors(processes))
 
-            stored_fields = self.stored_fields
+            stored_fields = set(self.fields.in_output.names)
 
             # non-callable fields (no variable-function for them)
             variables = dict((name, Variable(self, name, type_))
-                             for name, type_ in self.fields
+                             for name, type_ in self.fields.name_types
                              if name in stored_fields - process_names)
             # callable fields
             variables.update((name, VariableMethodHybrid(self, name, type_))
-                             for name, type_ in self.fields
+                             for name, type_ in self.fields.name_types
                              if name in stored_fields & process_names)
             # global temporaries (they are all callable)
             variables.update((name, VariableMethodHybrid(self, name))
@@ -265,8 +288,9 @@ class Entity(object):
             pstrings = self.process_strings
             items = pstrings.iteritems() if pstrings is not None else ()
             # variable-method hybrids are handled by the self.variable property
+            stored_fields = set(self.fields.in_output.names)
             methodnames = [k for k, v in items
-                           if self.ismethod(v) and k not in self.stored_fields]
+                           if self.ismethod(v) and k not in stored_fields]
             # factorial(n) -> factorial
             methodnames = [split_signature(name)[0] if '(' in name else name
                            for name in methodnames]
@@ -484,7 +508,7 @@ Please use this instead:
             lag_vars.discard('id')
             lag_vars = ['id'] + sorted(lag_vars)
 
-        field_type = dict(self.fields)
+        field_type = dict(self.fields.name_types)
         self.lag_fields = [(v, field_type[v]) for v in lag_vars]
 
     def load_period_data(self, period):

@@ -248,6 +248,8 @@ To execute a function, it has to be either:
              - person: [test_func]
 
 
+.. _local_variables:
+
 Local (temporary) variables
 ---------------------------
 

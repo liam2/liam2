@@ -10,6 +10,9 @@
 
 * implemented :ref:`while loops <while>` (closes :issue:`151`).
 
+* added support for :ref:`not storing some fields in the output file
+  <fields_output>` (closes :issue:`58`).
+
 * added support for using the "inf" (infinite) constant.
 
 Miscellaneous improvements

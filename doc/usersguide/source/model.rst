@@ -210,13 +210,24 @@ store the marital status as a switch of values.
 
 By default, all declared fields are supposed to be present in the input file
 (because they are *observed* or computed elsewhere and their value can be
-found in the supplied data set). The value for all declared fields will also be
-stored for each period in the output file. 
+found in the supplied data set) and the value for all declared fields will
+be stored for each period in the output file.
 
 However, in practice, there are often some fields which are not present in the
 input file. They will need to be calculated later by the model, and you need to
 tell LIAM2 that the field is missing, by using "initialdata: false" in the
 definition for that field (see the *agegroup* variable in the example below).
+
+.. _fields_output:
+
+One can have a field not stored in the output file by using "output: False" in
+its definition. Note that (local) :ref:`temporary variables within functions
+<local_variables>` **do not need to be declared**. The only case where you want
+to use `output: False` is when you need a variable that is accessible in several
+functions but not stored in the output file.
+
+.. warning:: All fields used in lag() expressions **must** be in the output
+             file.
 
 *example* ::
 
@@ -225,12 +236,11 @@ definition for that field (see the *agegroup* variable in the example below).
             fields:
                 - age:      int
                 - agegroup: {type: int, initialdata: False}
+                - temporary: {type: int, output: False}
 
 Field names must be unique per entity (i.e. several entities may have a field
 with the same name). 
 
-Temporary variables are not considered as a fields and do not have to be
-declared.
 
 links
 -----
