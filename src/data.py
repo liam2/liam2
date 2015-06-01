@@ -27,8 +27,8 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
         if buffer_rows < len(chunk):
             # last chunk is smaller
             chunk = np.empty(buffer_rows, dtype=dtype)
-        for name in dtype.names:
-            chunk[name] = array[name][start:stop]
+        for fieldname in dtype.names:
+            chunk[fieldname] = array[fieldname][start:stop]
         table.append(chunk)
         #TODO: try flushing after each chunk, this should reduce memory
         # use on large models, and (hopefully) should not be much slower
