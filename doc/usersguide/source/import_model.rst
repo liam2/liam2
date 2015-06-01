@@ -33,7 +33,7 @@ as long as the combined model is valid. See the examples below.
       person:
           fields:
               - age:      int
-              - agegroup: {type: int, initialdata: false}
+              - agegroup: {type: int, initialdata: False}
   
           processes:
               ageing: 

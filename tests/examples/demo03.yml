@@ -10,9 +10,9 @@ entities:
     household:
         fields:
             # period and id are implicit
-            - nb_persons:  {type: int, initialdata: false}
-            - nb_children: {type: int, initialdata: false}
-            - region_id:   {type: int, initialdata: false}
+            - nb_persons:  {type: int, initialdata: False}
+            - nb_children: {type: int, initialdata: False}
+            - region_id:   {type: int, initialdata: False}
 
         links:
             persons: {type: one2many, target: person, field: hh_id}
@@ -42,7 +42,7 @@ entities:
             - hh_id:      int
 
             # fields not present in input
-            - agegroup: {type: int, initialdata: false}
+            - agegroup: {type: int, initialdata: False}
 
         links:
             # we define here all the links between individuals of the same

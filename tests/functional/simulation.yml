@@ -5,7 +5,7 @@ import:
 globals:
     periodic:
         path: param\globals.csv
-        transposed: true
+        transposed: True
         fields:
             # PERIOD is implicit
 

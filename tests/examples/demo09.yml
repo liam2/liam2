@@ -13,7 +13,7 @@ entities:
         fields:
             # additional field not present in the base model (nor in the input
             # in this case)
-            - study_years_failed: {type: int, initialdata: false}
+            - study_years_failed: {type: int, initialdata: False}
 
         processes:
             # add a new process

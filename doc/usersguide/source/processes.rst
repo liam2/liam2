@@ -544,7 +544,7 @@ link methods
         household:
             fields:
                 # period and id are implicit
-                - nb_persons: {type: int, initialdata: false}
+                - nb_persons: {type: int, initialdata: False}
 
             links:
                 persons: {type: one2many, target: person, field: household_id}

@@ -6,7 +6,7 @@ output: simple2001.h5
 globals:
     periodic:
         path: input\globals_transposed.csv
-        transposed: true
+        transposed: True
 
 entities:
     household:

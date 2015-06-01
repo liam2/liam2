@@ -224,7 +224,7 @@ definition for that field (see the *agegroup* variable in the example below).
         person:
             fields:
                 - age:      int
-                - agegroup: {type: int, initialdata: false}
+                - agegroup: {type: int, initialdata: False}
 
 Field names must be unique per entity (i.e. several entities may have a field
 with the same name). 

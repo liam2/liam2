@@ -15,8 +15,8 @@ entities:
             - gender: bool
 
             # fields which are not present in the input dataset need to be
-            # declared with "initialdata: false"
-            - agegroup: {type: int, initialdata: false}
+            # declared with "initialdata: False"
+            - agegroup: {type: int, initialdata: False}
 
         # possible transitions and regressions
         processes:

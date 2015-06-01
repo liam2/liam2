@@ -57,9 +57,9 @@ files have the following general format: ::
             path: <path_of_file>.csv
             # if the csv file is transposed (each field is on a row instead of
             # a column and the field names are in the first column, instead of
-            # the first row), you can use "transpose: true". You do not need to
+            # the first row), you can use "transpose: True". You do not need to
             # specify anything if the file is not transposed.
-            transposed: true
+            transposed: True
 
             # fields are optional (if not specified, all fields are imported)
             fields:
@@ -79,8 +79,8 @@ files have the following general format: ::
         <entity1_name>:
             path: <path_to_entity1_data>.csv
             
-            # defaults to false if not present
-            transposed: true
+            # defaults to False if not present
+            transposed: True
 
             # if you want to manually select the fields to be used, and/or 
             # specify their types, you can do so in the following section.
@@ -114,7 +114,7 @@ files have the following general format: ::
                     # any option (renamings, ...) specified here will override
                     # the corresponding options defined at the level of the
                     # entity
-                    transposed: true|false
+                    transposed: True|False
                     newnames:
                         <fieldX_oldname>: <fieldX_newname>
                         <fieldY_oldname>: <fieldY_newname>
@@ -194,7 +194,7 @@ directory where the description file is.
     globals:
         periodic:
             path: input\globals_transposed.csv
-            transposed: true
+            transposed: True
 
     entities:
         household:
