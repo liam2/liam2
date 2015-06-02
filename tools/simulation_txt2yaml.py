@@ -854,9 +854,9 @@ if __name__ == '__main__':
         
         obj_renames = renames.get(obj_type, {})
         for old_name in obj_fields.keys():
-             new_name = obj_renames.get(old_name)
-             if new_name is not None:
-                 obj_fields[new_name] = obj_fields.pop(old_name)
+            new_name = obj_renames.get(old_name)
+            if new_name is not None:
+                obj_fields[new_name] = obj_fields.pop(old_name)
         entities[obj_type] = {
             'fields': obj_fields,
             'links': obj_links,
