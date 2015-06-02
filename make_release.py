@@ -363,7 +363,6 @@ def test_executable(relpath):
     print()
     # we use --debug so that errorlevel is set
     main_dbg = relpath + r'\main --debug '
-    echocall(main_dbg + r'run tests\functional\static.yml')
     echocall(main_dbg + r'run tests\functional\generate.yml')
     echocall(main_dbg + r'import tests\functional\import.yml')
     echocall(main_dbg + r'run tests\functional\simulation.yml')
