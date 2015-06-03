@@ -342,6 +342,28 @@ def merge_subset_in_array(output, id_to_rownum, subset, first=False):
         return output
 
 
+def merge_array_records(array1, array2):
+    """
+    array1 & array2
+    data in array2 overrides data in array1
+    """
+    assert len(array1) == len(array2) == 1
+    fields1 = get_fields(array1)
+    fields2 = get_fields(array2)
+
+    names1 = set(array1.dtype.names)
+    names2 = set(array2.dtype.names)
+    fields_notin1 = [(name, type_) for name, type_ in fields2
+                     if name not in names1]
+    output_fields = fields1 + fields_notin1
+    output = np.empty(1, np.dtype(output_fields))
+    for fname in names1 - names2:
+        output[fname] = array1[fname]
+    for fname in names2:
+        output[fname] = array2[fname]
+    return output
+
+
 def merge_arrays(array1, array2, result_fields='union'):
     """data in array2 overrides data in array1"""
 
@@ -594,27 +616,30 @@ def index_table(table):
     return rows_per_period, id_to_rownum_per_period
 
 
-def index_table_light(table):
+def index_table_light(table, index='period'):
     """
     table is an iterable of rows, each row is a mapping (name -> value)
-    Rows must contain at least a 'period' column and must be sorted by period.
-    Returns a dict: {period: start_row, stop_row}
+    Rows must contain the index column and must be sorted by that column.
+    Returns a dict: {index_value: start_row, stop_row}
     """
     rows_per_period = {}
-    current_period = None
+    current_value = None
     start_row = None
+    # I don't know whether or not but my attempts to only retrieve one column
+    # made the function slower, not faster (this is only used in diff_h5 &
+    # merge_h5 though).
     for idx, row in enumerate(table):
-        period = row['period']
-        if period != current_period:
+        value = row[index]
+        if value != current_value:
             # 0 > None is True
-            if period < current_period:
+            if value < current_value:
                 raise Exception("data is not time-ordered")
             if start_row is not None:
-                rows_per_period[current_period] = (start_row, idx)
+                rows_per_period[current_value] = (start_row, idx)
             start_row = idx
-            current_period = period
-    if current_period is not None:
-        rows_per_period[current_period] = (start_row, len(table))
+            current_value = value
+    if current_value is not None:
+        rows_per_period[current_value] = (start_row, len(table))
     return rows_per_period
 
 
@@ -779,8 +804,13 @@ class H5Data(DataSource):
                 # index_tables already checks whether all tables exist and
                 # are coherent with globals_def
                 for name in globals_def:
+                    #FIXME: if a globals is both in the input h5 and declared
+                    # to be coming from a csv file, it is copied from the h5
+                    # file, which is wrong/misleading because it is not used
+                    # in the simulation.
                     if name in globals_node:
                         #noinspection PyProtectedMember
+                        #FIXME: only copy declared fields
                         getattr(globals_node, name)._f_copy(output_globals)
 
             entities_tables = dataset['entities']
