@@ -92,10 +92,6 @@ def diff_h5(input1_path, input2_path, numdiff=10):
     input1_file = tables.open_file(input1_path, mode="r")
     input2_file = tables.open_file(input2_path, mode="r")
 
-#    print "copying globals from", input1_path,
-#    input1_file.root.globals._f_copy(output_file.root, recursive=True)
-#    print "done."
-
     input1_entities = input1_file.root.entities
     input2_entities = input2_file.root.entities
 
