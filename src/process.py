@@ -9,7 +9,6 @@ from diff_h5 import diff_array
 from data import append_carray_to_table, ColumnArray
 from expr import Expr, Variable, type_to_idx, idx_to_type, expr_eval, expr_cache
 from context import EntityContext
-import importlib
 import utils
 
 
@@ -39,41 +38,6 @@ class Process(object):
 
     def __repr__(self):
         return "<process '%s'>" % self.name
-
-class ExtProcess(Process):
-    """these processes are not real Liam2 processes
-    The file containing the function should be in the path and
-    the function itself must be named "main".
-    """
-
-    def __init__(self, name, arg):
-        super(ExtProcess, self).__init__()
-        self.name = name
-        self.args = arg
-
-    def run_guarded(self, simulation, const_dict):
-        context = EntityContext(self.entity, const_dict.copy())
-        self.run(simulation, context['period'])
-
-    def run(self, simulation, period):
-        module = importlib.import_module(self.name)
-        if self.args is not None:
-            arg_bis = list(self.args)
-            for index, arg in enumerate(self.args):
-                if arg == 'period':
-                    arg_bis[index] = int(period / 100)
-                elif arg == 'simulation':
-                    arg_bis[index] = simulation
-                else:
-                    arg_bis[index] = arg
-            arg_bis = tuple(arg_bis)
-            module.main(*arg_bis)
-        else:
-            module.main()
-
-    def expressions(self):
-        if isinstance(self.expr, Expr):
-            yield self.expr
 
 
 class Assignment(Process):
