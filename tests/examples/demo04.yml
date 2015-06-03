@@ -6,7 +6,7 @@
 # additional features: macros, lifecycle functions (new and remove), logit_regr,
 # aggregate functions (sum and avg) and the default_entity option. We use
 # the features we have introduced so far to add very simple birth and death
-# procedures to our model.
+# functions to our model.
 entities:
     household:
         fields:

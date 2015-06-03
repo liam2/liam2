@@ -219,7 +219,7 @@ entities:
                 - partner_id: if(is_clone, partner.clone_id, partner_id)
 
             test_proc:
-                # same name than in the caller procedure, but should be local
+                # same name than in the caller function, but should be local
                 - temp_var: age * 1
                 - local_var: temp_var * 2
                 - assertEqual(local_var, age * 2)
@@ -233,7 +233,7 @@ entities:
 
 #            func_only_code_oldsyntax:
 #                code:
-#                    # same name than in the caller procedure, but should be
+#                    # same name than in the caller function, but should be
 #                    # local
 #                    - temp_var: age
 #                    - local_var: temp_var * 2
@@ -242,7 +242,7 @@ entities:
 #                    - int_field1: age + 1
 
             func_only_code():
-                # same name than in the caller procedure, but should be local
+                # same name than in the caller function, but should be local
                 - temp_var: age
                 - local_var: temp_var * 2
                 - assertEqual(local_var, age * 2)
@@ -257,14 +257,14 @@ entities:
 
 #            func_no_args_oldsyntax:
 #                code:
-#                    # same name than in the caller procedure, but should be
+#                    # same name than in the caller function, but should be
 #                    # local
 #                    - temp_var: age
 #                    - local_var: temp_var * 2
 #                return: local_var * 2
 
             func_no_args():
-                # same name than in the caller procedure, but should be local
+                # same name than in the caller function, but should be local
                 - temp_var: age
                 - local_var: temp_var * 2
                 - return local_var * 2
@@ -279,7 +279,7 @@ entities:
 #            func_no_return_oldsyntax:
 #                args: a, b
 #                code:
-#                    # same name than in the caller procedure, but should be
+#                    # same name than in the caller function, but should be
 #                    # local
 #                    - temp_var: age * 1
 #                    - local_var: temp_var * 2
@@ -288,7 +288,7 @@ entities:
 #                    - int_field1: age + 1
 
             func_no_return(a, b):
-                # same name than in the caller procedure, but should be local
+                # same name than in the caller function, but should be local
                 - temp_var: age * 1
                 - local_var: temp_var * 2
                 - assertEqual(local_var, age * 2)
@@ -450,7 +450,7 @@ entities:
                 - local: agegroup * 10
                 - assertEqual(local, agegroup * 10)
 
-                # stored + procedure => hybrid (+ warn?)
+                # stored + function => hybrid (+ warn?)
                 # * manual call
                 - hybrid_test()
                 # * in agespine (tested before)

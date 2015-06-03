@@ -4,8 +4,9 @@
 
 # This example builds upon the first two and introduces a few additional
 # features: a second entity, links and one of their associated methods
-# (linkname.count()), procedures with local variables, an init procedure, the
-# choice function and a few new arguments to functions we have already seen.
+# (linkname.count()), local variables in user-defined functions, an init
+# function, the choice function and a few new arguments to built-in functions
+# we have already seen.
 entities:
     household:
         fields:
@@ -18,7 +19,6 @@ entities:
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
-            # init_region_id is a procedure (it contains another process)
             init_region_id:
                 # region_id is set randomly, with a 10% probability to be 0,
                 # a 20% probability to be 1, etc.
@@ -59,10 +59,10 @@ entities:
                 - age: age + 1
 
                 # juniors and plus50 are *local* variables. This means they are
-                # only usable within the ageing procedure. As we have seen
-                # in the first example, the agegroup process below could just
-                # as well be written using a single process (without using
-                # local variables).
+                # only usable within the ageing function. As we have seen in the
+                # first example, the agegroup process below could just as well
+                # be written using a single process (without using local
+                # variables).
                 - juniors: 5 * trunc(age / 5)
                 - plus50: 10 * trunc(age / 10)
                 - agegroup: if(age < 50, juniors, plus50)
