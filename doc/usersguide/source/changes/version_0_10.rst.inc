@@ -24,8 +24,66 @@ Miscellaneous improvements
 
 * configured the bundle editor (Notepad++) to display some warning and
   error lines in red in the console log. Additionally, when the error message
-  contains a filename and/or a line number (this is currently very rare
+  contains a filename and/or a line number (this is currently too rare
   unfortunately), it is now click-able (to jump directly at the file/line).
+
+* defining a process outside of a function has been deprecated because it is
+  ambiguous. For example, this code will now trigger a warning and will be
+  an error in a future version: ::
+
+    entities:
+        person:
+            fields:
+                agegroup: int
+            processes:
+                agegroup: 10 * trunc(age / 10)
+    simulation:
+        processes:
+            - person: [agegroup]
+
+  It should be replaced by (or possibly moved into another existing function):
+  ::
+
+    entities:
+        person:
+            fields:
+                agegroup: int
+            processes:
+                compute_agegroup:
+                    - agegroup: 10 * trunc(age / 10)
+    simulation:
+        processes:
+            - person: [compute_agegroup]
+
+  If this construct was used to have a temporary field (ie the field was not
+  declared in the fields section) accessible from several functions, like ::
+
+    entities:
+        person:
+            processes:
+                tempfield: 0
+
+                func1:
+                    tempfield: count()
+
+                func2:
+                    otherfield: tempfield + 1
+
+  One should now declare that field with `output: False` instead. ::
+
+    entities:
+        person:
+            fields:
+                tempfield: {type: int, initialdata: False, output: False}
+
+            processes:
+                func1:
+                    tempfield: count()
+
+                func2:
+                    otherfield: tempfield + 1
+
+  This closes :issue:`124`.
 
 * made bcolz optional (which is only useful for interpolating the dataset
   during import). Thanks to Mahdi Ben Jelloul (:pr:`161`).

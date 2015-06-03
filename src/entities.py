@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import collections
 import sys
+import warnings
 
 #import bcolz
 import numpy as np
@@ -261,11 +262,11 @@ class Entity(object):
 
             stored_fields = set(self.fields.in_output.names)
 
-            # non-callable fields (no variable-function for them)
+            # non-callable fields (no hybrid variable-function for them)
             variables = dict((name, Variable(self, name, type_))
                              for name, type_ in self.fields.name_types
                              if name in stored_fields - process_names)
-            # callable fields
+            # callable fields (fields with a process of the same name)
             variables.update((name, VariableMethodHybrid(self, name, type_))
                              for name, type_ in self.fields.name_types
                              if name in stored_fields & process_names)
@@ -344,11 +345,15 @@ class Entity(object):
         sub_processes = self.parse_expressions(group_expressions, group_context)
         return ProcessGroup(k, self, sub_processes, purge)
 
-    def parse_expressions(self, items, context):
+    # Once we can make it an error for non-function processes/statements,
+    # we should probably split this method into parse_functions and
+    # parse_function_body.
+    def parse_expressions(self, items, context, functions_only=False):
         """
         items -- a list of tuples (name, process_string)
         context -- parsing context
                    a dict of all symbols available for all entities
+        functions_only -- whether non-functions processes are allowed
         """
         processes = []
         for k, v in items:
@@ -390,6 +395,36 @@ Please use this instead:
                 process = Return(None, self, result_expr)
             else:
                 process = self.parse_expr(k, v, context)
+                if process is not None and functions_only:
+                    if k in self.fields.names:
+                        msg = """defining a process outside of a function is
+deprecated because it is ambiguous. You should:
+ * wrap the '{name}: {expr}' assignment inside a function like this:
+        compute_{name}:  # you can name it any way you like but simply \
+'{name}' is not recommended !
+            - {name}: {expr}
+ * update the simulation.processes list to use 'compute_{name}' (the function \
+name) instead of '{name}'.
+"""
+                    else:
+                        msg = """defining a process outside of a function is \
+deprecated because it is ambiguous.
+1) If '{name}: {expr}' is an assignment ('{name}' stores the result of \
+'{expr}'), you should:
+ * wrap the assignment inside a function, for example, like this:
+        compute_{name}:  # you can name it any way you like but simply \
+'{name}' is not recommended !
+            - {name}: {expr}
+ * update the simulation.processes list to use 'compute_{name}' (the function \
+name) instead of '{name}'.
+ * add '{name}' in the entities fields with 'output: False'
+2) otherwise if '{expr}' is an expression which does not return any value, you \
+can simply transform it into a function, like this:
+        {name}:
+            - {expr}
+"""
+                    warnings.warn(msg.format(name=k, expr=v),
+                                  DeprecationWarning)
                 if process is None:
                     if self.ismethod(v):
                         if isinstance(v, dict):
@@ -446,7 +481,7 @@ Please use this instead:
                             method_context, group_predictors)
                         result_expr = parse(result_def, method_context)
                         assert result_expr is None or \
-                            isinstance(result_expr, Expr)
+                               isinstance(result_expr, Expr)
                         process = Function(k, self, argnames, code, result_expr)
                     elif isinstance(v, dict) and 'predictor' in v:
                         raise ValueError("Using the 'predictor' keyword is "
@@ -462,7 +497,7 @@ Please use this instead:
 
     def parse_processes(self, context):
         processes = self.parse_expressions(self.process_strings.iteritems(),
-                                           context)
+                                           context, functions_only=True)
         self.processes = dict(processes)
         # self.ssa()
 
@@ -552,7 +587,7 @@ Please use this instead:
                           if k in local_var_names]
             max_vars = max(max_vars, num_locals)
             temp_mem = sum(sys.getsizeof(v) +
-                              (v.nbytes if isinstance(v, np.ndarray) else 0)
+                           (v.nbytes if isinstance(v, np.ndarray) else 0)
                            for v in local_vars)
             avgsize = sum(v.dtype.itemsize if isinstance(v, np.ndarray) else 0
                           for v in local_vars) / num_locals
@@ -571,7 +606,7 @@ Please use this instead:
         # also flush it to disk
         h5file = self.output_index_node._v_file
         h5file.create_array(self.output_index_node, "_%d" % period,
-                           self.id_to_rownum, "Period %d index" % period)
+                            self.id_to_rownum, "Period %d index" % period)
 
         # if an old index exists (this is not the case for the first period!),
         # point to the one on the disk, instead of the one in memory,

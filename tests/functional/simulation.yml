@@ -48,11 +48,12 @@ entities:
     household:
         fields:
             - num_persons:  {type: int, initialdata: False}
-            - nch:          {type: int, initialdata: False, output: False}
+            - nch:          {type: int, initialdata: False}
             - start_period: {type: int, initialdata: False}
             - clone_id:     {type: int, initialdata: False}
             - weight:       {type: int, initialdata: False}
             - region_id:    {type: int, initialdata: False}
+            - maxnch:       {type: int, initialdata: False, output: False}
 
             # period and id are usually implicit, but we include them here
             # anyway for the sake of testing
@@ -86,15 +87,16 @@ entities:
                 - show('total population:', sum(persons.count()),
                        '/ expanded:', sum(weight * persons.count()))
 
-            num_persons: persons.count()
-            nch: persons.count(age <= 18)
+            composition:
+                - num_persons: persons.count()
+                - nch: persons.count(age <= 18)
 
-            #TODO: make this work
-            #nch_macro: persons.count(ISCHILD)
+                #TODO: make this work
+#                - nch_macro: persons.count(ISCHILD)
+                - maxnch: max(nch)
 
-            maxnch: max(nch)
-            dump_csv_h: csv(dump())
-            aligned: False
+            dump_csv_h:
+                - csv(dump())
 
             test_align_link:
                 - num_persons: persons.count()
@@ -201,7 +203,8 @@ entities:
         # possible transitions & regressions. The actual list used in the
         # simulation must be defined below
         processes:
-            bp: breakpoint(2002)
+            bp:
+                - breakpoint(2002)
 
             expand:
                 - last_non_clone_id: max(id)
@@ -1495,8 +1498,11 @@ entities:
                 - sigma: 1
                 - assertTrue(abs(sigma - std(check)) < 0.1)
 
-            test_uninitialized_var: uninitialized_var
-            uninitialized_var: True
+#            test_uninitialized_var:
+#                - result: uninitialized_var
+
+            set_uninitialized_var:
+                - uninitialized_var: True
 
             test_new:
                 # with no filter nor number
@@ -2406,23 +2412,25 @@ entities:
                 - assertEqual(min_count_by_gender.row_totals, None)
                 - assertEqual(min_count_by_gender.col_totals, None)
 
-            show_weight: show("avg weight", avg(weight),
-                              "total population", sum(weight))
+            show_weight:
+                - show("avg weight", avg(weight),
+                       "total population", sum(weight))
 
             test_imported_process:
                 - qshow(imported_field1)
                 - assertEquiv(imported_field1, -1)
                 - assertEqual(imported_field2, age + 2)
 
-            generate: new('person', number=100000,
-                          age=randint(0, 98),
-                          dead=False,
-                          gender=choice([False, True]),
-                          work=choice([False, True]),
-                          partner_id=-1,
-                          f_id=-1,
-                          m_id=-1,
-                          hh_id=-1)
+            generate:
+                - new('person', number=100000,
+                      age=randint(0, 98),
+                      dead=False,
+                      gender=choice([False, True]),
+                      work=choice([False, True]),
+                      partner_id=-1,
+                      f_id=-1,
+                      m_id=-1,
+                      hh_id=-1)
 
 simulation:
     init:
@@ -2547,7 +2555,7 @@ simulation:
                    test_choice,
                    show_weight,
         ]
-        - household: [num_persons, nch, maxnch,
+        - household: [composition,
                       test_align_link,
 #                      dump_csv_h,
                      ]

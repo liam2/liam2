@@ -142,8 +142,9 @@ entities:
                            partner.gender, hh_id, filter=justcoupled),
                       suffix='new_couples')
 
-            dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
-                                mother.age, partner.age), suffix='info')
+            dump_info:
+                - csv(dump(id, age, gender, hh_id, household.nb_persons,
+                           mother.age, partner.age), suffix='info')
 
 simulation:
     init:

@@ -26,7 +26,8 @@ entities:
                 - nb_persons: persons.count()
                 - nb_children: persons.count(age < 18)
 
-            clean_empty: remove(nb_persons == 0)
+            clean_empty:
+                - remove(nb_persons == 0)
 
     person:
         fields:
@@ -78,13 +79,16 @@ entities:
                 - show('Avg age of dead women', avg(age, filter=dead and ISFEMALE))
                 - remove(dead)
 
-            dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
-                                mother.age), suffix='info')
+            dump_info:
+                - csv(dump(id, age, gender, hh_id, household.nb_persons,
+                           mother.age), suffix='info')
 
-            show_demography: show(groupby(agegroup, gender))
+            show_demography:
+                - show(groupby(agegroup, gender))
 
-            chart_demography: bar(groupby(agegroup, gender),
-                                  fname='demography_{period}.png')
+            chart_demography:
+                - bar(groupby(agegroup, gender),
+                      fname='demography_{period}.png')
 
 simulation:
     init:

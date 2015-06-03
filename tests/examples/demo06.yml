@@ -25,7 +25,8 @@ entities:
                 - nb_persons: persons.count()
                 - nb_children: persons.count(age < 18)
 
-            clean_empty: remove(nb_persons == 0)
+            clean_empty:
+                - remove(nb_persons == 0)
 
     person:
         fields:
@@ -163,10 +164,12 @@ entities:
                                 region_id=household.region_id),
                             hh_id)
 
-            dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
-                                mother.age, partner.age), suffix='info')
+            dump_info:
+                - csv(dump(id, age, gender, hh_id, household.nb_persons,
+                           mother.age, partner.age), suffix='info')
 
-            civilstate_changes: show(groupby(civilstate, lag(civilstate)))
+            civilstate_changes:
+                - show(groupby(civilstate, lag(civilstate)))
 
 simulation:
     init:

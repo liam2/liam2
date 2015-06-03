@@ -73,22 +73,25 @@ entities:
             #   "linkname.variable_name"
             # * the suffix argument can be used to customize the name of the
             #   csv file. It uses this pattern: <entity>_<period>_<suffix>.csv
-            dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
-                                mother.age), suffix='info')
+            dump_info:
+                - csv(dump(id, age, gender, hh_id, household.nb_persons,
+                           mother.age), suffix='info')
 
             # * groupby can also be saved to a csv file
             # * you can customize the filename more precisely (than with
             #   'suffix') by using the 'fname' argument, with the optional
             #   {entity} and {period} keywords. They are respectively replaced
             #   by the name of the entity and the current period
-            csv_demography: csv(groupby(agegroup, gender),
-                                fname='demography_{period}.csv')
+            csv_demography:
+                - csv(groupby(agegroup, gender),
+                      fname='demography_{period}.csv')
             
             # * charts can be saved to files instead of being displayed
             #   interactively. The 'fname' and 'suffix' arguments of csv() also
             #   apply to all charting functions.
-            chart_demography: bar(groupby(agegroup, gender),
-                                  fname='demography_{period}.png')
+            chart_demography:
+                - bar(groupby(agegroup, gender),
+                      fname='demography_{period}.png')
 
 simulation:
     # the processes listed in this section are only executed once in
