@@ -298,7 +298,7 @@ def add_and_drop_fields(array, output_fields, default_values={}, output_array=No
     output_dtype = np.dtype(output_fields)
     output_names = set(output_dtype.names)
     input_names = set(array.dtype.names)
-    
+
     common_fields = output_names & input_names
     missing_fields = output_names - input_names
     if output_array is None:

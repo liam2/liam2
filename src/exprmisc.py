@@ -433,11 +433,11 @@ class Dump(TableExpression):
         if isinstance(ids, np.ndarray) and ids.shape:
             numrows = len(ids)
         else:
-            #FIXME: we need a test for this case (no idea how this can happen)
+            # FIXME: we need a test for this case (no idea how this can happen)
             numrows = 1
 
         # expand scalar columns to full columns in memory
-        #TODO: handle or explicitly reject columns wh ndim > 1
+        # TODO: handle or explicitly reject columns wh ndim > 1
         for idx, col in enumerate(columns):
             dtype = None
             if not isinstance(col, np.ndarray):
@@ -583,4 +583,3 @@ functions = {
     'dump': Dump,
     'pension': Pension
 }
-    

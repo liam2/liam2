@@ -43,7 +43,7 @@ class Process(object):
 class ExtProcess(Process):
     """these processes are not real Liam2 processes
     The file containing the function should be in the path and
-    the function itself must be named "main". 
+    the function itself must be named "main".
     """
 
     def __init__(self, name, arg):
@@ -53,20 +53,20 @@ class ExtProcess(Process):
 
     def run_guarded(self, simulation, const_dict):
         context = EntityContext(self.entity, const_dict.copy())
-        self.run(simulation, context['period'])  
-            
+        self.run(simulation, context['period'])
+
     def run(self, simulation, period):
         module = importlib.import_module(self.name)
         if self.args is not None:
             arg_bis = list(self.args)
             for index, arg in enumerate(self.args):
                 if arg == 'period':
-                    arg_bis[index] = int(period/100)
+                    arg_bis[index] = int(period / 100)
                 elif arg == 'simulation':
                     arg_bis[index] = simulation
                 else:
-                    arg_bis[index]= arg        
-            arg_bis = tuple(arg_bis)    
+                    arg_bis[index] = arg
+            arg_bis = tuple(arg_bis)
             module.main(*arg_bis)
         else:
             module.main()
@@ -74,6 +74,7 @@ class ExtProcess(Process):
     def expressions(self):
         if isinstance(self.expr, Expr):
             yield self.expr
+
 
 class Assignment(Process):
     def __init__(self, name, entity, expr):
