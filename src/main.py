@@ -24,7 +24,7 @@ from upgrade import upgrade
 from utils import AutoFlushFile
 from view import viewhdf
 
-__version__ = "0.10.0a1"
+__version__ = "0.10.0rc1"
 
 
 def showcontext_on_exceptions(func, *args, **kwargs):
