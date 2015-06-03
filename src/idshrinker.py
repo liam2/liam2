@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import tables
@@ -37,26 +38,27 @@ def map_rows(input_table, output_table, mappings):
 def map_file(input_file, output_file, entities_map):
     # copy globals
     if hasattr(input_file.root, 'globals'):
-        #noinspection PyProtectedMember
+        # noinspection PyProtectedMember
         input_file.root.globals._f_copy(output_file.root, recursive=True)
 
     print(" * copying tables")
     output_entities = output_file.create_group("/", "entities", "Entities")
     for table in input_file.iterNodes(input_file.root.entities):
-        #noinspection PyProtectedMember
+        # noinspection PyProtectedMember
         ent_name = table._v_name
         print(ent_name, "...")
         if ent_name in entities_map:
+            # noinspection PyProtectedMember
             output_table = output_file.create_table(output_entities, table.name,
-                                                   table.dtype,
-                                                   title=table._v_title)
+                                                    table.dtype,
+                                                    title=table._v_title)
             map_rows(table, output_table, entities_map[ent_name])
         else:
             copy_table(table, output_entities)
 
 
 def shrinkids(input_path, output_path, toshrink):
-    input_file = tables.open_file(input_path, mode="r")
+    input_file = tables.open_file(input_path)
     output_file = tables.open_file(output_path, mode="w")
     input_entities = input_file.root.entities
     print(" * indexing tables")
@@ -84,7 +86,7 @@ def shrinkids(input_path, output_path, toshrink):
 
 
 def fixlinks(input_path, output_path, tofix):
-    input_file = tables.open_file(input_path, mode="r")
+    input_file = tables.open_file(input_path)
     output_file = tables.open_file(output_path, mode="w")
     tochange = {ent_name: {fname: {0: -1} for fname in fnames}
                 for ent_name, fnames in tofix.iteritems()}
@@ -98,7 +100,7 @@ if __name__ == '__main__':
     import sys
     import platform
 
-    print("LIAM2 HDF5 idshrinker %s using Python %s (%s)\n" % \
+    print("LIAM2 HDF5 idshrinker %s using Python %s (%s)\n" %
           (__version__, platform.python_version(), platform.architecture()[0]))
 
     args = sys.argv
