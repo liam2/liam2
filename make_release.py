@@ -272,14 +272,14 @@ def relname2fname(release_name):
 
 
 def release_changes(release_name):
-    fpath = "doc\usersguide\source\changes\\" + relname2fname(release_name)
-    with open(fpath) as f:
+    directory = r"doc\usersguide\source\changes"
+    with open(os.path.join(directory, relname2fname(release_name))) as f:
         return f.read().decode('utf-8-sig')
 
 
 def release_highlights(release_name):
-    fpath = "doc\website\highlights\\" + relname2fname(release_name)
-    with open(fpath) as f:
+    directory = r"doc\website\highlights"
+    with open(os.path.join(directory, relname2fname(release_name))) as f:
         return f.read().decode('utf-8-sig')
 
 
@@ -459,10 +459,15 @@ def check_clone(context):
     if no('Does that last commit look right?'):
         exit(1)
 
-    # check release changes
     if context['public_release']:
+        # check release changes
         print(release_changes(context['release_name']))
         if no('Does the release changelog look right?'):
+            exit(1)
+
+        # check release highlights
+        print(release_highlights(context['release_name']))
+        if no('Does the release highlights look right?'):
             exit(1)
 
 
