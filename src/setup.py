@@ -12,9 +12,9 @@ from Cython.Distutils import build_ext
 import numpy as np
 
 
-#===============#
+# ============= #
 # generic tools #
-#===============#
+# ============= #
 
 def allfiles(pattern, path='.'):
     """
@@ -67,9 +67,9 @@ def int_version(release_name):
     return release_name
 
 
-#================#
+# ============== #
 # cython options #
-#================#
+# ============== #
 
 # Add the output directory of cython build_ext to sys.path so that build_exe
 # finds and copies C extensions
@@ -86,9 +86,9 @@ ext_modules = [Extension("cpartition", ["cpartition.pyx"],
 build_ext_options = {}
 
 
-#===================#
+# ================= #
 # cx_freeze options #
-#===================#
+# ================= #
 
 def vitables_data_files():
     try:
@@ -131,9 +131,9 @@ build_exe_options = {
 }
 
 
-#============#
+# ========== #
 # main stuff #
-#============#
+# ========== #
 
 setup(name="liam2",
       # cx_freeze wants only ints and dots
@@ -150,5 +150,3 @@ setup(name="liam2",
           view=['vitables'],
           ),
       )
-
-# also recommends 'matplotlib' and 'vitables'
