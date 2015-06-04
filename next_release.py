@@ -1,18 +1,23 @@
 #!/usr/bin/python
-# coding=utf-8
+# encoding: utf-8
 # script to start a new release cycle
 # Licence: GPLv3
 from os.path import join
 from make_release import relname2fname, short
-
+from shutil import copy
 
 def add_release(release_name):
-    # create "empty" changelog for that release
     fname = relname2fname(release_name)
-    with open(r'doc\usersguide\source\changes\template.rst.inc') as f:
-        changes_template = f.read()
-    with open(join(r'doc\usersguide\source\changes', fname), 'w') as f:
-        f.write(changes_template)
+
+    # create "empty" changelog for that release
+    changes_dir = r'doc\usersguide\source\changes'
+    copy(join(changes_dir, 'template.rst.inc'),
+         join(changes_dir, fname))
+
+    # create "empty" highlights for that release
+    highlights_dir = r'doc\website\highlights'
+    copy(join(highlights_dir, 'template.rst.inc'),
+         join(highlights_dir, fname))
 
     # include release changelog in changes.rst
     fpath = r'doc\usersguide\source\changes.rst'
