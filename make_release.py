@@ -466,11 +466,6 @@ def check_clone(context):
             exit(1)
 
 
-def ask_test(context):
-    context['test_release'] = True if context['public_release'] \
-        else yes('Do you want to test the executables after they are created?')
-
-
 def update_changelog(context):
     """
     Update release date in changes.rst
@@ -508,6 +503,10 @@ def update_changelog(context):
 def build_exe(context):
     chdir(context['build_dir'])
     chdir('src')
+
+    context['test_release'] = True if context['public_release'] \
+        else yes('Do you want to test the executables after they are created?')
+
     call('buildall.bat')
 
 
@@ -708,7 +707,6 @@ steps_funcs = [
     (create_tmp_directory, ''),
     (clone_repository, ''),
     (check_clone, ''),
-    (ask_test, ''),
     (build_exe, 'Building executables'),
     (test_executables, 'Testing executables'),
     (update_changelog, 'Updating changelog'),
