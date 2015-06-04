@@ -466,6 +466,26 @@ def check_clone(context):
             exit(1)
 
 
+def build_exe(context):
+    chdir(context['build_dir'])
+    chdir('src')
+
+    context['test_release'] = True if context['public_release'] \
+        else yes('Do you want to test the executables after they are created?')
+
+    call('buildall.bat')
+
+
+def test_executables(context):
+    chdir(context['build_dir'])
+
+    if not context['test_release']:
+        return
+
+    for arch in ('win32', 'win-amd64'):
+        test_executable(r'src\build\exe.%s-2.7' % arch)
+
+
 def update_changelog(context):
     """
     Update release date in changes.rst
@@ -498,26 +518,6 @@ def update_changelog(context):
     if no('Does the full changelog look right?'):
         exit(1)
     call('git commit -m "update release date in changes.rst" %s' % fpath)
-
-
-def build_exe(context):
-    chdir(context['build_dir'])
-    chdir('src')
-
-    context['test_release'] = True if context['public_release'] \
-        else yes('Do you want to test the executables after they are created?')
-
-    call('buildall.bat')
-
-
-def test_executables(context):
-    chdir(context['build_dir'])
-
-    if not context['test_release']:
-        return
-
-    for arch in ('win32', 'win-amd64'):
-        test_executable(r'src\build\exe.%s-2.7' % arch)
 
 
 def build_doc(context):
