@@ -24,7 +24,7 @@ WEBSITE = 'liam2.plan.be'
 TMP_PATH = r"c:\tmp\liam2_new_release"
 
 
-#TODO:
+# TODO:
 # - different announce message for pre-releases
 # - announce RC on the website too
 # ? create a download page for the rc
@@ -561,7 +561,7 @@ def build_website(context):
 
     release_name = context['release_name']
 
-    #XXX: should we announce pre-release on the website?
+    # XXX: should we announce pre-release on the website?
     if isprerelease(release_name):
         return
 
@@ -745,10 +745,10 @@ steps_funcs = [
     (announce, 'Announcing'),
     (cleanup, 'Cleaning up')
 ]
-func_names = [f.__name__ for f, desc in steps_funcs]
 
 
 def make_release(release_name='dev', branch='master', steps=':'):
+    func_names = [f.__name__ for f, desc in steps_funcs]
     if ':' in steps:
         start, stop = steps.split(':')
         start = func_names.index(start) if start else 0
@@ -786,11 +786,11 @@ def make_release(release_name='dev', branch='master', steps=':'):
             step_func(context)
 
 if __name__ == '__main__':
-    args = sys.argv
-    if len(args) < 2:
+    argv = sys.argv
+    if len(argv) < 2:
         print("Usage: %s release_name|dev [branch] [step|startstep:stopstep]"
-              % args[0])
-        print("steps:", ', '.join(func_names))
+              % argv[0])
+        print("steps:", ', '.join(f.__name__ for f, _ in steps_funcs))
         sys.exit()
 
-    make_release(*args[1:])
+    make_release(*argv[1:])
