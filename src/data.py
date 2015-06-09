@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import time
@@ -30,7 +31,7 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
         for fieldname in dtype.names:
             chunk[fieldname] = array[fieldname][start:stop]
         table.append(chunk)
-        #TODO: try flushing after each chunk, this should reduce memory
+        # TODO: try flushing after each chunk, this should reduce memory
         # use on large models, and (hopefully) should not be much slower
         # given our chunks are rather large
         # >>> on our 300k sample, it does not seem to make any difference
@@ -58,7 +59,7 @@ class ColumnArray(object):
                                        for name, column in array])
                 self.columns = columns
             else:
-                #TODO: make a property instead?
+                # TODO: make a property instead?
                 self.dtype = None
                 self.columns = columns
         else:
@@ -318,7 +319,7 @@ def merge_subset_in_array(output, id_to_rownum, subset, first=False):
         return output
     else:
         rownums = id_to_rownum[subset['id']]
-        #TODO: this is a gross approximation, more research is needed to get
+        # TODO: this is a gross approximation, more research is needed to get
         # a better threshold. It might also depend on "first".
         if len(names_to_copy) > len(output_names) / 2:
             if first:
@@ -370,7 +371,7 @@ def merge_arrays(array1, array2, result_fields='union'):
     fields1 = get_fields(array1)
     fields2 = get_fields(array2)
 
-    #TODO: check that common fields have the same type
+    # TODO: check that common fields have the same type
     if result_fields == 'union':
         names1 = set(array1.dtype.names)
         fields_notin1 = [(name, type_) for name, type_ in fields2
@@ -405,7 +406,7 @@ def merge_arrays(array1, array2, result_fields='union'):
     if output_is_arr2:
         output_array = array2
     elif output_is_arr1:
-        #TODO: modifying array1 in-place suits our particular needs for now
+        # TODO: modifying array1 in-place suits our particular needs for now
         # but it should really be a (non-default) option
         output_array = array1
     elif arr1_complete or arr2_complete:
@@ -449,7 +450,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         expanded_data = np.empty(chunksize, dtype=np.dtype(output_fields))
         expanded_data[:] = get_missing_record(expanded_data)
 
-    #noinspection PyUnusedLocal
+    # noinspection PyUnusedLocal
     def copy_chunk(chunk_idx, chunk_num):
         chunk_start = chunk_num * chunksize
         chunk_stop = min(chunk_start + chunksize, numrows)
@@ -481,7 +482,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
     return output_table
 
 
-#noinspection PyProtectedMember
+# noinspection PyProtectedMember
 def copy_table(input_table, output_node, output_dtype=None,
                chunksize=10000, condition=None, stop=None, show_progress=False,
                **kwargs):
@@ -497,7 +498,7 @@ def copy_table(input_table, output_node, output_dtype=None,
                         stop=stop, show_progress=show_progress)
 
 
-#XXX: should I make a generic n-way array merge out of this?
+# XXX: should I make a generic n-way array merge out of this?
 # this is a special case though because:
 # 1) all arrays have the same columns
 # 2) we have id_to_rownum already computed for each array
@@ -804,13 +805,13 @@ class H5Data(DataSource):
                 # index_tables already checks whether all tables exist and
                 # are coherent with globals_def
                 for name in globals_def:
-                    #FIXME: if a globals is both in the input h5 and declared
+                    # FIXME: if a globals is both in the input h5 and declared
                     # to be coming from a csv file, it is copied from the h5
                     # file, which is wrong/misleading because it is not used
                     # in the simulation.
                     if name in globals_node:
-                        #noinspection PyProtectedMember
-                        #FIXME: only copy declared fields
+                        # noinspection PyProtectedMember
+                        # FIXME: only copy declared fields
                         getattr(globals_node, name)._f_copy(output_globals)
 
             entities_tables = dataset['entities']
@@ -836,7 +837,7 @@ class H5Data(DataSource):
 #                entity.indexed_input_table = entities_tables[ent_name]
 #                entity.indexed_output_table = entities_tables[ent_name]
 
-                #TODO: copying the table and generally preparing the output
+                # TODO: copying the table and generally preparing the output
                 # file should be a different method than indexing
                 print(" * copying table...")
                 start_time = time.time()
@@ -861,7 +862,7 @@ class H5Data(DataSource):
                       end=' ')
                 start_time = time.time()
 
-                #TODO: this whole process of merging all periods is very
+                # TODO: this whole process of merging all periods is very
                 # opinionated and does not allow individuals to die/disappear
                 # before the simulation starts. We couldn't for example,
                 # take the output of one of our simulation and

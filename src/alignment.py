@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 from itertools import izip
@@ -29,7 +30,7 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
     possible_values = possible_values[:]
     axis_values = possible_values.pop(axis_num)
 
-    #TODO: make sure possible_values are sorted and use searchsorted instead
+    # TODO: make sure possible_values are sorted and use searchsorted instead
     is_wanted_value = axis_values == value
     value_idx = is_wanted_value.nonzero()[0]
     num_idx = len(value_idx)
@@ -59,12 +60,12 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
 
     maybe_filter = bool_filter_value
     if take_filter is not None:
-        #XXX: I wonder if users would prefer if filter_value was taken into
+        # XXX: I wonder if users would prefer if filter_value was taken into
         # account or not. This only impacts what it displayed on the console,
         # but still...
         take = np.sum(take_filter)
 
-        #XXX: it would probably be faster to leave the filters as boolean
+        # XXX: it would probably be faster to leave the filters as boolean
         # vector and do
         #     take_members = take_filter[member_indices]
         #     group_always = member_indices[take_members]
@@ -115,7 +116,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                     group_maybe_indices = members_indices
                 if isinstance(score, np.ndarray):
                     maybe_members_rank_value = score[group_maybe_indices]
-                    #TODO: use np.partition (np1.8+)
+                    # TODO: use np.partition (np1.8+)
                     sorted_local_indices = np.argsort(maybe_members_rank_value)
                     sorted_global_indices = \
                         group_maybe_indices[sorted_local_indices]
@@ -153,7 +154,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
     return aligned
 
 
-#noinspection PyProtectedMember
+# noinspection PyProtectedMember
 class AlignmentAbsoluteValues(FilteredExpression):
     funcname = 'align_abs'
     no_eval = ('filter', 'secondary_axis', 'expressions')
@@ -163,7 +164,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if isinstance(need, basestring):
             fpath = os.path.join(config.input_directory, need)
             need = load_ndarray(fpath, float)
-            #XXX: store args in a list so that we can modify it?
+            # XXX: store args in a list so that we can modify it?
             self.args = (self.args[0], need) + self.args[2:]
         self.past_error = None
 
@@ -271,7 +272,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         if method == 'carry':
             if self.past_error is None:
-                #TODO: we should store this somewhere in the context instead
+                # TODO: we should store this somewhere in the context instead
                 self.past_error = np.zeros(need.shape, dtype=int)
 
             print("adding %d individuals from last period error"
@@ -368,7 +369,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
             self._display_unaligned(expressions, context['id'], columns,
                                     unaligned)
 
-        #noinspection PyAugmentAssignment
+        # noinspection PyAugmentAssignment
         need = need * self._get_need_correction(groups, possible_values)
         need = self._handle_frac_need(need, method=frac_need)
         need = self._add_past_error(context, need, method=errors)

@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import types
@@ -86,7 +87,7 @@ class FilteredExpression(FunctionExpr):
     @staticmethod
     def _getfilter(context, filter):
         ctx_filter = context.filter_expr
-        #FIXME: this is a hack and shows that the not_hashable filter_expr in
+        # FIXME: this is a hack and shows that the not_hashable filter_expr in
         #  context is not really a good solution. We should rather add a flag
         # in the context "ishardsubset" or something like that.
         if filter is not_hashable:
@@ -187,7 +188,7 @@ class NumpyRandom(NumpyCreateArray):
 
             # The original functions return a scalar when size is None, and an
             # array of length one when size is 1.
-            #TODO: users should have a way to have the "size=None" behavior. We
+            # TODO: users should have a way to have the "size=None" behavior. We
             # could differentiate whether None was explicitly passed or comes
             # from the default value (as we did previously: 'size' not in
             # kwargs), but I do not think it is a good idea. Adding a new

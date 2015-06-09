@@ -31,7 +31,7 @@ class EvaluationContext(object):
 
     def copy(self, fresh_data=False):
         entities_data = None if fresh_data else self.entities_data.copy()
-        #FIXME: when switching entities, filter should not come along, or maybe
+        # FIXME: when switching entities, filter should not come along, or maybe
         # filter should be a per-entity dict?
         return EvaluationContext(self.simulation, self.entities,
                                  self.global_tables, self.period,
@@ -88,7 +88,7 @@ class EvaluationContext(object):
             return elsevalue
 
     def __setitem__(self, key, value):
-        #XXX: how do we set a new global?
+        # XXX: how do we set a new global?
         self.entity_data[key] = value
 
     def __contains__(self, key):
@@ -96,7 +96,7 @@ class EvaluationContext(object):
         if isinstance(key, Variable):
             entity, name = key.entity, key.name
             if entity is None:
-                #FIXME: this is wrong (but currently needed because some
+                # FIXME: this is wrong (but currently needed because some
                 # Variable are created without entity)
                 return True
             else:
@@ -168,7 +168,7 @@ class EntityContext(object):
                     except ValueError:
                         raise KeyError(key)
             else:
-                #FIXME: lags will break if used from a context subset (eg in
+                # FIXME: lags will break if used from a context subset (eg in
                 # new() or groupby(): all individuals will be returned instead
                 # of only the "filtered" ones.
                 if (self.entity.array_lag is not None and
@@ -248,7 +248,7 @@ class EntityContext(object):
         elif period in self.entity.output_index:
             return self.entity.output_index[period]
         else:
-            #FIXME: yes, it's true, that if period is not in output_index, it
+            # FIXME: yes, it's true, that if period is not in output_index, it
             # probably means that we are before start_period and in that case,
             # input_index == output_index, but it would be cleaner to simply
             # initialise output_index correctly

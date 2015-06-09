@@ -269,7 +269,7 @@ entities:
                 - men_age: age[MALE]
                 # score of actual matches (relative to men)
 
-                #FIXME: not allowed by YAML parser (notice the space after -) :(
+                # FIXME: not allowed by YAML parser (notice the space after -) :(
                 #- score_match: - (partner.age[MALE] - men_age) ** 2
                 - score_match: -(partner.age[MALE] - men_age) ** 2
 

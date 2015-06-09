@@ -62,7 +62,7 @@ class TestLink(StringExprTestCase):
 
         dt = np.dtype([('period', int), ('id', int), ('age', int),
                        ('dead', bool),  ('mother_id', int), ('hh_id', int)])
-#TODO: I can't use an EntityContext with an array containing several periods
+# TODO: I can't use an EntityContext with an array containing several periods
 #      of data
 #        persons = array([(2000, 0, 53, False, -1, 0),
 #                         (2000, 1, 23, False,  0, 1),

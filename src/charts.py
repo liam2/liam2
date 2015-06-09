@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function, division
 
 import os
@@ -71,7 +72,7 @@ class Chart(FunctionExpr, FileProducer):
                 data = data.transpose(axes[-1], *axes[:-1])
             elif ndim(data) == ndim_req - 1:
                 if isinstance(data, LabeledArray):
-                    #TODO: implement np.newaxis in LabeledArray.__getitem__
+                    # TODO: implement np.newaxis in LabeledArray.__getitem__
                     data = LabeledArray(np.asarray(data)[np.newaxis],
                                         dim_names=['dummy'] + data.dim_names,
                                         pvalues=[[0]] + data.pvalues)

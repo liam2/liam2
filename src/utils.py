@@ -227,7 +227,7 @@ def ndim(arraylike):
     while isinstance(arraylike, (list, tuple, np.ndarray)):
         if len(arraylike) == 0:
             raise ValueError('Cannot compute ndim of array with empty dim')
-        #XXX: check that other elements have the same length?
+        # XXX: check that other elements have the same length?
         arraylike = arraylike[0]
         n += 1
     return n
@@ -248,7 +248,7 @@ def safe_put(a, ind, v):
         for fname in a.dtype.names:
             safe_put(a[fname], ind, v[fname])
     else:
-        #XXX: a.put(ind, v) seem to be a bit faster (but does not work if a is
+        # XXX: a.put(ind, v) seem to be a bit faster (but does not work if a is
         # not an ndarray, is it a problem?)
         np.put(a, ind, v)
     # if the last value was erroneously modified (because of a -1 in ind)
@@ -300,7 +300,7 @@ def nansum(a, axis=None):
         return np.sum(a, axis)
 
 
-#TODO: provide a cython version for this (using fused types)
+# TODO: provide a cython version for this (using fused types)
 #ctypedef fused np_numeric:
 #     np.int32_t
 #     np.int64_t
@@ -369,7 +369,7 @@ class Axis(object):
 
 
 class LabeledArray(np.ndarray):
-    #noinspection PyNoneFunctionAssignment
+    # noinspection PyNoneFunctionAssignment
     def __new__(cls, input_array, dim_names=None, pvalues=None,
                 row_totals=None, col_totals=None):
         obj = np.asarray(input_array).view(cls)
@@ -487,7 +487,7 @@ class LabeledArray(np.ndarray):
         res_pvalues = [self.pvalues[i] for i in args]
         return LabeledArray(res_data, res_dim_names, res_pvalues)
 
-    #noinspection PyAttributeOutsideInit
+    # noinspection PyAttributeOutsideInit
     def __array_finalize__(self, obj):
         # We are in the middle of the LabeledArray.__new__ constructor,
         # and our special attributes will be set when we return to that
@@ -599,7 +599,7 @@ def aslabeledarray(data):
     elif (isinstance(data, sequence) and len(data) and
           isinstance(data[0], LabeledArray)):
         arraydata = np.asarray(data)
-        #TODO: check that all arrays have the same axes
+        # TODO: check that all arrays have the same axes
         dim_names = [None] + data[0].dim_names
         dim_labels = [range(len(data))] + data[0].pvalues
         return LabeledArray(arraydata, dim_names, dim_labels)
@@ -1108,7 +1108,7 @@ def add_context(exception, s):
 class ExplainTypeError(type):
     def __call__(cls, *args, **kwargs):
         try:
-            #noinspection PyArgumentList
+            # noinspection PyArgumentList
             return type.__call__(cls, *args, **kwargs)
         except TypeError, e:
             funcname = cls.funcname

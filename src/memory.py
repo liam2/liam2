@@ -12,7 +12,7 @@ class Manager(object):
         self.cache = cache
 
     def safe_call(self, nbytes, func, *args, **kwargs):
-        #TODO: check & free mem beforehand (use psutil)
+        # TODO: check & free mem beforehand (use psutil)
         try:
             array = func(*args, **kwargs)
         except MemoryError:
@@ -102,8 +102,8 @@ if __name__ == '__main__':
         'all': make_aggregate(bool),
         'any': make_aggregate(bool),
         'sum': make_aggregate(),
-        #TODO: array slices et al via ndarray subclass
-        #TODO: array, asarray
+        # TODO: array slices et al via ndarray subclass
+        # TODO: array, asarray
         # agg: cumsum, nansum, min, nanmin, nanmax, std, median, percentile,
         # argsort, bincount,
         # insert, delete, concatenate, repeat

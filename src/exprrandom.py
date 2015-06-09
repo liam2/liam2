@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import division, print_function
 
 import numpy as np
@@ -17,7 +18,7 @@ class Choice(NumpyRandom):
     argspec = argspec('choices, p=None, size=None, replace=True',
                       **NumpyRandom.kwonlyargs)
 
-    #TODO: document the change in behavior for the case where the sum of
+    # TODO: document the change in behavior for the case where the sum of
     # probabilities is != 1
     # random.choice only checks that the error is < 1e-8 but always
     # divides probabilities by sum(p). It is probably a better choice

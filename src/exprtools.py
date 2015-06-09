@@ -91,7 +91,7 @@ class Node(object):
 
     __mod__ = binop('%')
     __rmod__ = binop('%', reversed=True)
-    #FIXME
+    # FIXME
     __divmod__ = binop('divmod')
     __rdivmod__ = binop('divmod', reversed=True)
     __pow__ = binop('**')
@@ -276,7 +276,7 @@ class CallNode(Node):
 #     isinstance(callable_ast.__self__, Link)
 
 
-#noinspection PyPep8Naming
+# noinspection PyPep8Naming
 class BoolToBitTransformer(ast.NodeTransformer):
     def visit_BoolOp(self, node):
         # first transform children of the node
@@ -295,7 +295,7 @@ class BoolToBitTransformer(ast.NodeTransformer):
             right = ast.copy_location(ast.BinOp(left, new_op, right), node)
         return right
 
-    #noinspection PyUnusedLocal
+    # noinspection PyUnusedLocal
     def visit_Not(self, node):
         return ast.Invert()
 

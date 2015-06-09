@@ -95,9 +95,9 @@ def diff_h5(input1_path, input2_path, numdiff=10):
     input1_entities = input1_file.root.entities
     input2_entities = input2_file.root.entities
 
-    #noinspection PyProtectedMember
+    # noinspection PyProtectedMember
     ent_names1 = set(table._v_name for table in input1_entities)
-    #noinspection PyProtectedMember
+    # noinspection PyProtectedMember
     ent_names2 = set(table._v_name for table in input2_entities)
     for ent_name in sorted(ent_names1 | ent_names2):
         print()

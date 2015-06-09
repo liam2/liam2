@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import csv
@@ -178,7 +179,7 @@ class CSV(object):
             transposed = None
         self.fpath = fpath
         if newnames is not None:
-            #TODO: move this junk out of the class
+            # TODO: move this junk out of the class
             basename = os.path.splitext(os.path.basename(fpath))[0]
             for k in newnames:
                 m = self.eval_re.match(newnames[k])
@@ -212,7 +213,7 @@ class CSV(object):
     @property
     def field_names(self):
         if self._field_names is None:
-            #TODO: use self._fields instead if it was already computed
+            # TODO: use self._fields instead if it was already computed
             # read the first line in the file
             self.rewind()
             fnames = self.next()
@@ -531,7 +532,7 @@ def load_ndarray(fpath, celltype=None):
                            ' * '.join(str(len(values))
                                       for values in possible_values)))
 
-    #TODO: compare time with numpy built-in conversion:
+    # TODO: compare time with numpy built-in conversion:
     # if dtype is None, numpy tries to detect the best type itself
     # which it does a good job of if the values are already numeric values
     # if dtype is provided, numpy does a good job to convert from string
@@ -584,12 +585,12 @@ def load_def(localdir, ent_name, section_def, required_fields):
     interpolate_def = section_def.get('interpolate')
     files_def = section_def.get('files')
     if files_def is None:
-        #XXX: it might be cleaner to use the same code path than for the
+        # XXX: it might be cleaner to use the same code path than for the
         # multi-file case (however, that would loose the "import any file
         # size" feature that I'm fond of.
 
         # we can simply return the stream as-is
-        #FIXME: stream is not sorted
+        # FIXME: stream is not sorted
         # csv file is assumed to be in the correct order (ie by period then id)
         csv_filename = section_def.get('path', ent_name + ".csv")
         csv_filepath = complete_path(localdir, csv_filename)
@@ -621,7 +622,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         else:
             raise Exception("invalid structure for 'files'")
 
-        #XXX: shouldn't we use the "path" defined for the whole entity if any?
+        # XXX: shouldn't we use the "path" defined for the whole entity if any?
         # section_def.get('path')
         files = []
         for path, kwargs in files_items:
@@ -665,7 +666,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         for f in files:
             f.close()
 
-        #FIXME: interpolation currently only interpolates missing data points,
+        # FIXME: interpolation currently only interpolates missing data points,
         # not data points with their value equal the missing value
         # corresponding to the field type. This can only be fixed once
         # booleans are loaded as int8.
@@ -782,7 +783,7 @@ def csv2h5(fpath, buffersize=10 * 2 ** 20):
                                     datastream, numlines,
                                     title="%s table" % global_name,
                                     buffersize=buffersize,
-                                    #FIXME: handle invert
+                                    # FIXME: handle invert
                                     compression=compression)
                     if csvfile is not None:
                         csvfile.close()

@@ -32,7 +32,7 @@ class Process(object):
             context.entity_data.extra = {}
             self.run(context)
         except BreakpointException:
-            #XXX: store this directly in the (evaluation) context instead of
+            # XXX: store this directly in the (evaluation) context instead of
             # in the simulation?
             context.simulation.stepbystep = True
 
@@ -87,7 +87,7 @@ class Assignment(Process):
             # array object can change (eg when enlarging it due to births)
             target = self.entity.array
 
-            #TODO: assert type for temporary variables too
+            # TODO: assert type for temporary variables too
             target_type_idx = type_to_idx[target[self.name].dtype.type]
             res_type_idx = type_to_idx[res_type]
             if res_type_idx > target_type_idx:
@@ -130,7 +130,7 @@ class While(Process):
     def run_guarded(self, context):
         while expr_eval(self.cond, context):
             self.code.run_guarded(context)
-            #FIXME: this is a bit brutal :) This is necessary because
+            # FIXME: this is a bit brutal :) This is necessary because
             # otherwise test_while loops indefinitely (because "values" is
             # never incremented)
             expr_cache.clear()
@@ -260,7 +260,7 @@ class ProcessGroup(Process):
                 for node in expr.all_of(Variable):
                     versions = (local_versions if node.name in local_vars
                                 else fields_versions)
-                    #FIXME: for .version to be meaningful, I need to have
+                    # FIXME: for .version to be meaningful, I need to have
                     # a different variable instance each time the variable
                     # is used.
                     #>>> the best solution AFAIK is to parse the expressions
@@ -290,7 +290,7 @@ class ProcessGroup(Process):
                     node.used += 1
             # on assignment, increase the variable version
             if isinstance(p, Assignment):
-                #XXX: is this always == k?
+                # XXX: is this always == k?
                 target = p.predictor
                 versions = (local_versions if target in local_vars
                             else fields_versions)
@@ -319,7 +319,7 @@ class Function(Process):
         self.result = result
 
     def run_guarded(self, context, *args, **kwargs):
-        #XXX: wouldn't some form of cascading context make all this junk much
+        # XXX: wouldn't some form of cascading context make all this junk much
         # cleaner? Context(globalvars, localvars) (globalvars contain both
         # entity fields and global temporaries)
 

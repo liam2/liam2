@@ -12,7 +12,7 @@ class Cache(dict):
         for i, key in enumerate(self.keys()):
             # print(key)
             c_expr, c_period, c_entity_name, c_filter_expr = key
-            #XXX: do we also need to invalidate when name not in expr but
+            # XXX: do we also need to invalidate when name not in expr but
             # name in filter_expr?
             expr_match = variable is None or variable in c_expr
             if (c_period == period and c_entity_name == entity_name and

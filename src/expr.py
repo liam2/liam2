@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import division, print_function
 
 import types
@@ -27,7 +28,7 @@ except ImportError:
         return context
     eval_context = make_global_context()
 
-    #noinspection PyUnusedLocal
+    # noinspection PyUnusedLocal
     def evaluate(expr, globals_dict, locals_dict=None, **kwargs):
         complete_globals = {}
         complete_globals.update(globals_dict)
@@ -51,7 +52,7 @@ idx_to_type = [bool, int, float]
 missing_values = {
     # int: -2147483648,
     # for links, we need to have abs(missing_int) < len(a) !
-    #XXX: we might want to use different missing values for links and for
+    # XXX: we might want to use different missing values for links and for
     #     "normal" ints
     int: -1,
     float: float('nan'),
@@ -191,10 +192,10 @@ def expr_eval(expr, context):
             else:
                 globals_names = set()
 
-            #FIXME: systematically checking for the presence of variables has a
+            # FIXME: systematically checking for the presence of variables has a
             # non-negligible cost (especially in matching), even when caching
             # collect_variables result (it is much better than before though).
-            #TODO: also check for globals
+            # TODO: also check for globals
             for var in expr.collect_variables():
                 if var.name not in globals_names and var not in context:
                     raise Exception("variable '%s' is unknown (it is either not "
@@ -276,7 +277,7 @@ class Expr(object):
         # cache_key = (self, period, context.entity_name, context.filter_expr)
         # try:
         #     cached_result = expr_cache.get(cache_key, None)
-        #     #FIXME: lifecycle functions should invalidate all variables!
+        #     # FIXME: lifecycle functions should invalidate all variables!
         #     if cached_result is not None:
         #         return cached_result
         # except TypeError:
@@ -298,7 +299,7 @@ class Expr(object):
         # align(lag(groupby() / groupby())), but it is a limitation I can
         # live with to avoid hitting the disk twice for each disk access.
 
-        #TODO: I should rewrite this whole mess when my "dtype" method
+        # TODO: I should rewrite this whole mess when my "dtype" method
         # supports ndarrays and LabeledArray so that I can get the dtype from
         # the expression instead of from actual values.
         labels = None
@@ -369,7 +370,7 @@ class Expr(object):
         raise NotImplementedError()
 
     def __getitem__(self, key):
-        #TODO: we should be able to know at "compile" time if this is a
+        # TODO: we should be able to know at "compile" time if this is a
         # scalar or a vector and disallow getitem in case of a scalar
         return SubscriptedExpr(self, key)
 
@@ -417,11 +418,11 @@ class Expr(object):
                 yield node
 
     def collect_variables(self):
-        #TODO: it would be cleaner if we initialized _variables in __init__,
+        # TODO: it would be cleaner if we initialized _variables in __init__,
         # however it means each Expr subclass would have to call its parent
         # __init__ (which is a good thing but too much hassle at this point).
         if not hasattr(self, "_variables"):
-            #FIXME: this is a quick hack to make "othertable" work.
+            # FIXME: this is a quick hack to make "othertable" work.
             # We should return prefixed variable instead.
             badvar = lambda v: isinstance(v, ShortLivedVariable) or \
                                (isinstance(v, GlobalVariable) and
@@ -430,8 +431,8 @@ class Expr(object):
                                   if not badvar(v))
         return self._variables
 
-    #TODO: make equivalent/commutative expressions compare equal and hash to the
-    # same thing.
+    # TODO: make equivalent/commutative expressions compare equal and hash to
+    # the same thing.
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
@@ -606,7 +607,7 @@ class FillFuncNameMeta(ExplainTypeError):
             cls.funcname = funcname
 
 
-#XXX: it might be a good idea to merge both
+# XXX: it might be a good idea to merge both
 class FillArgSpecMeta(FillFuncNameMeta):
     def __init__(cls, name, bases, dct):
         FillFuncNameMeta.__init__(cls, name, bases, dct)
@@ -885,7 +886,7 @@ class DynamicFunctionCall(GenericFunctionCall):
         return self.args, self.kwargs
 
     def __repr__(self):
-        #FIXME
+        # FIXME
         r = GenericFunctionCall.__repr__(self)
         return '**DFC** // %s' % r
 
@@ -910,7 +911,7 @@ class UnaryOp(Expr):
     def dtype(self, context):
         return getdtype(self.expr, context)
 
-    #FIXME: only add parentheses if necessary
+    # FIXME: only add parentheses if necessary
     def __repr__(self):
         nicerop = {'~': 'not '}
         niceop = nicerop.get(self.op, self.op)
@@ -938,7 +939,7 @@ class BinaryOp(Expr):
     def dtype(self, context):
         return coerce_types(context, self.expr1, self.expr2)
 
-    #FIXME: only add parentheses if necessary
+    # FIXME: only add parentheses if necessary
     def __repr__(self):
         nicerop = {'&': 'and', '|': 'or'}
         niceop = nicerop.get(self.op, self.op)
@@ -956,7 +957,7 @@ class LogicalOp(BinaryOp):
             raise Exception("operands to logical operators need to be "
                             "boolean but %s is %s" % (expr, dt))
 
-    #TODO: move the tests to a typecheck phase and use dtype = always(bool)
+    # TODO: move the tests to a typecheck phase and use dtype = always(bool)
     def dtype(self, context):
         self.assertbool(self.expr1, context)
         self.assertbool(self.expr2, context)
@@ -964,7 +965,7 @@ class LogicalOp(BinaryOp):
 
 
 class ComparisonOp(BinaryOp):
-    #TODO: move the test to a typecheck phase and use dtype = always(bool)
+    # TODO: move the test to a typecheck phase and use dtype = always(bool)
     def dtype(self, context):
         if coerce_types(context, self.expr1, self.expr2) is None:
             raise TypeError("operands to comparison operators need to be of "
@@ -1044,7 +1045,7 @@ class GlobalVariable(EvaluableExpression):
             raise Exception("Unknown global: %s" % self.name)
 
         key = self._eval_key(context)
-        #TODO: this row computation should be encapsulated in the
+        # TODO: this row computation should be encapsulated in the
         # globals_table object and the index column should be configurable
         colnames = globals_table.dtype.names
         if 'period' in colnames or 'PERIOD' in colnames:
@@ -1086,7 +1087,7 @@ class GlobalVariable(EvaluableExpression):
                                       dtype=column.dtype)
                     # we assume there are more individuals than there are
                     # "periods" (or other ticks) in the table.
-                    #XXX: We might want to actually test that it is true and
+                    # XXX: We might want to actually test that it is true and
                     # loop on the individuals instead if that is not the case
                     for i in range(length0):
                         result[:, i] = safe_take(column, start + i,
@@ -1138,7 +1139,7 @@ class SubscriptedGlobal(GlobalVariable):
         return expr_eval(self.key, context)
 
 
-#TODO: this class shouldn't be needed. GlobalArray should be handled in the
+# TODO: this class shouldn't be needed. GlobalArray should be handled in the
 # context
 class GlobalArray(Variable):
     def __init__(self, name, dtype=None):
@@ -1147,7 +1148,7 @@ class GlobalArray(Variable):
     def as_simple_expr(self, context):
         globals_data = context.global_tables
         result = globals_data[self.name]
-        #XXX: maybe I should just use self.name?
+        # XXX: maybe I should just use self.name?
         tmp_varname = '__%s' % self.name
         if tmp_varname in context:
             assert context[tmp_varname] is result
@@ -1166,7 +1167,7 @@ class GlobalTable(object):
     def __getattr__(self, key):
         return GlobalVariable(self.name, key, self.fields_map[key])
 
-    #noinspection PyUnusedLocal
+    # noinspection PyUnusedLocal
     def traverse(self, context):
         yield self
 
@@ -1176,7 +1177,7 @@ class GlobalTable(object):
         return 'Table(%s)' % ', '.join([name for name, _ in self.fields])
 
 
-#XXX: can we factorise this with FunctionExpr et al.?
+# XXX: can we factorise this with FunctionExpr et al.?
 # for that we need argspec but we currently cannot get it when
 # MethodCall.__init__ is called (the methods are potentially not created yet)
 # so we would have to either: do that in two passes (first collect method

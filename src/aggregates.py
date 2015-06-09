@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import numpy as np
@@ -30,13 +31,13 @@ class Any(NumpyAggregate):
     dtype = always(bool)
 
 
-#XXX: inherit from FilteredExpression instead?
+# XXX: inherit from FilteredExpression instead?
 class Count(FunctionExpr):
     def compute(self, context, filter=None):
         if filter is None:
             return context_length(context)
         else:
-            #TODO: check this at "compile" time (in __init__), though for
+            # TODO: check this at "compile" time (in __init__), though for
             # that we need to know the type of all temporary variables
             # first
             if not np.issubdtype(filter.dtype, bool):
@@ -76,17 +77,17 @@ def na_sum(a, overwrite=False):
     return func(a)
 
 
-#class Sum(NumpyAggregate):
+# class Sum(NumpyAggregate):
 #    np_func = np.sum
 #    nan_func = (nansum,)
 #
 #    def dtype(self, context):
-#        #TODO: merge this typemap with tsum's
+#        # TODO: merge this typemap with tsum's
 #        typemap = {bool: int, int: int, float: float}
 #        return typemap[dtype(self.args[0], context)]
 
 
-#TODO: inherit from NumpyAggregate, to get support for the axis argument
+# TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Sum(FilteredExpression):
     no_eval = ('expr', 'filter')
 
@@ -101,7 +102,7 @@ class Sum(FilteredExpression):
         return na_sum(values) if skip_na else np.sum(values)
 
     def dtype(self, context):
-        #TODO: merge this typemap with tsum's
+        # TODO: merge this typemap with tsum's
         typemap = {bool: int, int: int, float: float}
         return typemap[getdtype(self.args[0], context)]
 
@@ -113,13 +114,13 @@ class Sum(FilteredExpression):
 #    dtype = always(float)
 
 
-#TODO: inherit from NumpyAggregate, to get support for the axis argument
+# TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Average(FilteredExpression):
     funcname = 'avg'
     no_eval = ('expr',)
 
     def compute(self, context, expr, filter=None, skip_na=True):
-        #FIXME: either take "contextual filter" into account here (by using
+        # FIXME: either take "contextual filter" into account here (by using
         # self._getfilter), or don't do it in sum & gini
         if filter is not None:
             tmp_varname = self.get_tmp_varname(context)
@@ -175,7 +176,7 @@ class Percentile(NumpyAggregate):
     dtype = always(float)
 
 
-#TODO: filter and skip_na should be provided by an "Aggregate" mixin that is
+# TODO: filter and skip_na should be provided by an "Aggregate" mixin that is
 # used both here and in NumpyAggregate
 class Gini(FilteredExpression):
     no_eval = ('filter',)

@@ -91,7 +91,7 @@ entities:
                 - num_persons: persons.count()
                 - nch: persons.count(age <= 18)
 
-                #TODO: make this work
+                # TODO: make this work
 #                - nch_macro: persons.count(ISCHILD)
                 - maxnch: max(nch)
 
@@ -658,7 +658,7 @@ entities:
                 - assertTrue(all(0.0 <= diff and diff < 1.0))
                 - assertTrue(any(diff > 0.0) and any(diff == 0.0))
 
-#TODO: move these tests somewhere more appropriate
+# TODO: move these tests somewhere more appropriate
                 # this tests the argument-checking code for "_compute"-based
                 # functions.
 #                - trunc()
@@ -834,7 +834,7 @@ entities:
                               fake_intfield)
                 # this is equivalent to INTFIELD[2002], so it is (way) out of
                 # bounds but it does not fail, it simply returns "missing"
-                #FIXME: it should not be allowed (ie not all global variable
+                # FIXME: it should not be allowed (ie not all global variable
                 # should have this "current period if not indexed" behavior.
                 - assertEqual(othertable_noperiod.INTFIELD, -1)
 
@@ -1763,7 +1763,7 @@ entities:
 #                              if(period > 2002,
 #                                 if(age >= 2, age - 2, -1),
 #                                 -1))
-                #FIXME: this fails (see issue #146)
+                # FIXME: this fails (see issue #146)
                 #- g: groupby(agegroup, gender, expr=count(lag(TERTIARY_EDU)))
 
             test_value_for_period:

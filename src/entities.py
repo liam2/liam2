@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import collections
@@ -32,7 +33,7 @@ max_vars = 0
 #    return a[:]
 
 def global_symbols(globals_def):
-    #FIXME: these should be computed once somewhere else, not for each
+    # FIXME: these should be computed once somewhere else, not for each
     # entity. I guess they should have a class of their own
     symbols = {}
     for name, global_def in globals_def.iteritems():
@@ -156,11 +157,11 @@ class Entity(object):
         self.indexed_output_table = None
 
         self.input_rows = {}
-        #TODO: it is unnecessary to keep periods which have already been
+        # TODO: it is unnecessary to keep periods which have already been
         # simulated, because (currently) when we go back in time, we always go
         # back using the output table... but periods before the start_period
         # are only present in input_index
-        #FIXME: the proper way to fix this is to copy the input_index into
+        # FIXME: the proper way to fix this is to copy the input_index into
         # the output_index during H5Date.run() and not keep input_index
         # beyond that point.
         self.input_index = {}
@@ -197,7 +198,7 @@ class Entity(object):
 
         # YAML "ordered dict" syntax returns a list of dict and we want a list
         # of tuples
-        #FIXME: if "fields" key is present but no field is defined,
+        # FIXME: if "fields" key is present but no field is defined,
         #entity_def.get('fields', []) returns None and this breaks
         fields_def = [d.items()[0] for d in entity_def.get('fields', [])]
 
@@ -468,7 +469,7 @@ Please use this instead:
                         code = self.parse_process_group(k + "_code", code_def,
                                                         method_context,
                                                         purge=False)
-                        #TODO: use code.predictors instead (but it currently
+                        # TODO: use code.predictors instead (but it currently
                         # fails for some reason) or at least factor this out
                         # with the code in parse_process_group
                         group_expressions = [elem.items()[0]
@@ -506,7 +507,7 @@ Please use this instead:
     #         for expr in p.expressions():
     #             for node in expr.all_of(MethodCallToResolve):
     #                 # replace node in the parent node by the "resolved" node
-    #                 #TODO: mimic ast.NodeTransformer
+    #                 # TODO: mimic ast.NodeTransformer
     #                 node.resolve()
 
     def ssa(self):
@@ -527,9 +528,9 @@ Please use this instead:
                         if not isinstance(v, GlobalVariable):
                             lag_vars.add(v.name)
                     for lv in node.all_of(LinkGet):
-                        #noinspection PyProtectedMember
+                        # noinspection PyProtectedMember
                         lag_vars.add(lv.link._link_field)
-                        #noinspection PyProtectedMember
+                        # noinspection PyProtectedMember
                         target_entity = lv.link._target_entity
                         if target_entity == self:
                             target_vars = lv.target_expr.all_of(Variable)
@@ -548,8 +549,8 @@ Please use this instead:
 
     def load_period_data(self, period):
         if self.lag_fields:
-            #TODO: use ColumnArray here
-            #XXX: do we need np.empty? (but watch for alias problems)
+            # TODO: use ColumnArray here
+            # XXX: do we need np.empty? (but watch for alias problems)
             self.array_lag = np.empty(len(self.array),
                                       dtype=np.dtype(self.lag_fields))
             for field, _ in self.lag_fields:
@@ -647,7 +648,7 @@ Please use this instead:
         """
         Common subexpression elimination
         """
-        #XXX:
+        # XXX:
         # * we either need to do SSA first, or for each assignment process,
         #   "forget" all expressions containing the assigned variable
         #   doing it using SSA seems cleaner, but in the end it shouldn't
@@ -664,7 +665,7 @@ Please use this instead:
         # * cross-functions might get tricky when we take function calls
         #   into account.
 
-        #TODO:
+        # TODO:
         # * it will be simpler and better to do this in two passes: first
         #   find duplicated expr and number of occurrences of each expr, then
         #   proceed with the factorization

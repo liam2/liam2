@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import random
@@ -5,7 +6,7 @@ import random
 import numpy as np
 
 
-#noinspection PyNoneFunctionAssignment
+# noinspection PyNoneFunctionAssignment
 def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
                   secondary_axis=None):
     # need and num_candidates are LabeledArray, but we don't need the extra

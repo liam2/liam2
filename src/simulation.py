@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function, division
 
 import time
@@ -170,7 +171,7 @@ class Simulation(object):
 
     def __init__(self, globals_def, periods, start_period, init_processes,
                  processes, entities, data_source, default_entity=None):
-        #FIXME: what if period has been declared explicitly?
+        # FIXME: what if period has been declared explicitly?
         if 'periodic' in globals_def:
             globals_def['periodic']['fields'].insert(0, ('PERIOD', int))
 
@@ -208,7 +209,7 @@ class Simulation(object):
             if "type" in v:
                 v["type"] = field_str_to_type(v["type"], "array '%s'" % k)
             else:
-                #TODO: fields should be optional (would use all the fields
+                # TODO: fields should be optional (would use all the fields
                 # provided in the file)
                 v["fields"] = fields_yaml_to_type(v["fields"])
             globals_def[k] = v
@@ -224,7 +225,7 @@ class Simulation(object):
         periods = simulation_def['periods']
         start_period = simulation_def['start_period']
         config.skip_shows = simulation_def.get('skip_shows', config.skip_shows)
-        #TODO: check that the value is one of "raise", "skip", "warn"
+        # TODO: check that the value is one of "raise", "skip", "warn"
         config.assertions = simulation_def.get('assertions', config.assertions)
 
         logging_def = simulation_def.get('logging', {})

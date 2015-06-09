@@ -61,7 +61,7 @@ class ValueForPeriod(TimeFunction):
     dtype = firstarg_dtype
 
 
-#TODO: this should be a compound expression:
+# TODO: this should be a compound expression:
 # Lag(expr, numperiods, missing)
 # ->
 # ValueForPeriod(expr, Subtract(Variable('period'), numperiods), missing)
@@ -109,7 +109,7 @@ class Duration(TimeFunction):
             period -= 1
         return result
 
-    #TODO: move the check to __init__ and use dtype = always(int)
+    # TODO: move the check to __init__ and use dtype = always(int)
     def dtype(self, context):
         assert getdtype(self.args[0], context) == bool
         return int

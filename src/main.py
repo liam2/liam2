@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import argparse
@@ -35,6 +36,7 @@ def showcontext_on_exceptions(func, *args, **kwargs):
         traceback.print_exc()
         if hasattr(e, 'liam2context'):
             print(e.liam2context, file=sys.stderr)
+
 
 def eat_traceback(func, *args, **kwargs):
     # e.context      | while parsing a block mapping

@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 from itertools import izip, chain
@@ -16,7 +17,7 @@ from context import context_length
 from utils import PrettyTable, argspec
 
 
-#TODO: implement functions in expr to generate "Expr" nodes at the python level
+# TODO: implement functions in expr to generate "Expr" nodes at the python level
 # less painful
 class Min(CompoundExpression):
     def build_expr(self, *args):
@@ -189,7 +190,7 @@ def add_individuals(target_context, children):
 
     temp_variables = target_entity.temp_variables
     for name, temp_value in temp_variables.iteritems():
-        #FIXME: OUCH, this is getting ugly, I'll need a better way to
+        # FIXME: OUCH, this is getting ugly, I'll need a better way to
         # differentiate nd-arrays from "entity" variables
         # I guess having the context contain all entities and a separate
         # globals namespace should fix this problem. Well, no it would not
@@ -223,7 +224,7 @@ class New(FilteredExpression):
     no_eval = ('filter', 'kwargs')
 
     def _initial_values(self, array, to_give_birth, num_birth):
-        #TODO: use default values for fields which have one
+        # TODO: use default values for fields which have one
         children = np.empty(num_birth, dtype=array.dtype)
         children[:] = get_missing_record(array)
         return children
@@ -341,7 +342,7 @@ class Dump(TableExpression):
         else:
             # extra=False because we don't want globals nor "system" variables
             # (nan, period, __xxx__)
-            #FIXME: we should also somehow "traverse" expressions in this case
+            # FIXME: we should also somehow "traverse" expressions in this case
             # too (args is ()) => all keys in the current context
             expressions = [Variable(entity, name)
                            for name in context.keys(extra=False)]
@@ -377,11 +378,11 @@ class Dump(TableExpression):
         if isinstance(ids, np.ndarray) and ids.shape:
             numrows = len(ids)
         else:
-            #FIXME: we need a test for this case (no idea how this can happen)
+            # FIXME: we need a test for this case (no idea how this can happen)
             numrows = 1
 
         # expand scalar columns to full columns in memory
-        #TODO: handle or explicitly reject columns wh ndim > 1
+        # TODO: handle or explicitly reject columns wh ndim > 1
         for idx, col in enumerate(columns):
             dtype = None
             if not isinstance(col, np.ndarray):
@@ -389,7 +390,7 @@ class Dump(TableExpression):
             elif not col.shape:
                 dtype = col.dtype.type
             if dtype is not None:
-                #TODO: try using itertools.repeat instead as it seems to be a
+                # TODO: try using itertools.repeat instead as it seems to be a
                 # bit faster and would consume less memory (however, it might
                 # not play very well with Pandas.to_csv)
                 newcol = np.empty(numrows, dtype=dtype)

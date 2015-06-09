@@ -56,7 +56,7 @@ class LogitRegr(Regression):
 class ContRegr(Regression):
     funcname = 'cont_regr'
 
-    #TODO: deprecate error_var in favor of an "error" argument (which would
+    # TODO: deprecate error_var in favor of an "error" argument (which would
     # be an Expr instead of a string). This would allow any expression instead
     # of only simple variables and would not require quotes in the latter case
     def build_expr(self, expr, filter=None, mult=0.0, error_var=None):
