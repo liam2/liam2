@@ -282,6 +282,8 @@ def main():
 
     # this can happen via the environment variable too!
     if config.debug:
+        # by default, DeprecationWarning and PendingDeprecationWarning, and
+        # ImportWarning are ignored, this shows them.
         warnings.simplefilter('default')
         wrapper = showcontext_on_exceptions
     else:

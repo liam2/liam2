@@ -18,7 +18,8 @@ from entities import Entity, global_symbols
 from utils import (time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
                    merge_dicts, merge_items,
-                   field_str_to_type, fields_yaml_to_type)
+                   field_str_to_type, fields_yaml_to_type,
+                   UserDeprecationWarning)
 import config
 import console
 import expr
@@ -234,12 +235,12 @@ class Simulation(object):
             config.log_level = 'functions'
             warnings.warn("'procedures' logging.level is deprecated, "
                           "please use 'functions' instead",
-                          DeprecationWarning)
+                          UserDeprecationWarning)
 
         if 'timings' in simulation_def:
             warnings.warn("simulation.timings is deprecated, please use "
                           "simulation.logging.timings instead",
-                          DeprecationWarning)
+                          UserDeprecationWarning)
             config.show_timings = simulation_def['timings']
         config.show_timings = logging_def.get('timings', config.show_timings)
 

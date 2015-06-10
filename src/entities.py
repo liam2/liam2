@@ -16,7 +16,8 @@ from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
 from exprtools import parse
 from process import Assignment, ProcessGroup, While, Function, Return
 from utils import (count_occurrences, field_str_to_type, size2str,
-                   WarnOverrideDict, split_signature, argspec)
+                   WarnOverrideDict, split_signature, argspec,
+                   UserDeprecationWarning)
 
 
 max_vars = 0
@@ -425,7 +426,7 @@ can simply transform it into a function, like this:
             - {expr}
 """
                     warnings.warn(msg.format(name=k, expr=v),
-                                  DeprecationWarning)
+                                  UserDeprecationWarning)
                 if process is None:
                     if self.ismethod(v):
                         if isinstance(v, dict):
