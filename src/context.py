@@ -142,6 +142,104 @@ class EvaluationContext(object):
         return self.clone(entity_data=empty_context(length))
 
 
+
+SpecialArray(): table + array + index (~= EntityContext)
+    no period => no need for a ref to eval_ctx
+
+EntityContext: simple object
+
+EvaluationContext:
+    entities_data: {ent_name: SpecialArray}
+
+just before evaluation, we do:
+    current_local = eval_ctx.cur_entity.get_period(period, expr_fields)
+    # or .get, .filter, or whatever
+    -> returns PeriodTable or simple array??? -> could depend on which period
+    -> but I think at that point, the simplest the better, so a simple dict
+       {fname: ndarray} would be best. numexpr will np.asarray each argument
+       anyway, so delaying further the conversion to ndarray does not buy us
+       anything (it only adds one extra step/conversion)
+
+    Q: what about "temp"/extra fields (not computed by numexpr)?
+    A: handled like the rest.
+       hmmm not sure they should be stored in the SpecialArray (but id2rownum
+       should be common)
+
+class PeriodTable(object):
+    def __init__(self, period, table):
+        self.period = period
+        self.table = table
+
+    def __getitem__(self, key):
+        self.table.get(key, self.period)
+
+    def __setitem__(self, key, value):
+        self.table[key] = value
+
+    def __delitem__(self, key):
+        del self.table[key]
+
+    def __contains__(self, key):
+        return key in self.table
+
+        entity = self.entity
+        # entity.array can be None! (eg. with "explore")
+        keyinarray = (self.is_array_period and
+                      (key in entity.temp_variables or
+                       key in entity.array.dtype.fields))
+        keyintable = (entity.table is not None and
+                      key in entity.table.dtype.fields)
+        return key in self.extra or keyinarray or keyintable
+
+    def keys(self, extra=True):
+        res = list(self.entity.array.dtype.names)
+        res.extend(sorted(self.entity.temp_variables.keys()))
+        if extra:
+            res.extend(sorted(self.extra.keys()))
+        return res
+
+    def get(self, key, elsevalue=None):
+        try:
+            return self[key]
+        except KeyError:
+            return elsevalue
+
+    def copy(self):
+        return EntityContext(self.entity, self.extra.copy())
+
+    def length(self):
+        if self.is_array_period:
+            return len(self.entity.array)
+        else:
+            period = self.eval_ctx.period
+            bounds = self.entity.output_rows.get(period)
+            if bounds is not None:
+                startrow, stoprow = bounds
+                return stoprow - startrow
+            else:
+                return 0
+
+    def __len__(self):
+        return self.length()
+
+    def list_periods(self):
+        return self.entity.output_index.keys()
+
+    @property
+    def id_to_rownum(self):
+        period = self.eval_ctx.period
+        if self.is_array_period:
+            return self.entity.id_to_rownum
+        elif period in self.entity.output_index:
+            return self.entity.output_index[period]
+        else:
+            # FIXME: yes, it's true, that if period is not in output_index, it
+            # probably means that we are before start_period and in that case,
+            # input_index == output_index, but it would be cleaner to simply
+            # initialise output_index correctly
+            return self.entity.input_index[period]
+
+
 class EntityContext(object):
     def __init__(self, eval_ctx, entity, extra=None):
         self.eval_ctx = eval_ctx
@@ -253,6 +351,7 @@ class EntityContext(object):
             # input_index == output_index, but it would be cleaner to simply
             # initialise output_index correctly
             return self.entity.input_index[period]
+
 
 
 def empty_context(length):

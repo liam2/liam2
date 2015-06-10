@@ -340,6 +340,7 @@ class Expr(object):
                                                     % (labels1, labels2))
 
         s = simple_expr.as_string()
+        #TODO: period should also be handled here instead of in EntityContext
         constants = {'nan': float('nan'), 'inf': float('inf')}
         res = evaluate(s, local_ctx, constants, truediv='auto')
         if isinstance(res, np.ndarray) and not res.shape:
