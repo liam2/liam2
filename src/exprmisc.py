@@ -293,6 +293,9 @@ class New(FilteredExpression):
                 child_context = context.subset(to_give_birth, used_variables,
                                                filter_expr)
             for k, v in kwargs.iteritems():
+                if k not in array.dtype.names:
+                    print("WARNING: {} is unknown, ignoring it!".format(k))
+                    continue
                 children[k] = expr_eval(v, child_context)
 
         add_individuals(target_context, children)

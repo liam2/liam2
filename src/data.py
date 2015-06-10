@@ -156,7 +156,7 @@ class ColumnArray(object):
             self.columns[name] = column[key]
 
     def append(self, array):
-        assert array.dtype == self.dtype
+        assert array.dtype == self.dtype, (array.dtype, self.dtype)
         # using gc.collect() after each column update frees a bit of memory
         # but slows things down significantly.
         for name, column in self.columns.iteritems():
