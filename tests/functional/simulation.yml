@@ -53,7 +53,6 @@ entities:
             - clone_id:     {type: int, initialdata: False}
             - weight:       {type: int, initialdata: False}
             - region_id:    {type: int, initialdata: False}
-            - maxnch:       {type: int, initialdata: False, output: False}
 
             # period and id are usually implicit, but we include them here
             # anyway for the sake of testing
@@ -93,7 +92,6 @@ entities:
 
                 # TODO: make this work
 #                - nch_macro: persons.count(ISCHILD)
-                - maxnch: max(nch)
 
             dump_csv_h:
                 - csv(dump())
@@ -176,6 +174,7 @@ entities:
             - float_field1: {type: float, initialdata: False}
             - int_field1:   {type: int, initialdata: False}
             - hybrid_test:  {type: int, initialdata: False}
+            - temp_global:  {type: int, initialdata: False, output: False}
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -437,10 +436,10 @@ entities:
 
                 # temporary global (single-expr process) => hybrid
                 # * manual call
-                - temp_global()
+                - hybrid_temp_global()
                 # * in agespine (tested before)
                 # * used in expr
-                - assertEqual(temp_global, age + 10)
+                - assertEqual(hybrid_temp_global, age + 10)
 
                 # stored + single-expr process => hybrid
                 # * manual call
@@ -629,11 +628,17 @@ entities:
                 - assertTrue(all(partner.partner.id == id,
                                  filter=partner_id != -1))
 
-            temp_global: age + 10
-            temp_global_modify:
-                - temp_global: temp_global * 2
-            temp_global_check:
-                - assertEqual(temp_global, (age + 10) * 2)
+            hybrid_temp_global: age + 10
+
+            set_hybrid_temp_global:
+                - hybrid_temp_global: hybrid_temp_global * 2
+            check_hybrid_temp_global:
+                - assertEqual(hybrid_temp_global, (age + 10) * 2)
+
+            set_temp_global:
+                - temp_global: age + 10
+            check_temp_global:
+                - assertEqual(temp_global, age + 10)
 
             test_expr:
                 - show("count:", count())
@@ -2466,11 +2471,15 @@ simulation:
                    test_remove,
 
                    # basic
-                   temp_global,
-                   temp_global_modify,
-                   temp_global_check,
+                   hybrid_temp_global,
+                   set_hybrid_temp_global,
+                   check_hybrid_temp_global,
+
+                   set_temp_global,
+                   check_temp_global,
 
 #                   test_issue120,
+
 
                    test_expr,
                    test_trunc,

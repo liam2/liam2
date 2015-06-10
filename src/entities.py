@@ -262,19 +262,20 @@ class Entity(object):
             # globally
             all_predictors = set(self.collect_predictors(processes))
 
-            stored_fields = set(self.fields.in_output.names)
+            field_names = set(self.fields.names)
 
-            # non-callable fields (no hybrid variable-function for them)
+            # normal fields (non-callable/no hybrid variable-function for them)
             variables = dict((name, Variable(self, name, type_))
                              for name, type_ in self.fields.name_types
-                             if name in stored_fields - process_names)
+                             if name in field_names - process_names)
+
             # callable fields (fields with a process of the same name)
             variables.update((name, VariableMethodHybrid(self, name, type_))
                              for name, type_ in self.fields.name_types
-                             if name in stored_fields & process_names)
-            # global temporaries (they are all callable)
+                             if name in field_names & process_names)
+            # global temporaries (they are all callable).
             variables.update((name, VariableMethodHybrid(self, name))
-                             for name in all_predictors - stored_fields)
+                             for name in all_predictors - field_names)
             variables.update(self.links)
             self._variables = variables
         return self._variables
