@@ -896,12 +896,11 @@ class Void(DataSource):
         output_indexes = output_file.create_group("/", "indexes", "Indexes")
         output_entities = output_file.create_group("/", "entities", "Entities")
         for entity in entities.itervalues():
-            dtype = np.dtype(entity.fields)
-            entity.array = ColumnArray.empty(0, dtype=dtype)
+            entity.array = ColumnArray.empty(0, dtype=entity.fields.dtype)
             entity.array_period = start_period
             entity.id_to_rownum = np.empty(0, dtype=int)
             output_table = output_file.create_table(
-                output_entities, entity.name, dtype,
+                output_entities, entity.name, entity.fields.in_output.dtype,
                 title="%s table" % entity.name)
 
             entity.input_table = None
