@@ -5,6 +5,8 @@ import argparse
 import os
 from os.path import splitext
 import platform
+import traceback
+import sys
 import warnings
 
 # this is needed for vitables and needs to happen BEFORE matplotlib is
@@ -29,13 +31,13 @@ __version__ = "0.10.0rc1"
 
 
 def showcontext_on_exceptions(func, *args, **kwargs):
-    try:
-        return func(*args, **kwargs)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
+    def print_exception_wh_context(ex_type, e, tb):
+        traceback.print_exception(ex_type, e, tb, file=sys.stderr)
         if hasattr(e, 'liam2context'):
             print(e.liam2context, file=sys.stderr)
+
+    sys.excepthook = print_exception_wh_context
+    return func(*args, **kwargs)
 
 
 def eat_traceback(func, *args, **kwargs):
@@ -306,8 +308,6 @@ def main():
 
 
 if __name__ == '__main__':
-    import sys
-
     sys.stdout = AutoFlushFile(sys.stdout)
     sys.stderr = AutoFlushFile(sys.stderr)
 
