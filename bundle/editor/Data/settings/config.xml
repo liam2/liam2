@@ -82,7 +82,6 @@
         <GUIConfig name="ScintillaGlobalSettings" enableMultiSelection="no" />
         <GUIConfig name="openSaveDir" value="0" defaultDirPath="" />
         <GUIConfig name="titleBar" short="no" />
-        <GUIConfig name="stylerTheme" path="C:\tmp\Liam2Suite\editor\App\Notepad++\stylers.xml" />
         <GUIConfig name="DockingManager" leftWidth="200" rightWidth="62" topHeight="200" bottomHeight="274">
             <PluginDlg pluginName="NppExec" id="-1" curr="3" prev="-1" isVisible="yes" />
             <PluginDlg pluginName="ComparePlugin.dll" id="9" curr="1" prev="-1" isVisible="no" />
