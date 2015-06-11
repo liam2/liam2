@@ -92,6 +92,9 @@ Miscellaneous improvements
 
 * reworked a few sections of the documentation.
 
+* trying to set a value to an unknown variable in new/clone produces a warning
+  instead of being silently ignored (or even crashing with --debug)
+
 Fixes
 -----
 
