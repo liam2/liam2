@@ -257,8 +257,8 @@ def rst2txt(s):
     >>> rst2txt(":ref:`matching() <matching>`")
     'matching()'
     >>> # \\n needs to be escaped because we are in a docstring
-    >>> rst2txt(":ref:`matching()\\n <matching>`")
-    'matching()\\n'
+    >>> rst2txt(":ref:`matching()\\n  <matching>`")
+    'matching()\\n  '
     >>> rst2txt(":PR:`123`")
     'pull request 123'
     >>> rst2txt(":pr:`123`")
@@ -270,7 +270,11 @@ def rst2txt(s):
     """
     s = s.replace("::", "")
     # DOTALL => . matches new lines
-    s = re.sub(":ref:`(.+) <.+>`", r"\1", s, flags=re.IGNORECASE | re.DOTALL)
+
+    # first replace :ref:s which span across two lines (we want to *keep* the
+    # blanks in those) then those on one line (where we kill the spaces
+    s = re.sub(":ref:`(.+ *[\n\r] *)<.+>`", r"\1", s, flags=re.IGNORECASE)
+    s = re.sub(":ref:`(.+) +<.+>`", r"\1", s, flags=re.IGNORECASE)
     s = re.sub(":pr:`(\d+)`", r"pull request \1", s, flags=re.IGNORECASE)
     return re.sub(":issue:`(\d+)`", r"issue \1", s, flags=re.IGNORECASE)
 
