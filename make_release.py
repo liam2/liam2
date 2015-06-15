@@ -269,10 +269,8 @@ def rst2txt(s):
     ''
     """
     s = s.replace("::", "")
-    # DOTALL => . matches new lines
-
     # first replace :ref:s which span across two lines (we want to *keep* the
-    # blanks in those) then those on one line (where we kill the spaces
+    # blanks in those) then those on one line (where we kill the spaces)
     s = re.sub(":ref:`(.+ *[\n\r] *)<.+>`", r"\1", s, flags=re.IGNORECASE)
     s = re.sub(":ref:`(.+) +<.+>`", r"\1", s, flags=re.IGNORECASE)
     s = re.sub(":pr:`(\d+)`", r"pull request \1", s, flags=re.IGNORECASE)
