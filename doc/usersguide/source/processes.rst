@@ -513,7 +513,8 @@ defaults to *True*.
 
 Returns True if all individuals who satisfy the optional condition2
 also satisfy condition1, False otherwise. Note that *all(condition1,
-filter=condition2)* is equivalent to *all(condition1 and condition2)*.
+filter=condition2)* is equivalent to *all((condition1 and condition2) or
+not condition2)*.
 
 .. index:: any
 
