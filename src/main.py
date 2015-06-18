@@ -30,16 +30,6 @@ from view import viewhdf
 __version__ = "0.10.0"
 
 
-def showcontext_on_exceptions(func, *args, **kwargs):
-    def print_exception_wh_context(ex_type, e, tb):
-        traceback.print_exception(ex_type, e, tb, file=sys.stderr)
-        if hasattr(e, 'liam2context'):
-            print(e.liam2context, file=sys.stderr)
-
-    sys.excepthook = print_exception_wh_context
-    return func(*args, **kwargs)
-
-
 def write_traceback(e):
     try:
         import traceback
@@ -63,23 +53,26 @@ def write_traceback(e):
     return None
 
 
-def eat_traceback(func, *args, **kwargs):
+def printerr(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
+def print_exception_wh_context(ex_type, e, tb):
+    traceback.print_exception(ex_type, e, tb, file=sys.stderr)
+    if hasattr(e, 'liam2context'):
+        printerr(e.liam2context)
+
+
+def print_exception_simplified(ex_type, e, tb):
     # e.context      | while parsing a block mapping
     # e.context_mark | in "import.yml", line 18, column 9
     # e.problem      | expected <block end>, but found '<block sequence start>'
     # e.problem_mark | in "import.yml", line 29, column 12
-    error_log_path = None
-    e = None
-    try:
-        try:
-            return func(*args, **kwargs)
-        except Exception, ex:
-            error_log_path = write_traceback(ex)
-            raise ex
-    except yaml.parser.ParserError, e:
+    error_log_path = write_traceback(e)
+    if isinstance(e, yaml.parser.ParserError):
         # eg, inconsistent spacing, no space after a - in a list, ...
-        print("SYNTAX ERROR {}".format(str(e.problem_mark).strip()))
-    except yaml.scanner.ScannerError, e:
+        printerr("SYNTAX ERROR {}".format(str(e.problem_mark).strip()))
+    elif isinstance(e, yaml.scanner.ScannerError):
         # eg, tabs, missing colon for mapping. The reported problem is
         # different when it happens on the first line (no context_mark) and
         # when it happens on a subsequent line.
@@ -96,37 +89,34 @@ def eat_traceback(func, *args, **kwargs):
             mark = e.problem_mark
         if msg:
             msg = ": " + msg
-        print("SYNTAX ERROR {}{}".format(str(mark).strip(), msg))
-    except yaml.reader.ReaderError, e:
+        printerr("SYNTAX ERROR {}{}".format(str(mark).strip(), msg))
+    elif isinstance(e, yaml.reader.ReaderError):
         if e.encoding == 'utf8':
-            print("\nERROR in '%s': invalid character found, this probably "
-                  "means you have used non ASCII characters (accents and "
-                  "other non-english characters) and did not save your file "
-                  "using the UTF8 encoding".format(e.name))
+            printerr("\nERROR in '{}': invalid character found, this probably "
+                     "means you have used non ASCII characters (accents and "
+                     "other non-english characters) and did not save your file "
+                     "using the UTF8 encoding".format(e.name))
         else:
-            raise
-    except SyntaxError, e:
-        print("SYNTAX ERROR:", e.msg.replace('EOF', 'end of block'))
+            printerr("\nERROR:", str(e))
+    elif isinstance(e, SyntaxError):
+        printerr("SYNTAX ERROR:", e.msg.replace('EOF', 'end of block'))
         if e.text is not None:
-            print(e.text)
+            printerr(e.text)
             offset_str = ' ' * (e.offset - 1) if e.offset > 0 else ''
-            print(offset_str + '^')
-    except Exception, e:
-        print("\nERROR:", str(e))
+            printerr(offset_str + '^')
+    else:
+        printerr("\nERROR:", str(e))
 
-    if e is not None:
-        if hasattr(e, 'liam2context'):
-            print(e.liam2context)
+    if hasattr(e, 'liam2context'):
+        printerr(e.liam2context)
 
-        if error_log_path is not None:
-            print()
-            print("the technical error log can be found at", error_log_path)
-
-        sys.exit(1)
+    if error_log_path is not None:
+        printerr()
+        printerr("the technical error log can be found at", error_log_path)
 
 
 def simulate(args):
-    print("Using simulation file: '%s'" % args.file)
+    print("Using simulation file: '%s'".format(args.file))
 
     simulation = Simulation.from_yaml(args.file,
                                       input_dir=args.input_path,
@@ -296,24 +286,24 @@ def main():
         # by default, DeprecationWarning and PendingDeprecationWarning, and
         # ImportWarning are ignored, this shows them.
         warnings.simplefilter('default')
-        wrapper = showcontext_on_exceptions
+        sys.excepthook = print_exception_wh_context
     else:
-        wrapper = eat_traceback
+        sys.excepthook = print_exception_simplified
 
     action = parsed_args.action
     if action == 'run':
-        args = simulate, parsed_args
+        func, args = simulate, (parsed_args,)
     elif action == "import":
-        args = csv2h5, parsed_args.file
+        func, args = csv2h5, (parsed_args.file,)
     elif action == "explore":
-        args = explore, parsed_args.file
+        func, args = explore, (parsed_args.file,)
     elif action == "upgrade":
-        args = upgrade, parsed_args.input, parsed_args.output
+        func, args = upgrade, (parsed_args.input, parsed_args.output)
     elif action == "view":
-        args = display, parsed_args.file
+        func, args = display, (parsed_args.file,)
     else:
         raise ValueError("invalid action: %s" % action)
-    wrapper(*args)
+    return func(*args)
 
 
 if __name__ == '__main__':
