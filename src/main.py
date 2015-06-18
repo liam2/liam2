@@ -40,6 +40,29 @@ def showcontext_on_exceptions(func, *args, **kwargs):
     return func(*args, **kwargs)
 
 
+def write_traceback(e):
+    try:
+        import traceback
+        # output_directory might not be set at this point yet and it is
+        # only set for run and explore commands but when it is not set
+        # its default value of "." is used and thus we get the "old"
+        # behaviour: error.log in the working directory
+        out_dir = config.output_directory
+        error_path = os.path.join(out_dir, 'error.log')
+        error_path = os.path.abspath(error_path)
+        with file(error_path, 'w') as f:
+            traceback.print_exc(file=f)
+            if hasattr(e, 'liam2context'):
+                f.write(e.liam2context)
+        return error_path
+    except IOError, log_ex:
+        print("WARNING: could not save technical error log (%s on '%s')"
+              % (log_ex.strerror, log_ex.filename))
+    except Exception, log_ex:
+        print(log_ex)
+    return None
+
+
 def eat_traceback(func, *args, **kwargs):
     # e.context      | while parsing a block mapping
     # e.context_mark | in "import.yml", line 18, column 9
@@ -50,30 +73,12 @@ def eat_traceback(func, *args, **kwargs):
     try:
         try:
             return func(*args, **kwargs)
-        except Exception, e:
-            try:
-                import traceback
-                # output_directory might not be set at this point yet and it is
-                # only set for run and explore commands but when it is not set
-                # its default value of "." is used and thus we get the "old"
-                # behaviour: error.log in the working directory
-                out_dir = config.output_directory
-                error_path = os.path.join(out_dir, 'error.log')
-                error_path = os.path.abspath(error_path)
-                with file(error_path, 'w') as f:
-                    traceback.print_exc(file=f)
-                    if hasattr(e, 'liam2context'):
-                        f.write(e.liam2context)
-                error_log_path = error_path
-            except IOError, log_ex:
-                print("WARNING: %s on '%s'" % (log_ex.strerror,
-                                               log_ex.filename))
-            except Exception, log_ex:
-                print(log_ex)
-            raise e
+        except Exception, ex:
+            error_log_path = write_traceback(ex)
+            raise ex
     except yaml.parser.ParserError, e:
         # eg, inconsistent spacing, no space after a - in a list, ...
-        print("SYNTAX ERROR %s" % str(e.problem_mark).strip())
+        print("SYNTAX ERROR {}".format(str(e.problem_mark).strip()))
     except yaml.scanner.ScannerError, e:
         # eg, tabs, missing colon for mapping. The reported problem is
         # different when it happens on the first line (no context_mark) and
@@ -91,13 +96,13 @@ def eat_traceback(func, *args, **kwargs):
             mark = e.problem_mark
         if msg:
             msg = ": " + msg
-        print("SYNTAX ERROR %s%s" % (str(mark).strip(), msg))
+        print("SYNTAX ERROR {}{}".format(str(mark).strip(), msg))
     except yaml.reader.ReaderError, e:
         if e.encoding == 'utf8':
             print("\nERROR in '%s': invalid character found, this probably "
                   "means you have used non ASCII characters (accents and "
                   "other non-english characters) and did not save your file "
-                  "using the UTF8 encoding" % e.name)
+                  "using the UTF8 encoding".format(e.name))
         else:
             raise
     except SyntaxError, e:
@@ -108,12 +113,16 @@ def eat_traceback(func, *args, **kwargs):
             print(offset_str + '^')
     except Exception, e:
         print("\nERROR:", str(e))
+
     if e is not None:
         if hasattr(e, 'liam2context'):
             print(e.liam2context)
-    if error_log_path is not None:
-        print()
-        print("the technical error log can be found at", error_log_path)
+
+        if error_log_path is not None:
+            print()
+            print("the technical error log can be found at", error_log_path)
+
+        sys.exit(1)
 
 
 def simulate(args):
