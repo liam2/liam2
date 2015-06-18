@@ -136,11 +136,16 @@ class Symbol(Node):
         self.name = name
 
     def to_ast(self, context):
+        name = self.name
         entity_context = context[context['__entity__']]
-        try:
-            return entity_context[self.name]
-        except KeyError:
-            return context['__globals__'][self.name]
+        globals_context = context['__globals__']
+
+        if name in entity_context:
+            return entity_context[name]
+        elif name in globals_context:
+            return globals_context[name]
+        else:
+            raise NameError("name '{}' is not defined".format(name))
 
     def __str__(self):
         return self.name
