@@ -46,8 +46,8 @@ def write_traceback(e):
                 f.write(e.liam2context)
         return error_path
     except IOError, log_ex:
-        print("WARNING: could not save technical error log (%s on '%s')"
-              % (log_ex.strerror, log_ex.filename))
+        print("WARNING: could not save technical error log "
+              "({} on '{}')".format(log_ex.strerror, log_ex.filename))
     except Exception, log_ex:
         print(log_ex)
     return None
@@ -116,7 +116,7 @@ def print_exception_simplified(ex_type, e, tb):
 
 
 def simulate(args):
-    print("Using simulation file: '%s'".format(args.file))
+    print("Using simulation file: '{}'".format(args.file))
 
     simulation = Simulation.from_yaml(args.file,
                                       input_dir=args.input_path,
@@ -136,7 +136,7 @@ def simulate(args):
 def explore(fpath):
     _, ext = splitext(fpath)
     ftype = 'data' if ext in ('.h5', '.hdf5') else 'simulation'
-    print("Using %s file: '%s'" % (ftype, fpath))
+    print("Using {} file: '{}'".format(ftype, fpath))
     if ftype == 'data':
         globals_def, entities = entities_from_h5(fpath)
         data_source = H5Data(None, fpath)
@@ -302,7 +302,7 @@ def main():
     elif action == "view":
         func, args = display, (parsed_args.file,)
     else:
-        raise ValueError("invalid action: %s" % action)
+        raise ValueError("invalid action: {}".format(action))
     return func(*args)
 
 
@@ -310,7 +310,7 @@ if __name__ == '__main__':
     sys.stdout = AutoFlushFile(sys.stdout)
     sys.stderr = AutoFlushFile(sys.stderr)
 
-    print("LIAM2 %s (%s)" % (__version__, platform.architecture()[0]))
+    print("LIAM2 {} ({})".format(__version__, platform.architecture()[0]))
     print()
 
     main()
