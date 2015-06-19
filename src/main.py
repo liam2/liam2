@@ -274,13 +274,12 @@ def main():
     parser_run.add_argument('-st', '--skiptimings', action='store_true',
                             help='do not log timings')
     parser_run.add_argument('-ll', '--loglevel',
-                            help='defines the logging level: '
-                                 'periods | functions (default) | processes')
+                            choices=['periods', 'functions', 'processes'],
+                            help='defines the logging level')
     parser_run.add_argument('--autodump', help='path of the autodump file')
     parser_run.add_argument('--autodiff', help='path of the autodiff file')
-    parser_run.add_argument('--assertions', help='determines behavior of '
-                                                 'assertions: raise (default) '
-                                                 '| warn | skip')
+    parser_run.add_argument('--assertions', choices=['raise', 'warn', 'skip'],
+                            help='determines behavior of assertions')
 
     # create the parser for the "import" command
     parser_import = subparsers.add_parser('import', help='import data')
