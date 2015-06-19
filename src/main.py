@@ -116,13 +116,22 @@ def print_exception_simplified(ex_type, e, tb):
 
 
 def simulate(args):
-    print("Using simulation file: '{}'".format(args.file))
+    print("Using simulation file: '{}'".format(args.fpath))
 
-    simulation = Simulation.from_yaml(args.file,
+    simulation = Simulation.from_yaml(args.fpath,
                                       input_dir=args.input_path,
                                       input_file=args.input_file,
                                       output_dir=args.output_path,
-                                      output_file=args.output_file)
+                                      output_file=args.output_file,
+                                      start_period=args.startperiod,
+                                      periods=args.periods, seed=args.seed,
+                                      skip_shows=args.skipshows,
+                                      skip_timings=args.skiptimings,
+                                      log_level=args.loglevel,
+                                      assertions=args.assertions,
+                                      autodump=args.autodump,
+                                      autodiff=args.autodiff)
+
     simulation.run(args.interactive)
 #    import cProfile as profile
 #    profile.runctx('simulation.run(args.interactive)', vars(), {},
@@ -249,10 +258,29 @@ def main():
 
     # create the parser for the "run" command
     parser_run = subparsers.add_parser('run', help='run a simulation')
-    parser_run.add_argument('file', help='simulation file')
+    parser_run.add_argument('fpath', help='simulation file')
     parser_run.add_argument('-i', '--interactive', action='store_true',
                             help='show the interactive console after the '
                                  'simulation')
+    parser_run.add_argument('-sp', '--startperiod', type=int,
+                            help='first period to simulate (integer)')
+    parser_run.add_argument('-p', '--periods', type=int,
+                            help='number of periods to simulate (integer)')
+    parser_run.add_argument('-s', '--seed', type=int,
+                            help='defines the starting point of the '
+                                 'pseudo-random generator (integer)')
+    parser_run.add_argument('-ss', '--skipshows', action='store_true',
+                            help='do not log shows')
+    parser_run.add_argument('-st', '--skiptimings', action='store_true',
+                            help='do not log timings')
+    parser_run.add_argument('-ll', '--loglevel',
+                            help='defines the logging level: '
+                                 'periods | functions (default) | processes')
+    parser_run.add_argument('--autodump', help='path of the autodump file')
+    parser_run.add_argument('--autodiff', help='path of the autodiff file')
+    parser_run.add_argument('--assertions', help='determines behavior of '
+                                                 'assertions: raise (default) '
+                                                 '| warn | skip')
 
     # create the parser for the "import" command
     parser_import = subparsers.add_parser('import', help='import data')
