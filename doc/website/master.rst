@@ -4,6 +4,7 @@ Sitemap
 .. toctree::
    :maxdepth: 1
 
+   2015/06/19/presentation_at_the_ima_conference_in_luxembourg
    2015/06/19/autumn_school_on_modelling_using_liam2_at_liser_luxembourg
    2015/06/15/version_0_10_released
    2015/04/14/version_0_9_1_1_released
