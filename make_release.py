@@ -311,25 +311,28 @@ def test_executable(relpath):
     test an executable with relative path *relpath*
     """
     print()
-    # we use --debug so that errorlevel is set
-    main_dbg = relpath + r'\main --debug '
-    echocall(main_dbg + r'run tests\functional\static.yml')
-    echocall(main_dbg + r'run tests\functional\generate.yml')
-    echocall(main_dbg + r'import tests\functional\import.yml')
-    echocall(main_dbg + r'run tests\functional\simulation.yml')
-    echocall(main_dbg + r'run tests\functional\variant.yml')
-    echocall(main_dbg + r'run tests\functional\matching.yml')
-    echocall(main_dbg + r'run tests\examples\demo01.yml')
-    echocall(main_dbg + r'import tests\examples\demo_import.yml')
-    echocall(main_dbg + r'run tests\examples\demo01.yml')
-    echocall(main_dbg + r'run tests\examples\demo02.yml')
-    echocall(main_dbg + r'run tests\examples\demo03.yml')
-    echocall(main_dbg + r'run tests\examples\demo04.yml')
-    echocall(main_dbg + r'run tests\examples\demo05.yml')
-    echocall(main_dbg + r'run tests\examples\demo06.yml')
-    echocall(main_dbg + r'run tests\examples\demo07.yml')
-    echocall(main_dbg + r'run tests\examples\demo08.yml')
-    echocall(main_dbg + r'run tests\examples\demo09.yml')
+    makedirs('testoutput')
+    outpath = abspath('testoutput')
+    runcmd = relpath + r'\main --output-path ' + outpath + ' run '
+    importcmd = relpath + r'\main import '
+    echocall(runcmd + r'tests\functional\static.yml')
+    echocall(runcmd + r'tests\functional\generate.yml')
+    echocall(importcmd + r'tests\functional\import.yml')
+    echocall(runcmd + r'tests\functional\simulation.yml')
+    echocall(runcmd + r'tests\functional\variant.yml')
+    echocall(runcmd + r'tests\functional\matching.yml')
+    echocall(runcmd + r'tests\examples\demo01.yml')
+    echocall(importcmd + r'tests\examples\demo_import.yml')
+    echocall(runcmd + r'tests\examples\demo01.yml')
+    echocall(runcmd + r'tests\examples\demo02.yml')
+    echocall(runcmd + r'tests\examples\demo03.yml')
+    echocall(runcmd + r'tests\examples\demo04.yml')
+    echocall(runcmd + r'tests\examples\demo05.yml')
+    echocall(runcmd + r'tests\examples\demo06.yml')
+    echocall(runcmd + r'tests\examples\demo07.yml')
+    echocall(runcmd + r'tests\examples\demo08.yml')
+    echocall(runcmd + r'tests\examples\demo09.yml')
+    rmtree('testoutput')
 
 
 def create_source_archive(release_name, rev):
@@ -495,7 +498,7 @@ def build_exe(context):
 def test_executables(context):
     chdir(context['build_dir'])
 
-    if not context['test_release']:
+    if not context.get('test_release', True):
         return
 
     for arch in ('win32', 'win-amd64'):
