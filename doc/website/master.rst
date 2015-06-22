@@ -30,5 +30,5 @@ Sitemap
    morepages/microsimulation
    pages/about
    pages/download
-   pages/contact
    pages/documentation
+   pages/contact
