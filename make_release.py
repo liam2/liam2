@@ -1,7 +1,10 @@
 #!/usr/bin/python
-# coding=utf-8
+# coding: utf-8
 # Release script for LIAM2
 # Licence: GPLv3
+# Requires:
+# * git, pscp and outlook in PATH
+# * all tools used for building the doc & exe in PATH
 from __future__ import print_function
 
 import errno
@@ -11,6 +14,7 @@ import re
 import stat
 import subprocess
 import sys
+# import tempfile
 import urllib
 import zipfile
 
@@ -22,7 +26,8 @@ from subprocess import check_output, STDOUT, CalledProcessError
 
 WEBSITE = 'liam2.plan.be'
 TMP_PATH = r"c:\tmp\liam2_new_release"
-
+# not using tempfile.mkdtemp to be able to resume an aborted release
+# TMP_PATH = os.path.join(tempfile.gettempdir(), "liam2_new_release")
 
 # TODO:
 # - different announce message for pre-releases
