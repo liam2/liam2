@@ -132,7 +132,7 @@ class Console(object):
             entity = self.get_entity(ent_name)
             if entity is None:
                 return
-        print("fields:", ', '.join(name for name, _ in entity.fields))
+        print("fields:", ', '.join(entity.fields.names))
 
     def list_globals(self):
         print("globals:")
