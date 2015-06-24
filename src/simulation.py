@@ -548,7 +548,10 @@ class Simulation(object):
 #                show_top_expr()
 
             if run_console:
-                console_ctx = eval_ctx.clone(entity_name=self.default_entity)
+                ent_name = self.default_entity
+                if ent_name is None and len(eval_ctx.entities) == 1:
+                    ent_name = eval_ctx.entities.keys()[0]
+                console_ctx = eval_ctx.clone(entity_name=ent_name)
                 c = console.Console(console_ctx)
                 c.run()
 
