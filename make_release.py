@@ -757,7 +757,7 @@ steps_funcs = [
 ]
 
 
-def make_release(release_name='dev', branch='master', steps=':'):
+def make_release(release_name='dev', steps=':', branch='master'):
     func_names = [f.__name__ for f, desc in steps_funcs]
     if ':' in steps:
         start, stop = steps.split(':')
@@ -798,7 +798,7 @@ def make_release(release_name='dev', branch='master', steps=':'):
 if __name__ == '__main__':
     argv = sys.argv
     if len(argv) < 2:
-        print("Usage: %s release_name|dev [branch] [step|startstep:stopstep]"
+        print("Usage: %s release_name|dev [step|startstep:stopstep] [branch]"
               % argv[0])
         print("steps:", ', '.join(f.__name__ for f, _ in steps_funcs))
         sys.exit()
