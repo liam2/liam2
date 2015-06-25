@@ -21,7 +21,7 @@ import zipfile
 
 from datetime import date
 from os import chdir, makedirs
-from os.path import exists, getsize, abspath, dirname
+from os.path import exists, abspath, dirname
 from shutil import copytree, copy2, rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
 
@@ -234,19 +234,6 @@ def isprerelease(release_name):
     return pretag_pos(release_name) is not None
 
 
-def send_outlook(to, subject, body):
-    subprocess.call('outlook /c ipm.note /m "%s&subject=%s&body=%s"'
-                    % (to, urllib.quote(subject), urllib.quote(body)))
-
-
-def send_thunderbird(to, subject, body):
-    # preselectid='id1' selects the first "identity" for the "from" field
-    # We do not use our usual call because the command returns an exit status
-    # of 1 (failure) instead of 0, even if it works, so we simply ignore
-    # the failure.
-    subprocess.call("thunderbird -compose \"preselectid='id1',"
-                    "to='%s',subject='%s',body='%s'\"" % (to, subject, body))
-
 # -------------------- #
 # end of generic tools #
 # -------------------- #
@@ -292,12 +279,6 @@ def release_changes(context):
     directory = r"doc\usersguide\source\changes"
     fname = relname2fname(context['release_name'])
     with open(os.path.join(context['build_dir'], directory, fname)) as f:
-        return f.read().decode('utf-8-sig')
-
-
-def release_highlights(context):
-    fname = relname2fname(context['release_name'])
-    with open(os.path.join(context['webbuild_dir'], "highlights", fname)) as f:
         return f.read().decode('utf-8-sig')
 
 
@@ -406,7 +387,7 @@ def check_local_repo(context):
     # releasing from the local clone has the advantage I can prepare the
     # release offline and only push and upload it when I get back online
     branch, release_name = context['branch'], context['release_name']
-    repository, rev = context['main_repo'], context['rev']
+    repository, rev = context['repository'], context['rev']
 
     s = "Using local repository at: %s !" % repository
     print("\n", s, "\n", "=" * len(s), "\n", sep='')
@@ -450,8 +431,10 @@ def create_tmp_directory(context):
     makedirs(tmp_dir)
 
 
-def clone_repositories(context):
+def clone_repository(context):
     chdir(context['tmp_dir'])
+    print("context")
+    print(context)
 
     # make a temporary clone in /tmp. The goal is to make sure we do not
     # include extra/unversioned files. For the -src archive, I don't think
@@ -464,10 +447,8 @@ def clone_repositories(context):
     # "working copy clone" (eg ~/devel/liam2) then to GitHub from there. The
     # alternative to modify the "working copy clone" directly is worse because
     # it needs more complicated path handling that the 2 push approach.
-    do('Cloning main repo', call,
-       'git clone -b %s %s build' % (context['branch'], context['main_repo']))
-    do('Cloning website repo',
-       call, 'git clone -b master %s webbuild' % context['web_repo'])
+    do('Cloning repository', call,
+       'git clone -b {branch} {repository} build'.format(**context))
 
 
 def check_clone(context):
@@ -485,11 +466,6 @@ def check_clone(context):
         # check release changes
         print(release_changes(context))
         if no('Does the release changelog look right?'):
-            exit(1)
-
-        # check release highlights
-        print(release_highlights(context))
-        if no('Does the release highlights look right?'):
             exit(1)
 
 
@@ -566,61 +542,14 @@ def create_archives(context):
     check_bundle_archives(release_name)
 
 
-def build_website(context):
-    chdir(context['tmp_dir'])
-
-    if not context['public_release']:
-        return
-
-    release_name = context['release_name']
-
-    # XXX: should we announce pre-release on the website?
-    if isprerelease(release_name):
-        return
-
-    fnames = ["LIAM2Suite-{}-win32.zip", "LIAM2Suite-{}-win64.zip",
-              "LIAM2-{}-src.zip"]
-    fpaths = [fname.format(release_name) for fname in fnames]
-    s32b, s64b, ssrc = [size2str(getsize(fpath)) for fpath in fpaths]
-
-    chdir(context['webbuild_dir'])
-
-    generate(r'conf.py', version=short(release_name))
-    generate(r'pages\download.rst',
-             version=release_name, short_version=short(release_name),
-             size32b=s32b, size64b=s64b, sizesrc=ssrc)
-    generate(r'pages\documentation.rst',
-             version=release_name, short_version=short(release_name))
-
-    title = 'Version %s released' % short(release_name)
-    # strip is important otherwise fname contains a \n and git chokes on it
-    fname = call('tinker --filename --post "%s"' % title).strip()
-
-    call('buildall.bat')
-
-    call('start ' + abspath(r'blog\html\index.html'), shell=True)
-    call('start ' + abspath(r'blog\html\pages\download.html'), shell=True)
-    call('start ' + abspath(r'blog\html\pages\documentation.html'), shell=True)
-
-    if no('Does the website look good?'):
-        exit(1)
-
-    call('git add master.rst')
-    call('git add %s' % fname)
-    call('git commit -m "announce version %s on website"' % short(release_name))
-
-    copytree(r'blog\html', r'..\website')
-
-
 def final_confirmation(context):
     if not context['public_release']:
         return
 
     msg = """Is the release looking good? If so, the tag will be created and
-pushed, everything will be uploaded to the production server and the release
-will be announced. Stuff to watch out for:
+pushed, everything will be uploaded to the production server. Stuff to watch
+out for:
 * version numbers (executable & doc first page & changelog)
-* website
 * ...
 """
     if no(msg):
@@ -632,8 +561,9 @@ def tag_release(context):
 
     if not context['public_release']:
         return
-    relname = context['release_name']
-    call('git tag -a {name} -m "tag release {name}"'.format(name=relname))
+
+    release_name = context['release_name']
+    call('git tag -a {name} -m "tag release {name}"'.format(name=release_name))
 
 
 def upload(context):
@@ -653,74 +583,25 @@ def upload(context):
     chdir('webdoc')
     subprocess.call(r'pscp -r %s %s/documentation' % (short(release_name),
                                                       base_url))
-    chdir('..')
-
-    # 3) website
-    if not isprerelease(release_name):
-        chdir('website')
-        subprocess.call(r'pscp -r * %s' % base_url)
-        chdir('..')
-
 
 def pull(context):
     if not context['public_release']:
         return
 
-    # pull the website commits
-    chdir(context['web_repo'])
-    do('Pulling changes in {}'.format(context['web_repo']),
-       call, 'git pull --ff-only --tags {} master'.format(context['web_dir']))
-
     # pull the changelog commits to the branch (usually master)
     # and the release tag (which refers to the last commit)
-    chdir(context['main_repo'])
-    do('Pulling changes in {}'.format(context['main_repo']),
-       call, 'git pull --ff-only --tags {} {}'.format(context['build_dir'],
-                                                      context['branch']))
+    chdir(context['repository'])
+    do('Pulling changes in {repository}'.format(**context),
+       call, 'git pull --ff-only --tags {build_dir} {branch}'.format(**context))
 
 
 def push(context):
     if not context['public_release']:
         return
 
-    chdir(context['web_repo'])
-    do('Pushing website changes to GitHub', call, 'git push origin master')
-
-    chdir(context['main_repo'])
+    chdir(context['repository'])
     do('Pushing main repository changes to GitHub',
-       call, 'git push origin {} --follow-tags'.format(context['branch']))
-
-
-def announce(context):
-    chdir(context['build_dir'])
-
-    if not context['public_release']:
-        return
-
-    release_name = context['release_name']
-
-    # ideally we should use the html output of the rst file, but this is simpler
-    changes = rst2txt(release_changes(context))
-    body = """\
-I am pleased to announce that version %s of LIAM2 is now available.
-
-%s
-
-More details and the complete list of changes are available below.
-
-This new release can be downloaded on our website:
-http://liam2.plan.be/pages/download.html
-
-As always, *any* feedback is very welcome, preferably on the liam2-users
-mailing list: liam2-users@googlegroups.com (you need to register to be
-able to post).
-
-%s
-""" % (short(release_name), release_highlights(context), changes)
-
-    send_outlook('liam2-announce@googlegroups.com',
-                 'Version {} released'.format(short(release_name)),
-                 body)
+       call, 'git push origin {branch} --follow-tags'.format(**context))
 
 
 def cleanup(context):
@@ -736,14 +617,13 @@ def cleanup(context):
 steps_funcs = [
     (check_local_repo, ''),
     (create_tmp_directory, ''),
-    (clone_repositories, ''),
+    (clone_repository, ''),
     (check_clone, ''),
     (build_exe, 'Building executables'),
     (test_executables, 'Testing executables'),
     (update_changelog, 'Updating changelog'),
     (build_doc, 'Building doc'),
     (create_archives, 'Creating archives'),
-    (build_website, 'Building website'),
     (final_confirmation, ''),
     (tag_release, 'Tagging release'),
     # We used to push from /tmp to the local repository but you cannot push
@@ -759,7 +639,6 @@ steps_funcs = [
     # >>> need internet from here
     (push, ''),
     (upload, 'Uploading'),
-    (announce, 'Announcing'),
     (cleanup, 'Cleaning up')
 ]
 
@@ -785,19 +664,17 @@ def make_release(release_name='dev', steps=':', branch='master'):
 
         release_name = long_release_name(release_name)
 
-    main_repo = abspath(dirname(__file__))
-    web_repo = abspath(os.path.join(main_repo, '..', 'liam2-website'))
-    rev = git_remote_last_rev(main_repo, 'refs/heads/%s' % branch)
+    repository = abspath(dirname(__file__))
+    rev = git_remote_last_rev(repository, 'refs/heads/%s' % branch)
     public_release = release_name != 'dev'
     if not public_release:
         # take first 7 digits of commit hash
         release_name = rev[:7]
 
     context = {'branch': branch, 'release_name': release_name, 'rev': rev,
-               'main_repo': main_repo, 'web_repo': web_repo,
+               'repository': repository,
                'tmp_dir': TMP_PATH,
                'build_dir': os.path.join(TMP_PATH, 'build'),
-               'webbuild_dir': os.path.join(TMP_PATH, 'webbuild'),
                'public_release': public_release}
     for step_func, step_desc in steps_funcs[start:stop]:
         if step_desc:

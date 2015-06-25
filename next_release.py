@@ -6,16 +6,10 @@ from os.path import join
 from make_release import relname2fname, short, long_release_name
 from shutil import copy
 
-website_directory = r'..\liam2-website'
 
 def add_release(release_name):
     release_name = long_release_name(release_name)
     fname = relname2fname(release_name)
-
-    # create "empty" highlights for that release
-    highlights_dir = website_directory + r'\highlights'
-    copy(join(highlights_dir, 'template.rst.inc'),
-         join(highlights_dir, fname))
 
     # create "empty" changelog for that release
     changes_dir = r'doc\usersguide\source\changes'
