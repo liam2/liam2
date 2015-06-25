@@ -1,1 +1,0 @@
-This is a minor mostly bug fix release.

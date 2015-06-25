@@ -5,6 +5,7 @@
 # Requires:
 # * git, pscp and outlook in PATH
 # * all tools used for building the doc & exe in PATH
+# * website directory in ../liam2-website
 from __future__ import print_function
 
 import errno
@@ -287,15 +288,16 @@ def relname2fname(release_name):
     return r"version_%s.rst.inc" % short_version.replace('.', '_')
 
 
-def release_changes(release_name):
+def release_changes(context):
     directory = r"doc\usersguide\source\changes"
-    with open(os.path.join(directory, relname2fname(release_name))) as f:
+    fname = relname2fname(context['release_name'])
+    with open(os.path.join(context['build_dir'], directory, fname)) as f:
         return f.read().decode('utf-8-sig')
 
 
-def release_highlights(release_name):
-    directory = r"doc\website\highlights"
-    with open(os.path.join(directory, relname2fname(release_name))) as f:
+def release_highlights(context):
+    fname = relname2fname(context['release_name'])
+    with open(os.path.join(context['webbuild_dir'], "highlights", fname)) as f:
         return f.read().decode('utf-8-sig')
 
 
@@ -404,7 +406,7 @@ def check_local_repo(context):
     # releasing from the local clone has the advantage I can prepare the
     # release offline and only push and upload it when I get back online
     branch, release_name = context['branch'], context['release_name']
-    repository, rev = context['repository'], context['rev']
+    repository, rev = context['main_repo'], context['rev']
 
     s = "Using local repository at: %s !" % repository
     print("\n", s, "\n", "=" * len(s), "\n", sep='')
@@ -448,10 +450,8 @@ def create_tmp_directory(context):
     makedirs(tmp_dir)
 
 
-def clone_repository(context):
+def clone_repositories(context):
     chdir(context['tmp_dir'])
-
-    branch, repository = context['branch'], context['repository']
 
     # make a temporary clone in /tmp. The goal is to make sure we do not
     # include extra/unversioned files. For the -src archive, I don't think
@@ -464,7 +464,10 @@ def clone_repository(context):
     # "working copy clone" (eg ~/devel/liam2) then to GitHub from there. The
     # alternative to modify the "working copy clone" directly is worse because
     # it needs more complicated path handling that the 2 push approach.
-    do('Cloning', call, 'git clone -b %s %s build' % (branch, repository))
+    do('Cloning main repo', call,
+       'git clone -b %s %s build' % (context['branch'], context['main_repo']))
+    do('Cloning website repo',
+       call, 'git clone -b master %s webbuild' % context['web_repo'])
 
 
 def check_clone(context):
@@ -480,12 +483,12 @@ def check_clone(context):
 
     if context['public_release']:
         # check release changes
-        print(release_changes(context['release_name']))
+        print(release_changes(context))
         if no('Does the release changelog look right?'):
             exit(1)
 
         # check release highlights
-        print(release_highlights(context['release_name']))
+        print(release_highlights(context))
         if no('Does the release highlights look right?'):
             exit(1)
 
@@ -564,7 +567,7 @@ def create_archives(context):
 
 
 def build_website(context):
-    chdir(context['build_dir'])
+    chdir(context['tmp_dir'])
 
     if not context['public_release']:
         return
@@ -577,11 +580,10 @@ def build_website(context):
 
     fnames = ["LIAM2Suite-{}-win32.zip", "LIAM2Suite-{}-win64.zip",
               "LIAM2-{}-src.zip"]
-    fpaths = [os.path.join('..', fname.format(release_name))
-              for fname in fnames]
+    fpaths = [fname.format(release_name) for fname in fnames]
     s32b, s64b, ssrc = [size2str(getsize(fpath)) for fpath in fpaths]
 
-    chdir(r'doc\website')
+    chdir(context['webbuild_dir'])
 
     generate(r'conf.py', version=short(release_name))
     generate(r'pages\download.rst',
@@ -607,7 +609,7 @@ def build_website(context):
     call('git add %s' % fname)
     call('git commit -m "announce version %s on website"' % short(release_name))
 
-    copytree(r'blog\html', r'..\..\..\website')
+    copytree(r'blog\html', r'..\website')
 
 
 def final_confirmation(context):
@@ -630,9 +632,8 @@ def tag_release(context):
 
     if not context['public_release']:
         return
-
-    call('git tag -a %(name)s -m "tag release %(name)s"'
-         % {'name': context['release_name']})
+    relname = context['release_name']
+    call('git tag -a {name} -m "tag release {name}"'.format(name=relname))
 
 
 def upload(context):
@@ -662,25 +663,31 @@ def upload(context):
 
 
 def pull(context):
-    chdir(context['repository'])
-
     if not context['public_release']:
         return
 
-    # pull the website & changelog commits to the branch (usually master)
+    # pull the website commits
+    chdir(context['web_repo'])
+    do('Pulling changes in {}'.format(context['web_repo']),
+       call, 'git pull --ff-only --tags {} master'.format(context['web_dir']))
+
+    # pull the changelog commits to the branch (usually master)
     # and the release tag (which refers to the last commit)
-    do('Pulling changes in {}'.format(context['repository']),
+    chdir(context['main_repo'])
+    do('Pulling changes in {}'.format(context['main_repo']),
        call, 'git pull --ff-only --tags {} {}'.format(context['build_dir'],
                                                       context['branch']))
 
 
 def push(context):
-    chdir(context['repository'])
-
     if not context['public_release']:
         return
 
-    do('Pushing to GitHub',
+    chdir(context['web_repo'])
+    do('Pushing website changes to GitHub', call, 'git push origin master')
+
+    chdir(context['main_repo'])
+    do('Pushing main repository changes to GitHub',
        call, 'git push origin {} --follow-tags'.format(context['branch']))
 
 
@@ -693,7 +700,7 @@ def announce(context):
     release_name = context['release_name']
 
     # ideally we should use the html output of the rst file, but this is simpler
-    changes = rst2txt(release_changes(release_name))
+    changes = rst2txt(release_changes(context))
     body = """\
 I am pleased to announce that version %s of LIAM2 is now available.
 
@@ -709,7 +716,7 @@ mailing list: liam2-users@googlegroups.com (you need to register to be
 able to post).
 
 %s
-""" % (short(release_name), release_highlights(release_name), changes)
+""" % (short(release_name), release_highlights(context), changes)
 
     send_outlook('liam2-announce@googlegroups.com',
                  'Version {} released'.format(short(release_name)),
@@ -729,7 +736,7 @@ def cleanup(context):
 steps_funcs = [
     (check_local_repo, ''),
     (create_tmp_directory, ''),
-    (clone_repository, ''),
+    (clone_repositories, ''),
     (check_clone, ''),
     (build_exe, 'Building executables'),
     (test_executables, 'Testing executables'),
@@ -778,16 +785,19 @@ def make_release(release_name='dev', steps=':', branch='master'):
 
         release_name = long_release_name(release_name)
 
-    repository = abspath(dirname(__file__))
-    rev = git_remote_last_rev(repository, 'refs/heads/%s' % branch)
+    main_repo = abspath(dirname(__file__))
+    web_repo = abspath(os.path.join(main_repo, '..', 'liam2-website'))
+    rev = git_remote_last_rev(main_repo, 'refs/heads/%s' % branch)
     public_release = release_name != 'dev'
     if not public_release:
         # take first 7 digits of commit hash
         release_name = rev[:7]
 
     context = {'branch': branch, 'release_name': release_name, 'rev': rev,
-               'repository': repository, 'tmp_dir': TMP_PATH,
+               'main_repo': main_repo, 'web_repo': web_repo,
+               'tmp_dir': TMP_PATH,
                'build_dir': os.path.join(TMP_PATH, 'build'),
+               'webbuild_dir': os.path.join(TMP_PATH, 'webbuild'),
                'public_release': public_release}
     for step_func, step_desc in steps_funcs[start:stop]:
         if step_desc:

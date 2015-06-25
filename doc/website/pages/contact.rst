@@ -1,4 +1,0 @@
-Contact
-=======
-
-.. include:: ../../../CONTACT.rst
