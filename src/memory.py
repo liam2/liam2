@@ -6,7 +6,11 @@ from types import BuiltinFunctionType, FunctionType
 
 from utils import prod
 
-
+# TODO: instrumenting all numpy "memory allocating functions" in numpy seems
+# like a nice goal, but too ambitious and fragile. Having a fixed (maximum) size
+# for the cache is a lot easier.
+# see http://matthewrocklin.com/blog/work/2015/01/16/Towards-OOC-SpillToDisk/
+# and https://pythonhosted.org/joblib/memory.html
 class Manager(object):
     def __init__(self, cache):
         self.cache = cache
@@ -31,7 +35,7 @@ class Manager(object):
         return decorated
 
     def free(self, nbytes):
-        print("mem is full, puring %d elements from cache" % len(self.cache))
+        print("mem is full, purging %d elements from cache" % len(self.cache))
         self.cache.clear()
 
 

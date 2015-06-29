@@ -1,6 +1,9 @@
 from __future__ import print_function
 
 
+#XXX: we might want to have a different cache per entity and period
+#XXX: we also might want to maintain a "reverse" dict:
+#     variable -> expr_in_cache
 class Cache(dict):
     def invalidate(self, period, entity_name, variable=None):
         """
