@@ -10,9 +10,12 @@ from os.path import join
 from itertools import chain
 # from distutils.extension import Extension
 #  from cx_Freeze import setup, Executable
-from setuptools import setup
+from setuptools import setup, find_packages
 from setuptools.extension import Extension
-from Cython.Distutils import build_ext
+try:
+    from Cython.Distutils import build_ext
+except ImportError:
+    build_ext = None
 import numpy as np
 
 
@@ -77,17 +80,20 @@ def int_version(release_name):
 
 # Add the output directory of cython build_ext to sys.path so that build_exe
 # finds and copies C extensions
-class MyBuildExt(build_ext):
-    def finalize_options(self):
-        build_ext.finalize_options(self)
-        sys.path.insert(0, self.build_lib)
 
 
-ext_modules = [Extension("cpartition", ["cpartition.pyx"],
-                         include_dirs=[np.get_include()]),
-               Extension("cutils", ["cutils.pyx"],
-                         include_dirs=[np.get_include()])]
-build_ext_options = {}
+if build_ext is not None:
+    class MyBuildExt(build_ext):
+        def finalize_options(self):
+            build_ext.finalize_options(self)
+            sys.path.insert(0, self.build_lib)
+
+
+    ext_modules = [Extension("cpartition", ["cpartition.pyx"],
+                             include_dirs=[np.get_include()]),
+                   Extension("cutils", ["cutils.pyx"],
+                             include_dirs=[np.get_include()])]
+    build_ext_options = {}
 
 
 #===================#
@@ -139,13 +145,16 @@ build_exe_options = {
 # main stuff #
 #============#
 
-setup(name="liam2",
-      # cx_freeze wants only ints and dots
-      version=int_version('0.9.1.1'),
-      description="LIAM2",
-      cmdclass={"build_ext": MyBuildExt},
-      ext_modules=ext_modules,
-      options={"build_ext": build_ext_options, "build_exe": build_exe_options},
-      # executables=[Executable("main.py")],
-      requires=['numpy', 'numexpr', 'tables', 'bcolz'])
+setup(
+    name="liam2",
+    # cx_freeze wants only ints and dots
+    version=int_version('0.9.1.1'),
+    description="LIAM2",
+    #      cmdclass={"build_ext": MyBuildExt},
+    #      ext_modules=ext_modules,
+    #      options={"build_ext": build_ext_options, "build_exe": build_exe_options},
+    # executables=[Executable("main.py")],
+    requires=['numpy', 'numexpr', 'tables', 'bcolz'],
+    packages = find_packages(),
+    )
 # also recommends 'matplotlib' and 'vitables'

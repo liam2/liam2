@@ -43,9 +43,6 @@ def kill_axis(axis_name, value, expressions, possible_values, need, periodicity)
             if value < 9999:
                 value = value * 100 + 1
             is_wanted_value_period = (axis_values / 100) == (value / 100)
-            print(
-                "is_wanted_value_period \n {} \n".format(is_wanted_value_period)
-                )
             periodicity_axis = 12 / len(is_wanted_value_period.nonzero()[0])
             value_idx_period = is_wanted_value_period.nonzero()[0]
 
