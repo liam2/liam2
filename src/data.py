@@ -44,6 +44,10 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
 
 class ColumnArray(object):
     def __init__(self, array=None):
+        """
+        :param array: a ColumnArray, a (structured) ndarray or a list of arrays
+        :return:
+        """
         columns = {}
         if array is not None:
             if isinstance(array, (np.ndarray, ColumnArray)):
@@ -85,6 +89,7 @@ class ColumnArray(object):
             else:
                 # expand scalars (like ndarray does) so that we don't have to
                 # check isinstance(x, ndarray) and x.shape everywhere
+                #FIXME: we shouldn't do this
                 column = np.empty(len(self), dtype=gettype(value))
                 column.fill(value)
 
@@ -146,6 +151,9 @@ class ColumnArray(object):
         else:
             return 0
 
+    def subset(self, fnames):
+        return ColumnArray([self.columns[name] for name in fnames])
+
     def keep(self, key):
         """key can be either a vector of int indices or boolean filter"""
 
@@ -172,6 +180,8 @@ class ColumnArray(object):
         ca.dtype = dtype
         return ca
 
+    #TODO: add fields argument to only load/store some fields instead of
+    # using add_and_drop_fields after the fact
     @classmethod
     def from_table(cls, table, start=0, stop=None, buffersize=10 * 2 ** 20):
         # reading a table one column at a time is very slow, this is why this
@@ -200,6 +210,8 @@ class ColumnArray(object):
             numlines -= buffer_rows
         return ca
 
+    #TODO: add fields argument to only load/store some fields instead of
+    # using add_and_drop_fields after the fact
     @classmethod
     def from_table_coords(cls, table, indices, buffersize=10 * 2 ** 20):
         dtype = table.dtype
@@ -665,6 +677,151 @@ class IndexedTable(object):
     @property
     def base_period(self):
         return min(self.period_index.keys())
+
+
+class HistoricalArray(object):
+    """
+    arrays which saves history (on disk for this particular implementation)
+    """
+    def __init__(self, table, array, array_period, period_index,
+                 id2rownum_per_period):
+        self.table = table
+        # combines entity.array and entity.temp_variables (and extra?)
+
+        # the potential problem is that I think I must use the fact that a
+        # field is stored in the array to know whether it is temporary or not
+
+        # extra cleared in Process.run_guarded (before .run). I would have to
+        #  keep track somewhere else of which field is temporary/extra
+
+        self.array = array
+        self.array_lag = None
+        self.array_period = array_period
+        self.period_index = period_index
+        self.id2rownum_per_period = id2rownum_per_period
+
+    def get_period(self, period, fields):
+        #XXX: if "period" in fields, add it to the result?
+        if period == self.array_period:
+            return self.array.subset(fields)
+        elif period == self.array_period - 1 and self.array_lag is not None:
+            return self.array_lag.subset(fields)
+        else:
+            start, stop = self.period_index[period]
+            #XXX: we might want to wrap the result in a ColumnArray to get a
+            # nicer interface
+            return {self.table.read(start=start, stop=stop, field=field)
+                    for field in fields}
+
+    def delete_fields(self, fields):
+        for field in fields:
+            del self[field]
+
+    def append_period(self, period):
+        if period in self.period_index:
+            raise Exception("trying to modify already simulated rows")
+
+        startrow = self.table.nrows
+        self.array.append_to_table(self.table)
+        self.period_index[period] = (startrow, self.table.nrows)
+        self.flush_index(period)
+        self.table.flush()
+
+    def add_individuals(self):
+        pass
+
+    def remove_individuals(self):
+        pass
+
+    # if I want to hide id_to_rownum, I need either:
+    # either
+    def eval_expr(self, expr, ids):
+        # not very fond of this option because I'd rather keep this class as a
+        # "simple" container
+        pass
+
+    # OR
+    def get_period(self, period, fields, ids):
+        # the problem with this option is that this will need to allocate new
+        # mem & copy lots of data for the subset arrays, which eval_expr
+        # option could potentially avoid (and that we currently mostly avoid
+        # in the case of links for example by computing the expr on the whole
+        # entity array, not the subset of linked ids and only sub-setting the
+        # result
+        pass
+
+    def flush_index(self, period):
+        # keep an in-memory copy of the index for the current period
+        self.id2rownum_per_period[period] = self.id_to_rownum
+
+        # also flush it to disk
+        h5file = self.output_index_node._v_file
+        h5file.create_array(self.output_index_node, "_%d" % period,
+                            self.id_to_rownum, "Period %d index" % period)
+
+        # if an old index exists (this is not the case for the first period!),
+        # point to the one on the disk, instead of the one in memory,
+        # effectively clearing the one in memory
+        idxname = '_%d' % (period - 1)
+        if idxname in self.output_index_node:
+            prev_disk_array = getattr(self.output_index_node, idxname)
+            # DiskBackedArray is a workaround for pytables#360 (see above)
+            self.id2rownum_per_period[period - 1] = DiskBackedArray(prev_disk_array)
+
+    # def __setitem__(self, key, value):
+    #     self.array[key] = value
+    #
+    # def __delitem__(self, key):
+    #     del self.array[key]
+    #
+    # def __contains__(self, key):
+    #     # array always contains at least the keys of the others
+    #     return key in self.array
+    #
+    # def keys(self, extra=True):
+    #     return self.array.keys()
+    #
+    # def get(self, key, elsevalue=None):
+    #     try:
+    #         return self[key]
+    #     except KeyError:
+    #         return elsevalue
+    #
+    # def copy(self):
+    #     return HybridArray(self.entity, self.extra.copy())
+    #
+    # def length(self):
+    #     if self.is_array_period:
+    #         return len(self.entity.array)
+    #     else:
+    #         period = self.eval_ctx.period
+    #         bounds = self.entity.output_rows.get(period)
+    #         if bounds is not None:
+    #             startrow, stoprow = bounds
+    #             return stoprow - startrow
+    #         else:
+    #             return 0
+    #
+    # def __len__(self):
+    #     return self.length()
+    #
+    # def list_periods(self):
+    #     return self.entity.output_index.keys()
+    #
+    # @property
+    # def id_to_rownum(self):
+    #     period = self.eval_ctx.period
+    #     if self.is_array_period:
+    #         return self.entity.id_to_rownum
+    #     elif period in self.entity.output_index:
+    #         return self.entity.output_index[period]
+    #     else:
+    #         #FIXME: yes, it's true, that if period is not in output_index, it
+    #         # probably means that we are before start_period and in that case,
+    #         # input_index == output_index, but it would be cleaner to simply
+    #         # initialise output_index correctly
+    #         return self.entity.input_index[period]
+
 
 
 class DataSet(object):
