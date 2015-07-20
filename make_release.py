@@ -289,8 +289,8 @@ def update_versions(release_name):
     # version in archive I do with make_release: OK
 
     # doc\usersguide\source\conf.py
-    # src\setup.py
-    # src\main.py
+    # liam2\setup.py
+    # liam2\main.py
     pass
 
 
