@@ -1,13 +1,22 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from __future__ import print_function
 
 import os
+import platform
 import sys
 import fnmatch
 from os.path import join
 from itertools import chain
-from distutils.extension import Extension
+if platform.system() != 'Linux':
+    from distutils.extension import Extension
+    from cx_Freeze import setup, Executable
+else:
+    print('Coucou')
+    from setuptools import setup
+    from setuptools.extension import Extension
 
-from cx_Freeze import setup, Executable
 from Cython.Distutils import build_ext
 import numpy as np
 
@@ -79,9 +88,9 @@ class MyBuildExt(build_ext):
         sys.path.insert(0, self.build_lib)
 
 
-ext_modules = [Extension("cpartition", ["cpartition.pyx"],
+ext_modules = [Extension("cpartition", ["liam2/cpartition.pyx"],
                          include_dirs=[np.get_include()]),
-               Extension("cutils", ["cutils.pyx"],
+               Extension("cutils", ["liam2/cutils.pyx"],
                          include_dirs=[np.get_include()])]
 build_ext_options = {}
 
@@ -134,19 +143,34 @@ build_exe_options = {
 # ========== #
 # main stuff #
 # ========== #
-
-setup(name="liam2",
-      # cx_freeze wants only ints and dots
-      version=int_version('0.10.2'),
-      description="LIAM2",
-      cmdclass={"build_ext": MyBuildExt},
-      ext_modules=ext_modules,
-      options={"build_ext": build_ext_options, "build_exe": build_exe_options},
-      executables=[Executable("main.py")],
-      install_requires=['numpy', 'numexpr', 'tables'],
-      extras_require=dict(
-          interpolation=['bcolz'],
-          plot=['matplotlib'],
-          view=['vitables'],
-          ),
-      )
+if platform.system() != 'Linux':
+    setup(name="liam2",
+          # cx_freeze wants only ints and dots
+          version=int_version('0.10.2'),
+          description="LIAM2",
+          cmdclass={"build_ext": MyBuildExt},
+          ext_modules=ext_modules,
+          options={"build_ext": build_ext_options, "build_exe": build_exe_options},
+          executables=[Executable("main.py")],
+          install_requires=['numpy', 'numexpr', 'tables'],
+          extras_require=dict(
+              interpolation=['bcolz'],
+              plot=['matplotlib'],
+              view=['vitables'],
+              ),
+          )
+else:
+    setup(name="liam2",
+          # cx_freeze wants only ints and dots
+          version=int_version('0.10.2'),
+          description="LIAM2",
+          cmdclass={"build_ext": MyBuildExt},
+          ext_modules=ext_modules,
+          options={"build_ext": build_ext_options, "build_exe": build_exe_options},
+          install_requires=['numpy', 'numexpr', 'tables'],
+          extras_require=dict(
+              interpolation=['bcolz'],
+              plot=['matplotlib'],
+              view=['vitables'],
+              ),
+          )

@@ -4,11 +4,15 @@
 .project
 *.pyc
 *.pyd
+*.so
+*.o
+*.egg-info
 doc/usersguide/build/
 src/build
 src/*.c
 liam2/build
 liam2/*.c
+build
 tests/functional/error.log
 tests/functional/person_*.csv
 tests/functional/*.h5

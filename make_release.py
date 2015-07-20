@@ -584,6 +584,7 @@ def upload(context):
     subprocess.call(r'pscp -r %s %s/documentation' % (short(release_name),
                                                       base_url))
 
+
 def pull(context):
     if not context['public_release']:
         return
