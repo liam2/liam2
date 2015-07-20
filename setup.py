@@ -13,7 +13,6 @@ if platform.system() != 'Linux':
     from distutils.extension import Extension
     from cx_Freeze import setup, Executable
 else:
-    print('Coucou')
     from setuptools import setup
     from setuptools.extension import Extension
 
