@@ -9,8 +9,6 @@
 *.egg-info
 .spyderproject
 doc/usersguide/build/
-src/build
-src/*.c
 liam2/build
 liam2/*.c
 build
