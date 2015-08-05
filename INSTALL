@@ -134,7 +134,7 @@ Install the required dependencies:
 
   apt-get install python2.7 python-numpy python-tables python-numexpr python-yaml
 
-Eventually install the optional dependencies:
+You can also install the optional dependencies:
 - to view hdf5 files via vitables
   apt-get install python-vitables
 - to generate plots and charts: matplotlib
