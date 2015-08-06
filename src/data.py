@@ -734,7 +734,6 @@ class HistoricalArray(object):
         pass
 
     # if I want to hide id_to_rownum, I need either:
-    # either
     def eval_expr(self, expr, ids):
         # not very fond of this option because I'd rather keep this class as a
         # "simple" container
@@ -749,6 +748,26 @@ class HistoricalArray(object):
         # entity array, not the subset of linked ids and only sub-setting the
         # result
         pass
+
+    # AND/OR
+    def get_rows(self, ids):
+        # this is less elegant and does not free users from fiddling with row
+        # numbers, but at least it abstracts away id2rownum
+        # this is the closest to what I have currently. I don't think we can
+        # avoid it entirely (see test_expr.py Q: is it even possible...?)
+        pass
+
+    # for matching & tfunc
+    # == a superset of TimeFunction.fill_missing_values?
+    # for efficiency (eg in duration), I should implement expand on several
+    # arrays at once
+    # so that source_rows = id2rownum[ids] do not need to be computed several
+    # times
+    def expand(self, array, ids, filler='auto'):
+        """
+        expands an array subset (for the given ids) to the full size of the
+        array
+        """
 
     def flush_index(self, period):
         # keep an in-memory copy of the index for the current period

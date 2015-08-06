@@ -155,6 +155,11 @@ class TestLink(StringExprTestCase):
 
 # Q: is it even possible to hide id_to_rownum in the implementation?
 # A: for align_link, it seems hard to do. Can't tell if it is possible or not
+the row numbers returned from it, are used as indices into fcols_labels, which
+are vectors which are not part of the table/data/whatever but that we just
+computed. So we could jump through hoops to make it work (by working with ids\
+all the way and add those fcols_labels temporarily to "the array" and \
+        dereference that id (to a row))
 
 # * for fill_missing_values, I need MyArray[ids] = values
 #    OR do I want to keep normal indexing? In that case MyArray.set(ids, values)
