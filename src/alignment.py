@@ -402,7 +402,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                                 "dimension of the need array (%d)"
                                 % (secondary_axis, need.ndim))
 
-        # evaluate columns
+        # evaluate expressions/columns used for grouping (the dimensions)
         target_columns = [expr_eval(e, target_context) for e in expressions]
         # this is a one2many, so the link column is on the target side
         link_column = target_context[link._link_field]
@@ -427,8 +427,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
             filtered_columns = target_columns
             target_filter_value = None
 
-        # compute labels for filtered columns
-        # -----------------------------------
+        # compute labels (index in the possible values) for filtered columns
+        # ------------------------------------------------------------------
         # We can't use _group_labels_light because group_labels assigns labels
         # on a first come, first served basis, not using the order they are
         # in pvalues

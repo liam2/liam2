@@ -8,6 +8,17 @@ import numpy as np
 #noinspection PyNoneFunctionAssignment
 def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
                   secondary_axis=None):
+    """
+    :param scores: array of scores to sort the candidates (eg households)
+    :param need:
+    :param num_candidates:
+    :param hh: array of lists of indices (row numbers) of the "other entity"
+     eg an array with a list of person rows per hh
+    :param fcols_labels: list of arrays of ints (indices in possible values)
+    for each grouping dimension (filtered!)
+    :param secondary_axis:
+    :return:
+    """
     # need and num_candidates are LabeledArray, but we don't need the extra
     # functionality from this point on
     need = np.asarray(need)
@@ -50,6 +61,8 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
         if num_persons_in_hh == 0:
             continue
 
+        # compute "factored labels" for persons in the hh. These can be used
+        # directly to index the nd arrays (rel_need, overfilled_bins, ...)
         persons_in_hh = tuple(np.empty(num_persons_in_hh, dtype=int)
                               for _ in col_range)
         prange = list(range(num_persons_in_hh))
