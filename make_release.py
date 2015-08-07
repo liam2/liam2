@@ -289,8 +289,8 @@ def update_versions(release_name):
     # version in archive I do with make_release: OK
 
     # doc\usersguide\source\conf.py
-    # src\setup.py
-    # src\main.py
+    # liam2\setup.py
+    # liam2\main.py
     pass
 
 
@@ -583,6 +583,7 @@ def upload(context):
     chdir('webdoc')
     subprocess.call(r'pscp -r %s %s/documentation' % (short(release_name),
                                                       base_url))
+
 
 def pull(context):
     if not context['public_release']:

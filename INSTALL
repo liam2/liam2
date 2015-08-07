@@ -20,7 +20,7 @@ Required dependencies:
 - PyTables 2.2.1 or later - http://www.pytables.org
 - Numexpr 2.0 or later - https://github.com/pydata/numexpr
 - PyYAML 3.0.8 or later - http://pyyaml.org
- 
+
 Optional dependencies:
 - to view hdf5 files: vitables 2.1 - http://vitables.org
   It requires PyQt4 - http://www.riverbankcomputing.com/software/pyqt/download
@@ -99,7 +99,7 @@ Additionally, if you want to get maximum performance, you will also need to
 build the C extensions. This is optional but recommended.
 
 For that you need to have cython (see above) and a C compiler installed, then
-go to the src/ directory of LIAM2 and type:
+go to the root directory of LIAM2 and type:
 
   python setup.py build_ext --inplace
 
@@ -112,16 +112,43 @@ Building the documentation
 0) make sure both PYTHONDIR and PYTHONDIR\Scripts is in your system PATH
    where PYTHONDIR is the directory where you installed Python
 
-1) Install sphinx 
+1) Install sphinx
 2) Open a command prompt
 3) Go to the documentation directory. For example:
- 
+
   cd liam2\doc\usersguide\
 
-3) Launch the build: 
+3) Launch the build:
 
   make html
 
 4) Open the result in your favourite web browser. It is located in:
-  
+
   build/html/index.html
+
+
+Installing on the GNU/linux debian distribution
+-----------------------------------------------
+
+Install the required dependencies:
+
+  apt-get install python2.7 python-numpy python-tables python-numexpr python-yaml
+
+You can also install the optional dependencies:
+- to view hdf5 files via vitables
+  apt-get install python-vitables
+- to generate plots and charts: matplotlib
+  apt-get install python-matplotlib python-dateutil python-pyparsing
+- to build the C extensions (see above):
+  apt-get install cython
+- to build the documentation to html (other formats need additional packages):
+  apt-get install python-sphinx
+- to import data with interpolation/data with missing data points (eg several time series with different dates for the same individual):
+  bcolz 0.7 or later - https://github.com/Blosc/bcolz
+
+Install liam2 package as a simple user
+  cd liam2
+  pip install -e . --user
+  or as root
+  cd liam2
+  pip install -e .
