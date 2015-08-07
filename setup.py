@@ -10,15 +10,16 @@ import fnmatch
 from os.path import join
 from itertools import chain
 
-try:
-    from cx_Freeze import Executable  # setup
-except ImportError:
-    Executable = None
 
 from setuptools import setup
 from setuptools.extension import Extension
 from Cython.Distutils import build_ext
 import numpy as np
+
+try:
+    from cx_Freeze import Executable, setup
+except ImportError:
+    Executable = None
 
 
 # ============= #
@@ -76,16 +77,27 @@ def int_version(release_name):
     return release_name
 
 
+# ============ #
+# main options #
+# ============ #
+
+optional_kwargs = {}
+
+
 # ============== #
 # cython options #
 # ============== #
 
-# Add the output directory of cython build_ext to sys.path so that build_exe
-# finds and copies C extensions
+# Add the output directory of cython build_ext to cxfreeze search path so that
+# build_exe finds and copies C extensions
 class MyBuildExt(build_ext):
     def finalize_options(self):
         build_ext.finalize_options(self)
-        sys.path.insert(0, self.build_lib)
+
+        # need to be done in-place, otherwise build_exe_options['path'] will use
+        # the unmodified version because it is computed before build_ext is
+        # called
+        cxfreeze_searchpath.insert(0, self.build_lib)
 
 
 ext_modules = [Extension("cpartition", ["liam2/cpartition.pyx"],
@@ -112,40 +124,49 @@ def vitables_data_files():
     return [(fname, join('vitables', fname[len(module_path) + 1:]))
             for fname in files]
 
-build_exe_options = {
-    # compress zip archive
-    "compressed": True,
+if Executable is not None:
+    cxfreeze_searchpath = sys.path + ['liam2']
 
-    # optimize pyc files (strip docstrings and asserts)
-    "optimize": 2,
+    build_exe_options = {
+        # path to find Python modules (we could have modified sys.path but this
+        # is a bit cleaner)
+        "path": cxfreeze_searchpath,
 
-    # strip paths in __file__ attributes
-    "replace_paths": [("*", "")],
+        # compress zip archive
+        "compressed": True,
 
-    "includes": ["matplotlib.backends.backend_qt4agg"],
-    "packages": ["vitables.plugins"],
-    # matplotlib => calendar, distutils, unicodedata
-    # matplotlib.backends.backend_tkagg => Tkconstants, Tkinter
-    # Qt .ui file loading (for PyTables) => logging, xml
-    # ctypes, io are required now
-    "excludes": [
-        # linux-specific modules
-        "_codecs", "_codecs_cn", "_codecs_hk", "_codecs_iso2022", "_codecs_jp",
-        "_codecs_kr", "_codecs_tw",
+        # optimize pyc files (strip docstrings and asserts)
+        "optimize": 2,
 
-        # common modules
-        "Tkconstants", "Tkinter", "scipy", "tcl"
-    ],
-    'include_files': vitables_data_files(),
-}
+        # strip paths in __file__ attributes
+        "replace_paths": [("*", "")],
+
+        "includes": ["matplotlib.backends.backend_qt4agg"],
+        "packages": ["vitables.plugins"],
+        # matplotlib => calendar, distutils, unicodedata
+        # matplotlib.backends.backend_tkagg => Tkconstants, Tkinter
+        # Qt .ui file loading (for PyTables) => logging, xml
+        # ctypes, io are required now
+        "excludes": [
+            # linux-specific modules
+            "_codecs", "_codecs_cn", "_codecs_hk", "_codecs_iso2022", "_codecs_jp",
+            "_codecs_kr", "_codecs_tw",
+
+            # common modules
+            "Tkconstants", "Tkinter", "scipy", "tcl"
+        ],
+        'include_files': vitables_data_files(),
+    }
+
+    if Executable is not None:
+        optional_kwargs['executables'] = [Executable("liam2/main.py")]
+else:
+    build_exe_options = {}
 
 
 # ========== #
 # main stuff #
 # ========== #
-other_kwargs = dict()
-if Executable is not None:
-    other_kwargs['executables'] = [Executable("main.py")]
 
 setup(
     name="liam2",
@@ -161,5 +182,5 @@ setup(
         plot=['matplotlib'],
         view=['vitables'],
         ),
-    **other_kwargs
-    )
+    **optional_kwargs
+)
