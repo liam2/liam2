@@ -8,7 +8,7 @@ entities:
             - imported_field1: {type: int, initialdata: False}
 
         macros:
-            IMPORTED_MACRO: imported_field1 == 1 
+            IMPORTED_MACRO: imported_field1 == 1
             ISCHILD: age < 17
 
         processes:
@@ -30,5 +30,4 @@ simulation:
 
     # not overridden (present in neither imported2.yml nor simulation.yml)
     input:
-        file: simulation.h5
-    
+        file: small.h5
