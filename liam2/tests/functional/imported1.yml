@@ -30,5 +30,5 @@ simulation:
 
     # not overridden (present in neither imported2.yml nor simulation.yml)
     input:
-        file: small.h5
+        file: simulation.h5
     
