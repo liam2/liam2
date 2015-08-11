@@ -18,9 +18,9 @@ def run_simulation(yaml_file, input_dir, output_dir):
             output_dir = output_dir,
             )
         simulation.run(False)
-    except Exception as e:
-        print(e)
-        assert False, '{} failed'.format(yaml_file)
+    except Exception:
+        print('{} failed'.format(yaml_file))
+        raise
 
 
 def test_liam2_examples_files():
