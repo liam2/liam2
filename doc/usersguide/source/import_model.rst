@@ -33,7 +33,7 @@ as long as the combined model is valid. See the examples below.
       person:
           fields:
               - age:      int
-              - agegroup: {type: int, initialdata: false}
+              - agegroup: {type: int, initialdata: False}
   
           processes:
               ageing: 
@@ -46,9 +46,9 @@ as long as the combined model is valid. See the examples below.
   
       # we do not specify output so this model is not valid in itself
       input:
-          file: simple2001.h5
+          file: input.h5
   
-      start_period: 2002
+      start_period: 2015
       periods: 2
                                   
 *example* (variant1.yml) ::
@@ -77,21 +77,25 @@ as long as the combined model is valid. See the examples below.
   entities:
       person:
           fields:
-              # adding a new field
-              - dead: {type: bool, initialdata: false}
+              - severe_illness: {type: bool, initialdata: False}
   
           processes:
-              # adding a new process
+              # adding new processes
+              illness:
+                  - severe_illness: uniform() < 0.001
+
               death:
-                  - dead: logit_regr(0.0, align='al_p_dead.csv')
+                  - dead: logit_regr(0.5 * severe_illness,
+                                     align='al_p_dead.csv')
                   - show('Avg age of death', avg(age, filter=dead))
                   - remove(dead)
   
   simulation:
-      # since we have a new process, we have to override the *entire* process
-      # list, as LIAM2 would not know where to insert the new process otherwise.
+      # since we have new processes, we have to override the *entire* process
+      # list, as LIAM2 would not know where to insert the new processes
+      # otherwise.
       processes:
-          - person: [ageing, death]
+          - person: [ageing, illness, death]
   
       output:
           file: variant2.h5
@@ -106,7 +110,7 @@ variant3.yml.
   entities:
       person:
           processes:
-              # use the "alternate" ageing procedure
+              # use the "alternate" ageing function
               ageing:
                   - age: age + 1
                   - agegroup: if(age < 50,

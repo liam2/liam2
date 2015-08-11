@@ -1,12 +1,11 @@
 # This is a LIAM2 simulation file. This example adds a few processes to the
 # 'person' entity that we defined in the first demonstration model and
-# introduces the following functions: if, trunc, csv, dump, show, groupby
-# and bar.
+# introduces the following built-in functions: if, trunc, csv, dump, show,
+# groupby and bar.
 
 # Before you run it (with F6) please note that when a chart window is open,
 # the simulation is paused. In other words, you need to close the chart window
-# to resume the simulation ! At the end of this file you will find a few
-# exercises you could try your hand on...
+# to resume the simulation !
 entities:
     person:
         fields:
@@ -15,33 +14,35 @@ entities:
             - gender: bool
 
             # fields which are not present in the input dataset need to be
-            # declared with "initialdata: false"
-            - agegroup: {type: int, initialdata: false}
+            # declared with "initialdata: False"
+            - agegroup: {type: int, initialdata: False}
 
         # possible transitions and regressions
         processes:
-            age: age + 1
+            ageing:
+                - age: age + 1
 
-            # Now we want to compute the 'agegroup' variable.
-            # The 'if' function produces one of two different results
-            # depending on the value of a condition. It has the following
-            # signature:
-            # if(condition_expression, expression_if_true, expression_if_false)
-            # The 'trunc' function converts a floating point value to an
-            # integer by dropping the decimal part.
-            agegroup: if(age < 50,
-                         5 * trunc(age / 5),
-                         10 * trunc(age / 10))
+                # Now we want to compute the 'agegroup' variable.
+                # The 'if' function produces one of two different results
+                # depending on the value of a condition. It has the following
+                # signature:
+                # if(condition_expression, expression_if_true, expression_if_false)
+                # The 'trunc' function converts a floating point value to an
+                # integer by dropping the decimal part.
+                - agegroup: if(age < 50,
+                               5 * trunc(age / 5),
+                               10 * trunc(age / 10))
 
-            # The "dump_info" process will produces 2 csv files (one per
+            # The "dump_info" function will produces 2 csv files (one per
             # period): "person_2002.csv" and "person_2003.csv". It does so by
             # combining the 'csv' and 'dump' functions. The 'dump' function
             # creates an (in-memory) table with all the columns (or expressions)
             # in its arguments. The 'csv' function can write any value
             # (including tables) to a .csv file.
-            dump_info: csv(dump(id, age, gender))
+            dump_info:
+                - csv(dump(id, age, gender))
 
-            # The "show_demography" process will, for each period, display in
+            # The "show_demography" function will, for each period, display in
             # the simulation log how many persons there are per agegroup and
             # gender. It does so by combining the 'show' and 'groupby'
             # functions. 'groupby' is a versatile function (see the
@@ -51,7 +52,8 @@ entities:
             # group and creates an in-memory table out of that. The 'show'
             # function can write any value (including tables) to the
             # simulation log.
-            show_demography: show(groupby(agegroup, gender))
+            show_demography:
+                - show(groupby(agegroup, gender))
 
             # Finally, in the "chart_demography" process, we reuse the same
             # groupby expression but this time display it as a bar chart. LIAM2
@@ -61,11 +63,12 @@ entities:
             # Note that, by default, the simulation is paused while the chart
             # window is open. So you need to **close the window** to continue
             # the simulation !
-            chart_demography: bar(groupby(agegroup, gender))
+            chart_demography:
+                - bar(groupby(agegroup, gender))
 
 simulation:
     processes:
-        - person: [age, agegroup, dump_info, show_demography, chart_demography]
+        - person: [ageing, dump_info, show_demography, chart_demography]
 
     input:
         file: simple2001.h5

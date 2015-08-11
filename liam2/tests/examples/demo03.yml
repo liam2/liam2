@@ -4,21 +4,21 @@
 
 # This example builds upon the first two and introduces a few additional
 # features: a second entity, links and one of their associated methods
-# (linkname.count()), procedures with local variables, an init procedure, the
-# choice function and a few new arguments to functions we have already seen.
+# (linkname.count()), local variables in user-defined functions, an init
+# function, the choice function and a few new arguments to built-in functions
+# we have already seen.
 entities:
     household:
         fields:
             # period and id are implicit
-            - nb_persons:  {type: int, initialdata: false}
-            - nb_children: {type: int, initialdata: false}
-            - region_id:   {type: int, initialdata: false}
+            - nb_persons:  {type: int, initialdata: False}
+            - nb_children: {type: int, initialdata: False}
+            - region_id:   {type: int, initialdata: False}
 
         links:
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
-            # init_region_id is a procedure (it contains another process)
             init_region_id:
                 # region_id is set randomly, with a 10% probability to be 0,
                 # a 20% probability to be 1, etc.
@@ -42,7 +42,7 @@ entities:
             - hh_id:      int
 
             # fields not present in input
-            - agegroup: {type: int, initialdata: false}
+            - agegroup: {type: int, initialdata: False}
 
         links:
             # we define here all the links between individuals of the same
@@ -59,10 +59,10 @@ entities:
                 - age: age + 1
 
                 # juniors and plus50 are *local* variables. This means they are
-                # only usable within the ageing procedure. As we have seen
-                # in the first example, the agegroup process below could just
-                # as well be written using a single process (without using
-                # local variables).
+                # only usable within the ageing function. As we have seen in the
+                # first example, the agegroup process below could just as well
+                # be written using a single process (without using local
+                # variables).
                 - juniors: 5 * trunc(age / 5)
                 - plus50: 10 * trunc(age / 10)
                 - agegroup: if(age < 50, juniors, plus50)
@@ -73,22 +73,25 @@ entities:
             #   "linkname.variable_name"
             # * the suffix argument can be used to customize the name of the
             #   csv file. It uses this pattern: <entity>_<period>_<suffix>.csv
-            dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
-                                mother.age), suffix='info')
+            dump_info:
+                - csv(dump(id, age, gender, hh_id, household.nb_persons,
+                           mother.age), suffix='info')
 
             # * groupby can also be saved to a csv file
             # * you can customize the filename more precisely (than with
             #   'suffix') by using the 'fname' argument, with the optional
             #   {entity} and {period} keywords. They are respectively replaced
             #   by the name of the entity and the current period
-            csv_demography: csv(groupby(agegroup, gender),
-                                fname='demography_{period}.csv')
+            csv_demography:
+                - csv(groupby(agegroup, gender),
+                      fname='demography_{period}.csv')
             
             # * charts can be saved to files instead of being displayed
             #   interactively. The 'fname' and 'suffix' arguments of csv() also
             #   apply to all charting functions.
-            chart_demography: bar(groupby(agegroup, gender),
-                                  fname='demography_{period}.png')
+            chart_demography:
+                - bar(groupby(agegroup, gender),
+                      fname='demography_{period}.png')
 
 simulation:
     # the processes listed in this section are only executed once in
@@ -107,4 +110,3 @@ simulation:
 
     start_period: 2002
     periods: 2
-

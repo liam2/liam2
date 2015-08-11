@@ -5,7 +5,7 @@ import:
 globals:
     periodic:
         path: param\globals.csv
-        transposed: true
+        transposed: True
         fields:
             # PERIOD is implicit
 
@@ -67,9 +67,9 @@ entities:
             init_region:
                 - region_id: choice([0, 1, 2], [0.55, 0.35, 0.10])
 
-            setweight: 
+            setweight:
                 - weight: randint(2, 32)
-               
+
             expand:
                 - last_non_clone_id: max(id)
                 - toclone: weight > 1
@@ -80,27 +80,27 @@ entities:
                              if(is_clone,
                                 trunc(weight / 2),
                                 1))
-            
+
             check:
                 - show('min/max weight:', min(weight), max(weight))
                 - show('total population:', sum(persons.count()),
                        '/ expanded:', sum(weight * persons.count()))
 
-            num_persons: persons.count()
-            nch: persons.count(age <= 18)
+            composition:
+                - num_persons: persons.count()
+                - nch: persons.count(age <= 18)
 
-            #TODO: make this work
-            #nch_macro: persons.count(ISCHILD)
+                # TODO: make this work
+#                - nch_macro: persons.count(ISCHILD)
 
-            maxnch: max(nch)
-            dump_csv_h: csv(dump())
-            aligned: False
+            dump_csv_h:
+                - csv(dump())
 
             test_align_link:
                 - num_persons: persons.count()
-                # kill empty households 
+                # kill empty households
                 - remove(num_persons == 0)
-                
+
                 - total_population: sum(num_persons)
                 - show("total:", count(), "households /",
                                  total_population, "persons")
@@ -116,7 +116,7 @@ entities:
 
                 # Distribute total desired migrants, by age and sex
                 - need: num_migrants * mig_period
-                
+
                 # sanity check
                 - assertTrue(abs(need.sum() - num_migrants) < 1e-4)
 
@@ -174,6 +174,7 @@ entities:
             - float_field1: {type: float, initialdata: False}
             - int_field1:   {type: int, initialdata: False}
             - hybrid_test:  {type: int, initialdata: False}
+            - temp_global:  {type: int, initialdata: False, output: False}
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -201,7 +202,8 @@ entities:
         # possible transitions & regressions. The actual list used in the
         # simulation must be defined below
         processes:
-            bp: breakpoint(2002)
+            bp:
+                - breakpoint(2002)
 
             expand:
                 - last_non_clone_id: max(id)
@@ -216,93 +218,134 @@ entities:
                 - partner_id: if(is_clone, partner.clone_id, partner_id)
 
             test_proc:
-                # same name than in the caller procedure, but should be local
+                # same name than in the caller function, but should be local
                 - temp_var: age * 1
                 - local_var: temp_var * 2
                 - assertEqual(local_var, age * 2)
                 # update global variable
                 - int_field1: age + 1
 
-            # should raise a warning because it does not make sense
-            func_only_args:
-                args: a, b
+            # should raise a warning because it does not make sense (but it
+            # is not supported by new syntax)
+#            func_only_args_oldsyntax:
+#                args: a, b
 
-            func_only_code:
-                code:
-                    # same name than in the caller procedure, but should be local
-                    - temp_var: age
-                    - local_var: temp_var * 2
-                    - assertEqual(local_var, age * 2)
-                    # update global variable
-                    - int_field1: age + 1
+#            func_only_code_oldsyntax:
+#                code:
+#                    # same name than in the caller function, but should be
+#                    # local
+#                    - temp_var: age
+#                    - local_var: temp_var * 2
+#                    - assertEqual(local_var, age * 2)
+#                    # update global variable
+#                    - int_field1: age + 1
 
-            func_only_return:
-                return: age + 1
+            func_only_code():
+                # same name than in the caller function, but should be local
+                - temp_var: age
+                - local_var: temp_var * 2
+                - assertEqual(local_var, age * 2)
+                # update global variable
+                - int_field1: age + 1
 
-            func_no_args:
-                code:
-                    # same name than in the caller procedure, but should be local
-                    - temp_var: age
-                    - local_var: temp_var * 2
-                return: local_var * 2
+#            func_only_return_oldsyntax:
+#                return: age + 1
 
-            func_no_code:
-                args: a, b
-                return: a + b
+            func_only_return():
+                - return age + 1
 
-            func_no_return:
-                args: a, b
-                code:
-                    # same name than in the caller procedure, but should be local
-                    - temp_var: age * 1
-                    - local_var: temp_var * 2
-                    - assertEqual(local_var, age * 2)
-                    # update global variable
-                    - int_field1: age + 1
+#            func_no_args_oldsyntax:
+#                code:
+#                    # same name than in the caller function, but should be
+#                    # local
+#                    - temp_var: age
+#                    - local_var: temp_var * 2
+#                return: local_var * 2
 
-            func_args_code_result:
-                args: a, b
-                code:
-                    - result: a + b
-                    - result: result * 2
-                return: result * 2
+            func_no_args():
+                # same name than in the caller function, but should be local
+                - temp_var: age
+                - local_var: temp_var * 2
+                - return local_var * 2
 
-            func_args_conflict_fields:
-                args: age
-                code:
-                    - qshow(age)
+#            func_no_code_oldsyntax:
+#                args: a, b
+#                return: a + b
+
+            func_no_code(a, b):
+                - return a + b
+
+#            func_no_return_oldsyntax:
+#                args: a, b
+#                code:
+#                    # same name than in the caller function, but should be
+#                    # local
+#                    - temp_var: age * 1
+#                    - local_var: temp_var * 2
+#                    - assertEqual(local_var, age * 2)
+#                    # update global variable
+#                    - int_field1: age + 1
+
+            func_no_return(a, b):
+                # same name than in the caller function, but should be local
+                - temp_var: age * 1
+                - local_var: temp_var * 2
+                - assertEqual(local_var, age * 2)
+                # update global variable
+                - int_field1: age + 1
+
+#            func_args_code_result_oldsyntax:
+#                args: a, b
+#                code:
+#                    - result: a + b
+#                    - result: result * 2
+#                return: result * 2
+
+            func_args_code_result(a, b):
+                - result: a + b
+                - result: result * 2
+                - return result * 2
+
+            func_args_conflict_fields(age):
+                - qshow(age)
 
             # issue 119: function arguments not available in interactive console
-            issue119callee:
-                args: arg
-                code:
-                    - localarg: arg
-                    # function arguments are not available in the interactive
-                    # console, but local variables work fine:
-                    # >>> arg
-                    # name 'arg' is not defined
-                    # >>> localarg
-                    # 1.0
-                    - show("type 'arg' and see if it is defined")
-                    - breakpoint()
+            issue119callee(arg):
+                - localarg: arg
+                # function arguments are not available in the interactive
+                # console, but local variables work fine:
+                # >>> arg
+                # name 'arg' is not defined
+                # >>> localarg
+                # 1.0
+                - show("type 'arg' and see if it is defined")
+                - breakpoint()
 
             # this is an awful hack since we do not have an if control flow
             # keyword yet
-            factorial:
-                args: n
-                code:
-                    - r: 0
-                    - while:
-                        cond: n > 1
-                        code:
-                            - r: n * factorial(n - 1)
-                            - n: 0
-                    - while:
-                        cond: n == 1
-                        code:
-                            - r: 1
-                            - n: 0
-                return: r
+            factorial(n):
+                - r: 0
+                - while n > 1:
+                    - r: n * factorial(n - 1)
+                    - n: 0
+                - while n == 1:
+                    - r: 1
+                    - n: 0
+                - return r
+
+            factorial2(n):
+                - while n > 1:
+                    - return n * factorial2(n - 1)
+                - return n
+
+            factorial3(n):
+                - while n <= 1:
+                    - return n
+                - r: 1
+                - while n > 1:
+                    - r: r * n
+                    - n: n - 1
+                - return r
 
             test_call:
                 # 1) no args and no result (concise/old style)
@@ -329,11 +372,29 @@ entities:
 #            func_no_return(a, b) # no return but int_field1: age + 1
 #            func_args_code_result:
 
-#FIXME: these loop infinitely, I don't know why
-#                - assertEqual(factorial(1), 1)
-#                - assertEqual(factorial(2), 2)
-#                - assertEqual(factorial(3), 6)
-#                - assertEqual(factorial(4), 24)
+                - assertEqual(factorial(0), 0)
+                - assertEqual(factorial(1), 1)
+                - assertEqual(factorial(2), 2)
+                - assertEqual(factorial(3), 6)
+                - assertEqual(factorial(4), 24)
+                # last number to not overflow a 32b int
+                - assertEqual(factorial(12), 479001600)
+
+                - assertEqual(factorial2(0), 0)
+                - assertEqual(factorial2(1), 1)
+                - assertEqual(factorial2(2), 2)
+                - assertEqual(factorial2(3), 6)
+                - assertEqual(factorial2(4), 24)
+                # last number to not overflow a 32b int
+                - assertEqual(factorial2(12), 479001600)
+
+                - assertEqual(factorial3(0), 0)
+                - assertEqual(factorial3(1), 1)
+                - assertEqual(factorial3(2), 2)
+                - assertEqual(factorial3(3), 6)
+                - assertEqual(factorial3(4), 24)
+                # last number to not overflow a 32b int
+                - assertEqual(factorial3(12), 479001600)
 
                 # generic call (ndarray methods)
                 # without argument
@@ -375,10 +436,10 @@ entities:
 
                 # temporary global (single-expr process) => hybrid
                 # * manual call
-                - temp_global()
+                - hybrid_temp_global()
                 # * in agespine (tested before)
                 # * used in expr
-                - assertEqual(temp_global, age + 10)
+                - assertEqual(hybrid_temp_global, age + 10)
 
                 # stored + single-expr process => hybrid
                 # * manual call
@@ -388,21 +449,47 @@ entities:
                 - local: agegroup * 10
                 - assertEqual(local, agegroup * 10)
 
-                # stored + procedure => hybrid (+ warn?)
+                # stored + function => hybrid (+ warn?)
                 # * manual call
                 - hybrid_test()
                 # * in agespine (tested before)
                 # * used in expr
                 - assertEqual(hybrid_test - 1, age)
 
+            # should raise an informative error message in 0.10 at least
+#            test_while_oldsyntax:
+#                - values: age
+#                - while:
+#                    cond: min(values) < 5
+#                    code:
+#                        - values: values + 1
+
+
             test_while:
                 - values: age
-                # => while is a reserved keyword and can't be used as a
-                #    variable name
-                - while:
-                    cond: min(values) < 5
-                    code:
-                        - values: values + 1
+                - while min(values) < 5:
+                    - values: values + 1
+
+                - i: 5
+                - assertEqual(i, 5)
+                - while i:
+                    - i: i - 1
+                - assertEqual(i, 0)
+
+            # pi using the Nilakantha series
+            # pi = 3 + 4/(2*3*4) - 4/(4*5*6) + 4/(6*7*8) - 4/(8*9*10) + ...
+            test_pi_nilakantha:
+                - numiter: 10
+                - pi: 3
+                - n: 4
+                - d: 2
+                - i: 0
+                - while i < numiter:
+                    - pi: pi + n / (d * (d + 1) * (d + 2))
+                    - n: -n
+                    - d: d + 2
+                    - i: i + 1
+                - show("pi approximation after", numiter, "iterations:", pi)
 
 #            test_for:
 #                - n: 42
@@ -541,11 +628,17 @@ entities:
                 - assertTrue(all(partner.partner.id == id,
                                  filter=partner_id != -1))
 
-            temp_global: age + 10
-            temp_global_modify:
-                - temp_global: temp_global * 2
-            temp_global_check:
-                - assertEqual(temp_global, (age + 10) * 2)
+            hybrid_temp_global: age + 10
+
+            set_hybrid_temp_global:
+                - hybrid_temp_global: hybrid_temp_global * 2
+            check_hybrid_temp_global:
+                - assertEqual(hybrid_temp_global, (age + 10) * 2)
+
+            set_temp_global:
+                - temp_global: age + 10
+            check_temp_global:
+                - assertEqual(temp_global, age + 10)
 
             test_expr:
                 - show("count:", count())
@@ -570,7 +663,7 @@ entities:
                 - assertTrue(all(0.0 <= diff and diff < 1.0))
                 - assertTrue(any(diff > 0.0) and any(diff == 0.0))
 
-#TODO: move these tests somewhere more appropriate
+# TODO: move these tests somewhere more appropriate
                 # this tests the argument-checking code for "_compute"-based
                 # functions.
 #                - trunc()
@@ -628,11 +721,11 @@ entities:
                                   if(period <= 2009, 64, 65)))))
                 # no index
                 - assertEqual(WEMRA, fake_wemra)
-                # const_index 
+                # const_index
                 - assertEqual(MINR[2005], 13620.2)
                 # (scalar) expr index
                 - assertEqual(WEMRA[period - 1], fake_wemra_pm1)
-                
+
                 # Test that the generated variable name is the same for the
                 # same global when it is used multiple time (if the period
                 # is the same).
@@ -640,7 +733,7 @@ entities:
                 # yet (this should be a unit test instead).
                 # We know numexpr will explode with a ValueError("too many
                 # inputs") when there are more than 31 different variables,
-                # so if this test passes it means it worked. 
+                # so if this test passes it means it worked.
                 - assertEqual(WEMRA + WEMRA + WEMRA + WEMRA + WEMRA + WEMRA +
                               WEMRA + WEMRA + WEMRA + WEMRA + WEMRA + WEMRA +
                               WEMRA + WEMRA + WEMRA + WEMRA + WEMRA + WEMRA +
@@ -720,20 +813,20 @@ entities:
                 # -----------------------------
                 # no index
                 - assertEqual(periodic.WEMRA, fake_wemra)
-                # const_index 
+                # const_index
                 - assertEqual(periodic.MINR[2005], 13620.2)
                 # expr_index
                 - assertEqual(periodic.WEMRA[period - 1], fake_wemra_pm1)
                 - vector_idx: periodic.MINR[yearofbirth + 65]
 
             test_other_globals:
-                # with a PERIOD column 
+                # with a PERIOD column
                 - fake_intfield: if(period <= 1979, -1,
                                  if(period <= 1996, 60,
                                  if(period <= 1999, 61,
                                  if(period <= 2002, 62,
                                  if(period <= 2005, 63,
-                                 if(period <= 2008, 64, 
+                                 if(period <= 2008, 64,
                                  if(period <= 2010, 65, -1)))))))
                 - assertEqual(othertable.INTFIELD, fake_intfield)
                 # expr_index
@@ -746,7 +839,7 @@ entities:
                               fake_intfield)
                 # this is equivalent to INTFIELD[2002], so it is (way) out of
                 # bounds but it does not fail, it simply returns "missing"
-                #FIXME: it should not be allowed (ie not all global variable
+                # FIXME: it should not be allowed (ie not all global variable
                 # should have this "current period if not indexed" behavior.
                 - assertEqual(othertable_noperiod.INTFIELD, -1)
 
@@ -758,13 +851,13 @@ entities:
                 - assertEqual(MIG.shape, (2, 121, 61))
                 - assertEqual(MIG.dim_names, ['gender', 'age', 'period'])
 
-                # need should have the same characteristics 
+                # need should have the same characteristics
                 - need: MIG * 2.5
                 - assertEqual(need.ndim, 3)
                 - assertEqual(need.shape, (2, 121, 61))
                 - assertEqual(need.dim_names, ['gender','age', 'period'])
 
-                # nd_plus_nd should have the same characteristics too 
+                # nd_plus_nd should have the same characteristics too
                 - nd_plus_nd: need + MIG
                 - assertEqual(nd_plus_nd.ndim, 3)
                 - assertEqual(nd_plus_nd.shape, (2, 121, 61))
@@ -808,7 +901,7 @@ entities:
                 - need_by_sex: need_by_sex_period[:,period - base_period]
                 - assertEqual(need_by_sex.ndim, 1)
                 - assertEqual(need_by_sex.shape, (2,))
-                
+
                 - total_need: need_by_sex.sum()
                 - assertEqual(total_need.ndim, 0)
                 - qshow(total_need)
@@ -883,11 +976,11 @@ entities:
                 - assertEquiv(test2, -1)
                 # bad index
                 - test3: if(allfalse, need_by_sex20[2], -1)
-                - assertEquiv(test3, -1) 
+                - assertEquiv(test3, -1)
 
                 # scalar filter
                 - test1: if(true_, need_by_sex20[0], -1)
-                - assertEqual(test1, need_by_sex20[0]) 
+                - assertEqual(test1, need_by_sex20[0])
                 - test2: if(false_, need_by_sex20[0], -1)
                 - assertEqual(test2, -1)
                 # bad index
@@ -915,12 +1008,12 @@ entities:
 
                 # scalar filter
                 - test1: if(true_, need_by_sex20[good_idx], -1)
-                - assertEqual(test1, good_res) 
+                - assertEqual(test1, good_res)
                 - test2: if(false_, need_by_sex20[good_idx], -1)
                 - assertEquiv(test2, -1)
                 # bad index
                 - test3: if(false_, need_by_sex20[bad_idx], -1)
-                - assertEquiv(test3, -1) 
+                - assertEquiv(test3, -1)
 
                 # tuple key
                 # ---------
@@ -939,9 +1032,9 @@ entities:
                 - assertEquiv(test2, -1)
                 # bad index
                 - test3: if(allfalse, MIG[bad_idx1], -1)
-                - assertEquiv(test3, -1) 
+                - assertEquiv(test3, -1)
                 - test4: if(allfalse, MIG[bad_idx2], -1)
-                - assertEquiv(test4, -1) 
+                - assertEquiv(test4, -1)
 
                 # scalar filter
                 - test1: if(true_, MIG[good_idx], -1)
@@ -950,9 +1043,9 @@ entities:
                 - assertEquiv(test2, -1)
                 # bad index
                 - test3: if(false_, MIG[bad_idx1], -1)
-                - assertEquiv(test3, -1) 
+                - assertEquiv(test3, -1)
                 - test4: if(false_, MIG[bad_idx2], -1)
-                - assertEquiv(test4, -1) 
+                - assertEquiv(test4, -1)
 
             test_macro:
                 - ischild: age < 18
@@ -974,7 +1067,8 @@ entities:
                 # calls __nonzero__ on the first part (age < (15 & eduach))
                 - show(groupby(eduach, gender))
 
-            agegroup: if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))
+            compute_agegroup:
+                - agegroup: if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))
 
             test_align:
                 - num_all: count()
@@ -1123,7 +1217,7 @@ entities:
                                fname='al_p_dead.csv')
 
                 - assertTrue(count(dead1 != dead2) <= 105)
-                
+
                 # 2d alignment with period not last
                 # ---------------------------------
                 - percent_f: if(period <= 2002, 0.2,
@@ -1133,8 +1227,8 @@ entities:
 
                 - theoric_aligned_f: trunc(count(not gender) * percent_f)
                 - theoric_aligned_m: trunc(count(gender) * percent_m)
-                - diff_f: count(aligned and not gender) - theoric_aligned_f  
-                - diff_m: count(aligned and gender) - theoric_aligned_m  
+                - diff_f: count(aligned and not gender) - theoric_aligned_f
+                - diff_m: count(aligned and gender) - theoric_aligned_m
                 - assertTrue((0 <= diff_f) and (diff_f <= 1))
                 - assertTrue((0 <= diff_m) and (diff_m <= 1))
                 - show('diff_f', diff_f, 'diff_m', diff_m)
@@ -1179,13 +1273,13 @@ entities:
                 - fixed_percent_aligned: align(proportions=0.1)
                 - num_aligned: count(fixed_percent_aligned)
                 - assertTrue(abs(num_aligned - trunc(num_all * 0.1)) <= 1)
-                
+
                 # expr proportion
                 # ---------------
-                - percent: if(period == 2002, 0.1, 0.2) 
+                - percent: if(period == 2002, 0.1, 0.2)
                 - expr_percent_aligned: align(proportions=percent)
                 - num_aligned: count(expr_percent_aligned)
-                - target_num: if(period == 2002, 
+                - target_num: if(period == 2002,
                                  trunc(0.1 * num_all),
                                  trunc(0.2 * num_all))
                 - assertTrue(abs(num_aligned - target_num) <= 1)
@@ -1196,7 +1290,7 @@ entities:
                 # compute % of men for each age
                 # Note that we cannot use groupby(age, filter=gender) because
                 # in that case we might have age categories missing whereas
-                # we want them to be empty instead.  
+                # we want them to be empty instead.
                 - men_by_age: groupby(age, expr=count(gender))
                 - men_prop_by_age: men_by_age / groupby(age)
 
@@ -1205,7 +1299,7 @@ entities:
                 # this is correct (and not modulo 1 for each category like
                 # other alignment tests) because for each age:
                 # expected = len(member_indices) * proportion
-                # where len(member_indices) = count(age==x) 
+                # where len(member_indices) = count(age==x)
                 #                             count(age==x and gender)
                 #   and proportion          = ---------------------------
                 #                             count(age==x)
@@ -1225,7 +1319,7 @@ entities:
 
                 # manual alignment on an integer column
                 # -------------------------------------
-                - int_aligned: align_abs(age, 
+                - int_aligned: align_abs(age,
                                          [10, 20],
                                          expressions=[gender],
                                          possible_values=[[False, True]])
@@ -1312,7 +1406,7 @@ entities:
                             value == 2.4 + 0.22 * age,
                             value != value)
                 - assertTrue(all(check))
-                
+
                 - show("implicit filter")
                 # -----------------------
                 - assertEqual(if(gender, cont_regr(2.4 + 0.22 * age), 42.0),
@@ -1377,7 +1471,7 @@ entities:
                             value == exp(2.4 + 0.22 * age),
                             value != value)
                 - assertEqual(count(check), count())
-                
+
                 # with implicit filter
                 - assertEqual(if(gender, log_regr(2.4 + 0.22 * age), 42),
                               if(gender, exp(2.4 + 0.22 * age), 42))
@@ -1410,8 +1504,11 @@ entities:
                 - sigma: 1
                 - assertTrue(abs(sigma - std(check)) < 0.1)
 
-            test_uninitialized_var: uninitialized_var
-            uninitialized_var: True
+#            test_uninitialized_var:
+#                - result: uninitialized_var
+
+            set_uninitialized_var:
+                - uninitialized_var: True
 
             test_new:
                 # with no filter nor number
@@ -1494,7 +1591,7 @@ entities:
                 # avg
                 - ch_012_age_avg: children.avg(age, age <= 12)
                 - assertNanEqual(ch_012_age_avg, ch_012_age_sum / nch_012)
-                
+
                 # min, max
                 - ch_minage: children.min(age)
                 - ch_maxage: children.max(age)
@@ -1613,12 +1710,12 @@ entities:
             test_lag:
                 - global: show(MINR)
                 - global_t: show(MINR[period])
-                
+
                 - lagglobal: show(lag(MINR))
                 - lagglobal_period: show(lag(MINR[period]))
                 - lagglobal_attr: show(lag(MINR.shape))
                 - global_t_1: show(MINR[period - 1])
-                
+
                 - global_t_age: show(MINR[period - age])
                 - lagglobal_expr: show(lag(MINR, min(age) + 1))
 
@@ -1672,7 +1769,7 @@ entities:
 #                              if(period > 2002,
 #                                 if(age >= 2, age - 2, -1),
 #                                 -1))
-                #FIXME: this fails (see issue #146)
+                # FIXME: this fails (see issue #146)
                 #- g: groupby(agegroup, gender, expr=count(lag(TERTIARY_EDU)))
 
             test_value_for_period:
@@ -1757,12 +1854,18 @@ entities:
                 - csv(dump(filter=age > 150), suffix='norow_arrayfilter')
 
             test_csv:
+                - show("single expr")
+                - csv(avg(age), fname='person_age_aggregates.csv', mode='a')
+
+                - show("single expr with (useless) assign")
                 - expr: csv(avg(age),
                             fname='person_age_aggregates.csv', mode='a')
-                - exprs: csv(avg(age), gini(age),
-                             fname='person_age_aggregates.csv', mode='a')
 
-                # empty groupby
+                - show("several exprs")
+                - csv(avg(age), gini(age),
+                      fname='person_age_aggregates.csv', mode='a')
+
+                - show("empty groupby")
                 - csv(groupby(gender, filter=age > 200))
 
             test_remove:
@@ -1845,7 +1948,7 @@ entities:
                 - population: count()
                 # not very useful but I could not think of something better
                 - assertTrue(population >= 0)
-                
+
                 # with a filter
                 - qshow(count(MALE))
                 - qshow(count(FEMALE))
@@ -1865,7 +1968,7 @@ entities:
                 - qshow(sum(age * FEMALE))
                 - assertEqual(females_age, sum(age * FEMALE))
                 - assertEqual(males_age + females_age, population_age)
-                
+
                 # implicit/contextual filter
                 # assign to each man the sum of men ages and to each woman
                 # the sum of women ages
@@ -1906,7 +2009,7 @@ entities:
                 # with missing
                 - assertEqual(sum([1, -1, 2]), 3)
                 - assertEqual(sum([1.0, nan, 2.0]), 3.0)
-                
+
                 # with missing but skip_na=False
                 - assertEqual(sum([1, -1, 2], skip_na=False), 2)
                 - withnan: sum([1.0, nan, 2.0], skip_na=False)
@@ -1943,7 +2046,7 @@ entities:
                 # with missing
                 - assertEqual(avg([1.0, nan, 3.0]), 2.0)
                 - assertEqual(avg([1, -1, 3]), 2.0)
-                
+
                 # with missing but skip_na=False
                 - assertEqual(avg([1, -1, 3], skip_na=False), 1.0)
                 - withnan: avg([1.0, nan, 3.0], skip_na=False)
@@ -1959,10 +2062,10 @@ entities:
                               avg(f_age, filter=age <= 10 and gender))
                 # check that gender was not modified (used to be the case)
                 - assertEqual(gender, gender_backup)
-                
+
                 # bool expr
                 - assertEqual(avg([False, True, True, False]), 0.5)
-                
+
             test_std:
                 # bool expr
                 - assertEqual(std([False, True, True, False]), 0.5)
@@ -2082,7 +2185,7 @@ entities:
                 # >>> np.percentile(a, 26)
                 # 1.04
                 # >>> np.sum(a < 1.04)
-                # 2 
+                # 2
                 - assertTrue(num_young <= (num_total / 10) + 1)
                 - assertTrue(num_old <= (num_total * 90 / 100) + 1)
                 - assertEqual(num_young + num_10p + num_old, num_total)
@@ -2102,7 +2205,7 @@ entities:
                 - assertEqual(gini([1, 1, 1]), 0)
                 - assertEqual(gini([0, 0, 0, 1]), 0.75)
                 - assertEqual(gini([1.0, 0.0, 1.0, 1.0]), 0.25)
-                
+
                 # with missing values
                 - assertEqual(gini([0, -1, 1, 0, 0, -1]), 0.75)
                 - assertEqual(gini([0.0, nan, 1.0, 0.0, 0.0, nan]), 0.75)
@@ -2155,13 +2258,13 @@ entities:
                 - assertEqual(num0 + num1 + num2, num_total)
                 # this assertion can fail but it should occur pretty rarely
                 - assertTrue((num0 < num1) and (num1 < num2))
-                
+
                 - show(groupby(choice([zero, zero + 1.0], [p0, 1.0 - p0]),
                                choice([0, 1], [0.3, 0.7]),
                                choice([0, 1])))
 
                 # cases where choice should raise an exception
-#                - bad1: choice([0, 1, 2], [0.5, 0.2, 0.1]) # sum < 1 
+#                - bad1: choice([0, 1, 2], [0.5, 0.2, 0.1]) # sum < 1
 #                - bad2: choice([0, 1, 2], [0.5, 0.4, 0.3]) # sum > 1
 
                 # cases where choice used to print a warning but crashes
@@ -2206,7 +2309,7 @@ entities:
                 - avg_age: groupby(gender, expr=avg(age))
                 - assertEqual(avg_age, [avg(age, filter=not gender),
                                         avg(age, filter=gender)])
-                
+
                 - show('min', groupby(agegroup, expr=min(age)))
                 - temp_scalar: avg(age)
                 - show('wh scalar variable', groupby(agegroup, expr=temp_scalar * min(age)))
@@ -2224,7 +2327,7 @@ entities:
                 - assertEqual(ids_by_gender[1], id[id < 20 and gender])
 
                 # expr=id with the same number in each category (because in
-                # that case dtype is int, instead of object) 
+                # that case dtype is int, instead of object)
                 - ids_by_id: groupby(id >= 10, expr=id, filter=id < 20)
                 - assertEqual(ids_by_id[0], id[id < 10])
                 - assertEqual(ids_by_id[1], id[id >= 10 and id < 20])
@@ -2244,7 +2347,7 @@ entities:
 
                 # ...
                 - num_persons2_percent: show(groupby(agegroup, gender, percent=True))
-                
+
                 - num_persons_weight_percent: show(groupby(agegroup, gender, expr=sum(weight), percent=True))
                 - num_persons_csv: csv(groupby(agegroup, gender), suffix='groupby')
                 - num_persons3: show(groupby(agegroup, work, gender))
@@ -2266,15 +2369,15 @@ entities:
 
                 # groupby in expressions
                 # ----------------------
-                - simple_expr: by_agegroup_gender * 2  
+                - simple_expr: by_agegroup_gender * 2
                 - assertEqual(simple_expr.ndim, 2)
                 - assertEqual(simple_expr.dim_names, ['agegroup', 'gender'])
                 - assertEqual(simple_expr.row_totals, None)
                 - assertEqual(simple_expr.col_totals, None)
-                
+
                 # We cannot use groupby(age, filter=gender) because in that
                 # case we might have missing age categories whereas we want
-                # them to be empty instead.  
+                # them to be empty instead.
                 - men_by_age: groupby(age, expr=count(gender))
                 - assertEqual(men_by_age.dim_names, ['age'])
                 - by_age: groupby(age)
@@ -2315,23 +2418,25 @@ entities:
                 - assertEqual(min_count_by_gender.row_totals, None)
                 - assertEqual(min_count_by_gender.col_totals, None)
 
-            show_weight: show("avg weight", avg(weight),
-                              "total population", sum(weight))
+            show_weight:
+                - show("avg weight", avg(weight),
+                       "total population", sum(weight))
 
             test_imported_process:
                 - qshow(imported_field1)
                 - assertEquiv(imported_field1, -1)
                 - assertEqual(imported_field2, age + 2)
 
-            generate: new('person', number=100000,
-                          age=randint(0, 98),
-                          dead=False,
-                          gender=choice([False, True]),
-                          work=choice([False, True]),
-                          partner_id=-1,
-                          f_id=-1,
-                          m_id=-1,
-                          hh_id=-1)
+            generate:
+                - new('person', number=100000,
+                      age=randint(0, 98),
+                      dead=False,
+                      gender=choice([False, True]),
+                      work=choice([False, True]),
+                      partner_id=-1,
+                      f_id=-1,
+                      m_id=-1,
+                      hh_id=-1)
 
 simulation:
     init:
@@ -2367,11 +2472,15 @@ simulation:
                    test_remove,
 
                    # basic
-                   temp_global,
-                   temp_global_modify,
-                   temp_global_check,
+                   hybrid_temp_global,
+                   set_hybrid_temp_global,
+                   check_hybrid_temp_global,
+
+                   set_temp_global,
+                   check_temp_global,
 
 #                   test_issue120,
+
 
                    test_expr,
                    test_trunc,
@@ -2400,6 +2509,7 @@ simulation:
                    test_compound,
 
                    test_while,
+                   test_pi_nilakantha,
 
 #                   test_extra_comma,
 #                   test_uninitialized_var,
@@ -2455,7 +2565,7 @@ simulation:
                    test_choice,
                    show_weight,
         ]
-        - household: [num_persons, nch, maxnch,
+        - household: [composition,
                       test_align_link,
 #                      dump_csv_h,
                      ]
@@ -2466,6 +2576,10 @@ simulation:
 
     output:
         file: simulation.h5
+    # does not play nicely with recursive functions (because dump wants to
+    # access a local variable between the time it is purged from the local scope
+    # and the time it is restored from the backup) nor with functions with
+    # multiple while loops (because those currently have the same "name".
 #    autodump: True
 #    autodiff: True
 

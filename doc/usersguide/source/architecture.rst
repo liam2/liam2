@@ -38,8 +38,9 @@ The *Process* class stores users processes. The most common kind of process
 is the *Assignment* which computes the value of an expression and
 optionally stores the result in a variable.
 
-Another very common process is the *ProcessGroup* (a.k.a procedures) which
-runs a list of processes in order.
+Another very common process is the *Function* (previously known as procedures)
+which runs a list of processes in order, and optionally takes arguments and
+return a value.
 
 Expressions
 -----------

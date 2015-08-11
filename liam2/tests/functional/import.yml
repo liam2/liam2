@@ -51,7 +51,7 @@ entities:
 
 #
 #        # deprecated? well. I guess not if we don't deprecate the others
-##        transposed: true
+##        transposed: True
 #
         files:
             - param\person.csv:

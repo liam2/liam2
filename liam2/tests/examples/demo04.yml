@@ -4,16 +4,16 @@
 
 # This example builds upon the previous ones and introduces the following
 # additional features: macros, lifecycle functions (new and remove), logit_regr,
-# aggregate functions (sum and avg) and the default_entity option. We use
+# an aggregate function (avg) and the default_entity option. We use
 # the features we have introduced so far to add very simple birth and death
-# procedures to our model.
+# functions to our model.
 entities:
     household:
         fields:
             # period and id are implicit
-            - nb_persons:  {type: int, initialdata: false}
-            - nb_children: {type: int, initialdata: false}
-            - region_id:   {type: int, initialdata: false}
+            - nb_persons:  {type: int, initialdata: False}
+            - nb_children: {type: int, initialdata: False}
+            - region_id:   {type: int, initialdata: False}
 
         links:
             persons: {type: one2many, target: person, field: hh_id}
@@ -26,7 +26,8 @@ entities:
                 - nb_persons: persons.count()
                 - nb_children: persons.count(age < 18)
 
-            clean_empty: remove(nb_persons == 0)
+            clean_empty:
+                - remove(nb_persons == 0)
 
     person:
         fields:
@@ -39,7 +40,7 @@ entities:
             - hh_id:      int
 
             # fields not present in input
-            - agegroup: {type: int, initialdata: false}
+            - agegroup: {type: int, initialdata: False}
 
         links:
             mother: {type: many2one, target: person, field: mother_id}
@@ -78,13 +79,16 @@ entities:
                 - show('Avg age of dead women', avg(age, filter=dead and ISFEMALE))
                 - remove(dead)
 
-            dump_info: csv(dump(id, age, gender, hh_id, household.nb_persons,
-                                mother.age), suffix='info')
+            dump_info:
+                - csv(dump(id, age, gender, hh_id, household.nb_persons,
+                           mother.age), suffix='info')
 
-            show_demography: show(groupby(agegroup, gender))
+            show_demography:
+                - show(groupby(agegroup, gender))
 
-            chart_demography: bar(groupby(agegroup, gender),
-                                  fname='demography_{period}.png')
+            chart_demography:
+                - bar(groupby(agegroup, gender),
+                      fname='demography_{period}.png')
 
 simulation:
     init:

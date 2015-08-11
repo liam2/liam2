@@ -18,8 +18,10 @@ entities:
         # entity. The actual list of processes that will be executed in the
         # simulation and in which order is defined later.
         processes:
-            # Simply increment the age of all persons by one.
-            age: age + 1
+            # ageing is the name of the process (function)
+            ageing:
+                # Simply increment the age of all persons by one.
+                - age: age + 1
 
 simulation:
     # Here comes the list of processes that will actually be executed (once
@@ -27,7 +29,7 @@ simulation:
     # for all individuals, then the second process, etc.). The same process may
     # appear several times in this list.
     processes:
-        - person: [age]
+        - person: [ageing]
 
     input:
         file: simple2001.h5

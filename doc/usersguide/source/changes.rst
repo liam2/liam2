@@ -3,10 +3,34 @@
 Change log
 ##########
 
-Version 0.10
+Version 0.11
 ============
 
 In development.
+
+.. include:: changes/version_0_11.rst.inc
+
+
+Version 0.10.2
+==============
+
+Released on 2015-06-24.
+
+.. include:: changes/version_0_10_2.rst.inc
+
+
+Version 0.10.1
+==============
+
+Released on 2015-06-22.
+
+.. include:: changes/version_0_10_1.rst.inc
+
+
+Version 0.10
+============
+
+Released on 2015-06-15.
 
 .. include:: changes/version_0_10.rst.inc
 

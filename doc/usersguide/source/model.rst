@@ -3,22 +3,34 @@
 Model Definition
 ################
 
-To define the model, we have to describe the different *entities*, 
-their *fields*, the way they interact (*links*) and how they behave over time
-(*processes*). This is done in one file. We use the YAML-markup language.
-This format uses the level of indentation to specify objects and sub objects.
+To define the model, we have to describe the different
+:ref:`entities_declaration`, their :ref:`fields_declaration`, the way they
+interact (*links*) and how they behave over time (*processes*).
 
-In a LIAM2 model file, all text following a # is considered to be comments,
-and is therefore ignored.
+LIAM2 model files use a dialect of the YAML format. This format uses the
+level of indentation and colons (**:** characters) to differenciate objects
+from sub objects.
 
-A LIAM2 model has the following structure: ::
+.. index:: comments
 
-    # imports are optional (this section can be entirely omitted)
-    import:
+Comments
+========
+
+Another particularity inherited from YAML is the use of the hash character, `#`,
+to start comments, which extend to the end of the line. A comment may
+appear at the start of a line or following whitespace or a complete line of
+code, but not within an expression. Since comments are only meant to clarify
+code, they are ignored by LIAM2 and may be omitted if typing in examples.
+
+General structure
+=================
+
+A LIAM2 model file has the following general structure: ::
+
+    import:     # optional section (can be entirely omitted)
         ...
 
-    # globals are optional (this section can be entirely omitted)
-    globals:
+    globals:    # optional section
         ...
 
     entities:
@@ -26,6 +38,28 @@ A LIAM2 model has the following structure: ::
 
     simulation:
         ...
+
+Here is an example of what a trivial model looks like: ::
+
+    entities:
+        person:
+            fields:
+                # period and id are implicit
+                - age: int
+
+            processes:
+                ageing:
+                    - age: age + 1
+
+    simulation:
+        processes:
+            - person: [ageing]
+        input:
+            file: input.h5
+        output:
+            file: output.h5
+        start_period: 2015
+        periods: 10
 
 
 import
@@ -39,7 +73,7 @@ duplicate the common parts.
 For details, see the :ref:`import_models` section.
 
 
-.. index:: globals declaration 
+.. index:: globals declaration
 .. _globals_declaration:
 
 globals
@@ -60,7 +94,7 @@ arrays. Both kinds need to be declared in the simulation file, as follow: ::
         MYARRAY:
             type: float
 
-Please see the :ref:`globals_usage` usage section for how to use them in 
+Please see the :ref:`globals_usage` usage section for how to use them in
 you expressions.
 
 Globals can be loaded from either .csv files during the simulation, or from
@@ -98,6 +132,7 @@ therefore been included. ::
 
 
 .. index:: entities
+.. _entities_declaration:
 
 entities
 ========
@@ -112,31 +147,30 @@ they are declared is not important. In the **simulation** block you define if
 and when they have to be executed, this allows to simulate processes of
 different entities in the order you want.
 
-
-LIAM2 declares the entities as follows: ::
+In LIAM2, entities are declared as follows: ::
 
     entities:
         entity-name1:
-            fields:
+            fields:     # optional section (can be omitted)
                 fields definition
             
-            links:
+            links:      # optional section (can be omitted)
                 links definition
                 
-            macros:
+            macros:     # optional section (can be omitted)
                 macros definition
                 
-            processes:
+            processes:  # optional section (can be omitted)
                 processes definition
                 
         entity-name2:
             ...
             
-As we use YAML as the description language, indentation and the use of ":" are
-important.
+As a reminder, indentation and the use of ":" are important.
 
 
 .. index:: fields
+.. _fields_declaration:
 
 fields
 ------
@@ -163,26 +197,39 @@ There are two implicit fields that do not have to be defined:
             fields:
                 # period and id are implicit
                 - age:        int
-                - dead:       bool
                 - gender:     bool
                 # 1: single, 2: married, 3: cohabitant, 4: divorced, 5: widowed 
                 - civilstate: int
                 - partner_id: int
                 - earnings:   float
 
-This example defines the entity person. Each person has an age, gender, is dead
-or not, has a civil state, possibly a partner. We use the field civilstate to
-store the marital status as a switch of values.
+This example defines the entity person. Each person has an age, gender, civil
+state and possibly a partner. We use the field civilstate to store the marital
+status which can take one of several predefined values.
+
+Field names must be unique per entity (i.e. several entities may have a field
+with the same name).
 
 By default, all declared fields are supposed to be present in the input file
 (because they are *observed* or computed elsewhere and their value can be
-found in the supplied data set). The value for all declared fields will also be
-stored for each period in the output file. 
+found in the supplied data set) and the value for all declared fields will
+be stored for each period in the output file.
 
 However, in practice, there are often some fields which are not present in the
 input file. They will need to be calculated later by the model, and you need to
-tell LIAM2 that the field is missing, by using "initialdata: false" in the
+tell LIAM2 that the field is missing, by using `initialdata: False` in the
 definition for that field (see the *agegroup* variable in the example below).
+
+.. _fields_output:
+
+One can have a field not stored in the output file by using "output: False" in
+its definition. Note that (local) :ref:`temporary variables within functions
+<local_variables>` **do not need to be declared**. The only case where you want
+to use `output: False` is when you need a variable that is accessible in several
+functions but not stored in the output file.
+
+.. warning:: All fields used in lag() expressions **must** be in the output
+             file.
 
 *example* ::
 
@@ -190,13 +237,9 @@ definition for that field (see the *agegroup* variable in the example below).
         person:
             fields:
                 - age:      int
-                - agegroup: {type: int, initialdata: false}
+                - agegroup: {type: int, initialdata: False}
+                - temporary: {type: int, output: False}
 
-Field names must be unique per entity (i.e. several entities may have a field
-with the same name). 
-
-Temporary variables are not considered as a fields and do not have to be
-declared.
 
 links
 -----
@@ -209,13 +252,14 @@ For details, see the :ref:`links_label` section.
 
 
 .. index:: macros
+.. _macros_declaration:
 
 macros
 ------
 
 Macros are a way to make the code easier to read and maintain. They are defined
-on the entity level. Macros are re-evaluated wherever they appear. Use *capital*
-letters to define macros.
+on the entity level. Macros are re-evaluated wherever they appear. An usual
+convention is to use *capital* letters to define macros.
 
 *example* ::
 
@@ -229,13 +273,9 @@ letters to define macros.
 
             processes:
                 test_macros: 
-                    - ischild: age < 18
-                    - before1: if(ischild, 1, 2)
-                    - before2: if(ISCHILD, 1, 2)  # before1 == before2
+                    - show("before", ISCHILD)
                     - age: age + 1
-                    - after1: if(ischild, 1, 2)
-                    - after2: if(ISCHILD, 1, 2)   # after1 != after2 
-                    
+                    - show("after", ISCHILD)
     simulation:
         processes:
             - person: [test_macros]
@@ -243,15 +283,10 @@ letters to define macros.
                     
 The above example does
 
-- ischild: creates a temporary variable *ischild* and sets it to *True* if the age of the person is under 18 and to *False* if not
-- before1: creates a temporary variable *before1* and sets it to 1 if the value of the temporary variable *ischild* is *True* and to 2 if not.
-- before2: creates a temporary variable *before2* and sets it to 1 if the value age < 18 is *True* and to 2 if not
-- age: the age is changed
-- after1: creates a temporary variable *after1* and sets it to 1 if the value of the temporary variable *ischild* is *True* and to 2 is not.
-- after2: creates a temporary variable *after2* and sets it to 1 if the value age < 18 is *True* and to 2 if not.
-
-It is clear that after1 != after2 since the age has been changed and *ischild* has not been updated since.
-
+- show(): displays whether each person is a child.
+- age: the age is changed.
+- show(): displays again whether each person is a child. This value is different
+          than above, even though we did not explicitly assign it a new value.
 
 processes
 ---------
@@ -299,7 +334,7 @@ and composition is again used.
             - household: [household_composition]
             - person: [
                    age, agegroup,
-                   dead_procedure, birth
+                   death, birth
                ]
             - household: [household_composition]
 
@@ -309,7 +344,7 @@ and composition is again used.
         output:
             path: liam2         # optional  
             file: simulation.h5
-        start_period: 2002
+        start_period: 2015
         periods: 10
         skip_shows: False       # optional
         random_seed: 5235       # optional
@@ -317,7 +352,7 @@ and composition is again used.
         default_entity: person  # optional
         logging:                # optional
             timings: True       # optional
-            level: procedures   # optional
+            level: functions    # optional
         autodump: False         # optional
         autodiff: False         # optional
 
@@ -333,8 +368,8 @@ process. Note that you can execute the same process more than once during a
 simulation and that you can alternate between entities in the simulation of a
 period. 
 
-In the example you see that after dead_procedure and birth, the
-household_composition procedure is re-executed.
+In the example you see that after death and birth, the household_composition
+function is re-executed.
 
 init
 ----
@@ -354,7 +389,7 @@ Specifying the *path* is optional. If it is omitted, it defaults to the
 directory where the simulation file is located.
 
 The hdf5-file format can be browsed with *vitables*
-(http://vitables.berlios.de/) or another hdf5-browser available on the net.
+(http://vitables.org/) or another hdf5-browser available on the net.
 
 output
 ------
@@ -426,11 +461,18 @@ increasing level of verbosity):
 periods
   show only periods.
 
+functions
+  show periods and functions (this is the default).
+
+  .. versionchanged:: 0.10
+     Renamed from "procedures" to "functions".
+
 procedures
-  show periods and procedures (this is the default).
+  .. deprecated:: 0.10
+     Please use "functions" instead.
 
 processes
-  show periods, procedures and individual processes.
+  show periods, functions and individual processes.
 
 timings
 ~~~~~~~
@@ -442,8 +484,8 @@ tools like WinMerge). Defaults to *True*.
 autodump
 --------
 
-If this option is used, at the end of each procedure, all (non-scalar)
-variables changed during the procedure (including temporaries) will be dumped
+If this option is used, at the end of each function, all (non-scalar)
+variables changed during the function (including temporaries) will be dumped
 in an hdf5 file (named "autodump.h5" by default). This option can be used
 alone for debugging, or in combination with autodiff (in a later run).
 This option can take either a filename or a boolean (in which case
@@ -452,8 +494,8 @@ This option can take either a filename or a boolean (in which case
 autodiff
 --------
 
-If this option is used, at the end of each procedure, all (non-scalar)
-variables changed during the procedure (including temporaries) will be
+If this option is used, at the end of each function, all (non-scalar)
+variables changed during the function (including temporaries) will be
 compared with the values stored previously by autodump in another run of
 the model (or a variant of it). This can be used to precisely compare two
 versions/variants of a model and see exactly where they start to differ.

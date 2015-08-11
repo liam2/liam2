@@ -6,199 +6,44 @@
 Processes
 #########
 
-The processes are the core of a model. LIAM2 supports two kinds of processes: 
-*assignments*, which change the value of a variable (predictor) using an
-expression, and *actions* which don't (but have other effects).
-
-For each entity (for example, "household" and "person"), the block of processes
-starts with the header "processes:". Each process then starts at a new line with
-an indentation of four spaces.
-
-Assignments
-===========
-
-Assignments have the following general format: ::
-
-    processes:
-        variable1_name: expression1
-        variable2_name: expression2
-        ...
-
-The variable_name will usually be one of the variables defined in the **fields**
-block of the entity but, as we will see later, it is not always necessary.
-
-In this case, the name of the process equals the name of the *endogenous
-variable*. *Process names* have to be **unique** for each entity. See the
-section about procedures if you need to have several processes which modify the
-same variable.
-
-To run the processes, they have to be specified in the "processes" section of
-the simulation block of the file. This explains why the *process names* have
-to be unique for each entity.
-
-*example* ::
-
-    entities:
-        person:
-            fields:
-                - age: int
-            processes:
-                age: age + 1
-    simulation:
-        processes:
-            - person: [age]
-        ...
-
-Temporary variables
-===================
-
-All fields declared in the "fields" section of the entity are stored in the
-output file. Often you need a variable only to store an intermediate result
-during the computation of another variable.
-
-In LIAM2, you can create a temporary variable at any point in the simulation by
-simply having an assignment to an undeclared variable. Their value will be
-discarded at the end of the period.
-
-*example* ::
-
-    person:
-        fields:
-            # period and id are implicit
-            - age:      int
-            - agegroup: int
-
-    processes:
-        age: age + 1
-        agediv10: trunc(age / 10)
-        agegroup: agediv10 * 10
-        agegroup2: agediv10 * 5
-
-In this example, *agediv10* and *agegroup2* are temporary variables. In this
-particular case, we could have bypassed the temporary variable, but when a long
-expression occurs several times, it is often cleaner and more efficient to
-express it (and compute it) only once by using a temporary variable.
-
-Actions
-=======
-
-Since actions don't return any value, they do not need a variable to store that
-result, and they only ever need the condensed form: ::
-
-    processes:
-        process_name: action_expression
-        ...
-
-*example* ::
-
-    processes:
-        remove_deads: remove(dead)
-
-Procedures
-==========
-
-A process can consist of sub-processes, in that case we call it a *procedure*.
-Processes within a procedure are executed in the order they are declared.
-
-Sub-processes each start on a new line, again with an indentation of four spaces
-and a -.
-
-So the general setup is: ::
-
-    processes:
-        variable_name: expression
-        process_name2: action_expression
-        process_name3:
-            - subprocess_31: expression
-            - subprocess_32: expression
-
-In this example, there are three processes, of which the first two do not have
-sub-processes. The third process is a procedure which consists of two
-sub-processes. If it is executed, subprocess_31 will be executed and then
-subprocess_32.
-
-Contrary to normal processes, sub-processes (processes inside procedures) names
-do not need to be unique. In the above example, it is possible for subprocess_31
-and subprocess_32 to have the same name, and hence simulate the same variable.
-Procedure names (process_name3) does not directly refer to a specific endogenous
-variable.
-
-*example* ::
-
-    processes:
-        ageing:
-            - age: age * 2 # in our world, people age strangely
-            - age: age + 1
-            - agegroup: trunc(age / 10) * 10
-
-The processes on *age* and *agegroup* are grouped in *ageing*. In the simulation
-block you specify the *ageing*-process if you want to update *age* and
-*agegroup*.
-
-By using procedures, you can actually make *building blocks* or modules in the
-model.
-
-Local (temporary) variables
----------------------------
-
-Temporary variables defined/computed within a procedure are local to that
-procedure: they are only valid within that procedure. If you want to pass
-variables between procedures you have to make them global by defining them in
-the **fields** section.
-
-*(bad) example* ::
-
-    person:
-        fields:
-            - age: int
-
-        processes:
-            ageing:
-                - age: age + 1
-                - isold: age >= 150   # isold is a local variable
-
-            rejuvenation:
-                - age: age – 1
-                - backfromoldage: isold and age < 150  # WRONG !
-
-In this example, *isold* and *backfromoldage* are local variables. They can only
-be used in the procedure where they are defined. Because we are trying
-to use the local variable *isold* in another procedure in this example, LIAM2
-will refuse to run, complaining that *isold* is not defined.
-
-Actions
--------
-
-Actions inside procedures don't even need a process name.
-
-*example* ::
-
-    processes:
-        death_procedure:
-            - dead: age > 150
-            - remove(dead)
+The processes define how individuals of each entity evolve over time. LIAM2
+supports several kinds of processes: :ref:`assignments <assignments>`, which
+change the value of a variable (predictor) using an expression,
+:ref:`actions <actions>` which don't (but have other effects) and
+:ref:`control flow operators <while>` which specify which processes need to be
+executed. Processes are usually grouped in :ref:`functions <functions>`.
 
 .. index:: expressions
 
 Expressions
 ===========
 
-Expressions can either compute new values for existing individuals, or change
-the number of individuals by using the so-called life-cycle functions. 
+LIAM2 at its core compute expressions. Expressions are any combination of
+variables, operators, constants, globals and functions which explain how to
+compute a value.
 
-.. index:: simple expressions
+Expression syntax looks like many other programming languages (>>> denotes an
+interactive prompt): ::
 
-simple expressions
-------------------
+  >>> 1 + 2
+  3
+  >>> 1.5 * 2.0 - 0.5 * 5.0
+  0.5
 
-Let us start with a simple increment; the following process increases the value
-of a variable by one each simulation period.
+Numeric constants with a fractional part (e.g. 3.0, 1.6) have type
+float, others (e.g. 1, 2, 20) have type int.
 
-    age: age + 1
+Operations with mixed types (int and float) return floats. ::
 
-The name of the process is *age* and what it does is increasing the variable
-*age* of each individual by one, each period.
+  >>> 4 - 0.5 * 3
+  2.5
 
+Parentheses (()) can be used for grouping. For example: ::
+
+  >>> (2.5 - 0.5) * 4
+  8.0
+
+LIAM2 supports many common operators:
 
 - Arithmetic operators: +, -, \*, /, \** (exponent), % (modulo)
 
@@ -210,7 +55,8 @@ The name of the process is *age* and what it does is increasing the variable
    if you know the result has no decimal part), you can use the *trunc*
    function: ::
 
-     agegroup5: 5 * trunc(age / 5)
+     >>> trunc(3 / 2)
+     1
 
 - Comparison operators: <, <=, ==, !=, >=, >
 - Boolean operators: and, or, not
@@ -220,47 +66,277 @@ The name of the process is *age* and what it does is increasing the variable
    Starting with version 0.6, you do not need to use parentheses when
    you mix *boolean operators* with other operators. ::
 
-     inwork: workstate > 0 and workstate < 5
-     to_give_birth: not gender and age >= 15 and age <= 50
-    
+     age >= 10 and age < 20
+
    is now equivalent to: ::
 
-     inwork: (workstate > 0) and (workstate < 5)
-     to_give_birth: not gender and (age >= 15) and (age <= 50)
+     (age >= 10) and (age < 20)
 
-- Conditional expressions: if(condition, expression_if_true,
-  expression_if_false)
+.. _assignments:
+
+Assignments
+===========
+
+Assignments compute values for existing individuals. They have the following
+general format: ::
+
+    - variable_name: expression
+
+What this means is: compute expression and store the result in the variable
+named *variable_name*. The variable that is assigned to (the *endogenous
+variable*) will often be one of the variables defined in the
+:ref:`fields_declaration` block of the entity but, as we will see later, it is
+not always necessary.
 
 *example* ::
 
-    agegroup_civilstate: if(age < 50,
-                            5 * trunc(age / 5),
-                            10 * trunc(age / 10))
+    - age: age + 1
 
-.. note::
+This process increases the variable *age* of each individual by one, each period.
 
-   The *if* function always requires three arguments. If you want to leave a
-   variable unchanged if a condition is not met, use the variable in the
-   *expression_if_false*: ::
+.. _functions:
 
-      # retire people (set workstate = 9) when aged 65 or more
-      workstate: if(age >= 65, 9, workstate)
+Functions
+=========
 
-You can nest if-statements. The example below retires men (gender = True) over
-64 and women over 61. ::
+.. index:: function declaration
+.. _function_declaration:
 
-    workstate: if(gender,
-                  if(age >= 65, 9, workstate),
-                  if(age >= 62, 9, workstate))
-    # could also be written like this:
-    workstate: if(age >= if(gender, 65, 62), 9, workstate)
+Declaration
+-----------
+
+One usually group processes in *functions*. Whenever a function is executed,
+the processes within the function are executed in the order they were declared.
+By using functions, one can actually make *building blocks* or modules in the
+model.
+
+.. versionchanged:: 0.10
+   Functions were previously called "procedures".
+
+Each function definition starts at a new line with an extra indentation of four
+spaces compared to the "processes" keyword of the current entity. Within a
+function, each process should start on a new line, with an extra indentation of
+four spaces compared to the function name and a -. So, the usual setup to
+declare a function is: ::
+
+    processes:
+        function_name:
+            - process1
+            - process2
+
+*example* ::
+
+    entities:
+        person:
+            fields:
+                - age: int
+
+            processes:
+                ageing:
+                    - age: age + 1
+                    - agegroup: trunc(age / 10) * 10
+
+                display:
+                    - show("agegroup", agegroup)
+
+In this example, there are two functions, one with two processes, and one
+with only one process. If the *ageing* function is executed, then both
+processes will be executed in turn (*age*, then *agegroup*).
+
+.. note:: Function names have to be **unique** for each entity.
+
+Within a function, it is possible for several assignment processes to
+modify the same variable. Like all processes within the function, they will
+be executed in turn. Splitting an expression into smaller bits overwriting
+the same variable over and over can make some long expressions much more
+readable.
+
+*example* ::
+
+    processes:
+        ageing:
+            - age: age + 1
+            - agegroup: trunc(age / 10)
+            - agegroup: agegroup * 10
+
+.. versionadded:: 0.10
+
+Since version 0.10, functions can optionally also take arguments and return a
+value. So the general setup to declare a function is: ::
+
+    processes:
+        function_name(argument1, argument2, ...):
+            - process1
+            - process2
+            - return value
+
+*example* ::
+
+    plus(a, b):
+        - show("adding", a, "and", b)
+        - return a + b
+
+.. note:: There are currently two ways to define a function without arguments
+ (with or without the parentheses after the function name). The version without
+ parentheses is going to be deprecated at some point in the future, so you
+ might want to get used to typing the parentheses.
+
+
+.. index:: function call
+.. _function_call:
+
+Call
+----
+
+To execute a function, it has to be either:
+
+#. specified in the "processes" section of the simulation block of the model.
+
+   *example* ::
+
+     entities:
+         person:
+             fields:
+                 - age: int
+             processes:
+                 ageing:
+                     - age: age + 1
+     simulation:
+         processes:
+             - person: [ageing]
+         ...
+
+#. called explicitly within an expression. In that case, the format is: ::
+
+     function_name()
+
+   If the function does not return any result (or if the result is not
+   interesting), this comes down to: ::
+
+     processes:
+         myfunction:
+             - anotherfunction()
+
+   but it can really be used anywhere within an expression (whose result can
+   be stored in a variable like any other expression): ::
+
+     - variable_name: expr + function_name() * expr
+
+   *example* ::
+
+     entities:
+         person:
+             processes:
+                 other_func:
+                     - show("in other_func")
+
+                 plus(a, b):
+                     - return a + b
+
+                 test_func:
+                     - show("in test_func")
+                     - other_func()
+                     - show("back to test_func")
+                     # storing the result in a temporary variable
+                     - three: plus(1, 2)
+                     - show("1 + 2 is", three)
+                     # but the function call can happen anywhere within an
+                     # expression
+                     - show("(1 + 2) * 2 is", plus(1, 2) * 2)
+     simulation:
+         processes:
+             - person: [test_func]
+
+
+.. _local_variables:
+
+Local (temporary) variables
+---------------------------
+
+All fields declared in the "fields" section of the entity are stored in the
+output file. Often you need a variable only to store an intermediate result
+during the computation of another variable.
+
+In LIAM2, you can create a temporary variable at any point in the simulation by
+simply having an assignment to an undeclared variable. Temporary variables
+defined/computed within a function are local to that function: they are only
+valid within that function and their value will be discarded at the end of the
+function.
+
+*example* ::
+
+    person:
+        fields:
+            # period and id are implicit
+            - age:      int
+            - agegroup: int
+
+    processes:
+        ageing:
+            - age: age + 1
+            - agediv10: trunc(age / 10)
+            - agegroup: agediv10 * 10
+
+In this example, *agediv10* is a temporary (local) variable. In this
+particular case, we could have bypassed the temporary variable, but when a
+model contains very long expressions, it is often more readable to split it
+using temporary variables. Also if some long expression occurs several times,
+it is often more efficient to express it (and compute it) only once and store
+its result in a temporary variable.
+
+If you want to pass variables between functions you have to make them global by
+defining them in the **fields** section.
+
+**bad** *example* ::
+
+    person:
+        fields:
+            - age: int
+
+        processes:
+            ageing:
+                - age: age + 1
+                - isold: age >= 150   # isold is a local variable
+                - show("isold", isold)
+
+            rejuvenation:
+                - age: age – 1
+                - backfromoldage: isold and age < 150  # <-- WRONG !
+                - show("back from old age", backfromoldage)
+
+In this example, *isold* and *backfromoldage* are local variables. They can only
+be used in the function where they are defined. Because we are trying
+to use the local variable *isold* in another function in this example, LIAM2
+will refuse to run, complaining that *isold* is not defined.
+
+.. _actions:
+
+Actions
+-------
+
+In LIAM2, there are a few builtin functions which do not return any value (but
+have other effects). We call those *actions*. Since they do not need a
+variable to store their result, we simply: ::
+
+    processes:
+        function_name:
+            - action_expression
+            ...
+
+*example* ::
+
+    processes:
+        death:
+            - dead: age > 150
+            - remove(dead)
+
 
 
 .. index:: globals usage
 .. _globals_usage:
 
 globals
--------
+=======
 
 Globals can be used in expressions in any entity. LIAM2 currently supports
 two kinds of globals: tables and multi-dimensional arrays. They both declared
@@ -275,14 +351,15 @@ their table: ::
 
     myvariable: mytable.MYINTFIELD * 10
 
-the value for INTFIELD is in fact the value INTFIELD has for the period
+the value for MYINTFIELD is in fact the value MYINTFIELD has for the period
 currently being evaluated.
 
 There is a special case for the **periodic** table: its fields do not need
 to be prefixed by "periodic." (but they can be, if desired). ::
- 
+
     - retirement_age: if(gender, 65, WEMRA) 
     - workstate: if(age >= retirement_age, 9, workstate)
+
 
 This changes the workstate of the individual to retired (9) if the age is
 higher than the required retirement age in that year.
@@ -293,21 +370,63 @@ using tablename.FIELDNAME[period_expr], where period_expr can be any
 expression yielding a valid period value. Here are a few artificial
 examples: ::
 
-    workstate: if(age >= WEMRA[2010], 9, workstate)
-    workstate: if(age >= WEMRA[period - 1], 9, workstate)
-    workstate: if(age >= WEMRA[year_of_birth + 60], 9, workstate)
+    - women_retirement_age_in_2010: WEMRA[2010]
+    - women_retirement_age_in_previous_period: WEMRA[period - 1]
+    # a possibly different value for each woman
+    - women_retirement_age_when_60: WEMRA[year_of_birth + 60]
 
-Globals **tables without a PERIOD column** can only be used with the second
-syntax, and in that case LIAM2 will not automatically subtract the
-"base period" from the index, which means that to access a particular row,
-you have to use its row index (0 based). 
+Globals tables **without a PERIOD column** can **only** be used with the second
+syntax, and the row index (0 based) must be given explicitly: LIAM2 does
+not automatically compute it (by subtracting the "base period" from the
+index).
 
-Globals **arrays** can simply be used like a normal field:
+Globals **arrays** can simply be used like a normal field: ::
 
     myvariable: MYARRAY * 2
 
 
-.. index:: mathematical functions
+.. index:: builtin functions
+
+Built-in Functions
+==================
+
+.. index:: conditional function, if
+
+conditional function
+--------------------
+
+One of the most used function in LIAM2 is the conditional function. It
+evaluates a condition and, depending on its value, returns the result of one
+expression or another. Its general format is: ::
+
+  if(condition_expression, expression_if_true, expression_if_false)
+
+*example* ::
+
+  agegroup: if(age < 50,
+               5 * trunc(age / 5),
+               10 * trunc(age / 10))
+
+.. note::
+
+   The *if* function always requires three arguments. If you want to leave a
+   variable unchanged if a condition is not met, use the variable in the
+   *expression_if_false*: ::
+
+      # retire people (set workstate = 9) when aged 65 or more
+      workstate: if(age >= 65, 9, workstate)
+
+You can nest if-functions. The example below retires men (gender = True) over
+64 and women over 61. ::
+
+    workstate: if(gender,
+                  if(age >= 65, 9, workstate),
+                  if(age >= 62, 9, workstate))
+    # could also be written like this:
+    workstate: if(age >= if(gender, 65, 62), 9, workstate)
+
+
+.. index:: mathematical functions, log, exp, abs, round, trunc, clip, min, max
 
 mathematical functions
 ----------------------
@@ -347,8 +466,7 @@ are eighteen years old or older.
 - **sum(expr[, filter=condition][, skip_na=True])**: sum of an expression
 
 It computes the sum of any expression over all individuals of the current
-entity. If a **filter** (boolean condition) is given,
-it only takes into account
+entity. If a **filter** (boolean condition) is given, it only takes into account
 the individuals satisfying the filter. For example *sum(earnings)* will
 produce the sum of the earnings of all persons in the sample,
 while *sum(earnings, age >= 30)* will produce the sum of the earnings
@@ -371,11 +489,11 @@ defaults to *True*.
 
 .. index:: min
 
-- **min(expr[, filter=condition][, skip_na=True])**: min
+- **min(expr[, filter=condition][, skip_na=True])**: minimum
 
 .. index:: max
 
-- **max(expr[, filter=condition][, skip_na=True])**: max
+- **max(expr[, filter=condition][, skip_na=True])**: maximum
 
 .. index:: median
 
@@ -395,7 +513,8 @@ defaults to *True*.
 
 Returns True if all individuals who satisfy the optional condition2
 also satisfy condition1, False otherwise. Note that *all(condition1,
-filter=condition2)* is equivalent to *all(condition1 and condition2)*.
+filter=condition2)* is equivalent to *all((condition1 and condition2) or
+not condition2)*.
 
 .. index:: any
 
@@ -413,10 +532,14 @@ link methods
 (one2many links)
 
 - link.count([filter]) - counts the number of related individuals
-- link.sum(expr[, filter]) - compute the sum of an expression over the related individuals
-- link.avg(expr[, filter]) - compute the average of an expression over the related individuals
-- link.min(expr[, filter]) - compute the minimum of an expression over the related individuals
-- link.max(expr[, filter]) - compute the maximum of an expression over the related individuals
+- link.sum(expr[, filter]) - compute the sum of an expression over the related
+                             individuals
+- link.avg(expr[, filter]) - compute the average of an expression over the
+                             related individuals
+- link.min(expr[, filter]) - compute the minimum of an expression over the
+                             related individuals
+- link.max(expr[, filter]) - compute the maximum of an expression over the
+                             related individuals
 
 *example* ::
 
@@ -424,15 +547,16 @@ link methods
         household:
             fields:
                 # period and id are implicit
-                - nb_persons: {type: int, initialdata: false}
+                - nb_persons: {type: int, initialdata: False}
+
             links:
                 persons: {type: one2many, target: person, field: household_id}
 
             processes:
                 household_composition:
                     - nb_persons: persons.count()
-                    - nb_students: persons.count(workstate == 1)
-                    - nb_children: persons.count(age <= 17)
+                    - nb_children: persons.count(age < 18)
+                    - total_income: persons.sum(income)
                     - avg_age: persons.avg(age)
 
 .. index:: temporal functions, lag, value_for_period, duration, tavg, tsum
@@ -855,11 +979,11 @@ our process as follow: ::
                         choice([1, 2], [0.039, 1 - 0.039]) ),
                      collar)
 
-The procedure *collar_process* has collar as the key endogenous variable and
+The function *collar_process* has collar as the key endogenous variable and
 has four sub-processes.
 
 The first sub-process defines a local variable no_collar, which will be used
-to select those that the procedure should apply to. These are all the workers
+to select those that the function should apply to. These are all the workers
 that do not have a value for collar.
 
 The next three sub-processes simulate the actual collar variable. If
@@ -1218,7 +1342,7 @@ Here is a description of the arguments specific to align_abs:
 *example* ::
 
     test_align_link:
-        # this is a procedure defined at the level of households
+        # this is a function defined at the level of households
         - num_persons: persons.count()
         - total_population: sum(num_persons)
 
@@ -1365,7 +1489,7 @@ Arguments:
      Depending on whether all individuals in each set have many different
      combinations of values or not, this is usually much faster than matching
      each individual in turn. It is thus **highly encouraged** to use this
-     option if possible. It will become the default value in version 0.10.
+     option if possible. It will become the default value in a future version.
      This algorithm also scales better (O(N1g*N2g) instead of O(N1*N2) where
      N1g and N2g are the number of combination of values in each set and N1 and
      N2 are the number of individuals in each set).
@@ -1443,6 +1567,7 @@ the surplus of the largest set is ignored.
                   orderby1=expression, orberby2=expression)
 
 .. index:: lifecycle functions
+.. _lifecycle:
 
 Lifecycle functions
 -------------------
@@ -1516,7 +1641,7 @@ household number of his/her mother, ... Finally some variables of the child are
 set to specific initial values: the most important of these is its gender,
 which is the result of a simple choice process.
 
-**new** can create individuals of different entities; the below procedure
+**new** can create individuals of different entities; the below function
 *get_a_life* makes sure that all those who are single when they are 24 year
 old, leave their parents’ household for their own household. The region of
 this new household is created randomly through a choice-process.
@@ -1565,10 +1690,10 @@ are not simulated anymore. This will also save some memory and, in some cases,
 improve simulation speed.
 
 
-The procedure below simulates whether an individual survives or not, and what
+The function below simulates whether an individual survives or not, and what
 happens in the latter case. ::
 
-    dead_procedure:
+    dead_function:
         # decide who dies
         - dead: if(gender,
                    logit_regr(0.0, align='al_p_dead_m.csv'),
@@ -1580,17 +1705,83 @@ happens in the latter case. ::
         # remove the dead
         - remove(dead)
 
-The first sub-procedure *dead* simulates whether an individual is ‘scheduled for
+The first sub-process *dead* simulates whether an individual is ‘scheduled for
 death’, using again only a logistic stochastic variable and the
 age-gender-specific alignment process. Next some links are updated for the
 surviving partner.
-The sub-procedure *civilstate* puts the variable of that name equal to 5 (which
+The sub-process *civilstate* puts the variable of that name equal to 5 (which
 means that one is a widow(er) for those individuals whose partner has been
 scheduled for death. Also, in that case, the partner identification code is
-erased. All other procedures describing the heritage process should be included
+erased. All other processes describing the heritage process should be included
 here. Finally, the *remove* command is called to removes the *dead* from the
 simulation dataset.
 
+.. index:: while
+.. _while:
+
+While loops
+===========
+
+.. versionadded:: 0.10
+
+*generic format* ::
+
+    - while scalar_condition:
+        - the_code_to_repeat
+        - ...
+
+.. warning:: the condition must be a scalar expression, that is it must have
+             a single value for all individuals. In other words, the number
+             of iterations is always the same for all individuals. See examples
+             below.
+
+*example 1* ::
+
+    count_to_5:
+        - i: 1
+        - while i <= 5:
+            - show(i)
+            - i: i + 1
+
+Now let us suppose one wants to repeat a computation until some condition is
+met per individual. One could intuitively write it like below.
+
+**bad** *example* ::
+
+    wrong_repeat_while_below_1:
+        - score: age / max(age)
+        - while score < 1:   # <-- this line is WRONG !
+            - score: score + 0.1
+        - show(score)
+
+However, that would result in this error: ::
+
+    ValueError: The truth value of an array with more than one element is
+    ambiguous. Use a.any() or a.all()
+
+The solution is to follow the advice in the error message and use any() in
+this case.
+
+*example 2* ::
+
+    repeat_while_below_1:
+        - score: age / max(age)
+        - while any(score < 1):
+            - score: score + 0.1
+        - show(score)
+
+This will repeat the code until all individuals have reached the target **but**
+individuals who reached it early will continue to be updated, and it might
+not be what is needed. If that is the case, one has to **explicitly** only
+update the individuals which are not "done" yet.
+
+*example 3* ::
+
+    repeat_while_below_1:
+        - score: age / max(age)
+        - while any(score < 1):
+            - score: if(score < 1, score + 0.1, score)
+        - show(score)
 
 Output
 ======
@@ -1733,7 +1924,7 @@ Arguments:
        Unless you erase/overwrite the file one way or another between
        two runs of a simulation, you will append the data of the current
        simulation to that of the previous one. One way to do overwrite the file
-       automatically at the start of a simulation is to have a procedure in the
+       automatically at the start of a simulation is to have a function in the
        init section without mode='a'.
     
     If you want that file to start empty, you can do so this way: ::

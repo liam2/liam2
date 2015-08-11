@@ -26,17 +26,17 @@ entities:
             partner: {type: many2one, target: person, field: partner_id}
 
         processes:
-            birth: new('person', number=1000,
-                       age=randint(0, 98),
-                       errsal=normal(0.0, 10.0),
-                       male=choice([False, True]),
-                       work=choice([False, True]),
-                       eduach=randint(1, 4),
-                       chronicill=False,
-                       partner_id=-1,
-                       hh_id=-1)
-
-            earnings: 40 + age
+            birth:
+                - new('person', number=1000,
+                      age=randint(0, 98),
+                      errsal=normal(0.0, 10.0),
+                      male=choice([False, True]),
+                      work=choice([False, True]),
+                      eduach=randint(1, 4),
+                      chronicill=False,
+                      partner_id=-1,
+                      hh_id=-1)
+                - earnings: 40 + age
 
             marriage:
                 - to_marry: logit_regr(0.0, filter=age >= 20)
@@ -68,7 +68,7 @@ entities:
 
 simulation:
     processes:
-        - person: [birth, earnings, marriage]
+        - person: [birth, marriage]
         - household: [dummy]
 
     input:

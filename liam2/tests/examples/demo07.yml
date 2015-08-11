@@ -14,9 +14,9 @@ entities:
     household:
         fields:
             # period and id are implicit
-            - nb_persons:  {type: int, initialdata: false}
-            - nb_children: {type: int, initialdata: false}
-            - region_id:   {type: int, initialdata: false}
+            - nb_persons:  {type: int, initialdata: False}
+            - nb_children: {type: int, initialdata: False}
+            - region_id:   {type: int, initialdata: False}
 
         links:
             persons: {type: one2many, target: person, field: hh_id}
@@ -29,7 +29,8 @@ entities:
                 - nb_persons: persons.count()
                 - nb_children: persons.count(age < 18)
 
-            clean_empty: remove(nb_persons == 0)
+            clean_empty:
+                - remove(nb_persons == 0)
 
     person:
         fields:
@@ -49,9 +50,9 @@ entities:
             - hh_id:      int
 
             # fields not present in input
-            - agegroup_work: {type: int, initialdata: false}
-            - agegroup_civilstate: {type: int, initialdata: false}
-            - education_level: {type: int, initialdata: false}
+            - agegroup_work: {type: int, initialdata: False}
+            - agegroup_civilstate: {type: int, initialdata: False}
+            - education_level: {type: int, initialdata: False}
 
         links:
             mother: {type: many2one, target: person, field: mother_id}
@@ -219,7 +220,7 @@ entities:
             inwork:
                 # retire
                 - workstate: if(age >= RETIREMENTAGE, RETIRED, workstate)
-
+                
                 - work_score: -1
                 # men
                 - work_score: if(ISMALE and ACTIVEAGE and ISINWORK,
@@ -323,7 +324,8 @@ entities:
                - workstate: if(unemp, UNEMPLOYED, workstate)
                - workstate: if((workstate == -1) and not unemp, OTHERINACTIVE, workstate)
 
-            dump_all: csv(dump())
+            dump_all:
+               - csv(dump())
 
 simulation:
     init:

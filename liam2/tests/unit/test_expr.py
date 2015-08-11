@@ -12,7 +12,7 @@ import links
 
 class ArrayTestCase(unittest.TestCase):
     def assertArrayEqual(self, first, other):
-        assert np.array_equal(first, other), "got: %s\nexpected: %s" % (first,
+        assert np.array_equal(first, other), "got: %s\nexpected: %s" % (first, 
                                                                         other)
 
 
@@ -41,27 +41,17 @@ class TestSimple(StringExprTestCase):
         self.parse_ctx = {
             'person': {'age': Variable('age'), 'dead': Variable('dead')},
             '__entity__': 'person'
-            }
+        }
 
     def test_where(self):
         self.assertEvalEqual("where(dead, 1, 2)", [2, 1, 2, 1])
 
-    def test_min(self):
+    def test_min(self):        
         self.assertEvalEqual("min(age)", 10)
         self.assertEvalEqual("min(where(dead, age + 15, age))", 20)
 
 
-class FakeEntity(object):
-    def __init__(self, name, links=None, data=None):
-        self.name = name
-        self.links = links
-        self.array = data
-        self.array_period = None
-        self.temp_variables = {}
-        self.id_to_rownum = array([0, 1, 2, 3])
-
-
-class TestLink(ArrayTestCase):
+class TestLink(StringExprTestCase):
     def setUp(self):
         entities = {}
 
@@ -72,16 +62,16 @@ class TestLink(ArrayTestCase):
 
         dt = np.dtype([('period', int), ('id', int), ('age', int),
                        ('dead', bool),  ('mother_id', int), ('hh_id', int)])
-#TODO: I can't use an EntityContext with an array containing several periods
+# TODO: I can't use an EntityContext with an array containing several periods
 #      of data
 #        persons = array([(2000, 0, 53, False, -1, 0),
 #                         (2000, 1, 23, False,  0, 1),
 #                         (2000, 2, 20, False,  0, 2),
-#                         (2000, 3, 43, False, -1, 3),
+#                         (2000, 3, 43, False, -1, 3), 
 #                         (2001, 0, 54,  True, -1, 0),
 #                         (2001, 1, 24, False,  0, 1),
 #                         (2001, 2, 21, False,  0, 2),
-#                         (2001, 3, 44, False, -1, 0), # they got married
+#                         (2001, 3, 44, False, -1, 0), # they got married 
 #                         (2001, 4,  0, False,  2, 2),
         persons = array([(2002, 0, 55,  True, -1, 0),
                          (2002, 1, 25, False,  0, 1),
@@ -100,11 +90,11 @@ class TestLink(ArrayTestCase):
 #                            (2000, 1),
 #                            (2000, 2),
 #                            (2000, 3),
-#
+#                             
 #                            (2001, 0),
 #                            (2001, 1),
 #                            (2001, 2),
-
+                            
         households = array([(2002, 0),
                             (2002, 1),
                             (2002, 2)],
@@ -192,8 +182,8 @@ class TestLink(ArrayTestCase):
 #    if an id column is passed, overwrite it, if not add one
 
 # Q: I think I need more/something different than just cascading contexts:
-#    when a procedure calls a function, I don't need/want the context of the
-#    caller to be available to the callee. It only needs access to global
+#    when a function calls another function, I don't need/want the context of
+#    the caller to be available to the callee. It only needs access to global
 #    variables and "globals":
 #    I need entity_globals/method_locals/system_or_extra
 # * entity_globals can be stored on disk or not
@@ -211,12 +201,12 @@ class TestLink(ArrayTestCase):
 
 #  data[entity][period][column] = vector
 #  examples:
-#  data['person'][2002]['period'] = [2002, 2002, 2002, 2002]
-#  data['person'][2002]['id'] = [0, 1, 3, 5]
-#  data['person'][2002]['age'] = [25, 45, 1, 37]
-#  data['person'][2002]['age'][0] = 25
+#  data['person'][2002]['period'] = [2002, 2002, 2002, 2002] 
+#  data['person'][2002]['id'] = [0, 1, 3, 5] 
+#  data['person'][2002]['age'] = [25, 45, 1, 37] 
+#  data['person'][2002]['age'][0] = 25 
 
-# mid-term
+# mid-term 
 
 #  data[entity][period_start:period_end][colname]
 #      = 2d array (num_periods * num_ids)
@@ -248,8 +238,8 @@ class TestLink(ArrayTestCase):
 #  >>> 2darray[:].sum(axis=time) == 1darray (N individuals)
 
 #  examples:
-#  data['person'][Person.period == 2002]['id'] = [0, 1, 3, 5]
-#  data['person'][Person.period == 2002]['age'] = [25, 45, 1, 37]
+#  data['person'][Person.period == 2002]['id'] = [0, 1, 3, 5] 
+#  data['person'][Person.period == 2002]['age'] = [25, 45, 1, 37] 
 #  data['person'][Person.period == 2002]['age'][0] = 25
 #  age for id == 5 is 37
 #  data['person'][Person.period == 2002]['age'].get(5) = 37
