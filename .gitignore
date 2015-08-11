@@ -20,6 +20,7 @@ liam2/tests/output/*.pdf
 liam2/tests/output/empty_file.csv
 liam2/tests/output/simulation.h5
 liam2/tests/output/demography_*.png
+liam2/tests/output/demography_*.csv
 doc/website/blog
 doc/website/objects.inv
 doc/website/pages/download.rst
