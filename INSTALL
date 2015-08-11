@@ -17,7 +17,7 @@ LIAM2 uses a number of other open-source packages.
 Required dependencies:
 - Python 2.7.x (32b or 64b) - http://www.python.org/
 - Numpy 1.7.0 or later - http://www.numpy.org/
-- PyTables 2.2.1 or later - http://www.pytables.org
+- PyTables 3 or later - http://www.pytables.org
 - Numexpr 2.0 or later - https://github.com/pydata/numexpr
 - PyYAML 3.0.8 or later - http://pyyaml.org
 

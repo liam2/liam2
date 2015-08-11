@@ -177,7 +177,11 @@ setup(
     cmdclass={"build_ext": MyBuildExt},
     ext_modules=ext_modules,
     options={"build_ext": build_ext_options, "build_exe": build_exe_options},
-    install_requires=['numpy', 'numexpr', 'tables'],
+    install_requires=[
+        'numexpr',
+        'numpy',
+        'tables >= 3',
+    ],
     extras_require=dict(
         interpolation=['bcolz'],
         plot=['matplotlib'],
