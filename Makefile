@@ -2,11 +2,21 @@ TESTS_DIR=liam2/tests
 
 all: flake8 test
 
+build-cython:
+	python setup.py build_ext
+
 check-syntax-errors:
 	@# This is a hack around flake8 not displaying E910 errors with the select option.
 	@# Do not analyse .gitignored files.
 	@# `make` needs `$$` to output `$`. Ref: http://stackoverflow.com/questions/2382764.
 	test -z "`flake8 --first $(shell git ls-files | grep "\.py$$") | grep E901`"
+
+ci: build-cython test-ci
+
+clean: clean-cython clean-pyc
+
+clean-cython:
+	rm liam2/cpartition.c liam2/cutils.c cpartition.so cutils.so
 
 clean-pyc:
 	find . -name '*.pyc' -exec rm \{\} \;

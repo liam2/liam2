@@ -94,10 +94,11 @@ class MyBuildExt(build_ext):
     def finalize_options(self):
         build_ext.finalize_options(self)
 
-        # need to be done in-place, otherwise build_exe_options['path'] will use
-        # the unmodified version because it is computed before build_ext is
-        # called
-        cxfreeze_searchpath.insert(0, self.build_lib)
+        if Executable is not None:
+            # need to be done in-place, otherwise build_exe_options['path'] will use
+            # the unmodified version because it is computed before build_ext is
+            # called
+            cxfreeze_searchpath.insert(0, self.build_lib)
 
 
 ext_modules = [Extension("cpartition", ["liam2/cpartition.pyx"],
