@@ -31,7 +31,7 @@ def test_liam2_examples_files():
         'examples'
         )
     excluded_files = [
-        'demo_import.yml',  # non working example
+        'demo_import.yml',  # import file
         'demo02.yml',  # TODO: pb with figures
         ]
     yaml_files = [os.path.join(liam2_examples_directory, _file) for _file in os.listdir(liam2_examples_directory)
