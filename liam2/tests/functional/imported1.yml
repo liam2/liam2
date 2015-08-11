@@ -12,7 +12,8 @@ entities:
             ISCHILD: age < 17
 
         processes:
-            agegroup: trunc(age / 10)
+            compute_agegroup
+                - agegroup: trunc(age / 10)
 
             imported_process:
                 - imported_field1: age + 1
