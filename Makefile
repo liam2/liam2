@@ -8,8 +8,10 @@ check-syntax-errors:
 	@# `make` needs `$$` to output `$`. Ref: http://stackoverflow.com/questions/2382764.
 	test -z "`flake8 --first $(shell git ls-files | grep "\.py$$") | grep E901`"
 
+clean: clean-build clean-cython clean-pyc
 
-clean: clean-cython clean-pyc
+clean-build:
+	rm -rf build
 
 clean-cython:
 	rm liam2/cpartition.c liam2/cutils.c cpartition.so cutils.so
