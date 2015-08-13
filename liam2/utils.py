@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-
-
 from __future__ import print_function
 
 #import os
@@ -20,7 +17,7 @@ import warnings
 
 import numpy as np
 import numexpr as ne
-# import psutil
+#import psutil
 try:
     from PyQt4 import QtGui, QtCore
     QtAvailable = True
@@ -55,10 +52,6 @@ class ExceptionOnGetAttr(object):
 
     def __getattr__(self, key):
         raise self.exception
-
-
-# [a,b]: a is number per year and b is the digit in the tens place to identify unit
-time_period = {'month':1, 'bimonth':2, 'quarter':3, 'triannual':4, 'semester':6, 'year':12, 'year0':1}
 
 
 class UserDeprecationWarning(UserWarning):
@@ -147,6 +140,9 @@ class AutoFlushFile(object):
         self.f.write(s)
         self.f.flush()
 
+    def __getattr__(self, key):
+        return getattr(self.f, key)
+
 
 def time2str(seconds, precise=True):
     minutes = seconds // 60
@@ -231,7 +227,7 @@ def ndim(arraylike):
     while isinstance(arraylike, (list, tuple, np.ndarray)):
         if len(arraylike) == 0:
             raise ValueError('Cannot compute ndim of array with empty dim')
-        #XXX: check that other elements have the same length?
+        # XXX: check that other elements have the same length?
         arraylike = arraylike[0]
         n += 1
     return n
@@ -252,7 +248,7 @@ def safe_put(a, ind, v):
         for fname in a.dtype.names:
             safe_put(a[fname], ind, v[fname])
     else:
-        #XXX: a.put(ind, v) seem to be a bit faster (but does not work if a is
+        # XXX: a.put(ind, v) seem to be a bit faster (but does not work if a is
         # not an ndarray, is it a problem?)
         np.put(a, ind, v)
     # if the last value was erroneously modified (because of a -1 in ind)
@@ -304,7 +300,7 @@ def nansum(a, axis=None):
         return np.sum(a, axis)
 
 
-#TODO: provide a cython version for this (using fused types)
+# TODO: provide a cython version for this (using fused types)
 #ctypedef fused np_numeric:
 #     np.int32_t
 #     np.int64_t
@@ -372,20 +368,8 @@ class Axis(object):
         return len(self.labels)
 
 
-def addmonth(a, b):
-    assert isinstance(a, int)  # should be a special type
-    assert isinstance(b, int)
-    if b >= 0:
-        change_year = (a % 100) + b >= 12
-        value = a + b * (1 - change_year) + (100 - 12 + b) * change_year
-    if b < 0:
-        change_year = (a % 100) + b < 1
-        value = a + b * (1 - change_year) + (-100 + 12 + b) * change_year
-    return value
-
-
 class LabeledArray(np.ndarray):
-    #noinspection PyNoneFunctionAssignment
+    # noinspection PyNoneFunctionAssignment
     def __new__(cls, input_array, dim_names=None, pvalues=None,
                 row_totals=None, col_totals=None):
         obj = np.asarray(input_array).view(cls)
@@ -503,7 +487,7 @@ class LabeledArray(np.ndarray):
         res_pvalues = [self.pvalues[i] for i in args]
         return LabeledArray(res_data, res_dim_names, res_pvalues)
 
-    #noinspection PyAttributeOutsideInit
+    # noinspection PyAttributeOutsideInit
     def __array_finalize__(self, obj):
         # We are in the middle of the LabeledArray.__new__ constructor,
         # and our special attributes will be set when we return to that
@@ -615,7 +599,7 @@ def aslabeledarray(data):
     elif (isinstance(data, sequence) and len(data) and
           isinstance(data[0], LabeledArray)):
         arraydata = np.asarray(data)
-        #TODO: check that all arrays have the same axes
+        # TODO: check that all arrays have the same axes
         dim_names = [None] + data[0].dim_names
         dim_labels = [range(len(data))] + data[0].pvalues
         return LabeledArray(arraydata, dim_names, dim_labels)
@@ -658,7 +642,7 @@ class TextProgressBar(ProgressBar):
 
 
 def loop_wh_progress(func, sequence, *args, **kwargs):
-    pb = TextProgressBar(len(sequence)) # title=title
+    pb = TextProgressBar(len(sequence))
     for i, value in enumerate(sequence, start=1):
         try:
             func(i, value, *args, **kwargs)
@@ -1115,19 +1099,16 @@ def add_context(exception, s):
         # keyword arg).
         # SyntaxError instances have 'filename', 'lineno', 'offset' and 'text'
         # attributes.
-        return exception
-    msg = exception.args[0] if exception.args else ''
+        return
     encoding = sys.getdefaultencoding()
-    expr_str = s.encode(encoding, 'replace')
-    msg = "%s\n%s" % (expr_str, msg)
-    cls = exception.__class__
-    return cls(msg)
+    exception.liam2context = s.encode(encoding, 'replace')
 
 
+# we cannot do this in classes __new__ (args are verified in metaclass.__call__)
 class ExplainTypeError(type):
     def __call__(cls, *args, **kwargs):
         try:
-            #noinspection PyArgumentList
+            # noinspection PyArgumentList
             return type.__call__(cls, *args, **kwargs)
         except TypeError, e:
             funcname = cls.funcname
@@ -1240,9 +1221,14 @@ def argspec(*args, **kwonlyargs):
     FullArgSpec(args=['a', 'b', 'c', 'd'], varargs=None, varkw=None,
                 defaults=(1, None), kwonlyargs=[], kwonlydefaults={},
                 annotations={})
+    >>> argspec('')
+    ... # doctest: +NORMALIZE_WHITESPACE
+    FullArgSpec(args=[], varargs=None, varkw=None, defaults=None, kwonlyargs=[],
+                kwonlydefaults={}, annotations={})
     """
     if len(args) == 1 and isinstance(args[0], basestring):
-        str_args = [a.strip().split('=') for a in args[0].split(',')]
+        str_args = args[0].split(',') if args[0] else []
+        str_args = [a.strip().split('=') for a in str_args]
         args = [(a[0], ast.literal_eval(a[1])) if len(a) > 1 else a[0]
                 for a in str_args]
 
@@ -1254,6 +1240,17 @@ def argspec(*args, **kwonlyargs):
                 assert k not in kwonlyargs, "several kwonlyargs named %s" % k
                 kwonlyargs[k] = v
     return _argspec(*args, **kwonlyargs)
+
+
+def split_signature(signature):
+    signature = signature.strip()
+    assert signature.count("(") == 1
+    assert signature.count(")") == 1
+    assert signature[-1] == ')'
+    pos = signature.find('(')
+    name = signature[:pos]
+    args = signature[pos + 1:-1]
+    return name, args
 
 
 # miscellaneous tools

@@ -16,6 +16,11 @@ class BreakpointException(Exception):
     pass
 
 
+class ReturnException(Exception):
+    def __init__(self, result):
+        self.result = result
+
+
 class Process(object):
     def __init__(self, name, entity):
         self.name = name
@@ -27,7 +32,8 @@ class Process(object):
             context.entity_data.extra = {}
             self.run(context)
         except BreakpointException:
-            #XXX: store this in the (evaluation) context instead?
+            # XXX: store this directly in the (evaluation) context instead of
+            # in the simulation?
             context.simulation.stepbystep = True
 
     def run(self, context):
@@ -40,11 +46,24 @@ class Process(object):
         return "<process '%s'>" % self.name
 
 
+class Return(Process):
+    def __init__(self, name, entity, result_expr):
+        super(Return, self).__init__(name, entity)
+        self.result_expr = result_expr
+
+    def run_guarded(self, context):
+        raise ReturnException(expr_eval(self.result_expr, context))
+
+    def expressions(self):
+        if isinstance(self.result_expr, Expr):
+            yield self.result_expr
+
+
 class Assignment(Process):
     def __init__(self, name, entity, expr):
         super(Assignment, self).__init__(name, entity)
         self.expr = expr
-        self.temporary = name not in entity.stored_fields
+        self.temporary = name not in entity.fields.in_output.names
 
     def run(self, context):
         value = expr_eval(self.expr, context)
@@ -56,9 +75,6 @@ class Assignment(Process):
             self.store_result(value, context)
 
     def store_result(self, result, context):
-        if result is None:
-            return
-
         if isinstance(result, np.ndarray):
             res_type = result.dtype.type
         else:
@@ -71,7 +87,7 @@ class Assignment(Process):
             # array object can change (eg when enlarging it due to births)
             target = self.entity.array
 
-            #TODO: assert type for temporary variables too
+            # TODO: assert type for temporary variables too
             target_type_idx = type_to_idx[target[self.name].dtype.type]
             res_type_idx = type_to_idx[res_type]
             if res_type_idx > target_type_idx:
@@ -112,13 +128,9 @@ class While(Process):
         self.code = code
 
     def run_guarded(self, context):
-        while True:
-            cond_value = expr_eval(self.cond, context)
-            if not cond_value:
-                break
-
+        while expr_eval(self.cond, context):
             self.code.run_guarded(context)
-            #FIXME: this is a bit brutal :) This is necessary because
+            # FIXME: this is a bit brutal :) This is necessary because
             # otherwise test_while loops indefinitely (because "values" is
             # never incremented)
             expr_cache.clear()
@@ -143,29 +155,32 @@ class ProcessGroup(Process):
 
         if config.log_level == "processes":
             print()
-        for k, v in self.subprocesses:
-            if config.log_level == "processes":
-                print("    *", end=' ')
-                if k is not None:
-                    print(k, end=' ')
-                utils.timed(v.run_guarded, context)
-            else:
-                v.run_guarded(context)
-#            print "done."
-            context.simulation.start_console(context)
-        if config.autodump is not None:
-            self._autodump(period)
 
-        if config.autodiff is not None:
-            self._autodiff(period)
+        try:
+            for k, v in self.subprocesses:
+                if config.log_level == "processes":
+                    print("    *", end=' ')
+                    if k is not None:
+                        print(k, end=' ')
+                    utils.timed(v.run_guarded, context)
+                else:
+                    v.run_guarded(context)
+                    #            print "done."
+                context.simulation.start_console(context)
+        finally:
+            if config.autodump is not None:
+                self._autodump(context)
 
-        if self.purge:
-            self.entity.purge_locals()
+            if config.autodiff is not None:
+                self._autodiff(period)
+
+            if self.purge:
+                self.entity.purge_locals()
 
     @property
     def predictors(self):
         return [v.name for _, v in self.subprocesses
-                if isinstance(v, Assignment)]
+                if isinstance(v, Assignment) and v.name is not None]
 
     @property
     def _modified_fields(self):
@@ -191,39 +206,40 @@ class ProcessGroup(Process):
         else:
             return self.name
 
-    def _autodump(self, period):
+    def _autodump(self, context):
         fields = self._modified_fields
         if not fields:
             return
 
+        period = context.period
         fname, numrows = config.autodump
         h5file = config.autodump_file
         name = self._tablename(period)
         dtype = np.dtype([(k, v.dtype) for k, v in fields])
         table = h5file.create_table('/{}'.format(period), name, dtype,
-                                   createparents=True)
+                                    createparents=True)
 
         fnames = [k for k, _ in fields]
         print("writing {} to {}/{}/{} ...".format(', '.join(fnames),
                                                   fname, period, name))
 
-        entity_context = EntityContext(self.entity, {'period': period})
+        entity_context = EntityContext(context, self.entity, {'period': period})
         append_carray_to_table(entity_context, table, numrows)
         print("done.")
 
-    def _autodiff(self, period, numdiff=10, raiseondiff=False):
+    def _autodiff(self, period, showdiffs=10, raiseondiff=False):
         fields = self._modified_fields
         if not fields:
             return
 
         fname, numrows = config.autodiff
         h5file = config.autodump_file
-        tablepath = '/{}/{}'.format(period, self._tablename(period))
+        tablepath = '/p{}/{}'.format(period, self._tablename(period))
         print("comparing with {}{} ...".format(fname, tablepath))
         if tablepath in h5file:
             table = h5file.getNode(tablepath)
             disk_array = ColumnArray.from_table(table, stop=numrows)
-            diff_array(disk_array, ColumnArray(fields), numdiff, raiseondiff)
+            diff_array(disk_array, ColumnArray(fields), showdiffs, raiseondiff)
         else:
             print("  SKIPPED (could not find table)")
 
@@ -233,9 +249,9 @@ class ProcessGroup(Process):
                 yield e
 
     def ssa(self, fields_versions):
-        procedure_vars = set(k for k, p in self.subprocesses if k is not None)
+        function_vars = set(k for k, p in self.subprocesses if k is not None)
         global_vars = set(self.entity.variables.keys())
-        local_vars = procedure_vars - global_vars
+        local_vars = function_vars - global_vars
 
         local_versions = collections.defaultdict(int)
         for k, p in self.subprocesses:
@@ -244,7 +260,7 @@ class ProcessGroup(Process):
                 for node in expr.all_of(Variable):
                     versions = (local_versions if node.name in local_vars
                                 else fields_versions)
-                    #FIXME: for .version to be meaningful, I need to have
+                    # FIXME: for .version to be meaningful, I need to have
                     # a different variable instance each time the variable
                     # is used.
                     #>>> the best solution AFAIK is to parse the expressions
@@ -263,10 +279,10 @@ class ProcessGroup(Process):
                     # without any iteration), the type of the expressions
                     # that variables are assigned to in that branch will
                     # influence the type of the variable in subsequent code.
-                    # XXX: what if I have a user-defined function/procedure that
+                    # XXX: what if I have a user-defined function that
                     # I call from two different places with an argument of a
                     # different type? ideally, it should generate two distinct
-                    # procedures, but I am not there yet. Having a check on the
+                    # functions, but I am not there yet. Having a check on the
                     # second call that the argument passed is of the same type
                     # than the signature type (which was inferred from the
                     # first call) seems enough for now.
@@ -274,7 +290,7 @@ class ProcessGroup(Process):
                     node.used += 1
             # on assignment, increase the variable version
             if isinstance(p, Assignment):
-                #XXX: is this always == k?
+                # XXX: is this always == k?
                 target = p.predictor
                 versions = (local_versions if target in local_vars
                             else fields_versions)
@@ -303,7 +319,7 @@ class Function(Process):
         self.result = result
 
     def run_guarded(self, context, *args, **kwargs):
-        #XXX: wouldn't some form of cascading context make all this junk much
+        # XXX: wouldn't some form of cascading context make all this junk much
         # cleaner? Context(globalvars, localvars) (globalvars contain both
         # entity fields and global temporaries)
 
@@ -314,7 +330,7 @@ class Function(Process):
                             (len(self.argnames), len(args)))
 
         for name in self.argnames:
-            if name in self.entity.stored_fields:
+            if name in self.entity.fields.names:
                 raise ValueError("function '%s' cannot have an argument named "
                                  "'%s' because there is a field with the "
                                  "same name" % (self.name, name))
@@ -341,9 +357,11 @@ class Function(Process):
             # and we need it to be available across all processes of the
             # function
             self.entity.temp_variables[name] = value
-        self.code.run_guarded(context)
-        result = expr_eval(self.result, context)
-
+        try:
+            self.code.run_guarded(context)
+            result = expr_eval(self.result, context)
+        except ReturnException as r:
+            result = r.result
         self.purge_and_restore_locals(backup)
         return result
 

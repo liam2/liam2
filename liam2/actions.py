@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import os
@@ -57,7 +58,7 @@ class CSV(FunctionExpr, FileProducer):
         entity = context.entity
         period = context.period
         fname = fname.format(entity=entity.name, period=period)
-        if config.log_level in ("procedures", "processes"):
+        if config.log_level in ("functions", "processes"):
             print("writing to", fname, "...", end=' ')
 
         file_path = os.path.join(config.output_directory, fname)
@@ -109,7 +110,7 @@ class RemoveIndividuals(FunctionExpr):
 
         id_to_rownum = np.arange(len_before)
         id_to_rownum -= filter_value.cumsum()
-        #XXX: use np.putmask(id_to_rownum, filter_value, -1)
+        # XXX: use np.putmask(id_to_rownum, filter_value, -1)
         id_to_rownum[filter_value] = -1
         entity.id_to_rownum = np.insert(id_to_rownum,
                                         already_removed_indices_shifted,
@@ -128,7 +129,7 @@ class RemoveIndividuals(FunctionExpr):
                      len(entity.array)),
                   end=' ')
 
-        #TODO: in the case of remove(), we should update (take a subset of) all
+        # TODO: in the case of remove(), we should update (take a subset of) all
         # the cache keys matching the entity, but with the current code,
         # it is most likely not worth it because the cache probably contains
         # mostly stuff we will never use.

@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function, division
 
 import time
@@ -17,7 +18,8 @@ from entities import Entity, global_symbols
 from utils import (time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
                    merge_dicts, merge_items,
-                   field_str_to_type, fields_yaml_to_type)
+                   field_str_to_type, fields_yaml_to_type,
+                   UserDeprecationWarning)
 import config
 import console
 import expr
@@ -170,7 +172,7 @@ class Simulation(object):
 
     def __init__(self, globals_def, periods, start_period, init_processes,
                  processes, entities, data_source, default_entity=None):
-        #FIXME: what if period has been declared explicitly?
+        # FIXME: what if period has been declared explicitly?
         if 'periodic' in globals_def:
             globals_def['periodic']['fields'].insert(0, ('PERIOD', int))
 
@@ -190,7 +192,10 @@ class Simulation(object):
     @classmethod
     def from_yaml(cls, fpath,
                   input_dir=None, input_file=None,
-                  output_dir=None, output_file=None):
+                  output_dir=None, output_file=None,
+                  start_period=None, periods=None, seed=None,
+                  skip_shows=None, skip_timings=None, log_level=None,
+                  assertions=None, autodump=None, autodiff=None):
         simulation_path = os.path.abspath(fpath)
         simulation_dir = os.path.dirname(simulation_path)
         with open(fpath) as f:
@@ -208,41 +213,57 @@ class Simulation(object):
             if "type" in v:
                 v["type"] = field_str_to_type(v["type"], "array '%s'" % k)
             else:
-                #TODO: fields should be optional (would use all the fields
+                # TODO: fields should be optional (would use all the fields
                 # provided in the file)
                 v["fields"] = fields_yaml_to_type(v["fields"])
             globals_def[k] = v
 
         simulation_def = content['simulation']
-        seed = simulation_def.get('random_seed')
+        if seed is None:
+            seed = simulation_def.get('random_seed')
         if seed is not None:
             seed = int(seed)
             print("using fixed random seed: %d" % seed)
             random.seed(seed)
             np.random.seed(seed)
 
-        periods = simulation_def['periods']
-        start_period = simulation_def['start_period']
-        config.skip_shows = simulation_def.get('skip_shows', config.skip_shows)
-        #TODO: check that the value is one of "raise", "skip", "warn"
-        config.assertions = simulation_def.get('assertions', config.assertions)
+        if periods is None:
+            periods = simulation_def['periods']
+        if start_period is None:
+            start_period = simulation_def['start_period']
+
+        if skip_shows is None:
+            skip_shows = simulation_def.get('skip_shows', config.skip_shows)
+        config.skip_shows = skip_shows
+        if assertions is None:
+            assertions = simulation_def.get('assertions', config.assertions)
+        # TODO: check that the value is one of "raise", "skip", "warn"
+        config.assertions = assertions
 
         logging_def = simulation_def.get('logging', {})
-        config.log_level = logging_def.get('level', config.log_level)
+        if log_level is None:
+            log_level = logging_def.get('level', config.log_level)
+        config.log_level = log_level
         if config.log_level == 'procedures':
             config.log_level = 'functions'
             warnings.warn("'procedures' logging.level is deprecated, "
                           "please use 'functions' instead",
-                          DeprecationWarning)
+                          UserDeprecationWarning)
 
         if 'timings' in simulation_def:
             warnings.warn("simulation.timings is deprecated, please use "
                           "simulation.logging.timings instead",
-                          DeprecationWarning)
+                          UserDeprecationWarning)
             config.show_timings = simulation_def['timings']
-        config.show_timings = logging_def.get('timings', config.show_timings)
 
-        autodump = simulation_def.get('autodump', None)
+        if skip_timings:
+            show_timings = False
+        else:
+            show_timings = logging_def.get('timings', config.show_timings)
+        config.show_timings = show_timings
+
+        if autodump is None:
+            autodump = simulation_def.get('autodump')
         if autodump is True:
             autodump = 'autodump.h5'
         if isinstance(autodump, basestring):
@@ -250,7 +271,8 @@ class Simulation(object):
             autodump = (autodump, None)
         config.autodump = autodump
 
-        autodiff = simulation_def.get('autodiff', None)
+        if autodiff is None:
+            autodiff = simulation_def.get('autodiff')
         if autodiff is True:
             autodiff = 'autodump.h5'
         if isinstance(autodiff, basestring):
@@ -259,25 +281,29 @@ class Simulation(object):
         config.autodiff = autodiff
 
         input_def = simulation_def['input']
-        input_directory = input_dir if input_dir is not None \
-                                    else input_def.get('path', '')
-        if not os.path.isabs(input_directory):
-            input_directory = os.path.join(simulation_dir, input_directory)
-        config.input_directory = input_directory
+        if input_dir is None:
+            input_dir = input_def.get('path', '')
+        if not os.path.isabs(input_dir):
+            input_dir = os.path.join(simulation_dir, input_dir)
+        config.input_directory = input_dir
+
+        if input_file is None:
+            input_file = input_def.get('file', '')
+        input_path = os.path.join(input_dir, input_file)
 
         output_def = simulation_def['output']
-        output_directory = output_dir if output_dir is not None \
-                                      else output_def.get('path', '')
-        if not os.path.isabs(output_directory):
-            output_directory = os.path.join(simulation_dir, output_directory)
-        if not os.path.exists(output_directory):
-            print("creating directory: '%s'" % output_directory)
-            os.makedirs(output_directory)
-        config.output_directory = output_directory
+        if output_dir is None:
+            output_dir = output_def.get('path', '')
+        if not os.path.isabs(output_dir):
+            output_dir = os.path.join(simulation_dir, output_dir)
+        if not os.path.exists(output_dir):
+            print("creating directory: '%s'" % output_dir)
+            os.makedirs(output_dir)
+        config.output_directory = output_dir
 
         if output_file is None:
             output_file = output_def['file']
-        output_path = os.path.join(output_directory, output_file)
+        output_path = os.path.join(output_dir, output_file)
 
         entities = {}
         for k, v in content['entities'].iteritems():
@@ -340,9 +366,9 @@ class Simulation(object):
         method = input_def.get('method', 'h5')
 
         if method == 'h5':
-            if input_file is None:
-                input_file = input_def['file']
-            input_path = os.path.join(input_directory, input_file)
+ #           if input_file is None:
+ #               input_file = input_def['file']
+ #           input_path = os.path.join(input_directory, input_file)
             data_source = H5Data(input_path, output_path)
         elif method == 'void':
             data_source = Void(output_path)
@@ -525,7 +551,10 @@ class Simulation(object):
 #                show_top_expr()
 
             if run_console:
-                console_ctx = eval_ctx.clone(entity_name=self.default_entity)
+                ent_name = self.default_entity
+                if ent_name is None and len(eval_ctx.entities) == 1:
+                    ent_name = eval_ctx.entities.keys()[0]
+                console_ctx = eval_ctx.clone(entity_name=ent_name)
                 c = console.Console(console_ctx)
                 c.run()
 

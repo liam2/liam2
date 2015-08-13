@@ -1,6 +1,9 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import collections
+import sys
+import warnings
 
 #import bcolz
 import numpy as np
@@ -9,11 +12,13 @@ import tables
 import config
 from data import merge_arrays, get_fields, ColumnArray, index_table
 from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
-                  GlobalArray, expr_eval, get_missing_value, Expr, MethodSymbol, missing_values)
+                  GlobalArray,  Expr, MethodSymbol,
+                  expr_eval, get_missing_value,missing_values)
 from exprtools import parse
-from process import Assignment, Process, ProcessGroup, While, Function
-from utils import (safe_put, count_occurrences, field_str_to_type, size2str,
-                   WarnOverrideDict)
+from process import Assignment, ProcessGroup, While, Function, Return
+from utils import (count_occurrences, field_str_to_type, size2str,
+                   WarnOverrideDict, split_signature, argspec,
+                   UserDeprecationWarning)
 
 
 max_vars = 0
@@ -30,7 +35,7 @@ max_vars = 0
 #    return a[:]
 
 def global_symbols(globals_def):
-    #FIXME: these should be computed once somewhere else, not for each
+    # FIXME: these should be computed once somewhere else, not for each
     # entity. I guess they should have a class of their own
     symbols = {}
     for name, global_def in globals_def.iteritems():
@@ -66,14 +71,48 @@ class DiskBackedArray(object):
         return getattr(self.arr, item)
 
 
+class Field(object):
+    def __init__(self, name, dtype, input=True, output=True):
+        self.name = name
+        self.dtype = dtype
+        self.input = input
+        self.output = output
+
+
+class FieldCollection(list):
+    def __init__(self, iterable=None):
+        list.__init__(self, iterable)
+
+    @property
+    def in_input(self):
+        return FieldCollection(f for f in self if f.input)
+
+    @property
+    def in_output(self):
+        return FieldCollection(f for f in self if f.output)
+
+    @property
+    def names(self):
+        for f in self:
+            yield f.name
+
+    @property
+    def name_types(self):
+        return [(f.name, f.dtype) for f in self]
+
+    @property
+    def dtype(self):
+        return np.dtype(list(self.name_types))
+
+
 class Entity(object):
     """
     fields is a list of tuple (name, type)
     """
-    def __init__(self, name, fields=None, missing_fields=None, default_values={}, links=None,
 
-                 macro_strings=None, process_strings=None,
-                 array=None):
+    def __init__(self, name, fields=None, links=None, macro_strings=None,
+                 process_strings=None, array=None,
+                 missing_fields=None, default_values={}, ):
         self.name = name
 
         # we should have exactly one of either array or fields defined
@@ -87,17 +126,22 @@ class Entity(object):
         else:
             array_period = None
 
-        duplicate_names = [
-            name_ for name_, num in count_occurrences(fname for fname, _ in fields) if num > 1
-            ]
+        if not isinstance(fields, FieldCollection):
+            fields = FieldCollection(fields)
+
+        duplicate_names = [name
+                           for name, num
+                           in count_occurrences(fields.names)
+                           if num > 1]
         if duplicate_names:
             raise Exception("duplicate fields in entity '%s': %s"
                             % (self.name, ', '.join(duplicate_names)))
-        fnames = [name_ for name_, _ in fields]
+
+        fnames = set(fields.names)
         if 'id' not in fnames:
-            fields.insert(0, ('id', int))
+            fields.insert(0, Field('id', int))
         if 'period' not in fnames:
-            fields.insert(0, ('period', int))
+            fields.insert(0, Field('period', int))
         self.fields = fields
 
         # only used in data (to check that all "required" fields are present
@@ -132,11 +176,11 @@ class Entity(object):
         self.indexed_output_table = None
 
         self.input_rows = {}
-        #TODO: it is unnecessary to keep periods which have already been
+        # TODO: it is unnecessary to keep periods which have already been
         # simulated, because (currently) when we go back in time, we always go
         # back using the output table... but periods before the start_period
         # are only present in input_index
-        #FIXME: the proper way to fix this is to copy the input_index into
+        # FIXME: the proper way to fix this is to copy the input_index into
         # the output_index during H5Date.run() and not keep input_index
         # beyond that point.
         self.input_index = {}
@@ -173,13 +217,15 @@ class Entity(object):
 
         # YAML "ordered dict" syntax returns a list of dict and we want a list
         # of tuples
-        #FIXME: if "fields" key is present but no field is defined,
+        # FIXME: if "fields" key is present but no field is defined,
         #entity_def.get('fields', []) returns None and this breaks
         fields_def = [d.items()[0] for d in entity_def.get('fields', [])]
 
         fields = []
         missing_fields = []
         default_values = {}
+
+
         for name, fielddef in fields_def:
             if isinstance(fielddef, dict):
                 strtype = fielddef['type']

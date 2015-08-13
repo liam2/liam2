@@ -312,7 +312,6 @@ def _parse(s, interactive=False):
     """
     low level parsing function (string -> Node)
     """
-    print('string: {}'.format(s))
     if not isinstance(s, basestring):
         return s
 

@@ -17,7 +17,10 @@ def run_simulation(yaml_file, input_dir, output_dir):
             input_dir = input_dir,
             output_dir = output_dir,
             )
-        simulation.run(False)
+        print('About to run simulation file {} using {} as input dir and {} as output_dir'.format(
+            yaml_file, input_dir, output_dir
+            ))
+        simulation.run(run_console=False)
     # except Exception:
     #     print('{} failed'.format(yaml_file))
     #     raise
