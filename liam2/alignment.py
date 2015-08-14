@@ -165,6 +165,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                         sorted_global_indices = \
                             group_maybe_indices[sorted_local_indices]
                     if method == 'sidewalk':
+
                         if max(score[group_maybe_indices]) > 1 or min(score[group_maybe_indices]) < 0:
                             raise Exception("Sidewalk method can be used only with a"
                                             " score between 0 and 1. You may want to use"
@@ -188,9 +189,9 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                     # take the last X individuals (ie those with the highest score)
                     indices_to_take = sorted_global_indices[-maybe_to_take:]
                 elif method == 'sidewalk':
-                    if maybe_to_take > sum(score[sorted_global_indices]):
-                        raise Exception("Can't use Sidewalk with need > sum of probabilities")
-                    U = random() + np.arange(maybe_to_take)
+                    assert maybe_to_take <= sum(score[sorted_global_indices]), \
+                        "Can't use Sidewalk with need > sum of probabilities"
+                    U = np.random.uniform() + np.arange(maybe_to_take)
                     # on the random sample, score are cumulated and then, we extract indices
                     # of each value before each value of U
                     indices_to_take = np.searchsorted(np.cumsum(score[sorted_global_indices]), U)
@@ -242,12 +243,6 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
     def _eval_need(self, context, need, expressions, possible_values,
                    method, expressions_context=None):
-
-        if method == "sidewalk":
-            # Note: need is calculated over score and we could think of
-            # calculate without leave_filter and without take_filter
-            need = int(sum(expressions))
-            need = np.array([need])
 
         assert isinstance(need, np.ndarray)
         if expressions_context is None:
@@ -372,16 +367,23 @@ class AlignmentAbsoluteValues(FilteredExpression):
                             "either 'sidewalk'")
         if need is None and method != 'sidewalk':
             raise Exception("No default value for need if method is not sidewalk")
-        if method != 'sidewalk':
-            # need is a single scalar
-            # if not isinstance(need, (tuple, list, np.ndarray)):
-            if np.isscalar(need):
-                need = [need]
 
-            # need is a non-ndarray sequence
-            if isinstance(need, (tuple, list)):
-                need = np.array(need)
-            assert isinstance(need, np.ndarray)
+        if method == "sidewalk":
+            # Note: need is calculated over score and we could think of
+            # calculate without leave_filter and without take_filter
+            if need is None:
+                need = sum(score)
+
+        # need is a single scalar
+        # if not isinstance(need, (tuple, list, np.ndarray)):
+        if np.isscalar(need):
+            need = [np.floor(need)]
+
+        # need is a non-ndarray sequence
+        if isinstance(need, (tuple, list)):
+            need = np.array(need)
+        assert isinstance(need, np.ndarray)
+
 
         if expressions is None:
             expressions = []
@@ -412,6 +414,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
     def align_no_link(self, context, score, need, filter, take, leave,
                       expressions, possible_values, errors, frac_need, link,
                       secondary_axis, method, periodicity_given):
+
         ctx_length = context_length(context)
 
         need, expressions, possible_values = \
@@ -450,7 +453,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
             self._display_unaligned(expressions, context['id'], columns,
                                     unaligned)
 
+
         periodicity = context.periodicity
+
         if context.format_date == 'year0':
             periodicity = periodicity * 12
             # give right periodicity/self.periodicity_given whereas self.periodicity_given/12 doesn't
@@ -473,7 +478,6 @@ class AlignmentAbsoluteValues(FilteredExpression):
         need = need * self._get_need_correction(groups, possible_values)
         need = self._handle_frac_need(need, method=frac_need)
         need = self._add_past_error(context, need, method=errors)
-
         return align_get_indices_nd(ctx_length, groups, need, filter_value,
                                     score, take, leave, method)
 
