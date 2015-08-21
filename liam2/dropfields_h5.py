@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import tables
+import numpy as np
 
 from data import copy_table, get_fields
 from utils import timed
@@ -22,13 +23,13 @@ def dropfields(input_path, output_path, todrop):
     output_entities = output_file.create_group("/", "entities", "Entities")
     for table in input_file.iterNodes(input_root.entities):
         table_fields = get_fields(table)
-        table_fields = [(fname, ftype) for fname, ftype in table_fields
-                        if fname not in todrop]
+        output_dtype = np.dtype([(fname, ftype) for fname, ftype in table_fields
+                                 if fname not in todrop])
         size = (len(table) * table.dtype.itemsize) / 1024.0 / 1024.0
-        #noinspection PyProtectedMember
+        # noinspection PyProtectedMember
         print(" * copying table %s (%.2f Mb) ..." % (table._v_name, size),
               end=' ')
-        copy_table(table, output_entities, table_fields)
+        copy_table(table, output_entities, output_dtype)
         print("done.")
 
     input_file.close()

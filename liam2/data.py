@@ -27,10 +27,10 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
         if buffer_rows < len(chunk):
             # last chunk is smaller
             chunk = np.empty(buffer_rows, dtype=dtype)
-        for name in dtype.names:
-            chunk[name] = array[name][start:stop]
+        for fieldname in dtype.names:
+            chunk[fieldname] = array[fieldname][start:stop]
         table.append(chunk)
-        #TODO: try flushing after each chunk, this should reduce memory
+        # TODO: try flushing after each chunk, this should reduce memory
         # use on large models, and (hopefully) should not be much slower
         # given our chunks are rather large
         # >>> on our 300k sample, it does not seem to make any difference
@@ -43,7 +43,7 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
 
 
 class ColumnArray(object):
-    def __init__(self, array=None, default_values=None):
+    def __init__(self, array=None):
         columns = {}
         if array is not None:
             if isinstance(array, (np.ndarray, ColumnArray)):
@@ -51,25 +51,18 @@ class ColumnArray(object):
                     columns[name] = array[name].copy()
                 self.dtype = array.dtype
                 self.columns = columns
-                if isinstance(array, ColumnArray):
-                    self.dval = array.dval
-                else:
-                    self.dval = []
             elif isinstance(array, list):
                 for name, column in array:
                     columns[name] = column
                 self.dtype = np.dtype([(name, column.dtype)
                                        for name, column in array])
                 self.columns = columns
-                self.dval = []
             else:
-                #TODO: make a property instead?
+                # TODO: make a property instead?
                 self.dtype = None
                 self.columns = columns
-                self.dval = []
         else:
             self.dtype = None
-            self.dval = []
             self.columns = columns
 
     def __getitem__(self, key):
@@ -162,7 +155,7 @@ class ColumnArray(object):
             self.columns[name] = column[key]
 
     def append(self, array):
-        assert array.dtype == self.dtype
+        assert array.dtype == self.dtype, (array.dtype, self.dtype)
         # using gc.collect() after each column update frees a bit of memory
         # but slows things down significantly.
         for name, column in self.columns.iteritems():
@@ -180,7 +173,7 @@ class ColumnArray(object):
         return ca
 
     @classmethod
-    def from_table(cls, table, start=0, stop=None, default_values={}, buffersize=10 * 2 ** 20):
+    def from_table(cls, table, start=0, stop=None, buffersize=10 * 2 ** 20):
         # reading a table one column at a time is very slow, this is why this
         # function is even necessary
         if stop is None:
@@ -189,7 +182,6 @@ class ColumnArray(object):
         max_buffer_rows = buffersize // dtype.itemsize
         numlines = stop - start
         ca = cls.empty(numlines, dtype)
-        ca.dval = default_values
 #        buffer_rows = min(numlines, max_buffer_rows)
 #        chunk = np.empty(buffer_rows, dtype=dtype)
         array_start = 0
@@ -238,7 +230,7 @@ class ColumnArray(object):
         output_dtype = np.dtype(output_fields)
         output_names = set(output_dtype.names)
         input_names = set(self.dtype.names)
-        default_values = self.dval
+        
         length = len(self)
         # add missing fields
         for name in output_names - input_names:
@@ -253,7 +245,7 @@ def get_fields(array):
     return [(name, normalize_type(dtype[name].type)) for name in dtype.names]
 
 
-def assert_valid_type(array, wanted_type, allowed_missing=None, context=None):
+def assert_valid_type(array, wanted_type, context=None):
     if isinstance(wanted_type, list):
         wanted_fields = wanted_type
         # extract types from field description and normalise to python types
@@ -262,9 +254,7 @@ def assert_valid_type(array, wanted_type, allowed_missing=None, context=None):
         # check that all required fields are present
         wanted_names = set(name for name, _ in wanted_fields)
         actual_names = set(name for name, _ in actual_fields)
-        allowed_missing = set(allowed_missing) if allowed_missing is not None \
-                                               else set()
-        missing = wanted_names - actual_names - allowed_missing
+        missing = wanted_names - actual_names
         if missing:
             raise Exception("Missing field(s) in hdf5 input file: %s"
                             % ', '.join(missing))
@@ -294,20 +284,17 @@ def assert_valid_type(array, wanted_type, allowed_missing=None, context=None):
                                                  wanted_type.__name__))
 
 
-def add_and_drop_fields(array, output_fields, default_values={}, output_array=None):
+def add_and_drop_fields(array, output_fields, output_array=None):
     output_dtype = np.dtype(output_fields)
     output_names = set(output_dtype.names)
     input_names = set(array.dtype.names)
-
+    
     common_fields = output_names & input_names
     missing_fields = output_names - input_names
     if output_array is None:
         output_array = np.empty(len(array), dtype=output_dtype)
         for fname in missing_fields:
-            if fname in default_values:
-                output_array[fname] = default_values[fname]
-            else:
-                output_array[fname] = get_missing_value(output_array[fname])
+            output_array[fname] = get_missing_value(output_array[fname])
     else:
         assert output_array.dtype == output_dtype
     for fname in common_fields:
@@ -331,7 +318,7 @@ def merge_subset_in_array(output, id_to_rownum, subset, first=False):
         return output
     else:
         rownums = id_to_rownum[subset['id']]
-        #TODO: this is a gross approximation, more research is needed to get
+        # TODO: this is a gross approximation, more research is needed to get
         # a better threshold. It might also depend on "first".
         if len(names_to_copy) > len(output_names) / 2:
             if first:
@@ -355,13 +342,35 @@ def merge_subset_in_array(output, id_to_rownum, subset, first=False):
         return output
 
 
+def merge_array_records(array1, array2):
+    """
+    array1 & array2
+    data in array2 overrides data in array1
+    """
+    assert len(array1) == len(array2) == 1
+    fields1 = get_fields(array1)
+    fields2 = get_fields(array2)
+
+    names1 = set(array1.dtype.names)
+    names2 = set(array2.dtype.names)
+    fields_notin1 = [(name, type_) for name, type_ in fields2
+                     if name not in names1]
+    output_fields = fields1 + fields_notin1
+    output = np.empty(1, np.dtype(output_fields))
+    for fname in names1 - names2:
+        output[fname] = array1[fname]
+    for fname in names2:
+        output[fname] = array2[fname]
+    return output
+
+
 def merge_arrays(array1, array2, result_fields='union'):
     """data in array2 overrides data in array1"""
 
     fields1 = get_fields(array1)
     fields2 = get_fields(array2)
 
-    #TODO: check that common fields have the same type
+    # TODO: check that common fields have the same type
     if result_fields == 'union':
         names1 = set(array1.dtype.names)
         fields_notin1 = [(name, type_) for name, type_ in fields2
@@ -396,7 +405,7 @@ def merge_arrays(array1, array2, result_fields='union'):
     if output_is_arr2:
         output_array = array2
     elif output_is_arr1:
-        #TODO: modifying array1 in-place suits our particular needs for now
+        # TODO: modifying array1 in-place suits our particular needs for now
         # but it should really be a (non-default) option
         output_array = array1
     elif arr1_complete or arr2_complete:
@@ -440,7 +449,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         expanded_data = np.empty(chunksize, dtype=np.dtype(output_fields))
         expanded_data[:] = get_missing_record(expanded_data)
 
-    #noinspection PyUnusedLocal
+    # noinspection PyUnusedLocal
     def copy_chunk(chunk_idx, chunk_num):
         chunk_start = chunk_num * chunksize
         chunk_stop = min(chunk_start + chunksize, numrows)
@@ -453,12 +462,10 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         if output_fields is not None:
             # use our pre-allocated buffer (except for the last chunk)
             if len(input_data) == len(expanded_data):
-                default_values = {}
                 output_data = add_and_drop_fields(input_data, output_fields,
-                                                  default_values, expanded_data)
+                                                  expanded_data)
             else:
-                default_values = {}
-                output_data = add_and_drop_fields(input_data, output_fields, default_values)
+                output_data = add_and_drop_fields(input_data, output_fields)
         else:
             output_data = input_data
 
@@ -474,29 +481,28 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
     return output_table
 
 
-#noinspection PyProtectedMember
-def copy_table(input_table, output_node, output_fields=None,
+# noinspection PyProtectedMember
+def copy_table(input_table, output_node, output_dtype=None,
                chunksize=10000, condition=None, stop=None, show_progress=False,
                **kwargs):
     complete_kwargs = {'title': input_table._v_title}
 #                       'filters': input_table.filters}
     output_file = output_node._v_file
     complete_kwargs.update(kwargs)
-    if output_fields is None:
+    if output_dtype is None:
         output_dtype = input_table.dtype
-    else:
-        output_dtype = np.dtype(output_fields)
     output_table = output_file.create_table(output_node, input_table.name,
                                             output_dtype, **complete_kwargs)
     return append_table(input_table, output_table, chunksize, condition,
                         stop=stop, show_progress=show_progress)
 
-#XXX: should I make a generic n-way array merge out of this?
+
+# XXX: should I make a generic n-way array merge out of this?
 # this is a special case though because:
 # 1) all arrays have the same columns
 # 2) we have id_to_rownum already computed for each array
-def build_period_array(input_table, output_fields, input_rows,
-                        input_index, start_period, default_values={}):
+def build_period_array(input_table, output_fields, input_rows, input_index,
+                       start_period):
     periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
     if not periods_before:
         id_to_rownum = np.empty(0, dtype=int)
@@ -521,7 +527,7 @@ def build_period_array(input_table, output_fields, input_rows,
     # if all individuals are present in the target period, we are done already!
     if np.array_equal(present_in_period, is_present):
         start, stop = input_rows[target_period]
-        input_array = ColumnArray.from_table(input_table, start, stop, default_values)
+        input_array = ColumnArray.from_table(input_table, start, stop)
         input_array.add_and_drop_fields(output_fields)
         return input_array, period_id_to_rownum
 
@@ -610,27 +616,30 @@ def index_table(table):
     return rows_per_period, id_to_rownum_per_period
 
 
-def index_table_light(table):
+def index_table_light(table, index='period'):
     """
     table is an iterable of rows, each row is a mapping (name -> value)
-    Rows must contain at least a 'period' column and must be sorted by period.
-    Returns a dict: {period: start_row, stop_row}
+    Rows must contain the index column and must be sorted by that column.
+    Returns a dict: {index_value: start_row, stop_row}
     """
     rows_per_period = {}
-    current_period = None
+    current_value = None
     start_row = None
+    # I don't know whether or not but my attempts to only retrieve one column
+    # made the function slower, not faster (this is only used in diff_h5 &
+    # merge_h5 though).
     for idx, row in enumerate(table):
-        period = row['period']
-        if period != current_period:
+        value = row[index]
+        if value != current_value:
             # 0 > None is True
-            if period < current_period:
+            if value < current_value:
                 raise Exception("data is not time-ordered")
             if start_row is not None:
-                rows_per_period[current_period] = (start_row, idx)
+                rows_per_period[current_value] = (start_row, idx)
             start_row = idx
-            current_period = period
-    if current_period is not None:
-        rows_per_period[current_period] = (start_row, len(table))
+            current_value = value
+    if current_value is not None:
+        rows_per_period[current_value] = (start_row, len(table))
     return rows_per_period
 
 
@@ -734,7 +743,7 @@ def index_tables(globals_def, entities, fpath):
             print("    -", ent_name, "...", end=' ')
 
             table = getattr(input_entities, ent_name)
-            assert_valid_type(table, entity.fields, entity.missing_fields)
+            assert_valid_type(table, list(entity.fields.in_input.name_types))
 
             start_time = time.time()
             rows_per_period, id_to_rownum_per_period = index_table(table)
@@ -795,8 +804,13 @@ class H5Data(DataSource):
                 # index_tables already checks whether all tables exist and
                 # are coherent with globals_def
                 for name in globals_def:
+                    # FIXME: if a globals is both in the input h5 and declared
+                    # to be coming from a csv file, it is copied from the h5
+                    # file, which is wrong/misleading because it is not used
+                    # in the simulation.
                     if name in globals_node:
-                        #noinspection PyProtectedMember
+                        # noinspection PyProtectedMember
+                        # FIXME: only copy declared fields
                         getattr(globals_node, name)._f_copy(output_globals)
 
             entities_tables = dataset['entities']
@@ -822,7 +836,7 @@ class H5Data(DataSource):
 #                entity.indexed_input_table = entities_tables[ent_name]
 #                entity.indexed_output_table = entities_tables[ent_name]
 
-                #TODO: copying the table and generally preparing the output
+                # TODO: copying the table and generally preparing the output
                 # file should be a different method than indexing
                 print(" * copying table...")
                 start_time = time.time()
@@ -837,7 +851,8 @@ class H5Data(DataSource):
                     stoprow = 0
 
                 output_table = copy_table(table.table, output_entities,
-                                          entity.fields, stop=stoprow,
+                                          entity.fields.in_output.dtype,
+                                          stop=stoprow,
                                           show_progress=True)
                 entity.output_rows = output_rows
                 print("done (%s elapsed)." % time2str(time.time() - start_time))
@@ -846,7 +861,7 @@ class H5Data(DataSource):
                       end=' ')
                 start_time = time.time()
 
-                #TODO: this whole process of merging all periods is very
+                # TODO: this whole process of merging all periods is very
                 # opinionated and does not allow individuals to die/disappear
                 # before the simulation starts. We couldn't for example,
                 # take the output of one of our simulation and
@@ -854,9 +869,10 @@ class H5Data(DataSource):
                 # would be brought back to life. In conclusion, it should be
                 # optional.
                 entity.array, entity.id_to_rownum = \
-                    build_period_array(table.table, entity.fields,
+                    build_period_array(table.table,
+                                       list(entity.fields.name_types),
                                        entity.input_rows,
-                                       entity.input_index, start_period, entity.default_values)
+                                       entity.input_index, start_period)
                 assert isinstance(entity.array, ColumnArray)
                 entity.array_period = start_period
                 print("done (%s elapsed)." % time2str(time.time() - start_time))
@@ -879,12 +895,11 @@ class Void(DataSource):
         output_indexes = output_file.create_group("/", "indexes", "Indexes")
         output_entities = output_file.create_group("/", "entities", "Entities")
         for entity in entities.itervalues():
-            dtype = np.dtype(entity.fields)
-            entity.array = ColumnArray.empty(0, dtype=dtype)
+            entity.array = ColumnArray.empty(0, dtype=entity.fields.dtype)
             entity.array_period = start_period
             entity.id_to_rownum = np.empty(0, dtype=int)
             output_table = output_file.create_table(
-                output_entities, entity.name, dtype,
+                output_entities, entity.name, entity.fields.in_output.dtype,
                 title="%s table" % entity.name)
 
             entity.input_table = None

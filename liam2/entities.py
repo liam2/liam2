@@ -12,8 +12,8 @@ import tables
 import config
 from data import merge_arrays, get_fields, ColumnArray, index_table
 from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
-                  GlobalArray,  Expr, MethodSymbol,
-                  expr_eval, get_missing_value,missing_values)
+                  GlobalArray, Expr, MethodSymbol,
+                  expr_eval, missing_values)
 from exprtools import parse
 from process import Assignment, ProcessGroup, While, Function, Return
 from utils import (count_occurrences, field_str_to_type, size2str,
@@ -22,7 +22,6 @@ from utils import (count_occurrences, field_str_to_type, size2str,
 
 
 max_vars = 0
-
 
 #def compress_column(a, level):
 #    arr = bcolz.carray(a, cparams=bcolz.cparams(level))
@@ -72,11 +71,12 @@ class DiskBackedArray(object):
 
 
 class Field(object):
-    def __init__(self, name, dtype, input=True, output=True):
+    def __init__(self, name, dtype, input=True, output=True, default=None):
         self.name = name
         self.dtype = dtype
         self.input = input
         self.output = output
+        self.default = default
 
 
 class FieldCollection(list):
@@ -111,8 +111,7 @@ class Entity(object):
     """
 
     def __init__(self, name, fields=None, links=None, macro_strings=None,
-                 process_strings=None, array=None,
-                 missing_fields=None, default_values={}, ):
+                 process_strings=None, array=None):
         self.name = name
 
         # we should have exactly one of either array or fields defined
@@ -143,22 +142,6 @@ class Entity(object):
         if 'period' not in fnames:
             fields.insert(0, Field('period', int))
         self.fields = fields
-
-        # only used in data (to check that all "required" fields are present
-        # in the input file)
-
-        # one potential solution would be to split the fields argument and
-        # attribute in input_fields and output_fields (regardless of whether
-        # it is split in the simulation/yaml file).
-
-        # however that might be just a temporary solution as we will soon need
-        # more arguments to fields (default values, ranges, etc...)
-
-        # another solution is to use a Field class
-        # seems like the better long term solution
-        self.missing_fields = missing_fields
-        self.default_values = default_values
-        self.stored_fields = set(name for name, _ in fields)
         self.links = links
 
         if macro_strings is None:
@@ -221,43 +204,37 @@ class Entity(object):
         #entity_def.get('fields', []) returns None and this breaks
         fields_def = [d.items()[0] for d in entity_def.get('fields', [])]
 
-        fields = []
-        missing_fields = []
-        default_values = {}
-
-
-        for name, fielddef in fields_def:
+        def fdef2field(name, fielddef):
             if isinstance(fielddef, dict):
                 strtype = fielddef['type']
-                if not fielddef.get('initialdata', True):
-                    missing_fields.append(name)
-
-                fieldtype = field_str_to_type(strtype, "field '%s'" % name)
-                dflt_type = missing_values[fieldtype]
-                default = fielddef.get('default', dflt_type)
-                if fieldtype != type(default):
-                    raise Exception("The default value given to %s is %s"
-                    " but %s was expected" %(name, type(default), strtype) )
-
+                input = fielddef.get('initialdata', True)
+                output = fielddef.get('output', True)
+                default = fielddef.get('default', None)
             else:
                 strtype = fielddef
-                fieldtype = field_str_to_type(strtype, "field '%s'" % name)
-                default = missing_values[fieldtype]
+                input = True
+                output = True
+                default = None
+            dtype = field_str_to_type(strtype, "field '%s'" % name)
+            if default is None:
+                # the default default value
+                default = missing_values[dtype]
+            if dtype != type(default):
+                raise Exception("The default value given to %s is %s"
+                    " but %s was expected" %(name, type(default), strtype))
+            return Field(name, dtype, input, output, default)
 
-            fields.append((name, fieldtype))
-            default_values[name] = default
-
-
+        fields = [fdef2field(name, fdef) for name, fdef in fields_def]
         link_defs = entity_def.get('links', {})
         str2class = {'one2many': One2Many, 'many2one': Many2One, 'one2one': One2One}
         links = dict((name,
                       str2class[l['type']](name, l['field'], l['target']))
                      for name, l in link_defs.iteritems())
 
-        #TODO: add option for on_align_overflow
-        return Entity(ent_name, fields, missing_fields, default_values, links,
+        return Entity(ent_name, fields, links,
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}))
+
 
     # noinspection PyProtectedMember
     def attach_and_resolve_links(self, entities):
@@ -271,12 +248,12 @@ class Entity(object):
 
     @classmethod
     def from_table(cls, table):
-        return Entity(table.name, get_fields(table), missing_fields=[], default_values={},
+        return Entity(table.name, get_fields(table), missing_fields=[],
                       links={}, macro_strings={}, process_strings={})
 
     @staticmethod
     def collect_predictors(items):
-        # this excludes lists (procedures) and dict (while, ...)
+        # this excludes lists (functions) and dict (while, ...)
         return [k for k, v in items
                 if k is not None and isinstance(v, (basestring, int, float))]
 
@@ -295,19 +272,20 @@ class Entity(object):
             # globally
             all_predictors = set(self.collect_predictors(processes))
 
-            stored_fields = self.stored_fields
+            field_names = set(self.fields.names)
 
-            # non-callable fields (no variable-procedure for them)
+            # normal fields (non-callable/no hybrid variable-function for them)
             variables = dict((name, Variable(self, name, type_))
-                             for name, type_ in self.fields
-                             if name in stored_fields - process_names)
-            # callable fields
+                             for name, type_ in self.fields.name_types
+                             if name in field_names - process_names)
+
+            # callable fields (fields with a process of the same name)
             variables.update((name, VariableMethodHybrid(self, name, type_))
-                             for name, type_ in self.fields
-                             if name in stored_fields & process_names)
-            # global temporaries (they are all callable)
+                             for name, type_ in self.fields.name_types
+                             if name in field_names & process_names)
+            # global temporaries (they are all callable).
             variables.update((name, VariableMethodHybrid(self, name))
-                             for name in all_predictors - stored_fields)
+                             for name in all_predictors - field_names)
             variables.update(self.links)
             self._variables = variables
         return self._variables
@@ -321,15 +299,17 @@ class Entity(object):
     @property
     def methods(self):
         if self._methods is None:
-            if self.process_strings is None:
-                self._methods = []
-            else:
-                # variable-method hybrids are handled by the self.variable
-                # property
-                self._methods = \
-                    [(k, MethodSymbol(k, self))
-                     for k, v in self.process_strings.iteritems()
-                     if self.ismethod(v) and k not in self.stored_fields]
+            pstrings = self.process_strings
+            items = pstrings.iteritems() if pstrings is not None else ()
+            # variable-method hybrids are handled by the self.variable property
+            stored_fields = set(self.fields.in_output.names)
+            methodnames = [k for k, v in items
+                           if self.ismethod(v) and k not in stored_fields]
+            # factorial(n) -> factorial
+            methodnames = [split_signature(name)[0] if '(' in name else name
+                           for name in methodnames]
+            self._methods = [(name, MethodSymbol(name, self))
+                             for name in methodnames]
         return self._methods
 
     def all_symbols(self, global_context):
@@ -378,44 +358,130 @@ class Entity(object):
         sub_processes = self.parse_expressions(group_expressions, group_context)
         return ProcessGroup(k, self, sub_processes, purge)
 
-    def parse_expressions(self, items, context):
+    # Once we can make it an error for non-function processes/statements,
+    # we should probably split this method into parse_functions and
+    # parse_function_body.
+    def parse_expressions(self, items, context, functions_only=False):
         """
         items -- a list of tuples (name, process_string)
         context -- parsing context
                    a dict of all symbols available for all entities
+        functions_only -- whether non-functions processes are allowed
         """
         processes = []
         for k, v in items:
             if k == 'while':
-                if not isinstance(v, dict):
+                if isinstance(v, dict):
+                    raise SyntaxError("""
+This syntax for while is not supported anymore:
+  - while:
+      cond: {cond_expr}
+      code:
+          - ...
+Please use this instead:
+  - while {cond_expr}:
+      - ...
+""".format(cond_expr=v['cond']))
+                else:
                     raise ValueError("while is a reserved keyword")
-                cond = parse(v['cond'], context)
+            elif k is not None and k.startswith('while '):
+                if not isinstance(v, list):
+                    raise SyntaxError("while is a reserved keyword")
+                cond = parse(k[6:].strip(), context)
                 assert isinstance(cond, Expr)
-                code = self.parse_process_group("while:code", v['code'],
-                                                context, purge=False)
+                code = self.parse_process_group("while_code", v, context,
+                                                purge=False)
                 process = While(k, self, cond, code)
+            elif k == 'return':
+                e = SyntaxError("return is a reserved keyword. To return "
+                                "from a function, use 'return expr' "
+                                "instead of 'return: expr'")
+                e.liam2context = "while parsing: return: {}".format(v)
+                raise e
+            elif k is None and v.startswith('return'):
+                assert len(v) == 6 or v[6] == ' '
+                if len(v) > 6:
+                    result_def = v[7:].strip()
+                else:
+                    result_def = None
+                result_expr = parse(result_def, context)
+                process = Return(None, self, result_expr)
             else:
                 process = self.parse_expr(k, v, context)
+                if process is not None and functions_only:
+                    if k in self.fields.names:
+                        msg = """defining a process outside of a function is
+deprecated because it is ambiguous. You should:
+ * wrap the '{name}: {expr}' assignment inside a function like this:
+        compute_{name}:  # you can name it any way you like but simply \
+'{name}' is not recommended !
+            - {name}: {expr}
+ * update the simulation.processes list to use 'compute_{name}' (the function \
+name) instead of '{name}'.
+"""
+                    else:
+                        msg = """defining a process outside of a function is \
+deprecated because it is ambiguous.
+1) If '{name}: {expr}' is an assignment ('{name}' stores the result of \
+'{expr}'), you should:
+ * wrap the assignment inside a function, for example, like this:
+        compute_{name}:  # you can name it any way you like but simply \
+'{name}' is not recommended !
+            - {name}: {expr}
+ * update the simulation.processes list to use 'compute_{name}' (the function \
+name) instead of '{name}'.
+ * add '{name}' in the entities fields with 'output: False'
+2) otherwise if '{expr}' is an expression which does not return any value, you \
+can simply transform it into a function, like this:
+        {name}:
+            - {expr}
+"""
+                    warnings.warn(msg.format(name=k, expr=v),
+                                  UserDeprecationWarning)
                 if process is None:
                     if self.ismethod(v):
-                        if isinstance(v, list):
-                            # v should be a list of dicts (assignments) or
-                            # strings (actions)
-                            argnames, code_def, result_def = [], v, None
+                        if isinstance(v, dict):
+                            args = v.get('args', '')
+                            code = v.get('code', '')
+                            result = v.get('return', '')
+                            oldargs = "\n      args: {}".format(args) \
+                                if args else ''
+                            oldcode = "\n      code:\n          - ..." \
+                                if code else ''
+                            newcode = "\n      - ..." if code else ''
+                            oldresult = "\n      return: " + result \
+                                if result else ''
+                            newresult = "\n      - return " + result \
+                                if result else ''
+                            template = """
+This syntax for defining functions with arguments or a return value is not
+supported anymore:
+  {funcname}:{oldargs}{oldcode}{oldresult}
+
+Please use this instead:
+  {funcname}({newargs}):{newcode}{newresult}"""
+                            msg = template.format(funcname=k, oldargs=oldargs,
+                                                  oldcode=oldcode,
+                                                  oldresult=oldresult,
+                                                  newargs=args, newcode=newcode,
+                                                  newresult=newresult)
+                            raise SyntaxError(msg)
+
+                        assert isinstance(v, list)
+                        # v should be a list of dicts (assignments) or
+                        # strings (actions)
+                        if "(" in k:
+                            k, args = split_signature(k)
+                            argnames = argspec(args).args
+                            code_def, result_def = v, None
                         else:
-                            assert isinstance(v, dict)
-                            args_def = v.get('args', '')
-                            argnames = [a.strip()
-                                        for a in args_def.split(',')
-                                        if a != '']
-                            code_def = v.get('code', [])
-                            result_def = v.get('return')
+                            argnames, code_def, result_def = [], v, None
                         method_context = self.get_group_context(context,
                                                                 argnames)
-                        code = self.parse_process_group("func:code", code_def,
+                        code = self.parse_process_group(k + "_code", code_def,
                                                         method_context,
                                                         purge=False)
-                        #TODO: use code.predictors instead (but it currently
+                        # TODO: use code.predictors instead (but it currently
                         # fails for some reason) or at least factor this out
                         # with the code in parse_process_group
                         group_expressions = [elem.items()[0]
@@ -426,15 +492,16 @@ class Entity(object):
                             self.collect_predictors(group_expressions)
                         method_context = self.get_group_context(
                             method_context, group_predictors)
-                        result = parse(result_def, method_context)
-                        assert result is None or isinstance(result, Expr)
-                        process = Function(k, self, argnames, code, result)
+                        result_expr = parse(result_def, method_context)
+                        assert result_expr is None or \
+                               isinstance(result_expr, Expr)
+                        process = Function(k, self, argnames, code, result_expr)
                     elif isinstance(v, dict) and 'predictor' in v:
                         raise ValueError("Using the 'predictor' keyword is "
                                          "not supported anymore. "
                                          "If you need several processes to "
                                          "write to the same variable, you "
-                                         "should rather use procedures.")
+                                         "should rather use functions.")
                     else:
                         raise Exception("unknown expression type for %s: %s"
                                         % (k, type(v)))
@@ -443,7 +510,7 @@ class Entity(object):
 
     def parse_processes(self, context):
         processes = self.parse_expressions(self.process_strings.iteritems(),
-                                           context)
+                                           context, functions_only=True)
         self.processes = dict(processes)
         # self.ssa()
 
@@ -452,7 +519,7 @@ class Entity(object):
     #         for expr in p.expressions():
     #             for node in expr.all_of(MethodCallToResolve):
     #                 # replace node in the parent node by the "resolved" node
-    #                 #TODO: mimic ast.NodeTransformer
+    #                 # TODO: mimic ast.NodeTransformer
     #                 node.resolve()
 
     def ssa(self):
@@ -473,9 +540,9 @@ class Entity(object):
                         if not isinstance(v, GlobalVariable):
                             lag_vars.add(v.name)
                     for lv in node.all_of(LinkGet):
-                        #noinspection PyProtectedMember
+                        # noinspection PyProtectedMember
                         lag_vars.add(lv.link._link_field)
-                        #noinspection PyProtectedMember
+                        # noinspection PyProtectedMember
                         target_entity = lv.link._target_entity
                         if target_entity == self:
                             target_vars = lv.target_expr.all_of(Variable)
@@ -489,13 +556,13 @@ class Entity(object):
             lag_vars.discard('id')
             lag_vars = ['id'] + sorted(lag_vars)
 
-        field_type = dict(self.fields)
+        field_type = dict(self.fields.name_types)
         self.lag_fields = [(v, field_type[v]) for v in lag_vars]
 
     def load_period_data(self, period):
         if self.lag_fields:
-            #TODO: use ColumnArray here
-            #XXX: do we need np.empty? (but watch for alias problems)
+            # TODO: use ColumnArray here
+            # XXX: do we need np.empty? (but watch for alias problems)
             self.array_lag = np.empty(len(self.array),
                                       dtype=np.dtype(self.lag_fields))
             for field, _ in self.lag_fields:
@@ -530,11 +597,14 @@ class Entity(object):
         num_locals = len(local_var_names)
         if config.debug and num_locals:
             local_vars = [v for k, v in temp_vars.iteritems()
-                          if k in local_var_names and isinstance(v, np.ndarray)]
+                          if k in local_var_names]
             max_vars = max(max_vars, num_locals)
-            temp_mem = sum(v.nbytes for v in local_vars)
-            avgsize = sum(v.dtype.itemsize for v in local_vars) / num_locals
-            if config.log_level in ("procedures", "processes"):
+            temp_mem = sum(sys.getsizeof(v) +
+                           (v.nbytes if isinstance(v, np.ndarray) else 0)
+                           for v in local_vars)
+            avgsize = sum(v.dtype.itemsize if isinstance(v, np.ndarray) else 0
+                          for v in local_vars) / num_locals
+            if config.log_level in ("functions", "processes"):
                 print(("purging {} variables (max {}), will free {} of memory "
                        "(avg field size: {} b)".format(num_locals, max_vars,
                                                        size2str(temp_mem),
@@ -549,7 +619,7 @@ class Entity(object):
         # also flush it to disk
         h5file = self.output_index_node._v_file
         h5file.create_array(self.output_index_node, "_%d" % period,
-                           self.id_to_rownum, "Period %d index" % period)
+                            self.id_to_rownum, "Period %d index" % period)
 
         # if an old index exists (this is not the case for the first period!),
         # point to the one on the disk, instead of the one in memory,
@@ -561,7 +631,7 @@ class Entity(object):
             self.output_index[period - 1] = DiskBackedArray(prev_disk_array)
 
     def store_period_data(self, period):
-        if config.debug and config.log_level in ("procedures", "processes"):
+        if config.debug and config.log_level in ("functions", "processes"):
             temp_mem = sum(v.nbytes for v in self.temp_variables.itervalues()
                            if isinstance(v, np.ndarray))
             main_mem = self.array.nbytes
@@ -590,24 +660,62 @@ class Entity(object):
         """
         Common subexpression elimination
         """
-#<<<<<<< HEAD
+        # XXX:
+        # * we either need to do SSA first, or for each assignment process,
+        #   "forget" all expressions containing the assigned variable
+        #   doing it using SSA seems cleaner, but in the end it shouldn't
+        #   change much. If we do not do SSA, we will need to "forget" about
+        #   expressions which contain an assigned variable at *each step* of
+        #   the process, including when simply counting the number of occurrence
+        #   of expressions. In that case we also need to iterate on the
+        #   processes in the same order than the simulation!
+        # * I don't know if it is a good idea to optimize cross-functions.
+        #   On one hand it offers much more possibilities for optimizations
+        #   but, on the other hand the optimization pass might just take too
+        #   much time... If we do not do it globally, we should move the method
+        #   to ProcessGroup instead. But let's try it cross-functions first.
+        # * cross-functions might get tricky when we take function calls
+        #   into account.
 
-        if filler is 'auto':
-            filler = get_missing_value(values)
-        result = np.empty(context_length(context), dtype=values.dtype)
-        result.fill(filler)
-        if len(ids):
-            id_to_rownum = context.id_to_rownum
-            # if there was more objects in the past than in the current
-            # period. Currently, remove() keeps old ids, so this never
-            # happens, but if we ever change remove(), we'll need to add
-            # such a check everywhere we use id_to_rownum
-#            invalid_ids = ids > len(id_to_rownum)
-#            if np.any(invalid_ids):
-#                fix ids
-            rows = id_to_rownum[ids]
-            safe_put(result, rows, values)
-        return result
+        # TODO:
+        # * it will be simpler and better to do this in two passes: first
+        #   find duplicated expr and number of occurrences of each expr, then
+        #   proceed with the factorization
+        expr_count = collections.Counter()
+        for p in self.processes.itervalues():
+            for expr in p.expressions():
+                for subexpr in expr.traverse():
+                    if isinstance(subexpr, Expr) and \
+                            not isinstance(subexpr, Variable):
+                        expr_count[subexpr] += 1
+        print()
+        print("most common expressions")
+        print("=" * 20)
+        print(expr_count.most_common(100))
+
+        # if count(larger) <= count(smaller) <= count(larger) + 1: kill smaller
+        # if count(smaller) > count(larger) + 1: do both (larger uses smaller)
+
+        # seen = {}
+        # for p in self.processes.itervalues():
+        #     for expr in p.expressions():
+        #         for subexpr in expr.traverse():
+        #             if subexpr in seen:
+        #                 original = seen[subexpr]
+        #                 # 1) add an assignment process before the process of
+        #                 # the "original" expression to compute a temporary
+        #                 # variable
+        #                 # 2) modify "original" expr to use the temp var
+        #                 # 3) modify the current expr to use the temp var
+        #             else:
+        #                 seen[subexpr] = subexpr
+
+    def __repr__(self):
+        return "<Entity '%s'>" % self.name
+
+    def __str__(self):
+        return self.name
+
 
     def value_for_period(self, expr, period, context, fill='auto'):
         sub_context = EntityContext(self,
@@ -626,60 +734,3 @@ class Entity(object):
                 return self.fill_missing_values(ids, result, context, fill)
         else:
             return result
-#=======
-#        #XXX:
-#        # * we either need to do SSA first, or for each assignment process,
-#        #   "forget" all expressions containing the assigned variable
-#        #   doing it using SSA seems cleaner, but in the end it shouldn't
-#        #   change much. If we do not do SSA, we will need to "forget" about
-#        #   expressions which contain an assigned variable at *each step* of
-#        #   the process, including when simply counting the number of occurrence
-#        #   of expressions. In that case we also need to iterate on the
-#        #   processes in the same order than the simulation!
-#        # * I don't know if it is a good idea to optimize cross-procedures.
-#        #   On one hand it offers much more possibilities for optimizations
-#        #   but, on the other hand the optimization pass might just take too
-#        #   much time... If we do not do it globally, we should move the method
-#        #   to ProcessGroup instead. But let's try it cross-procedures first.
-#        # * cross-procedures might get tricky when we take function calls
-#        #   into account.
-#
-#        #TODO:
-#        # * it will be simpler and better to do this in two passes: first
-#        #   find duplicated expr and number of occurrences of each expr, then
-#        #   proceed with the factorization
-#        expr_count = collections.Counter()
-#        for p in self.processes.itervalues():
-#            for expr in p.expressions():
-#                for subexpr in expr.traverse():
-#                    if isinstance(subexpr, Expr) and \
-#                            not isinstance(subexpr, Variable):
-#                        expr_count[subexpr] += 1
-#        print()
-#        print("most common expressions")
-#        print("=" * 20)
-#        print(expr_count.most_common(100))
-#
-#        # if count(larger) <= count(smaller) <= count(larger) + 1: kill smaller
-#        # if count(smaller) > count(larger) + 1: do both (larger uses smaller)
-#
-#        # seen = {}
-#        # for p in self.processes.itervalues():
-#        #     for expr in p.expressions():
-#        #         for subexpr in expr.traverse():
-#        #             if subexpr in seen:
-#        #                 original = seen[subexpr]
-#        #                 # 1) add an assignment process before the process of
-#        #                 # the "original" expression to compute a temporary
-#        #                 # variable
-#        #                 # 2) modify "original" expr to use the temp var
-#        #                 # 3) modify the current expr to use the temp var
-#        #             else:
-#        #                 seen[subexpr] = subexpr
-#>>>>>>> liam2/master
-
-    def __repr__(self):
-        return "<Entity '%s'>" % self.name
-
-    def __str__(self):
-        return self.name

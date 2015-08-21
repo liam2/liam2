@@ -132,7 +132,7 @@ class Console(object):
             entity = self.get_entity(ent_name)
             if entity is None:
                 return
-        print("fields:", ', '.join(name for name, _ in entity.fields))
+        print("fields:", ', '.join(entity.fields.names))
 
     def list_globals(self):
         print("globals:")
@@ -157,7 +157,7 @@ class Console(object):
         local_parse_ctx = parse_ctx[entity_name].copy()
 
         # add all currently defined temp_variables because otherwise
-        # local variables (defined within a procedure) wouldn't be available
+        # local variables (defined within a function) wouldn't be available
         local_parse_ctx.update((name, Variable(entity, name))
                                for name in entity.temp_variables.keys())
         parse_ctx[entity_name] = local_parse_ctx
@@ -223,7 +223,7 @@ class Console(object):
                     import traceback
                     traceback.print_exc()
                 msg = str(e)
-                #noinspection PyArgumentList
+                # noinspection PyArgumentList
                 lines = msg.splitlines()
                 if len(lines) > 1:
                     msg = '\n'.join(lines[1:])
