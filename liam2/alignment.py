@@ -16,8 +16,9 @@ from groupby import GroupBy
 from links import LinkGet, Many2One
 from partition import partition_nd, filter_to_indices
 from importer import load_ndarray
-from utils import PrettyTable, LabeledArray, time_period
+from utils import PrettyTable, LabeledArray
 
+from til.utils import time_period
 
 def kill_axis(axis_name, value, expressions, possible_values, need, periodicity):
     """possible_values is a list of ndarrays"""
