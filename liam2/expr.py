@@ -337,27 +337,23 @@ class Expr(object):
                                                     % (labels1, labels2))
 
         s = simple_expr.as_string()
-        try:
-            res = evaluate(s, local_ctx, {'nan': float('nan')}, truediv='auto')
-            if isinstance(res, np.ndarray) and not res.shape:
-                res = np.asscalar(res)
-            if labels is not None:
-                # This is a hack which relies on the fact that currently
-                # all the expression we evaluate through numexpr preserve
-                # array shapes, but if we ever use numexpr reduction
-                # capabilities, we will be in trouble
-                res = LabeledArray(res, labels[0], labels[1])
+        constants = {'nan': float('nan'), 'inf': float('inf')}
+        res = evaluate(s, local_ctx, constants, truediv='auto')
+        if isinstance(res, np.ndarray) and not res.shape:
+            res = np.asscalar(res)
+        if labels is not None:
+            # This is a hack which relies on the fact that currently
+            # all the expression we evaluate through numexpr preserve
+            # array shapes, but if we ever use numexpr reduction
+            # capabilities, we will be in trouble
+            res = LabeledArray(res, labels[0], labels[1])
 
-            # if cache_key is not None:
-            #     expr_cache[cache_key] = res
-            #     if cached_result is not None:
-            #         assert np.array_equal(res, cached_result), \
-            #             "%s != %s" % (res, cached_result)
-            return res
-        except KeyError, e:
-            raise add_context(e, s)
-        except Exception:
-            raise
+        # if cache_key is not None:
+        #     expr_cache[cache_key] = res
+        #     if cached_result is not None:
+        #         assert np.array_equal(res, cached_result), \
+        #             "%s != %s" % (res, cached_result)
+        return res
 
     def as_simple_expr(self, context):
         """
@@ -903,10 +899,10 @@ class UnaryOp(Expr):
         self.expr = expr
 
     def as_simple_expr(self, context):
-        return self.__class__(self.op, self.expr.as_simple_expr(context))
+        return self.__class__(self.op, as_simple_expr(self.expr, context))
 
     def as_string(self):
-        return "(%s%s)" % (self.op, self.expr.as_string())
+        return "(%s%s)" % (self.op, as_string(self.expr))
 
     def dtype(self, context):
         return getdtype(self.expr, context)
@@ -1053,10 +1049,10 @@ class GlobalVariable(EvaluableExpression):
                 globals_periods = globals_table['PERIOD']
             except ValueError:
                 globals_periods = globals_table['period']
-            if context['format_date'] != 'year0':
-                if max(globals_periods) < 9999:
-                    globals_periods = [100* x +1 for x in globals_periods]
-            row = np.searchsorted(globals_periods, key, side='left')
+#            if context['format_date'] != 'year0':
+#                if max(globals_periods) < 9999:
+#                    globals_periods = [100* x +1 for x in globals_periods]
+#            row = np.searchsorted(globals_periods, key, side='left')
             base_period = globals_periods[0]
             if isinstance(key, slice):
                 translated_key = slice(key.start - base_period,

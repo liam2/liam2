@@ -60,16 +60,16 @@ class ValueForPeriod(TimeFunction):
 
     dtype = firstarg_dtype
 
-    def evaluate(self, context):
-        entity = context['__entity__']
-        idx = context['period_idx'] - expr_eval(self.num_periods, context)
-        # si idx est negatif on va chercher la periode a droite de periods, ce n'est pas ce qu'on veut.
-        if idx >= 0:
-            period = context['periods'][idx]
-        else:
-            period = 0
-        return entity.value_for_period(self.expr, period, context,
-                                       self.missing)
+#    def evaluate(self, context):
+#        entity = context['__entity__']
+#        idx = context['period_idx'] - expr_eval(self.num_periods, context)
+#        # si idx est negatif on va chercher la periode a droite de periods, ce n'est pas ce qu'on veut.
+#        if idx >= 0:
+#            period = context['periods'][idx]
+#        else:
+#            period = 0
+#        return entity.value_for_period(self.expr, period, context,
+#                                       self.missing)
 
 #TODO: this should be a compound expression:
 # Lag(expr, numperiods, missing)
@@ -90,8 +90,9 @@ class Duration(TimeFunction):
         entity = context.entity
 
         baseperiod = entity.base_period
-        lag_idx = context['period_idx'] - 1
-        period = context['periods'][lag_idx]
+#        lag_idx = context['period_idx'] - 1
+#        period = context['periods'][lag_idx]
+        period = context.period - 1
         value = expr_eval(bool_expr, context)
 
         # using a full int so that the "store" type check works
