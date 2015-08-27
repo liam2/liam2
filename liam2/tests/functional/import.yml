@@ -3,11 +3,11 @@ output: small.h5
 
 globals:
     ARRAY:
-        path: param\mig.csv
+        path: param/mig.csv
         type: float
 
     othertable_noperiod:
-        path: param\othertable.csv
+        path: param/othertable.csv
         fields:
             # PERIOD is *not* implicit
             - INTFIELD: int
@@ -15,10 +15,10 @@ globals:
 
 entities:
     region:
-        path: param\region.csv
+        path: param/region.csv
 
     household:
-        path: param\household.csv
+        path: param/household.csv
 
     person:
         fields:
@@ -35,7 +35,7 @@ entities:
 
         # deprecated? no, let's just say it's a shortcut if there is only one
         # file. And it could serve as a prefix for individual files path.
-        path: param\person.csv
+        path: param/person.csv
 
         # deprecated? no. it could be useful even in the case of several files
         # if you want fields renamed the same way across all files
@@ -54,7 +54,7 @@ entities:
 ##        transposed: True
 #
         files:
-            - param\person.csv:
+            - param/person.csv:
 #                oldnames:
 #                    period: period
 #                    dead: co_alive
@@ -62,8 +62,8 @@ entities:
                     period: period
                     co_alive: dead
 
-            - param\p_age.txt: {}
-            - param\p_work.txt: {}
+            - param/p_age.txt: {}
+            - param/p_work.txt: {}
 
 #        interpolate:
 #            work: previous_value

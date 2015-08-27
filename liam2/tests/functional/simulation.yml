@@ -4,7 +4,7 @@ import:
 
 globals:
     periodic:
-        path: param\globals.csv
+        path: param/globals.csv
         transposed: True
         fields:
             # PERIOD is implicit
@@ -22,11 +22,11 @@ globals:
         type: float
 
     MIG:
-        path: param\mig.csv
+        path: param/mig.csv
         type: float
 
     othertable:
-        path: param\othertable.csv
+        path: param/othertable.csv
         fields:
             - PERIOD: int
             - INTFIELD: int
@@ -443,7 +443,7 @@ entities:
 
                 # stored + single-expr process => hybrid
                 # * manual call
-                - agegroup()
+                - compute_agegroup()
                 # * in agespine (tested before)
                 # * used in expr (tested in many tests but lets do it here too)
                 - local: agegroup * 10
@@ -2503,6 +2503,7 @@ simulation:
     processes:
         - person: [
 #                   bp,
+                   compute_agegroup,
                    test_remove,
 
                    # basic
@@ -2517,7 +2518,6 @@ simulation:
 
                    test_expr,
                    test_trunc,
-                   agegroup,
 
                    # random
                    test_uniform,
