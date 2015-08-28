@@ -595,7 +595,6 @@ def load_def(localdir, ent_name, section_def, required_fields):
         # csv file is assumed to be in the correct order (ie by period then id)
         csv_filename = section_def.get('path', ent_name + ".csv")
         csv_filepath = complete_path(localdir, csv_filename)
-        csv_filepath
         csv_file = CSV(csv_filepath, newnames,
                        delimiter=',', transpose=transpose)
         stream = csv_file.read(fields)
@@ -687,7 +686,6 @@ def load_def(localdir, ent_name, section_def, required_fields):
 
 
 def csv2h5(fpath = None, buffersize=10 * 2 ** 20):
-    assert fpath is not None
     with open(fpath) as f:
         content = yaml.load(f)
 
