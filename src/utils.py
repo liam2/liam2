@@ -140,6 +140,9 @@ class AutoFlushFile(object):
         self.f.write(s)
         self.f.flush()
 
+    def flush(self):
+        self.f.flush()
+
 
 def time2str(seconds, precise=True):
     minutes = seconds // 60
