@@ -113,22 +113,28 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                                                          assume_unique=True)
                 else:
                     group_maybe_indices = members_indices
-                if isinstance(score, np.ndarray):
+
+                # maybe_to_take is always > 0
+                maybe_to_take = affected - num_always
+                pivot_point = len(group_maybe_indices) - maybe_to_take
+                if pivot_point < 0:
+                    # no need to sort because we will take everybody anyway
+                    indices_to_take = group_maybe_indices
+                elif isinstance(score, np.ndarray):
                     maybe_members_rank_value = score[group_maybe_indices]
-                    #TODO: use np.partition (np1.8+)
-                    sorted_local_indices = np.argsort(maybe_members_rank_value)
-                    sorted_global_indices = \
-                        group_maybe_indices[sorted_local_indices]
+                    # require numpy 1.8
+                    sorted_local_indices = np.argpartition(
+                        maybe_members_rank_value, pivot_point
+                    )
+                    # take the last X individuals (ie those with the highest
+                    # score)
+                    local_to_take = sorted_local_indices[-maybe_to_take:]
+                    indices_to_take = group_maybe_indices[local_to_take]
                 else:
                     # if the score expression is a constant, we don't need to
                     # sort indices. In that case, the alignment will first take
                     # the individuals created last (highest id).
-                    sorted_global_indices = group_maybe_indices
-
-                # maybe_to_take is always > 0
-                maybe_to_take = affected - num_always
-                # take the last X individuals (ie those with the highest score)
-                indices_to_take = sorted_global_indices[-maybe_to_take:]
+                    indices_to_take = group_maybe_indices[-maybe_to_take:]
 
                 underflow = maybe_to_take - len(indices_to_take)
                 if underflow > 0:
