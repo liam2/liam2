@@ -15,6 +15,7 @@ try:
     nanmin = bn.nanmin
     nanmax = bn.nanmax
     nansum = bn.nansum
+    print("using bottleneck")
     # does it exist?
     # nanmean = bn.nanmean
 except ImportError:
@@ -269,12 +270,12 @@ class Gini(FilteredExpression):
         else:
             filter_values = True
 
-        # if skip_na:
-        #     # we should *not* use an inplace operation because filter_values
-        #     # can be a simple variable
-        #     filter_values = filter_values & ispresent(values)
-        # if filter_values is not True:
-        #     values = values[filter_values]
+        if skip_na:
+            # we should *not* use an inplace operation because filter_values
+            # can be a simple variable
+            filter_values = filter_values & ispresent(values)
+        if filter_values is not True:
+            values = values[filter_values]
 
         # from Wikipedia:
         # G = 1/n * (n + 1 - 2 * (sum((n + 1 - i) * a[i]) / sum(a[i])))
@@ -284,11 +285,11 @@ class Gini(FilteredExpression):
         #   = sum((n - i) * a[i] for i in range(n))
         #   = sum(cumsum(a))
 
-        sorted_values = timed(np.sort, values)
-        if filter_values is True:
-            return timed(gini2, sorted_values)
-        else:
-            return timed(gini, sorted_values, filter_values)
+        sorted_values = np.sort(values)
+        # if filter_values is True:
+        #     return timed(gini2, sorted_values)
+        # else:
+        #     return timed(gini, sorted_values, filter_values)
 
         n = len(values)
 
