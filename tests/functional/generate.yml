@@ -82,7 +82,10 @@ simulation:
         - person: [birth, earnings, marriage]
 
     processes:
-        - person: [link, test_agg]
+        - person: [
+            link,
+            test_agg
+        ]
         - household: [
             sumlink1, sumlink2,
             avglink1, avglink2,
