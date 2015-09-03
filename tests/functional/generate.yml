@@ -20,6 +20,10 @@ entities:
                 - r: persons.min(earnings)
             minlink2:
                 - r: persons.min(earnings, age > 1)
+            maxlink1:
+                - r: persons.max(earnings)
+            maxlink2:
+                - r: persons.max(earnings, age > 1)
             avglink1:
                 - r: persons.avg(earnings)
             avglink2:
@@ -79,11 +83,13 @@ simulation:
 
     processes:
         - person: [link, test_agg]
-        - household: [sumlink1, sumlink2,
-                      countlink1, countlink2]
-#        - household: [sumlink1, sumlink2,
-#                      minlink1, minlink2,
-#                      avglink1, avglink2]
+        - household: [
+            sumlink1, sumlink2,
+            avglink1, avglink2,
+            countlink1, countlink2,
+            minlink1, minlink2,
+            maxlink1, maxlink2,
+        ]
 
     input:
         method: void
