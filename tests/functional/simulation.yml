@@ -611,6 +611,7 @@ entities:
                 - partner_id: if(bad_partner, -1, partner_id)
                 - assertTrue(all(partner.partner.id == id,
                                  filter=partner_id != -1))
+                - assertTrue(all(partner.id != id))
 
             test_remove_init:
                 # dead True only comes from the input
@@ -1637,15 +1638,19 @@ entities:
 #                predictor: plop
 #                expr: age
 
+            clonecount():
+                - return count(f_id != -1 and f_id == m_id)
+
             test_clone:
+                - assertEqual(clonecount(), 0)
                 - count95: count(age == 95)
                 - total: count()
                 - clone(filter = age == 95,
                         f_id = id,
                         m_id = id)
                 - assertEqual(count(), total + count95)
+                - assertEqual(clonecount(), count95)
                 - isclone: f_id != -1 and f_id == m_id
-                - assertEqual(count(isclone), count95)
                 - assertTrue(all(age == 95, filter=isclone))
                 - remove(isclone)
                 - assertEqual(count(), total)
