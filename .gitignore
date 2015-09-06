@@ -1,7 +1,6 @@
 .idea
 .settings
 .pydevproject
-.spyderproject
 .project
 *.pyc
 *.pyd

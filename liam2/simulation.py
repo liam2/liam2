@@ -366,9 +366,6 @@ class Simulation(object):
         method = input_def.get('method', 'h5')
 
         if method == 'h5':
- #           if input_file is None:
- #               input_file = input_def['file']
- #           input_path = os.path.join(input_directory, input_file)
             data_source = H5Data(input_path, output_path)
         elif method == 'void':
             data_source = Void(output_path)

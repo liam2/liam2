@@ -126,7 +126,7 @@ class Expr(object):
     def __mod__(self, other):
         return BinaryOp('%', self, other)
     def __divmod__(self, other):
-        #FIXME
+        # FIXME
         return BinaryOp('divmod', self, other)
     def __pow__(self, other, modulo=None):
         return BinaryOp('**', self, other)
@@ -385,7 +385,7 @@ class LowerOrEqual(ComparisonOp):
         
         expr1 = simplify(self.expr1)
         expr2 = simplify(self.expr2)
-        #TODO: use generic bounds check instead
+        # TODO: use generic bounds check instead
         if dtype(expr1) is bool:
             if expr2 is True:
                 return True
@@ -401,7 +401,7 @@ class GreaterOrEqual(ComparisonOp):
 
         expr1 = simplify(self.expr1)
         expr2 = simplify(self.expr2)
-        #TODO: use generic bounds check instead
+        # TODO: use generic bounds check instead
         if dtype(expr1) is bool:
             if expr2 is False:
                 return True

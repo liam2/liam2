@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import numpy as np
@@ -15,12 +16,12 @@ class GroupBy(TableExpression):
     kwonlyargs = {'expr': None, 'filter': None, 'percent': False,
                   'pvalues': None}
 
-    #noinspection PyNoneFunctionAssignment
+    # noinspection PyNoneFunctionAssignment
     def compute(self, context, *expressions, **kwargs):
         if not expressions:
             raise TypeError("groupby() takes at least 1 argument")
 
-        #TODO: allow lists/tuples of arguments to group by the combinations
+        # TODO: allow lists/tuples of arguments to group by the combinations
         # of keys
         for expr in expressions:
             if isinstance(expr, (bool, int, float)):
@@ -45,13 +46,13 @@ class GroupBy(TableExpression):
         columns = [expr_eval(e, context) for e in expressions]
 
         if filter_value is not None:
-            #TODO: make a function out of this, I think we have this pattern
+            # TODO: make a function out of this, I think we have this pattern
             # in several places
             filtered_columns = [col[filter_value]
                                 if isinstance(col, np.ndarray) and col.shape
                                 else [col]
                                 for col in columns]
-            #FIXME: use the actual filter_expr instead of not_hashable
+            # FIXME: use the actual filter_expr instead of not_hashable
             filtered_context = context.subset(filter_value, expr_vars,
                                               not_hashable)
         else:
@@ -74,7 +75,7 @@ class GroupBy(TableExpression):
                     for indices in groups]
         data = [expr_eval(expr, c) for c in contexts]
 
-        #TODO: use group_indices_nd directly to avoid using np.unique
+        # TODO: use group_indices_nd directly to avoid using np.unique
         # this is twice as fast (unique is very slow) but breaks because
         # the rest of the code assumes all combinations are present
 #        if self.filter is not None:

@@ -5,16 +5,16 @@ output: simple2001.h5
 
 globals:
     periodic:
-        path: input\globals_transposed.csv
+        path: input/globals_transposed.csv
         transposed: True
 
 entities:
     household:
-        path: input\household.csv
+        path: input/household.csv
         # if fields are not specified, they are all imported
 
     person:
-        path: input\person.csv
+        path: input/person.csv
         fields:
             # period and id are implicit
             - age:           int

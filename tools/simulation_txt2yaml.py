@@ -11,7 +11,7 @@ import yaml
 from expr import *
 from align_txt2csv import convert_txt_align
 
-#TODO
+# TODO
 # - filter fields: output only those which are actually used (comment out 
 #   the rest)
 # - convert "leaf" expression literals to the type of the variable being 
@@ -32,7 +32,7 @@ from align_txt2csv import convert_txt_align
 # ? extract common condition parts in a filter to the choose function?
 # ? implement between
 
-#TODO manually:
+# TODO manually:
 # - if(p_yob=2003-60, MINR[2003], ...
 #   ->
 #   if((yob >= 1943) & (yob <= 2000), MINR[yob + 60], 0)
@@ -100,7 +100,7 @@ def load_fields(input_path):
                        % name
                 real_dtype = bool
             elif ncateg > 2:
-                #TODO: import the list of possible values
+                # TODO: import the list of possible values
                 real_dtype = int
             obj_fields[name] = {'type': real_dtype}
         print "   done"

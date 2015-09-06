@@ -7,8 +7,9 @@ from expr import expr_eval, always, expr_cache
 from exprbases import FilteredExpression
 from context import context_length, context_delete, context_subset, context_keep
 from utils import loop_wh_progress
-#FIXME: should be optional
+# FIXME: should be optional
 from cpartition import group_indices_nd
+
 
 def group_context(used_variables, setfilter, context):
     """
@@ -107,7 +108,7 @@ class SequentialMatching(Matching):
     no_eval = ('set1filter', 'set2filter', 'score', 'orderby')
 
     def traverse(self):
-        #FIXME: we should not override the parent traverse method, so that all
+        # FIXME: we should not override the parent traverse method, so that all
         # "child" expressions are traversed too.
         # This is not done currently, because it would traverse score_expr.
         # This is a problem because traverse is used by collect_variables and
@@ -248,7 +249,7 @@ class SequentialMatching(Matching):
                 # only got smaller and was not deleted
                 matching_ctx['__other___ids__'][cell2_idx] = cell2ids[nb_match:]
 
-            #FIXME: the expr gets cached for the full matching_ctx at the
+            # FIXME: the expr gets cached for the full matching_ctx at the
             # beginning and then when another women with the same values is
             # found, it thinks it can reuse the expr but it breaks because it
             # has not the correct length.

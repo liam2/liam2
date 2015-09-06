@@ -21,7 +21,7 @@ entities:
 simulation:
     # overridden by simulation.yml
     processes:
-        - person: [agegroup, imported_process]
+        - person: [compute_agegroup, imported_process]
 
     periods: 55
 

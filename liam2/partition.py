@@ -35,7 +35,7 @@ try:
 except ImportError:
     group_indices_nd = None
 
-    #TODO: make possible_values a list of combinations of value. In some cases,
+    # TODO: make possible_values a list of combinations of value. In some cases,
     # (eg GroupBy), we are not interested in all possible combinations.
     def partition_nd(columns, filter_value, possible_values):
         """
@@ -48,7 +48,7 @@ except ImportError:
         # make a copy of non contiguous columns. It is only worth it when the
         # number of possible values for that column is large enough to
         # compensate for the cost of the copy, and it is usually the case.
-        #XXX: we might want to be more precise about this.
+        # XXX: we might want to be more precise about this.
         # 1e5 arrays
         # * not aligned (nor contiguous): always worth it
         # * aligned but not contiguous: never worth it
@@ -112,7 +112,7 @@ except ImportError:
 #        for idx, row in enumerate(izip(*columns)):
 #            # returns a tuple with the position of the group this row belongs
 #            # to. eg. (0, 1, 5)
-#            #XXX: this uses strict equality, partitioning using
+#            # XXX: this uses strict equality, partitioning using
 #            # inequalities might be useful in some cases
 #            if filter[idx]:
 #                try:
@@ -122,7 +122,7 @@ except ImportError:
 #                                 in izip(row, possible_values)])
 #                    result[pos].append(idx)
 #                except ValueError:
-#                    #XXX: issue a warning?
+#                    # XXX: issue a warning?
 #                    pass
 #        for idx in np.ndindex(*size):
 #            result[idx] = np.array(result[idx])

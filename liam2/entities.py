@@ -5,7 +5,7 @@ import collections
 import sys
 import warnings
 
-#import bcolz
+# import bcolz
 import numpy as np
 import tables
 
@@ -23,15 +23,16 @@ from utils import (count_occurrences, field_str_to_type, size2str,
 
 max_vars = 0
 
-#def compress_column(a, level):
+# def compress_column(a, level):
 #    arr = bcolz.carray(a, cparams=bcolz.cparams(level))
 #    print "%d -> %d (%.2f)" % (arr.nbytes, arr.cbytes,
 #                               float(arr.nbytes) / arr.cbytes),
 #    return arr
 #
 #
-#def decompress_column(a):
+# def decompress_column(a):
 #    return a[:]
+
 
 def global_symbols(globals_def):
     # FIXME: these should be computed once somewhere else, not for each
@@ -128,8 +129,8 @@ class Entity(object):
         if not isinstance(fields, FieldCollection):
             fields = FieldCollection(fields)
 
-        duplicate_names = [name
-                           for name, num
+        duplicate_names = [_name
+                           for _name, num
                            in count_occurrences(fields.names)
                            if num > 1]
         if duplicate_names:
@@ -201,7 +202,7 @@ class Entity(object):
         # YAML "ordered dict" syntax returns a list of dict and we want a list
         # of tuples
         # FIXME: if "fields" key is present but no field is defined,
-        #entity_def.get('fields', []) returns None and this breaks
+        # entity_def.get('fields', []) returns None and this breaks
         fields_def = [d.items()[0] for d in entity_def.get('fields', [])]
 
         def fdef2field(name, fielddef):
@@ -215,13 +216,14 @@ class Entity(object):
                 input = True
                 output = True
                 default = None
+
             dtype = field_str_to_type(strtype, "field '%s'" % name)
             if default is None:
                 # the default default value
                 default = missing_values[dtype]
             if dtype != type(default):
                 raise Exception("The default value given to %s is %s"
-                    " but %s was expected" %(name, type(default), strtype))
+                    " but %s was expected" % (name, type(default), strtype))
             return Field(name, dtype, input, output, default)
 
         fields = [fdef2field(name, fdef) for name, fdef in fields_def]
@@ -234,7 +236,6 @@ class Entity(object):
         return Entity(ent_name, fields, links,
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}))
-
 
     # noinspection PyProtectedMember
     def attach_and_resolve_links(self, entities):
@@ -493,8 +494,7 @@ Please use this instead:
                         method_context = self.get_group_context(
                             method_context, group_predictors)
                         result_expr = parse(result_def, method_context)
-                        assert result_expr is None or \
-                               isinstance(result_expr, Expr)
+                        assert result_expr is None or isinstance(result_expr, Expr)
                         process = Function(k, self, argnames, code, result_expr)
                     elif isinstance(v, dict) and 'predictor' in v:
                         raise ValueError("Using the 'predictor' keyword is "
@@ -715,7 +715,6 @@ Please use this instead:
 
     def __str__(self):
         return self.name
-
 
     def value_for_period(self, expr, period, context, fill='auto'):
         sub_context = EntityContext(self,

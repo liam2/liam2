@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function, division
 
 from itertools import izip, groupby
@@ -11,7 +12,7 @@ from expr import (Expr, Variable, getdtype, expr_eval, missing_values,
 from context import context_length
 from utils import removed
 
-#TODO: merge this typemap with the one in tsum
+# TODO: merge this typemap with the one in tsum
 counting_typemap = {bool: int, int: int, float: float}
 
 
@@ -144,13 +145,13 @@ class LinkExpression(FunctionExpr):
     and one2many)
     """
     def target_context(self, context):
-        #noinspection PyProtectedMember
-        #TODO: implement this
+        # noinspection PyProtectedMember
+        # TODO: implement this
         # return self.args.link._target_context(context)
         assert isinstance(self.link, Link)
         return self.link._target_context(context)
 
-    #XXX: I think this is not enough. Implement Visitor pattern instead?
+    # XXX: I think this is not enough. Implement Visitor pattern instead?
     def traverse(self):
         yield self
 
@@ -169,7 +170,7 @@ class LinkExpression(FunctionExpr):
     def __repr__(self):
         args, kwargs = self._original_args
         link, args = args[0], args[1:]
-        #noinspection PyProtectedMember
+        # noinspection PyProtectedMember
         return self.format(link._name + "." + self.funcname, args, kwargs)
 
 
@@ -178,8 +179,8 @@ class LinkGet(LinkExpression):
     no_eval = ('target_expr',)
 
     def traverse(self):
-        #XXX: don't we also need the fields within the target expression?
-        #noinspection PyProtectedMember
+        # XXX: don't we also need the fields within the target expression?
+        # noinspection PyProtectedMember
         yield Variable(self.link._entity, self.link._link_field)
         yield self
 
@@ -230,7 +231,7 @@ class LinkGet(LinkExpression):
         assert isinstance(link, Link)
         assert isinstance(target_expr, Expr), str(type(target_expr))
 
-        #noinspection PyProtectedMember
+        # noinspection PyProtectedMember
         target_ids = context[link._link_field]
         target_context = self.target_context(context)
 
@@ -276,7 +277,7 @@ class Aggregate(LinkExpression):
         target_context = link._target_context(context)
 
         # this is a one2many, so the link column is on the target side
-        #noinspection PyProtectedMember
+        # noinspection PyProtectedMember
         source_ids = target_context[link._link_field]
         expr_value = expr_eval(target_expr, target_context)
         filter_value = expr_eval(target_filter, target_context)
@@ -294,14 +295,14 @@ class Aggregate(LinkExpression):
             source_rows = id_to_rownum[source_ids]
             # filter out missing values: those where the value of the link
             # points to nowhere (-1)
-            #XXX: use np.putmask(source_rows, source_ids == missing_int,
+            # XXX: use np.putmask(source_rows, source_ids == missing_int,
             #                    missing_int)
             source_rows[source_ids == missing_int] = missing_int
         else:
             assert np.all(source_ids == missing_int)
             # we need to make a copy because eval_rows modifies the array
             # in place in some cases (countlink and descendants)
-            #TODO: document this fact in eval_rows
+            # TODO: document this fact in eval_rows
             source_rows = source_ids.copy()
 
         if isinstance(expr_value, np.ndarray) and expr_value.shape:
@@ -325,7 +326,7 @@ class Sum(Aggregate):
 
         # filter out missing values: those where the object pointed to does not
         # exist anymore (the id corresponds to -1 in id_to_rownum)
-        #XXX: use np.putmask(source_rows, source_ids == missing_int,
+        # XXX: use np.putmask(source_rows, source_ids == missing_int,
         #                    missing_int)
         source_rows[source_rows == missing_int] = idx_for_missing
 

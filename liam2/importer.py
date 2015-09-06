@@ -83,14 +83,14 @@ def convert(iterable, fields, positions=None):
 
 
 def convert_2darray(iterable, celltype):
-    """homogenous 2d array"""
+    """homogeneous 2d array"""
 
     func = converters[celltype]
     return [tuple(func(value) for value in row) for row in iterable]
 
 
 def convert_1darray(iterable, celltype=None):
-    """homogenous 1d array"""
+    """homogeneous 1d array"""
     if celltype is None:
         celltype = detect_column_type(iterable)
     func = converters[celltype]
@@ -223,7 +223,7 @@ class CSV(object):
     @property
     def field_names(self):
         if self._field_names is None:
-            #TODO: use self._fields instead if it was already computed
+            # TODO: use self._fields instead if it was already computed
             # read the first line in the file
             self.rewind()
             fnames = self.next()
@@ -388,6 +388,7 @@ def union1d(arrays):
 
 
 def interpolate(target, arrays, id_periods, fields):
+    assert bcolz is not None, 'bcolz package is required to use interpolate'
     print(" * indexing...")
     periods = np.unique(id_periods['period'])
     max_id = np.max(id_periods['id'])
@@ -422,7 +423,7 @@ def interpolate(target, arrays, id_periods, fields):
     size = sum(row_for_id[period].nbytes for period in periods)
     print(" * compressing index (%.2f Mb)..." % (size / MB), end=' ')
     for period in periods:
-        row_for_id[period] = carray(row_for_id[period])
+        row_for_id[period] = bcolz.carray(row_for_id[period])
     csize = sum(row_for_id[period].cbytes for period in periods)
     print("done. (%.2f Mb)" % (csize / MB))
 
@@ -541,7 +542,7 @@ def load_ndarray(fpath, celltype=None):
                            ' * '.join(str(len(values))
                                       for values in possible_values)))
 
-    #TODO: compare time with numpy built-in conversion:
+    # TODO: compare time with numpy built-in conversion:
     # if dtype is None, numpy tries to detect the best type itself
     # which it does a good job of if the values are already numeric values
     # if dtype is provided, numpy does a good job to convert from string
@@ -631,7 +632,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         else:
             raise Exception("invalid structure for 'files'")
 
-        #XXX: shouldn't we use the "path" defined for the whole entity if any?
+        # XXX: shouldn't we use the "path" defined for the whole entity if any?
         # section_def.get('path')
         files = []
         for path, kwargs in files_items:
@@ -647,7 +648,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         # 2) load all fields
         if fields is None:
             target_fields = merge_items(*[f.fields for f in files])
-            fields_per_file = [None for f in files]
+            fields_per_file = [None for _ in files]
         else:
             target_fields = fields
             fields_per_file = [[(name, type_) for name, type_ in target_fields
@@ -675,7 +676,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         for f in files:
             f.close()
 
-        #FIXME: interpolation currently only interpolates missing data points,
+        # FIXME: interpolation currently only interpolates missing data points,
         # not data points with their value equal the missing value
         # corresponding to the field type. This can only be fixed once
         # booleans are loaded as int8.
@@ -793,7 +794,7 @@ def file2h5(fpath, input_dir='',
                                     datastream, numlines,
                                     title="%s table" % global_name,
                                     buffersize=buffersize,
-                                    #FIXME: handle invert
+                                    # FIXME: handle invert
                                     compression=compression)
                     if csvfile is not None:
                         csvfile.close()

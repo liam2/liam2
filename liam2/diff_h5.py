@@ -16,7 +16,7 @@ def unique_dupes(a):
     return unique_indices, a[is_dupe]
 
 
-def diff_array(array1, array2, numdiff=10, raiseondiff=False):
+def diff_array(array1, array2, showdiffs=10, raiseondiff=False):
     if len(array1) != len(array2):
         print("length is different: %d vs %d" % (len(array1),
                                                  len(array2)))
@@ -77,8 +77,8 @@ def diff_array(array1, array2, numdiff=10, raiseondiff=False):
                 diff = (col1 != col2).nonzero()[0]
                 print("(%d differences)" % len(diff))
                 ids = array1['id']
-                if len(diff) > numdiff:
-                    diff = diff[:numdiff]
+                if len(diff) > showdiffs:
+                    diff = diff[:showdiffs]
                 print(PrettyTable([['id',
                                     fname + ' (file1)',
                                     fname + ' (file2)']] +
@@ -92,16 +92,12 @@ def diff_h5(input1_path, input2_path, numdiff=10):
     input1_file = tables.open_file(input1_path, mode="r")
     input2_file = tables.open_file(input2_path, mode="r")
 
-#    print "copying globals from", input1_path,
-#    input1_file.root.globals._f_copy(output_file.root, recursive=True)
-#    print "done."
-
     input1_entities = input1_file.root.entities
     input2_entities = input2_file.root.entities
 
-    #noinspection PyProtectedMember
+    # noinspection PyProtectedMember
     ent_names1 = set(table._v_name for table in input1_entities)
-    #noinspection PyProtectedMember
+    # noinspection PyProtectedMember
     ent_names2 = set(table._v_name for table in input2_entities)
     for ent_name in sorted(ent_names1 | ent_names2):
         print()

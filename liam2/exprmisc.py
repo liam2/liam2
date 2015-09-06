@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-
-
+# encoding: utf-8
 from __future__ import print_function
 
 from itertools import izip, chain
@@ -245,7 +243,7 @@ def add_individuals(target_context, children):
 
     temp_variables = target_entity.temp_variables
     for name, temp_value in temp_variables.iteritems():
-        #FIXME: OUCH, this is getting ugly, I'll need a better way to
+        # FIXME: OUCH, this is getting ugly, I'll need a better way to
         # differentiate nd-arrays from "entity" variables
         # I guess having the context contain all entities and a separate
         # globals namespace should fix this problem. Well, no it would not
@@ -279,7 +277,7 @@ class New(FilteredExpression):
     no_eval = ('filter', 'kwargs')
 
     def _initial_values(self, array, to_give_birth, num_birth):
-        #TODO: use default values for fields which have one
+        # TODO: use default values for fields which have one
         children = np.empty(num_birth, dtype=array.dtype)
         children[:] = get_missing_record(array)
         return children
@@ -348,6 +346,9 @@ class New(FilteredExpression):
                 child_context = context.subset(to_give_birth, used_variables,
                                                filter_expr)
             for k, v in kwargs.iteritems():
+                if k not in array.dtype.names:
+                    print("WARNING: {} is unknown, ignoring it!".format(k))
+                    continue
                 children[k] = expr_eval(v, child_context)
 
         add_individuals(target_context, children)
@@ -397,7 +398,7 @@ class Dump(TableExpression):
         else:
             # extra=False because we don't want globals nor "system" variables
             # (nan, period, __xxx__)
-            #FIXME: we should also somehow "traverse" expressions in this case
+            # FIXME: we should also somehow "traverse" expressions in this case
             # too (args is ()) => all keys in the current context
             expressions = [Variable(entity, name)
                            for name in context.keys(extra=False)]
@@ -445,7 +446,7 @@ class Dump(TableExpression):
             elif not col.shape:
                 dtype = col.dtype.type
             if dtype is not None:
-                #TODO: try using itertools.repeat instead as it seems to be a
+                # TODO: try using itertools.repeat instead as it seems to be a
                 # bit faster and would consume less memory (however, it might
                 # not play very well with Pandas.to_csv)
                 newcol = np.empty(numrows, dtype=dtype)

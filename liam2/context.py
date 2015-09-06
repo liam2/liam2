@@ -106,7 +106,7 @@ class EvaluationContext(object):
             return elsevalue
 
     def __setitem__(self, key, value):
-        #XXX: how do we set a new global?
+        # XXX: how do we set a new global?
         self.entity_data[key] = value
 
     def __contains__(self, key):
@@ -114,7 +114,7 @@ class EvaluationContext(object):
         if isinstance(key, Variable):
             entity, name = key.entity, key.name
             if entity is None:
-                #FIXME: this is wrong (but currently needed because some
+                # FIXME: this is wrong (but currently needed because some
                 # Variable are created without entity)
                 return True
             else:
@@ -188,7 +188,7 @@ class EntityContext(object):
                     except ValueError:
                         raise KeyError(key)
             else:
-                #FIXME: lags will break if used from a context subset (eg in
+                # FIXME: lags will break if used from a context subset (eg in
                 # new() or groupby(): all individuals will be returned instead
                 # of only the "filtered" ones.
                 if (self.entity.array_lag is not None and
@@ -317,7 +317,6 @@ def context_subset(context, index=None, keys=None):
         if index is not None and isinstance(value, np.ndarray) and value.shape:
             value = value[index]
         result[key] = value
-
     return result
 
 

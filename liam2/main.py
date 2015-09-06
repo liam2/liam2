@@ -1,9 +1,12 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import argparse
 import os
 from os.path import splitext
 import platform
+import traceback
+import sys
 import warnings
 
 # this is needed for vitables and needs to happen BEFORE matplotlib is
@@ -15,7 +18,6 @@ sip.setapi('QVariant', 2)
 import yaml
 
 import config
-from simulation import Simulation
 from importer import file2h5
 from console import Console
 from context import EvaluationContext
@@ -25,53 +27,58 @@ from upgrade import upgrade
 from utils import AutoFlushFile
 from view import viewhdf
 
-__version__ = "0.9.1.1"
+__version__ = "0.10.2"
 
 
-def passthrough(func, *args, **kwargs):
-    return func(*args, **kwargs)
+def write_traceback(e):
+    try:
+        import traceback
+        # output_directory might not be set at this point yet and it is
+        # only set for run and explore commands but when it is not set
+        # its default value of "." is used and thus we get the "old"
+        # behaviour: error.log in the working directory
+        out_dir = config.output_directory
+        error_path = os.path.join(out_dir, 'error.log')
+        error_path = os.path.abspath(error_path)
+        with file(error_path, 'w') as f:
+            traceback.print_exc(file=f)
+            if hasattr(e, 'liam2context'):
+                f.write(e.liam2context)
+        return error_path
+    except IOError, log_ex:
+        print("WARNING: could not save technical error log "
+              "({} on '{}')".format(log_ex.strerror, log_ex.filename))
+    except Exception, log_ex:
+        print(log_ex)
+    return None
 
 
-def eat_traceback(func, *args, **kwargs):
+def printerr(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
+def print_exception_wh_context(ex_type, e, tb):
+    traceback.print_exception(ex_type, e, tb, file=sys.stderr)
+    if hasattr(e, 'liam2context'):
+        printerr(e.liam2context)
+
+
+def print_exception_simplified(ex_type, e, tb):
     # e.context      | while parsing a block mapping
     # e.context_mark | in "import.yml", line 18, column 9
     # e.problem      | expected <block end>, but found '<block sequence start>'
     # e.problem_mark | in "import.yml", line 29, column 12
-    error_log_path = None
-    try:
-        try:
-            return func(*args, **kwargs)
-        except Exception, e:
-            try:
-                import traceback
-                # output_directory might not be set at this point yet and it is
-                # only set for run and explore commands but when it is not set
-                # its default value of "." is used and thus we get the "old"
-                # behaviour: error.log in the working directory
-                out_dir = config.output_directory
-                error_path = os.path.join(out_dir, 'error.log')
-                error_path = os.path.abspath(error_path)
-                with file(error_path, 'w') as f:
-                    traceback.print_exc(file=f)
-                error_log_path = error_path
-            except IOError, log_ex:
-                print("WARNING: %s on '%s'" % (log_ex.strerror,
-                                               log_ex.filename))
-            except Exception, log_ex:
-                print(log_ex)
-            raise e
-    except yaml.parser.ParserError, e:
+    error_log_path = write_traceback(e)
+    if isinstance(e, yaml.parser.ParserError):
         # eg, inconsistent spacing, no space after a - in a list, ...
-        print("SYNTAX ERROR %s" % str(e.problem_mark).strip())
-    except yaml.scanner.ScannerError, e:
+        printerr("SYNTAX ERROR {}".format(str(e.problem_mark).strip()))
+    elif isinstance(e, yaml.scanner.ScannerError):
         # eg, tabs, missing colon for mapping. The reported problem is
         # different when it happens on the first line (no context_mark) and
         # when it happens on a subsequent line.
         if e.context_mark is not None:
-            if e.problem == "could not found expected ':'":
-                msg = "could not find expected ':'"
-            else:
-                msg = e.problem
+            msg = e.problem if e.problem != "could not found expected ':'" \
+                else "could not find expected ':'"
             mark = e.context_mark
         else:
             if (e.problem ==
@@ -82,37 +89,49 @@ def eat_traceback(func, *args, **kwargs):
             mark = e.problem_mark
         if msg:
             msg = ": " + msg
-        print("SYNTAX ERROR %s%s" % (str(mark).strip(), msg))
-    except yaml.reader.ReaderError, e:
+        printerr("SYNTAX ERROR {}{}".format(str(mark).strip(), msg))
+    elif isinstance(e, yaml.reader.ReaderError):
         if e.encoding == 'utf8':
-            print("\nERROR in '%s': invalid character found, this probably "
-                  "means you have used non ASCII characters (accents and "
-                  "other non-english characters) and did not save your file "
-                  "using the UTF8 encoding" % e.name)
+            printerr("\nERROR in '{}': invalid character found, this probably "
+                     "means you have used non ASCII characters (accents and "
+                     "other non-english characters) and did not save your file "
+                     "using the UTF8 encoding".format(e.name))
         else:
-            raise
-    except SyntaxError, e:
-        print("SYNTAX ERROR:", e.msg.replace('EOF', 'end of block'))
+            printerr("\nERROR:", str(e))
+    elif isinstance(e, SyntaxError):
+        printerr("SYNTAX ERROR:", e.msg.replace('EOF', 'end of block'))
         if e.text is not None:
-            print(e.text)
+            printerr(e.text)
             offset_str = ' ' * (e.offset - 1) if e.offset > 0 else ''
-            print(offset_str + '^')
-    except Exception, e:
-        print("\nERROR:", str(e))
+            printerr(offset_str + '^')
+    else:
+        printerr("\nERROR:", str(e))
+
+    if hasattr(e, 'liam2context'):
+        printerr(e.liam2context)
 
     if error_log_path is not None:
-        print()
-        print("the technical error log can be found at", error_log_path)
+        printerr()
+        printerr("the technical error log can be found at", error_log_path)
 
 
 def simulate(args):
-    print("Using simulation file: '%s'" % args.file)
+    print("Using simulation file: '{}'".format(args.fpath))
 
-    simulation = Simulation.from_yaml(args.file,
+    simulation = Simulation.from_yaml(args.fpath,
                                       input_dir=args.input_path,
                                       input_file=args.input_file,
                                       output_dir=args.output_path,
-                                      output_file=args.output_file)
+                                      output_file=args.output_file,
+                                      start_period=args.startperiod,
+                                      periods=args.periods, seed=args.seed,
+                                      skip_shows=args.skipshows,
+                                      skip_timings=args.skiptimings,
+                                      log_level=args.loglevel,
+                                      assertions=args.assertions,
+                                      autodump=args.autodump,
+                                      autodiff=args.autodiff)
+
     simulation.run(args.interactive)
 #    import cProfile as profile
 #    profile.runctx('simulation.run(args.interactive)', vars(), {},
@@ -126,7 +145,7 @@ def simulate(args):
 def explore(fpath):
     _, ext = splitext(fpath)
     ftype = 'data' if ext in ('.h5', '.hdf5') else 'simulation'
-    print("Using %s file: '%s'" % (ftype, fpath))
+    print("Using {} file: '{}'".format(ftype, fpath))
     if ftype == 'data':
         globals_def, entities = entities_from_h5(fpath)
         data_source = H5Data(None, fpath)
@@ -173,7 +192,6 @@ class PrintVersionsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         import numpy
         import numexpr
-        import bcolz
         import tables
 
         try:
@@ -198,6 +216,12 @@ class PrintVersionsAction(argparse.Action):
         except ImportError:
             mpl_version = 'N/A'
 
+        try:
+            import bcolz
+            bcolz_version = bcolz.__version__
+        except ImportError:
+            bcolz_version = 'N/A'
+
         py_version = '{} ({})'.format(platform.python_version(),
                                       platform.architecture()[0])
         print("""
@@ -211,7 +235,7 @@ vitables {vt}
 matplotlib {mpl}
 """.format(py=py_version, np=numpy.__version__, ne=numexpr.__version__,
            pt=tables.__version__, vt=vt_version, mpl=mpl_version,
-           bc=bcolz.__version__, yml=yaml.__version__))
+           bc=bcolz_version, yml=yaml.__version__))
         parser.exit()
 
 
@@ -234,10 +258,28 @@ def main():
 
     # create the parser for the "run" command
     parser_run = subparsers.add_parser('run', help='run a simulation')
-    parser_run.add_argument('file', help='simulation file')
+    parser_run.add_argument('fpath', help='simulation file')
     parser_run.add_argument('-i', '--interactive', action='store_true',
                             help='show the interactive console after the '
                                  'simulation')
+    parser_run.add_argument('-sp', '--startperiod', type=int,
+                            help='first period to simulate (integer)')
+    parser_run.add_argument('-p', '--periods', type=int,
+                            help='number of periods to simulate (integer)')
+    parser_run.add_argument('-s', '--seed', type=int,
+                            help='defines the starting point of the '
+                                 'pseudo-random generator (integer)')
+    parser_run.add_argument('-ss', '--skipshows', action='store_true',
+                            help='do not log shows')
+    parser_run.add_argument('-st', '--skiptimings', action='store_true',
+                            help='do not log timings')
+    parser_run.add_argument('-ll', '--loglevel',
+                            choices=['periods', 'functions', 'processes'],
+                            help='defines the logging level')
+    parser_run.add_argument('--autodump', help='path of the autodump file')
+    parser_run.add_argument('--autodiff', help='path of the autodiff file')
+    parser_run.add_argument('--assertions', choices=['raise', 'warn', 'skip'],
+                            help='determines behavior of assertions')
 
     # create the parser for the "import" command
     parser_import = subparsers.add_parser('import', help='import data')
@@ -268,34 +310,34 @@ def main():
 
     # this can happen via the environment variable too!
     if config.debug:
+        # by default, DeprecationWarning and PendingDeprecationWarning, and
+        # ImportWarning are ignored, this shows them.
         warnings.simplefilter('default')
-        wrapper = passthrough
+        sys.excepthook = print_exception_wh_context
     else:
-        wrapper = eat_traceback
+        sys.excepthook = print_exception_simplified
 
     action = parsed_args.action
     if action == 'run':
-        args = simulate, parsed_args
+        func, args = simulate, (parsed_args,)
     elif action == "import":
         args = file2h5, parsed_args.file
     elif action == "explore":
-        args = explore, parsed_args.file
+        func, args = explore, (parsed_args.file,)
     elif action == "upgrade":
-        args = upgrade, parsed_args.input, parsed_args.output
+        func, args = upgrade, (parsed_args.input, parsed_args.output)
     elif action == "view":
-        args = display, parsed_args.file
+        func, args = display, (parsed_args.file,)
     else:
-        raise ValueError("invalid action: %s" % action)
-    wrapper(*args)
+        raise ValueError("invalid action: {}".format(action))
+    return func(*args)
 
 
 if __name__ == '__main__':
-    import sys
-
     sys.stdout = AutoFlushFile(sys.stdout)
     sys.stderr = AutoFlushFile(sys.stderr)
 
-    print("LIAM2 %s (%s)" % (__version__, platform.architecture()[0]))
+    print("LIAM2 {} ({})".format(__version__, platform.architecture()[0]))
     print()
 
     main()

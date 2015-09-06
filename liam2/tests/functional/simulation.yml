@@ -4,7 +4,7 @@ import:
 
 globals:
     periodic:
-        path: param\globals.csv
+        path: param/globals.csv
         transposed: True
         fields:
             # PERIOD is implicit
@@ -22,11 +22,11 @@ globals:
         type: float
 
     MIG:
-        path: param\mig.csv
+        path: param/mig.csv
         type: float
 
     othertable:
-        path: param\othertable.csv
+        path: param/othertable.csv
         fields:
             - PERIOD: int
             - INTFIELD: int
@@ -443,7 +443,7 @@ entities:
 
                 # stored + single-expr process => hybrid
                 # * manual call
-                # - agegroup()
+                - compute_agegroup()
                 # * in agespine (tested before)
                 # * used in expr (tested in many tests but lets do it here too)
                 - local: agegroup * 10
@@ -1018,10 +1018,10 @@ entities:
                 # tuple key
                 # ---------
                 - gender_idx: gender * 1
-                - period_idx_: period - base_period # with period_idx conflict with til version
-                - good_idx: gender_idx, if(age < 70, age + 20, -1), period_idx_
-                - bad_idx1: gender_idx, age + 20, period_idx_
-                - bad_idx2: gender_idx, age, period_idx_ + 100
+                - period_idx: period - base_period
+                - good_idx: gender_idx, if(age < 70, age + 20, -1), period_idx
+                - bad_idx1: gender_idx, age + 20, period_idx
+                - bad_idx2: gender_idx, age, period_idx + 100
                 - good_res: MIG[good_idx]
                 - target: if(age < 70, good_res, -1)
 
@@ -1067,7 +1067,8 @@ entities:
                 # calls __nonzero__ on the first part (age < (15 & eduach))
                 - show(groupby(eduach, gender))
 
-            agegroup: if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))
+            compute_agegroup:
+                - agegroup: if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))
 
             test_align:
                 - num_all: count()
@@ -2468,6 +2469,7 @@ simulation:
     processes:
         - person: [
 #                   bp,
+                   compute_agegroup,
                    test_remove,
 
                    # basic
@@ -2483,7 +2485,6 @@ simulation:
 
                    test_expr,
                    test_trunc,
-                   agegroup,
 
                    # test the charts before test_new messes the demography
 #                   test_charts,
