@@ -46,7 +46,8 @@ def to_bool(v):
 
 converters = {bool: to_bool,
               int: to_int,
-              float: to_float}
+              float: to_float,
+              str: lambda v: v}
 
 
 def convert(iterable, fields, positions=None):
@@ -101,20 +102,20 @@ def guess_type(v):
             float(v)
             return float
         except ValueError:
-            raise ValueError("cannot determine type for '%s'" % v)
+            return str
 
 
 def detect_column_type(iterable):
     iterator = iter(iterable)
     coltype = 0
-    type2code = {None: 0, bool: 1, int: 2, float: 3}
+    type2code = {None: 0, bool: 1, int: 2, float: 3, str: 4}
     for value in iterator:
         coltype = max(coltype, type2code[guess_type(value)])
-        if coltype == 3:
+        if coltype == 4:
             break
     if coltype == 0:
         raise Exception("cannot detect column type (it is entirely empty)")
-    return [None, bool, int, float][coltype]
+    return [None, bool, int, float, str][coltype]
 
 
 # it is possible to express detect_column_types in terms of
@@ -125,7 +126,7 @@ def detect_column_types(iterable):
     header = iterator.next()
     numcolumns = len(header)
     coltypes = [0] * numcolumns
-    type2code = {None: 0, bool: 1, int: 2, float: 3}
+    type2code = {None: 0, bool: 1, int: 2, float: 3, str: 4}
     for row in iterator:
         if len(row) != numcolumns:
             raise Exception("all rows do not have the same number of columns")
@@ -138,7 +139,7 @@ def detect_column_types(iterable):
             print("Warning: column %s is all empty, assuming it is float"
                   % colname)
             coltypes[i] = 3
-    num2type = [None, bool, int, float]
+    num2type = [None, bool, int, float, str]
     return [(name, num2type[coltype])
             for name, coltype in zip(header, coltypes)]
 
