@@ -204,7 +204,7 @@ class AssertEqual(ComparisonAssert):
         if isinstance(v1, np.ndarray) or isinstance(v2, np.ndarray):
             v1, v2 = np.asarray(v1), np.asarray(v2)
             if v1.shape != v2.shape:
-                return False
+                return False, ' (shape is different)'
             result = np.array_equal(v1, v2)
             nan_v1, nan_v2 = isnan(v1), isnan(v2)
             if (not result and np.any(nan_v1 | nan_v2) and
