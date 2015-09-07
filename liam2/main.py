@@ -52,6 +52,71 @@ def write_traceback(e):
         print(log_ex)
     return None
 
+# profile by tottime
+# ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+#    596   82.173    0.138   82.173    0.138 {method '_append_records' of; 'tables.tableextension.Table' objects}
+#  19116   50.056    0.003   54.581    0.003 necompiler.py:662(evaluate)
+#    894   37.759    0.042   37.759    0.042 {method 'put' of 'numpy.ndarray'; objects}
+#    894   30.981    0.035   69.428    0.078 tfunc.py:14(fill_missing_values)
+#      6   21.113    3.519  106.424   17.737 data.py:17(append_carray_to_table)
+#    580    9.828    0.017   14.001    0.024 links.py:226(compute)
+#    644    7.392    0.011    7.392    0.011 {method 'sort' of 'numpy.ndarray'; objects}
+#   1324    3.958    0.003    3.985    0.003 expr.py:158(ispresent)
+#    168    3.484    0.021    3.484    0.021 {method 'uniform' of; 'mtrand.RandomState' objects}
+#   1663    3.290    0.002    3.290    0.002 {method 'fill' of 'numpy.ndarray'; objects}
+#   3823    3.247    0.001    3.247    0.001 {method 'reduce' of 'numpy.ufunc'; objects}
+#      2    2.839    1.420    3.637    1.818 data.py:564(index_table)
+#   1224    2.685    0.002    6.234    0.005 aggregates.py:71(na_sum)
+#     39    2.381    0.061    2.382    0.061 {method 'choice' of; 'mtrand.RandomState' objects}
+#    749    2.340    0.003    2.340    0.003 {method 'copy' of 'numpy.ndarray'; objects}
+#    705    2.223    0.003    2.263    0.003 data.py:79(__setitem__)
+#      3    2.107    0.702    2.107    0.702 data.py:149(keep)
+#   1836    2.102    0.001    2.102    0.001 {numpy.core.multiarray.concatenate}
+#    736    1.950    0.003    1.950    0.003 {reduce.nansum}
+#    100    1.659    0.017    1.660    0.017 {cpartition.group_indices_nd}
+#   1033    1.606    0.000  172.690    0.167 expr.py:856(evaluate)
+
+
+# profile by cumtime
+
+# simulation.run
+# -> simulate_period
+# simulate_period
+# -> gettime
+# -> timed
+# gettime
+# -> 193 process.py:320(run_guarded)
+# -> 107 entities.py:555(store_period_data)
+# ->   7 data.py:773(run)
+# timed
+# -> 115 utils.py:202(gettime)
+# store_period_data
+# -> 106 data.py:164(append_to_table)
+# append_to_table
+# -> 106 data.py:17(append_carray_to_table)
+# append_carray_to_table
+# ->  84 table.py:2211(append)
+
+# process.py:320(run_guarded)
+# -> 192 process.py:152(run_guarded) -> 192 process.py:29(run_guarded)
+#    -> 192 process.py:67(run) -> 192 expr.py:181(expr_eval)
+
+# expr.py:856(evaluate)
+# -> 108 expr.py:803(_eval_args)
+# ->  80 tfunc.py:69(compute)
+# ->  40 aggregates.py:97(compute)
+# ->  14 aggregates.py:125(compute)
+# ->  14 links.py:226(compute)
+# ->  13 matching.py:119(compute)
+# ->   8 aggregates.py:264(compute)
+# ->   8 alignment.py:299(compute)
+# ->   7 exprbases.py:199(compute)
+# ->   3 exprmisc.py:239(compute)
+# ->   2 actions.py:82(compute)
+# ->   2 links.py:451(compute)
+# ->   1 exprbases.py:218(compute)
+# ->   1 groupby.py:19(compute)
+# ->   1 links.py:672(compute)
 
 def printerr(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -132,10 +197,10 @@ def simulate(args):
                                       autodump=args.autodump,
                                       autodiff=args.autodiff)
 
-    simulation.run(args.interactive)
-#    import cProfile as profile
-#    profile.runctx('simulation.run(args.interactive)', vars(), {},
-#                   'c:\\tmp\\simulation.profile')
+    # simulation.run(args.interactive)
+    import cProfile as profile
+    profile.runctx('simulation.run(args.interactive)', vars(), {},
+                   'c:\\tmp\\simulation.profile')
     # to use profiling data:
     # import pstats
     # p = pstats.Stats('c:\\tmp\\simulation.profile')
