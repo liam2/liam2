@@ -791,13 +791,6 @@ class FunctionExpr(EvaluableExpression, AbstractFunction):
     def get_compute_func(cls):
         return cls.compute
 
-    def __init__(self, *args, **kwargs):
-        AbstractFunction.__init__(self, *args, **kwargs)
-        self.post_init()
-
-    def post_init(self):
-        pass
-
     def _eval_args(self, context):
         """
         evaluates arguments to the function except those in no_eval

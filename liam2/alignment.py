@@ -159,7 +159,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
     funcname = 'align_abs'
     no_eval = ('filter', 'secondary_axis', 'expressions')
 
-    def post_init(self):
+    def __init__(self, *args, **kwargs):
+        super(AlignmentAbsoluteValues, self).__init__(*args, **kwargs)
+
         need = self.args[1]
         if isinstance(need, basestring):
             fpath = os.path.join(config.input_directory, need)
