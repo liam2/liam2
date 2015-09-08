@@ -4,7 +4,7 @@ from alignment import Alignment
 from expr import (Expr, Variable, BinaryOp, ComparisonOp, missing_values,
                   getdtype, always)
 from exprbases import CompoundExpression
-from exprmisc import Exp, Max, Where, Logit, Logistic
+from exprmisc import Exp, Max, Where, Logit, Logistic, ExtExpr
 from exprrandom import Normal, Uniform
 
 
@@ -26,6 +26,10 @@ class LogitScore(CompoundExpression):
     funcname = 'logit_score'
 
     def build_expr(self, context, expr):
+        if isinstance(expr, basestring):
+            # assume it is a filename
+            expr = ExtExpr(expr)
+
         u = Uniform()
         # expr in (0, 0.0, False, '')
         if not isinstance(expr, Expr) and not expr:

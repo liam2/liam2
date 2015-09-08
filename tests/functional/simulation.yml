@@ -1407,14 +1407,22 @@ entities:
                 - epsilon: logit(uniform())
                 - assertEqual(result, logistic(0.5 - epsilon))
 
+                - seed(0)
+                - result: logit_score('regr_test_1d.csv')
+                - seed(0)
+                - expr: eduach * 0.3 + 0.2 * age + 0.1
+                - assertEqual(result, logit_score(expr))
+                - assertEqual(result, logistic(expr - epsilon))
+
             test_logit_regr:
                 # equivalent to uniform() > 0.5
                 - simple: logit_regr(0.0)
                 - fixed_percent: logit_regr(0.0, align=0.5)
                 - with_file: logit_regr(0.0, align='al_p_one_dim.csv')
-#                - with_coef_file: logit_regr('regr_test.csv')
-#                - with_both_file: logit_regr('regr_test.csv',
-#                                             align='al_p_one_dim.csv')
+
+                - with_coef_file: logit_regr('regr_test_1d.csv')
+                - with_both_file: logit_regr('regr_test_1d.csv',
+                                             align='al_p_one_dim.csv')
 
             test_cont_regr:
                 - show("expr only")
