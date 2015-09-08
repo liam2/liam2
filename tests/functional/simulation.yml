@@ -674,6 +674,13 @@ entities:
 #                - clip(age, 5)
 #                - clip(age, 5, 10, 15, 20)
 
+            test_seed:
+                - seed(0)
+                - value1: uniform()
+                - seed(0)
+                - value2: uniform()
+                - assertEqual(value1, value2)
+
             test_logit:
                 - float_field: age / 120.0
                 - assertNanEqual(logit(float_field),
@@ -2487,10 +2494,15 @@ simulation:
 
 #                   test_issue120,
 
-
                    test_expr,
                    test_trunc,
                    agegroup,
+
+                   # random
+                   test_uniform,
+                   test_otherrandom,
+
+                   test_seed,
 
                    # test the charts before test_new messes the demography
 #                   test_charts,
@@ -2523,10 +2535,6 @@ simulation:
                    # lifecycle
                    test_new,
                    test_clone,
-
-                   # random
-                   test_uniform,
-                   test_otherrandom,
 
                    # aggregates
                    test_all,

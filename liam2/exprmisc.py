@@ -3,6 +3,7 @@ from __future__ import print_function
 
 from itertools import izip, chain
 import os
+import random
 
 import numpy as np
 
@@ -489,6 +490,17 @@ class ExtExpr(CompoundExpression):
         return res
 
 
+class Seed(FunctionExpr):
+    def compute(self, context, seed=None):
+        if seed is not None:
+            seed = long(seed)
+            print("using fixed random seed: %d" % seed)
+        else:
+            print("resetting random seed")
+        random.seed(seed)
+        np.random.seed(seed)
+
+
 functions = {
     # element-wise functions
     # Min and Max are in aggregates.py.functions (because of the dispatcher)
@@ -508,4 +520,5 @@ functions = {
     'clone': Clone,
     'dump': Dump,
     'extexpr': ExtExpr,
+    'seed': Seed,
 }
