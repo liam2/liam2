@@ -1395,6 +1395,18 @@ entities:
                 - value: extexpr('regr_test_1d.csv')
                 - assertEqual(value, eduach * 0.3 + 0.2 * age + 0.1)
 
+            test_logit_score:
+                - seed(0)
+                - result: logit_score(0.0)
+                - seed(0)
+                - assertEqual(result, uniform())
+
+                - seed(0)
+                - result: logit_score(0.5)
+                - seed(0)
+                - epsilon: logit(uniform())
+                - assertEqual(result, logistic(0.5 - epsilon))
+
             test_logit_regr:
                 # equivalent to uniform() > 0.5
                 - simple: logit_regr(0.0)
@@ -2551,6 +2563,7 @@ simulation:
 
                    # regressions
                    test_extexpr,
+                   test_logit_score,
                    test_logit_regr,
                    test_cont_regr,
                    test_log_regr,
