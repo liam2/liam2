@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 from itertools import izip, chain
+import os
 
 import numpy as np
 
@@ -14,13 +15,14 @@ from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
 from exprbases import (FilteredExpression, CompoundExpression, NumexprFunction,
                        TableExpression, NumpyChangeArray)
 from context import context_length
+from importer import load_ndarray
 from utils import PrettyTable, argspec
 
 
 # TODO: implement functions in expr to generate "Expr" nodes at the python level
 # less painful
 class Min(CompoundExpression):
-    def build_expr(self, *args):
+    def build_expr(self, context, *args):
         assert len(args) >= 2
 
         expr1, expr2 = args[:2]
@@ -82,7 +84,7 @@ class Min(CompoundExpression):
 
 
 class Max(CompoundExpression):
-    def build_expr(self, *args):
+    def build_expr(self, context, *args):
         assert len(args) >= 2
 
         expr1, expr2 = args[:2]
@@ -95,20 +97,20 @@ class Max(CompoundExpression):
 
 
 class Logit(CompoundExpression):
-    def build_expr(self, expr):
+    def build_expr(self, context, expr):
         # log(x / (1 - x))
         return Log(DivisionOp('/', expr, BinaryOp('-', 1.0, expr)))
 
 
 class Logistic(CompoundExpression):
-    def build_expr(self, expr):
+    def build_expr(self, context, expr):
         # 1 / (1 + exp(-x))
         return DivisionOp('/', 1.0,
                           BinaryOp('+', 1.0, Exp(UnaryOp('-', expr))))
 
 
 class ZeroClip(CompoundExpression):
-    def build_expr(self, expr, expr_min, expr_max):
+    def build_expr(self, context, expr, expr_min, expr_max):
         # if(minv <= x <= maxv, x, 0)
         return Where(LogicalOp('&', ComparisonOp('>=', expr, expr_min),
                                ComparisonOp('<=', expr, expr_max)), expr,
@@ -452,6 +454,41 @@ class Where(NumexprFunction):
         return coerce_types(context, self.iftrue, self.iffalse)
 
 
+def _plus(a, b):
+    return BinaryOp('+', a, b)
+
+
+def _mul(a, b):
+    return BinaryOp('*', a, b)
+
+
+class ExtExpr(CompoundExpression):
+    def __init__(self, fname):
+        data = load_ndarray(os.path.join(config.input_directory, fname))
+        # TODO: handle more dimensions
+        fields_dim = data.dim_names.index('fields')
+        fields_axis = data.axes[fields_dim]
+        self.names = list(fields_axis.labels)
+        self.coefs = list(data)
+        # needed for compatibility with CompoundExpression
+        self.args = []
+        self.kwargs = []
+
+    def build_expr(self, context):
+        res = None
+        for name, coef in zip(self.names, self.coefs):
+            # XXX: parse expressions instead of only simple Variable?
+            if name != 'constant':
+                term = _mul(Variable(context.entity, name), coef)
+            else:
+                term = coef
+            if res is None:
+                res = term
+            else:
+                res = _plus(res, term)
+        return res
+
+
 functions = {
     # element-wise functions
     # Min and Max are in aggregates.py.functions (because of the dispatcher)
@@ -469,5 +506,6 @@ functions = {
     'sort': Sort,
     'new': New,
     'clone': Clone,
-    'dump': Dump
+    'dump': Dump,
+    'extexpr': ExtExpr,
 }

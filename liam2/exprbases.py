@@ -74,12 +74,12 @@ class CompoundExpression(AbstractFunction):
         args = [as_simple_expr(arg, context) for arg in self.args]
         kwargs = {name: as_simple_expr(arg, context)
                   for name, arg in self.kwargs}
-        expr = self.build_expr(*args, **kwargs)
+        expr = self.build_expr(context, *args, **kwargs)
         # We need this because self.build_expr returns an Expr which can
         # contain CompoundExpressions
         return expr.as_simple_expr(context)
 
-    def build_expr(self, *args, **kwargs):
+    def build_expr(self, context, *args, **kwargs):
         raise NotImplementedError()
 
 
