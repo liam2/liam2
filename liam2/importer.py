@@ -379,7 +379,6 @@ def union1d(arrays):
 
 
 def interpolate(target, arrays, id_periods, fields):
-    assert bcolz is not None, 'bcolz package is required to use interpolate'
     print(" * indexing...")
     periods = np.unique(id_periods['period'])
     max_id = np.max(id_periods['id'])
@@ -412,11 +411,15 @@ def interpolate(target, arrays, id_periods, fields):
     del lastrow_for_id
 
     size = sum(row_for_id[period].nbytes for period in periods)
-    print(" * compressing index (%.2f Mb)..." % (size / MB), end=' ')
-    for period in periods:
-        row_for_id[period] = bcolz.carray(row_for_id[period])
-    csize = sum(row_for_id[period].cbytes for period in periods)
-    print("done. (%.2f Mb)" % (csize / MB))
+
+    if bcolz is not None:
+        print(" * compressing index (%.2f Mb)..." % (size / MB), end=' ')
+        for period in periods:
+            row_for_id[period] = bcolz.carray(row_for_id[period])
+        csize = sum(row_for_id[period].cbytes for period in periods)
+        print("done. (%.2f Mb)" % (csize / MB))
+    else:
+        print('bcolz package not found (bcolz is required to use compression in interpolate)')
 
     print(" * interpolating...")
     for values in arrays:
