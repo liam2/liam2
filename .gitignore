@@ -12,6 +12,7 @@ doc/usersguide/build/
 liam2/build
 liam2/*.c
 build
+liam2/tests/functional/*.h5
 liam2/tests/output/error.log
 liam2/tests/output/person_*.csv
 liam2/tests/output/*.h5

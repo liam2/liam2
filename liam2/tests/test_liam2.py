@@ -10,6 +10,8 @@ import pkg_resources
 from liam2.simulation import Simulation
 from liam2.importer import csv2h5
 
+use_travis = os.environ['USE_TRAVIS'] == 'true'
+
 
 def run_simulation(yaml_file, input_dir, output_dir):
     simulation = Simulation.from_yaml(
@@ -25,8 +27,10 @@ def run_simulation(yaml_file, input_dir, output_dir):
 
 def test_liam2():
 
+    examples_excluded_files = [] if not use_travis else ['demo02.yml', 'demo03.yml', 'demo04.yml']  # No pyqt4 on travis
+
     test_files = dict(
-        examples_files = ('examples', []),
+        examples_files = ('examples', examples_excluded_files),
         functional_files = ('functional', ['imported1.yml', 'imported2.yml'])
         )
     for subfolder, excluded_files in test_files.values():
@@ -51,6 +55,5 @@ def test_liam2():
         for yaml_file in yaml_files:
             if 'import' in yaml_file:
                 yield csv2h5, yaml_file
-
             else:
                 yield run_simulation, yaml_file, input_dir, output_dir
