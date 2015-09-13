@@ -28,10 +28,13 @@ def run_simulation(yaml_file, input_dir, output_dir):
 def test_liam2():
 
     examples_excluded_files = [] if not use_travis else ['demo02.yml', 'demo03.yml', 'demo04.yml']  # No pyqt4 on travis
+    functional_excluded_files = ['imported1.yml', 'imported2.yml']
+    if use_travis:
+        functional_excluded_files.extend(['static.yml', 'generate.yml'])
 
     test_files = dict(
         examples_files = ('examples', examples_excluded_files),
-        functional_files = ('functional', ['imported1.yml', 'imported2.yml'])
+        functional_files = ('functional',  functional_excluded_files)
         )
     for subfolder, excluded_files in test_files.values():
         liam2_test_directory = os.path.join(
