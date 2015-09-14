@@ -4,11 +4,12 @@ entities:
             - imported_field2: {type: int, initialdata: False}
 
         macros:
-            IMPORTED_MACRO: imported_field2 == 2 
+            IMPORTED_MACRO: imported_field2 == 2
             ISCHILD: age < 16
 
         processes:
-            agegroup: trunc(age / 20)
+            compute_agegroup:
+                - agegroup: trunc(age / 20)
 
             imported_process:
                 - imported_field2: age + 2
@@ -16,10 +17,10 @@ entities:
 simulation:
     # overrides imported1.yml and is overridden by simulation.yml
     periods: 1
-    
+
     # overrides imported1.yml and is not overridden
     start_period: 2002   # first simulated period
     default_entity: person
 
     # not defined elsewhere thus not overridden
-    random_seed: 0    
+    random_seed: 0

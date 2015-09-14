@@ -2,7 +2,7 @@ output: import_issue154.h5
 
 entities:
     dummy:
-        path: param\period0.csv
+        path: param/period0.csv
         fields:
             # period and id are implicit
             - period:   int

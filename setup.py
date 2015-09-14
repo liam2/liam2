@@ -94,10 +94,11 @@ class MyBuildExt(build_ext):
     def finalize_options(self):
         build_ext.finalize_options(self)
 
-        # need to be done in-place, otherwise build_exe_options['path'] will use
-        # the unmodified version because it is computed before build_ext is
-        # called
-        cxfreeze_searchpath.insert(0, self.build_lib)
+        if Executable is not None:
+            # need to be done in-place, otherwise build_exe_options['path'] will use
+            # the unmodified version because it is computed before build_ext is
+            # called
+            cxfreeze_searchpath.insert(0, self.build_lib)
 
 
 ext_modules = [Extension("cpartition", ["liam2/cpartition.pyx"],
@@ -176,7 +177,11 @@ setup(
     cmdclass={"build_ext": MyBuildExt},
     ext_modules=ext_modules,
     options={"build_ext": build_ext_options, "build_exe": build_exe_options},
-    install_requires=['numpy', 'numexpr', 'tables'],
+    install_requires=[
+        'numexpr',
+        'numpy',
+        'tables >= 3',
+    ],
     extras_require=dict(
         interpolation=['bcolz'],
         plot=['matplotlib'],

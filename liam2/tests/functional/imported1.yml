@@ -8,11 +8,12 @@ entities:
             - imported_field1: {type: int, initialdata: False}
 
         macros:
-            IMPORTED_MACRO: imported_field1 == 1 
+            IMPORTED_MACRO: imported_field1 == 1
             ISCHILD: age < 17
 
         processes:
-            agegroup: trunc(age / 10)
+            compute_agegroup:
+                - agegroup: trunc(age / 10)
 
             imported_process:
                 - imported_field1: age + 1
@@ -20,7 +21,7 @@ entities:
 simulation:
     # overridden by simulation.yml
     processes:
-        - person: [agegroup, imported_process]
+        - person: [compute_agegroup, imported_process]
 
     periods: 55
 
@@ -31,4 +32,3 @@ simulation:
     # not overridden (present in neither imported2.yml nor simulation.yml)
     input:
         file: small.h5
-    
