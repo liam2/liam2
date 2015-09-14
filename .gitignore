@@ -14,3 +14,4 @@ liam2/*.c
 build
 liam2/tests/functional/*.h5
 liam2/tests/output/
+liam2/tests/functional/output/

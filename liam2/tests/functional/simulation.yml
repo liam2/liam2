@@ -2613,6 +2613,7 @@ simulation:
 #        file: none
 
     output:
+        path: output
         file: simulation.h5
     # does not play nicely with recursive functions (because dump wants to
     # access a local variable between the time it is purged from the local scope

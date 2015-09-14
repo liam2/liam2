@@ -76,6 +76,7 @@ simulation:
         file: none
 
     output:
+        path: output
         file: generated.h5
 
     start_period: 2001   # first simulated period
