@@ -466,7 +466,47 @@ def _mul(a, b):
 class ExtExpr(CompoundExpression):
     def __init__(self, fname):
         data = load_ndarray(os.path.join(config.input_directory, fname))
-        # TODO: handle more dimensions
+
+        # TODO: handle more dimensions. For that we need to evaluate a
+        # different expr depending on the values for the other dimensions
+        # we will need to either
+        # 1) create awful expressions with lots of nested if() (X*Y*Z)
+        # OR
+        # 2) use groupby (or partition_nd)
+        # the problem with groupby is that once we have one vector of values
+        # for each group, we have to recombine them into a single vector
+        # result = np.empty(context_length(context), dtype=expr.dtype)
+        # groups = partition_nd(filtered_columns, True, possible_values)
+        # if not groups:
+        #    return
+        # contexts = [filtered_context.subset(indices, expr_vars, not_hashable)
+        #             for indices in groups]
+        # data = [expr_eval(expr, c) for c in contexts]
+        # for group_indices, group_values in zip(groups, data):
+        #     result[group_indices] = group_values
+        # 3) use a lookup for each individual & coef (we can only envision
+        # this during the evaluation of the larger expression if done via numba,
+        # otherwise it will be too slow
+        # expr = age * AGECOEF[gender, xyz] + eduach * EDUCOEF[gender, xyz]
+        # 4) compute the coefs separately
+        # 4a) via nested if()
+        # AGECOEF = if(gender, if(workstate == 1, a, if(workstate == 2, b, c)
+        #                      if(workstate == 1, a, if(workstate == 2, b, c))
+        # EDUCOEF = ...
+        # expr = age * AGECOEF + eduach * EDUCOEF
+        # 4b) via lookup
+        # AGECOEF = AGECOEFS[gender, workstate]
+        # EDUCOEF = EDUCOEFS[gender, workstate]
+        # expr = age * AGECOEF + eduach * EDUCOEF
+
+        # Note, in general, we could make
+        # EDUCOEFS (sans rien) equivalent to EDUCOEFS[:, :, period] s'il y a
+        #  une dimension period en 3eme position
+        # et non à EDUCOEFS[gender, workstate, period] car ca pose probleme
+        # pour l'alignement (on a pas besoin d'une valeur par personne)
+        # in general, we could let user tell explicitly which fields they want
+        # to index by (autoindex: period) for periodic
+
         fields_dim = data.dim_names.index('fields')
         fields_axis = data.axes[fields_dim]
         self.names = list(fields_axis.labels)
@@ -480,6 +520,9 @@ class ExtExpr(CompoundExpression):
         for name, coef in zip(self.names, self.coefs):
             # XXX: parse expressions instead of only simple Variable?
             if name != 'constant':
+                # cond_dims = self.cond_dims
+                # cond_exprs = [Variable(context.entity, d) for d in cond_dims]
+                # coef = GlobalArray('__xyz')[name, *cond_exprs]
                 term = _mul(Variable(context.entity, name), coef)
             else:
                 term = coef

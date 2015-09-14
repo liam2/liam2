@@ -2284,7 +2284,8 @@ entities:
                 - p0: zero + 0.1
                 - p1: zero + 0.3
 
-                - fchoice: choice([zero, zero + 1.0, zero + 2.0], [p0, p1, 1.0 - p0 - p1])
+                - fchoice: choice([zero, zero + 1.0, zero + 2.0],
+                                  [p0, p1, 1.0 - p0 - p1])
 
                 - num0: count(fchoice == 0.0)
                 - num1: count(fchoice == 1.0)
