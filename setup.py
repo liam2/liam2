@@ -4,7 +4,6 @@
 from __future__ import print_function
 
 import os
-import platform
 import sys
 import fnmatch
 from os.path import join
@@ -16,10 +15,12 @@ from setuptools.extension import Extension
 from Cython.Distutils import build_ext
 import numpy as np
 
-try:
+
+command = sys.argv[1] if len(sys.argv) > 1 else None
+build_exe = command == 'build_exe'
+
+if build_exe:
     from cx_Freeze import Executable, setup
-except ImportError:
-    Executable = None
 
 
 # ============= #
@@ -81,7 +82,8 @@ def int_version(release_name):
 # main options #
 # ============ #
 
-optional_kwargs = {}
+options = {}
+extra_kwargs = {}
 
 
 # ============== #
@@ -94,7 +96,7 @@ class MyBuildExt(build_ext):
     def finalize_options(self):
         build_ext.finalize_options(self)
 
-        if Executable is not None:
+        if build_exe:
             # need to be done in-place, otherwise build_exe_options['path'] will use
             # the unmodified version because it is computed before build_ext is
             # called
@@ -105,27 +107,27 @@ ext_modules = [Extension("cpartition", ["liam2/cpartition.pyx"],
                          include_dirs=[np.get_include()]),
                Extension("cutils", ["liam2/cutils.pyx"],
                          include_dirs=[np.get_include()])]
-build_ext_options = {}
+options["build_ext"] = {}
 
 
 # ================= #
 # cx_freeze options #
 # ================= #
 
-def vitables_data_files():
-    try:
-        import vitables
-    except ImportError:
-        return []
+if build_exe:
+    def vitables_data_files():
+        try:
+            import vitables
+        except ImportError:
+            return []
 
-    module_path = os.path.dirname(vitables.__file__)
-    files = chain(allfiles('*.ui', module_path),
-                  allfiles('*.ini', module_path),
-                  allfiles('*', join(module_path, 'icons')))
-    return [(fname, join('vitables', fname[len(module_path) + 1:]))
-            for fname in files]
+        module_path = os.path.dirname(vitables.__file__)
+        files = chain(allfiles('*.ui', module_path),
+                      allfiles('*.ini', module_path),
+                      allfiles('*', join(module_path, 'icons')))
+        return [(fname, join('vitables', fname[len(module_path) + 1:]))
+                for fname in files]
 
-if Executable is not None:
     cxfreeze_searchpath = sys.path + ['liam2']
 
     build_exe_options = {
@@ -159,10 +161,8 @@ if Executable is not None:
         'include_files': vitables_data_files(),
     }
 
-    if Executable is not None:
-        optional_kwargs['executables'] = [Executable("liam2/main.py")]
-else:
-    build_exe_options = {}
+    options["build_exe"] = build_exe_options
+    extra_kwargs['executables'] = [Executable("liam2/main.py")]
 
 
 # ========== #
@@ -176,7 +176,7 @@ setup(
     description="LIAM2",
     cmdclass={"build_ext": MyBuildExt},
     ext_modules=ext_modules,
-    options={"build_ext": build_ext_options, "build_exe": build_exe_options},
+    options=options,
     install_requires=[
         'numexpr',
         'numpy',
@@ -186,6 +186,6 @@ setup(
         interpolation=['bcolz'],
         plot=['matplotlib'],
         view=['vitables'],
-        ),
-    **optional_kwargs
+    ),
+    **extra_kwargs
 )
