@@ -237,6 +237,7 @@ def safe_put(a, ind, v):
     """
     np.put but where values corresponding to -1 indices are ignored,
     instead of being copied to the last position
+    assumes indices in ind are sorted !
     """
     from data import ColumnArray
 
@@ -248,10 +249,8 @@ def safe_put(a, ind, v):
         for fname in a.dtype.names:
             safe_put(a[fname], ind, v[fname])
     else:
-        # XXX: a.put(ind, v) seem to be a bit faster (but does not work if a is
-        # not an ndarray, is it a problem?)
-        np.put(a, ind, v)
-    # if the last value was erroneously modified (because of a -1 in ind)
+        a.put(ind, v)
+    # if the last value was erroneously modified (because of one -1 in ind)
     # this assumes indices are sorted
     if ind[-1] != len(a) - 1:
         # restore its previous value
