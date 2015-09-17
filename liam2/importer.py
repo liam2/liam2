@@ -349,7 +349,8 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
     return table
 
 
-def array_to_disk_array(h5file, node, name, array, title='', compression=None):
+def array_to_disk_array(node, name, array, title='', compression=None):
+    h5file = node._v_file
     msg, filters = compression_str2filter(compression)
     print(" - storing %s..." % msg)
     if filters is not None:
@@ -777,7 +778,7 @@ def csv2h5(fpath = None, buffersize=10 * 2 ** 20):
                 kind, info = load_def(localdir, global_name,
                                       global_def, req_fields)
                 if kind == 'ndarray':
-                    array_to_disk_array(h5file, const_node, global_name, info,
+                    array_to_disk_array(const_node, global_name, info,
                                         title=global_name,
                                         compression=compression)
                 else:
