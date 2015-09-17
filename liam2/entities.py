@@ -12,7 +12,7 @@ import tables
 import config
 from data import merge_arrays, get_fields, ColumnArray, index_table
 from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
-                  GlobalArray, Expr, MethodSymbol)
+                  GlobalArray, Expr, MethodSymbol, normalize_type)
 from exprtools import parse
 from process import Assignment, ProcessGroup, While, Function, Return
 from utils import (count_occurrences, field_str_to_type, size2str,
@@ -81,6 +81,8 @@ class Field(object):
 class FieldCollection(list):
     def __init__(self, iterable=None):
         list.__init__(self, iterable)
+        for f in self:
+            assert isinstance(f, Field)
 
     @property
     def in_input(self):
@@ -125,7 +127,26 @@ class Entity(object):
             array_period = None
 
         if not isinstance(fields, FieldCollection):
-            fields = FieldCollection(fields)
+            def fdef2field(name, fielddef):
+                initialdata = True
+                output = True
+                if isinstance(fielddef, Field):
+                    return fielddef
+                elif isinstance(fielddef, (dict, str)):
+                    if isinstance(fielddef, dict):
+                        strtype = fielddef['type']
+                        initialdata = fielddef.get('initialdata', True)
+                        output = fielddef.get('output', True)
+                    elif isinstance(fielddef, str):
+                        strtype = fielddef
+                    dtype = field_str_to_type(strtype, "field '%s'" % name)
+                else:
+                    assert isinstance(fielddef, type)
+                    dtype = normalize_type(fielddef)
+                return Field(name, dtype, initialdata, output)
+
+            fields = FieldCollection(fdef2field(name, fdef)
+                                     for name, fdef in fields)
 
         duplicate_names = [name
                            for name, num
@@ -203,26 +224,13 @@ class Entity(object):
         #entity_def.get('fields', []) returns None and this breaks
         fields_def = [d.items()[0] for d in entity_def.get('fields', [])]
 
-        def fdef2field(name, fielddef):
-            if isinstance(fielddef, dict):
-                strtype = fielddef['type']
-                input = fielddef.get('initialdata', True)
-                output = fielddef.get('output', True)
-            else:
-                strtype = fielddef
-                input = True
-                output = True
-            dtype = field_str_to_type(strtype, "field '%s'" % name)
-            return Field(name, dtype, input, output)
-
-        fields = [fdef2field(name, fdef) for name, fdef in fields_def]
         link_defs = entity_def.get('links', {})
         str2class = {'one2many': One2Many, 'many2one': Many2One}
         links = dict((name,
                       str2class[l['type']](name, l['field'], l['target']))
                      for name, l in link_defs.iteritems())
 
-        return Entity(ent_name, fields, links,
+        return Entity(ent_name, fields_def, links,
                       entity_def.get('macros', {}),
                       entity_def.get('processes', {}))
 
@@ -238,8 +246,8 @@ class Entity(object):
 
     @classmethod
     def from_table(cls, table):
-        return Entity(table.name, get_fields(table), missing_fields=[],
-                      links={}, macro_strings={}, process_strings={})
+        return Entity(table.name, get_fields(table), links={}, macro_strings={},
+                      process_strings={})
 
     @staticmethod
     def collect_predictors(items):

@@ -925,9 +925,9 @@ def entities_from_h5(fpath):
     if hasattr(h5root, 'globals'):
         for table in h5root.globals:
             if isinstance(table, tables.Array):
-                global_def = normalize_type(table.dtype.type)
+                global_def = {'type': normalize_type(table.dtype.type)}
             else:
-                global_def = get_fields(table)
+                global_def = {'fields': get_fields(table)}
             globals_def[table.name] = global_def
     h5in.close()
     return globals_def, entities
