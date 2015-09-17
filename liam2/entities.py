@@ -183,9 +183,6 @@ class Entity(object):
         # simulated, because (currently) when we go back in time, we always go
         # back using the output table... but periods before the start_period
         # are only present in input_index
-        # FIXME: the proper way to fix this is to copy the input_index into
-        # the output_index during H5Date.run() and not keep input_index
-        # beyond that point.
         self.input_index = {}
 
         self.output_rows = {}
