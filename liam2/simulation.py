@@ -219,9 +219,9 @@ class Simulation(object):
         validate_dict(content, cls.yaml_layout)
 
         # the goal is to get something like:
-        # globals_def = {'periodic': [('a': int), ...],
-        #                'MIG': int}
-        globals_def = content.get('globals', {})
+        # globals_def = {'periodic': {'fields': [('a': int), ...], ...},
+        #                'MIG': {'type': int}}
+        globals_def = {}
         for k, v in content.get('globals', {}).iteritems():
             if "type" in v:
                 v["type"] = field_str_to_type(v["type"], "array '%s'" % k)
