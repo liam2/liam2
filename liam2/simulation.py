@@ -152,9 +152,9 @@ class Simulation(object):
                 '#file': str,
                 'method': str
             },
-            '#output': {
+            'output': {
                 'path': str,
-                '#file': str
+                'file': str,
                 'systemfile': str,
             },
             'logging': {
@@ -310,7 +310,7 @@ class Simulation(object):
             input_file = input_def.get('file', '')
         input_path = os.path.join(input_dir, input_file)
 
-        output_def = simulation_def['output']
+        output_def = simulation_def.get('output', {})
         if output_dir is None:
             output_dir = output_def.get('path', '')
         if not os.path.isabs(output_dir):
@@ -321,8 +321,13 @@ class Simulation(object):
         config.output_directory = output_dir
 
         if output_file is None:
-            output_file = output_def['file']
-        output_path = os.path.join(output_dir, output_file)
+            output_file = output_def.get('file')
+
+        if output_file is None:
+            output_path = None
+        else:
+            output_path = os.path.join(output_dir, output_file)
+
         if system_file is None:
             system_file = output_def.get('systemfile')
 
@@ -346,7 +351,8 @@ class Simulation(object):
         for entity in entities.itervalues():
             parsing_context['__entity__'] = entity.name
             entity.parse_processes(parsing_context)
-            entity.compute_lagged_fields()
+            entity.lag1_fields = entity.compute_lagged_fields(oneperiod=True)
+            entity.lagx_fields = entity.compute_lagged_fields(oneperiod=False)
             # entity.optimize_processes()
 
         if 'init' not in simulation_def and 'processes' not in simulation_def:
@@ -507,12 +513,14 @@ class Simulation(object):
             if config.log_level in ("functions", "processes"):
                 print("- storing period data")
                 for entity in entities:
+                    eval_ctx.entity = entity
                     print("  *", entity.name, "...", end=' ')
-                    timed(entity.store_period_data, period)
+                    timed(entity.store_period_data, eval_ctx)
                     print("    -> %d individuals" % len(entity.array))
             else:
                 for entity in entities:
-                    entity.store_period_data(period)
+                    eval_ctx.entity = entity
+                    entity.store_period_data(eval_ctx)
 #            print " - compressing period data"
 #            for entity in entities:
 #                print "  *", entity.name, "...",

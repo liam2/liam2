@@ -524,7 +524,11 @@ Please use this instead:
             if isinstance(p, ProcessGroup):
                 p.ssa(fields_versions)
 
-    def compute_lagged_fields(self):
+    def compute_lagged_fields(self, oneperiod):
+        """
+        oneperiod: only lags referring to the last period, or only lags
+        not referring explicitly to one period back
+        """
         from tfunc import Lag
         from links import LinkGet
 
@@ -532,17 +536,20 @@ Please use this instead:
         for p in self.processes.itervalues():
             for expr in p.expressions():
                 for node in expr.all_of(Lag):
-                    for v in node.all_of(Variable):
-                        if not isinstance(v, GlobalVariable):
-                            lag_vars.add(v.name)
-                    for lv in node.all_of(LinkGet):
-                        # noinspection PyProtectedMember
-                        lag_vars.add(lv.link._link_field)
-                        # noinspection PyProtectedMember
-                        target_entity = lv.link._target_entity
-                        if target_entity == self:
-                            target_vars = lv.target_expr.all_of(Variable)
-                            lag_vars.update(v.name for v in target_vars)
+                    num_periods = node.args[1]
+                    if ((oneperiod and (num_periods == 1)) or
+                            (not oneperiod and (num_periods != 1))):
+                        for v in node.all_of(Variable):
+                            if not isinstance(v, GlobalVariable):
+                                lag_vars.add(v.name)
+                        for lv in node.all_of(LinkGet):
+                            # noinspection PyProtectedMember
+                            lag_vars.add(lv.link._link_field)
+                            # noinspection PyProtectedMember
+                            target_entity = lv.link._target_entity
+                            if target_entity == self:
+                                target_vars = lv.target_expr.all_of(Variable)
+                                lag_vars.update(v.name for v in target_vars)
 
         if lag_vars:
             # make sure we have an 'id' column, and that it comes first
@@ -553,7 +560,7 @@ Please use this instead:
             lag_vars = ['id'] + sorted(lag_vars)
 
         field_type = dict(self.fields.name_types)
-        self.lag_fields = [(v, field_type[v]) for v in lag_vars]
+        return [(v, field_type[v]) for v in lag_vars]
 
     def build_period_array(self, start_period):
         self.array, self.id_to_rownum = \
@@ -641,7 +648,8 @@ Please use this instead:
             # DiskBackedArray is a workaround for pytables#360 (see above)
             self.output_index[period - 1] = DiskBackedArray(prev_disk_array)
 
-    def store_period_data(self, period):
+    def store_period_data(self, context):
+        period = context.period
         if config.debug and config.log_level in ("functions", "processes"):
             temp_mem = sum(v.nbytes for v in self.temp_variables.itervalues()
                            if isinstance(v, np.ndarray))
@@ -658,10 +666,20 @@ Please use this instead:
             raise Exception("trying to modify already simulated rows")
 
         startrow = self.table.nrows
+        simulation = context.simulation
+
+        data_sink = simulation.data_sink
+        if data_sink is not None:
+            data_sink.store(self.name, period, self.array)
+        system_sink = simulation.system_sink
+        system_sink.store(self.name, period, self.array)
+
         self.array.append_to_table(self.table)
-        self.output_rows[period] = (startrow, self.table.nrows)
-        self.flush_index(period)
         self.table.flush()
+        self.output_rows[period] = (startrow, self.table.nrows)
+        # FIXME: this should be done within IndexedTable.store (or
+        # XXXSink.store)
+        self.flush_index(period)
 
     #     def compress_period_data(self, level):
     #     compressed = bcolz.ctable(self.array, cparams=bcolz.cparams(level))

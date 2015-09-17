@@ -775,6 +775,12 @@ def index_tables(globals_def, entities, fpath):
     return input_file, {'globals': globals_data, 'entities': entities_tables}
 
 
+# XXX: It might be better to merge back DataSource & DataSink together
+# because we will need read/write in both (but
+# use two instances of that unified class instead of one of H5Data like we
+# had in older versions. ie
+# data_source = H5Data(input_path)
+# data_sink = H5Data(output_path)
 class DataSource(object):
     def close(self):
         pass
@@ -842,11 +848,14 @@ class H5Sink(DataSink):
             entities_tables = input_dataset['entities']
             output_entities = output_file.create_group("/", "entities",
                                                        "Entities")
+            # output_indexes = output_file.create_group("/", "indexes", "Indexes")
             print(" * copying tables")
             for ent_name, entity in entities.iteritems():
                 print("    -", ent_name, "...", end=' ')
                 start_time = time.time()
 
+                # index_node = output_file.create_group("/indexes", ent_name)
+                # entity.output_index_node = index_node
 
                 # main table
                 table = entities_tables.get(ent_name)
@@ -861,10 +870,17 @@ class H5Sink(DataSink):
                     else:
                         stoprow = 0
 
+                    # FIXME: input table should be copied to the system sink
+                    # too (albeit only a few fields)
+                    # FIXME: to support different backends, this should use the
+                    # "store() method" (either in a loop over periods, or by
+                    # changing the API for the store method)
                     output_table = copy_table(table.table, output_entities,
                                               entity.fields.in_output.dtype,
                                               stop=stoprow,
                                               show_progress=True)
+                    # FIXME: this will potentially contain too many periods
+                    # it should receive the same treatment than output_rows
                     output_index = table.id2rownum_per_period.copy()
                 else:
                     output_rows = {}
@@ -886,6 +902,9 @@ class H5Sink(DataSink):
             raise
         self.h5out = output_file
 
+    def store(self, ent_name, period, array):
+        raise NotImplementedError()
+
     def close(self):
         if self.h5out is not None:
             self.h5out.close()
@@ -894,7 +913,8 @@ class H5Sink(DataSink):
 class SystemSink(H5Sink):
     """
     uses HDF5 for now, but there is not guarantee whatsoever that the
-    format will be stable
+    format will be stable. We could (and probably should) some day even delay
+    flushing to disk until we are out of memory.
     """
     def prepare(self, entities, input_dataset, start_period):
         """prepare output file"""
@@ -907,6 +927,9 @@ class SystemSink(H5Sink):
             output_file.create_group("/entities", ent_name)
             #FIXME: copy input table here too (only lagx fields)
         self.h5out = output_file
+
+    def store(self, ent_name, period, array):
+        raise NotImplementedError()
 
 
 def entities_from_h5(fpath):
