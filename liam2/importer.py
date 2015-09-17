@@ -354,8 +354,8 @@ def array_to_disk_array(node, name, array, title='', compression=None):
     msg, filters = compression_str2filter(compression)
     print(" - storing %s..." % msg)
     if filters is not None:
-        disk_array = h5file.createCArray(node, name, array, title,
-                                         filters=filters)
+        disk_array = h5file.create_carray(node, name, array, title,
+                                          filters=filters)
     else:
         disk_array = h5file.create_array(node, name, array, title)
     if isinstance(array, LabeledArray):
