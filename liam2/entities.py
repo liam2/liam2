@@ -10,7 +10,8 @@ import numpy as np
 import tables
 
 import config
-from data import merge_arrays, get_fields, ColumnArray, index_table
+from data import (merge_arrays, get_fields, ColumnArray, index_table,
+                  build_period_array)
 from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
                   GlobalArray, Expr, MethodSymbol, normalize_type)
 from exprtools import parse
@@ -554,6 +555,15 @@ Please use this instead:
         field_type = dict(self.fields.name_types)
         self.lag_fields = [(v, field_type[v]) for v in lag_vars]
 
+    def build_period_array(self, start_period):
+        self.array, self.id_to_rownum = \
+            build_period_array(self.input_table,
+                               list(self.fields.name_types),
+                               self.input_rows,
+                               self.input_index, start_period)
+        assert isinstance(self.array, ColumnArray)
+        self.array_period = start_period
+
     def load_period_data(self, period):
         if self.lag_fields:
             # TODO: use ColumnArray here
@@ -562,6 +572,12 @@ Please use this instead:
                                       dtype=np.dtype(self.lag_fields))
             for field, _ in self.lag_fields:
                 self.array_lag[field] = self.array[field]
+
+        # if not self.indexed_input_table.has_period(period):
+        #     # nothing needs to be done in that case
+        #     return
+        #
+        # input_array = self.indexed_input_table.read(period)
 
         rows = self.input_rows.get(period)
         if rows is None:
