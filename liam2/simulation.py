@@ -172,9 +172,11 @@ class Simulation(object):
 
     def __init__(self, globals_def, periods, start_period, init_processes,
                  processes, entities, data_source, default_entity=None):
-        # FIXME: what if period has been declared explicitly?
         if 'periodic' in globals_def:
-            globals_def['periodic']['fields'].insert(0, ('PERIOD', int))
+            declared_fields = globals_def['periodic']['fields']
+            fnames = {fname for fname, type_ in declared_fields}
+            if 'PERIOD' not in fnames:
+                declared_fields.insert(0, ('PERIOD', int))
 
         self.globals_def = globals_def
         self.periods = periods
