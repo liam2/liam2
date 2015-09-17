@@ -842,14 +842,11 @@ class H5Sink(DataSink):
             entities_tables = input_dataset['entities']
             output_entities = output_file.create_group("/", "entities",
                                                        "Entities")
-            output_indexes = output_file.create_group("/", "indexes", "Indexes")
             print(" * copying tables")
             for ent_name, entity in entities.iteritems():
                 print("    -", ent_name, "...", end=' ')
                 start_time = time.time()
 
-                index_node = output_file.create_group("/indexes", ent_name)
-                entity.output_index_node = index_node
 
                 # main table
                 table = entities_tables.get(ent_name)
@@ -892,6 +889,24 @@ class H5Sink(DataSink):
     def close(self):
         if self.h5out is not None:
             self.h5out.close()
+
+
+class SystemSink(H5Sink):
+    """
+    uses HDF5 for now, but there is not guarantee whatsoever that the
+    format will be stable
+    """
+    def prepare(self, entities, input_dataset, start_period):
+        """prepare output file"""
+        output_file = tables.open_file(self.output_path, mode="w")
+        output_file.create_group("/", "entities")
+        output_file.create_group("/", "indexes")
+        for ent_name, entity in entities.iteritems():
+            index_node = output_file.create_group("/indexes", ent_name)
+            entity.output_index_node = index_node
+            output_file.create_group("/entities", ent_name)
+            #FIXME: copy input table here too (only lagx fields)
+        self.h5out = output_file
 
 
 def entities_from_h5(fpath):

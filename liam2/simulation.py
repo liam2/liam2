@@ -1,5 +1,6 @@
 # encoding: utf-8
 from __future__ import print_function, division
+import tempfile
 
 import time
 import os.path
@@ -13,7 +14,7 @@ import tables
 import yaml
 
 from context import EvaluationContext
-from data import VoidSource, H5Source, H5Sink
+from data import VoidSource, H5Source, H5Sink, SystemSink
 from entities import Entity, global_symbols
 from utils import (time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
@@ -154,6 +155,7 @@ class Simulation(object):
             '#output': {
                 'path': str,
                 '#file': str
+                'systemfile': str,
             },
             'logging': {
                 'timings': bool,
@@ -172,7 +174,7 @@ class Simulation(object):
 
     def __init__(self, globals_def, periods, start_period, init_processes,
                  processes, entities, input_method, input_path, output_path,
-                 default_entity=None):
+                 system_path=None, default_entity=None):
         if 'periodic' in globals_def:
             declared_fields = globals_def['periodic']['fields']
             fnames = {fname for fname, type_ in declared_fields}
@@ -198,6 +200,10 @@ class Simulation(object):
 
         self.data_source = data_source
         self.data_sink = H5Sink(output_path)
+        if system_path is None:
+            tmpdir = tempfile.mkdtemp(prefix='liam2-')
+            system_path = os.path.join(tmpdir, 'temp.h5')
+        self.system_sink = SystemSink(system_path)
         self.default_entity = default_entity
 
         self.stepbystep = False
@@ -205,7 +211,7 @@ class Simulation(object):
     @classmethod
     def from_yaml(cls, fpath,
                   input_dir=None, input_file=None,
-                  output_dir=None, output_file=None,
+                  output_dir=None, output_file=None, system_file=None,
                   start_period=None, periods=None, seed=None,
                   skip_shows=None, skip_timings=None, log_level=None,
                   assertions=None, autodump=None, autodiff=None):
@@ -317,6 +323,13 @@ class Simulation(object):
         if output_file is None:
             output_file = output_def['file']
         output_path = os.path.join(output_dir, output_file)
+        if system_file is None:
+            system_file = output_def.get('systemfile')
+
+        if system_file is None:
+            system_path = None
+        else:
+            system_path = os.path.join(output_dir, system_file)
 
         entities = {}
         for k, v in content['entities'].iteritems():
@@ -381,7 +394,7 @@ class Simulation(object):
         default_entity = simulation_def.get('default_entity')
         return Simulation(globals_def, periods, start_period, init_processes,
                           processes, entities_list, input_method, input_path,
-                          output_path, default_entity)
+                          output_path, system_path, default_entity)
 
     def load(self):
         return timed(self.data_source.load, self.globals_def, self.entities_map)
@@ -400,6 +413,7 @@ class Simulation(object):
         globals_data = input_dataset.get('globals')
         timed(self.data_sink.prepare, self.globals_def, self.entities_map,
               input_dataset, self.start_period - 1)
+        self.system_sink.prepare(self.entities_map)
 
         print(" * building arrays for first simulated period")
         for ent_name, entity in self.entities_map.iteritems():
@@ -584,3 +598,4 @@ class Simulation(object):
     def close(self):
         self.data_source.close()
         self.data_sink.close()
+        self.system_sink.close()

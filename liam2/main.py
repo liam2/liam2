@@ -123,6 +123,7 @@ def simulate(args):
                                       input_file=args.input_file,
                                       output_dir=args.output_path,
                                       output_file=args.output_file,
+                                      system_file=args.system_file,
                                       start_period=args.startperiod,
                                       periods=args.periods, seed=args.seed,
                                       skip_shows=args.skipshows,
@@ -256,6 +257,8 @@ def main():
                         help='override the output path')
     parser.add_argument('--output-file', dest='output_file',
                         help='override the output file')
+    parser.add_argument('--system-file', dest='system_file',
+                        help='override the system file')
 
     subparsers = parser.add_subparsers(dest='action')
 
