@@ -9,7 +9,7 @@ import config
 
 from expr import (normalize_type, get_missing_value, get_missing_record,
                   get_missing_vector, gettype)
-from utils import loop_wh_progress, time2str, safe_put, LabeledArray
+from utils import loop_wh_progress, time2str, safe_put, LabeledArray, timed
 from importer import load_def, stream_to_array
 
 MB = 2 ** 20
@@ -749,12 +749,11 @@ def index_tables(globals_def, entities, fpath):
             table = getattr(input_entities, ent_name)
             assert_valid_type(table, list(entity.fields.in_input.name_types))
 
-            start_time = time.time()
-            rows_per_period, id_to_rownum_per_period = index_table(table)
+            rows_per_period, id_to_rownum_per_period = \
+                timed(index_table, table)
             indexed_table = IndexedTable(table, rows_per_period,
                                          id_to_rownum_per_period)
             entities_tables[ent_name] = indexed_table
-            print("done (%s elapsed)." % time2str(time.time() - start_time))
     except:
         input_file.close()
         raise
