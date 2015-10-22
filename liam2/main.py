@@ -30,7 +30,7 @@ from view import viewhdf
 __version__ = "0.10.2"
 
 
-def write_traceback(e):
+def write_traceback(ex_type, e, tb):
     try:
         import traceback
         # output_directory might not be set at this point yet and it is
@@ -41,7 +41,7 @@ def write_traceback(e):
         error_path = os.path.join(out_dir, 'error.log')
         error_path = os.path.abspath(error_path)
         with file(error_path, 'w') as f:
-            traceback.print_exc(file=f)
+            traceback.print_exception(ex_type, e, tb, file=f)
             if hasattr(e, 'liam2context'):
                 f.write(e.liam2context)
         return error_path
@@ -68,7 +68,7 @@ def print_exception_simplified(ex_type, e, tb):
     # e.context_mark | in "import.yml", line 18, column 9
     # e.problem      | expected <block end>, but found '<block sequence start>'
     # e.problem_mark | in "import.yml", line 29, column 12
-    error_log_path = write_traceback(e)
+    error_log_path = write_traceback(ex_type, e, tb)
     if isinstance(e, yaml.parser.ParserError):
         # eg, inconsistent spacing, no space after a - in a list, ...
         printerr("SYNTAX ERROR {}".format(str(e.problem_mark).strip()))
