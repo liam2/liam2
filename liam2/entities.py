@@ -394,7 +394,7 @@ Please use this instead:
                                 "instead of 'return: expr'")
                 e.liam2context = "while parsing: return: {}".format(v)
                 raise e
-            elif k is None and v.startswith('return'):
+            elif k is None and isinstance(v, str) and v.startswith('return'):
                 assert len(v) == 6 or v[6] == ' '
                 if len(v) > 6:
                     result_def = v[7:].strip()
@@ -498,9 +498,11 @@ Please use this instead:
                                          "If you need several processes to "
                                          "write to the same variable, you "
                                          "should rather use functions.")
+                    elif k is None and v is None:
+                        raise ValueError("empty process found ('-')")
                     else:
-                        raise Exception("unknown expression type for %s: %s"
-                                        % (k, type(v)))
+                        raise Exception("unknown expression type for %s: %s (%s)"
+                                        % (k, v, type(v)))
             processes.append((k, process))
         return processes
 
