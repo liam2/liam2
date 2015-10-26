@@ -309,7 +309,6 @@ def _parse(s, interactive=False):
     """
     low level parsing function (string -> Node)
     """
-    print('string: {}'.format(s))
     if not isinstance(s, basestring):
         return s
 
@@ -336,8 +335,6 @@ def _parse(s, interactive=False):
             else:
                 to_compile = [('exec', tree)]
     else:
-        print("body: {}".format(body))
-        print("body[0]: {}".format(body[0]))
         assert len(body) == 1 and isinstance(body[0], ast.Expr)
         to_compile = [('eval', ast.Expression(body[0].value))]
 
