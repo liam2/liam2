@@ -674,6 +674,13 @@ entities:
 #                - clip(age, 5)
 #                - clip(age, 5, 10, 15, 20)
 
+            test_seed:
+                - seed(0)
+                - value1: uniform()
+                - seed(0)
+                - value2: uniform()
+                - assertEqual(value1, value2)
+
             test_logit:
                 - float_field: age / 120.0
                 - assertNanEqual(logit(float_field),
@@ -1385,11 +1392,38 @@ entities:
                 - assertEqual(count(by_gender and not gender), 30)
                 - assertEqual(count(by_gender and gender), 20)
 
+            test_extexpr:
+                - value: extexpr('regr_test_1d.csv')
+                - assertEqual(value, eduach * 0.3 + 0.2 * age + 0.1)
+
+            test_logit_score:
+                - seed(0)
+                - result: logit_score(0.0)
+                - seed(0)
+                - assertEqual(result, uniform())
+
+                - seed(0)
+                - result: logit_score(0.5)
+                - seed(0)
+                - epsilon: logit(uniform())
+                - assertEqual(result, logistic(0.5 - epsilon))
+
+                - seed(0)
+                - result: logit_score('regr_test_1d.csv')
+                - seed(0)
+                - expr: eduach * 0.3 + 0.2 * age + 0.1
+                - assertEqual(result, logit_score(expr))
+                - assertEqual(result, logistic(expr - epsilon))
+
             test_logit_regr:
                 # equivalent to uniform() > 0.5
                 - simple: logit_regr(0.0)
                 - fixed_percent: logit_regr(0.0, align=0.5)
                 - with_file: logit_regr(0.0, align='al_p_one_dim.csv')
+
+                - with_coef_file: logit_regr('regr_test_1d.csv')
+                - with_both_file: logit_regr('regr_test_1d.csv',
+                                             align='al_p_one_dim.csv')
 
             test_cont_regr:
                 - show("expr only")
@@ -2250,7 +2284,8 @@ entities:
                 - p0: zero + 0.1
                 - p1: zero + 0.3
 
-                - fchoice: choice([zero, zero + 1.0, zero + 2.0], [p0, p1, 1.0 - p0 - p1])
+                - fchoice: choice([zero, zero + 1.0, zero + 2.0],
+                                  [p0, p1, 1.0 - p0 - p1])
 
                 - num0: count(fchoice == 0.0)
                 - num1: count(fchoice == 1.0)
@@ -2482,9 +2517,14 @@ simulation:
 
 #                   test_issue120,
 
-
                    test_expr,
                    test_trunc,
+
+                   # random
+                   test_uniform,
+                   test_otherrandom,
+
+                   test_seed,
 
                    # test the charts before test_new messes the demography
 #                   test_charts,
@@ -2518,10 +2558,6 @@ simulation:
                    test_new,
                    test_clone,
 
-                   # random
-                   test_uniform,
-                   test_otherrandom,
-
                    # aggregates
                    test_all,
                    test_any,
@@ -2536,6 +2572,8 @@ simulation:
                    test_gini,
 
                    # regressions
+                   test_extexpr,
+                   test_logit_score,
                    test_logit_regr,
                    test_cont_regr,
                    test_log_regr,
@@ -2575,6 +2613,7 @@ simulation:
 #        file: none
 
     output:
+        path: output
         file: simulation.h5
     # does not play nicely with recursive functions (because dump wants to
     # access a local variable between the time it is purged from the local scope

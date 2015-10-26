@@ -13,6 +13,7 @@ simulation:
         file: none
 
     output:
+        path: output
         file: static.h5
 
     start_period: 2002

@@ -131,7 +131,7 @@ class PrefixingLink(object):
 #            return macro.rename_variables(renames)
         if key in self.links:
             link = self.links[key]
-            #noinspection PyProtectedMember
+            # noinspection PyProtectedMember
             return link.__class__(link._name,
                                   self.prefix + link._link_field,
                                   link._target_entity_name,

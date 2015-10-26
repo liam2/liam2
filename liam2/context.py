@@ -268,7 +268,7 @@ class EntityContext(object):
         elif period in self.entity.output_index:
             return self.entity.output_index[period]
         else:
-            #FIXME: yes, it's true, that if period is not in output_index, it
+            # FIXME: yes, it's true, that if period is not in output_index, it
             # probably means that we are before start_period and in that case,
             # input_index == output_index, but it would be cleaner to simply
             # initialise output_index correctly

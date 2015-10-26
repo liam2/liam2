@@ -9,10 +9,20 @@ import config
 
 from expr import (normalize_type, get_missing_value, get_missing_record,
                   get_missing_vector, gettype)
-from utils import loop_wh_progress, time2str, safe_put, LabeledArray
-from importer import load_def, stream_to_array
+from utils import loop_wh_progress, time2str, safe_put, LabeledArray, timed
+from importer import load_def, stream_to_array, array_to_disk_array
 
 MB = 2 ** 20
+
+
+def anyarray_to_disk(node, name, array):
+    if array.dtype.names is None:
+        array_to_disk_array(node, name, array, title=name)
+    else:
+        h5file = node._v_file
+        table = h5file.create_table(node, name, array.dtype, title=name)
+        table.append(array)
+        table.flush()
 
 
 def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
@@ -366,7 +376,10 @@ def merge_array_records(array1, array2):
 
 
 def merge_arrays(array1, array2, result_fields='union'):
-    """data in array2 overrides data in array1"""
+    """
+    data in array2 overrides data in array1
+    both arrays must have an 'id' fields
+    """
 
     fields1 = get_fields(array1)
     fields2 = get_fields(array2)
@@ -663,6 +676,10 @@ class IndexedTable(object):
             raise NotImplementedError('reading only some ids is not '
                                       'implemented yet')
 
+    #XXX: use __contains__?
+    def has_period(self, period):
+        return period in self.period_index
+
     @property
     def base_period(self):
         return min(self.period_index.keys())
@@ -746,12 +763,11 @@ def index_tables(globals_def, entities, fpath):
             table = getattr(input_entities, ent_name)
             assert_valid_type(table, list(entity.fields.in_input.name_types))
 
-            start_time = time.time()
-            rows_per_period, id_to_rownum_per_period = index_table(table)
+            rows_per_period, id_to_rownum_per_period = \
+                timed(index_table, table)
             indexed_table = IndexedTable(table, rows_per_period,
                                          id_to_rownum_per_period)
             entities_tables[ent_name] = indexed_table
-            print("done (%s elapsed)." % time2str(time.time() - start_time))
     except:
         input_file.close()
         raise
@@ -760,154 +776,122 @@ def index_tables(globals_def, entities, fpath):
 
 
 class DataSource(object):
-    pass
+    def close(self):
+        pass
 
 
-# A data source is not necessarily read-only, but should be connected to
-# only one file, so in our case we should have one instance for input and the
-# other (used both for read and write) for the output.
-class H5Data(DataSource):
-    def __init__(self, input_path, output_path):
+class DataSink(object):
+    def close(self):
+        pass
+
+
+class VoidSource(DataSource):
+    def load(self, globals_def, entities):
+        return {'globals': load_path_globals(globals_def), 'entities': {}}
+
+
+class H5Source(DataSource):
+    def __init__(self, input_path):
+        self.h5in = None
         self.input_path = input_path
-        self.output_path = output_path
 
     def load(self, globals_def, entities):
-        h5file, dataset = index_tables(globals_def, entities, self.output_path)
+        h5file, dataset = index_tables(globals_def, entities, self.input_path)
         entities_tables = dataset['entities']
         for ent_name, entity in entities.iteritems():
-# this is what should happen
-#            entity.indexed_input_table = entities_tables[ent_name]
-#            entity.indexed_output_table = entities_tables[ent_name]
             table = entities_tables[ent_name]
-
+            # entity.indexed_input_table = table
             entity.input_index = table.id2rownum_per_period
             entity.input_rows = table.period_index
             entity.input_table = table.table
+            entity.base_period = table.base_period
+        self.h5in = h5file
+        return dataset
 
+    def close(self):
+        if self.h5in is not None:
+            self.h5in.close()
+
+    def as_fake_output(self, dataset, entities):
+        entities_tables = dataset['entities']
+        for ent_name, entity in entities.iteritems():
+            table = entities_tables[ent_name]
             entity.output_index = table.id2rownum_per_period
             entity.output_rows = table.period_index
             entity.table = table.table
 
-            entity.base_period = table.base_period
 
-        return h5file, None, dataset['globals']
+class H5Sink(DataSink):
+    def __init__(self, output_path):
+        self.output_path = output_path
+        self.h5out = None
 
-    def run(self, globals_def, entities, start_period):
-        input_file, dataset = index_tables(globals_def, entities,
-                                           self.input_path)
+    def prepare(self, globals_def, entities, input_dataset, start_period):
+        """copy input (if any) to output and create output index"""
         output_file = tables.open_file(self.output_path, mode="w")
 
         try:
-            globals_node = getattr(input_file.root, 'globals', None)
-            if globals_node is not None:
+            globals_data = input_dataset.get('globals')
+            if globals_data is not None:
                 output_globals = output_file.create_group("/", "globals",
                                                           "Globals")
-                # index_tables already checks whether all tables exist and
-                # are coherent with globals_def
-                for name in globals_def:
-                    # FIXME: if a globals is both in the input h5 and declared
-                    # to be coming from a csv file, it is copied from the h5
-                    # file, which is wrong/misleading because it is not used
-                    # in the simulation.
-                    if name in globals_node:
-                        # noinspection PyProtectedMember
-                        # FIXME: only copy declared fields
-                        getattr(globals_node, name)._f_copy(output_globals)
+                for k, g_def in globals_def.iteritems():
+                    if 'path' not in g_def:
+                        anyarray_to_disk(output_globals, k, globals_data[k])
 
-            entities_tables = dataset['entities']
+            entities_tables = input_dataset['entities']
             output_entities = output_file.create_group("/", "entities",
                                                        "Entities")
             output_indexes = output_file.create_group("/", "indexes", "Indexes")
             print(" * copying tables")
             for ent_name, entity in entities.iteritems():
-                print(ent_name, "...")
-
-                # main table
-
-                table = entities_tables[ent_name]
+                print("    -", ent_name, "...", end=' ')
+                start_time = time.time()
 
                 index_node = output_file.create_group("/indexes", ent_name)
                 entity.output_index_node = index_node
-                entity.input_index = table.id2rownum_per_period
-                entity.input_rows = table.period_index
-                entity.input_table = table.table
-                entity.base_period = table.base_period
 
-# this is what should happen
-#                entity.indexed_input_table = entities_tables[ent_name]
-#                entity.indexed_output_table = entities_tables[ent_name]
+                # main table
+                table = entities_tables.get(ent_name)
+                if table is not None:
+                    input_rows = table.period_index
+                    output_rows = dict((p, rows)
+                                       for p, rows in input_rows.iteritems()
+                                       if p < start_period)
+                    if output_rows:
+                        # stoprow = last row of the last period before start_period
+                        _, stoprow = input_rows[max(output_rows.iterkeys())]
+                    else:
+                        stoprow = 0
 
-                # TODO: copying the table and generally preparing the output
-                # file should be a different method than indexing
-                print(" * copying table...")
-                start_time = time.time()
-                input_rows = entity.input_rows
-                output_rows = dict((p, rows)
-                                   for p, rows in input_rows.iteritems()
-                                   if p < start_period)
-                if output_rows:
-                    # stoprow = last row of the last period before start_period
-                    _, stoprow = input_rows[max(output_rows.iterkeys())]
+                    output_table = copy_table(table.table, output_entities,
+                                              entity.fields.in_output.dtype,
+                                              stop=stoprow,
+                                              show_progress=True)
+                    output_index = table.id2rownum_per_period.copy()
                 else:
-                    stoprow = 0
+                    output_rows = {}
+                    output_table = output_file.create_table(
+                        output_entities, entity.name,
+                        entity.fields.in_output.dtype,
+                        title="%s table" % entity.name)
+                    output_index = {}
 
-                output_table = copy_table(table.table, output_entities,
-                                          entity.fields.in_output.dtype,
-                                          stop=stoprow,
-                                          show_progress=True)
+                # entity.indexed_output_table = IndexedTable(output_table,
+                #                                            output_rows,
+                #                                            output_index)
+                entity.output_index = output_index
                 entity.output_rows = output_rows
-                print("done (%s elapsed)." % time2str(time.time() - start_time))
-
-                print(" * building array for first simulated period...",
-                      end=' ')
-                start_time = time.time()
-
-                # TODO: this whole process of merging all periods is very
-                # opinionated and does not allow individuals to die/disappear
-                # before the simulation starts. We couldn't for example,
-                # take the output of one of our simulation and
-                # re-simulate only some years in the middle, because the dead
-                # would be brought back to life. In conclusion, it should be
-                # optional.
-                entity.array, entity.id_to_rownum = \
-                    build_period_array(table.table,
-                                       list(entity.fields.name_types),
-                                       entity.input_rows,
-                                       entity.input_index, start_period)
-                assert isinstance(entity.array, ColumnArray)
-                entity.array_period = start_period
-                print("done (%s elapsed)." % time2str(time.time() - start_time))
                 entity.table = output_table
+                print("done (%s elapsed)." % time2str(time.time() - start_time))
         except:
-            input_file.close()
             output_file.close()
             raise
+        self.h5out = output_file
 
-        return input_file, output_file, dataset['globals']
-
-
-class Void(DataSource):
-    def __init__(self, output_path):
-        self.output_path = output_path
-
-    def run(self, globals_def, entities, start_period):
-        globals_data = load_path_globals(globals_def)
-        output_file = tables.open_file(self.output_path, mode="w")
-        output_indexes = output_file.create_group("/", "indexes", "Indexes")
-        output_entities = output_file.create_group("/", "entities", "Entities")
-        for entity in entities.itervalues():
-            entity.array = ColumnArray.empty(0, dtype=entity.fields.dtype)
-            entity.array_period = start_period
-            entity.id_to_rownum = np.empty(0, dtype=int)
-            output_table = output_file.create_table(
-                output_entities, entity.name, entity.fields.in_output.dtype,
-                title="%s table" % entity.name)
-
-            entity.input_table = None
-            entity.table = output_table
-            index_node = output_file.create_group(output_indexes, entity.name)
-            entity.output_index_node = index_node
-        return None, output_file, globals_data
+    def close(self):
+        if self.h5out is not None:
+            self.h5out.close()
 
 
 def entities_from_h5(fpath):
@@ -922,9 +906,9 @@ def entities_from_h5(fpath):
     if hasattr(h5root, 'globals'):
         for table in h5root.globals:
             if isinstance(table, tables.Array):
-                global_def = normalize_type(table.dtype.type)
+                global_def = {'type': normalize_type(table.dtype.type)}
             else:
-                global_def = get_fields(table)
+                global_def = {'fields': get_fields(table)}
             globals_def[table.name] = global_def
     h5in.close()
     return globals_def, entities

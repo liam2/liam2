@@ -21,7 +21,8 @@ import config
 from importer import file2h5
 from console import Console
 from context import EvaluationContext
-from data import entities_from_h5, H5Data
+from data import entities_from_h5, H5Source, H5Sink
+from importer import csv2h5
 from simulation import Simulation
 from upgrade import upgrade
 from utils import AutoFlushFile
@@ -148,32 +149,34 @@ def explore(fpath):
     print("Using {} file: '{}'".format(ftype, fpath))
     if ftype == 'data':
         globals_def, entities = entities_from_h5(fpath)
-        data_source = H5Data(None, fpath)
-        h5in, _, globals_data = data_source.load(globals_def, entities)
-        h5out = None
         simulation = Simulation(globals_def, None, None, None, None,
-                                entities.values(), None)
+                                entities.values(), 'h5', fpath, None)
         period, entity_name = None, None
     else:
         simulation = Simulation.from_yaml(fpath)
-        h5in, h5out, globals_data = simulation.load()
+        # use output as input
+        simulation.data_source = H5Source(simulation.data_sink.output_path)
         period = simulation.start_period + simulation.periods - 1
         entity_name = simulation.default_entity
+    dataset = simulation.load()
+    data_source = simulation.data_source
+    data_source.as_fake_output(dataset, simulation.entities_map)
+    data_sink = simulation.data_sink
     entities = simulation.entities_map
     if entity_name is None and len(entities) == 1:
         entity_name = entities.keys()[0]
     if period is None and entity_name is not None:
         entity = entities[entity_name]
         period = max(entity.output_index.keys())
-    eval_ctx = EvaluationContext(simulation, entities, globals_data, period,
-                                 entity_name)
+    eval_ctx = EvaluationContext(simulation, entities, dataset['globals'],
+                                 period, entity_name)
     try:
         c = Console(eval_ctx)
         c.run()
     finally:
-        h5in.close()
-        if h5out is not None:
-            h5out.close()
+        data_source.close()
+        if data_sink is not None:
+            data_sink.close()
 
 
 def display(fpath):
@@ -182,8 +185,9 @@ def display(fpath):
     if ext in ('.h5', '.hdf5'):
         files = [fpath]
     else:
-        ds = Simulation.from_yaml(fpath).data_source
-        files = [ds.input_path, ds.output_path]
+        simulation = Simulation.from_yaml(fpath)
+        files = [simulation.data_source.input_path,
+                 simulation.data_sink.output_path]
     print("Trying to open:", " and ".join(str(f) for f in files))
     viewhdf(files)
 
@@ -321,7 +325,10 @@ def main():
     if action == 'run':
         func, args = simulate, (parsed_args,)
     elif action == "import":
-        args = file2h5, parsed_args.file
+        try:
+            func, args = csv2h5, (parsed_args.file,)
+        except:
+            args = file2h5, parsed_args.file
     elif action == "explore":
         func, args = explore, (parsed_args.file,)
     elif action == "upgrade":

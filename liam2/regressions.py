@@ -4,7 +4,7 @@ from alignment import Alignment
 from expr import (Expr, Variable, BinaryOp, ComparisonOp, missing_values,
                   getdtype, always)
 from exprbases import CompoundExpression
-from exprmisc import Exp, Max, Where, Logit, Logistic
+from exprmisc import Exp, Max, Where, Logit, Logistic, ExtExpr
 from exprrandom import Normal, Uniform
 
 
@@ -25,7 +25,11 @@ class Regression(CompoundExpression):
 class LogitScore(CompoundExpression):
     funcname = 'logit_score'
 
-    def build_expr(self, expr):
+    def build_expr(self, context, expr):
+        if isinstance(expr, basestring):
+            # assume it is a filename
+            expr = ExtExpr(expr)
+
         u = Uniform()
         # expr in (0, 0.0, False, '')
         if not isinstance(expr, Expr) and not expr:
@@ -42,7 +46,7 @@ class LogitScore(CompoundExpression):
 class LogitRegr(Regression):
     funcname = 'logit_regr'
 
-    def build_expr(self, expr, filter=None, align=None):
+    def build_expr(self, context, expr, filter=None, align=None):
         score_expr = LogitScore(expr)
         if align is not None:
             # we do not need add_filter because Alignment already handles it
@@ -59,7 +63,7 @@ class ContRegr(Regression):
     # TODO: deprecate error_var in favor of an "error" argument (which would
     # be an Expr instead of a string). This would allow any expression instead
     # of only simple variables and would not require quotes in the latter case
-    def build_expr(self, expr, filter=None, mult=0.0, error_var=None):
+    def build_expr(self, context, expr, filter=None, mult=0.0, error_var=None):
         regr_expr = self.build_regression_expr(expr, mult, error_var)
         return self.add_filter(regr_expr, filter)
 

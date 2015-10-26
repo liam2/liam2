@@ -2,12 +2,13 @@
 from __future__ import print_function
 
 from itertools import izip, chain
+import os
+import random
 
 import numpy as np
 
-
 import config
-from expr import (EvaluableExpression, Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
+from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
                   as_string, collect_variables, traverse_expr,
                   get_missing_record, get_missing_vector, FunctionExpr,
@@ -18,6 +19,7 @@ from exprbases import (CompoundExpression,
                        NumpyRandom, NumpyChangeArray)
 from context import (EntityContext, context_length, context_subset,
                      new_context_like)
+from importer import load_ndarray
 from utils import PrettyTable, argspec
 
 from til.pgm.run_pension import get_pension
@@ -27,7 +29,7 @@ from til.pgm.run_pension import get_pension
 
 
 class Min(CompoundExpression):
-    def build_expr(self, *args):
+    def build_expr(self, context, *args):
         assert len(args) >= 2
 
         expr1, expr2 = args[:2]
@@ -89,7 +91,7 @@ class Min(CompoundExpression):
 
 
 class Max(CompoundExpression):
-    def build_expr(self, *args):
+    def build_expr(self, context, *args):
         assert len(args) >= 2
 
         expr1, expr2 = args[:2]
@@ -102,20 +104,20 @@ class Max(CompoundExpression):
 
 
 class Logit(CompoundExpression):
-    def build_expr(self, expr):
+    def build_expr(self, context, expr):
         # log(x / (1 - x))
         return Log(DivisionOp('/', expr, BinaryOp('-', 1.0, expr)))
 
 
 class Logistic(CompoundExpression):
-    def build_expr(self, expr):
+    def build_expr(self, context, expr):
         # 1 / (1 + exp(-x))
         return DivisionOp('/', 1.0,
                           BinaryOp('+', 1.0, Exp(UnaryOp('-', expr))))
 
 
 class ZeroClip(CompoundExpression):
-    def build_expr(self, expr, expr_min, expr_max):
+    def build_expr(self, context, expr, expr_min, expr_max):
         # if(minv <= x <= maxv, x, 0)
         return Where(LogicalOp('&', ComparisonOp('>=', expr, expr_min),
                                ComparisonOp('<=', expr, expr_max)), expr,
@@ -505,6 +507,95 @@ class Where(NumexprFunction):
         return coerce_types(context, self.iftrue, self.iffalse)
 
 
+def _plus(a, b):
+    return BinaryOp('+', a, b)
+
+
+def _mul(a, b):
+    return BinaryOp('*', a, b)
+
+
+class ExtExpr(CompoundExpression):
+    def __init__(self, fname):
+        data = load_ndarray(os.path.join(config.input_directory, fname))
+
+        # TODO: handle more dimensions. For that we need to evaluate a
+        # different expr depending on the values for the other dimensions
+        # we will need to either
+        # 1) create awful expressions with lots of nested if() (X*Y*Z)
+        # OR
+        # 2) use groupby (or partition_nd)
+        # the problem with groupby is that once we have one vector of values
+        # for each group, we have to recombine them into a single vector
+        # result = np.empty(context_length(context), dtype=expr.dtype)
+        # groups = partition_nd(filtered_columns, True, possible_values)
+        # if not groups:
+        #    return
+        # contexts = [filtered_context.subset(indices, expr_vars, not_hashable)
+        #             for indices in groups]
+        # data = [expr_eval(expr, c) for c in contexts]
+        # for group_indices, group_values in zip(groups, data):
+        #     result[group_indices] = group_values
+        # 3) use a lookup for each individual & coef (we can only envision
+        # this during the evaluation of the larger expression if done via numba,
+        # otherwise it will be too slow
+        # expr = age * AGECOEF[gender, xyz] + eduach * EDUCOEF[gender, xyz]
+        # 4) compute the coefs separately
+        # 4a) via nested if()
+        # AGECOEF = if(gender, if(workstate == 1, a, if(workstate == 2, b, c)
+        #                      if(workstate == 1, a, if(workstate == 2, b, c))
+        # EDUCOEF = ...
+        # expr = age * AGECOEF + eduach * EDUCOEF
+        # 4b) via lookup
+        # AGECOEF = AGECOEFS[gender, workstate]
+        # EDUCOEF = EDUCOEFS[gender, workstate]
+        # expr = age * AGECOEF + eduach * EDUCOEF
+
+        # Note, in general, we could make
+        # EDUCOEFS (sans rien) equivalent to EDUCOEFS[:, :, period] s'il y a
+        #  une dimension period en 3eme position
+        # et non à EDUCOEFS[gender, workstate, period] car ca pose probleme
+        # pour l'alignement (on a pas besoin d'une valeur par personne)
+        # in general, we could let user tell explicitly which fields they want
+        # to index by (autoindex: period) for periodic
+
+        fields_dim = data.dim_names.index('fields')
+        fields_axis = data.axes[fields_dim]
+        self.names = list(fields_axis.labels)
+        self.coefs = list(data)
+        # needed for compatibility with CompoundExpression
+        self.args = []
+        self.kwargs = []
+
+    def build_expr(self, context):
+        res = None
+        for name, coef in zip(self.names, self.coefs):
+            # XXX: parse expressions instead of only simple Variable?
+            if name != 'constant':
+                # cond_dims = self.cond_dims
+                # cond_exprs = [Variable(context.entity, d) for d in cond_dims]
+                # coef = GlobalArray('__xyz')[name, *cond_exprs]
+                term = _mul(Variable(context.entity, name), coef)
+            else:
+                term = coef
+            if res is None:
+                res = term
+            else:
+                res = _plus(res, term)
+        return res
+
+
+class Seed(FunctionExpr):
+    def compute(self, context, seed=None):
+        if seed is not None:
+            seed = long(seed)
+            print("using fixed random seed: %d" % seed)
+        else:
+            print("resetting random seed")
+        random.seed(seed)
+        np.random.seed(seed)
+
+
 class Pension(FilteredExpression):
 
     no_eval = ('filter', 'varname', 'regime')
@@ -582,5 +673,7 @@ functions = {
     'new': New,
     'clone': Clone,
     'dump': Dump,
+    'extexpr': ExtExpr,
+    'seed': Seed,
     'pension': Pension
 }

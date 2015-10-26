@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import csv
@@ -7,9 +8,9 @@ from itertools import islice, chain
 
 import numpy as np
 try:
-    from bcolz import carray
-except:
-    from tables import carray
+    import bcolz
+except ImportError:
+    bcolz = None
 import tables
 import yaml
 
@@ -44,6 +45,7 @@ def to_float(v):
     else:
         return float(v)
 
+
 def to_bool(v):
     return v.lower() in ('1', 'true')
 
@@ -56,6 +58,7 @@ def to_time(v):
 converters = {bool: to_bool,
               int: to_int,
               float: to_float,
+              str: lambda v: v,  
               np.int32: to_time}
 
 
@@ -111,20 +114,20 @@ def guess_type(v):
             float(v)
             return float
         except ValueError:
-            raise ValueError("cannot determine type for '%s'" % v)
+            return str
 
 
 def detect_column_type(iterable):
     iterator = iter(iterable)
     coltype = 0
-    type2code = {None: 0, bool: 1, int: 2, float: 3}
+    type2code = {None: 0, bool: 1, int: 2, float: 3, str: 4}
     for value in iterator:
         coltype = max(coltype, type2code[guess_type(value)])
-        if coltype == 3:
+        if coltype == 4:
             break
     if coltype == 0:
         raise Exception("cannot detect column type (it is entirely empty)")
-    return [None, bool, int, float][coltype]
+    return [None, bool, int, float, str][coltype]
 
 
 # it is possible to express detect_column_types in terms of
@@ -135,7 +138,7 @@ def detect_column_types(iterable):
     header = iterator.next()
     numcolumns = len(header)
     coltypes = [0] * numcolumns
-    type2code = {None: 0, bool: 1, int: 2, float: 3}
+    type2code = {None: 0, bool: 1, int: 2, float: 3, str: 4}
     for row in iterator:
         if len(row) != numcolumns:
             raise Exception("all rows do not have the same number of columns")
@@ -148,7 +151,7 @@ def detect_column_types(iterable):
             print("Warning: column %s is all empty, assuming it is float"
                   % colname)
             coltypes[i] = 3
-    num2type = [None, bool, int, float]
+    num2type = [None, bool, int, float, str]
     return [(name, num2type[coltype])
             for name, coltype in zip(header, coltypes)]
 
@@ -189,7 +192,7 @@ class CSV(object):
             transposed = None
         self.fpath = fpath
         if newnames is not None:
-            #TODO: move this junk out of the class
+            # TODO: move this junk out of the class
             basename = os.path.splitext(os.path.basename(fpath))[0]
             for k in newnames:
                 m = self.eval_re.match(newnames[k])
@@ -358,12 +361,13 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
     return table
 
 
-def array_to_disk_array(h5file, node, name, array, title='', compression=None):
+def array_to_disk_array(node, name, array, title='', compression=None):
+    h5file = node._v_file
     msg, filters = compression_str2filter(compression)
     print(" - storing %s..." % msg)
     if filters is not None:
-        disk_array = h5file.createCArray(node, name, array, title,
-                                         filters=filters)
+        disk_array = h5file.create_carray(node, name, array, title,
+                                          filters=filters)
     else:
         disk_array = h5file.create_array(node, name, array, title)
     if isinstance(array, LabeledArray):
@@ -388,7 +392,6 @@ def union1d(arrays):
 
 
 def interpolate(target, arrays, id_periods, fields):
-    assert bcolz is not None, 'bcolz package is required to use interpolate'
     print(" * indexing...")
     periods = np.unique(id_periods['period'])
     max_id = np.max(id_periods['id'])
@@ -421,11 +424,15 @@ def interpolate(target, arrays, id_periods, fields):
     del lastrow_for_id
 
     size = sum(row_for_id[period].nbytes for period in periods)
-    print(" * compressing index (%.2f Mb)..." % (size / MB), end=' ')
-    for period in periods:
-        row_for_id[period] = bcolz.carray(row_for_id[period])
-    csize = sum(row_for_id[period].cbytes for period in periods)
-    print("done. (%.2f Mb)" % (csize / MB))
+
+    if bcolz is not None:
+        print(" * compressing index (%.2f Mb)..." % (size / MB), end=' ')
+        for period in periods:
+            row_for_id[period] = bcolz.carray(row_for_id[period])
+        csize = sum(row_for_id[period].cbytes for period in periods)
+        print("done. (%.2f Mb)" % (csize / MB))
+    else:
+        print('bcolz package not found (bcolz is required to use compression in interpolate)')
 
     print(" * interpolating...")
     for values in arrays:
@@ -692,6 +699,136 @@ def load_def(localdir, ent_name, section_def, required_fields):
 
         interpolate(target, arrays, id_periods, to_interpolate)
         return 'table', (target_fields, total_lines, iter(target), None)
+
+
+def csv2h5(fpath = None, buffersize=10 * 2 ** 20):
+    with open(fpath) as f:
+        content = yaml.load(f)
+
+    yaml_layout = {
+        '#output': str,
+        'compression': str,
+        'globals': {
+            'periodic': {
+                'path': str,
+                'fields': [{
+                    '*': str
+                }],
+                'oldnames': {
+                    '*': str
+                },
+                'newnames': {
+                    '*': str
+                },
+                'invert': [str],
+                'transposed': bool
+            },
+            '*': {
+                'path': str,
+                'type': str,
+                'fields': [{
+                    '*': str
+                }],
+                'oldnames': {
+                    '*': str
+                },
+                'newnames': {
+                    '*': str
+                },
+                'invert': [str],
+                'transposed': bool
+            }
+        },
+        '#entities': {
+            '*': {
+                'path': str,
+                'fields': [{
+                    '*': str
+                }],
+                'oldnames': {
+                    '*': str
+                },
+                'newnames': {
+                    '*': str
+                },
+                'invert': [str],
+                'transposed': bool,
+                'files': None,
+#                {
+#                    '*': None
+#                }
+                'interpolate': {
+                    '*': str
+                }
+            }
+        }
+    }
+
+    validate_dict(content, yaml_layout)
+    localdir = os.path.dirname(os.path.abspath(fpath))
+
+    h5_filename = content['output']
+    compression = content.get('compression')
+    h5_filepath = complete_path(localdir, h5_filename)
+    print("Importing in", h5_filepath)
+    h5file = None
+    try:
+        h5file = tables.open_file(h5_filepath, mode="w", title="CSV import")
+
+        globals_def = content.get('globals', {})
+        if globals_def:
+            print()
+            print("globals")
+            print("-------")
+            const_node = h5file.create_group("/", "globals", "Globals")
+            for global_name, global_def in globals_def.iteritems():
+                print()
+                print(" %s" % global_name)
+                req_fields = ([('PERIOD', int)] if global_name == 'periodic'
+                                                else [])
+
+                kind, info = load_def(localdir, global_name,
+                                      global_def, req_fields)
+                if kind == 'ndarray':
+                    array_to_disk_array(const_node, global_name, info,
+                                        title=global_name,
+                                        compression=compression)
+                else:
+                    assert kind == 'table'
+                    fields, numlines, datastream, csvfile = info
+                    stream_to_table(h5file, const_node, global_name, fields,
+                                    datastream, numlines,
+                                    title="%s table" % global_name,
+                                    buffersize=buffersize,
+                                    # FIXME: handle invert
+                                    compression=compression)
+                    if csvfile is not None:
+                        csvfile.close()
+
+        print()
+        print("entities")
+        print("--------")
+        ent_node = h5file.create_group("/", "entities", "Entities")
+        for ent_name, entity_def in content['entities'].iteritems():
+            print()
+            print(" %s" % ent_name)
+            kind, info = load_def(localdir, ent_name,
+                                  entity_def, [('period', int), ('id', int)])
+            assert kind == "table"
+            fields, numlines, datastream, csvfile = info
+
+            stream_to_table(h5file, ent_node, ent_name, fields,
+                            datastream, numlines,
+                            title="%s table" % ent_name,
+                            invert=entity_def.get('invert', []),
+                            buffersize=buffersize, compression=compression)
+            if csvfile is not None:
+                csvfile.close()
+    finally:
+        if h5file is not None:
+            h5file.close()
+    print()
+    print("done.")
 
 
 def file2h5(fpath, input_dir='',

@@ -13,7 +13,7 @@ import tables
 import yaml
 
 from context import EvaluationContext
-from data import H5Data, Void
+from data import VoidSource, H5Source, H5Sink
 from entities import Entity, global_symbols
 from utils import (time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
@@ -171,10 +171,13 @@ class Simulation(object):
     }
 
     def __init__(self, globals_def, periods, start_period, init_processes,
-                 processes, entities, data_source, default_entity=None):
-        # FIXME: what if period has been declared explicitly?
+                 processes, entities, input_method, input_path, output_path,
+                 default_entity=None):
         if 'periodic' in globals_def:
-            globals_def['periodic']['fields'].insert(0, ('PERIOD', int))
+            declared_fields = globals_def['periodic']['fields']
+            fnames = {fname for fname, type_ in declared_fields}
+            if 'PERIOD' not in fnames:
+                declared_fields.insert(0, ('PERIOD', int))
 
         self.globals_def = globals_def
         self.periods = periods
@@ -184,7 +187,17 @@ class Simulation(object):
         # processes is a list of tuple: (process, periodicity)
         self.processes = processes
         self.entities = entities
+
+        if input_method == 'h5':
+            data_source = H5Source(input_path)
+        elif input_method == 'void':
+            data_source = VoidSource()
+        else:
+            raise ValueError("'%s' is an invalid value for 'method'. It should "
+                             "be either 'h5' or 'void'")
+
         self.data_source = data_source
+        self.data_sink = H5Sink(output_path)
         self.default_entity = default_entity
 
         self.stepbystep = False
@@ -206,9 +219,9 @@ class Simulation(object):
         validate_dict(content, cls.yaml_layout)
 
         # the goal is to get something like:
-        # globals_def = {'periodic': [('a': int), ...],
-        #                'MIG': int}
-        globals_def = content.get('globals', {})
+        # globals_def = {'periodic': {'fields': [('a': int), ...], ...},
+        #                'MIG': {'type': int}}
+        globals_def = {}
         for k, v in content.get('globals', {}).iteritems():
             if "type" in v:
                 v["type"] = field_str_to_type(v["type"], "array '%s'" % k)
@@ -363,19 +376,12 @@ class Simulation(object):
             print("WARNING: entit%s without any executed process:" % suffix,
                   ','.join(sorted(unused_entities)))
 
-        method = input_def.get('method', 'h5')
-
-        if method == 'h5':
-            data_source = H5Data(input_path, output_path)
-        elif method == 'void':
-            data_source = Void(output_path)
-        else:
-            raise ValueError("'%s' is an invalid value for 'method'. It should "
-                             "be either 'h5' or 'void'")
+        input_method = input_def.get('method', 'h5')
 
         default_entity = simulation_def.get('default_entity')
         return Simulation(globals_def, periods, start_period, init_processes,
-                          processes, entities_list, data_source, default_entity)
+                          processes, entities_list, input_method, input_path,
+                          output_path, default_entity)
 
     def load(self):
         return timed(self.data_source.load, self.globals_def, self.entities_map)
@@ -386,10 +392,27 @@ class Simulation(object):
 
     def run(self, run_console=False):
         start_time = time.time()
-        h5in, h5out, globals_data = timed(self.data_source.run,
-                                          self.globals_def,
-                                          self.entities_map,
-                                          self.start_period - 1)
+
+        input_dataset = timed(self.data_source.load,
+                              self.globals_def,
+                              self.entities_map)
+
+        globals_data = input_dataset.get('globals')
+        timed(self.data_sink.prepare, self.globals_def, self.entities_map,
+              input_dataset, self.start_period - 1)
+
+        print(" * building arrays for first simulated period")
+        for ent_name, entity in self.entities_map.iteritems():
+            print("    -", ent_name, "...", end=' ')
+            # TODO: this whole process of merging all periods is very
+            # opinionated and does not allow individuals to die/disappear
+            # before the simulation starts. We couldn't for example,
+            # take the output of one of our simulation and
+            # re-simulate only some years in the middle, because the dead
+            # would be brought back to life. In conclusion, it should be
+            # optional.
+            timed(entity.build_period_array, self.start_period - 1)
+        print("done.")
 
         if config.autodump or config.autodiff:
             if config.autodump:
@@ -403,14 +426,6 @@ class Simulation(object):
             config.autodump_file = h5_autodump
         else:
             h5_autodump = None
-
-#        input_dataset = self.data_source.run(self.globals_def,
-#                                             entity_registry)
-#        output_dataset = self.data_sink.prepare(self.globals_def,
-#                                                entity_registry)
-#        output_dataset.copy(input_dataset, self.start_period - 1)
-#        for entity in input_dataset:
-#            indexed_array = build_period_array(entity)
 
         # tell numpy we do not want warnings for x/0 and 0/0
         np.seterr(divide='ignore', invalid='ignore')
@@ -556,9 +571,7 @@ class Simulation(object):
                 c.run()
 
         finally:
-            if h5in is not None:
-                h5in.close()
-            h5out.close()
+            self.close()
             if h5_autodump is not None:
                 h5_autodump.close()
 
@@ -567,3 +580,7 @@ class Simulation(object):
             c = console.Console(context)
             res = c.run(debugger=True)
             self.stepbystep = res == "step"
+
+    def close(self):
+        self.data_source.close()
+        self.data_sink.close()

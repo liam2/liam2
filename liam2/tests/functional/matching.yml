@@ -398,6 +398,7 @@ simulation:
         file: none
 
     output:
+        path: output
         file: matching.h5
 
     logging:

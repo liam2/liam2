@@ -23,7 +23,7 @@ from til.utils import time_period
 def kill_axis(axis_name, value, expressions, possible_values, need, periodicity):
     """possible_values is a list of ndarrays"""
 
-    # When we transition to LArray, this whole function could be replaced by:
+    #When we transition to LArray, this whole function could be replaced by:
     # need = need.filter(axis[value])
     str_expressions = [str(e) for e in expressions]
     axis_num = str_expressions.index(axis_name)
@@ -228,7 +228,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
                'method', 'periodicity_given'
                )
 
-    def post_init(self):
+    def __init__(self, *args, **kwargs):
+        super(AlignmentAbsoluteValues, self).__init__(*args, **kwargs)
+
         need = self.args[1]
         if isinstance(need, basestring):
             fpath = os.path.join(config.input_directory, need)
@@ -240,7 +242,11 @@ class AlignmentAbsoluteValues(FilteredExpression):
     def collect_variables(self):
         # args[9] is the "link" argument
         # if self.args.link is None:
-        return FilteredExpression.collect_variables(self)
+        if self.args[9] is None:
+            return FilteredExpression.collect_variables(self)
+        else:
+            # in this case, it's tricky
+            return set()
 
     def _eval_need(self, context, need, expressions, possible_values,
                    method, expressions_context=None):
@@ -358,7 +364,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                           [[col[row] for col in columns]
                            for row in range(num_rows) if unaligned[row]]))
 
-    def compute(self, context, score, need=None, filter=None, take=None, leave=None,
+    def compute(self, context, score, need, filter=None, take=None, leave=None,
                 expressions=None, possible_values=None, errors='default',
                 frac_need='uniform', link=None, secondary_axis=None,
                 method='default', periodicity_given='year'):
@@ -479,6 +485,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         need = need * self._get_need_correction(groups, possible_values)
         need = self._handle_frac_need(need, method=frac_need)
         need = self._add_past_error(context, need, method=errors)
+
         return align_get_indices_nd(ctx_length, groups, need, filter_value,
                                     score, take, leave, method)
 
