@@ -49,17 +49,10 @@ def to_float(v):
 def to_bool(v):
     return v.lower() in ('1', 'true')
 
-def to_time(v):
-    if isinstance(v,np.int32):
-        return v
-    if isinstance(v,int):
-        return np.int32(v)
-
 converters = {bool: to_bool,
               int: to_int,
               float: to_float,
-              str: lambda v: v,  
-              np.int32: to_time}
+              str: lambda v: v}
 
 
 def convert(iterable, fields, positions=None):

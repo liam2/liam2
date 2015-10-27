@@ -10,24 +10,18 @@ import numpy as np
 import config
 from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
-                  as_string, collect_variables, traverse_expr,
+                  as_string, collect_variables,
                   get_missing_record, get_missing_vector, FunctionExpr,
                   always, firstarg_dtype, expr_cache)
-from exprbases import (CompoundExpression,
-                       NumexprFunction, FilteredExpression,
-                       FunctionExpr, TableExpression,
-                       NumpyRandom, NumpyChangeArray)
-from context import (EntityContext, context_length, context_subset,
-                     new_context_like)
+from exprbases import (FilteredExpression, CompoundExpression, NumexprFunction,
+                       TableExpression, NumpyChangeArray)
+from context import context_length
 from importer import load_ndarray
 from utils import PrettyTable, argspec
 
-from til.pgm.run_pension import get_pension
 
 # TODO: implement functions in expr to generate "Expr" nodes at the python level
 # less painful
-
-
 class Min(CompoundExpression):
     def build_expr(self, context, *args):
         assert len(args) >= 2
@@ -162,57 +156,11 @@ class Trunc(FunctionExpr):
         if isinstance(expr, np.ndarray):
             return expr.astype(int)
         else:
-            return int(expr)
+            return int(expr)        
 
     dtype = always(int)
 
 # ------------------------------------
-
-class TimeScale(FunctionExpr):
-    func_name = 'period'
-
-    def compute(self, context, expr):
-        return expr_eval(expr, context) + context.periodicity
-
-    dtype = always(int)
-
-
-class Year(FunctionExpr):
-    func_name = 'year'
-
-    def compute(self, context, expr):
-        return int(expr_eval(expr, context)/100)
-
-    dtype = always(int)
-
-
-class Month(FunctionExpr):
-    func_name = 'month'
-
-    def compute(self, context, expr):
-        return (expr_eval(expr, context) % 100)
-
-    dtype = always(int)
-
-
-class AddTime(FunctionExpr):
-    func_name = 'add_time'
-
-    def compute(self, context, expr):
-        periodicity = context.periodicity
-        init_value = expr_eval(expr, context)
-        #TODO: be more general with periodicity > 12
-        if periodicity > 0:
-            change_year = (init_value % 100) + periodicity >= 12
-            value = init_value + periodicity*(1 - change_year) + (100 - 12 + periodicity)*(change_year)
-        if periodicity < 0:
-            change_year = (init_value % 100) + periodicity < 1
-            value = init_value + periodicity*(1 - change_year) + (-100 + 12 + periodicity)*(change_year)
-        return value
-
-    dtype = always(int)
-
-#------------------------------------
 
 
 class Abs(NumexprFunction):
@@ -596,68 +544,9 @@ class Seed(FunctionExpr):
         np.random.seed(seed)
 
 
-class Pension(FilteredExpression):
-
-    no_eval = ('filter', 'varname', 'regime')
-    already_simulated = None
-
-    @classmethod
-    def no_need_to_reload(cls, context, yearleg):
-        if Pension.already_simulated is None:
-            return False
-
-        try:
-            # Note that period is in context
-            return (
-                (Pension.already_simulated['yearleg'] == yearleg) &  # legislation changes
-                (set(Pension.already_simulated['context']['id']) == set(context['id'])) &
-                (Pension.already_simulated['context']['period'] == context['period'])  # period changes
-                )
-        except:
-            import pdb
-            pdb.set_trace()
-
-
-    def compute(self, context, varname, regime, expr=None, filter=None, yearleg=None):
-
-        selected = expr_eval(filter, context)
-        context = context.subset(selected)
-        # determine yearleg
-        if yearleg is None:
-            yearleg = context['period'] // 100
-            # if yearleg > 2009:  # TODO: remove when yearleg > 2009 possible
-            #     yearleg = 2009
-
-        if Pension.no_need_to_reload(context, yearleg):
-            simul = Pension.already_simulated['simul']
-        else:
-            print('yearleg: {}'.format(yearleg))
-            # try:
-            simul = get_pension(context, yearleg)
-            # except:
-            #     import pdb
-            #     pdb.set_trace()
-
-        result = simul.calculate(varname, regime)
-        Pension.already_simulated = {'context': context,
-                                     'yearleg': yearleg,
-                                     'simul': simul,
-                                     }
-
-        output = -1 * np.ones(len(selected))
-        # TODO: understant why result is not float
-        output[selected] = result.astype(float)
-        return output
-
-
 functions = {
     # element-wise functions
     # Min and Max are in aggregates.py.functions (because of the dispatcher)
-    'add_time_scale': TimeScale,
-    'add_time': AddTime,
-    'year': Year,
-    'month': Month,
-    # per element
     'abs': Abs,
     'clip': Clip,
     'zeroclip': ZeroClip,
@@ -675,5 +564,4 @@ functions = {
     'dump': Dump,
     'extexpr': ExtExpr,
     'seed': Seed,
-    'pension': Pension
 }

@@ -7,7 +7,7 @@ from expr import expr_eval, always, expr_cache
 from exprbases import FilteredExpression
 from context import context_length, context_delete, context_subset, context_keep
 from utils import loop_wh_progress
-# FIXME: should be optional
+#FIXME: should be optional
 from cpartition import group_indices_nd
 
 
@@ -241,7 +241,7 @@ class SequentialMatching(Matching):
 
             result[id_to_rownum[ids1]] = ids2
             result[id_to_rownum[ids2]] = ids1
-
+            
             if nb_match == cell2size:
                 matching_ctx = context_delete(matching_ctx, cell2_idx)
             else:

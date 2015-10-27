@@ -1049,10 +1049,6 @@ class GlobalVariable(EvaluableExpression):
                 globals_periods = globals_table['PERIOD']
             except ValueError:
                 globals_periods = globals_table['period']
-#            if context['format_date'] != 'year0':
-#                if max(globals_periods) < 9999:
-#                    globals_periods = [100* x +1 for x in globals_periods]
-#            row = np.searchsorted(globals_periods, key, side='left')
             base_period = globals_periods[0]
             if isinstance(key, slice):
                 translated_key = slice(key.start - base_period,

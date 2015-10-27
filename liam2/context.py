@@ -5,20 +5,13 @@ import numpy as np
 
 class EvaluationContext(object):
     def __init__(self, simulation=None, entities=None, global_tables=None,
-                 period=None, periods=None, periodicity=None,
-                 period_idx=None, format_date=None,
-                 entity_name=None, filter_expr=None,
-                 entities_data=None,
-                 longitudinal=None):
+                 period=None, entity_name=None, filter_expr=None,
+                 entities_data=None):
         """
         :param simulation: Simulation
         :param entities: dict of entities {name: entity}
         :param global_tables: dict of ndarrays (structured or not)
         :param period: int of the current period
-        :param periods: list of alls periods
-        :param periodicity: number of months between two periods
-        :param period_idx: idx of current period in periods
-        :param period_idx: string for the period format
         :param entity_name: name (str) of the current entity
         :param filter_expr: contextual filter expression (Expr)
         :param entities_data: dict of data for entities (dict of
@@ -29,18 +22,12 @@ class EvaluationContext(object):
         self.entities = entities
         self.global_tables = global_tables
         self.period = period
-        self.periods = periods
-        self.periodicity = periodicity
-        self.period_idx = period_idx
-        self.format_date = format_date
         self.entity_name = entity_name
         self.filter_expr = filter_expr
         if entities_data is None:
             entities_data = {name: EntityContext(self, entity)
                              for name, entity in entities.iteritems()}
         self.entities_data = entities_data
-        self.longitudinal = longitudinal
-
 
     def copy(self, fresh_data=False):
         entities_data = None if fresh_data else self.entities_data.copy()
@@ -48,19 +35,15 @@ class EvaluationContext(object):
         # filter should be a per-entity dict?
         return EvaluationContext(self.simulation, self.entities,
                                  self.global_tables, self.period,
-                                 self.periods, self.periodicity,
-                                 self.period_idx, self.format_date,
                                  self.entity_name, self.filter_expr,
-                                 entities_data, self.longitudinal)
+                                 entities_data)
 
     def clone(self, fresh_data=False, **kwargs):
         res = self.copy(fresh_data=fresh_data)
         for k, v in kwargs.iteritems():
             allowed_kwargs = ('simulation', 'entities', 'global_tables',
-                              'period', 'periods', 'periodicity',
-                              'period_idx', 'format_date',
-                              'entity_name', 'filter_expr',
-                              'entities_data', 'entity_data', 'longitudinal')
+                              'period', 'entity_name', 'filter_expr',
+                              'entities_data', 'entity_data')
             assert k in allowed_kwargs, "%s is not a valid kwarg" % k
             setattr(res, k, v)
         return res
@@ -93,9 +76,8 @@ class EvaluationContext(object):
         self.entities_data[self.entity_name] = value
 
     def __getitem__(self, key):
-        if key in ['period', 'periods', 'periodicity',
-                   'period_idx', 'format_date', 'longitudinal']:
-            return getattr(self, key)
+        if key == 'period':
+            return self.period
         else:
             return self.entity_data[key]
 
@@ -169,10 +151,8 @@ class EntityContext(object):
         self.extra = extra
 
     def __getitem__(self, key):
-
-        if key in ['period', 'periods', 'periodicity',
-                   'period_idx', 'format_date', 'longitudinal']:
-            return getattr(self.eval_ctx, key)
+        if key == 'period':
+            return self.eval_ctx.period
 
         try:
             return self.extra[key]
@@ -274,18 +254,6 @@ class EntityContext(object):
             # initialise output_index correctly
             return self.entity.input_index[period]
 
-
-def new_context_like(context, length=None):
-    if length is None:
-        length = context_length(context)
-    #FIXME: nan should come from somewhere else
-    return {'period': context['period'],
-            'periods': context['periods'],
-            'period_idx': context['period_idx'],
-            '__len__': length,
-            '__entity__': context['__entity__'],
-            '__globals__': context['__globals__'],
-            'nan': float('nan')}
 
 def empty_context(length):
     return {'__len__': length}

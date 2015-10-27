@@ -91,8 +91,6 @@ class Duration(TimeFunction):
 
         id_to_rownum = context.id_to_rownum
         still_running = value.copy()
-        
-        print( 'Warning : duration works only with year0 so far')             
         while np.any(still_running) and period >= baseperiod:
             ids, values = self.value_for_period(bool_expr, period, context,
                                                 fill=None)

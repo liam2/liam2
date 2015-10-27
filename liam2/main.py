@@ -18,7 +18,6 @@ sip.setapi('QVariant', 2)
 import yaml
 
 import config
-from importer import file2h5
 from console import Console
 from context import EvaluationContext
 from data import entities_from_h5, H5Source, H5Sink
@@ -325,10 +324,7 @@ def main():
     if action == 'run':
         func, args = simulate, (parsed_args,)
     elif action == "import":
-        try:
-            func, args = csv2h5, (parsed_args.file,)
-        except:
-            args = file2h5, parsed_args.file
+        func, args = csv2h5, (parsed_args.file,)
     elif action == "explore":
         func, args = explore, (parsed_args.file,)
     elif action == "upgrade":

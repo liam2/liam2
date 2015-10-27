@@ -1,7 +1,7 @@
+# encoding: utf-8
 from __future__ import print_function
 
 from itertools import izip
-from fractions import gcd
 import os
 
 import numpy as np
@@ -18,9 +18,8 @@ from partition import partition_nd, filter_to_indices
 from importer import load_ndarray
 from utils import PrettyTable, LabeledArray
 
-from til.utils import time_period
 
-def kill_axis(axis_name, value, expressions, possible_values, need, periodicity):
+def kill_axis(axis_name, value, expressions, possible_values, need):
     """possible_values is a list of ndarrays"""
 
     #When we transition to LArray, this whole function could be replaced by:
@@ -32,50 +31,6 @@ def kill_axis(axis_name, value, expressions, possible_values, need, periodicity)
     axis_values = possible_values.pop(axis_num)
 
     # TODO: make sure possible_values are sorted and use searchsorted instead
-    str_expressions.pop(axis_num)
-    if 'age' in str_expressions:
-        axis_age_num = str_expressions.index('age')
-#     if axis_name in ['age']:
-#     import pdb
-#     pdb.set_trace()
-    try:
-        if axis_name in ['period']:
-            axis_values[axis_values < 3000] = axis_values[axis_values < 3000] * 100 + 1
-            if value < 9999:
-                value = value * 100 + 1
-            is_wanted_value_period = (axis_values / 100) == (value / 100)
-            periodicity_axis = 12 / len(is_wanted_value_period.nonzero()[0])
-            value_idx_period = is_wanted_value_period.nonzero()[0]
-
-            if periodicity_axis > periodicity:
-                if not isinstance(periodicity_axis / periodicity, int):
-                    raise Exception("can't do anything if time period is"
-                                    " not a multiple of time given in alignment data")
-                import pdb
-                pdb.set_trace()
-                chunk = chunks(value_idx_period, periodicity_axis / periodicity)[value % 10 - 1]
-                axis_values[value_idx_period[0]] = value
-                axis_values[value_idx_period[1:]] = int(value / 100) * 100
-                need.base[:, value_idx_period[0]] = need.base[:, chunk].sum(axis=1)
-
-            if periodicity_axis < periodicity:
-                if not isinstance(periodicity / periodicity_axis, int):
-                    raise Exception("can't do anything if time period is"
-                                    " not a multiple of time given in alignment data")
-                # which season ?
-                time_value = value % 100
-                if time_value > 12:
-                    time_value = value % 10
-                season = int(time_value / periodicity * periodicity_axis - 0.01)
-                axis_values[value_idx_period] = int(value / 100) * 100
-                axis_values[value_idx_period[season]] = value
-                need.base[:, value_idx_period[season]] = \
-                    need.base[:, value_idx_period[season]] * periodicity_axis / periodicity
-            else:
-                axis_values[value_idx_period] = value
-    except:
-        pass
-
     is_wanted_value = axis_values == value
     value_idx = is_wanted_value.nonzero()[0]
     num_idx = len(value_idx)
@@ -162,6 +117,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                 if isinstance(score, np.ndarray):
                     if method == 'default':
                         maybe_members_rank_value = score[group_maybe_indices]
+                        # TODO: use np.partition (np1.8+)
                         sorted_local_indices = np.argsort(maybe_members_rank_value)
                         sorted_global_indices = \
                             group_maybe_indices[sorted_local_indices]
@@ -172,12 +128,6 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                                             " score between 0 and 1. You may want to use"
                                             " a logistic function ")
                         sorted_global_indices = np.random.permutation(group_maybe_indices)
-
-                    maybe_members_rank_value = score[group_maybe_indices]
-                    # TODO: use np.partition (np1.8+)
-                    sorted_local_indices = np.argsort(maybe_members_rank_value)
-                    sorted_global_indices = \
-                        group_maybe_indices[sorted_local_indices]
                 else:
                     # if the score expression is a constant, we don't need to
                     # sort indices. In that case, the alignment will first take
@@ -225,8 +175,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
 class AlignmentAbsoluteValues(FilteredExpression):
     funcname = 'align_abs'
     no_eval = ('filter', 'secondary_axis', 'expressions',
-               'method', 'periodicity_given'
-               )
+               'method')
 
     def __init__(self, *args, **kwargs):
         super(AlignmentAbsoluteValues, self).__init__(*args, **kwargs)
@@ -280,8 +229,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if 'period' in [str(e) for e in expressions]:
             period = context.period
             expressions, possible_values, need = \
-                kill_axis('period', period, expressions, possible_values, need,
-                          context.periodicity)
+                kill_axis('period', period, expressions, possible_values, need)
 
         # kill any axis where the value is constant for all individuals
         # satisfying the filter
@@ -367,7 +315,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
     def compute(self, context, score, need, filter=None, take=None, leave=None,
                 expressions=None, possible_values=None, errors='default',
                 frac_need='uniform', link=None, secondary_axis=None,
-                method='default', periodicity_given='year'):
+                method='default'):
 
         if method not in ("default", "sidewalk"):
             raise Exception("Method for alignment should be either 'default' "
@@ -384,13 +332,13 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # need is a single scalar
         # if not isinstance(need, (tuple, list, np.ndarray)):
         if np.isscalar(need):
-            need = [np.floor(need)]
+            need = [need]
+            # need = [np.floor(need)]
 
         # need is a non-ndarray sequence
         if isinstance(need, (tuple, list)):
             need = np.array(need)
         assert isinstance(need, np.ndarray)
-
 
         if expressions is None:
             expressions = []
@@ -415,12 +363,11 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         func = self.align_no_link if link is None else self.align_link
         return func(context, score, need, filter, take, leave, expressions,
-                    possible_values, errors, frac_need, link, secondary_axis,
-                    method, periodicity_given)
+                    possible_values, errors, frac_need, link, secondary_axis, method)
 
     def align_no_link(self, context, score, need, filter, take, leave,
                       expressions, possible_values, errors, frac_need, link,
-                      secondary_axis, method, periodicity_given):
+                      secondary_axis, method):
 
         ctx_length = context_length(context)
 
@@ -460,27 +407,6 @@ class AlignmentAbsoluteValues(FilteredExpression):
             self._display_unaligned(expressions, context['id'], columns,
                                     unaligned)
 
-
-        periodicity = context.periodicity
-
-        if context.format_date == 'year0':
-            periodicity = periodicity * 12
-            # give right periodicity/self.periodicity_given whereas self.periodicity_given/12 doesn't
-
-        # sign(self.periodicity_given) = sign(periodicity)
-        periodicity_given = time_period[periodicity_given]
-        if periodicity is None:
-            print('periodicity is None so ti is set to 12')
-            periodicity = 12
-        periodicity_given = \
-            periodicity_given * (periodicity_given * periodicity) / abs(periodicity_given * periodicity)
-        if gcd(periodicity, periodicity_given) not in [periodicity, periodicity_given]:
-            raise("mix of quarter and triannual impossible")
-
-        need = need * periodicity / periodicity_given
-        if score is not None:
-            score = score * periodicity / periodicity_given
-
         # noinspection PyAugmentAssignment
         need = need * self._get_need_correction(groups, possible_values)
         need = self._handle_frac_need(need, method=frac_need)
@@ -491,7 +417,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
     def align_link(self, context, score, need, filter, take, leave,
                    expressions, possible_values, errors, frac_need, link,
-                   secondary_axis, method, periodicity_given):
+                   secondary_axis, method):
         target_context = link._target_context(context)
         need, expressions, possible_values = \
             self._eval_need(context, need, expressions, possible_values,
@@ -639,7 +565,7 @@ class Alignment(AlignmentAbsoluteValues):
                  expressions=None, possible_values=None,
                  errors='default', frac_need='uniform',
                  fname=None,
-                 method='default', periodicity_given='year'):
+                 method='default'):
 
         if possible_values is not None:
             if expressions is None or len(possible_values) != len(expressions):
@@ -663,8 +589,7 @@ class Alignment(AlignmentAbsoluteValues):
                                         filter, take, leave,
                                         expressions, possible_values,
                                         errors, frac_need,
-                                        method = method,
-                                        periodicity_given = periodicity_given)
+                                        method = method)
 
     def _get_need_correction(self, groups, possible_values):
         data = np.array([len(group) for group in groups])

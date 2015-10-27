@@ -13,7 +13,7 @@ import config
 from data import (merge_arrays, get_fields, ColumnArray, index_table,
                   build_period_array)
 from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
-                  GlobalArray, Expr, MethodSymbol, normalize_type, expr_eval, missing_values)
+                  GlobalArray, Expr, MethodSymbol, normalize_type)
 from exprtools import parse
 from process import Assignment, ProcessGroup, While, Function, Return
 from utils import (count_occurrences, field_str_to_type, size2str,
@@ -185,9 +185,6 @@ class Entity(object):
         # simulated, because (currently) when we go back in time, we always go
         # back using the output table... but periods before the start_period
         # are only present in input_index
-        # FIXME: the proper way to fix this is to copy the input_index into
-        # the output_index during H5Date.run() and not keep input_index
-        # beyond that point.
         self.input_index = {}
 
         self.output_rows = {}
@@ -248,7 +245,7 @@ class Entity(object):
 
     @classmethod
     def from_table(cls, table):
-        return Entity(table.name, get_fields(table), missing_fields=[],
+        return Entity(table.name, get_fields(table),
                       links={}, macro_strings={}, process_strings={})
 
     @staticmethod
@@ -493,7 +490,8 @@ Please use this instead:
                         method_context = self.get_group_context(
                             method_context, group_predictors)
                         result_expr = parse(result_def, method_context)
-                        assert result_expr is None or isinstance(result_expr, Expr)
+                        assert result_expr is None or \
+                               isinstance(result_expr, Expr)
                         process = Function(k, self, argnames, code, result_expr)
                     elif isinstance(v, dict) and 'predictor' in v:
                         raise ValueError("Using the 'predictor' keyword is "
@@ -729,21 +727,3 @@ Please use this instead:
 
     def __str__(self):
         return self.name
-
-    def value_for_period(self, expr, period, context, fill='auto'):
-        sub_context = EntityContext(self,
-                                    {'periods': [period],
-                                     'period': period,
-                                     'period_idx': 0,
-                                     'format_date': context['format_date'],
-                                     '__globals__': context['__globals__']})
-        result = expr_eval(expr, sub_context)
-        if isinstance(result, np.ndarray) and result.shape:
-            ids = expr_eval(Variable('id'), sub_context)
-            if fill is None:
-                return ids, result
-            else:
-                # expand values to the current "outer" context
-                return self.fill_missing_values(ids, result, context, fill)
-        else:
-            return result
