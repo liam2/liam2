@@ -33,7 +33,6 @@ max_vars = 0
 # def decompress_column(a):
 #    return a[:]
 
-
 def global_symbols(globals_def):
     # FIXME: these should be computed once somewhere else, not for each
     # entity. I guess they should have a class of their own
@@ -245,8 +244,8 @@ class Entity(object):
 
     @classmethod
     def from_table(cls, table):
-        return Entity(table.name, get_fields(table),
-                      links={}, macro_strings={}, process_strings={})
+        return Entity(table.name, get_fields(table), links={}, macro_strings={},
+                      process_strings={})
 
     @staticmethod
     def collect_predictors(items):

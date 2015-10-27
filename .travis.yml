@@ -1,3 +1,5 @@
+env:
+  - USE_TRAVIS=true
 language: python
 python: "2.7"
 virtualenv:
@@ -9,7 +11,6 @@ before_install:
 install:
   - pip install flake8  # Not yet available in Debian stable
   - pip install tables  # For version > 3
-  - pip install bcolz==0.7
   - pip install -e .
   - python setup.py build_ext --inplace
 script: make test-ci

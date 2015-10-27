@@ -122,7 +122,6 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                         sorted_global_indices = \
                             group_maybe_indices[sorted_local_indices]
                     if method == 'sidewalk':
-
                         if max(score[group_maybe_indices]) > 1 or min(score[group_maybe_indices]) < 0:
                             raise Exception("Sidewalk method can be used only with a"
                                             " score between 0 and 1. You may want to use"
@@ -363,7 +362,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         func = self.align_no_link if link is None else self.align_link
         return func(context, score, need, filter, take, leave, expressions,
-                    possible_values, errors, frac_need, link, secondary_axis, method)
+                    possible_values, errors, frac_need, link, secondary_axis, method = method)
 
     def align_no_link(self, context, score, need, filter, take, leave,
                       expressions, possible_values, errors, frac_need, link,
@@ -420,7 +419,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                    secondary_axis, method):
         target_context = link._target_context(context)
         need, expressions, possible_values = \
-            self._eval_need(context, need, expressions, possible_values,
+            self._eval_need(context, need, expressions, possible_values, method,
                             target_context)
         need = self._handle_frac_need(need, method=frac_need)
         need = self._add_past_error(context, need, method=errors)
