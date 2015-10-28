@@ -131,7 +131,7 @@ Sidewalk method can be used only with a score between 0 and 1. You may want to u
                         sorted_local_indices = np.argsort(maybe_members_rank_value)
                         sorted_global_indices = \
                             group_maybe_indices[sorted_local_indices]
-                    if method == 'sidewalk':
+                    elif method == 'sidewalk':
                         sorted_global_indices = np.random.permutation(group_maybe_indices)
                 else:
                     # if the score expression is a constant, we don't need to
@@ -145,8 +145,8 @@ Sidewalk method can be used only with a score between 0 and 1. You may want to u
                     # take the last X individuals (ie those with the highest score)
                     indices_to_take = sorted_global_indices[-maybe_to_take:]
                 elif method == 'sidewalk':
-                    assert maybe_to_take <= sum(score[sorted_global_indices]), \
-                        "Can't use Sidewalk with need > sum of probabilities"
+                    if maybe_to_take > sum(score[sorted_global_indices]):
+                        raise ValueError("Can't use sidewalk with need > sum of probabilities")
                     u = np.random.uniform() + np.arange(maybe_to_take)
                     # on the random sample, score are cumulated and then, we extract indices
                     # of each value before each value of u
