@@ -48,7 +48,7 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
 
 
 def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
-                         take_filter=None, leave_filter=None, method="default"):
+                         take_filter=None, leave_filter=None, method="bysorting"):
     assert isinstance(need, np.ndarray) and \
         np.issubdtype(need.dtype, np.integer)
     assert score is None or isinstance(score, (bool, int, float, np.ndarray))
