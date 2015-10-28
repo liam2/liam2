@@ -338,7 +338,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # if not isinstance(need, (tuple, list, np.ndarray)):
         if np.isscalar(need):
             need = [need]
-             # need = [np.floor(need)]
+            # need = [np.floor(need)]
 
         # need is a non-ndarray sequence
         if isinstance(need, (tuple, list)):
