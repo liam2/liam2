@@ -202,8 +202,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
             # in this case, it's tricky
             return set()
 
-    def _eval_need(self, context, need, expressions, possible_values,
-                   method, expressions_context=None):
+    def _eval_need(self, context, need, expressions, possible_values, expressions_context=None):
 
         assert isinstance(need, np.ndarray)
         if expressions_context is None:
@@ -377,8 +376,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         ctx_length = context_length(context)
 
         need, expressions, possible_values = \
-            self._eval_need(context, need, expressions, possible_values,
-                            method)
+            self._eval_need(context, need, expressions, possible_values)
 
         filter_value = expr_eval(self._getfilter(context, filter), context)
 
@@ -425,8 +423,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                    secondary_axis, method):
         target_context = link._target_context(context)
         need, expressions, possible_values = \
-            self._eval_need(context, need, expressions, possible_values, method,
-                            target_context)
+            self._eval_need(context, need, expressions, possible_values, target_context)
         need = self._handle_frac_need(need, method=frac_need)
         need = self._add_past_error(context, need, method=errors)
 
