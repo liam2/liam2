@@ -72,9 +72,10 @@ class DiskBackedArray(object):
 
 
 class Field(object):
-    def __init__(self, name, dtype, input=True, output=True):
+    def __init__(self, name, dtype, input=True, output=True, default_value=None):
         self.name = name
         self.dtype = dtype
+        self.default_value = default_value
         self.input = input
         self.output = output
 
@@ -131,6 +132,7 @@ class Entity(object):
             def fdef2field(name, fielddef):
                 initialdata = True
                 output = True
+                default_value = -1
                 if isinstance(fielddef, Field):
                     return fielddef
                 elif isinstance(fielddef, (dict, str)):
@@ -138,13 +140,14 @@ class Entity(object):
                         strtype = fielddef['type']
                         initialdata = fielddef.get('initialdata', True)
                         output = fielddef.get('output', True)
+                        default_value = fielddef.get('default', -1)
                     elif isinstance(fielddef, str):
                         strtype = fielddef
                     dtype = field_str_to_type(strtype, "field '%s'" % name)
                 else:
                     assert isinstance(fielddef, type)
                     dtype = normalize_type(fielddef)
-                return Field(name, dtype, initialdata, output)
+                return Field(name, dtype, initialdata, output, default_value)
 
             fields = FieldCollection(fdef2field(name, fdef)
                                      for name, fdef in fields)

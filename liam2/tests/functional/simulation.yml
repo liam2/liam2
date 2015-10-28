@@ -175,6 +175,8 @@ entities:
             - int_field1:   {type: int, initialdata: False}
             - hybrid_test:  {type: int, initialdata: False}
             - temp_global:  {type: int, initialdata: False, output: False}
+            - defaulted_variable:  {type: int, initialdata: False, default: 99}
+            - undefaulted_variable:  {type: int, initialdata: False}
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -2493,6 +2495,13 @@ entities:
                       m_id=-1,
                       hh_id=-1)
 
+            test_default_value:
+                - show("test default value")
+                - qshow(defaulted_variable)
+                - qshow(undefaulted_variable)
+                - assertTrue(all(defaulted_variable == 99))
+                - assertFalse(all(undefaulted_variable == 99))
+
 simulation:
     init:
         - household: [init_region]
@@ -2623,6 +2632,7 @@ simulation:
 #                   test_choice,
                    show_weight,
                    test_array,
+                   test_default_value,
         ]
         - household: [composition,
 #                      test_align_link,
