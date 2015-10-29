@@ -220,7 +220,7 @@ class EntityContext(object):
             return elsevalue
 
     def copy(self):
-        return EntityContext(self.entity, self.extra.copy())
+        return EntityContext(self.eval_ctx, self.entity, self.extra.copy())
 
     def length(self):
         if self.is_array_period:
