@@ -1,58 +1,47 @@
-# This is a LIAM2 simulation file. To run the simulation, press F6 if you are
-# using the editor bundled with LIAM2, otherwise run the following command in a
-# console: [BUNDLEPATH]\liam2\main run demo03.yml
+# This is a LIAM2 simulation file. 
 
-# This example builds upon the first two and introduces a few additional
-# features: a second entity, links and one of their associated methods
-# (linkname.count()), local variables in user-defined functions, an init
-# function, the choice function and a few new arguments to built-in functions
-# we have already seen.
+# This example introduces miscellaneous other basic features: 
+# (periodic) globals, macros, local variables in user-defined functions, 
+# the aggregate functions count and avg, the init phase and a few new arguments
+# to built-in functions we have already seen.
+
+# To run the simulation, press F6 if you are using the editor bundled with
+# LIAM2, otherwise run the following command in a console: 
+# [BUNDLEPATH]\liam2\main run demo03.yml
+
+# Globals are variables (aka. parameters) that do not relate to any particular
+# entity (they can be used in expressions in any entity). Globals can be of two
+# kinds: tables (with several fields) and multi-dimensional arrays and can be
+# loaded either from the HDF5 input file, like in this example, or directly
+# from .csv files. Periodic globals have the particularity that they have a
+# (potentially) different value for each period.
+globals:
+    periodic:
+        # retirement age for wage earners in Belgium will increase from 65
+        # years old to 66 in 2025 and 67 in 2030
+        - RETIREMENTAGE: int
+
 entities:
-    household:
-        fields:
-            # period and id are implicit
-            - nb_persons:  {type: int, initialdata: False}
-            - nb_children: {type: int, initialdata: False}
-            - region_id:   {type: int, initialdata: False}
-
-        links:
-            persons: {type: one2many, target: person, field: hh_id}
-
-        processes:
-            init_region_id:
-                # region_id is set randomly, with a 10% probability to be 0,
-                # a 20% probability to be 1, etc.
-                - region_id: choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
-
-            household_composition:
-                # count the number of persons in each household
-                - nb_persons: persons.count()
-
-                # count the number of children (age < 18) in each household
-                - nb_children: persons.count(age < 18)
-
     person:
         fields:
             # period and id are implicit
             - age:    int
             - gender: bool
 
-            # link fields
-            - mother_id:  int
-            - hh_id:      int
-
             # fields not present in input
             - agegroup: {type: int, initialdata: False}
 
-        links:
-            # we define here all the links between individuals of the same
-            # entity...
-            mother: {type: many2one, target: person, field: mother_id}
-            children: {type: one2many, target: person, field: mother_id}
+        # macros can be used to replace any expression. They are usually used
+        # to avoid repeating expressions and make code more readable.
+        # After being declared in the macros section, using the name of the
+        # macro in any process of the entity becomes entirely equivalent to
+        # using the macro expression.
+        macros:
+            ISMALE: gender
+            ISFEMALE: not gender
 
-            # ... or of a different entity
-            household: {type: many2one, target: household, field: hh_id}
-
+            ACTIVEAGE: (age >= 15) and (age < RETIREMENTAGE)
+            
         # possible transitions and regressions
         processes:
             ageing:
@@ -60,32 +49,13 @@ entities:
 
                 # juniors and plus50 are *local* variables. This means they are
                 # only usable within the ageing function. As we have seen in the
-                # first example, the agegroup process below could just as well
-                # be written using a single process (without using local
+                # previous example, the agegroup process below could just as
+                # well be written using a single process (without using local
                 # variables).
                 - juniors: 5 * trunc(age / 5)
                 - plus50: 10 * trunc(age / 10)
                 - agegroup: if(age < 50, juniors, plus50)
 
-            # * dump is not limited to simple columns, it can evaluate any
-            #   expression in-place
-            # * one can easily get the value of a linked object by using
-            #   "linkname.variable_name"
-            # * the suffix argument can be used to customize the name of the
-            #   csv file. It uses this pattern: <entity>_<period>_<suffix>.csv
-            dump_info:
-                - csv(dump(id, age, gender, hh_id, household.nb_persons,
-                           mother.age), suffix='info')
-
-            # * groupby can also be saved to a csv file
-            # * you can customize the filename more precisely (than with
-            #   'suffix') by using the 'fname' argument, with the optional
-            #   {entity} and {period} keywords. They are respectively replaced
-            #   by the name of the entity and the current period
-            csv_demography:
-                - csv(groupby(agegroup, gender),
-                      fname='demography_{period}.csv')
-            
             # * charts can be saved to files instead of being displayed
             #   interactively. The 'fname' and 'suffix' arguments of csv() also
             #   apply to all charting functions.
@@ -93,20 +63,64 @@ entities:
                 - bar(groupby(agegroup, gender),
                       fname='demography_{period}.png')
 
+            csv_output:
+                # * dump is not limited to simple columns, it can evaluate any
+                #   expression in-place
+                # * the filter argument can be used to dump only a part of the
+                #   population (in this case, the active population)
+                # * the suffix argument can be used to customize the name of the
+                #   csv file. When using this option, file names will have this
+                #   pattern: <entity>_<period>_<suffix>.csv
+                - csv(dump(id, 5 * trunc(age / 5), gender, filter=ACTIVEAGE),
+                      suffix='active')
+
+                # * groupby can also be saved to a csv file
+                # * you can customize the filename more precisely (than with
+                #   'suffix') by using the 'fname' argument, with the optional
+                #   {entity} and {period} keywords. They are respectively 
+                #   replaced by the name of the entity and the current period.
+                - csv(groupby(agegroup, gender),
+                      fname='demography_{period}.csv')
+
+                # we use the combination of a precise fname and mode='a'
+                # ('a' is for append) so that we produce a single file for all
+                # periods. Each period line is appended at the end of the file.
+                - csv(period,
+                      avg(age, filter=ISMALE), avg(age, filter=ISFEMALE),
+                      avg(age),
+                      fname='average_age.csv', mode='a')
+                - csv(period, count(not ACTIVEAGE) / count(ACTIVEAGE),
+                      fname='dependency_ratio.csv', mode='a')
+
+            # * if a function is listed in the "init" section of the simulation
+            #   block (see below), we call it an "init function". Those are
+            #   normal functions (and can also be used as such) which are called
+            #   only *once* in start_period - 1 (2015 in this case), instead of
+            #   once per period.
+            # * they can be used among others to initialize fields not present
+            #   in the input dataset, like we will do in another demo model.
+            # * they can also be used to add some fixed headers to files created
+            #   progressively using "append".
+            init_reports:
+                - csv('period', 'men', 'women', 'total',
+                      fname='average_age.csv')
+                - csv('period', 'ratio', fname='dependency_ratio.csv')
+                      
 simulation:
-    # the processes listed in this section are only executed once in
-    # start_period - 1 (that is 2001 in this case), instead of once per period.
+    # the functions listed in this section are only executed *once* in
+    # start_period - 1 (that is 2015 in this case), instead of once per period.
     init:
-        - household: [init_region_id]
+        - person: [init_reports]
 
     processes:
-        - household: [household_composition]
-        - person: [ageing, dump_info, csv_demography, chart_demography]
+        - person: [ageing, csv_output, chart_demography]
 
     input:
-        file: simple2001.h5
+        file: demo.h5
     output:
+        path: output
         file: simulation.h5
 
-    start_period: 2002
+    # first simulated period
+    start_period: 2016
     periods: 2

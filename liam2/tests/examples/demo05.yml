@@ -1,164 +1,196 @@
-# This is a LIAM2 simulation file. To run the simulation, press F6 if you are
-# using the editor bundled with LIAM2, otherwise run the following command in a
-# console: [BUNDLEPATH]\liam2\main run demo05.yml
+# This is a LIAM2 simulation file. 
 
-# In this example, we will add a simple marriage process to our model and model
-# the civil status of persons. We also demonstrate the following additional
-# features: the matching() function, how to create new links, how to change or
-# break existing links, the abs() function and the new() function used with a
-# different entity.
+# This example builds upon the previous ones to introduce the concept of
+# households, including young adults leaving their parents household.
+
+# Technically, this demonstrates how to define a second entity,
+# how to define links, how to access the fields of linked individuals, how to
+# link individuals together, how change or break an existing link and
+# how the new() function can be used with a different entity.
+
+# To run the simulation, press F6 if you are using the editor bundled with
+# LIAM2, otherwise run the following command in a console: 
+# [BUNDLEPATH]\liam2\main run demo05.yml
+globals:
+    periodic:
+        - RETIREMENTAGE: int
+
 entities:
+    # here is our new entity
     household:
-        fields:
-            # period and id are implicit
-            - nb_persons:  {type: int, initialdata: False}
-            - nb_children: {type: int, initialdata: False}
-            - region_id:   {type: int, initialdata: False}
-
+        # we do not need a fields section at all in this case since households
+        # do not have any field other than id and period, which are implicit
         links:
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
-            init_region_id:
-                - region_id: choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4])
+            csv_output:
+                # write the period, 
+                # average number of persons by household, 
+                # and average number of children (age < 18) by household
+                # to a csv file
+                - csv(period,
+                      avg(persons.count()),
+                      avg(persons.count(age < 18)),
+                      fname='hh_size.csv', mode='a')
 
-            household_composition:
-                - nb_persons: persons.count()
-                - nb_children: persons.count(age < 18)
+            init_reports:
+                - csv('period', 'Avg persons', 'Avg children',
+                      fname='hh_size.csv')
 
-            clean_empty: 
-                - show('empty hh', count(nb_persons == 0))
-                - remove(nb_persons == 0)
-
+            # after death, some households can be empty, this function removes
+            # them
+            clean_empty:
+                - empty: persons.count() == 0
+                - show('Number of empty households:', count(empty))
+                - remove(empty)
+                      
     person:
         fields:
             # period and id are implicit
-            - age:        int
-            - gender:     bool
-            # 1: single, 2: married, 3: divorced, 4: widowed
-            - civilstate: int
-            - dur_in_couple: int
+            - age:    int
+            - gender: bool
 
             # link fields
-            - mother_id:  int
-            - partner_id: int
-            - hh_id:      int
+            # id of the mother
+            - mother_id: int
+            # id of the household
+            - hh_id:     int
 
             # fields not present in input
-            - agegroup_civilstate: {type: int, initialdata: False}
+            - agegroup: {type: int, initialdata: False}
 
         links:
+            # links can be between individuals of the same entity...
+
+            # many2one links link potentially many individuals (children
+            # in this case) to one individual (their mother)
             mother: {type: many2one, target: person, field: mother_id}
-            partner: {type: many2one, target: person, field: partner_id}
-            household: {type: many2one, target: household, field: hh_id}
+
+            # one2many links link one individual (a mother) to potentially many
+            # individuals (her children)
             children: {type: one2many, target: person, field: mother_id}
 
+            # links can also be to a different entity
+            household: {type: many2one, target: household, field: hh_id}
+
         macros:
-            MALE: True
-            FEMALE: False
+            UNSET: -1
+
             ISMALE: gender
             ISFEMALE: not gender
 
-            UNSET: -1
+            ACTIVEAGE: (age >= 15) and (age < RETIREMENTAGE)
 
-            SINGLE: 1
-            MARRIED: 2
-            DIVORCED: 3
-            WIDOW: 4
-            ISSINGLE: civilstate == 1
-            ISMARRIED: civilstate == 2
-            ISDIVORCED: civilstate == 3
-            ISWIDOW: civilstate == 4
-
-        # possible transitions and regressions
         processes:
             ageing:
                 - age: age + 1
-                - agegroup_civilstate: if(age < 50,
-                                          5 * trunc(age / 5),
-                                          10 * trunc(age / 10))
+                - agegroup: if(age < 50,
+                               5 * trunc(age / 5), 
+                               10 * trunc(age / 10))
+
+            birth:
+                # do NOT do this in a real model
+                - to_give_birth: (id % 100) < 6 and ISFEMALE and 
+                                 (age >= 15) and (age <= 50)
+                # we link newborns to their mother, and place them in the
+                # same household than their mother.
+                - new('person', filter=to_give_birth,
+                      mother_id=id,
+                      hh_id=hh_id,
+                      age=0,
+                      agegroup=0,
+                      gender=id % 2 == 1)
+                # to access the value of another individual linked via a 
+                # many2one link, use: linkname.fieldname
+                - show('Average age of new mothers',
+                       avg(mother.age, filter=age == 0))
+                - show('Average age of persons mothers',
+                       avg(mother.age))
+                # Note that aggregate methods like avg skip missing values by
+                # default. avg(mother.age) is thus equivalent to
+                # avg(mother.age, filter=mother.age != UNSET)
+                # compare this with
+                # avg(mother.age, skip_na=False)
+                # which takes into account persons with no (known) mother (-1)
+                - show('Average age of mothers',
+                       avg(age, filter=children.count() > 0))
 
             death:
-                - dead: if(ISMALE,
-                           logit_regr(0.0, align='al_p_dead_m.csv'),
-                           logit_regr(0.0, align='al_p_dead_f.csv'))
-                - civilstate: if(partner.dead, WIDOW, civilstate)
-                
-                # We break the link to the partner: the "partner" link is no
+                - dead: if(ISMALE, age >= 90, age >= 95)
+
+                # We break the link to deceased mothers: the "mother" link is no
                 # longer valid for the concerned individuals after this point.
-                - partner_id: if(partner.dead, UNSET, partner_id)
+                - mother_id: if(mother.dead, UNSET, mother_id)
                 - show('Avg age of dead men',
                        avg(age, filter=dead and ISMALE))
                 - show('Avg age of dead women',
                        avg(age, filter=dead and ISFEMALE))
-                - show('Widows', count(ISWIDOW))
                 - remove(dead)
 
-            birth:
-                - to_give_birth: logit_regr(0.0,
-                                            filter=ISFEMALE and (age >= 15) and (age <= 50),
-                                            align='al_p_birth.csv')
-                - new('person', filter=to_give_birth,
-                      mother_id = id,
-                      hh_id = hh_id,
-                      age = 0,
-                      partner_id = UNSET,
-                      civilstate = SINGLE,
-                      gender = choice([MALE, FEMALE], [0.51, 0.49]))
+            get_a_life:
+                # When using links, one is not limited to retrieve simple fields
+                # but can compute expressions directly in the linked
+                # individuals. To do that use the .get method on many2one links.
+                - alone: household.get(persons.count() == 1)
 
-            marriage:
-                # aligned on agegroup_civilstate, civilstate
-                - to_couple: if((age >= 18) and (age <= 90) and not ISMARRIED,
-                                if(ISMALE,
-                                   logit_regr(0.0, align='al_p_mmkt_m.csv'),
-                                   logit_regr(0.0, align='al_p_mmkt_f.csv')),
-                                False)
-                - difficult_match: if(to_couple and ISFEMALE,
-                                      abs(age - avg(age, filter=to_couple and ISMALE)),
-                                      nan)
-                - partner_id: if(to_couple,
-                                 matching(set1filter=ISFEMALE, set2filter=ISMALE,
-                                          score=- 0.4893 * other.age
-                                                + 0.0131 * other.age ** 2
-                                                - 0.0001 * other.age ** 3
-                                                + 0.0467 * (other.age - age)
-                                                - 0.0189 * (other.age - age) ** 2
-                                                + 0.0003 * (other.age - age) ** 3,
-                                          orderby=difficult_match),
-                                 partner_id)
-                - justcoupled: to_couple and (partner_id != UNSET)
-                - newhousehold: new('household', filter=justcoupled and ISFEMALE,
-                                    region_id=choice([0, 1, 2, 3], [0.1, 0.2, 0.3, 0.4]))
-
-                - hh_id: if(justcoupled,
-                            if(ISMALE, partner.newhousehold, newhousehold),
+                # persons which are not already alone in their household leave
+                # their current household at 24. This process does two things:
+                # 1) create as many new households as necessary
+                # 2) change hh_id to the id of the newly created households
+                - hh_id: if(not alone and (age >= 24),
+                            new('household'),
                             hh_id)
 
-                - civilstate: if(justcoupled, MARRIED, civilstate)
-                - dur_in_couple: if(justcoupled,
-                                    0,
-                                    if(ISMARRIED, dur_in_couple + 1, 0))
-                - csv(dump(id, age, gender, partner.id, partner.age,
-                           partner.gender, hh_id, filter=justcoupled),
-                      suffix='new_couples')
+                # we could have written it in two explicit steps like below,
+                # but we usually prefer the way above which avoids repeating the
+                # filter.
+                # - new_hh_id: new('household', 
+                #                  filter=not alone and (age >= 24))
+                # - hh_id: if(not alone and (age >= 24), new_hh_id, hh_id)
 
-            dump_info:
-                - csv(dump(id, age, gender, hh_id, household.nb_persons,
-                           mother.age, partner.age), suffix='info')
+            chart_demography:
+                - bar(groupby(agegroup, gender),
+                      fname='demography_{period}.png')
 
+            csv_output:
+                - csv(groupby(agegroup, gender),
+                      fname='demography_{period}.csv')
+
+                - csv(period,
+                      avg(age, filter=ISMALE), avg(age, filter=ISFEMALE),
+                      avg(age),
+                      fname='average_age.csv', mode='a')
+                - csv(period, count(not ACTIVEAGE) / count(ACTIVEAGE),
+                      fname='dependency_ratio.csv', mode='a')
+
+            init_reports:
+                - csv('period', 'men', 'women', 'total',
+                      fname='average_age.csv')
+                - csv('period', 'ratio', fname='dependency_ratio.csv')
+                      
 simulation:
     init:
-        - household: [init_region_id]
+        - household: [init_reports, csv_output]
+        - person: [init_reports, csv_output]
 
     processes:
-        - person: [ageing, death, birth, marriage]
-        - household: [household_composition, clean_empty]
+        - person: [
+            ageing, 
+            birth, 
+            death,
+            get_a_life,
+            # reporting
+            # chart_demography,
+            csv_output
+        ]
+        - household: [clean_empty, csv_output]
 
     input:
-        file: simple2001.h5
+        file: demo.h5
     output:
+        path: output
         file: simulation.h5
 
-    start_period: 2002
-    periods: 2
-    default_entity: person
+    start_period: 2016
+    periods: 20

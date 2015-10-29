@@ -1,11 +1,14 @@
-# This is a LIAM2 simulation file. This example adds a few processes to the
-# 'person' entity that we defined in the first demonstration model and
-# introduces the following built-in functions: if, trunc, csv, dump, show,
-# groupby and bar.
+# This is a LIAM2 simulation file. Before you run it (see below) please note
+# that when a chart window is open, the simulation is paused. In other words,
+# you need to close the chart window to resume the simulation !
 
-# Before you run it (with F6) please note that when a chart window is open,
-# the simulation is paused. In other words, you need to close the chart window
-# to resume the simulation !
+# This example introduces (mostly) reporting related features. We build upon
+# the model defined in the first demonstration model and introduce the
+# following built-in functions: if, trunc, csv, dump, show, groupby and bar.
+
+# To run the simulation, press F6 if you are using the editor bundled with
+# LIAM2, otherwise run the following command in a console: 
+# [BUNDLEPATH]\liam2\main run demo02.yml
 entities:
     person:
         fields:
@@ -17,7 +20,6 @@ entities:
             # declared with "initialdata: False"
             - agegroup: {type: int, initialdata: False}
 
-        # possible transitions and regressions
         processes:
             ageing:
                 - age: age + 1
@@ -55,7 +57,7 @@ entities:
             show_demography:
                 - show(groupby(agegroup, gender))
 
-            # Finally, in the "chart_demography" process, we reuse the same
+            # Finally, in the "chart_demography" function, we reuse the same
             # groupby expression but this time display it as a bar chart. LIAM2
             # also supports plots, stacked plots, scatter plots, box plots and
             # pie charts. See the user guide for details on how to use those.
@@ -71,10 +73,11 @@ simulation:
         - person: [ageing, dump_info, show_demography, chart_demography]
 
     input:
-        file: simple2001.h5
+        file: demo.h5
     output:
+        path: output
         file: simulation.h5
 
     # first simulated period
-    start_period: 2002
+    start_period: 2016
     periods: 2

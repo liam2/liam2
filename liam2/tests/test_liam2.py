@@ -17,7 +17,7 @@ def run_simulation(yaml_file, output_dir):
 
 
 def test_liam2():
-    need_qt = ['demo02.yml', 'demo03.yml', 'demo04.yml']
+    need_qt = ['demo02.yml', 'demo03.yml', 'demo04.yml', 'demo06.yml']
     # No pyqt4 on travis
     examples_excluded_files = need_qt if use_travis else []
     functional_excluded_files = ['imported1.yml', 'imported2.yml']
