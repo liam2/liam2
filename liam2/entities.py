@@ -21,6 +21,7 @@ from utils import (count_occurrences, field_str_to_type, size2str,
                    UserDeprecationWarning)
 
 
+default_value_by_strtype = {"bool": False, "float": np.nan, 'int': -1}
 max_vars = 0
 
 
@@ -107,6 +108,11 @@ class FieldCollection(list):
     def dtype(self):
         return np.dtype(list(self.name_types))
 
+    @property
+    def default_values(self):
+        return dict((f.name, f.default_value) for f in self)
+
+
 
 class Entity(object):
     """
@@ -132,7 +138,8 @@ class Entity(object):
             def fdef2field(name, fielddef):
                 initialdata = True
                 output = True
-                default_value = -1
+                default_value = None
+
                 if isinstance(fielddef, Field):
                     return fielddef
                 elif isinstance(fielddef, (dict, str)):
@@ -140,9 +147,10 @@ class Entity(object):
                         strtype = fielddef['type']
                         initialdata = fielddef.get('initialdata', True)
                         output = fielddef.get('output', True)
-                        default_value = fielddef.get('default', -1)
+                        default_value = fielddef.get('default', default_value_by_strtype[strtype])
                     elif isinstance(fielddef, str):
                         strtype = fielddef
+                        default_value = default_value_by_strtype[strtype]
                     dtype = field_str_to_type(strtype, "field '%s'" % name)
                 else:
                     assert isinstance(fielddef, type)
@@ -565,7 +573,8 @@ Please use this instead:
             build_period_array(self.input_table,
                                list(self.fields.name_types),
                                self.input_rows,
-                               self.input_index, start_period)
+                               self.input_index, start_period,
+                               default_values = self.fields.default_values)
         assert isinstance(self.array, ColumnArray)
         self.array_period = start_period
 

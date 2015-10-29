@@ -64,23 +64,21 @@ class ColumnArray(object):
                 self.columns = columns
                 if isinstance(array, ColumnArray):
                     self.default_values = array.default_values
-                else:
-                    self.default_values = []
             elif isinstance(array, list):
                 for name, column in array:
                     columns[name] = column
                 self.dtype = np.dtype([(name, column.dtype)
                                        for name, column in array])
                 self.columns = columns
-                self.default_values = []
+                self.default_values = default_values
             else:
                 # TODO: make a property instead?
                 self.dtype = None
                 self.columns = columns
-                self.default_values = []
+                self.default_values = default_values
         else:
             self.dtype = None
-            self.default_values = []
+            self.default_values = default_values
             self.columns = columns
 
     def __getitem__(self, key):
@@ -183,15 +181,19 @@ class ColumnArray(object):
         append_carray_to_table(self, table, buffersize=buffersize)
 
     @classmethod
-    def empty(cls, length, dtype):
-        ca = cls()
+    def empty(cls, length, dtype, default_values = {}):
+        ca = cls(default_values = default_values)
         for name in dtype.names:
-            ca.columns[name] = np.empty(length, dtype[name])
+            if default_values.get(name, None):
+                ca.columns[name] = np.ones(length, dtype[name]) * default_values[name]
+            else:
+                ca.columns[name] = np.empty(length, dtype[name])
         ca.dtype = dtype
+        ca.default_values = default_values
         return ca
 
     @classmethod
-    def from_table(cls, table, start=0, stop=None, default_values={}, buffersize=10 * 2 ** 20):
+    def from_table(cls, table, start=0, stop=None, default_values=None, buffersize=10 * 2 ** 20):
         # reading a table one column at a time is very slow, this is why this
         # function is even necessary
         if stop is None:
@@ -199,8 +201,7 @@ class ColumnArray(object):
         dtype = table.dtype
         max_buffer_rows = buffersize // dtype.itemsize
         numlines = stop - start
-        ca = cls.empty(numlines, dtype)
-        ca.default_values = default_values
+        ca = cls.empty(numlines, dtype, default_values)
 #        buffer_rows = min(numlines, max_buffer_rows)
 #        chunk = np.empty(buffer_rows, dtype=dtype)
         array_start = 0
@@ -253,7 +254,10 @@ class ColumnArray(object):
         length = len(self)
         # add missing fields
         for name in output_names - input_names:
-            self[name] = get_missing_vector(length, output_dtype[name])
+            if name in default_values:
+                self[name] = np.multiply(np.ones(length, dtype=output_dtype[name]), default_values[name])
+            else:
+                self[name] = get_missing_vector(length, output_dtype[name])
         # delete extra fields
         for name in input_names - output_names:
             del self[name]
@@ -303,7 +307,7 @@ def assert_valid_type(array, wanted_type, context=None):
                                                  wanted_type.__name__))
 
 
-def add_and_drop_fields(array, output_fields, default_values={}, output_array=None):
+def add_and_drop_fields(array, output_fields, default_values=None, output_array=None):
     output_dtype = np.dtype(output_fields)
     output_names = set(output_dtype.names)
     input_names = set(array.dtype.names)
@@ -314,10 +318,8 @@ def add_and_drop_fields(array, output_fields, default_values={}, output_array=No
         output_array = np.empty(len(array), dtype=output_dtype)
         for fname in missing_fields:
             if fname in default_values:
-                boum
-                output_array[fname] = default_values[fname]
+                output_array[fname] = np.multiply(np.ones(len(array), dtype=output_dtype[fname]), default_values[fname])
             else:
-                boum2
                 output_array[fname] = get_missing_value(output_array[fname])
     else:
         assert output_array.dtype == output_dtype
@@ -454,7 +456,7 @@ def merge_arrays(array1, array2, result_fields='union'):
 
 
 def append_table(input_table, output_table, chunksize=10000, condition=None,
-                 stop=None, show_progress=False):
+                 stop=None, show_progress=False, default_values = None):
     if input_table.dtype != output_table.dtype:
         output_fields = get_fields(output_table)
     else:
@@ -489,11 +491,10 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         if output_fields is not None:
             # use our pre-allocated buffer (except for the last chunk)
             if len(input_data) == len(expanded_data):
-                default_values = {}
                 output_data = add_and_drop_fields(input_data, output_fields,
                                                   default_values, expanded_data)
             else:
-                default_values = {}
+                print(default_values)
                 output_data = add_and_drop_fields(input_data, output_fields, default_values)
         else:
             output_data = input_data
@@ -513,7 +514,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
 # noinspection PyProtectedMember
 def copy_table(input_table, output_node, output_dtype=None,
                chunksize=10000, condition=None, stop=None, show_progress=False,
-               **kwargs):
+               default_values = None, **kwargs):
     complete_kwargs = {'title': input_table._v_title}
 #                       'filters': input_table.filters}
     output_file = output_node._v_file
@@ -523,7 +524,7 @@ def copy_table(input_table, output_node, output_dtype=None,
     output_table = output_file.create_table(output_node, input_table.name,
                                             output_dtype, **complete_kwargs)
     return append_table(input_table, output_table, chunksize, condition,
-                        stop=stop, show_progress=show_progress)
+                        stop=stop, show_progress=show_progress, default_values = default_values)
 
 
 # XXX: should I make a generic n-way array merge out of this?
@@ -882,7 +883,8 @@ class H5Sink(DataSink):
                     output_table = copy_table(table.table, output_entities,
                                               entity.fields.in_output.dtype,
                                               stop=stoprow,
-                                              show_progress=True)
+                                              show_progress=True,
+                                              default_values = entity.fields.default_values)
                     output_index = table.id2rownum_per_period.copy()
                 else:
                     output_rows = {}
