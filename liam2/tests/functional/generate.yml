@@ -1,45 +1,211 @@
 entities:
     household:
-        fields:
-            # period and id are implicit
-            - income: float
-
         processes:
-            dummy:
-                - show("dummy")
+            dump_all:
+                - show(groupby(persons.count(), percent=True))
+                - csv(dump())
+
+        links:
+            persons: {type: one2many, target: person, field: hh_id}
 
     person:
         fields:
             # period and id are implicit
             - age:        int
-            - earnings:   float
-            - errsal:     float
             - male:       bool
-            - work:       bool
-            - eduach:     int
-            - chronicill: bool
 
+            # 1: in work, 2: unemployed including old-age unemployed,
+            # 3: in education, 4: retired, 5: other inactive
+            - workstate:  int
+
+            # 1: single, 2: married, 3: divorced, 4: widowed
+            - civilstate: int
+            - dur_in_couple: int
+
+            # link fields
+            - mother_id:  int
             - partner_id: int
             - hh_id:      int
 
         links:
+            mother: {type: many2one, target: person, field: mother_id}
+            children: {type: one2many, target: person, field: mother_id}
             partner: {type: many2one, target: person, field: partner_id}
+            household: {type: many2one, target: household, field: hh_id}
 
         processes:
-            birth:
-                - new('person', number=1000,
-                      age=randint(0, 98),
-                      errsal=normal(0.0, 10.0),
-                      male=choice([False, True]),
-                      work=choice([False, True]),
-                      eduach=randint(1, 4),
-                      chronicill=False,
-                      partner_id=-1,
-                      hh_id=-1)
-                - earnings: 40 + age
+            match_mother_child(target_prop, risk, mother_min, mother_max, child_min, child_max):
+                - i: 0
+                - childage: age >= child_min and age < child_max
+                - motherage: not male and 
+                             age >= mother_min and age < mother_max
+                - numchilds: count(childage)
+                - needmother: childage and mother_id == -1
+                - needkid: motherage and (uniform() < (2 / (1 + children.count() ** 2)))
+                - prop: count(childage and mother_id != -1) / numchilds
+                - while prop < target_prop and count(needmother) > 0 and count(needkid) > 0:
+                    - matched_id: matching(set1filter=needkid,
+                                           set2filter=needmother,
+                                           orderby=id,
+                                           score=-abs(28 - abs(age - other.age)))
+                    - mother_id: if(matched_id != -1 and needmother,
+                                    matched_id,
+                                    mother_id)
+                    - prop: count(childage and mother_id != -1) / numchilds
+                    - needmother: childage and mother_id == -1
+                    - needkid: motherage and (uniform() < (2 / (1 + children.count() ** 2)))
+                    - show("i", i, "prop", prop)
+                    - i: i + 1
+
+            create:
+                - num: 10000
+                - new('person', number=num,
+                      male=choice([False, True], [0.51, 0.49]))
+#                - age: trunc(abs(normal(0, 12))) + if(male, 55, 60)
+#                - mrand: randint(55)
+#                - frand: randint(60)
+#                - age: if(id < 0.8 * num, if(male, mrand, frand), age)
+                # add the baby boomers
+#                - age: if(uniform() < 0.1, trunc(normal(45, 10)), age)
+
+#                - activeage: age >= 15 and age < 65
+                # active age 7176835 / 10839905 = 66.21%
+#                - show("prop active age", count(activeage) / count())
+
+#                - bar(groupby(age))
+
+                # belgium 2008 (source: http://economie.fgov.be)
+                # 3 highest (0.07xx) increased by 0.0001 to sum to 1
+                - m_agegr: choice([ 0,  5, 10, 15, 20, 25, 30, 35, 40, 45,
+                                   50, 55, 60, 65, 70, 75, 80, 85, 90, 95],
+                                  [0.0588, 0.0577, 0.0596, 0.0637, 0.0615,
+                                   0.0658, 0.0663, 0.0738, 0.0789, 0.0774,
+                                   0.0709, 0.0647, 0.0554, 0.0419, 0.0392,
+                                   0.0324, 0.0206, 0.0090, 0.0020, 0.0004])
+                - f_agegr: choice([ 0,  5, 10, 15, 20, 25, 30, 35, 40, 45,
+                                   50, 55, 60, 65, 70, 75, 80, 85, 90, 95],
+                                  [0.0539, 0.0530, 0.0548, 0.0587, 0.0586,
+                                   0.0629, 0.0625, 0.0692, 0.0735, 0.0731,
+                                   0.0678, 0.0623, 0.0551, 0.0446, 0.0452,
+                                   0.0435, 0.0339, 0.0190, 0.0063, 0.0021])
+                - age: if(male, m_agegr, f_agegr) + randint(5)
+#                - bar(groupby(age))
+
+                # - 4,575,950 households in Belgium, of which 1,534,317 single-person 
+
+                # 1.79 births per woman (2012)
+                # we get 1.15...
+                - match_mother_child(0.1, 0.6, 90, 110, 60, 75)
+                - match_mother_child(0.8, 0.7, 75, 95, 45, 60)
+                - match_mother_child(0.96, 0.7, 60, 80, 30, 45)
+                - match_mother_child(0.98, 0.7, 45, 65, 15, 30)
+                - match_mother_child(0.99, 0.7, 30, 50, 0, 15)
+                      
+                # - qshow(count(mother_id != -1 and age < 45))
+                # - qshow(count(age < 45))
+                # - qshow(count(not male))
+                # - chcount: children.count()
+                # - qshow(chcount[not male])
+                # - qshow(avg(children.count(), filter=not male and age > 15))
+                # - qshow(max(children.count(), filter=not male))
+                - assertEqual(max(children.count(), filter=male), 0)
+                # - qshow(groupby(children.count(), filter=not male))
+
+                # The working (active) population (both self-employed persons 
+                # and employees) aged between 15 and 64 numbers 4,450,589. 
+                # The total population in this age group is 7,176,835.
+
+                # Young people in education total around 2,844,700
+                # in education: 2844700 / 10839905 = 26.25%
+
+                # FIXME: use a lookup table (but this fails because lists are
+                # always considered as methods by LIAM2)
+                # - risks: [0.8, 0.1, 0.2]
+                # - risk: risks[studyyears]
+
+                # source: my own wild guesses based on eduach levels:
+                # lower secondary 0.25 upper secondary 0.39 tertiary 0.36
+                - edu_risk: if(age <= 14, 1,
+                            if(age == 15, 0.85,
+                            if(age == 16, 0.80,
+                            if(age == 17, 0.75,
+                            if(age == 18, 0.58,
+                            if(age == 19, 0.38,
+                            if(age == 20, 0.37,
+                            if(age == 21, 0.28,
+                            if(age == 22, 0.26,
+                            if(age == 23, 0.12,
+                            if(age == 24, 0.06,
+                            if(age == 25, 0.05,
+                            if(age == 26, 0.03,
+                            if(age == 27, 0.02,
+                            if(age == 28, 0.01, 0)))))))))))))))
+
+                - ineducation: uniform() < edu_risk
+                - show("prop population in education", count(ineducation) / count())
+
+                # numbers heavily rounded from
+                # Institut National de Statistique, Labor Force Survey 1995
+                # 50-54: 0 to 4%
+                # 55-59: 4% to 10%
+                # 60-64: 30% to 40%
+                # 65-84: 95% to 100%
+                - retired_risk_m: if(age < 50, 0,
+                                  if(age < 55, 0.04 * (age - 50) / 4,
+                                  if(age < 60, 0.04 + 0.06 * (age - 55) / 4,
+                                  if(age < 65, 0.3 + 0.1 * (age - 60) / 4,
+                                  0.95 + 0.05 * (age - 65) / 19))))
+                # 50-54: 0 to 10%
+                # 55-59: 10% to 20%
+                # 60-64: 55% to 65%
+                # 65-84: 75% to 100%
+                - retired_risk_f: if(age < 50, 0,
+                                  if(age < 55, 0.1 * (age - 50) / 4,
+                                  if(age < 60, 0.1 + 0.1 * (age - 55) / 4,
+                                  if(age < 65, 0.55 + 0.1 * (age - 60) / 4,
+                                  0.75 + 0.25 * (age - 65) / 19))))
+
+                - retired_risk: if(male, retired_risk_m, retired_risk_f)
+                - retired: uniform() < retired_risk
+
+                - activeage: age >= 15 and age < 65
+                - show("early retire",
+                       count(retired and activeage) / count(activeage))
+
+                # 2015: 8.5% max: 11% min: 6.3%
+
+                # active_age_working: 62.02%
+                # active_age_inedu: 9.02% (source: this model ;-))
+                # active_age_retired: 6.02% (source: this model)
+                # active_age_unemployed: 8.5%
+                # active_age_other_inactive: 1 - others: 14.44% (demo7: 18.43%)
+                # not_inedu_or_retired: 84.96%
+                # adjusted: XX / 0.8496
+                # working: 73% unemployed: 10% inactive: 17%
+                - active_edu: count(ineducation and activeage) /
+                              count(activeage)
+                - qshow(active_edu)
+
+                # active age 7176835 / 10839905 = 66.21%
+                # not in education = 10839905 - 2844700 = 7995K
+                # not in education = 1 - 26.25% = 73.75%
+                - show("prop active age", count(activeage) / count())
+
+                # 1: in work, 2: unemployed including old-age unemployed,
+                # 3: in education, 4: retired, 5: other inactive
+                - workstate: if(ineducation, 3,
+                             if(retired, 4,
+                                choice([1, 2, 5],
+                                       [0.73, 0.10, 0.17])))
+                - show("prop active_work",
+                       count(activeage and workstate == 1) / count(activeage))
+                - show(groupby(workstate, filter=activeage, percent=True))
+                - show(groupby(workstate, percent=True))
 
             marriage:
-                - to_marry: logit_regr(0.0, filter=age >= 20)
+                # non married: 6397393
+                # 4,442,512 married => 41% pop (~52% above 18 year)
+                - to_marry: age >= 18 and uniform() < 0.53
                 - partner_id: matching(set1filter=to_marry and not male,
                                        set2filter=to_marry and male,
                                        orderby=id,
@@ -49,35 +215,74 @@ entities:
                                              + 0.0467 * (other.age - age)
                                              - 0.0189 * (other.age - age) ** 2
                                              + 0.0003 * (other.age - age) ** 3
-                                             - 0.9087 * (other.work and not work)
-                                             - 1.3286 * (not other.work and work)
-                                             - 0.6549 * (other.work and work)
-                                             - 0.7939 * ((other.eduach == 3) and (eduach == 4))
-                                             - 1.4128 * ((other.eduach == 2) and (eduach == 4))
-                                             - 0.8984 * ((other.eduach == 4) and (eduach == 3))
-                                             - 1.5530 * ((other.eduach == 4) and (eduach == 2))
-                                             - 0.5451 * ((other.eduach == 2) and (eduach == 2)),
                                        )
                 - just_married: to_marry and (partner_id != -1)
-                - newhousehold: new('household', filter=just_married and not male,
-                                    income=0.0)
+                - newhousehold: new('household',
+                                    filter=just_married and not male)
 
-                - hh_id: where(just_married,
-                               where(male, partner.newhousehold, newhousehold),
+                - hh_id: if(just_married,
+                            if(male, partner.newhousehold, newhousehold),
                                hh_id)
+
+                - max_dur_in_couple: household.get(persons.min(age)) - 18
+                - married: partner.id != -1
+                - dur_in_couple: if(married,
+                                    trunc(max_dur_in_couple * (0.2 + 0.8 * uniform())),
+                                    0)
+                #- bar(groupby(dur_in_couple, filter=married))
+
+                # move children to their mother hh
+                - hh_id: if(age < 18 and mother_id != -1,
+                            mother.hh_id,
+                            hh_id)
+
+                # create households for singles
+                - hh_id: if(hh_id == -1,
+                            new('household'),
+                            hh_id)
+
+                # prop_above_18: 0.7884 (source: this model)
+                - qshow(count(age >= 18) / count())
+
+                # 1: single, 2: married, 3: divorced, 4: widowed
+                # 4,442,512 married => 41% pop (52% above 18%)
+                # 899,425 divorced => 8.29% pop
+                # 899 / 6397 => 14.05% non married
+                # - 710,927 widow => 6.55% pop
+                # 711 / 6397 => 11.11% non married
+                # => single = 1 - 0.1405 - 0.1111 = 0.7484
+                # adjusted probabilities for age >= 18:
+                # 17.82% divorced 14.09% widow 68.09% single
+                # manual adjustment to get closer to target results ;-)
+                # 21% divorced 17% widow 62% single
+                - civilstate: if(married,
+                                 2,
+                                 if(age < 18,
+                                    1,
+                                    choice([1, 3, 4],
+                                           [0.62, 0.21, 0.17])))
+                - show(groupby(civilstate, percent=True))
+                # 46.86 | 40.84 | 7.20 | 5.10 | 100.00 <-- this model
+                # 54.60 | 22.69 | 10.10 | 12.61 | 100.00 <-- demo
+
+            dump_all:
+                - csv(dump())
 
 simulation:
     processes:
-        - person: [birth, marriage]
-        - household: [dummy]
+        - person: [create, marriage, dump_all]
+        - household: [dump_all]
 
     input:
         method: void
         file: none
 
     output:
-        path: output
+        path: generated
         file: generated.h5
 
-    start_period: 2001   # first simulated period
+    logging:
+        level: processes    # optional
+        
+    start_period: 2015   # first simulated period
     periods: 1
