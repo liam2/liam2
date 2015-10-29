@@ -30,13 +30,27 @@ class EvaluationContext(object):
         self.entities_data = entities_data
 
     def copy(self, fresh_data=False):
+        # FIXME: when fresh_data is False, entities_data should clone each
+        # EntityContext and set their eval_ctx attribute to the newly created
+        # EvaluationContext (res), otherwise each EntityContext still points to
+        # the old EvaluationContext (which obviously can have some different
+        # attributes, eg period).
+        # The problem is that the fix currently breaks many models because in
+        # some (all?) cases EvaluableExpression are stored in a context (extra)
+        # that is not the same than the context where it is used (and thus the
+        # temporary field is not found if extra is not exactly the same object).
+        # entities_data = None if fresh_data else {}
         entities_data = None if fresh_data else self.entities_data.copy()
         # FIXME: when switching entities, filter should not come along, or maybe
         # filter should be a per-entity dict?
-        return EvaluationContext(self.simulation, self.entities,
-                                 self.global_tables, self.period,
-                                 self.entity_name, self.filter_expr,
-                                 entities_data)
+        res = EvaluationContext(self.simulation, self.entities,
+                                self.global_tables, self.period,
+                                self.entity_name, self.filter_expr,
+                                entities_data)
+        # res.entities_data = {name: ent_ctx.clone(eval_ctx=res)
+        #                      for name, ent_ctx
+        #                      in self.entities_data.iteritems()}
+        return res
 
     def clone(self, fresh_data=False, **kwargs):
         res = self.copy(fresh_data=fresh_data)

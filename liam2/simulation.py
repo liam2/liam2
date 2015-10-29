@@ -566,7 +566,13 @@ class Simulation(object):
                 ent_name = self.default_entity
                 if ent_name is None and len(eval_ctx.entities) == 1:
                     ent_name = eval_ctx.entities.keys()[0]
-                console_ctx = eval_ctx.clone(entity_name=ent_name)
+                # FIXME: fresh_data prevents the old (cloned) EvaluationContext
+                # to be referenced from each EntityContext, which lead to period
+                # being fixed to the last period of the simulation. This should
+                # be fixed in EvaluationContext.copy but the proper fix breaks
+                # stuff (see the comments there)
+                console_ctx = eval_ctx.clone(fresh_data=True,
+                                             entity_name=ent_name)
                 c = console.Console(console_ctx)
                 c.run()
 
