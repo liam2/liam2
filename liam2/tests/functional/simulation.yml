@@ -2504,7 +2504,7 @@ entities:
                 - show("test default value")
                 - assertTrue(all(undefaulted_bool_variable == False))
                 - assertTrue(all(undefaulted_integer_variable == -1))
-                # - assertTrue(all(undefaulted_float_variable == nan))
+                - assertTrue(all(undefaulted_float_variable != undefaulted_float_variable))
                 - qshow(defaulted_integer_variable)
                 - qshow(undefaulted_integer_variable)
                 - assertTrue(all(defaulted_integer_variable == 99))
