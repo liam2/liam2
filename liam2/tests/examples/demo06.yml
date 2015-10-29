@@ -1,12 +1,11 @@
 # This is a LIAM2 simulation file.
 
-# This example builds upon the previous ones and introduces the following
-# additional features: choice, logit_regr (alignment),
-# an aggregate function (avg) and the default_entity option. We use
-# the features we have introduced so far to add very simple birth and death
-# functions to our model.
+# This example tries to get more realistic results out of the birth and
+# death functions of previous models by using observed probabilities and
+# alignment.
 
-#  and the default_entity option.
+# Technically, this demonstrates the choice and logit_regr (with alignment) 
+# functions, and the default_entity option.
 
 # To run the simulation, press F6 if you are using the editor bundled with
 # LIAM2, otherwise run the following command in a console: 
@@ -73,15 +72,37 @@ entities:
                                10 * trunc(age / 10))
 
             birth:
+                # logit_regr with an "align" argument will trigger alignment,
+                # that is the number of persons selected (ie for which the
+                # function returns True) will match the proportions given in
+                # al_p_birth.csv (by age and period in this case). In other 
+                # words, the proportion of women of each age who give birth
+                # per year are given in the alignment file. Since we use a
+                # constant as first argument to logit_regr, within each group
+                # (eg women aged 20), the selected individuals will be chosen
+                # purely randomly.
                 - to_give_birth: logit_regr(0.0,
                                             filter=ISFEMALE and (age >= 15) and (age <= 50),
                                             align='al_p_birth.csv')
+
+                # choice generates values within a set of predefined values
+                # having defined probabilities. In this case, it will generate
+                # MALE (ie True) with a 51% probability and FEMALE (False) with
+                # a 49% probability. Choice can work with more than two
+                # predefined values to choose from, but the probabilities always
+                # need to sum to 1.
                 - new('person', filter=to_give_birth,
                       mother_id = id,
                       hh_id = hh_id,
                       age = 0,
                       agegroup = 0,
                       gender = choice([MALE, FEMALE], [0.51, 0.49]))
+                - show('Average age of new mothers',
+                       avg(mother.age, filter=age == 0))
+                - show('Average age of persons mothers',
+                       avg(mother.age))
+                - show('Average age of mothers',
+                       avg(age, filter=children.count() > 0))
 
             death:
                 - dead: if(ISMALE,
@@ -149,4 +170,6 @@ simulation:
 
     start_period: 2016
     periods: 2
+    # at the end of the simulation, start the interactive console directly in
+    # the "person" entity
     default_entity: person

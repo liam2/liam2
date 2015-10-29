@@ -1,11 +1,10 @@
 # This is a LIAM2 simulation file. 
 
 # In this example, we will implement simple marriage and divorce functions and 
-# model the civil status of persons. We also demonstrate the following additional
-# features: the matching() function, the abs() function and
+# model the civil status of persons. 
 
-# use the lag() function and use the logit_regr() function with an actual score
-# expression.
+# Technically, it demonstrates the matching(), abs() and lag() functions
+# as well as the logit_regr() function with an actual score expression.
 
 # To run the simulation, press F6 if you are using the editor bundled with
 # LIAM2, otherwise run the following command in a console: 
@@ -115,6 +114,9 @@ entities:
                                    logit_regr(0.0, align='al_p_mmkt_m.csv'),
                                    logit_regr(0.0, align='al_p_mmkt_f.csv')),
                                 False)
+                # abs() simply returns the absolute value of its argument
+                # this ranks women depending on their distance to the average
+                # age of available men
                 - difficult_match: if(to_couple and ISFEMALE,
                                       abs(age - avg(age, filter=to_couple and ISMALE)),
                                       nan)
@@ -157,6 +159,10 @@ entities:
                 - agediff: if(ISFEMALE and ISMARRIED, age - partner.age, 0)
                 - nb_children: household.get(persons.count(age < 18))
                 # select females to divorce
+
+                # here we use logit_regr with an actual expression, which means
+                # that within each group, persons with a high value for the
+                # given expression will be selected first.
                 - divorce: logit_regr(0.6713593 * nb_children
                                       - 0.0785202 * dur_in_couple
                                       + 0.1429621 * agediff - 0.0088308 * agediff **2
@@ -175,8 +181,13 @@ entities:
                             hh_id)
 
             civilstate_changes:
-                - show("civil state changes\n",
-                       groupby(civilstate, lag(civilstate)))
+                # the lag() function returns the value of any expression 
+                # at the end of the previous period. Note that for non-aggregate
+                # expressions, it returns a value for all individuals present
+                # in the *current* period. For individuals which were not
+                # present (born) in the previous period, it returns the
+                # "missing" value (-1 for int fields, like in this case).
+                - show(groupby(civilstate, lag(civilstate)))
 
             chart_demography:
                 - bar(groupby(agegroup_civilstate, gender),

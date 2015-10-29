@@ -1,13 +1,13 @@
 # This is a LIAM2 simulation file.
+
 # In this example, we will model the work state and education level of people.
-# To achieve that we need the following additional features: 
-# logit_score and align functions as a more versatile alternative to the
-# logit_regr function.
+
+# To achieve that we demonstrate using the logit_score() and align() functions 
+# as a more versatile alternative to the logit_regr() function.
 
 # To run the simulation, press F6 if you are using the editor bundled with
 # LIAM2, otherwise run the following command in a console: 
 # [BUNDLEPATH]\liam2\main run demo08.yml
-
 globals:
     periodic:
         - RETIREMENTAGE: int
@@ -162,7 +162,11 @@ entities:
                                           orderby=difficult_match),
                                  partner_id)
                 - justcoupled: to_couple and (partner_id != UNSET)
-                - newhousehold: new('household', filter=justcoupled and ISFEMALE)
+                - alone: household.get(persons.count() == 1)
+                - needhousehold: ISFEMALE and not alone and justcoupled
+                - newhousehold: new('household', filter=needhousehold)
+                - show("abandoned children", 
+                       count(needhousehold and children.count() > 0))
 
                 - hh_id: if(justcoupled,
                             if(ISMALE, partner.newhousehold, newhousehold),

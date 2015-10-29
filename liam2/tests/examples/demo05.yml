@@ -179,12 +179,15 @@ simulation:
             ageing, 
             birth, 
             death,
-            get_a_life,
-            # reporting
+        ]
+        - household: [clean_empty]
+        - person: [get_a_life]
+        # reporting
+        - person: [
             # chart_demography,
             csv_output
         ]
-        - household: [clean_empty, csv_output]
+        - household: [csv_output]
 
     input:
         file: demo.h5

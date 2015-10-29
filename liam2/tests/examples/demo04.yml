@@ -1,8 +1,9 @@
 # This is a LIAM2 simulation file.
 
 # This example builds upon the previous ones and introduces very simple birth
-# and death functions to our model. It introduces lifecycle functions (new and 
-# remove).
+# and death functions to our model.
+
+# Technically, this demonstrates lifecycle functions (new and remove).
 
 # To run the simulation, press F6 if you are using the editor bundled with
 # LIAM2, otherwise run the following command in a console: 
@@ -113,7 +114,3 @@ simulation:
 
     start_period: 2016
     periods: 2
-
-    # at the end of the simulation, start the interactive console directly in
-    # the "person" entity
-    default_entity: person
