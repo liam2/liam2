@@ -222,6 +222,14 @@ class EntityContext(object):
     def copy(self):
         return EntityContext(self.eval_ctx, self.entity, self.extra.copy())
 
+    def clone(self, **kwargs):
+        res = self.copy()
+        allowed_kwargs = {'eval_ctx', 'entity', 'extra'}
+        for k, v in kwargs.iteritems():
+            assert k in allowed_kwargs, "%s is not a valid kwarg" % k
+            setattr(res, k, v)
+        return res
+
     def length(self):
         if self.is_array_period:
             return len(self.entity.array)
