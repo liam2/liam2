@@ -40,10 +40,10 @@ class EvaluationContext(object):
 
     def clone(self, fresh_data=False, **kwargs):
         res = self.copy(fresh_data=fresh_data)
+        allowed_kwargs = {'simulation', 'entities', 'global_tables',
+                          'period', 'entity_name', 'filter_expr',
+                          'entities_data', 'entity_data'}
         for k, v in kwargs.iteritems():
-            allowed_kwargs = ('simulation', 'entities', 'global_tables',
-                              'period', 'entity_name', 'filter_expr',
-                              'entities_data', 'entity_data')
             assert k in allowed_kwargs, "%s is not a valid kwarg" % k
             setattr(res, k, v)
         return res
