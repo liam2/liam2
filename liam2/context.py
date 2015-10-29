@@ -260,7 +260,7 @@ class EntityContext(object):
         return self.length()
 
     def list_periods(self):
-        return self.entity.output_index.keys()
+        return sorted(self.entity.output_index.keys())
 
     @property
     def id_to_rownum(self):
