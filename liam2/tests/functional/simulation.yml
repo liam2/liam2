@@ -175,8 +175,13 @@ entities:
             - int_field1:   {type: int, initialdata: False}
             - hybrid_test:  {type: int, initialdata: False}
             - temp_global:  {type: int, initialdata: False, output: False}
-            - defaulted_variable:  {type: int, initialdata: False, default: 99}
-            - undefaulted_variable:  {type: int, initialdata: False}
+            - defaulted_bool_variable:  {type: bool, initialdata: False, default: True}
+            - undefaulted_bool_variable:  {type: bool, initialdata: False}
+            - defaulted_float_variable:  {type: float, initialdata: False, default: 99.99}
+            - undefaulted_float_variable:  {type: float, initialdata: False}
+            - defaulted_integer_variable:  {type: int, initialdata: False, default: 99}
+            - undefaulted_integer_variable:  {type: int, initialdata: False}
+
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -2497,10 +2502,15 @@ entities:
 
             test_default_value:
                 - show("test default value")
-                - qshow(defaulted_variable)
-                - qshow(undefaulted_variable)
-                - assertTrue(all(defaulted_variable == 99))
-                - assertFalse(all(undefaulted_variable == 99))
+                - assertTrue(all(undefaulted_bool_variable == False))
+                - assertTrue(all(undefaulted_integer_variable == -1))
+                # - assertTrue(all(undefaulted_float_variable == nan))
+                - qshow(defaulted_integer_variable)
+                - qshow(undefaulted_integer_variable)
+                - assertTrue(all(defaulted_integer_variable == 99))
+                - assertTrue(all(defaulted_float_variable == 99.99))
+                - assertTrue(all(defaulted_bool_variable))
+
 
 simulation:
     init:

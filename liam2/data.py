@@ -251,13 +251,13 @@ class ColumnArray(object):
         output_names = set(output_dtype.names)
         input_names = set(self.dtype.names)
         default_values = self.default_values
+        if self.default_values is None:
+            default_values = dict()
         length = len(self)
         # add missing fields
         for name in output_names - input_names:
-            if name in default_values:
-                self[name] = np.multiply(np.ones(length, dtype=output_dtype[name]), default_values[name])
-            else:
-                self[name] = get_missing_vector(length, output_dtype[name])
+            self[name] = get_missing_vector(length, output_dtype[name],
+                                            default_value = default_values.get(name, None))
         # delete extra fields
         for name in input_names - output_names:
             del self[name]
@@ -307,7 +307,7 @@ def assert_valid_type(array, wanted_type, context=None):
                                                  wanted_type.__name__))
 
 
-def add_and_drop_fields(array, output_fields, default_values=None, output_array=None):
+def add_and_drop_fields(array, output_fields, default_values={}, output_array=None):
     output_dtype = np.dtype(output_fields)
     output_names = set(output_dtype.names)
     input_names = set(array.dtype.names)
@@ -317,10 +317,8 @@ def add_and_drop_fields(array, output_fields, default_values=None, output_array=
     if output_array is None:
         output_array = np.empty(len(array), dtype=output_dtype)
         for fname in missing_fields:
-            if fname in default_values:
-                output_array[fname] = np.multiply(np.ones(len(array), dtype=output_dtype[fname]), default_values[fname])
-            else:
-                output_array[fname] = get_missing_value(output_array[fname])
+            output_array[fname] = get_missing_value(output_array[fname],
+                                                    default_value = default_values.get(fname, None))
     else:
         assert output_array.dtype == output_dtype
     for fname in common_fields:
@@ -328,7 +326,7 @@ def add_and_drop_fields(array, output_fields, default_values=None, output_array=
     return output_array
 
 
-def merge_subset_in_array(output, id_to_rownum, subset, first=False):
+def merge_subset_in_array(output, id_to_rownum, subset, first=False, default_values = {}):
     if subset.dtype == output.dtype and len(subset) == len(output):
         return subset
     elif subset.dtype == output.dtype:
@@ -351,7 +349,7 @@ def merge_subset_in_array(output, id_to_rownum, subset, first=False):
                 subset_all_cols = np.empty(len(subset), dtype=output.dtype)
                 for fname in set(output_names) - set(subset_names):
                     subset_all_cols[fname] = \
-                        get_missing_value(subset_all_cols[fname])
+                        get_missing_value(subset_all_cols[fname], default_values.get(fname, None))
             else:
                 subset_all_cols = output[rownums]
                 # Note that all rows which correspond to rownums == -1 have
@@ -390,7 +388,7 @@ def merge_array_records(array1, array2):
     return output
 
 
-def merge_arrays(array1, array2, result_fields='union'):
+def merge_arrays(array1, array2, result_fields='union', default_values = None):
     """
     data in array2 overrides data in array1
     both arrays must have an 'id' fields
@@ -441,22 +439,23 @@ def merge_arrays(array1, array2, result_fields='union'):
         output_array = np.empty(len(all_ids), dtype=output_dtype)
     else:
         output_array = np.empty(len(all_ids), dtype=output_dtype)
-        output_array[:] = get_missing_record(output_array)
+        output_array[:] = get_missing_record(output_array, default_values)
 
     # 2) copy data from array1 (if it will not be overridden)
     if not arr2_complete:
         output_array = merge_subset_in_array(output_array, id_to_rownum,
-                                             array1, first=True)
+                                             array1, first=True, default_values = default_values)
 
     # 3) copy data from array2
     if not output_is_arr2:
-        output_array = merge_subset_in_array(output_array, id_to_rownum, array2)
+        output_array = merge_subset_in_array(output_array, id_to_rownum, array2, default_values = default_values)
 
     return output_array, id_to_rownum
 
 
 def append_table(input_table, output_table, chunksize=10000, condition=None,
                  stop=None, show_progress=False, default_values = None):
+
     if input_table.dtype != output_table.dtype:
         output_fields = get_fields(output_table)
     else:
@@ -476,10 +475,10 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
 
     if output_fields is not None:
         expanded_data = np.empty(chunksize, dtype=np.dtype(output_fields))
-        expanded_data[:] = get_missing_record(expanded_data)
+        expanded_data[:] = get_missing_record(expanded_data, default_values)
 
     # noinspection PyUnusedLocal
-    def copy_chunk(chunk_idx, chunk_num):
+    def copy_chunk(chunk_idx, chunk_num, default_values = {}):
         chunk_start = chunk_num * chunksize
         chunk_stop = min(chunk_start + chunksize, numrows)
         if condition is not None:
@@ -494,7 +493,6 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
                 output_data = add_and_drop_fields(input_data, output_fields,
                                                   default_values, expanded_data)
             else:
-                print(default_values)
                 output_data = add_and_drop_fields(input_data, output_fields, default_values)
         else:
             output_data = input_data
@@ -503,10 +501,10 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         output_table.flush()
 
     if show_progress:
-        loop_wh_progress(copy_chunk, range(num_chunks))
+        loop_wh_progress(copy_chunk, range(num_chunks), default_values = default_values)
     else:
         for chunk in range(num_chunks):
-            copy_chunk(chunk, chunk)
+            copy_chunk(chunk, chunk, default_values = default_values)
 
     return output_table
 
@@ -536,7 +534,7 @@ def build_period_array(input_table, output_fields, input_rows,
     periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
     if not periods_before:
         id_to_rownum = np.empty(0, dtype=int)
-        output_array = ColumnArray.empty(0, np.dtype(output_fields))
+        output_array = ColumnArray.empty(0, np.dtype(output_fields), default_values)
         return output_array, id_to_rownum
 
     periods_before.sort()

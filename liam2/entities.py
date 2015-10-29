@@ -113,7 +113,6 @@ class FieldCollection(list):
         return dict((f.name, f.default_value) for f in self)
 
 
-
 class Entity(object):
     """
     fields is a list of tuple (name, type)
@@ -575,6 +574,7 @@ Please use this instead:
                                self.input_rows,
                                self.input_index, start_period,
                                default_values = self.fields.default_values)
+
         assert isinstance(self.array, ColumnArray)
         self.array_period = start_period
 
@@ -606,12 +606,12 @@ Please use this instead:
         input_array = self.input_table.read(start, stop)
 
         self.array, self.id_to_rownum = \
-            merge_arrays(self.array, input_array, result_fields='array1')
+            merge_arrays(self.array, input_array, result_fields='array1', default_values = self.fielfs.default_values)
         # this can happen, depending on the layout of columns in input_array,
         # but the usual case (in retro) is that self.array is a superset of
         # input_array, in which case merge_arrays returns a ColumnArray
         if not isinstance(self.array, ColumnArray):
-            self.array = ColumnArray(self.array)
+            self.array = ColumnArray(self.array, default_values = self.fielfs.default_values)
 
     def purge_locals(self):
         """purge all local variables"""

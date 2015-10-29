@@ -68,20 +68,31 @@ def normalize_type(type_):
     return idx_to_type[type_to_idx[type_]]
 
 
-def get_missing_value(column):
-    return missing_values[normalize_type(column.dtype.type)]
+def get_missing_value(column, default_value = None):
+    normalized_type = normalize_type(column.dtype.type)
+    if default_value is not None:
+        assert isinstance(default_value, normalized_type)
+        return default_value
+    else:
+        return missing_values[normalized_type]
 
 
-def get_missing_vector(num, dtype):
+def get_missing_vector(num, dtype, default_value = None):
     res = np.empty(num, dtype=dtype)
-    res.fill(missing_values[normalize_type(dtype.type)])
-    return res
+    normalized_type = normalize_type(dtype.type)
+    if default_value is not None:
+        assert isinstance(default_value, normalized_type)
+        res.fill(default_value)
+        return res
+    else:
+        res.fill(missing_values[normalized_type])
+        return res
 
 
-def get_missing_record(array):
+def get_missing_record(array, default_values = {}):
     row = np.empty(1, dtype=array.dtype)
     for fname in array.dtype.names:
-        row[fname] = get_missing_value(row[fname])
+        row[fname] = get_missing_value(row[fname], default_values.get(fname, None))
     return row
 
 
