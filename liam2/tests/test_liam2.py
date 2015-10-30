@@ -39,13 +39,13 @@ def test_examples():
 
 
 def iterate_files(folder_name, excluded_files = None):
-        test_folder = os.path.join(test_root, folder_name)
-        test_fnames = [f for f in os.listdir(test_folder)
-                       if f.endswith('.yml') and f not in excluded_files]
-        test_files = [os.path.join(test_folder, f) for f in test_fnames]
+    test_folder = os.path.join(test_root, folder_name)
+    test_fnames = [f for f in os.listdir(test_folder)
+                   if f.endswith('.yml') and f not in excluded_files]
+    test_files = [os.path.join(test_folder, f) for f in test_fnames]
 
-        for test_file in test_files:
-            yield test_file
+    for test_file in test_files:
+        yield test_file
 
 
 def run_file(test_file):
