@@ -23,9 +23,11 @@ def run_simulation(yaml_file, output_dir):
 
 
 def test_functional():
-    functional_excluded_files = ['imported1.yml', 'imported2.yml']
+    functional_excluded_files = ['imported1.yml', 'imported2.yml', 'import.yml']
     if use_travis:
         functional_excluded_files.extend(['static.yml', 'generate.yml'])
+    #  Running small.h5 creator
+    run_file(os.path.join(test_root, 'functional', 'import.yml'))
     for test_file in iterate_files('functional', functional_excluded_files):
         yield run_file, test_file
 
