@@ -88,13 +88,14 @@ entities:
                 - to_give_birth: logit_regr(0.0,
                                             filter=ISFEMALE and (age >= 15) and (age <= 50),
                                             align='al_p_birth.csv')
-                - newbirth: new('person', filter=to_give_birth,
-                                mother_id = id,
-                                hh_id = hh_id,
-                                age = 0,
-                                partner_id = UNSET,
-                                civilstate = SINGLE,
-                                gender = choice([MALE, FEMALE], [0.51, 0.49]))
+                - new('person', filter=to_give_birth,
+                      mother_id = id,
+                      hh_id = hh_id,
+                      partner_id = UNSET,
+                      civilstate = SINGLE,
+                      age = 0,
+                      agegroup_civilstate = 0,
+                      gender = choice([MALE, FEMALE], [0.51, 0.49]))
 
             death:
                 - dead: if(ISMALE,

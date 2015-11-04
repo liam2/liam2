@@ -58,9 +58,9 @@ entities:
                 # individual (in this case the mother), so that values can be
                 # inherited (gender in this case).
                 - new('person', filter=to_give_birth,
-                      age=0,
-                      agegroup=0,
-                      gender=child_gender)
+                      age = 0,
+                      agegroup = 0,
+                      gender = child_gender)
 
             death:
                 # all men aged 90+ and women aged 95+ die 
