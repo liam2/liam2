@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import os
 import pkg_resources
+from itertools import chain
 
 from liam2.simulation import Simulation
 from liam2.importer import csv2h5
@@ -57,6 +58,8 @@ def run_file(test_file):
         print("run", test_file)
         run_simulation(test_file, output_dir)
 
+
 if __name__ == '__main__':
-    test_examples()
-    test_functional()
+   for test in chain(test_examples(), test_functional()):
+        func, args = test[0], test[1:]
+        func(*args)
