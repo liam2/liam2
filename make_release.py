@@ -301,25 +301,28 @@ def test_executable(relpath):
     print()
     makedirs('testoutput')
     outpath = abspath('testoutput')
-    runcmd = relpath + r'\main --output-path ' + outpath + ' run '
-    importcmd = relpath + r'\main import '
-    echocall(runcmd + r'tests\functional\static.yml')
-    echocall(runcmd + r'tests\functional\generate.yml')
-    echocall(importcmd + r'tests\functional\import.yml')
-    echocall(runcmd + r'tests\functional\simulation.yml')
-    echocall(runcmd + r'tests\functional\variant.yml')
-    echocall(runcmd + r'tests\functional\matching.yml')
-    echocall(runcmd + r'tests\examples\demo01.yml')
-    echocall(importcmd + r'tests\examples\demo_import.yml')
-    echocall(runcmd + r'tests\examples\demo01.yml')
-    echocall(runcmd + r'tests\examples\demo02.yml')
-    echocall(runcmd + r'tests\examples\demo03.yml')
-    echocall(runcmd + r'tests\examples\demo04.yml')
-    echocall(runcmd + r'tests\examples\demo05.yml')
-    echocall(runcmd + r'tests\examples\demo06.yml')
-    echocall(runcmd + r'tests\examples\demo07.yml')
-    echocall(runcmd + r'tests\examples\demo08.yml')
-    echocall(runcmd + r'tests\examples\demo09.yml')
+    runcmd = relpath + '/main --output-path ' + outpath + ' run '
+    importcmd = relpath + '/main import '
+    testspath = 'liam2/tests/functional/'
+    demospath = 'liam2/tests/examples/'
+    echocall(runcmd + testspath + 'static.yml')
+    echocall(runcmd + testspath + 'generate.yml')
+    echocall(importcmd + testspath + 'import.yml')
+    echocall(runcmd + testspath + 'simulation.yml')
+    echocall(runcmd + testspath + 'variant.yml')
+    echocall(runcmd + testspath + 'matching.yml')
+    echocall(runcmd + demospath + 'demo01.yml')
+    echocall(importcmd + demospath + 'demo_import.yml')
+    echocall(runcmd + demospath + 'demo01.yml')
+    echocall(runcmd + demospath + 'demo02.yml')
+    echocall(runcmd + demospath + 'demo03.yml')
+    echocall(runcmd + demospath + 'demo04.yml')
+    echocall(runcmd + demospath + 'demo05.yml')
+    echocall(runcmd + demospath + 'demo06.yml')
+    echocall(runcmd + demospath + 'demo07.yml')
+    echocall(runcmd + demospath + 'demo08.yml')
+    echocall(runcmd + demospath + 'demo09.yml')
+    echocall(runcmd + demospath + 'demo10.yml')
     rmtree('testoutput')
 
 
@@ -331,10 +334,10 @@ def create_source_archive(release_name, rev):
 def copy_release(release_name):
     copytree(r'build\bundle\editor', r'win32\editor')
     copytree(r'build\bundle\editor', r'win64\editor')
-    copytree(r'build\tests\examples', r'win32\examples')
-    copytree(r'build\tests\examples', r'win64\examples')
-    copytree(r'build\src\build\exe.win32-2.7', r'win32\liam2')
-    copytree(r'build\src\build\exe.win-amd64-2.7', r'win64\liam2')
+    copytree(r'build\liam2\tests\examples', r'win32\examples')
+    copytree(r'build\liam2\tests\examples', r'win64\examples')
+    copytree(r'build\build\exe.win32-2.7', r'win32\liam2')
+    copytree(r'build\build\exe.win-amd64-2.7', r'win64\liam2')
     makedirs(r'win32\documentation')
     makedirs(r'win64\documentation')
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
@@ -471,12 +474,11 @@ def check_clone(context):
 
 def build_exe(context):
     chdir(context['build_dir'])
-    chdir('src')
 
     context['test_release'] = True if context['public_release'] \
         else yes('Do you want to test the executables after they are created?')
 
-    call('buildall.bat')
+    call('buildall_exe.bat')
 
 
 def test_executables(context):
@@ -486,7 +488,7 @@ def test_executables(context):
         return
 
     for arch in ('win32', 'win-amd64'):
-        test_executable(r'src\build\exe.%s-2.7' % arch)
+        test_executable(r'build\exe.%s-2.7' % arch)
 
 
 def update_changelog(context):
