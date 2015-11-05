@@ -436,8 +436,6 @@ def create_tmp_directory(context):
 
 def clone_repository(context):
     chdir(context['tmp_dir'])
-    print("context")
-    print(context)
 
     # make a temporary clone in /tmp. The goal is to make sure we do not
     # include extra/unversioned files. For the -src archive, I don't think
@@ -611,7 +609,8 @@ def cleanup(context):
     chdir(context['tmp_dir'])
     rmtree('win32')
     rmtree('win64')
-    rmtree('build')
+    # build is needed by the website script
+#    rmtree('build')
 
 # ------------ #
 # end of steps #
