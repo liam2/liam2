@@ -22,8 +22,7 @@ The bundle includes:
 - The documentation in HTML Help format (.chm). You can find .pdf and .html
   versions on our website.
 
-- A demonstration model with a synthetic data set of 20,200 persons grouped in
-  14,700 households.
+- A demonstration model with a synthetic dataset.
 
 Getting Started
 ---------------
