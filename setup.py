@@ -177,7 +177,7 @@ if build_exe:
 setup(
     name="liam2",
     # cx_freeze wants only ints and dots
-    version=int_version('0.10.2'),
+    version=int_version('0.10.3'),
     description="LIAM2",
     cmdclass={"build_ext": MyBuildExt},
     ext_modules=ext_modules,
