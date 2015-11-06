@@ -22,7 +22,7 @@ Miscellaneous improvements
 
 * enabled running the unit tests automatically on each change to the GitHub
   repository by using Travis-CI (which runs tests on build servers). Thanks to
-  Mahdi Ben Jelloul (:pr:`182`).
+  Mahdi Ben Jelloul and Christophe Benz (:pr:`182`).
 
 * added an explicit error message when using "empty" processes (ie a "-"
   without any other text).
