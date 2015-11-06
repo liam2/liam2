@@ -544,6 +544,14 @@ class Seed(FunctionExpr):
         np.random.seed(seed)
 
 
+class Array(FunctionExpr):
+    def compute(self, context, expr):
+        return np.array(expr)
+
+    # XXX: is this correct?
+    dtype = firstarg_dtype
+
+
 functions = {
     # element-wise functions
     # Min and Max are in aggregates.py.functions (because of the dispatcher)
@@ -564,4 +572,5 @@ functions = {
     'dump': Dump,
     'extexpr': ExtExpr,
     'seed': Seed,
+    'array': Array,
 }

@@ -2462,6 +2462,26 @@ entities:
                 - assertEquiv(imported_field1, -1)
                 - assertEqual(imported_field2, age + 2)
 
+            test_array:
+                - remove(id % 1000 < 999)
+                - v1: age - 1
+                - v2: age
+                - v3: age + 1
+                - v4: age + 2
+                - v5: age + 3
+                - v6: age + 4
+                - arr: array([v3, v1, v2, v5, v6, v4])
+                - arr2: sort(arr, axis=0)
+                - b1: arr2[-1]
+                - b2: arr2[-2]
+                - b3: arr2[-3]
+                - assertEqual(b1, v6)
+                - assertEqual(b2, v5)
+                - assertEqual(b3, v4)
+                # sum of 3 best
+                - s: arr2[-3:].sum(axis=0)
+                - assertEqual(s, b1 + b2 + b3)
+
             generate:
                 - new('person', number=100000,
                       age=randint(0, 98),
@@ -2579,32 +2599,33 @@ simulation:
                    test_log_regr,
 
                    # temporal
-                   test_lag,
-                   test_value_for_period,
-                   test_duration,
+#                   test_lag,
+#                   test_value_for_period,
+#                   test_duration,
 
                    # links
                    test_o2m,
                    test_mixed_links,
 
                    # output
-                   test_groupby,
-                   test_dump,
-                   test_csv,
+#                   test_groupby,
+#                   test_dump,
+#                   test_csv,
 
-                   imported_process,
-                   test_imported_process,
+#                   imported_process,
+#                   test_imported_process,
 
                    # alignment
-                   test_align,
-                   test_align_abs,
+#                   test_align,
+#                   test_align_abs,
 
                    # misc
-                   test_choice,
+#                   test_choice,
                    show_weight,
+                   test_array,
         ]
         - household: [composition,
-                      test_align_link,
+#                      test_align_link,
 #                      dump_csv_h,
                      ]
 
@@ -2623,7 +2644,7 @@ simulation:
 #    autodiff: True
 
     random_seed: 0
-    periods: 2
+    periods: 1
     logging:
         level: processes
 #    timings: False
