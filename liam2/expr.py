@@ -89,7 +89,8 @@ def get_missing_vector(num, dtype, default_value = None):
         return res
 
 
-def get_missing_record(array, default_values = {}):
+def get_missing_record(array, default_values = None):
+    default_values = default_values if default_values is not None else dict()
     row = np.empty(1, dtype=array.dtype)
     for fname in array.dtype.names:
         row[fname] = get_missing_value(row[fname], default_values.get(fname, None))

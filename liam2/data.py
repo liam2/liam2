@@ -181,8 +181,9 @@ class ColumnArray(object):
         append_carray_to_table(self, table, buffersize=buffersize)
 
     @classmethod
-    def empty(cls, length, dtype, default_values = {}):
+    def empty(cls, length, dtype, default_values = None):
         ca = cls(default_values = default_values)
+        default_values = default_values if default_values is not None else dict()
         for name in dtype.names:
             if default_values.get(name, None):
                 ca.columns[name] = np.ones(length, dtype[name]) * default_values[name]
@@ -307,7 +308,8 @@ def assert_valid_type(array, wanted_type, context=None):
                                                  wanted_type.__name__))
 
 
-def add_and_drop_fields(array, output_fields, default_values={}, output_array=None):
+def add_and_drop_fields(array, output_fields, default_values=None, output_array=None):
+    default_values = default_values if default_values is not None else dict()
     output_dtype = np.dtype(output_fields)
     output_names = set(output_dtype.names)
     input_names = set(array.dtype.names)
@@ -326,7 +328,8 @@ def add_and_drop_fields(array, output_fields, default_values={}, output_array=No
     return output_array
 
 
-def merge_subset_in_array(output, id_to_rownum, subset, first=False, default_values = {}):
+def merge_subset_in_array(output, id_to_rownum, subset, first=False, default_values = None):
+    default_values = default_values if default_values is not None else dict()
     if subset.dtype == output.dtype and len(subset) == len(output):
         return subset
     elif subset.dtype == output.dtype:
@@ -478,7 +481,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         expanded_data[:] = get_missing_record(expanded_data, default_values)
 
     # noinspection PyUnusedLocal
-    def copy_chunk(chunk_idx, chunk_num, default_values = {}):
+    def copy_chunk(chunk_idx, chunk_num, default_values = None):
         chunk_start = chunk_num * chunksize
         chunk_stop = min(chunk_start + chunksize, numrows)
         if condition is not None:
@@ -530,7 +533,7 @@ def copy_table(input_table, output_node, output_dtype=None,
 # 1) all arrays have the same columns
 # 2) we have id_to_rownum already computed for each array
 def build_period_array(input_table, output_fields, input_rows,
-                    input_index, start_period, default_values={}):
+                    input_index, start_period, default_values=None):
     periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
     if not periods_before:
         id_to_rownum = np.empty(0, dtype=int)

@@ -153,19 +153,19 @@ In LIAM2, entities are declared as follows: ::
         entity-name1:
             fields:     # optional section (can be omitted)
                 fields definition
-            
+
             links:      # optional section (can be omitted)
                 links definition
-                
+
             macros:     # optional section (can be omitted)
                 macros definition
-                
+
             processes:  # optional section (can be omitted)
                 processes definition
-                
+
         entity-name2:
             ...
-            
+
 As a reminder, indentation and the use of ":" are important.
 
 
@@ -177,7 +177,7 @@ fields
 
 The fields hold the information of each member in the entity. That information
 is global in a run of the model. Every process defined in that entity can use
-and change the value. 
+and change the value.
 
 LIAM2 handles three types of fields:
 
@@ -198,7 +198,7 @@ There are two implicit fields that do not have to be defined:
                 # period and id are implicit
                 - age:        int
                 - gender:     bool
-                # 1: single, 2: married, 3: cohabitant, 4: divorced, 5: widowed 
+                # 1: single, 2: married, 3: cohabitant, 4: divorced, 5: widowed
                 - civilstate: int
                 - partner_id: int
                 - earnings:   float
@@ -219,6 +219,10 @@ However, in practice, there are often some fields which are not present in the
 input file. They will need to be calculated later by the model, and you need to
 tell LIAM2 that the field is missing, by using `initialdata: False` in the
 definition for that field (see the *agegroup* variable in the example below).
+The fields that are not present in the initial file can also be initialized to
+a specific value by using the `default: some_default_value`. If not present they
+are initialized to the default of the field type which are False for boolean and
+0 for integer and float (see the *alive* variable in the example below).
 
 .. _fields_output:
 
@@ -239,14 +243,14 @@ functions but not stored in the output file.
                 - age:      int
                 - agegroup: {type: int, initialdata: False}
                 - temporary: {type: int, output: False}
-
+                - alive: {type: int, initialdata: True}
 
 links
 -----
 
 Individuals can be linked with each other or with individuals of other
 entities, for example, mothers are linked to their children, partners are
-linked to each other and persons belong to households. 
+linked to each other and persons belong to households.
 
 For details, see the :ref:`links_label` section.
 
@@ -267,12 +271,12 @@ convention is to use *capital* letters to define macros.
         person:
             fields:
                 - age: int
-          
+
             macros:
                 ISCHILD: age < 18
 
             processes:
-                test_macros: 
+                test_macros:
                     - show("before", ISCHILD)
                     - age: age + 1
                     - show("after", ISCHILD)
@@ -280,7 +284,7 @@ convention is to use *capital* letters to define macros.
         processes:
             - person: [test_macros]
 
-                    
+
 The above example does
 
 - show(): displays whether each person is a child.
@@ -291,7 +295,7 @@ The above example does
 processes
 ---------
 
-Here you define the processes you will need in the model. 
+Here you define the processes you will need in the model.
 
 For details, see the :ref:`processes_label` section.
 
@@ -325,12 +329,12 @@ and composition is again used.
 
 *example* ::
 
-    simulation: 
+    simulation:
         init:                   # optional
             - household: [household_composition]
             - person: [agegroup]
-    
-        processes:  
+
+        processes:
             - household: [household_composition]
             - person: [
                    age, agegroup,
@@ -338,11 +342,11 @@ and composition is again used.
                ]
             - household: [household_composition]
 
-        input:      
-            path: liam2         # optional 
+        input:
+            path: liam2         # optional
             file: base.h5
         output:
-            path: liam2         # optional  
+            path: liam2         # optional
             file: simulation.h5
         start_period: 2015
         periods: 10
@@ -361,12 +365,12 @@ processes
 ---------
 
 This block defines which processes are executed and in what order. They will be
-executed for each period starting from *start_period* for *periods* times. 
-Since processes are defined on a specific entities (they change the values of 
-items of that entity), you have to specify the entity before each list of 
+executed for each period starting from *start_period* for *periods* times.
+Since processes are defined on a specific entities (they change the values of
+items of that entity), you have to specify the entity before each list of
 process. Note that you can execute the same process more than once during a
 simulation and that you can alternate between entities in the simulation of a
-period. 
+period.
 
 In the example you see that after death and birth, the household_composition
 function is re-executed.
@@ -383,7 +387,7 @@ input
 -----
 
 The initial (observed) data is read from the file specified in the *input*
-entry. 
+entry.
 
 Specifying the *path* is optional. If it is omitted, it defaults to the
 directory where the simulation file is located.
@@ -441,7 +445,7 @@ warn
   display a warning message.
 
 skip
-  do not run the assertions at all. 
+  do not run the assertions at all.
 
 default_entity
 --------------
@@ -511,4 +515,3 @@ Running a model/simulation
 - If you are using the command line, use: ::
 
     [BUNDLEPATH]\liam2\main run <path_to_simulation_file>
-
