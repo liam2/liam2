@@ -165,13 +165,15 @@ entities:
                                  partner_id)
                 - justcoupled: to_couple and (partner_id != UNSET)
                 - alone: household.get(persons.count() == 1)
-                - needhousehold: ISFEMALE and not alone and justcoupled
-                - newhousehold: new('household', filter=needhousehold)
-                - show("abandoned children", 
-                       count(needhousehold and children.count() > 0))
-
-                - hh_id: if(justcoupled,
-                            if(ISMALE, partner.newhousehold, newhousehold),
+                # create new households for newly wed women
+                - needhousehold: ISFEMALE and justcoupled and not alone
+                - in_mother_hh: hh_id == mother.hh_id
+                - hh_id: if(needhousehold, new('household'), hh_id)
+                # bring along their husband
+                - hh_id: if(ISMALE and justcoupled, partner.hh_id, hh_id)
+                # bring along their children
+                - hh_id: if(mother.justcoupled and in_mother_hh,
+                            mother.hh_id,
                             hh_id)
 
                 - civilstate: if(justcoupled, MARRIED, civilstate)
