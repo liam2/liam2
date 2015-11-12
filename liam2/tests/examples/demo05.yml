@@ -96,11 +96,11 @@ entities:
                 # we link newborns to their mother, and place them in the
                 # same household than their mother.
                 - new('person', filter=to_give_birth,
-                      mother_id=id,
-                      hh_id=hh_id,
-                      age=0,
-                      agegroup=0,
-                      gender=id % 2 == 1)
+                      mother_id = id,
+                      hh_id = hh_id,
+                      age = 0,
+                      agegroup = 0,
+                      gender = id % 2 == 1)
                 # to access the value of another individual linked via a 
                 # many2one link, use: linkname.fieldname
                 - show('Average age of new mothers',

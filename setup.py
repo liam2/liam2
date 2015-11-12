@@ -20,6 +20,11 @@ command = sys.argv[1] if len(sys.argv) > 1 else None
 build_exe = command == 'build_exe'
 
 if build_exe:
+    # when building executables, we need to use "build" so that C extensions are
+    # built too ("build" does both "build_ext" and "build_exe"). We do not use
+    # build in all cases because we do not want to change the normal "build"
+    # behavior when not building executables.
+    sys.argv[1] = "build"
     from cx_Freeze import Executable, setup
 
 
@@ -172,7 +177,7 @@ if build_exe:
 setup(
     name="liam2",
     # cx_freeze wants only ints and dots
-    version=int_version('0.10.2'),
+    version=int_version('0.11.0a1'),
     description="LIAM2",
     cmdclass={"build_ext": MyBuildExt},
     ext_modules=ext_modules,

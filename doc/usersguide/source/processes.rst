@@ -919,6 +919,14 @@ zipf(a, size=None)
 
   .. versionadded:: 0.9
 
+.. index:: seed
+
+seed(value)
+  Re-seed the pseudo-random number generator. This can be useful if you want to
+  test the results of functions using pseudo-random numbers. See
+  :numpy:`random.seed` for details.
+
+  .. versionadded:: 0.10.3
 
 .. index:: choice
 
