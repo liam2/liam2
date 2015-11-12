@@ -3,6 +3,14 @@
 Change log
 ##########
 
+Version 0.10.4
+==============
+
+Released on 2015-11-12.
+
+.. include:: changes/version_0_10_4.rst.inc
+
+
 Version 0.10.3
 ==============
 
