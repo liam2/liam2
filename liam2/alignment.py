@@ -579,8 +579,8 @@ class Alignment(AlignmentAbsoluteValues):
                 raise Exception("align() needs either an fname or proportions "
                                 "arguments")
             elif method == 'sidewalk':
-                raise Exception("If the alignmed population size should be the sum of score "
-                                "then use align_abs() instead of align()")
+                raise Exception("sidewalk method is not supported for align(), please use align_abs() instead")
+
         if proportions is not None and fname is not None:
             raise Exception("align() cannot have both fname and proportions "
                             "arguments")
