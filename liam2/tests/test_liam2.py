@@ -37,6 +37,8 @@ def test_examples():
     # No pyqt4 on travis
     need_qt = ['demo02.yml', 'demo03.yml', 'demo04.yml', 'demo06.yml']
     examples_excluded_files = need_qt if use_travis else []
+    #  Running demo.h5 creator
+    run_file(os.path.join(test_root, 'examples', 'demo_import.yml'))
     for test_file in iterate_files('examples', examples_excluded_files):
         yield run_file, test_file
 
