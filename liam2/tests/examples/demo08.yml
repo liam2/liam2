@@ -322,10 +322,10 @@ entities:
                 - unemp: if(ACTIVEAGE and not ISINWORK,
                             if(ISMALE,
                                align(unemp_score, 'al_p_unemployed_m.csv',
-                                     take=ISUNEMPLOYED,
+                                     take=ISUNEMPLOYED and age >= 60,
                                      leave=ISSTUDENT or ISRETIRED),
                                align(unemp_score, 'al_p_unemployed_f.csv',
-                                     take=ISUNEMPLOYED,
+                                     take=ISUNEMPLOYED and age >= 60,
                                      leave=ISSTUDENT or ISRETIRED)),
                             False)
                 - workstate: if(unemp, UNEMPLOYED, workstate)
