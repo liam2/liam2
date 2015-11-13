@@ -6,7 +6,7 @@ Change log
 Version 0.10.5
 ==============
 
-In development.
+Released on 2015-11-13.
 
 .. include:: changes/version_0_10_5.rst.inc
 
