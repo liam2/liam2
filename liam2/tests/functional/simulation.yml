@@ -2599,33 +2599,33 @@ simulation:
                    test_log_regr,
 
                    # temporal
-#                   test_lag,
-#                   test_value_for_period,
-#                   test_duration,
+                   test_lag,
+                   test_value_for_period,
+                   test_duration,
 
                    # links
                    test_o2m,
                    test_mixed_links,
 
                    # output
-#                   test_groupby,
-#                   test_dump,
-#                   test_csv,
+                   test_groupby,
+                   test_dump,
+                   test_csv,
 
-#                   imported_process,
-#                   test_imported_process,
+                   imported_process,
+                   test_imported_process,
 
                    # alignment
-#                   test_align,
-#                   test_align_abs,
+                   test_align,
+                   test_align_abs,
 
                    # misc
-#                   test_choice,
+                   test_choice,
                    show_weight,
-                   test_array,
+#                   test_array,
         ]
         - household: [composition,
-#                      test_align_link,
+                      test_align_link,
 #                      dump_csv_h,
                      ]
 
@@ -2644,7 +2644,7 @@ simulation:
 #    autodiff: True
 
     random_seed: 0
-    periods: 1
+    periods: 2
     logging:
         level: processes
 #    timings: False
