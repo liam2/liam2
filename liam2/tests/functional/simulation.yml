@@ -1806,6 +1806,14 @@ entities:
                 # FIXME: this fails (see issue #146)
                 #- g: groupby(agegroup, gender, expr=count(lag(TERTIARY_EDU)))
 
+            test_lag_o2m:
+                # this mostly tests that DiskBackedArrays work as expected
+                - past_nch: lag(children.count(), 2)
+                # this does not test much but I cannot think of anything more
+                # precise that is guaranteed to be True
+                - assertTrue(all(past_nch >= -1))
+                - assertTrue(all(past_nch < 50))
+
             test_value_for_period:
                 # period is a constant
                 - assertEqual(value_for_period(MINR, 2005), 13620.2)
@@ -2605,6 +2613,7 @@ simulation:
 
                    # links
                    test_o2m,
+                   test_lag_o2m,
                    test_mixed_links,
 
                    # output

@@ -70,6 +70,9 @@ class DiskBackedArray(object):
     def __getattr__(self, item):
         return getattr(self.arr, item)
 
+    def __len__(self):
+        return len(self.arr)
+
 
 class Field(object):
     def __init__(self, name, dtype, input=True, output=True):
