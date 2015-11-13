@@ -102,8 +102,8 @@ entities:
                            logit_regr(0.0, align='al_p_dead_m.csv'),
                            logit_regr(0.0, align='al_p_dead_f.csv'))
                 - mother_id: if(mother.dead, UNSET, mother_id)
-                - partner_id: if(partner.dead, UNSET, partner_id)
                 - civilstate: if(partner.dead, WIDOW, civilstate)
+                - partner_id: if(partner.dead, UNSET, partner_id)
                 - show('Avg age of dead men', avg(age, filter=dead and ISMALE))
                 - show('Avg age of dead women', avg(age, filter=dead and ISFEMALE))
                 - show('Widows', count(ISWIDOW))
