@@ -276,7 +276,9 @@ entities:
 
                 # if not selected to work and last period in work set workstate
                 # temporarily to UNSET
-                - workstate: if(not work and lag(ISINWORK), UNSET, workstate)
+                - workstate: if(not work and not ISRETIRED and lag(ISINWORK),
+                                UNSET,
+                                workstate)
 
                 - show(groupby(workstate, lag(workstate)))
                 - show('have job', count(work),
