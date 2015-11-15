@@ -60,10 +60,8 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
 
     maybe_filter = bool_filter_value
     if take_filter is not None:
-        # XXX: I wonder if users would prefer if filter_value was taken into
-        # account or not. This only impacts what it displayed on the console,
-        # but still...
-        take = np.sum(take_filter)
+        take_intersect = take_filter & bool_filter_value
+        take = np.sum(take_intersect)
 
         # XXX: it would probably be faster to leave the filters as boolean
         # vector and do
@@ -72,14 +70,14 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
         # instead of
         #     group_always = np.intersect1d(members_indices, take_indices,
         #                                   assume_unique=True)
-        take_indices = filter_to_indices(take_filter & bool_filter_value)
+        take_indices = filter_to_indices(take_intersect)
         maybe_filter &= ~take_filter
     else:
         take = 0
         take_indices = None
 
     if leave_filter is not None:
-        leave = np.sum(leave_filter)
+        leave = np.sum(leave_filter & bool_filter_value)
         maybe_filter &= ~leave_filter
     else:
         leave = 0
