@@ -266,11 +266,8 @@ entities:
 #                                 UNSET)
 
                 - work: if(ACTIVEAGE,
-                           if(ISMALE,
-                              align(work_score, 'al_p_inwork_m.csv',
-                                    leave=ISSTUDENT or ISRETIRED),
-                              align(work_score, 'al_p_inwork_f.csv',
-                                    leave=ISSTUDENT or ISRETIRED)),
+                           align(work_score, 'al_p_inwork.csv',
+                                 leave=ISSTUDENT or ISRETIRED),
                            False)
                 - workstate: if(work, INWORK, workstate)
 
@@ -322,13 +319,9 @@ entities:
                 # [Number of unemployed / (Population - Number of Workers)] by age class
                 # The here below condition must correspond to the here above denumerator
                 - unemp: if(ACTIVEAGE and not ISINWORK,
-                            if(ISMALE,
-                               align(unemp_score, 'al_p_unemployed_m.csv',
-                                     take=ISUNEMPLOYED and age >= 60,
-                                     leave=ISSTUDENT or ISRETIRED),
-                               align(unemp_score, 'al_p_unemployed_f.csv',
-                                     take=ISUNEMPLOYED and age >= 60,
-                                     leave=ISSTUDENT or ISRETIRED)),
+                            align(unemp_score, 'al_p_unemployed.csv',
+                                  take=ISUNEMPLOYED and age >= 60,
+                                  leave=ISSTUDENT or ISRETIRED),
                             False)
                 - workstate: if(unemp, UNEMPLOYED, workstate)
                 - workstate: if(workstate == UNSET, 
