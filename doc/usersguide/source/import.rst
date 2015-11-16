@@ -193,7 +193,7 @@ directory where the description file is.
 
     globals:
         periodic:
-            path: input\globals_transposed.csv
+            path: input/globals_transposed.csv
             transposed: True
 
     entities:

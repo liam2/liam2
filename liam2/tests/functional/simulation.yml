@@ -1392,6 +1392,75 @@ entities:
                 - assertEqual(count(by_gender and not gender), 30)
                 - assertEqual(count(by_gender and gender), 20)
 
+            test_align_abs_sidewalk:
+                - num_all: count()
+                - num_women: count(not gender)
+                - num_men: count(gender)
+
+                # manual alignment on an integer column
+                # -------------------------------------
+                - int_aligned: align_abs(logistic(age),
+                                         [10, 20],
+                                         expressions=[gender],
+                                         possible_values=[[False, True]],
+                                         )
+                - assertEqual(count(int_aligned and not gender), 10)
+                - assertEqual(count(int_aligned and gender), 20)
+                - assertEqual(count(int_aligned), 30)
+
+                # manual alignment with constant need
+                # -----------------------------------
+                - aligned: align_abs(logistic(age), 10, method = 'sidewalk')
+                - assertEqual(count(aligned), 10)
+
+                # manual alignment with expr need
+                # -------------------------------
+                # count(age < 5) is just a number to match, we align over the
+                # whole population (ie we do not have a filter)
+                - aligned: align_abs(logistic(age), count(age < 5), method = 'sidewalk')
+                - assertEqual(count(aligned), count(age < 5))
+
+                # manual alignment with tuple of exprs need
+                # -----------------------------------------
+                - aligned: align_abs(logistic(age),
+                                     (count(not gender and age > 18),
+                                      count(gender and age > 20)),
+                                     expressions=[gender],
+                                     possible_values=[[False, True]],
+                                     method = 'sidewalk')
+                - assertEqual(count(aligned and not gender),
+                              count(not gender and age > 18))
+                - assertEqual(count(aligned and gender),
+                              count(gender and age > 20))
+
+                # # external file
+                # # -------------
+                # - by_gender: align_abs(0, 'al_p_absolute.csv', method = 'sidewalk')
+                #
+                # - assertEqual(count(by_gender), 50)
+                # - assertEqual(count(by_gender and not gender), 20)
+                # - assertEqual(count(by_gender and gender), 30)
+                #
+                # # external file, overridden expressions
+                # # -------------------------------------
+                # - by_gender: align_abs(0, 'al_p_absolute.csv',
+                #                        expressions=[not gender],
+                #                        method = 'sidewalk')
+                #
+                # - assertEqual(count(by_gender), 50)
+                # - assertEqual(count(by_gender and not gender), 30)
+                # - assertEqual(count(by_gender and gender), 20)
+                #
+                # # external file, overridden possible_values
+                # # -----------------------------------------
+                # - by_gender: align_abs(0, 'al_p_absolute.csv',
+                #                        possible_values=[[True, False]],
+                #                        method = 'sidewalk')
+                #
+                # - assertEqual(count(by_gender), 50)
+                # - assertEqual(count(by_gender and not gender), 30)
+                # - assertEqual(count(by_gender and gender), 20)
+
             test_extexpr:
                 - value: extexpr('regr_test_1d.csv')
                 - assertEqual(value, eduach * 0.3 + 0.2 * age + 0.1)
@@ -2627,6 +2696,7 @@ simulation:
                    # alignment
                    test_align,
                    test_align_abs,
+                   test_align_abs_sidewalk,
 
                    # misc
                    test_choice,
