@@ -129,25 +129,26 @@ entities:
                 - remove(dead)
 
             get_a_life:
-                # When using links, one is not limited to retrieve simple fields
-                # but can compute expressions directly in the linked
-                # individuals. To do that use the .get method on many2one links.
-                - alone: household.get(persons.count() == 1)
+                # create new households for persons aged 24+ who are still
+                # living with their mother
+                - in_mother_hh: hh_id == mother.hh_id
+                - should_move: in_mother_hh and (age >= 24)
 
-                # persons which are not already alone in their household leave
-                # their current household at 24. This process does two things:
+                # This process does two things:
                 # 1) create as many new households as necessary
                 # 2) change hh_id to the id of the newly created households
-                - hh_id: if(not alone and (age >= 24),
-                            new('household'),
-                            hh_id)
+                - hh_id: if(should_move, new('household'), hh_id)
 
                 # we could have written it in two explicit steps like below,
                 # but we usually prefer the way above which avoids repeating the
                 # filter.
-                # - new_hh_id: new('household', 
-                #                  filter=not alone and (age >= 24))
-                # - hh_id: if(not alone and (age >= 24), new_hh_id, hh_id)
+                # - new_hh_id: new('household', filter=should_move)
+                # - hh_id: if(should_move, new_hh_id, hh_id)
+
+                # bring along their children, if any
+                - hh_id: if(in_mother_hh and mother.should_move,
+                            mother.hh_id,
+                            hh_id)
 
             chart_demography:
                 - bar(groupby(agegroup, gender),

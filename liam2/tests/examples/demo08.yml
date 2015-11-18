@@ -182,9 +182,14 @@ entities:
                                     if(ISMARRIED, dur_in_couple + 1, 0))
 
             get_a_life:
-                - alone: household.get(persons.count() == 1)
-                - hh_id: if(not ISMARRIED and not alone and (age >= 24),
-                            new('household'),
+                # create new households for persons aged 24+ who are still
+                # living with their mother
+                - in_mother_hh: hh_id == mother.hh_id
+                - should_move: in_mother_hh and (age >= 24)
+                - hh_id: if(should_move, new('household'), hh_id)
+                # bring along their children, if any
+                - hh_id: if(in_mother_hh and mother.should_move,
+                            mother.hh_id,
                             hh_id)
 
             divorce:
