@@ -1,11 +1,12 @@
 from __future__ import print_function
 
 import sys
+import textwrap
 
 import config
 from entities import global_symbols
 from expr import expr_eval, Variable
-from exprtools import parse
+from exprtools import parse, functions
 
 entity_required = \
     "current entity is not set. It is required to set one using " \
@@ -26,6 +27,7 @@ help_template = """
     period [period]: set the current period
     fields [entity]: list the fields of that entity (or the current entity)
     globals:         list the available globals
+    functions:       list the available builtin functions
 
     show is implicit on all commands
 """
@@ -143,6 +145,13 @@ class Console(object):
                 details = ""
             print("* %s%s" % (k, details))
 
+    def list_functions(self):
+        # TODO: group functions by module
+        print("available functions:")
+        funcnames = sorted(k for k, v in functions.iteritems()
+                           if not v.__name__.startswith("__removed_"))
+        print('\n'.join(textwrap.wrap(', '.join(funcnames))))
+
     def execute(self, s):
         entity = self.entity
         if entity is None:
@@ -208,6 +217,8 @@ class Console(object):
                         self.list_fields()
                 elif s == "globals":
                     self.list_globals()
+                elif s == "functions":
+                    self.list_functions()
                 elif debugger and s in ('s', 'step'):
                     return 'step'
                 elif debugger and s in ('r', 'resume'):
