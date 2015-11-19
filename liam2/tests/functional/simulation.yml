@@ -1883,6 +1883,16 @@ entities:
                 # append
                 - csv(dump(period, id, age, filter=id < 10, header=False),
                       fname='person_ages.csv', mode='a')
+
+                # limit only
+                - csv(dump(period, id, age, limit=10), fname='dump_limit.csv')
+                # limit and filter (more statisfying the filter than limit)
+                - csv(dump(period, id, age, filter=id >= 10, limit=10),
+                      fname='dump_limit.csv', mode='a')
+                # limit and filter (more statisfying the filter than limit)
+                - csv(dump(period, id, age, filter=id < 5, limit=10),
+                      fname='dump_limit.csv', mode='a')
+
                 # test show
                 - show(dump(gender, age, filter=id < 10))
                 # aggregate and filter (0.6 * is important, otherwise we don't

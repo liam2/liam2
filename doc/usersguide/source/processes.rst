@@ -1991,7 +1991,7 @@ many (possibly all) individuals of the dataset.
 *general format* ::
 
     dump([expr1, expr2, ...,
-         filter=filterexpression, missing=value, header=True])
+         filter=filterexpression, missing=value, header=True, limit=None])
 
 If no expression is given, *all* fields of the current entity will be dumped
 (including temporary variables available at that point), otherwise, each
@@ -2007,6 +2007,9 @@ Defaults to None (no transformation).
 
 The 'header' argument determine whether column names should be in the dump or
 not. Defaults to True.
+
+The 'limit' argument specifies the maximum number of rows of the output.
+Defaults to None (no limit).
 
 *example* ::
 

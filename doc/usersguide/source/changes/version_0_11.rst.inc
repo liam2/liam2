@@ -3,7 +3,8 @@
 
 * added a feature (see the :ref:`miscellaneous section <misc>` for details).
 
-* added another feature.
+* added a 'limit' argument to `dump()` to limit the number of rows of the
+  output.
 
 .. _misc:
 

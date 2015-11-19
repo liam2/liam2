@@ -334,13 +334,15 @@ class Clone(New):
 
 class Dump(TableExpression):
     no_eval = ('args',)
-    kwonlyargs = {'filter': None, 'missing': None, 'header': True}
+    kwonlyargs = {'filter': None, 'missing': None, 'header': True,
+                  'limit': None}
 
     def compute(self, context, *args, **kwargs):
         filter_value = kwargs.pop('filter', None)
         missing = kwargs.pop('missing', None)
         # periods = kwargs.pop('periods', None)
         header = kwargs.pop('header', True)
+        limit = kwargs.pop('limit', None)
         entity = context.entity
 
         if args:
@@ -402,6 +404,10 @@ class Dump(TableExpression):
                 newcol = np.empty(numrows, dtype=dtype)
                 newcol.fill(col)
                 columns[idx] = newcol
+
+        if limit is not None:
+            assert isinstance(limit, (int, long))
+            columns = [col[:limit] for col in columns]
 
         data = izip(*columns)
         table = chain([str_expressions], data) if header else data
