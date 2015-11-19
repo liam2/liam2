@@ -19,6 +19,7 @@ period_required = \
 help_template = """
 %s
     help:            print this help
+    help [function]: print the available arguments for a function
     q[uit] or exit:  quit the program
     %s
     entities:        list the available entities
@@ -198,6 +199,8 @@ class Console(object):
                     continue
                 elif s == 'help':
                     print(help_text)
+                elif s.startswith('help ') and s[5:]:
+                    self.display_function_help(s[5:])
                 elif s == 'entity':
                     self._display_entity()
                 elif s.startswith('entity ') and s[7:]:
@@ -239,3 +242,10 @@ class Console(object):
                 if len(lines) > 1:
                     msg = '\n'.join(lines[1:])
                 print(msg)
+
+    def display_function_help(self, funcname):
+        func = functions[funcname]
+        argstr = str(func.argspec) if hasattr(func, 'argspec') else ''
+        print('{}({})'.format(funcname, argstr))
+        if func.__doc__:
+            print(func.__doc__)

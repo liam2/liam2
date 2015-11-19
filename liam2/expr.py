@@ -9,7 +9,7 @@ import numpy as np
 
 from cache import Cache
 from utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray,
-                   FullArgSpec, englishenum, make_hashable, add_context,
+                   NiceArgSpec, englishenum, make_hashable, add_context,
                    array_nan_equal)
 from context import EntityContext, EvaluationContext
 
@@ -653,7 +653,7 @@ class FillArgSpecMeta(FillFuncNameMeta):
                 # we set varkw to None
                 spec = spec[:2] + (None,) + spec[3:]
             extra = (kwonly.keys(), kwonly, {})
-            cls.argspec = FullArgSpec._make(spec + extra)
+            cls.argspec = NiceArgSpec._make(spec + extra)
 
     def get_compute_func(cls):
         raise NotImplementedError()

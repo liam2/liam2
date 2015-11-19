@@ -1156,10 +1156,27 @@ class ExplainTypeError(type):
 # function signatures
 # -------------------
 
+# TODO: use python3 signature objects
 FullArgSpec = namedtuple('FullArgSpec',
                          'args, varargs, varkw, defaults, kwonlyargs, '
                          'kwonlydefaults, annotations')
-
+class NiceArgSpec(FullArgSpec):
+    def __str__(self):
+        if self.defaults:
+            ndef = len(self.defaults)
+            l = list(self.args[:-ndef])
+            l.extend([k + '=' + repr(v)
+                      for k, v in zip(self.args[-ndef:], self.defaults)])
+        else:
+            l = list(self.args)
+        if self.varargs:
+            l.append('*' + self.varargs)
+        if self.varkw:
+            l.append('**' + self.varkw)
+        if self.kwonlyargs:
+            l.extend([k + '=' + repr(self.kwonlydefaults[k])
+                      for k in self.kwonlyargs])
+        return ', '.join(l)
 
 def _argspec(*args, **kwonlyargs):
     """
@@ -1194,7 +1211,7 @@ def _argspec(*args, **kwonlyargs):
         assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
         assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
     args = [a[0] if isinstance(a, tuple) else a for a in args]
-    return FullArgSpec(args, varargs, varkw, defaults,
+    return NiceArgSpec(args, varargs, varkw, defaults,
                        kwonlyargs=sorted(kwonlyargs.keys()),
                        kwonlydefaults=kwonlyargs,
                        annotations={})
@@ -1224,6 +1241,8 @@ def argspec(*args, **kwonlyargs):
     ... # doctest: +NORMALIZE_WHITESPACE
     FullArgSpec(args=[], varargs=None, varkw=None, defaults=None, kwonlyargs=[],
                 kwonlydefaults={}, annotations={})
+    >>> str(argspec('a, b, c=1, *d, **e, f=None'))
+    'a, b, c=1, *d, **e, f=None'
     """
     if len(args) == 1 and isinstance(args[0], basestring):
         str_args = args[0].split(',') if args[0] else []
