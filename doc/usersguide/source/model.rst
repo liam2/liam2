@@ -223,7 +223,7 @@ definition for that field (see the *agegroup* variable in the example below).
 The fields that are not present in the initial file or the fields associated with newly created members
 of any entity can also be initialized to a specific value by using the `default: some_default_value`.
 If not present they are initialized to the default of the field type which are False for boolean and
-0 for integer and float (see the *alive* variable in the example below).
+-1 for integer and numpy.nan for float (see the *alive* variable in the example below).
 
 .. _fields_output:
 
