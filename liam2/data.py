@@ -481,7 +481,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         expanded_data[:] = get_missing_record(expanded_data, default_values)
 
     # noinspection PyUnusedLocal
-    def copy_chunk(chunk_idx, chunk_num, default_values = None):
+    def copy_chunk(chunk_idx, chunk_num):
         chunk_start = chunk_num * chunksize
         chunk_stop = min(chunk_start + chunksize, numrows)
         if condition is not None:
@@ -496,7 +496,8 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
                 output_data = add_and_drop_fields(input_data, output_fields,
                                                   default_values, expanded_data)
             else:
-                output_data = add_and_drop_fields(input_data, output_fields, default_values)
+                output_data = add_and_drop_fields(input_data, output_fields,
+                                                  default_values)
         else:
             output_data = input_data
 
@@ -504,10 +505,10 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         output_table.flush()
 
     if show_progress:
-        loop_wh_progress(copy_chunk, range(num_chunks), default_values = default_values)
+        loop_wh_progress(copy_chunk, range(num_chunks))
     else:
         for chunk in range(num_chunks):
-            copy_chunk(chunk, chunk, default_values = default_values)
+            copy_chunk(chunk, chunk)
 
     return output_table
 
