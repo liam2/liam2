@@ -1297,7 +1297,7 @@ alignment process uses as input the scores simulated previously, and the
 information in the alignment files and sets the boolean variable *work*.
 No "take" or "leave" conditions are used in this case.
 
-
+.. _align_abs:
 .. index:: align_abs
 
 align_abs
@@ -1348,10 +1348,12 @@ Here is a description of the arguments specific to align_abs:
     In the current version of LIAM2, *errors* can only be used in combination
     with the *link* argument.
 
-  * **method**: is the name of the method to choose which individual are taken. The default is the "bysorting" method
-    which sorts the individuals by score and takes the needed number of individuals by descending order of score. The
-    other available method is the sidewalk method. It keeps a record of the accumulated probability and as long as there
-    is a change of the integer part of the accumulated probability, the individual is selected.
+  * **method**: is the name of the method to do the alignment.
+    The default "bysorting" method sorts the individuals by score and takes as
+    many individuals as necessary by descending order of score. The "sidewalk"
+    method traverse individuals in their original order, does a cumulative sum
+    of the probability and each time there is a change of the integer part of
+    the accumulated probability, the corresponding individual is selected.
 
 *example* ::
 
