@@ -79,14 +79,8 @@ def get_default_value(column, default_value=None):
 
 def get_default_vector(num, dtype, default_value=None):
     res = np.empty(num, dtype=dtype)
-    normalized_type = normalize_type(dtype.type)
-    if default_value is not None:
-        assert isinstance(default_value, normalized_type)
-        res.fill(default_value)
-        return res
-    else:
-        res.fill(missing_values[normalized_type])
-        return res
+    res.fill(get_default_value(res, default_value))
+    return res
 
 
 def get_default_record(array, default_values=None):
