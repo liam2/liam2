@@ -102,8 +102,8 @@ entities:
                            logit_regr(0.0, align='al_p_dead_m.csv'),
                            logit_regr(0.0, align='al_p_dead_f.csv'))
                 - mother_id: if(mother.dead, UNSET, mother_id)
-                - partner_id: if(partner.dead, UNSET, partner_id)
                 - civilstate: if(partner.dead, WIDOW, civilstate)
+                - partner_id: if(partner.dead, UNSET, partner_id)
                 - show('Avg age of dead men', avg(age, filter=dead and ISMALE))
                 - show('Avg age of dead women', avg(age, filter=dead and ISFEMALE))
                 - show('Widows', count(ISWIDOW))
@@ -132,6 +132,10 @@ entities:
                                           orderby=difficult_match),
                                  partner_id)
                 - justcoupled: to_couple and (partner_id != UNSET)
+
+                # When using links, one is not limited to retrieve simple fields
+                # but can compute expressions directly in the linked
+                # individuals. To do that use the .get method on many2one links.
                 - alone: household.get(persons.count() == 1)
 
                 # create new households for newly wed women
@@ -140,7 +144,7 @@ entities:
                 - hh_id: if(needhousehold, new('household'), hh_id)
                 # bring along their husband
                 - hh_id: if(ISMALE and justcoupled, partner.hh_id, hh_id)
-                # bring along their children
+                # bring along their children, if any
                 - hh_id: if(mother.justcoupled and in_mother_hh,
                             mother.hh_id,
                             hh_id)
@@ -154,9 +158,14 @@ entities:
 #                      suffix='new_couples')
 
             get_a_life:
-                - alone: household.get(persons.count() == 1)
-                - hh_id: if(not ISMARRIED and not alone and (age >= 24),
-                            new('household'),
+                # create new households for persons aged 24+ who are still
+                # living with their mother
+                - in_mother_hh: hh_id == mother.hh_id
+                - should_move: in_mother_hh and (age >= 24)
+                - hh_id: if(should_move, new('household'), hh_id)
+                # bring along their children, if any
+                - hh_id: if(in_mother_hh and mother.should_move,
+                            mother.hh_id,
                             hh_id)
 
             divorce:

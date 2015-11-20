@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 from itertools import product
@@ -116,7 +117,7 @@ except ImportError:
 #            # inequalities might be useful in some cases
 #            if filter[idx]:
 #                try:
-##                    pos = tuple([values_i.index(vi) for vi, values_i
+#                    # pos = tuple([values_i.index(vi) for vi, values_i
 #                    pos = tuple([np.searchsorted(values_i, vi)
 #                                 for vi, values_i
 #                                 in izip(row, possible_values)])

@@ -9,8 +9,7 @@ import numpy as np
 import config
 from align_link import align_link_nd
 from context import context_length
-from expr import Expr, Variable, expr_eval, traverse_expr, missing_values, \
-    always
+from expr import Expr, Variable, expr_eval, missing_values, always
 from exprbases import FilteredExpression
 from groupby import GroupBy
 from links import LinkGet, Many2One
@@ -22,7 +21,7 @@ from utils import PrettyTable, LabeledArray
 def kill_axis(axis_name, value, expressions, possible_values, need):
     """possible_values is a list of ndarrays"""
 
-    #When we transition to LArray, this whole function could be replaced by:
+    # When we transition to LArray, this whole function could be replaced by:
     # need = need.filter(axis[value])
     str_expressions = [str(e) for e in expressions]
     axis_num = str_expressions.index(axis_name)
@@ -48,7 +47,8 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
 
 
 def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
-                         take_filter=None, leave_filter=None):
+                         take_filter=None, leave_filter=None,
+                         method="bysorting"):
     assert isinstance(need, np.ndarray) and \
         np.issubdtype(need.dtype, np.integer)
     assert score is None or isinstance(score, (bool, int, float, np.ndarray))
@@ -60,10 +60,8 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
 
     maybe_filter = bool_filter_value
     if take_filter is not None:
-        # XXX: I wonder if users would prefer if filter_value was taken into
-        # account or not. This only impacts what it displayed on the console,
-        # but still...
-        take = np.sum(take_filter)
+        take_intersect = take_filter & bool_filter_value
+        take = np.sum(take_intersect)
 
         # XXX: it would probably be faster to leave the filters as boolean
         # vector and do
@@ -72,14 +70,14 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
         # instead of
         #     group_always = np.intersect1d(members_indices, take_indices,
         #                                   assume_unique=True)
-        take_indices = filter_to_indices(take_filter & bool_filter_value)
+        take_indices = filter_to_indices(take_intersect)
         maybe_filter &= ~take_filter
     else:
         take = 0
         take_indices = None
 
     if leave_filter is not None:
-        leave = np.sum(leave_filter)
+        leave = np.sum(leave_filter & bool_filter_value)
         maybe_filter &= ~leave_filter
     else:
         leave = 0
@@ -94,6 +92,16 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
     total_affected = 0
 
     aligned = np.zeros(ctx_length, dtype=bool)
+
+    if method == 'sidewalk':
+        score_max = max(score)
+        score_min = min(score)
+        if score_max > 1 or score_min < 0:
+            raise Exception("""Score values are in the interval {} - {}.
+Sidewalk alignment can only be used with a score between 0 and 1.
+You may want to use a logistic function.
+""".format(score_min, score_max))
+
     for members_indices, group_need in izip(groups, need.flat):
         if len(members_indices):
             affected = group_need
@@ -115,11 +123,15 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                 else:
                     group_maybe_indices = members_indices
                 if isinstance(score, np.ndarray):
-                    maybe_members_rank_value = score[group_maybe_indices]
-                    # TODO: use np.partition (np1.8+)
-                    sorted_local_indices = np.argsort(maybe_members_rank_value)
-                    sorted_global_indices = \
-                        group_maybe_indices[sorted_local_indices]
+                    if method == 'bysorting':
+                        maybe_members_rank_value = score[group_maybe_indices]
+                        # TODO: use np.partition (np1.8+)
+                        sorted_local_indices = np.argsort(maybe_members_rank_value)
+                        sorted_global_indices = \
+                            group_maybe_indices[sorted_local_indices]
+                    elif method == 'sidewalk':
+                        sorted_global_indices = \
+                            np.random.permutation(group_maybe_indices)
                 else:
                     # if the score expression is a constant, we don't need to
                     # sort indices. In that case, the alignment will first take
@@ -128,8 +140,20 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
 
                 # maybe_to_take is always > 0
                 maybe_to_take = affected - num_always
-                # take the last X individuals (ie those with the highest score)
-                indices_to_take = sorted_global_indices[-maybe_to_take:]
+                if method == 'bysorting':
+                    # take the last X individuals (ie those with the highest
+                    # score)
+                    indices_to_take = sorted_global_indices[-maybe_to_take:]
+                elif method == 'sidewalk':
+                    if maybe_to_take > sum(score[sorted_global_indices]):
+                        raise ValueError("Cannot use 'sidewalk' with need > "
+                                         "sum of probabilities")
+                    u = np.random.uniform() + np.arange(maybe_to_take)
+                    # on the random sample, score are cumulated and then, we
+                    # extract indices of each value before each value of u
+                    cum_score = np.cumsum(score[sorted_global_indices])
+                    indices_to_take = \
+                        sorted_global_indices[np.searchsorted(cum_score, u)]
 
                 underflow = maybe_to_take - len(indices_to_take)
                 if underflow > 0:
@@ -157,7 +181,8 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
 # noinspection PyProtectedMember
 class AlignmentAbsoluteValues(FilteredExpression):
     funcname = 'align_abs'
-    no_eval = ('filter', 'secondary_axis', 'expressions')
+    no_eval = ('filter', 'secondary_axis', 'expressions',
+               'method')
 
     def __init__(self, *args, **kwargs):
         super(AlignmentAbsoluteValues, self).__init__(*args, **kwargs)
@@ -293,11 +318,26 @@ class AlignmentAbsoluteValues(FilteredExpression):
                           [[col[row] for col in columns]
                            for row in range(num_rows) if unaligned[row]]))
 
-    def compute(self, context, score, need, filter=None, take=None, leave=None,
+    def compute(self, context, score, need=None,
+                filter=None, take=None, leave=None,
                 expressions=None, possible_values=None, errors='default',
-                frac_need='uniform', link=None, secondary_axis=None):
+                frac_need='uniform', link=None, secondary_axis=None,
+                method='bysorting'):
+
+        if method not in ("bysorting", "sidewalk"):
+            raise Exception("Method for alignment should be either 'bysorting' "
+                            "or 'sidewalk'")
+        if method == 'bysorting' and need is None:
+            raise Exception("need argument is required when using the "
+                            "'bysorting' method (which is the default)")
+
+        if method == "sidewalk":
+            # need is calculated over score and we could think of
+            # calculate without leave_filter and without take_filter
+            if need is None:
+                need = sum(score)
+
         # need is a single scalar
-        # if not isinstance(need, (tuple, list, np.ndarray)):
         if np.isscalar(need):
             need = [need]
 
@@ -329,11 +369,13 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         func = self.align_no_link if link is None else self.align_link
         return func(context, score, need, filter, take, leave, expressions,
-                    possible_values, errors, frac_need, link, secondary_axis)
+                    possible_values, errors, frac_need, link, secondary_axis,
+                    method)
 
     def align_no_link(self, context, score, need, filter, take, leave,
                       expressions, possible_values, errors, frac_need, link,
-                      secondary_axis):
+                      secondary_axis, method):
+
         ctx_length = context_length(context)
 
         need, expressions, possible_values = \
@@ -373,21 +415,20 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         # noinspection PyAugmentAssignment
         need = need * self._get_need_correction(groups, possible_values)
-        need = self._handle_frac_need(need, method=frac_need)
-        need = self._add_past_error(context, need, method=errors)
-
+        need = self._handle_frac_need(need, frac_need)
+        need = self._add_past_error(context, need, errors)
         return align_get_indices_nd(ctx_length, groups, need, filter_value,
-                                    score, take, leave)
+                                    score, take, leave, method)
 
     def align_link(self, context, score, need, filter, take, leave,
                    expressions, possible_values, errors, frac_need, link,
-                   secondary_axis):
+                   secondary_axis, method):
         target_context = link._target_context(context)
         need, expressions, possible_values = \
             self._eval_need(context, need, expressions, possible_values,
                             target_context)
-        need = self._handle_frac_need(need, method=frac_need)
-        need = self._add_past_error(context, need, method=errors)
+        need = self._handle_frac_need(need, frac_need)
+        need = self._add_past_error(context, need, errors)
 
         # handle secondary axis
         if isinstance(secondary_axis, Expr):
@@ -528,17 +569,21 @@ class Alignment(AlignmentAbsoluteValues):
                  filter=None, take=None, leave=None,
                  expressions=None, possible_values=None,
                  errors='default', frac_need='uniform',
-                 fname=None):
+                 fname=None, method='bysorting'):
 
         if possible_values is not None:
             if expressions is None or len(possible_values) != len(expressions):
                 raise Exception("align() expressions and possible_values "
                                 "arguments should have the same length")
 
+        if method == 'sidewalk':
+            raise Exception("sidewalk method is not supported for align(), "
+                            "please use align_abs() instead")
+
         if proportions is None and fname is None:
             raise Exception("align() needs either an fname or proportions "
                             "arguments")
-        if proportions is not None and fname is not None:
+        elif proportions is not None and fname is not None:
             raise Exception("align() cannot have both fname and proportions "
                             "arguments")
         if fname is not None:
@@ -547,7 +592,8 @@ class Alignment(AlignmentAbsoluteValues):
         super(Alignment, self).__init__(score, proportions,
                                         filter, take, leave,
                                         expressions, possible_values,
-                                        errors, frac_need)
+                                        errors, frac_need,
+                                        method=method)
 
     def _get_need_correction(self, groups, possible_values):
         data = np.array([len(group) for group in groups])

@@ -140,7 +140,7 @@ class Sort(NumpyChangeArray):
     np_func = np.sort
 
 
-#------------------------------------
+# ------------------------------------
 
 
 class Round(NumpyChangeArray):
@@ -205,8 +205,8 @@ def add_individuals(target_context, children):
         # to further distinguish between aggregated entity var and other global
         # temporaries to store them in the entity somewhere, but I am unsure
         # whether it is possible.
-        if (isinstance(temp_value, np.ndarray) and temp_value.shape == (
-        num_rows,)):
+        if (isinstance(temp_value, np.ndarray) and
+                temp_value.shape == (num_rows,)):
             extra = get_missing_vector(num_birth, temp_value.dtype)
             temp_variables[name] = np.concatenate((temp_value, extra))
 
@@ -335,13 +335,15 @@ class Clone(New):
 
 class Dump(TableExpression):
     no_eval = ('args',)
-    kwonlyargs = {'filter': None, 'missing': None, 'header': True}
+    kwonlyargs = {'filter': None, 'missing': None, 'header': True,
+                  'limit': None}
 
     def compute(self, context, *args, **kwargs):
         filter_value = kwargs.pop('filter', None)
         missing = kwargs.pop('missing', None)
         # periods = kwargs.pop('periods', None)
         header = kwargs.pop('header', True)
+        limit = kwargs.pop('limit', None)
         entity = context.entity
 
         if args:
@@ -404,6 +406,10 @@ class Dump(TableExpression):
                 newcol.fill(col)
                 columns[idx] = newcol
 
+        if limit is not None:
+            assert isinstance(limit, (int, long))
+            columns = [col[:limit] for col in columns]
+
         data = izip(*columns)
         table = chain([str_expressions], data) if header else data
         return PrettyTable(table, missing)
@@ -418,9 +424,11 @@ class Where(NumexprFunction):
     @property
     def cond(self):
         return self.args[0]
+
     @property
     def iftrue(self):
         return self.args[1]
+
     @property
     def iffalse(self):
         return self.args[2]

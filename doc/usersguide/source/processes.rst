@@ -343,7 +343,7 @@ two kinds of globals: tables and multi-dimensional arrays. They both declared
 (see the :ref:`globals_declaration` section) before they can be used.
 
 Globals tables come in two variety: those with a PERIOD column and those
-without. 
+without.
 
 The fields in a globals **table with a PERIOD column** can be used
 like normal (entity) fields except they need to be prefixed by the name of
@@ -357,7 +357,7 @@ currently being evaluated.
 There is a special case for the **periodic** table: its fields do not need
 to be prefixed by "periodic." (but they can be, if desired). ::
 
-    - retirement_age: if(gender, 65, WEMRA) 
+    - retirement_age: if(gender, 65, WEMRA)
     - workstate: if(age >= retirement_age, 9, workstate)
 
 
@@ -567,9 +567,9 @@ temporal functions
 - lag(expr[, num_periods][, missing=value): value at previous period.
 
   **expr**: any expression.
-  
+
   **num_periods**: optional argument specifying the number of periods to go
-  back to. This can be either a constant or a scalar expression. Defaults to 1. 
+  back to. This can be either a constant or a scalar expression. Defaults to 1.
 
   **missing**: the value to return for individuals which were not present in
   the past period. By default, it returns the missing value corresponding to
@@ -589,9 +589,9 @@ temporal functions
 - value_for_period(expr, period[, missing=value]): value at a specific period
 
   **expr**: any expression.
-  
+
   **period**: the period used to evaluate the expression. This can be either a
-  constant or a scalar expression. 
+  constant or a scalar expression.
 
   **missing**: the value to return for individuals which were not present in
   the period. By default, it returns the missing value corresponding to
@@ -1024,7 +1024,7 @@ The logit_score function is a logistic with a random part: ::
 
     logit_score(a) = logistic(a - logit(u))
 
-where *u* is a random number from an uniform distribution [0, 1). 
+where *u* is a random number from an uniform distribution [0, 1).
 
 *logit_score* is very useful in behavioural equations. A behavioural equation
 starts by creating a score that reflects the risk p*i of an event occurring.
@@ -1038,7 +1038,7 @@ A typical usage is as follow: ::
 
 However, the nested structure can make things less readable if you have many
 different conditions. In that case, one would prefer the following longer
-form: :: 
+form: ::
 
     process_name:
         # initialise the score to -1
@@ -1078,7 +1078,7 @@ align
 
 Now that we have computed a score (risk) for an event happening, we might want
 to use alignment so the number of events occuring per category matches a
-proportion defined externaly. 
+proportion defined externaly.
 
 There are different ways to choose which individuals are taken. The methodology
 used for now by LIAM2 is called "alignment by sorting", that is, for each
@@ -1096,7 +1096,7 @@ modeller choose.
    the smaller scores will never be selected.
 
 To know more about the alignment process reading "Evaluating Alignment Methods
-in Dynamic Microsimulation Models", by Li and O'Donoghue is advised. 
+in Dynamic Microsimulation Models", by Li and O'Donoghue is advised.
 
 An alignment expression takes the following general form: ::
 
@@ -1113,13 +1113,13 @@ For example, it could look like: ::
 
     - unemp: align(unemp_score,
                    'al_p_unemployed_m.csv',
-                   filter=not ISINWORK and (age > 15) and (age < 65), 
+                   filter=not ISINWORK and (age > 15) and (age < 65),
                    take=ISUNEMPLOYED,
                    leave=ISSTUDENT or ISRETIRED)
 
 Now let us examine each argument in turn:
 
- * **score**: it must be an expression (or a simple variable) returning 
+ * **score**: it must be an expression (or a simple variable) returning
    a numerical value. It will be used to rank individuals. One will usually
    use logit_score() to compute the score, but it can be computed in any other
    way a modeller choose. Note that the score is not modified in any way
@@ -1131,7 +1131,7 @@ Now let us examine each argument in turn:
    take many forms. The most common one will probably be a
    string holding the name of a file containing the alignment data (like in
    the example above) but it can be any of the following:
-   
+
     + a single scalar, for aligning with a constant proportion.
     + a list of scalars, for aligning with constant proportions per category.
     + an expression returning a single scalar.
@@ -1157,13 +1157,13 @@ Now let us examine each argument in turn:
    for the alignment. Note that if the align() function is used inside an
    *if()* expression, its filter is adjusted accordingly ("anded" with the
    filter of the if() expression). For example: ::
-   
+
      - aligned: if(condition,
                    align(score_expr1, 'filename1.csv'),
                    align(score_expr2, 'filename2.csv'))
-   
+
    is equivalent to: ::
-           
+
      - aligned1: align(score_expr1, 'filename1.csv', filter=condition)
      - aligned2: align(score_expr2, 'filename2.csv', filter=not condition)
      - aligned: if(condition, aligned1, aligned2)
@@ -1172,7 +1172,7 @@ Now let us examine each argument in turn:
    selected, regardless of their score. This argument should be used with care
    as those individuals will be selected unconditionally, even if that means
    overflowing the number of individuals desired to satisfy the alignment.
-   
+
    Suppose that the alignment specifies that 10 individuals should experience
    a certain event, and that there are 3 individuals who meet the conditions
    specified in the *take*. Then these 3 individuals will be selected a priori
@@ -1181,7 +1181,7 @@ Now let us examine each argument in turn:
 
    A "softer" alternative can be easily achieved by setting a very high score
    for individuals to be taken first.
-  
+
  * **leave**: an expression specifying individuals which should never be
    selected, regardless of their score. This argument should be used with care
    as those individuals will *never* be selected, even if that cause the target
@@ -1196,12 +1196,12 @@ Now let us examine each argument in turn:
       negative number), it *can* still be selected by the alignment expression.
       This happens when there are not enough candidates (selected by the filter)
       to meet the alignment needs.
- 
+
  * **expressions**: specify the expressions used to partition the individuals
    into the different alignment categories. If proportions is a file name, the
    column names declared in the file are used by default, but they can be
    overridden using this argument. For example: ::
-   
+
      align(0.0, 'al_p_dead.csv', expressions=[gender, age + 1])
 
  * **possible_values**: specify the different values for each of the
@@ -1209,7 +1209,7 @@ Now let us examine each argument in turn:
    combination of the different lists of possible values will form all the
    alignment categories. For example: ::
 
-     align(0.0, 
+     align(0.0,
            proportions=[0.1, 0.2, 0.3, 0.4],
            expressions=[gender, age < 50],
            possible_values=[[False, True], [False, True]])
@@ -1224,7 +1224,7 @@ Now let us examine each argument in turn:
       individual is added for a category if the fractional need for that
       category is >= 0.5.
     + "cutoff" tries to match the total need as closely as possible (at the
-      expense of a slight loss of precision for individual categories) by 
+      expense of a slight loss of precision for individual categories) by
       searching for the "cutoff point" that yields: ::
 
         count(frac_need >= cutoff) == sum(frac_need)
@@ -1239,7 +1239,7 @@ one will usually use the following form: ::
                    False)
 
 Since LIAM2 supports alignment with any number of dimensions, one could also
-merge both data files in a single file with one more dimension and use a 
+merge both data files in a single file with one more dimension and use a
 single align() expression: ::
 
     - variable: if(condition,
@@ -1270,7 +1270,7 @@ The example below describes the process of getting (or keeping) a job: ::
                          logit_score(0.8217638 * age - 0.0219761 * age **2 + 0.000166 * age **3
                                      - 0.5590975 * ISMARRIED - 10.48043),
                          work_score)
-    
+
         - work: if(ACTIVEAGE,
                    if(ISMALE,
                       align(work_score, 'al_p_inwork_m.csv',
@@ -1283,7 +1283,7 @@ The first sub process illustrates a "*soft leave*" by setting the score
 variable *work_score* to -1. This makes sure that the a priori selection
 probability is very low (but not zero, as in the case of *leave* conditions)
 for those who satisfy the filter of the alignment but for which a score is not
-explicitly specified the subsequent processes. 
+explicitly specified the subsequent processes.
 
 Next come four *if* conditions, separating the various behavioural equations
 to the sub-sample they pertain to. The first two conditions pertain to men
@@ -1297,14 +1297,14 @@ alignment process uses as input the scores simulated previously, and the
 information in the alignment files and sets the boolean variable *work*.
 No "take" or "leave" conditions are used in this case.
 
-
+.. _align_abs:
 .. index:: align_abs
 
 align_abs
 ~~~~~~~~~
 
 align_abs is equivalent to align(), except that it aligns to absolute numbers
-instead of proportions. It also supports a few additional arguments to work 
+instead of proportions. It also supports a few additional arguments to work
 on a **linked entity**.
 
 The general form of align_abs is : ::
@@ -1319,7 +1319,8 @@ The general form of align_abs is : ::
               [frac_need="uniform"|"round"|"cutoff",]
               [link=link_name,]
               [secondary_axis=column_name,]
-              [errors="default"|"carry"])
+              [errors="default"|"carry",]
+              [method="bysorting"|"sidewalk"])
 
 In addition to all the arguments supported by *align()*, *align_abs()* also
 supports an optional "link" argument, which makes it work on a linked entity.
@@ -1334,18 +1335,25 @@ Here is a description of the arguments specific to align_abs:
 
     This can be used, for example, to take as many *households* as necessary
     trying to get as close as possible to a particular distribution of
-    *persons*. 
+    *persons*.
 
   * **secondary_axis**: name of an axis which will influence rel_need when the
-    subtotal for that axis is exceeded. See total_by_sex in Chenard. 
+    subtotal for that axis is exceeded. See total_by_sex in Chenard.
     *secondary_axis* can only be used in combination with the link argument
     and it *must* be one of the alignment columns.
 
-  * **errors**: if set to 'carry', the error for a period (difference between 
+  * **errors**: if set to 'carry', the error for a period (difference between
     the number of individuals aligned and the target for each category) is
     stored and added to the target for the next period.
     In the current version of LIAM2, *errors* can only be used in combination
     with the *link* argument.
+
+  * **method**: is the name of the method to do the alignment.
+    The default "bysorting" method sorts the individuals by score and takes as
+    many individuals as necessary by descending order of score. The "sidewalk"
+    method traverse individuals in their original order, does a cumulative sum
+    of the probability and each time there is a change of the integer part of
+    the accumulated probability, the corresponding individual is selected.
 
 *example* ::
 
@@ -1370,7 +1378,7 @@ Here is a description of the arguments specific to align_abs:
 
         # Distribute total desired migrants, by age and gender
         - need: num_migrants * mig_period
-        
+
         # households have a 50% chance to be candidate for immigration
         - is_candidate: uniform() < 0.5
 
@@ -1390,7 +1398,7 @@ logit_regr
 logit_regr is a shortcut form to call logit_score and "evaluate whether the
 event happened" in a single function. Thus, the function returns a boolean:
 True for individuals which are selected, False for all others.
-Its general form is: :: 
+Its general form is: ::
 
   - aligned: logit_regr(expression,
                         [filter=conditions,]
@@ -1915,7 +1923,7 @@ Arguments:
     *example* ::
 
         csv(avg(income), fname='income{period}.csv')
-    
+
     would create "income2002.csv" and "income2003.csv".
 
   - 'mode' allows appending (mode='a') to a csv file instead of overwriting it
@@ -1934,7 +1942,7 @@ Arguments:
        simulation to that of the previous one. One way to do overwrite the file
        automatically at the start of a simulation is to have a function in the
        init section without mode='a'.
-    
+
     If you want that file to start empty, you can do so this way: ::
 
         csv(fname='avg_income.csv')
@@ -1951,7 +1959,7 @@ below each other. ::
     csv(table_expr1, 'and here goes another table', table_expr2,
         fname='tables.csv')
 
-Will produce a file with a layout like this: :: 
+Will produce a file with a layout like this: ::
 
   | table 1 value at row 1, col 1 | col 2 |   ... | col N |
   |                           ... |   ... |   ... |   ... |
@@ -1975,7 +1983,7 @@ between brackets: ::
         ['with', 'several lines'],
         fname='person_age_aggregates.csv')
 
-Will produce a file with a layout like this: :: 
+Will produce a file with a layout like this: ::
 
 | this is | a header      |
 | with    | several lines |
@@ -1991,7 +1999,7 @@ many (possibly all) individuals of the dataset.
 *general format* ::
 
     dump([expr1, expr2, ...,
-         filter=filterexpression, missing=value, header=True])
+         filter=filterexpression, missing=value, header=True, limit=None])
 
 If no expression is given, *all* fields of the current entity will be dumped
 (including temporary variables available at that point), otherwise, each
@@ -2007,6 +2015,9 @@ Defaults to None (no transformation).
 
 The 'header' argument determine whether column names should be in the dump or
 not. Defaults to True.
+
+The 'limit' argument specifies the maximum number of rows of the output.
+Defaults to None (no limit).
 
 *example* ::
 
@@ -2035,7 +2046,7 @@ groupby
 given expressions, and optionally compute an expression for each group (using
 the *expr* argument). If no expression is given, it will compute the number of
 individuals in that group. A *filter* can be specified to limit the
-individuals taken into account. 
+individuals taken into account.
 
 *general format* ::
 
@@ -2051,7 +2062,7 @@ individuals taken into account.
 
 gives ::
 
-    trunc((age / 10)) | gender |      |      
+    trunc((age / 10)) | gender |      |
                       |  False | True | total
                     0 |    818 |  803 |  1621
                     1 |    800 |  800 |  1600
@@ -2071,7 +2082,7 @@ gives ::
 
 gives ::
 
-    inwork | gender |      |      
+    inwork | gender |      |
            |  False | True | total
      False |   6170 | 5587 | 11757
       True |   3832 | 4355 |  8187
@@ -2083,7 +2094,7 @@ gives ::
 
 gives ::
 
-    inwork | gender |      |      
+    inwork | gender |      |
            |  False | True | total
      False | 30.94 | 28.01 |  58.95
       True | 19.21 | 21.84 |  41.05
@@ -2095,7 +2106,7 @@ gives ::
 
 gives the average age by workstate and gender ::
 
-    workstate | gender |       |      
+    workstate | gender |       |
               |  False |  True | total
             1 |  41.29 | 40.53 | 40.88
             2 |  40.28 | 44.51 | 41.88
@@ -2121,16 +2132,16 @@ inside a larger expression (as above) because it can only work with arrays of
 the same size. Compare : ::
 
   groupby(civilstate, filter=age > 80)
-  
-  civilstate |     |    |      
+
+  civilstate |     |    |
            1 |   3 |  4 | total
          542 | 150 | 85 |   777
-         
+
 with ::
 
   groupby(civilstate, expr=count(age > 80))
 
-  civilstate |   |     |    |      
+  civilstate |   |     |    |
            1 | 2 |   3 |  4 | total
          542 | 0 | 150 | 85 |   777
 
@@ -2142,7 +2153,7 @@ large tables which would take forever to display. ::
 
   groupby(agegroup_civilstate, gender, expr=id, filter=id < 20)
 
-  agegroup_civilstate |        gender |             |                     
+  agegroup_civilstate |        gender |             |
                       |         False |        True |                total
                     0 |     [0 1 4 6] |   [2 3 5 7] |    [0 1 4 6 2 3 5 7]
                     5 |     [8 10 12] |   [9 11 13] |    [8 10 12 9 11 13]
@@ -2152,10 +2163,10 @@ large tables which would take forever to display. ::
                       |               |         19] |         13 15 17 19]
 
 or ::
- 
+
   groupby(civilstate, gender, expr=age, filter=id > 100 and id < 110)
 
-  civilstate |        gender |                  |                             
+  civilstate |        gender |                  |
              |         False |             True |                        total
            1 |       [46 47] |       [46 47 47] |             [46 47 46 47 47]
            2 |          [47] |          [45 46] |                   [47 45 46]
@@ -2467,7 +2478,7 @@ file and have the result directly. Show is implicit for all operations.
 
     >>> groupby(trunc(age / 20), gender, expr=count(inwork))
 
-    trunc(age / 20) | gender |      |      
+    trunc(age / 20) | gender |      |
                     |  False | True | total
                   0 |     14 |   18 |    32
                   1 |    317 |  496 |   813
@@ -2501,7 +2512,7 @@ interactive console when you reach it through a breakpoint: "step" to execute
         - breakpoint(2002)
         - ...
 
-.. index:: assertions, assertTrue, assertEqual 
+.. index:: assertions, assertTrue, assertEqual
 
 assertions
 ----------
@@ -2519,5 +2530,5 @@ the :ref:`assertions-label` simulation option.
 - assertEquiv(expr1, expr2): evaluates both expressions and check their
   results are equal tolerating a difference in shape (though they must be
   compatible).
-- assertIsClose(expr1, expr2): evaluates both expressions and check their 
+- assertIsClose(expr1, expr2): evaluates both expressions and check their
   results are almost equal.

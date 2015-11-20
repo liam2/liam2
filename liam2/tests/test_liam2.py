@@ -24,9 +24,11 @@ def run_simulation(yaml_file, output_dir):
 
 
 def test_functional():
-    functional_excluded_files = ['imported1.yml', 'imported2.yml']
+    functional_excluded_files = ['imported1.yml', 'imported2.yml', 'import.yml']
     if use_travis:
         functional_excluded_files.extend(['static.yml', 'generate.yml'])
+    #  Running small.h5 creator
+    run_file(os.path.join(test_root, 'functional', 'import.yml'))
     for test_file in iterate_files('functional', functional_excluded_files):
         yield run_file, test_file
 
@@ -35,6 +37,8 @@ def test_examples():
     # No pyqt4 on travis
     need_qt = ['demo02.yml', 'demo03.yml', 'demo04.yml', 'demo06.yml']
     examples_excluded_files = need_qt if use_travis else []
+    #  Running demo.h5 creator
+    run_file(os.path.join(test_root, 'examples', 'demo_import.yml'))
     for test_file in iterate_files('examples', examples_excluded_files):
         yield run_file, test_file
 

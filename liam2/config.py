@@ -1,8 +1,9 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import os
 
-#TODO: most of these (except possibly input_directory) should be moved to
+# TODO: most of these (except possibly input_directory) should be moved to
 # Simulation attributes (or in the context)
 debug = os.environ.get("DEBUG", False)
 input_directory = "."

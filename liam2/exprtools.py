@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import division, print_function
 
 import ast
@@ -55,8 +56,8 @@ def binop(opname, kind='binary', reversed=False):
                    'logical': LogicalOpNode,
                    'comparison': ComparisonOpNode}
         class_ = classes[kind]
-        return class_(opname, other, self) if reversed \
-                                           else class_(opname, self, other)
+        self, other = (other, self) if reversed else (self, other)
+        return class_(opname, self, other)
     return op
 
 
@@ -228,6 +229,7 @@ class CallNode(Node):
             if link_symbol is not None:
                 link = to_ast(link_symbol, context)
                 local_context = context.copy()
+                # noinspection PyProtectedMember
                 local_context['__entity__'] = link._target_entity_name
                 axis_symbol = self.kwargs.get('secondary_axis', None)
                 if axis_symbol is not None:
@@ -253,6 +255,7 @@ class CallNode(Node):
                 link = lv.target_expr
         if link is not None:
             local_context = context.copy()
+            # noinspection PyProtectedMember
             local_context['__entity__'] = link._target_entity_name
         else:
             local_context = context

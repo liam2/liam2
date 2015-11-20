@@ -9,7 +9,7 @@ import numpy as np
 
 from cache import Cache
 from utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray,
-                   FullArgSpec, englishenum, make_hashable, add_context,
+                   NiceArgSpec, englishenum, make_hashable, add_context,
                    array_nan_equal)
 from context import EntityContext, EvaluationContext
 
@@ -213,18 +213,18 @@ def expr_eval(expr, context):
             # TODO: also check for globals
             for var in expr.collect_variables():
                 if var.name not in globals_names and var not in context:
-                    raise Exception("variable '%s' is unknown (it is either not "
-                                    "defined or not computed yet)" % var)
+                    raise Exception("variable '%s' is unknown (it is either "
+                                    "not defined or not computed yet)" % var)
             return expr.evaluate(context)
 
             # there are several flaws with this approach:
             # 1) I don't get action times (csv et al)
             # 2) these are cumulative times (they include child expr/processes)
-            #    we might want to store the timings in a tree (based on call stack
-            #    depth???) so that I could rebuild both cumulative and "real"
-            #    timings.
-            # 3) the sum of timings is wrong since children/nested expr times count
-            #    both for themselves and for all their parents
+            #    we might want to store the timings in a tree (based on call
+            #    stack depth???) so that I could rebuild both cumulative and
+            #    "real" timings.
+            # 3) the sum of timings is wrong since children/nested expr times
+            #    count both for themselves and for all their parents
     #        time, res = gettime(expr.evaluate, context)
     #        timings[expr.__class__.__name__] += time
     #        return res
@@ -665,7 +665,7 @@ class FillArgSpecMeta(FillFuncNameMeta):
                 # we set varkw to None
                 spec = spec[:2] + (None,) + spec[3:]
             extra = (kwonly.keys(), kwonly, {})
-            cls.argspec = FullArgSpec._make(spec + extra)
+            cls.argspec = NiceArgSpec._make(spec + extra)
 
     def get_compute_func(cls):
         raise NotImplementedError()

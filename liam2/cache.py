@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 
@@ -19,4 +20,3 @@ class Cache(dict):
                     expr_match):
                 # print("matches", key, " => invalidating")
                 del self[key]
-

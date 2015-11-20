@@ -157,7 +157,7 @@ class ColumnArray(object):
 
     def __len__(self):
         if len(self.columns):
-            anycol = self.columns.itervalues().next()
+            anycol = next(self.columns.itervalues())
             return len(anycol)
         else:
             return 0
@@ -209,9 +209,9 @@ class ColumnArray(object):
         table_start = start
         while numlines > 0:
             buffer_rows = min(numlines, max_buffer_rows)
-#            if buffer_rows < len(chunk):
-                # last chunk is smaller
-#                chunk = np.empty(buffer_rows, dtype=dtype)
+            # if buffer_rows < len(chunk):
+            #     # last chunk is smaller
+            #     chunk = np.empty(buffer_rows, dtype=dtype)
 # needs pytables3
 #            table.read(table_start, table_start + buffer_rows, out=chunk)
             chunk = table.read(table_start, table_start + buffer_rows)
@@ -693,7 +693,7 @@ class IndexedTable(object):
             raise NotImplementedError('reading only some ids is not '
                                       'implemented yet')
 
-    #XXX: use __contains__?
+    # XXX: use __contains__?
     def has_period(self, period):
         return period in self.period_index
 
@@ -876,7 +876,8 @@ class H5Sink(DataSink):
                                        for p, rows in input_rows.iteritems()
                                        if p < start_period)
                     if output_rows:
-                        # stoprow = last row of the last period before start_period
+                        # stoprow = last row of the last period before
+                        #           start_period
                         _, stoprow = input_rows[max(output_rows.iterkeys())]
                     else:
                         stoprow = 0

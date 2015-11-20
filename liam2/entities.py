@@ -5,7 +5,7 @@ import collections
 import sys
 import warnings
 
-#import bcolz
+# import bcolz
 import numpy as np
 import tables
 
@@ -24,15 +24,14 @@ from utils import (count_occurrences, field_str_to_type, size2str,
 default_value_by_strtype = {"bool": False, "float": np.nan, 'int': -1}
 max_vars = 0
 
-
-#def compress_column(a, level):
+# def compress_column(a, level):
 #    arr = bcolz.carray(a, cparams=bcolz.cparams(level))
 #    print "%d -> %d (%.2f)" % (arr.nbytes, arr.cbytes,
 #                               float(arr.nbytes) / arr.cbytes),
 #    return arr
 #
 #
-#def decompress_column(a):
+# def decompress_column(a):
 #    return a[:]
 
 def global_symbols(globals_def):
@@ -152,7 +151,9 @@ class Entity(object):
                         default_value = fielddef.get('default', default_value_by_strtype[strtype])
                     elif isinstance(fielddef, str):
                         strtype = fielddef
-                        default_value = default_value_by_strtype[strtype]
+			default_value = default_value_by_strtype[strtype]
+                    else:
+                        raise Exception('invalid field definition')
                     dtype = field_str_to_type(strtype, "field '%s'" % name)
                 else:
                     assert isinstance(fielddef, type)
@@ -232,7 +233,7 @@ class Entity(object):
         # YAML "ordered dict" syntax returns a list of dict and we want a list
         # of tuples
         # FIXME: if "fields" key is present but no field is defined,
-        #entity_def.get('fields', []) returns None and this breaks
+        # entity_def.get('fields', []) returns None and this breaks
         fields_def = [d.items()[0] for d in entity_def.get('fields', [])]
 
         link_defs = entity_def.get('links', {})
@@ -503,7 +504,7 @@ Please use this instead:
                             method_context, group_predictors)
                         result_expr = parse(result_def, method_context)
                         assert result_expr is None or \
-                               isinstance(result_expr, Expr)
+                            isinstance(result_expr, Expr)
                         process = Function(k, self, argnames, code, result_expr)
                     elif isinstance(v, dict) and 'predictor' in v:
                         raise ValueError("Using the 'predictor' keyword is "
@@ -514,8 +515,8 @@ Please use this instead:
                     elif k is None and v is None:
                         raise ValueError("empty process found ('-')")
                     else:
-                        raise Exception("unknown expression type for %s: %s (%s)"
-                                        % (k, v, type(v)))
+                        raise Exception("unknown expression type for "
+                                        "%s: %s (%s)" % (k, v, type(v)))
             processes.append((k, process))
         return processes
 
@@ -645,6 +646,7 @@ Please use this instead:
         self.output_index[period] = self.id_to_rownum
 
         # also flush it to disk
+        # noinspection PyProtectedMember
         h5file = self.output_index_node._v_file
         h5file.create_array(self.output_index_node, "_%d" % period,
                             self.id_to_rownum, "Period %d index" % period)

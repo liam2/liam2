@@ -271,17 +271,21 @@ def make_np_class(baseclass, docstring, dtypefunc):
     name, args = split_signature(docstring)
     if isinstance(dtypefunc, type):
         dtypefunc = always(dtypefunc)
+    evalfunc = getattr(np.random, name)
 
     # we need to explicitly set funcname, because the usual mechanism of
     # getting it from the class name during class creation (in the metaclass)
     # does not work because the class name is not set yet.
     class FuncClass(baseclass):
-        np_func = getattr(np.random, name)
+        np_func = evalfunc
         funcname = name
         argspec = argspec(args, **baseclass.kwonlyargs)
         if dtypefunc is not None:
             dtype = dtypefunc
     FuncClass.__name__ = name.capitalize()
+    # skip first two lines, skip 8 first chars on each line
+    newdoclines = [line[8:] for line in evalfunc.__doc__.split('\n')[2:]]
+    FuncClass.__doc__ = '\n'.join(newdoclines)
     return FuncClass
 
 
@@ -290,4 +294,3 @@ def make_np_classes(baseclass, s, dtypefunc):
         if line:
             c = make_np_class(baseclass, line, dtypefunc)
             yield c.__name__.lower(), c
-

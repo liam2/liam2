@@ -1,8 +1,6 @@
+# encoding: utf-8
 from __future__ import print_function
 
-#import os
-#import Tkinter as tk
-#import ttk
 import re
 import ast
 import sys
@@ -17,7 +15,6 @@ import warnings
 
 import numpy as np
 import numexpr as ne
-#import psutil
 try:
     from PyQt4 import QtGui, QtCore
     QtAvailable = True
@@ -189,13 +186,13 @@ def size2str(value):
     return fmt % (value / 1024.0 ** scale, units[scale])
 
 
-#def mem_usage():
+# def mem_usage():
 #    pid = os.getpid()
 #    proc = psutil.Process(pid)
 #    return proc.get_memory_info()[0]
 
 
-#def mem_usage_str():
+# def mem_usage_str():
 #    return size2str(mem_usage())
 
 
@@ -300,15 +297,15 @@ def nansum(a, axis=None):
 
 
 # TODO: provide a cython version for this (using fused types)
-#ctypedef fused np_numeric:
+# ctypedef fused np_numeric:
 #     np.int32_t
 #     np.int64_t
 #     np.float32_t
 #     np.float64_t
 #
-#@cython.boundscheck(False)
-#@cython.wraparound(False)
-#def bool isconstant(np.ndarray[np_numeric, ndim=1] a):
+# @cython.boundscheck(False)
+# @cython.wraparound(False)
+# def bool isconstant(np.ndarray[np_numeric, ndim=1] a):
 #    cdef:
 #        np.float64_t value
 #        Py_ssize_t i, n=a.size
@@ -453,8 +450,8 @@ class LabeledArray(np.ndarray):
                 obj.dim_names = None
                 obj.pvalues = None
             else:
-#                assert isinstance(key, int), \
-#                       "key: '%s' is of type %s" % (key, type(key))
+                # assert isinstance(key, int), \
+                #        "key: '%s' is of type %s" % (key, type(key))
                 # key is "int-like"
                 obj.dim_names = self.dim_names[1:]
                 obj.pvalues = self.pvalues[1:]
@@ -570,24 +567,24 @@ class LabeledArray(np.ndarray):
     # explicitly defining __str__ is needed here because it exists on ndarray
     __str__ = __repr__
 
-#    def __array_prepare__(self, arr, context=None):
-#        print 'In __array_prepare__:'
-#        print '   self is %s' % repr(self)
-#        print '   arr is %s' % repr(arr)
-#        print '   context is %s' % repr(context)
-#        res = np.ndarray.__array_prepare__(self, arr, context)
-#        print '   result is %s' % repr(res)
-#        return res
+    # def __array_prepare__(self, arr, context=None):
+    #     print 'In __array_prepare__:'
+    #     print '   self is %s' % repr(self)
+    #     print '   arr is %s' % repr(arr)
+    #     print '   context is %s' % repr(context)
+    #     res = np.ndarray.__array_prepare__(self, arr, context)
+    #     print '   result is %s' % repr(res)
+    #     return res
 
     def __array_wrap__(self, out_arr, context=None):
-#        print 'In __array_wrap__:'
-#        print '   self is %s' % repr(self)
-#        print '   arr is %s' % repr(out_arr)
-#        print '   context is %s' % repr(context)
+        # print 'In __array_wrap__:'
+        # print '   self is %s' % repr(self)
+        # print '   arr is %s' % repr(out_arr)
+        # print '   context is %s' % repr(context)
         res = np.ndarray.__array_wrap__(self, out_arr, context)
         res.col_totals = None
         res.row_totals = None
-#        print '   result is %s' % repr(res)
+        # print '   result is %s' % repr(res)
         return res
 
 
@@ -659,7 +656,8 @@ def count_occurrences(seq):
 
 
 def skip_comment_cells(lines):
-    notacomment = lambda v: not v.startswith('#')
+    def notacomment(v):
+        return not v.startswith('#')
     for line in lines:
         stripped_line = list(itertools.takewhile(notacomment, line))
         if stripped_line:
@@ -671,7 +669,8 @@ def strip_rows(lines):
     returns an iterator of lines with leading and trailing blank (empty or
     which contain only space) cells.
     """
-    isblank = lambda s: s == '' or s.isspace()
+    def isblank(s):
+        return s == '' or s.isspace()
     for line in lines:
         leading_dropped = list(itertools.dropwhile(isblank, line))
         rev_line = list(itertools.dropwhile(isblank,
@@ -1156,9 +1155,29 @@ class ExplainTypeError(type):
 # function signatures
 # -------------------
 
+# TODO: use python3 signature objects
 FullArgSpec = namedtuple('FullArgSpec',
                          'args, varargs, varkw, defaults, kwonlyargs, '
                          'kwonlydefaults, annotations')
+
+
+class NiceArgSpec(FullArgSpec):
+    def __str__(self):
+        if self.defaults:
+            ndef = len(self.defaults)
+            l = list(self.args[:-ndef])
+            l.extend([k + '=' + repr(v)
+                      for k, v in zip(self.args[-ndef:], self.defaults)])
+        else:
+            l = list(self.args)
+        if self.varargs:
+            l.append('*' + self.varargs)
+        if self.varkw:
+            l.append('**' + self.varkw)
+        if self.kwonlyargs:
+            l.extend([k + '=' + repr(self.kwonlydefaults[k])
+                      for k in self.kwonlyargs])
+        return ', '.join(l)
 
 
 def _argspec(*args, **kwonlyargs):
@@ -1194,7 +1213,7 @@ def _argspec(*args, **kwonlyargs):
         assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
         assert all(isinstance(arg, tuple) for arg in args[-len(defaults):])
     args = [a[0] if isinstance(a, tuple) else a for a in args]
-    return FullArgSpec(args, varargs, varkw, defaults,
+    return NiceArgSpec(args, varargs, varkw, defaults,
                        kwonlyargs=sorted(kwonlyargs.keys()),
                        kwonlydefaults=kwonlyargs,
                        annotations={})
@@ -1224,6 +1243,8 @@ def argspec(*args, **kwonlyargs):
     ... # doctest: +NORMALIZE_WHITESPACE
     FullArgSpec(args=[], varargs=None, varkw=None, defaults=None, kwonlyargs=[],
                 kwonlydefaults={}, annotations={})
+    >>> str(argspec('a, b, c=1, *d, **e, f=None'))
+    'a, b, c=1, *d, **e, f=None'
     """
     if len(args) == 1 and isinstance(args[0], basestring):
         str_args = args[0].split(',') if args[0] else []
