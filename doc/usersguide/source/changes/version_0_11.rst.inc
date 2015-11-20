@@ -5,10 +5,11 @@
   in addition to the existing (and default) "bysorting" method. Thanks to
   Alexis Eidelman and Mahdi Ben Jelloul (:pr:`189`).
 
-* A default value can be assigned to fields that are not present
- in the initial data (see the :ref:`miscellaneous section <model>` for details).
-
-* added a feature (see the :ref:`model section <misc>` for details).
+* added support for defining a default value for fields. This default value will
+  be assigned to the corresponding fields in new() and if the fields are not
+  present in the initial data (see the :ref:`fields declaration
+  <fields_declaration>` section for details). Thanks to Alexis Eidelman and
+  Mahdi Ben Jelloul (:pr:`190`).
 
 * added "functions" command to the interactive console. It displays the
   list of available functions.
