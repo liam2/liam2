@@ -1319,7 +1319,8 @@ The general form of align_abs is : ::
               [frac_need="uniform"|"round"|"cutoff",]
               [link=link_name,]
               [secondary_axis=column_name,]
-              [errors="default"|"carry"])
+              [errors="default"|"carry",]
+              [method="bysorting"|"sidewalk"])
 
 In addition to all the arguments supported by *align()*, *align_abs()* also
 supports an optional "link" argument, which makes it work on a linked entity.
@@ -1346,6 +1347,11 @@ Here is a description of the arguments specific to align_abs:
     stored and added to the target for the next period.
     In the current version of LIAM2, *errors* can only be used in combination
     with the *link* argument.
+
+  * **method**: is the name of the method to choose which individual are taken. The default is the "bysorting" method
+    which sorts the individuals by score and takes the needed number of individuals by descending order of score. The
+    other available method is the sidewalk method. It keeps a record of the accumulated probability and as long as there
+    is a change of the integer part of the accumulated probability, the individual is selected.
 
 *example* ::
 
