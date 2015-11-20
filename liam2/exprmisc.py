@@ -226,7 +226,7 @@ def add_individuals(target_context, children):
 class New(FilteredExpression):
     no_eval = ('filter', 'kwargs')
 
-    def _initial_values(self, array, to_give_birth, num_birth, default_values = None):
+    def _initial_values(self, array, to_give_birth, num_birth, default_values):
         children = np.empty(num_birth, dtype=array.dtype)
         children[:] = get_missing_record(array, default_values)
         return children
@@ -281,7 +281,8 @@ class New(FilteredExpression):
         id_to_rownum = target_entity.id_to_rownum
         num_individuals = len(id_to_rownum)
 
-        children = self._initial_values(array, to_give_birth, num_birth, default_values)
+        children = self._initial_values(array, to_give_birth, num_birth,
+                                        default_values)
         if num_birth:
             children['id'] = np.arange(num_individuals,
                                        num_individuals + num_birth)

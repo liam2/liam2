@@ -298,7 +298,8 @@ def assert_valid_type(array, wanted_type, context=None):
                                                  wanted_type.__name__))
 
 
-def add_and_drop_fields(array, output_fields, default_values=None, output_array=None):
+def add_and_drop_fields(array, output_fields, default_values=None,
+                        output_array=None):
     default_values = default_values if default_values is not None else dict()
     output_dtype = np.dtype(output_fields)
     output_names = set(output_dtype.names)
@@ -310,7 +311,7 @@ def add_and_drop_fields(array, output_fields, default_values=None, output_array=
         output_array = np.empty(len(array), dtype=output_dtype)
         for fname in missing_fields:
             output_array[fname] = get_missing_value(output_array[fname],
-                                                    default_value = default_values.get(fname, None))
+                                                    default_values.get(fname))
     else:
         assert output_array.dtype == output_dtype
     for fname in common_fields:
@@ -318,8 +319,9 @@ def add_and_drop_fields(array, output_fields, default_values=None, output_array=
     return output_array
 
 
-def merge_subset_in_array(output, id_to_rownum, subset, first=False, default_values = None):
-    default_values = default_values if default_values is not None else dict()
+def merge_subset_in_array(output, id_to_rownum, subset, first=False,
+                          default_values=None):
+    default_values = default_values if default_values is not None else {}
     if subset.dtype == output.dtype and len(subset) == len(output):
         return subset
     elif subset.dtype == output.dtype:
@@ -381,7 +383,7 @@ def merge_array_records(array1, array2):
     return output
 
 
-def merge_arrays(array1, array2, result_fields='union', default_values = None):
+def merge_arrays(array1, array2, result_fields='union', default_values=None):
     """
     data in array2 overrides data in array1
     both arrays must have 'id' fields
@@ -437,17 +439,19 @@ def merge_arrays(array1, array2, result_fields='union', default_values = None):
     # 2) copy data from array1 (if it will not be overridden)
     if not arr2_complete:
         output_array = merge_subset_in_array(output_array, id_to_rownum,
-                                             array1, first=True, default_values = default_values)
+                                             array1, first=True,
+                                             default_values=default_values)
 
     # 3) copy data from array2
     if not output_is_arr2:
-        output_array = merge_subset_in_array(output_array, id_to_rownum, array2, default_values = default_values)
+        output_array = merge_subset_in_array(output_array, id_to_rownum, array2,
+                                             default_values=default_values)
 
     return output_array, id_to_rownum
 
 
 def append_table(input_table, output_table, chunksize=10000, condition=None,
-                 stop=None, show_progress=False, default_values = None):
+                 stop=None, show_progress=False, default_values=None):
 
     if input_table.dtype != output_table.dtype:
         output_fields = get_fields(output_table)
@@ -506,7 +510,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
 # noinspection PyProtectedMember
 def copy_table(input_table, output_node, output_dtype=None,
                chunksize=10000, condition=None, stop=None, show_progress=False,
-               default_values = None, **kwargs):
+               default_values=None, **kwargs):
     complete_kwargs = {'title': input_table._v_title}
 #                       'filters': input_table.filters}
     output_file = output_node._v_file
@@ -516,7 +520,8 @@ def copy_table(input_table, output_node, output_dtype=None,
     output_table = output_file.create_table(output_node, input_table.name,
                                             output_dtype, **complete_kwargs)
     return append_table(input_table, output_table, chunksize, condition,
-                        stop=stop, show_progress=show_progress, default_values = default_values)
+                        stop=stop, show_progress=show_progress,
+                        default_values=default_values)
 
 
 # XXX: should I make a generic n-way array merge out of this?
@@ -524,7 +529,7 @@ def copy_table(input_table, output_node, output_dtype=None,
 # 1) all arrays have the same columns
 # 2) we have id_to_rownum already computed for each array
 def build_period_array(input_table, output_fields, input_rows,
-                    input_index, start_period, default_values=None):
+                       input_index, start_period, default_values=None):
     periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
     if not periods_before:
         id_to_rownum = np.empty(0, dtype=int)
@@ -873,11 +878,12 @@ class H5Sink(DataSink):
                     else:
                         stoprow = 0
 
+                    default_values = entity.fields.default_values
                     output_table = copy_table(table.table, output_entities,
                                               entity.fields.in_output.dtype,
                                               stop=stoprow,
                                               show_progress=True,
-                                              default_values = entity.fields.default_values)
+                                              default_values=default_values)
                     output_index = table.id2rownum_per_period.copy()
                 else:
                     output_rows = {}

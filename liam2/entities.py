@@ -611,7 +611,8 @@ Please use this instead:
         input_array = self.input_table.read(start, stop)
 
         self.array, self.id_to_rownum = \
-            merge_arrays(self.array, input_array, result_fields='array1', default_values = self.fielfs.default_values)
+            merge_arrays(self.array, input_array, result_fields='array1',
+                         default_values=self.fielfs.default_values)
         # this can happen, depending on the layout of columns in input_array,
         # but the usual case (in retro) is that self.array is a superset of
         # input_array, in which case merge_arrays returns a ColumnArray
