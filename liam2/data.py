@@ -607,7 +607,7 @@ def build_period_array(input_table, output_fields, input_rows,
     # reading data
     output_array = ColumnArray.from_table_coords(input_table,
                                                  output_array_source_rows)
-    output_array.add_and_drop_fields(output_fields)
+    output_array.add_and_drop_fields(output_fields, default_values)
     return output_array, id_to_rownum
 
 
