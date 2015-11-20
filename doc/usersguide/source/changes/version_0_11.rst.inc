@@ -3,7 +3,7 @@
 
 
 * A default value can be assigned to fields that are not present
-  in the initial data (see the :ref:`miscellaneous section <model>` 
+  in the initial data (see the :ref:`model section <model>` 
   for details).
 
 * added support for the "sidewalk" method in :ref:`align_abs() <align_abs>`
