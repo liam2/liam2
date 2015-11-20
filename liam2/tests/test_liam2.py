@@ -14,53 +14,43 @@ test_root = os.path.join(
     pkg_resources.get_distribution('liam2').location,
     'liam2',
     'tests'
-    )
+)
 
 
-def run_simulation(yaml_file, output_dir):
-    simulation = Simulation.from_yaml(yaml_file, output_dir=output_dir)
-    print('Running {} using {} as output dir'.format(yaml_file, output_dir))
-    simulation.run()
+def run_file(test_file):
+    if 'import' in test_file:
+        print("Importing", test_file)
+        csv2h5(test_file)
+    else:
+        output_dir = os.path.join(test_root, 'output')
+        print('Running {} using {} as output dir'.format(test_file, output_dir))
+        simulation = Simulation.from_yaml(test_file, output_dir=output_dir)
+        simulation.run()
+
+
+def test_directory(directory, dataset_creator, excluded_files):
+    directory_path = os.path.join(test_root, directory)
+    excluded_files = excluded_files + (dataset_creator,)
+    yield os.path.join(directory_path, dataset_creator)
+    for test_file in os.listdir(directory_path):
+        if test_file.endswith('.yml') and test_file not in excluded_files:
+            yield os.path.join(directory_path, test_file)
 
 
 def test_functional():
-    functional_excluded_files = ['imported1.yml', 'imported2.yml', 'import.yml']
+    excluded = ('imported1.yml', 'imported2.yml')
     if use_travis:
-        functional_excluded_files.extend(['static.yml', 'generate.yml'])
-    #  Running small.h5 creator
-    run_file(os.path.join(test_root, 'functional', 'import.yml'))
-    for test_file in iterate_files('functional', functional_excluded_files):
+        excluded += ('static.yml', 'generate.yml')
+    for test_file in test_directory('functional', 'import.yml', excluded):
         yield run_file, test_file
 
 
 def test_examples():
     # No pyqt4 on travis
-    need_qt = ['demo02.yml', 'demo03.yml', 'demo04.yml', 'demo06.yml']
-    examples_excluded_files = need_qt if use_travis else []
-    #  Running demo.h5 creator
-    run_file(os.path.join(test_root, 'examples', 'demo_import.yml'))
-    for test_file in iterate_files('examples', examples_excluded_files):
+    need_qt = ('demo02.yml', 'demo03.yml', 'demo04.yml', 'demo06.yml')
+    excluded = need_qt if use_travis else ()
+    for test_file in test_directory('examples', 'demo_import.yml', excluded):
         yield run_file, test_file
-
-
-def iterate_files(folder_name, excluded_files = None):
-    test_folder = os.path.join(test_root, folder_name)
-    test_fnames = [f for f in os.listdir(test_folder)
-                   if f.endswith('.yml') and f not in excluded_files]
-    test_files = [os.path.join(test_folder, f) for f in test_fnames]
-
-    for test_file in test_files:
-        yield test_file
-
-
-def run_file(test_file):
-    output_dir = os.path.join(test_root, 'output')
-    if 'import' in test_file:
-        print("import", test_file)
-        csv2h5(test_file)
-    else:
-        print("run", test_file)
-        run_simulation(test_file, output_dir)
 
 
 if __name__ == '__main__':
