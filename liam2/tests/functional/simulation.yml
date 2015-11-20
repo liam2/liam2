@@ -1625,10 +1625,28 @@ entities:
             test_new:
                 # with no filter nor number
                 - pop: count()
-                - new_id: new('person', age=999)
+                - child_id: new('person', age=999)
+                # child_id is set to -1 for the child itself (and to the child
+                # id for the "parent" individual)
+                - isnew: child_id == -1
                 - assertEqual(count(), 2 * pop)
-                - assertEqual(count(age == 999), pop)
-                - remove(age == 999)
+                - assertEqual(count(isnew), pop)
+                # test the value of a field set explicitly
+                - assertTrue(all(age == 999, filter=isnew))
+                - assertTrue(all(age != 999, filter=not isnew))
+                # test values of fields not set explicitly
+                - assertTrue(all(defaulted_bool_variable, filter=isnew))
+                - assertTrue(all(not undefaulted_bool_variable, filter=isnew))
+                - assertTrue(all(defaulted_integer_variable == 99,
+                                 filter=isnew))
+                - assertTrue(all(undefaulted_integer_variable == -1,
+                                 filter=isnew))
+                - assertTrue(all(defaulted_float_variable == 99.99,
+                                 filter=isnew))
+                - assertTrue(all(undefaulted_float_variable !=
+                                 undefaulted_float_variable,
+                                 filter=isnew))
+                - remove(isnew)
                 - assertEqual(count(), pop)
 
                 # with number
@@ -1640,49 +1658,52 @@ entities:
 
                 # with explicit filter
                 - givebirth: not gender and (age >= 16) and (age <= 50)
-                - new_id: new('person', filter=givebirth and partner_id != -1,
-                              age=0,
-                              partner_id=-1,
-                              hh_id=hh_id,
-                              m_id=id,
-                              f_id=partner.id,
-                              eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
-                              gender=choice([True, False], [0.51, 0.49]))
+                - child_id: new('person', filter=givebirth and partner_id != -1,
+                                age=0,
+                                partner_id=-1,
+                                hh_id=hh_id,
+                                m_id=id,
+                                f_id=partner.id,
+                                eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
+                                gender=choice([True, False], [0.51, 0.49]))
 
                 # with implicit filters
                 # unknown father when the mother is < 25 years old (even if
                 # she has a partner, so that we can differentiate them.
-                - new_id: if(givebirth,
-                             if(age < 25,
-                                new('person',
-                                    age=0,
-                                    partner_id=-1,
-                                    hh_id=hh_id,
-                                    m_id=id,
-                                    f_id=-1,
-                                    eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
-                                    gender=choice([True, False], [0.51, 0.49])),
-                                new('person',
-                                    age=0,
-                                    partner_id=-1,
-                                    hh_id=hh_id,
-                                    m_id=id,
-                                    f_id=partner.id,
-                                    eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
-                                    gender=logit_regr(0.0))),
-                             -1)
+                - child_id: if(givebirth,
+                               if(age < 25,
+                                  new('person',
+                                      age=0,
+                                      partner_id=-1,
+                                      hh_id=hh_id,
+                                      m_id=id,
+                                      f_id=-1,
+                                      eduach=choice([2, 3, 4],
+                                                    [0.40, 0.35, 0.25]),
+                                      gender=choice([True, False],
+                                                    [0.51, 0.49])),
+                                  new('person',
+                                      age=0,
+                                      partner_id=-1,
+                                      hh_id=hh_id,
+                                      m_id=id,
+                                      f_id=partner.id,
+                                      eduach=choice([2, 3, 4],
+                                                    [0.40, 0.35, 0.25]),
+                                      gender=logit_regr(0.0))),
+                               -1)
 
                 # both implicit and explicit filters
-                - new_id: if(givebirth,
-                             new('person', filter=partner_id != -1,
-                                 age=0,
-                                 partner_id=-1,
-                                 hh_id=hh_id,
-                                 m_id=id,
-                                 f_id=partner.id,
-                                 eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
-                                 gender=choice([True, False], [0.51, 0.49])),
-                             -1)
+                - child_id: if(givebirth,
+                               new('person', filter=partner_id != -1,
+                                   age=0,
+                                   partner_id=-1,
+                                   hh_id=hh_id,
+                                   m_id=id,
+                                   f_id=partner.id,
+                                   eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
+                                   gender=choice([True, False], [0.51, 0.49])),
+                               -1)
 
             test_o2m:
                 # count
@@ -1715,7 +1736,6 @@ entities:
                 - assertEquiv(children.min(age, age > 1000), -1)
                 - all_nan: children.min(float_field1, age > 1000)
                 - assertTrue(all(all_nan != all_nan))
-
 
             test_mixed_links:
                 # multi-level
@@ -2590,16 +2610,13 @@ entities:
                       hh_id=-1)
 
             test_default_value:
-                - show("test default value")
-                - assertTrue(all(undefaulted_bool_variable == False))
-                - assertTrue(all(undefaulted_integer_variable == -1))
-                - assertTrue(all(undefaulted_float_variable != undefaulted_float_variable))
-                - qshow(defaulted_integer_variable)
-                - qshow(undefaulted_integer_variable)
-                - assertTrue(all(defaulted_integer_variable == 99))
-                - assertTrue(all(defaulted_float_variable == 99.99))
+                - assertEquiv(undefaulted_bool_variable, False)
+                - assertEquiv(undefaulted_integer_variable, -1)
+                - assertTrue(all(undefaulted_float_variable !=
+                                 undefaulted_float_variable))
+                - assertEquiv(defaulted_integer_variable, 99)
+                - assertEquiv(defaulted_float_variable, 99.99)
                 - assertTrue(all(defaulted_bool_variable))
-
 
 simulation:
     init:
