@@ -55,7 +55,7 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
 
 
 class ColumnArray(object):
-    def __init__(self, array=None, default_values=None):
+    def __init__(self, array=None):
         columns = {}
         if array is not None:
             if isinstance(array, (np.ndarray, ColumnArray)):
@@ -63,23 +63,18 @@ class ColumnArray(object):
                     columns[name] = array[name].copy()
                 self.dtype = array.dtype
                 self.columns = columns
-                if isinstance(array, ColumnArray):
-                    self.default_values = array.default_values
             elif isinstance(array, list):
                 for name, column in array:
                     columns[name] = column
                 self.dtype = np.dtype([(name, column.dtype)
                                        for name, column in array])
                 self.columns = columns
-                self.default_values = default_values
             else:
                 # TODO: make a property instead?
                 self.dtype = None
                 self.columns = columns
-                self.default_values = default_values
         else:
             self.dtype = None
-            self.default_values = default_values
             self.columns = columns
 
     def __getitem__(self, key):
@@ -182,20 +177,15 @@ class ColumnArray(object):
         append_carray_to_table(self, table, buffersize=buffersize)
 
     @classmethod
-    def empty(cls, length, dtype, default_values = None):
-        ca = cls(default_values = default_values)
-        default_values = default_values if default_values is not None else dict()
+    def empty(cls, length, dtype):
+        ca = cls()
         for name in dtype.names:
-            if default_values.get(name, None):
-                ca.columns[name] = np.ones(length, dtype[name]) * default_values[name]
-            else:
-                ca.columns[name] = np.empty(length, dtype[name])
+            ca.columns[name] = np.empty(length, dtype[name])
         ca.dtype = dtype
-        ca.default_values = default_values
         return ca
 
     @classmethod
-    def from_table(cls, table, start=0, stop=None, default_values=None, buffersize=10 * 2 ** 20):
+    def from_table(cls, table, start=0, stop=None, buffersize=10 * 2 ** 20):
         # reading a table one column at a time is very slow, this is why this
         # function is even necessary
         if stop is None:
@@ -203,7 +193,7 @@ class ColumnArray(object):
         dtype = table.dtype
         max_buffer_rows = buffersize // dtype.itemsize
         numlines = stop - start
-        ca = cls.empty(numlines, dtype, default_values)
+        ca = cls.empty(numlines, dtype)
 #        buffer_rows = min(numlines, max_buffer_rows)
 #        chunk = np.empty(buffer_rows, dtype=dtype)
         array_start = 0
@@ -246,20 +236,19 @@ class ColumnArray(object):
             numlines -= buffer_rows
         return ca
 
-    def add_and_drop_fields(self, output_fields):
+    def add_and_drop_fields(self, output_fields, default_values=None):
         """modify inplace"""
 
         output_dtype = np.dtype(output_fields)
         output_names = set(output_dtype.names)
         input_names = set(self.dtype.names)
-        default_values = self.default_values
-        if self.default_values is None:
-            default_values = dict()
+        if default_values is None:
+            default_values = {}
         length = len(self)
         # add missing fields
         for name in output_names - input_names:
             self[name] = get_missing_vector(length, output_dtype[name],
-                                            default_value = default_values.get(name, None))
+                                            default_values.get(name))
         # delete extra fields
         for name in input_names - output_names:
             del self[name]
@@ -539,7 +528,7 @@ def build_period_array(input_table, output_fields, input_rows,
     periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
     if not periods_before:
         id_to_rownum = np.empty(0, dtype=int)
-        output_array = ColumnArray.empty(0, np.dtype(output_fields), default_values)
+        output_array = ColumnArray.empty(0, np.dtype(output_fields))
         return output_array, id_to_rownum
 
     periods_before.sort()
@@ -560,8 +549,8 @@ def build_period_array(input_table, output_fields, input_rows,
     # if all individuals are present in the target period, we are done already!
     if np.array_equal(present_in_period, is_present):
         start, stop = input_rows[target_period]
-        input_array = ColumnArray.from_table(input_table, start, stop, default_values)
-        input_array.add_and_drop_fields(output_fields)
+        input_array = ColumnArray.from_table(input_table, start, stop)
+        input_array.add_and_drop_fields(output_fields, default_values)
         return input_array, period_id_to_rownum
 
     # building id_to_rownum for the target period
