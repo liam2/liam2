@@ -394,7 +394,7 @@ def merge_array_records(array1, array2):
 def merge_arrays(array1, array2, result_fields='union', default_values = None):
     """
     data in array2 overrides data in array1
-    both arrays must have an 'id' fields
+    both arrays must have 'id' fields
     """
 
     fields1 = get_fields(array1)
