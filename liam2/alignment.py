@@ -9,8 +9,7 @@ import numpy as np
 import config
 from align_link import align_link_nd
 from context import context_length
-from expr import Expr, Variable, expr_eval, traverse_expr, missing_values, \
-    always
+from expr import Expr, Variable, expr_eval, missing_values, always
 from exprbases import FilteredExpression
 from groupby import GroupBy
 from links import LinkGet, Many2One
@@ -22,7 +21,7 @@ from utils import PrettyTable, LabeledArray
 def kill_axis(axis_name, value, expressions, possible_values, need):
     """possible_values is a list of ndarrays"""
 
-    #When we transition to LArray, this whole function could be replaced by:
+    # When we transition to LArray, this whole function could be replaced by:
     # need = need.filter(axis[value])
     str_expressions = [str(e) for e in expressions]
     axis_num = str_expressions.index(axis_name)
@@ -48,7 +47,8 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
 
 
 def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
-                         take_filter=None, leave_filter=None, method="bysorting"):
+                         take_filter=None, leave_filter=None,
+                         method="bysorting"):
     assert isinstance(need, np.ndarray) and \
         np.issubdtype(need.dtype, np.integer)
     assert score is None or isinstance(score, (bool, int, float, np.ndarray))

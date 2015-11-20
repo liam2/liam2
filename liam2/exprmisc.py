@@ -140,7 +140,7 @@ class Sort(NumpyChangeArray):
     np_func = np.sort
 
 
-#------------------------------------
+# ------------------------------------
 
 
 class Round(NumpyChangeArray):
@@ -205,8 +205,8 @@ def add_individuals(target_context, children):
         # to further distinguish between aggregated entity var and other global
         # temporaries to store them in the entity somewhere, but I am unsure
         # whether it is possible.
-        if (isinstance(temp_value, np.ndarray) and temp_value.shape == (
-        num_rows,)):
+        if (isinstance(temp_value, np.ndarray) and
+                temp_value.shape == (num_rows,)):
             extra = get_missing_vector(num_birth, temp_value.dtype)
             temp_variables[name] = np.concatenate((temp_value, extra))
 
@@ -423,9 +423,11 @@ class Where(NumexprFunction):
     @property
     def cond(self):
         return self.args[0]
+
     @property
     def iftrue(self):
         return self.args[1]
+
     @property
     def iffalse(self):
         return self.args[2]

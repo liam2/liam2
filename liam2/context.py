@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import numpy as np
@@ -298,8 +299,8 @@ def context_subset(context, index=None, keys=None):
     else:
         assert np.issubdtype(index.dtype, bool)
         assert len(index) == context_length(context), \
-               "boolean index has length %d instead of %d" % \
-               (len(index), context_length(context))
+            "boolean index has length %d instead of %d" % \
+            (len(index), context_length(context))
         length = np.sum(index)
     result = empty_context(length)
     for key in keys:

@@ -107,7 +107,7 @@ class Sum(FilteredExpression):
         return typemap[getdtype(self.args[0], context)]
 
 
-#class Average(NumpyAggregate):
+# class Average(NumpyAggregate):
 #    funcname = 'avg'
 #    np_func = np.mean
 #    nan_func = (nanmean,)

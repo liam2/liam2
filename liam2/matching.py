@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import print_function
 
 import numpy as np
@@ -7,7 +8,7 @@ from expr import expr_eval, always, expr_cache
 from exprbases import FilteredExpression
 from context import context_length, context_delete, context_subset, context_keep
 from utils import loop_wh_progress
-#FIXME: should be optional
+# FIXME: should be optional
 from cpartition import group_indices_nd
 
 

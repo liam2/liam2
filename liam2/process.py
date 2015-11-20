@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import division, print_function
 
 import collections
@@ -263,7 +264,7 @@ class ProcessGroup(Process):
                     # FIXME: for .version to be meaningful, I need to have
                     # a different variable instance each time the variable
                     # is used.
-                    #>>> the best solution AFAIK is to parse the expressions
+                    # >>> the best solution AFAIK is to parse the expressions
                     # in the same order as the "agespine".
                     # That way we will be able to type all temporary variables
                     # directly, and it would also solve the conditional
@@ -290,8 +291,7 @@ class ProcessGroup(Process):
                     node.used += 1
             # on assignment, increase the variable version
             if isinstance(p, Assignment):
-                # XXX: is this always == k?
-                target = p.predictor
+                target = p.name
                 versions = (local_versions if target in local_vars
                             else fields_versions)
                 versions[target] += 1

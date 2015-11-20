@@ -128,6 +128,7 @@ class LinkExpression(FunctionExpr):
         # TODO: implement this
         # return self.args.link._target_context(context)
         assert isinstance(self.link, Link)
+        # noinspection PyProtectedMember
         return self.link._target_context(context)
 
     # XXX: I think this is not enough. Implement Visitor pattern instead?
@@ -253,6 +254,7 @@ class Aggregate(LinkExpression):
 
         # eg (in household entity):
         # persons: {type: one2many, target: person, field: hh_id}
+        # noinspection PyProtectedMember
         target_context = link._target_context(context)
 
         # this is a one2many, so the link column is on the target side

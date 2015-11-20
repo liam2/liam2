@@ -350,6 +350,7 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
 
 
 def array_to_disk_array(node, name, array, title='', compression=None):
+    # noinspection PyProtectedMember
     h5file = node._v_file
     msg, filters = compression_str2filter(compression)
     print(" - storing %s..." % msg)
@@ -420,7 +421,8 @@ def interpolate(target, arrays, id_periods, fields):
         csize = sum(row_for_id[period].cbytes for period in periods)
         print("done. (%.2f Mb)" % (csize / MB))
     else:
-        print('bcolz package not found (bcolz is required to use compression in interpolate)')
+        print('bcolz package not found (bcolz is required to use compression '
+              'during interpolate)')
 
     print(" * interpolating...")
     for values in arrays:
@@ -689,7 +691,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         return 'table', (target_fields, total_lines, iter(target), None)
 
 
-def csv2h5(fpath = None, buffersize=10 * 2 ** 20):
+def csv2h5(fpath, buffersize=10 * 2 ** 20):
     with open(fpath) as f:
         content = yaml.load(f)
 
@@ -742,9 +744,9 @@ def csv2h5(fpath = None, buffersize=10 * 2 ** 20):
                 'invert': [str],
                 'transposed': bool,
                 'files': None,
-#                {
-#                    '*': None
-#                }
+                # {
+                #     '*': None
+                # }
                 'interpolate': {
                     '*': str
                 }
@@ -772,8 +774,8 @@ def csv2h5(fpath = None, buffersize=10 * 2 ** 20):
             for global_name, global_def in globals_def.iteritems():
                 print()
                 print(" %s" % global_name)
-                req_fields = ([('PERIOD', int)] if global_name == 'periodic'
-                                                else [])
+                req_fields = [('PERIOD', int)] \
+                    if global_name == 'periodic' else []
 
                 kind, info = load_def(localdir, global_name,
                                       global_def, req_fields)

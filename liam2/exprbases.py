@@ -272,6 +272,7 @@ def make_np_class(baseclass, docstring, dtypefunc):
     if isinstance(dtypefunc, type):
         dtypefunc = always(dtypefunc)
     evalfunc = getattr(np.random, name)
+
     # we need to explicitly set funcname, because the usual mechanism of
     # getting it from the class name during class creation (in the metaclass)
     # does not work because the class name is not set yet.
@@ -293,4 +294,3 @@ def make_np_classes(baseclass, s, dtypefunc):
         if line:
             c = make_np_class(baseclass, line, dtypefunc)
             yield c.__name__.lower(), c
-
