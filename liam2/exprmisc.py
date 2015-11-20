@@ -227,7 +227,6 @@ class New(FilteredExpression):
     no_eval = ('filter', 'kwargs')
 
     def _initial_values(self, array, to_give_birth, num_birth, default_values = None):
-        # TODO: use default values for fields which have one
         children = np.empty(num_birth, dtype=array.dtype)
         children[:] = get_missing_record(array, default_values)
         return children
