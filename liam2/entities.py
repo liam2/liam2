@@ -5,7 +5,7 @@ import collections
 import sys
 import warnings
 
-#import bcolz
+# import bcolz
 import numpy as np
 import tables
 
@@ -23,15 +23,14 @@ from utils import (count_occurrences, field_str_to_type, size2str,
 
 max_vars = 0
 
-
-#def compress_column(a, level):
+# def compress_column(a, level):
 #    arr = bcolz.carray(a, cparams=bcolz.cparams(level))
 #    print "%d -> %d (%.2f)" % (arr.nbytes, arr.cbytes,
 #                               float(arr.nbytes) / arr.cbytes),
 #    return arr
 #
 #
-#def decompress_column(a):
+# def decompress_column(a):
 #    return a[:]
 
 def global_symbols(globals_def):
@@ -222,7 +221,7 @@ class Entity(object):
         # YAML "ordered dict" syntax returns a list of dict and we want a list
         # of tuples
         # FIXME: if "fields" key is present but no field is defined,
-        #entity_def.get('fields', []) returns None and this breaks
+        # entity_def.get('fields', []) returns None and this breaks
         fields_def = [d.items()[0] for d in entity_def.get('fields', [])]
 
         link_defs = entity_def.get('links', {})
