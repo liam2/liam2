@@ -5,7 +5,7 @@ import numpy as np
 
 from context import context_length
 from expr import (expr_eval, getdtype, hasvalue, FunctionExpr, always,
-                  firstarg_dtype, get_missing_value)
+                  firstarg_dtype, get_default_value)
 from utils import safe_put
 
 
@@ -21,7 +21,7 @@ class TimeFunction(FunctionExpr):
         """
 
         if filler is 'auto':
-            filler = get_missing_value(values)
+            filler = get_default_value(values)
         result = np.empty(context_length(context), dtype=values.dtype)
         result.fill(filler)
         if len(ids):

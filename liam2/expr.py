@@ -68,7 +68,7 @@ def normalize_type(type_):
     return idx_to_type[type_to_idx[type_]]
 
 
-def get_missing_value(column, default_value = None):
+def get_default_value(column, default_value=None):
     normalized_type = normalize_type(column.dtype.type)
     if default_value is not None:
         assert isinstance(default_value, normalized_type)
@@ -77,7 +77,7 @@ def get_missing_value(column, default_value = None):
         return missing_values[normalized_type]
 
 
-def get_missing_vector(num, dtype, default_value = None):
+def get_default_vector(num, dtype, default_value=None):
     res = np.empty(num, dtype=dtype)
     normalized_type = normalize_type(dtype.type)
     if default_value is not None:
@@ -89,16 +89,16 @@ def get_missing_vector(num, dtype, default_value = None):
         return res
 
 
-def get_missing_record(array, default_values = None):
+def get_default_record(array, default_values=None):
     default_values = default_values if default_values is not None else dict()
     row = np.empty(1, dtype=array.dtype)
     for fname in array.dtype.names:
-        row[fname] = get_missing_value(row[fname], default_values.get(fname, None))
+        row[fname] = get_default_value(row[fname], default_values.get(fname))
     return row
 
 
 def hasvalue(column):
-    missing_value = get_missing_value(column)
+    missing_value = get_default_value(column)
     if np.isnan(missing_value):
         return ~np.isnan(column)
     else:
@@ -576,7 +576,7 @@ class SubscriptedExpr(EvaluableExpression):
                     key = fixkey(key, filter_value)
             else:
                 if not filter_value:
-                    missing_value = get_missing_value(expr_value)
+                    missing_value = get_default_value(expr_value)
                     if (non_scalar_array(key) or
                         (isinstance(key, tuple) and
                          any(non_scalar_array(k) for k in key))):
@@ -1073,7 +1073,7 @@ class GlobalVariable(EvaluableExpression):
 
         column = globals_table[self.name]
         numrows = len(column)
-        missing_value = get_missing_value(column)
+        missing_value = get_default_value(column)
 
         if isinstance(translated_key, np.ndarray) and translated_key.shape:
             return safe_take(column, translated_key, missing_value)

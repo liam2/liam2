@@ -9,7 +9,7 @@ import config
 from context import context_length
 from expr import (FunctionExpr, not_hashable,
                   getdtype, as_simple_expr, as_string,
-                  get_missing_value, ispresent, LogicalOp, AbstractFunction,
+                  get_default_value, ispresent, LogicalOp, AbstractFunction,
                   always, FillArgSpecMeta)
 from utils import classproperty, argspec, split_signature
 
@@ -175,7 +175,7 @@ class NumpyCreateArray(NumpyFunction):
         if filter_value is None:
             return values
         else:
-            missing_value = get_missing_value(values)
+            missing_value = get_default_value(values)
             return np.where(filter_value, values, missing_value)
 
 

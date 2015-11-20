@@ -8,7 +8,7 @@ import numpy as np
 import numexpr as ne
 
 from expr import (Expr, Variable, getdtype, expr_eval, missing_values,
-                  get_missing_value, always, FunctionExpr)
+                  get_default_value, always, FunctionExpr)
 from context import context_length
 from utils import removed
 
@@ -221,8 +221,7 @@ class LinkGet(LinkExpression):
         target_rows = id_to_rownum[target_ids]
 
         target_values = expr_eval(target_expr, target_context)
-        if missing_value is None:
-            missing_value = get_missing_value(target_values)
+        missing_value = get_default_value(target_values, missing_value)
 
         result_values = target_values[target_rows]
 
@@ -361,7 +360,7 @@ class Min(Aggregate):
 
     def eval_rows(self, source_rows, expr_value, context):
         result = np.empty(context_length(context), dtype=expr_value.dtype)
-        result.fill(get_missing_value(expr_value))
+        result.fill(get_default_value(expr_value))
 
         id_sort_indices = np.argsort(source_rows)
         sorted_rownum = source_rows[id_sort_indices]

@@ -7,8 +7,8 @@ import tables
 import numpy as np
 import config
 
-from expr import (normalize_type, get_missing_value, get_missing_record,
-                  get_missing_vector, gettype)
+from expr import (normalize_type, get_default_value, get_default_record,
+                  get_default_vector, gettype)
 from utils import loop_wh_progress, time2str, safe_put, LabeledArray, timed
 from importer import load_def, stream_to_array, array_to_disk_array
 
@@ -247,7 +247,7 @@ class ColumnArray(object):
         length = len(self)
         # add missing fields
         for name in output_names - input_names:
-            self[name] = get_missing_vector(length, output_dtype[name],
+            self[name] = get_default_vector(length, output_dtype[name],
                                             default_values.get(name))
         # delete extra fields
         for name in input_names - output_names:
@@ -310,7 +310,7 @@ def add_and_drop_fields(array, output_fields, default_values=None,
     if output_array is None:
         output_array = np.empty(len(array), dtype=output_dtype)
         for fname in missing_fields:
-            output_array[fname] = get_missing_value(output_array[fname],
+            output_array[fname] = get_default_value(output_array[fname],
                                                     default_values.get(fname))
     else:
         assert output_array.dtype == output_dtype
@@ -343,8 +343,9 @@ def merge_subset_in_array(output, id_to_rownum, subset, first=False,
             if first:
                 subset_all_cols = np.empty(len(subset), dtype=output.dtype)
                 for fname in set(output_names) - set(subset_names):
+                    default_value = default_values.get(fname, None)
                     subset_all_cols[fname] = \
-                        get_missing_value(subset_all_cols[fname], default_values.get(fname, None))
+                        get_default_value(subset_all_cols[fname], default_value)
             else:
                 subset_all_cols = output[rownums]
                 # Note that all rows which correspond to rownums == -1 have
@@ -434,7 +435,7 @@ def merge_arrays(array1, array2, result_fields='union', default_values=None):
         output_array = np.empty(len(all_ids), dtype=output_dtype)
     else:
         output_array = np.empty(len(all_ids), dtype=output_dtype)
-        output_array[:] = get_missing_record(output_array, default_values)
+        output_array[:] = get_default_record(output_array, default_values)
 
     # 2) copy data from array1 (if it will not be overridden)
     if not arr2_complete:
@@ -472,7 +473,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
 
     if output_fields is not None:
         expanded_data = np.empty(chunksize, dtype=np.dtype(output_fields))
-        expanded_data[:] = get_missing_record(expanded_data, default_values)
+        expanded_data[:] = get_default_record(expanded_data, default_values)
 
     # noinspection PyUnusedLocal
     def copy_chunk(chunk_idx, chunk_num):

@@ -11,7 +11,7 @@ import config
 from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
                   as_string, collect_variables,
-                  get_missing_record, get_missing_vector, FunctionExpr,
+                  get_default_record, get_default_vector, FunctionExpr,
                   always, firstarg_dtype, expr_cache)
 from exprbases import (FilteredExpression, CompoundExpression, NumexprFunction,
                        TableExpression, NumpyChangeArray)
@@ -207,7 +207,7 @@ def add_individuals(target_context, children):
         # whether it is possible.
         if (isinstance(temp_value, np.ndarray) and
                 temp_value.shape == (num_rows,)):
-            extra = get_missing_vector(num_birth, temp_value.dtype)
+            extra = get_default_vector(num_birth, temp_value.dtype)
             temp_variables[name] = np.concatenate((temp_value, extra))
 
     extra_variables = target_context.entity_data.extra
@@ -215,7 +215,7 @@ def add_individuals(target_context, children):
         if name == '__globals__':
             continue
         if isinstance(temp_value, np.ndarray) and temp_value.shape:
-            extra = get_missing_vector(num_birth, temp_value.dtype)
+            extra = get_default_vector(num_birth, temp_value.dtype)
             extra_variables[name] = np.concatenate((temp_value, extra))
 
     id_to_rownum_tail = np.arange(num_rows, num_rows + num_birth)
@@ -228,7 +228,7 @@ class New(FilteredExpression):
 
     def _initial_values(self, array, to_give_birth, num_birth, default_values):
         children = np.empty(num_birth, dtype=array.dtype)
-        children[:] = get_missing_record(array, default_values)
+        children[:] = get_default_record(array, default_values)
         return children
 
     @classmethod
