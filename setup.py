@@ -184,7 +184,7 @@ setup(
     options=options,
     install_requires=[
         'numexpr',
-        'numpy',
+        'numpy >= 1.8',
         'tables >= 3',
     ],
     extras_require=dict(

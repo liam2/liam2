@@ -21,6 +21,7 @@ from utils import (count_occurrences, field_str_to_type, size2str,
                    UserDeprecationWarning)
 
 
+default_value_by_strtype = {"bool": False, "float": np.nan, 'int': -1}
 max_vars = 0
 
 # def compress_column(a, level):
@@ -32,7 +33,6 @@ max_vars = 0
 #
 # def decompress_column(a):
 #    return a[:]
-
 
 def global_symbols(globals_def):
     # FIXME: these should be computed once somewhere else, not for each
@@ -75,9 +75,10 @@ class DiskBackedArray(object):
 
 
 class Field(object):
-    def __init__(self, name, dtype, input=True, output=True):
+    def __init__(self, name, dtype, input=True, output=True, default_value=None):
         self.name = name
         self.dtype = dtype
+        self.default_value = default_value
         self.input = input
         self.output = output
 
@@ -109,6 +110,10 @@ class FieldCollection(list):
     def dtype(self):
         return np.dtype(list(self.name_types))
 
+    @property
+    def default_values(self):
+        return dict((f.name, f.default_value) for f in self)
+
 
 class Entity(object):
     """
@@ -134,6 +139,8 @@ class Entity(object):
             def fdef2field(name, fielddef):
                 initialdata = True
                 output = True
+                default_value = None
+
                 if isinstance(fielddef, Field):
                     return fielddef
                 elif isinstance(fielddef, (dict, str)):
@@ -141,15 +148,17 @@ class Entity(object):
                         strtype = fielddef['type']
                         initialdata = fielddef.get('initialdata', True)
                         output = fielddef.get('output', True)
+                        default_value = fielddef.get('default', default_value_by_strtype[strtype])
                     elif isinstance(fielddef, str):
                         strtype = fielddef
+			default_value = default_value_by_strtype[strtype]
                     else:
                         raise Exception('invalid field definition')
                     dtype = field_str_to_type(strtype, "field '%s'" % name)
                 else:
                     assert isinstance(fielddef, type)
                     dtype = normalize_type(fielddef)
-                return Field(name, dtype, initialdata, output)
+                return Field(name, dtype, initialdata, output, default_value)
 
             fields = FieldCollection(fdef2field(name, fdef)
                                      for name, fdef in fields)
@@ -567,7 +576,9 @@ Please use this instead:
             build_period_array(self.input_table,
                                list(self.fields.name_types),
                                self.input_rows,
-                               self.input_index, start_period)
+                               self.input_index, start_period,
+                               default_values = self.fields.default_values)
+
         assert isinstance(self.array, ColumnArray)
         self.array_period = start_period
 
@@ -599,12 +610,12 @@ Please use this instead:
         input_array = self.input_table.read(start, stop)
 
         self.array, self.id_to_rownum = \
-            merge_arrays(self.array, input_array, result_fields='array1')
+            merge_arrays(self.array, input_array, result_fields='array1', default_values = self.fielfs.default_values)
         # this can happen, depending on the layout of columns in input_array,
         # but the usual case (in retro) is that self.array is a superset of
         # input_array, in which case merge_arrays returns a ColumnArray
         if not isinstance(self.array, ColumnArray):
-            self.array = ColumnArray(self.array)
+            self.array = ColumnArray(self.array, default_values = self.fielfs.default_values)
 
     def purge_locals(self):
         """purge all local variables"""

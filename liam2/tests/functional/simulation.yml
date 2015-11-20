@@ -175,6 +175,13 @@ entities:
             - int_field1:   {type: int, initialdata: False}
             - hybrid_test:  {type: int, initialdata: False}
             - temp_global:  {type: int, initialdata: False, output: False}
+            - defaulted_bool_variable:  {type: bool, initialdata: False, default: True}
+            - undefaulted_bool_variable:  {type: bool, initialdata: False}
+            - defaulted_float_variable:  {type: float, initialdata: False, default: 99.99}
+            - undefaulted_float_variable:  {type: float, initialdata: False}
+            - defaulted_integer_variable:  {type: int, initialdata: False, default: 99}
+            - undefaulted_integer_variable:  {type: int, initialdata: False}
+
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -2581,6 +2588,15 @@ entities:
                       f_id=-1,
                       m_id=-1,
                       hh_id=-1)
+
+            test_default_value:
+                - assertTrue(all(undefaulted_bool_variable == False))
+                - assertTrue(all(undefaulted_integer_variable == -1))
+                - assertTrue(all(undefaulted_float_variable != undefaulted_float_variable))
+                - assertTrue(all(defaulted_integer_variable == 99))
+                - assertTrue(all(defaulted_float_variable == 99.99))
+                - assertTrue(all(defaulted_bool_variable))
+
 
 simulation:
     init:

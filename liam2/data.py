@@ -54,7 +54,7 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
 
 
 class ColumnArray(object):
-    def __init__(self, array=None):
+    def __init__(self, array=None, default_values=None):
         columns = {}
         if array is not None:
             if isinstance(array, (np.ndarray, ColumnArray)):
@@ -62,18 +62,23 @@ class ColumnArray(object):
                     columns[name] = array[name].copy()
                 self.dtype = array.dtype
                 self.columns = columns
+                if isinstance(array, ColumnArray):
+                    self.default_values = array.default_values
             elif isinstance(array, list):
                 for name, column in array:
                     columns[name] = column
                 self.dtype = np.dtype([(name, column.dtype)
                                        for name, column in array])
                 self.columns = columns
+                self.default_values = default_values
             else:
                 # TODO: make a property instead?
                 self.dtype = None
                 self.columns = columns
+                self.default_values = default_values
         else:
             self.dtype = None
+            self.default_values = default_values
             self.columns = columns
 
     def __getitem__(self, key):
@@ -176,15 +181,20 @@ class ColumnArray(object):
         append_carray_to_table(self, table, buffersize=buffersize)
 
     @classmethod
-    def empty(cls, length, dtype):
-        ca = cls()
+    def empty(cls, length, dtype, default_values = None):
+        ca = cls(default_values = default_values)
+        default_values = default_values if default_values is not None else dict()
         for name in dtype.names:
-            ca.columns[name] = np.empty(length, dtype[name])
+            if default_values.get(name, None):
+                ca.columns[name] = np.ones(length, dtype[name]) * default_values[name]
+            else:
+                ca.columns[name] = np.empty(length, dtype[name])
         ca.dtype = dtype
+        ca.default_values = default_values
         return ca
 
     @classmethod
-    def from_table(cls, table, start=0, stop=None, buffersize=10 * 2 ** 20):
+    def from_table(cls, table, start=0, stop=None, default_values=None, buffersize=10 * 2 ** 20):
         # reading a table one column at a time is very slow, this is why this
         # function is even necessary
         if stop is None:
@@ -192,7 +202,7 @@ class ColumnArray(object):
         dtype = table.dtype
         max_buffer_rows = buffersize // dtype.itemsize
         numlines = stop - start
-        ca = cls.empty(numlines, dtype)
+        ca = cls.empty(numlines, dtype, default_values)
 #        buffer_rows = min(numlines, max_buffer_rows)
 #        chunk = np.empty(buffer_rows, dtype=dtype)
         array_start = 0
@@ -241,11 +251,14 @@ class ColumnArray(object):
         output_dtype = np.dtype(output_fields)
         output_names = set(output_dtype.names)
         input_names = set(self.dtype.names)
-        
+        default_values = self.default_values
+        if self.default_values is None:
+            default_values = dict()
         length = len(self)
         # add missing fields
         for name in output_names - input_names:
-            self[name] = get_missing_vector(length, output_dtype[name])
+            self[name] = get_missing_vector(length, output_dtype[name],
+                                            default_value = default_values.get(name, None))
         # delete extra fields
         for name in input_names - output_names:
             del self[name]
@@ -295,17 +308,19 @@ def assert_valid_type(array, wanted_type, context=None):
                                                  wanted_type.__name__))
 
 
-def add_and_drop_fields(array, output_fields, output_array=None):
+def add_and_drop_fields(array, output_fields, default_values=None, output_array=None):
+    default_values = default_values if default_values is not None else dict()
     output_dtype = np.dtype(output_fields)
     output_names = set(output_dtype.names)
     input_names = set(array.dtype.names)
-    
+
     common_fields = output_names & input_names
     missing_fields = output_names - input_names
     if output_array is None:
         output_array = np.empty(len(array), dtype=output_dtype)
         for fname in missing_fields:
-            output_array[fname] = get_missing_value(output_array[fname])
+            output_array[fname] = get_missing_value(output_array[fname],
+                                                    default_value = default_values.get(fname, None))
     else:
         assert output_array.dtype == output_dtype
     for fname in common_fields:
@@ -313,7 +328,8 @@ def add_and_drop_fields(array, output_fields, output_array=None):
     return output_array
 
 
-def merge_subset_in_array(output, id_to_rownum, subset, first=False):
+def merge_subset_in_array(output, id_to_rownum, subset, first=False, default_values = None):
+    default_values = default_values if default_values is not None else dict()
     if subset.dtype == output.dtype and len(subset) == len(output):
         return subset
     elif subset.dtype == output.dtype:
@@ -336,7 +352,7 @@ def merge_subset_in_array(output, id_to_rownum, subset, first=False):
                 subset_all_cols = np.empty(len(subset), dtype=output.dtype)
                 for fname in set(output_names) - set(subset_names):
                     subset_all_cols[fname] = \
-                        get_missing_value(subset_all_cols[fname])
+                        get_missing_value(subset_all_cols[fname], default_values.get(fname, None))
             else:
                 subset_all_cols = output[rownums]
                 # Note that all rows which correspond to rownums == -1 have
@@ -375,7 +391,7 @@ def merge_array_records(array1, array2):
     return output
 
 
-def merge_arrays(array1, array2, result_fields='union'):
+def merge_arrays(array1, array2, result_fields='union', default_values = None):
     """
     data in array2 overrides data in array1
     both arrays must have an 'id' fields
@@ -426,22 +442,23 @@ def merge_arrays(array1, array2, result_fields='union'):
         output_array = np.empty(len(all_ids), dtype=output_dtype)
     else:
         output_array = np.empty(len(all_ids), dtype=output_dtype)
-        output_array[:] = get_missing_record(output_array)
+        output_array[:] = get_missing_record(output_array, default_values)
 
     # 2) copy data from array1 (if it will not be overridden)
     if not arr2_complete:
         output_array = merge_subset_in_array(output_array, id_to_rownum,
-                                             array1, first=True)
+                                             array1, first=True, default_values = default_values)
 
     # 3) copy data from array2
     if not output_is_arr2:
-        output_array = merge_subset_in_array(output_array, id_to_rownum, array2)
+        output_array = merge_subset_in_array(output_array, id_to_rownum, array2, default_values = default_values)
 
     return output_array, id_to_rownum
 
 
 def append_table(input_table, output_table, chunksize=10000, condition=None,
-                 stop=None, show_progress=False):
+                 stop=None, show_progress=False, default_values = None):
+
     if input_table.dtype != output_table.dtype:
         output_fields = get_fields(output_table)
     else:
@@ -461,10 +478,10 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
 
     if output_fields is not None:
         expanded_data = np.empty(chunksize, dtype=np.dtype(output_fields))
-        expanded_data[:] = get_missing_record(expanded_data)
+        expanded_data[:] = get_missing_record(expanded_data, default_values)
 
     # noinspection PyUnusedLocal
-    def copy_chunk(chunk_idx, chunk_num):
+    def copy_chunk(chunk_idx, chunk_num, default_values = None):
         chunk_start = chunk_num * chunksize
         chunk_stop = min(chunk_start + chunksize, numrows)
         if condition is not None:
@@ -477,9 +494,9 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
             # use our pre-allocated buffer (except for the last chunk)
             if len(input_data) == len(expanded_data):
                 output_data = add_and_drop_fields(input_data, output_fields,
-                                                  expanded_data)
+                                                  default_values, expanded_data)
             else:
-                output_data = add_and_drop_fields(input_data, output_fields)
+                output_data = add_and_drop_fields(input_data, output_fields, default_values)
         else:
             output_data = input_data
 
@@ -487,10 +504,10 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         output_table.flush()
 
     if show_progress:
-        loop_wh_progress(copy_chunk, range(num_chunks))
+        loop_wh_progress(copy_chunk, range(num_chunks), default_values = default_values)
     else:
         for chunk in range(num_chunks):
-            copy_chunk(chunk, chunk)
+            copy_chunk(chunk, chunk, default_values = default_values)
 
     return output_table
 
@@ -498,7 +515,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
 # noinspection PyProtectedMember
 def copy_table(input_table, output_node, output_dtype=None,
                chunksize=10000, condition=None, stop=None, show_progress=False,
-               **kwargs):
+               default_values = None, **kwargs):
     complete_kwargs = {'title': input_table._v_title}
 #                       'filters': input_table.filters}
     output_file = output_node._v_file
@@ -508,19 +525,19 @@ def copy_table(input_table, output_node, output_dtype=None,
     output_table = output_file.create_table(output_node, input_table.name,
                                             output_dtype, **complete_kwargs)
     return append_table(input_table, output_table, chunksize, condition,
-                        stop=stop, show_progress=show_progress)
+                        stop=stop, show_progress=show_progress, default_values = default_values)
 
 
 # XXX: should I make a generic n-way array merge out of this?
 # this is a special case though because:
 # 1) all arrays have the same columns
 # 2) we have id_to_rownum already computed for each array
-def build_period_array(input_table, output_fields, input_rows, input_index,
-                       start_period):
+def build_period_array(input_table, output_fields, input_rows,
+                    input_index, start_period, default_values=None):
     periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
     if not periods_before:
         id_to_rownum = np.empty(0, dtype=int)
-        output_array = ColumnArray.empty(0, np.dtype(output_fields))
+        output_array = ColumnArray.empty(0, np.dtype(output_fields), default_values)
         return output_array, id_to_rownum
 
     periods_before.sort()
@@ -541,7 +558,7 @@ def build_period_array(input_table, output_fields, input_rows, input_index,
     # if all individuals are present in the target period, we are done already!
     if np.array_equal(present_in_period, is_present):
         start, stop = input_rows[target_period]
-        input_array = ColumnArray.from_table(input_table, start, stop)
+        input_array = ColumnArray.from_table(input_table, start, stop, default_values)
         input_array.add_and_drop_fields(output_fields)
         return input_array, period_id_to_rownum
 
@@ -868,7 +885,8 @@ class H5Sink(DataSink):
                     output_table = copy_table(table.table, output_entities,
                                               entity.fields.in_output.dtype,
                                               stop=stoprow,
-                                              show_progress=True)
+                                              show_progress=True,
+                                              default_values = entity.fields.default_values)
                     output_index = table.id2rownum_per_period.copy()
                 else:
                     output_rows = {}

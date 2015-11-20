@@ -156,7 +156,7 @@ class Trunc(FunctionExpr):
         if isinstance(expr, np.ndarray):
             return expr.astype(int)
         else:
-            return int(expr)        
+            return int(expr)
 
     dtype = always(int)
 
@@ -226,10 +226,10 @@ def add_individuals(target_context, children):
 class New(FilteredExpression):
     no_eval = ('filter', 'kwargs')
 
-    def _initial_values(self, array, to_give_birth, num_birth):
+    def _initial_values(self, array, to_give_birth, num_birth, default_values = None):
         # TODO: use default values for fields which have one
         children = np.empty(num_birth, dtype=array.dtype)
-        children[:] = get_missing_record(array)
+        children[:] = get_missing_record(array, default_values)
         return children
 
     @classmethod
@@ -277,11 +277,12 @@ class New(FilteredExpression):
             num_birth = len(context)
 
         array = target_entity.array
+        default_values = target_entity.fields.default_values
 
         id_to_rownum = target_entity.id_to_rownum
         num_individuals = len(id_to_rownum)
 
-        children = self._initial_values(array, to_give_birth, num_birth)
+        children = self._initial_values(array, to_give_birth, num_birth, default_values)
         if num_birth:
             children['id'] = np.arange(num_individuals,
                                        num_individuals + num_birth)
@@ -328,7 +329,7 @@ class Clone(New):
     def __init__(self, filter=None, **kwargs):
         New.__init__(self, None, filter, None, **kwargs)
 
-    def _initial_values(self, array, to_give_birth, num_birth):
+    def _initial_values(self, array, to_give_birth, num_birth, default_values):
         return array[to_give_birth]
 
 
