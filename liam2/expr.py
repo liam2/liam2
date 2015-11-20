@@ -70,11 +70,10 @@ def normalize_type(type_):
 
 def get_default_value(column, default_value=None):
     normalized_type = normalize_type(column.dtype.type)
-    if default_value is not None:
-        assert isinstance(default_value, normalized_type)
-        return default_value
-    else:
-        return missing_values[normalized_type]
+    if default_value is None:
+        default_value = missing_values[normalized_type]
+    assert isinstance(default_value, normalized_type)
+    return default_value
 
 
 def get_default_vector(num, dtype, default_value=None):
@@ -84,7 +83,7 @@ def get_default_vector(num, dtype, default_value=None):
 
 
 def get_default_record(array, default_values=None):
-    default_values = default_values if default_values is not None else dict()
+    default_values = default_values if default_values is not None else {}
     row = np.empty(1, dtype=array.dtype)
     for fname in array.dtype.names:
         row[fname] = get_default_value(row[fname], default_values.get(fname))
