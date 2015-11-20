@@ -19,6 +19,7 @@ def anyarray_to_disk(node, name, array):
     if array.dtype.names is None:
         array_to_disk_array(node, name, array, title=name)
     else:
+        # noinspection PyProtectedMember
         h5file = node._v_file
         table = h5file.create_table(node, name, array.dtype, title=name)
         table.append(array)
