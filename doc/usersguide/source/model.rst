@@ -220,10 +220,12 @@ input file. They will need to be calculated later by the model, and you need to
 tell LIAM2 that the field is missing, by using `initialdata: False` in the
 definition for that field (see the *agegroup* variable in the example below).
 
-The fields that are not present in the initial file or the fields associated with newly created members
-of any entity can also be initialized to a specific value by using the `default: some_default_value`.
-If not present they are initialized to the default of the field type which are False for boolean and
-0 for integer and float (see the *alive* variable in the example below).
+The fields that are not present in the initial file or the fields associated
+with newly created individuals of any entity can also be initialized to a
+specific value by using `default: some_default_value` in the definition for
+that field. If a default value is not present, fields are initialized to the
+global default for the field type: False for booleans, -1 for integers and
+nan for floats (see the *alive* variable in the example below).
 
 .. _fields_output:
 
