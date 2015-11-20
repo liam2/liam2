@@ -1,6 +1,9 @@
 ﻿New features
 ------------
 
+* added support for the "sidewalk" method in :ref:`align_abs() <align_abs>`
+  in addition to the existing (and default) "bysorting" method.
+
 * added "functions" command to the interactive console. It displays the
   list of available functions.
 
@@ -11,9 +14,6 @@
 
 * added a 'limit' argument to `dump()` to limit the number of rows of the
   output.
-
-* align_abs() comes now with two aligment methods. The sidewalk alignment has been added to default bysorting
-  method (see the :ref:`processes section <processes>` for details).
 
 * added a feature (see the :ref:`miscellaneous section <misc>` for details).
 
