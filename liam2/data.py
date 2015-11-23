@@ -97,8 +97,7 @@ class ColumnArray(object):
             else:
                 # expand scalars (like ndarray does) so that we don't have to
                 # check isinstance(x, ndarray) and x.shape everywhere
-                column = np.empty(len(self), dtype=gettype(value))
-                column.fill(value)
+                column = np.full(len(self), value, dtype=gettype(value))
 
             if key in self.columns:
                 # converting to existing dtype
@@ -411,8 +410,7 @@ def merge_arrays(array1, array2, result_fields='union', default_values=None):
     max_id = all_ids[-1]
 
     # compute new id_to_rownum
-    id_to_rownum = np.empty(max_id + 1, dtype=int)
-    id_to_rownum.fill(-1)
+    id_to_rownum = np.full(max_id + 1, -1, dtype=int)
     for rownum, rowid in enumerate(all_ids):
         id_to_rownum[rowid] = rownum
 
@@ -432,6 +430,7 @@ def merge_arrays(array1, array2, result_fields='union', default_values=None):
     elif arr1_complete or arr2_complete:
         output_array = np.empty(len(all_ids), dtype=output_dtype)
     else:
+        # XXX: does np.full work in this case?
         output_array = np.empty(len(all_ids), dtype=output_dtype)
         output_array[:] = get_default_record(output_array, default_values)
 
@@ -470,6 +469,7 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         num_chunks += 1
 
     if output_fields is not None:
+        # XXX: use np.full?
         expanded_data = np.empty(chunksize, dtype=np.dtype(output_fields))
         expanded_data[:] = get_default_record(expanded_data, default_values)
 
@@ -558,8 +558,7 @@ def build_period_array(input_table, output_fields, input_rows,
         return input_array, period_id_to_rownum
 
     # building id_to_rownum for the target period
-    id_to_rownum = np.empty(max_id + 1, dtype=int)
-    id_to_rownum.fill(-1)
+    id_to_rownum = np.full(max_id + 1, -1, dtype=int)
     rownum = 0
     for row_id, present in enumerate(is_present):
         if present:
@@ -568,8 +567,7 @@ def build_period_array(input_table, output_fields, input_rows,
 
     # computing the source row for each destination row
     # we loop over the periods before start_period in reverse order
-    output_array_source_rows = np.empty(rownum, dtype=int)
-    output_array_source_rows.fill(-1)
+    output_array_source_rows = np.full(rownum, -1, dtype=int)
     for period in periods_before[::-1]:
         start, stop = input_rows[period]
         input_rownums = np.arange(start, stop)

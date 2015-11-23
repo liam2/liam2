@@ -359,8 +359,8 @@ class Min(Aggregate):
     aggregate_func = min
 
     def eval_rows(self, source_rows, expr_value, context):
-        result = np.empty(context_length(context), dtype=expr_value.dtype)
-        result.fill(get_default_value(expr_value))
+        fill = get_default_value(expr_value)
+        result = np.full(context_length(context), fill, dtype=expr_value.dtype)
 
         id_sort_indices = np.argsort(source_rows)
         sorted_rownum = source_rows[id_sort_indices]

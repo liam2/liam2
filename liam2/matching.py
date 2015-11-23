@@ -64,8 +64,7 @@ class RankMatching(Matching):
         set2len = set2filtervalue.sum()
         numtomatch = min(set1len, set2len)
         print("matching with %d/%d individuals" % (set1len, set2len))
-        result = np.empty(context_length(context), dtype=int)
-        result.fill(-1)
+        result = np.full(context_length(context), -1, dtype=int)
         if not numtomatch:
             return result
 
@@ -196,8 +195,7 @@ class SequentialMatching(Matching):
 
         sorted_set1_indices = orderbyvalue.argsort()[::-1]
 
-        result = np.empty(context_length(context), dtype=int)
-        result.fill(-1)
+        result = np.full(context_length(context), -1, dtype=int)
         id_to_rownum = context.id_to_rownum
 
         # prefix all keys except __len__

@@ -119,8 +119,7 @@ class RemoveIndividuals(FunctionExpr):
         # slightly wrong: it eliminates ids for dead/removed individuals at
         # the end of the array and this cause bugs in time-related functions
 #        ids = entity.array['id']
-#        id_to_rownum = np.empty(np.max(ids) + 1, dtype=int)
-#        id_to_rownum.fill(-1)
+#        id_to_rownum = np.full(np.max(ids) + 1, -1, dtype=int)
 #        id_to_rownum[ids] = np.arange(len(ids), dtype=int)
 #        entity.id_to_rownum = id_to_rownum
         if config.log_level == "processes":

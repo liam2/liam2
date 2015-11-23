@@ -227,9 +227,8 @@ class New(FilteredExpression):
     no_eval = ('filter', 'kwargs')
 
     def _initial_values(self, array, to_give_birth, num_birth, default_values):
-        children = np.empty(num_birth, dtype=array.dtype)
-        children[:] = get_default_record(array, default_values)
-        return children
+        default_record = get_default_record(array, default_values)
+        return np.full(num_birth, default_record, dtype=array.dtype)
 
     @classmethod
     def _collect_kwargs_variables(cls, kwargs):
@@ -309,8 +308,7 @@ class New(FilteredExpression):
         # result is the ids of the new individuals corresponding to the source
         # entity
         if to_give_birth is not None:
-            result = np.empty(context_length(context), dtype=int)
-            result.fill(-1)
+            result = np.full(context_length(context), -1, dtype=int)
             if source_entity is target_entity:
                 extra_bools = np.zeros(num_birth, dtype=bool)
                 to_give_birth = np.concatenate((to_give_birth, extra_bools))
@@ -402,8 +400,7 @@ class Dump(TableExpression):
                 # TODO: try using itertools.repeat instead as it seems to be a
                 # bit faster and would consume less memory (however, it might
                 # not play very well with Pandas.to_csv)
-                newcol = np.empty(numrows, dtype=dtype)
-                newcol.fill(col)
+                newcol = np.full(numrows, col, dtype=dtype)
                 columns[idx] = newcol
 
         if limit is not None:

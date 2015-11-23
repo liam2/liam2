@@ -390,8 +390,7 @@ def interpolate(target, arrays, id_periods, fields):
         # this might seem very wasteful but when compressed through
         # bcolz it is much smaller than an (id, rownum) dict, while
         # being only a bit slower
-        row_for_id[period] = np.empty(max_id + 1, dtype=int)
-        row_for_id[period].fill(-1)
+        row_for_id[period] = np.full(max_id + 1, -1, dtype=int)
 
     numrows = len(id_periods)
     lastrow_for_id = {}
@@ -399,8 +398,7 @@ def interpolate(target, arrays, id_periods, fields):
     # compressing this with bcolz yield interesting compression but
     # is really too slow to use afterwards because access is
     # not sequential at all.
-    nextrow_for_id = np.empty(numrows, dtype=int)
-    nextrow_for_id.fill(-1)
+    nextrow_for_id = np.full(numrows, -1, dtype=int)
     for rownum, (period, record_id) in enumerate(id_periods):
         row_for_id[period][record_id] = rownum
 
@@ -660,9 +658,9 @@ def load_def(localdir, ent_name, section_def, required_fields):
         total_lines = len(id_periods)
 
         # allocate main array
-        target = np.empty(total_lines, dtype=np.dtype(target_fields))
+        fill_value = tuple(missing_values[ftype] for _, ftype in target_fields)
         # fill with default values
-        target[:] = tuple(missing_values[ftype] for _, ftype in target_fields)
+        target = np.full(total_lines, fill_value, dtype=np.dtype(target_fields))
         target['period'] = id_periods['period']
         target['id'] = id_periods['id']
 

@@ -574,9 +574,7 @@ class SubscriptedExpr(EvaluableExpression):
                         (isinstance(key, tuple) and
                          any(non_scalar_array(k) for k in key))):
                         # scalar filter, array or tuple key
-                        res = np.empty_like(expr_value)
-                        res.fill(missing_value)
-                        return res
+                        return np.full_like(expr_value, missing_value)
                     elif isinstance(key, slice):
                         raise NotImplementedError()
                     else:

@@ -22,8 +22,7 @@ class TimeFunction(FunctionExpr):
 
         if filler is 'auto':
             filler = get_default_value(values)
-        result = np.empty(context_length(context), dtype=values.dtype)
-        result.fill(filler)
+        result = np.full(context_length(context), filler, dtype=values.dtype)
         if len(ids):
             id_to_rownum = context.id_to_rownum
             # if there was more objects in the past than in the current
@@ -87,8 +86,7 @@ class Duration(TimeFunction):
         # using a full int so that the "store" type check works
         result = value.astype(np.int)
         res_size = len(entity.array)
-        last_period_true = np.empty(res_size, dtype=np.int)
-        last_period_true.fill(period + 1)
+        last_period_true = np.full(res_size, period + 1, dtype=np.int)
 
         id_to_rownum = context.id_to_rownum
         still_running = value.copy()
@@ -128,8 +126,8 @@ class TimeAverage(TimeFunction):
         res_size = len(entity.array)
 
         num_values = np.zeros(res_size, dtype=np.int)
-        last_period_wh_value = np.empty(res_size, dtype=np.int)
-        last_period_wh_value.fill(context.period)  # current period
+        # current period
+        last_period_wh_value = np.full(res_size, context.period, dtype=np.int)
 
         sum_values = np.zeros(res_size, dtype=np.float)
         id_to_rownum = context.id_to_rownum
