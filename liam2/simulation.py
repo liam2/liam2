@@ -167,12 +167,13 @@ class Simulation(object):
             'default_entity': str,
             'autodump': None,
             'autodiff': None,
+            'runs': int,
         }
     }
 
     def __init__(self, globals_def, periods, start_period, init_processes,
                  processes, entities, input_method, input_path, output_path,
-                 default_entity=None):
+                 default_entity=None, runs=1):
         if 'periodic' in globals_def:
             declared_fields = globals_def['periodic']['fields']
             fnames = {fname for fname, type_ in declared_fields}
@@ -201,6 +202,7 @@ class Simulation(object):
         self.default_entity = default_entity
 
         self.stepbystep = False
+        self.runs = runs
 
     @classmethod
     def from_str(cls, yaml_str, simulation_dir='',
@@ -208,7 +210,8 @@ class Simulation(object):
                  output_dir=None, output_file=None,
                  start_period=None, periods=None, seed=None,
                  skip_shows=None, skip_timings=None, log_level=None,
-                 assertions=None, autodump=None, autodiff=None):
+                 assertions=None, autodump=None, autodiff=None,
+                 runs=None):
         content = yaml.load(yaml_str)
         expand_periodic_fields(content)
         content = handle_imports(content, simulation_dir)
@@ -375,9 +378,12 @@ class Simulation(object):
         input_method = input_def.get('method', 'h5')
 
         default_entity = simulation_def.get('default_entity')
+
+        if runs is None:
+            runs = simulation_def.get('runs', 1)
         return Simulation(globals_def, periods, start_period, init_processes,
                           processes, entities_list, input_method, input_path,
-                          output_path, default_entity)
+                          output_path, default_entity, runs)
 
     @classmethod
     def from_yaml(cls, fpath,
@@ -385,14 +391,16 @@ class Simulation(object):
                   output_dir=None, output_file=None,
                   start_period=None, periods=None, seed=None,
                   skip_shows=None, skip_timings=None, log_level=None,
-                  assertions=None, autodump=None, autodiff=None):
+                  assertions=None, autodump=None, autodiff=None,
+                  runs=None):
         with open(fpath) as f:
             return cls.from_str(f, os.path.dirname(os.path.abspath(fpath)),
                                 input_dir, input_file,
                                 output_dir, output_file,
                                 start_period, periods, seed,
                                 skip_shows, skip_timings, log_level,
-                                assertions, autodump, autodiff)
+                                assertions, autodump, autodiff,
+                                runs)
 
     def load(self):
         return timed(self.data_source.load, self.globals_def, self.entities_map)
@@ -401,7 +409,7 @@ class Simulation(object):
     def entities_map(self):
         return {entity.name: entity for entity in self.entities}
 
-    def run(self, run_console=False):
+    def run_single(self, run_console=False, run_num=None):
         start_time = time.time()
 
         input_dataset = timed(self.data_source.load,
@@ -591,6 +599,10 @@ class Simulation(object):
             self.close()
             if h5_autodump is not None:
                 h5_autodump.close()
+
+    def run(self, run_console=False):
+        for i in range(int(self.runs)):
+            self.run_single(run_console, i)
 
     def start_console(self, context):
         if self.stepbystep:
