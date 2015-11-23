@@ -326,8 +326,8 @@ class Function(Process):
         backup = self.backup_and_purge_locals()
 
         if len(args) != len(self.argnames):
-            raise TypeError("takes exactly %d arguments (%d given)" %
-                            (len(self.argnames), len(args)))
+            raise TypeError("%s() takes exactly %d arguments (%d given)" %
+                            (self.name, len(self.argnames), len(args)))
 
         for name in self.argnames:
             if name in self.entity.fields.names:
