@@ -11,7 +11,7 @@ import config
 from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
                   as_string, collect_variables,
-                  get_default_record, get_default_vector, FunctionExpr,
+                  get_default_array, get_default_vector, FunctionExpr,
                   always, firstarg_dtype, expr_cache)
 from exprbases import (FilteredExpression, CompoundExpression, NumexprFunction,
                        TableExpression, NumpyChangeArray)
@@ -227,8 +227,7 @@ class New(FilteredExpression):
     no_eval = ('filter', 'kwargs')
 
     def _initial_values(self, array, to_give_birth, num_birth, default_values):
-        default_record = get_default_record(array, default_values)
-        return np.full(num_birth, default_record, dtype=array.dtype)
+        return get_default_array(num_birth, array.dtype, default_values)
 
     @classmethod
     def _collect_kwargs_variables(cls, kwargs):

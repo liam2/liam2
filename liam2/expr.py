@@ -82,12 +82,17 @@ def get_default_vector(num, dtype, default_value=None):
     return res
 
 
-def get_default_record(array, default_values=None):
+def get_default_record(dtype, default_values=None):
     default_values = default_values if default_values is not None else {}
-    row = np.empty(1, dtype=array.dtype)
-    for fname in array.dtype.names:
+    row = np.empty(1, dtype=dtype)
+    for fname in dtype.names:
         row[fname] = get_default_value(row[fname], default_values.get(fname))
     return row
+
+
+def get_default_array(length, dtype, default_values=None):
+    fill_value = get_default_record(dtype, default_values)
+    return np.full(length, fill_value, dtype=dtype)
 
 
 def hasvalue(column):

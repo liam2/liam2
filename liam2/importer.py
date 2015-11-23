@@ -14,12 +14,12 @@ except ImportError:
 import tables
 import yaml
 
+from expr import get_default_array
 from utils import (validate_dict, merge_dicts, merge_items, invert_dict,
                    countlines, skip_comment_cells, strip_rows, PrettyTable,
                    unique, duplicates, unique_duplicate, prod,
                    field_str_to_type, fields_yaml_to_type, fromiter,
                    LabeledArray)
-from expr import missing_values
 
 
 MB = 2.0 ** 20
@@ -658,9 +658,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         total_lines = len(id_periods)
 
         # allocate main array
-        fill_value = tuple(missing_values[ftype] for _, ftype in target_fields)
-        # fill with default values
-        target = np.full(total_lines, fill_value, dtype=np.dtype(target_fields))
+        target = get_default_array(total_lines, np.dtype(target_fields))
         target['period'] = id_periods['period']
         target['id'] = id_periods['id']
 

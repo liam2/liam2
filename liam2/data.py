@@ -7,7 +7,7 @@ import tables
 import numpy as np
 import config
 
-from expr import (normalize_type, get_default_value, get_default_record,
+from expr import (normalize_type, get_default_value, get_default_array,
                   get_default_vector, gettype)
 from utils import loop_wh_progress, time2str, safe_put, LabeledArray, timed
 from importer import load_def, stream_to_array, array_to_disk_array
@@ -430,9 +430,8 @@ def merge_arrays(array1, array2, result_fields='union', default_values=None):
     elif arr1_complete or arr2_complete:
         output_array = np.empty(len(all_ids), dtype=output_dtype)
     else:
-        # XXX: does np.full work in this case?
-        output_array = np.empty(len(all_ids), dtype=output_dtype)
-        output_array[:] = get_default_record(output_array, default_values)
+        output_array = get_default_array(len(all_ids), output_dtype,
+                                         default_values)
 
     # 2) copy data from array1 (if it will not be overridden)
     if not arr2_complete:
@@ -469,9 +468,8 @@ def append_table(input_table, output_table, chunksize=10000, condition=None,
         num_chunks += 1
 
     if output_fields is not None:
-        # XXX: use np.full?
-        expanded_data = np.empty(chunksize, dtype=np.dtype(output_fields))
-        expanded_data[:] = get_default_record(expanded_data, default_values)
+        expanded_data = get_default_array(chunksize, np.dtype(output_fields),
+                                          default_values)
 
     # noinspection PyUnusedLocal
     def copy_chunk(chunk_idx, chunk_num):
