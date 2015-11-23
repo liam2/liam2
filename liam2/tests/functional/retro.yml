@@ -1,0 +1,36 @@
+# this tests a simulation with periods for which we already have data (with
+# merge)
+entities:
+    person:
+        fields:
+            # period and id are implicit
+            - age:          int
+            # we only use the dead field to remove dead persons in init
+            - dead:         bool
+            - gender:       bool
+            - work:         bool
+
+            - partner_id:   int
+            - hh_id:        int
+            - f_id:         int
+            - m_id:         int
+
+            - agegroup:     {type: int, initialdata: False}
+
+        processes:
+            ageing:
+                - age: age + 1
+
+simulation:
+    processes:
+        - person: [ageing]
+
+    start_period: 2000
+    periods: 1
+
+    input:
+        file: small.h5
+
+    output:
+        path: output
+        file: retro.h5
