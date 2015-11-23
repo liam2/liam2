@@ -28,7 +28,7 @@ def run_file(test_file):
         simulation.run()
 
 
-def test_directory(directory, dataset_creator, excluded_files):
+def directory_tests(directory, dataset_creator, excluded_files):
     directory_path = os.path.join(test_root, directory)
     excluded_files = excluded_files + (dataset_creator,)
     yield os.path.join(directory_path, dataset_creator)
@@ -41,7 +41,7 @@ def test_functional():
     excluded = ('imported1.yml', 'imported2.yml')
     if use_travis:
         excluded += ('static.yml', 'generate.yml')
-    for test_file in test_directory('functional', 'import.yml', excluded):
+    for test_file in directory_tests('functional', 'import.yml', excluded):
         yield run_file, test_file
 
 
@@ -49,7 +49,7 @@ def test_examples():
     # No pyqt4 on travis
     need_qt = ('demo02.yml', 'demo03.yml', 'demo04.yml', 'demo06.yml')
     excluded = need_qt if use_travis else ()
-    for test_file in test_directory('examples', 'demo_import.yml', excluded):
+    for test_file in directory_tests('examples', 'demo_import.yml', excluded):
         yield run_file, test_file
 
 
