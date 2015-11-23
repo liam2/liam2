@@ -634,6 +634,9 @@ def index_table(table):
         if row_id > max_id_so_far:
             extra = [-1] * (row_id - max_id_so_far)
             temp_id_to_rownum.extend(extra)
+        if temp_id_to_rownum[row_id] != -1:
+            raise Exception("duplicate row for id %d (period %d)"
+                            % (row_id, period))
         temp_id_to_rownum[row_id] = idx - start_row
         max_id_so_far = max(max_id_so_far, row_id)
     if current_period is not None:
