@@ -203,17 +203,13 @@ class Simulation(object):
         self.stepbystep = False
 
     @classmethod
-    def from_yaml(cls, fpath,
-                  input_dir=None, input_file=None,
-                  output_dir=None, output_file=None,
-                  start_period=None, periods=None, seed=None,
-                  skip_shows=None, skip_timings=None, log_level=None,
-                  assertions=None, autodump=None, autodiff=None):
-        simulation_path = os.path.abspath(fpath)
-        simulation_dir = os.path.dirname(simulation_path)
-        with open(fpath) as f:
-            content = yaml.load(f)
-
+    def from_str(cls, yaml_str, simulation_dir='',
+                 input_dir=None, input_file=None,
+                 output_dir=None, output_file=None,
+                 start_period=None, periods=None, seed=None,
+                 skip_shows=None, skip_timings=None, log_level=None,
+                 assertions=None, autodump=None, autodiff=None):
+        content = yaml.load(yaml_str)
         expand_periodic_fields(content)
         content = handle_imports(content, simulation_dir)
         validate_dict(content, cls.yaml_layout)
@@ -382,6 +378,21 @@ class Simulation(object):
         return Simulation(globals_def, periods, start_period, init_processes,
                           processes, entities_list, input_method, input_path,
                           output_path, default_entity)
+
+    @classmethod
+    def from_yaml(cls, fpath,
+                  input_dir=None, input_file=None,
+                  output_dir=None, output_file=None,
+                  start_period=None, periods=None, seed=None,
+                  skip_shows=None, skip_timings=None, log_level=None,
+                  assertions=None, autodump=None, autodiff=None):
+        with open(fpath) as f:
+            return cls.from_str(f, os.path.dirname(os.path.abspath(fpath)),
+                                input_dir, input_file,
+                                output_dir, output_file,
+                                start_period, periods, seed,
+                                skip_shows, skip_timings, log_level,
+                                assertions, autodump, autodiff)
 
     def load(self):
         return timed(self.data_source.load, self.globals_def, self.entities_map)
