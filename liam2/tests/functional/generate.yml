@@ -58,8 +58,7 @@ entities:
                     - show("i", i, "prop", prop)
                     - i: i + 1
 
-            create:
-                - num: 10000
+            create(num):
                 - new('person', number=num,
                       male=choice([False, True], [0.51, 0.49]))
 #                - age: trunc(abs(normal(0, 12))) + if(male, 55, 60)
@@ -269,9 +268,16 @@ entities:
             dump_all:
                 - csv(dump())
 
+            create10000:
+                - create(10000)
+
+            create1000000:
+                # 2 min 45 total (1min 36 for create)
+                - create(1000000)
+
 simulation:
     processes:
-        - person: [create, marriage, dump_all]
+        - person: [create10000, marriage, dump_all]
         - household: [dump_all]
 
     input:
