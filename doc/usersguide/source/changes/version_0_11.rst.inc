@@ -33,9 +33,22 @@ Miscellaneous improvements
 * made the demonstration models use 3d alignment files in some cases instead of
   separate alignment files for men and women.
 
+* better error message when a user-defined function is called with the wrong
+  number of arguments.
+
+* better error message on failed assertEqual if shapes are different.
+
+* added check for duplicate ids when loading datasets.
+
+Miscellaneous improvements for developers
+-----------------------------------------
+
+* implemented Simulation.from_str to create a simulation object from a
+  string (using Python).
+
 Fixes
 -----
 
 * fixed various problems with the demonstration models.
 
-* fixed something (closes :issue:`1`).
+* fixed grouping by a constant.
