@@ -219,17 +219,17 @@ class ColumnArray(object):
         numlines = len(indices)
         ca = cls.empty(numlines, dtype)
         buffer_rows = min(numlines, max_buffer_rows)
-#        chunk = np.empty(buffer_rows, dtype=dtype)
+        # chunk = np.empty(buffer_rows, dtype=dtype)
         start, stop = 0, buffer_rows
         while numlines > 0:
             buffer_rows = min(numlines, max_buffer_rows)
-#            if buffer_rows < len(chunk):
+            # if buffer_rows < len(chunk):
                 # last chunk is smaller
-#                chunk = np.empty(buffer_rows, dtype=dtype)
+                # chunk = np.empty(buffer_rows, dtype=dtype)
             chunk_indices = indices[start:stop]
 # needs pytables3
-#            table.readCoordinates(chunk_indices, out=chunk)
-            chunk = table.readCoordinates(chunk_indices)
+#             table.read_coordinates(chunk_indices, out=chunk)
+            chunk = table.read_coordinates(chunk_indices)
             ca[start:stop] = chunk
             start += buffer_rows
             stop += buffer_rows
