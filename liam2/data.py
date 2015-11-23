@@ -194,18 +194,16 @@ class ColumnArray(object):
         max_buffer_rows = buffersize // dtype.itemsize
         numlines = stop - start
         ca = cls.empty(numlines, dtype)
-#        buffer_rows = min(numlines, max_buffer_rows)
-#        chunk = np.empty(buffer_rows, dtype=dtype)
+        buffer_rows = min(numlines, max_buffer_rows)
+        chunk = np.empty(buffer_rows, dtype=dtype)
         array_start = 0
         table_start = start
         while numlines > 0:
             buffer_rows = min(numlines, max_buffer_rows)
-            # if buffer_rows < len(chunk):
-            #     # last chunk is smaller
-            #     chunk = np.empty(buffer_rows, dtype=dtype)
-# needs pytables3
-#            table.read(table_start, table_start + buffer_rows, out=chunk)
-            chunk = table.read(table_start, table_start + buffer_rows)
+            if buffer_rows < len(chunk):
+                # last chunk is smaller
+                chunk = np.empty(buffer_rows, dtype=dtype)
+            table.read(table_start, table_start + buffer_rows, out=chunk)
             ca[array_start:array_start + buffer_rows] = chunk
             table_start += buffer_rows
             array_start += buffer_rows
@@ -227,8 +225,8 @@ class ColumnArray(object):
                 # last chunk is smaller
                 # chunk = np.empty(buffer_rows, dtype=dtype)
             chunk_indices = indices[start:stop]
-# needs pytables3
-#             table.read_coordinates(chunk_indices, out=chunk)
+            # as of PyTables 3.2.2, read_coordinates does not support out=
+            # table.read_coordinates(chunk_indices, out=chunk)
             chunk = table.read_coordinates(chunk_indices)
             ca[start:stop] = chunk
             start += buffer_rows
