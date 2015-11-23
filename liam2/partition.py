@@ -17,7 +17,8 @@ try:
     def partition_nd(columns, filter_value, possible_values):
         assert len(columns) > 0
         assert all(isinstance(c, np.ndarray) for c in columns), \
-            [str(c) for c in columns]
+            "not all columns are ndarrays: " + \
+            ', '.join(str(type(c)) for c in columns)
         # note that since we don't iterate through the columns many times,
         # it's not worth it to copy non contiguous columns in this version
         d = group_indices_nd(columns, filter_value)
