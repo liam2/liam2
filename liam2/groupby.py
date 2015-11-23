@@ -3,9 +3,10 @@ from __future__ import print_function
 
 import numpy as np
 
+from context import context_length
 from expr import expr_eval, collect_variables, not_hashable
 from exprbases import TableExpression
-from utils import prod, LabeledArray
+from utils import expand, prod, LabeledArray
 from aggregates import Count
 from partition import partition_nd
 
@@ -44,14 +45,10 @@ class GroupBy(TableExpression):
         expr_vars = [v.name for v in collect_variables(expr)]
         labels = [str(e) for e in expressions]
         columns = [expr_eval(e, context) for e in expressions]
+        columns = [expand(c, context_length(context)) for c in columns]
 
         if filter_value is not None:
-            # TODO: make a function out of this, I think we have this pattern
-            # in several places
-            filtered_columns = [col[filter_value]
-                                if isinstance(col, np.ndarray) and col.shape
-                                else [col]
-                                for col in columns]
+            filtered_columns = [col[filter_value] for col in columns]
             # FIXME: use the actual filter_expr instead of not_hashable
             filtered_context = context.subset(filter_value, expr_vars,
                                               not_hashable)

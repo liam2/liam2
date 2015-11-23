@@ -2424,10 +2424,23 @@ entities:
 #                - warn2: choice([0, 1], [0.5, 0.5000009]) # sum slightly > 1
 
             test_groupby:
-                # 1 dim
+                # scalar dim
+                - num_males: count(gender)
+                - by_constant: groupby(num_males)
+                - assertEqual(by_constant, [count()])
+
+                # scalar (global) dim
+                - by_constant: groupby(MINR)
+                - assertEqual(by_constant, [count()])
+
+                # 1 normal dim, 1 scalar dim
+                - by_constant_gender: groupby(gender, MINR)
+                - assertEqual(by_constant_gender,
+                              [[count(not gender)], [count(gender)]])
+
+                # 1 normal dim
                 - by_gender: groupby(gender)
-                - assertEqual(by_gender,
-                              [count(not gender), count(gender)])
+                - assertEqual(by_gender, [count(not gender), count(gender)])
 
                 # 2 dim
                 - by_agegroup_gender: groupby(agegroup, gender)

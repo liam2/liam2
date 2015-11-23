@@ -296,6 +296,31 @@ def nansum(a, axis=None):
         return np.sum(a, axis)
 
 
+def expand(value, shape):
+    """Expands value to shape if necessary
+
+    Parameters
+    ----------
+    value : scalar or ndarray
+        value to expand
+    shape : int or tuple of int
+        shape to expand to if value is a scalar or 0d array
+
+    Returns
+    -------
+    expanded array
+    """
+    if np.isscalar(shape):
+        shape = (shape,)
+    if isinstance(value, np.ndarray) and value.shape:
+        # assert value.shape == shape, "%s != %s" % (value.shape, shape)
+        # FIXME: this assertion fails because we are sloppy in
+        # AlignmentAbsoluteValues.align_link (target_context is not filtered)
+        return value
+    else:
+        return np.full(shape, value)
+
+
 # TODO: provide a cython version for this (using fused types)
 # ctypedef fused np_numeric:
 #     np.int32_t

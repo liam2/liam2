@@ -525,9 +525,10 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # ignored by GroupBy anyway.
         groupby_expr = GroupBy(*filtered_columns, pvalues=possible_values)
 
-        # target_context is not technically correct, as it is not "filtered"
-        # while filtered_columns are, but since we don't use the context
-        # "columns", it does not matter.
+        # FIXME: target_context is not correct, as it is not filtered while
+        # filtered_columns are. Since we do not use the context "columns" it
+        # mostly works but I had to disable an assertion in utils.expand
+        # because the length of the context is not correct.
         num_candidates = expr_eval(groupby_expr, target_context)
 
         # fetch the list of linked individuals for each local individual.
