@@ -27,7 +27,9 @@ from upgrade import upgrade
 from utils import AutoFlushFile
 from view import viewhdf
 
-__version__ = "0.10.5"
+
+# the short version number (no .0 necessary)
+__version__ = "0.11"
 
 
 def write_traceback(ex_type, e, tb):
