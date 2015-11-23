@@ -612,12 +612,12 @@ Please use this instead:
 
         self.array, self.id_to_rownum = \
             merge_arrays(self.array, input_array, result_fields='array1',
-                         default_values=self.fielfs.default_values)
+                         default_values=self.fields.default_values)
         # this can happen, depending on the layout of columns in input_array,
         # but the usual case (in retro) is that self.array is a superset of
         # input_array, in which case merge_arrays returns a ColumnArray
         if not isinstance(self.array, ColumnArray):
-            self.array = ColumnArray(self.array, default_values = self.fielfs.default_values)
+            self.array = ColumnArray(self.array)
 
     def purge_locals(self):
         """purge all local variables"""
