@@ -145,9 +145,13 @@ You may want to use a logistic function.
                     # score)
                     indices_to_take = sorted_global_indices[-maybe_to_take:]
                 elif method == 'sidewalk':
-                    if maybe_to_take > sum(score[sorted_global_indices]):
-                        raise ValueError("Cannot use 'sidewalk' with need > "
-                                         "sum of probabilities")
+                    proba_sum = sum(score[sorted_global_indices])
+                    if maybe_to_take > round(proba_sum):
+                        raise ValueError(
+                            "Cannot use 'sidewalk' with need = {} > sum of probabilities = {}".format(
+                                maybe_to_take, proba_sum
+                                )
+                            )
                     u = np.random.uniform() + np.arange(maybe_to_take)
                     # on the random sample, score are cumulated and then, we
                     # extract indices of each value before each value of u
