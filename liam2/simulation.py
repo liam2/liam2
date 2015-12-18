@@ -72,7 +72,7 @@ def handle_imports(content, directory):
     if isinstance(import_files, basestring):
         import_files = [import_files]
     for fname in import_files[::-1]:
-        import_path = os.path.join(directory, fname)
+        import_path = os.path.abspath(os.path.join(directory, fname))
         print("importing: '%s'" % import_path)
         import_directory = os.path.dirname(import_path)
         with open(import_path) as f:
