@@ -1,4 +1,4 @@
 # -*- coding: utf-8 -*-
 
-# the long version number (no .0 necessary)
-__version__ = "0.11"
+# the long version number
+__version__ = "0.11.0"
