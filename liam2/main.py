@@ -28,8 +28,7 @@ from utils import AutoFlushFile
 from view import viewhdf
 
 
-# the short version number (no .0 necessary)
-__version__ = "0.11"
+from version import __version__
 
 
 def write_traceback(ex_type, e, tb):
@@ -342,7 +341,7 @@ if __name__ == '__main__':
     sys.stdout = AutoFlushFile(sys.stdout)
     sys.stderr = AutoFlushFile(sys.stderr)
 
-    print("LIAM2 {} ({})".format(__version__, platform.architecture()[0]))
+    print("LIAM2 {} ({})".format(__version__[:-2] if __version__.endswith('.0') else __version__, platform.architecture()[0]))
     print()
 
     main()
