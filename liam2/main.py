@@ -341,7 +341,7 @@ if __name__ == '__main__':
     sys.stdout = AutoFlushFile(sys.stdout)
     sys.stderr = AutoFlushFile(sys.stderr)
 
-    print("LIAM2 {} ({})".format(__version__, platform.architecture()[0]))
+    print("LIAM2 {} ({})".format(__version__[:-2] if __version__.endswith('.0') else __version__, platform.architecture()[0]))
     print()
 
     main()

@@ -181,7 +181,7 @@ execfile('./liam2/version.py')
 setup(
     name="liam2",
     # cx_freeze wants only ints and dots (full version number)
-    version=int_version(__version__[:-2] if __version__.endswith('.0') else __version__),
+    version=int_version(__version__),
     description="LIAM2",
     cmdclass={"build_ext": MyBuildExt},
     ext_modules=ext_modules,
