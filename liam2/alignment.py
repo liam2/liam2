@@ -148,7 +148,7 @@ You may want to use a logistic function.
                     proba_sum = sum(score[sorted_global_indices])
                     if maybe_to_take > round(proba_sum):
                         raise ValueError(
-                            "Cannot use 'sidewalk' with need = {} > sum of probabilities = {}".format(
+                            "Cannot use 'sidewalk' with need = {} > sum of probabilities = round({})".format(
                                 maybe_to_take, proba_sum
                                 )
                             )
