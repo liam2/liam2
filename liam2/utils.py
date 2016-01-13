@@ -1,16 +1,16 @@
 # encoding: utf-8
 from __future__ import print_function
 
-import re
 import ast
-import sys
-import math
-import time
-import operator
+from collections import defaultdict, deque, namedtuple
 import itertools
 from itertools import izip, product
+import math
+import operator
 from textwrap import wrap
-from collections import defaultdict, deque, namedtuple
+import re
+import sys
+import time
 import warnings
 
 import numpy as np

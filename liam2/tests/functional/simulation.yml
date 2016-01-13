@@ -18,6 +18,18 @@ globals:
             - MINR: float
             - MIG_PERCENT: float
 
+    BOOL_CONSTANT:
+        value: True
+        type: bool
+
+    FLOAT_CONSTANT:
+        value: 3.1415
+        type: float
+
+    INT_CONSTANT:
+        value: 42
+        type: int
+
     ARRAY:
         type: float
 
@@ -2803,6 +2815,11 @@ entities:
                 - x: age * 1000000
                 - assertTrue(all(abs(erf(x) - 1)) < .0001)
 
+            test_global_parameter:
+                - assertTrue(BOOL_CONSTANT)
+                - assertEqual(FLOAT_CONSTANT, 3.1415)
+                - assertEqual(INT_CONSTANT, 42)
+
 simulation:
     init:
         - household: [init_region]
@@ -2940,6 +2957,7 @@ simulation:
                    test_show,
                    test_load,
                    test_multi_align,
+                   test_global_parameter,
         ]
         - household: [
             composition,
