@@ -41,7 +41,12 @@ def global_symbols(globals_def):
     # entity. I guess they should have a class of their own
     symbols = {}
     for name, global_def in globals_def.iteritems():
-        global_type = global_def.get('fields')
+        if isinstance(global_def, dict):
+            global_type = global_def.get('fields')
+        else:
+            symbols[name] = global_def
+            continue
+
         if isinstance(global_type, list):
             # add namespace for table
             symbols[name] = GlobalTable(name, global_type)

@@ -116,7 +116,8 @@ class Simulation(object):
                     '*': str
                 },
                 'invert': [str],
-                'transposed': bool
+                'transposed': bool,
+                'value': None,  # Or(str, bool, int, float})
             }
         },
         '#entities': {

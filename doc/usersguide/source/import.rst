@@ -8,14 +8,14 @@ data files
 ----------
 
 As of now, you can only import CSV files. LIAM2 currently supports two kinds
-of data files: tables and multi-dimensional arrays. 
+of data files: tables and multi-dimensional arrays.
 
 **table** files are used for entities data and optionally for globals. They
 should have one column per field and their first row should contain the name
 of the fields. These names should not contain any special character (accents,
-etc.). 
+etc.).
 
-For entities data, you need at least two *integer* columns: "id" and "period" 
+For entities data, you need at least two *integer* columns: "id" and "period"
 (though they do not necessarily need to be named like that in the csv file).
 
 **array** files are used for other external data (alignment data for example).
@@ -27,7 +27,7 @@ the actual data.
 
 *example* ::
 
-  gender |  work | civilstate |      |      |     
+  gender |  work | civilstate |      |      |
          |       |          1 |    2 |    3 |    4
    False | False |       5313 | 1912 |  695 | 1222
    False |  True |        432 |  232 |   51 |   87
@@ -39,11 +39,11 @@ This is the same format that groupby() generates except for totals.
 description file
 ----------------
 
-To import CSV files, you need to create a description file. Those description 
+To import CSV files, you need to create a description file. Those description
 files have the following general format: ::
 
     output: <path_of_hdf5_file>.csv
-    
+
     # compression is optional. compression type can be 'zlib', 'bzip2' or 'lzo'
     # level is a digit from 1 to 9 and is optional (defaults to 5).
     # Examples of valid compression strings are: zlib, lzo-1, bzip2-9.
@@ -78,11 +78,11 @@ files have the following general format: ::
     entities:
         <entity1_name>:
             path: <path_to_entity1_data>.csv
-            
+
             # defaults to False if not present
             transposed: True
 
-            # if you want to manually select the fields to be used, and/or 
+            # if you want to manually select the fields to be used, and/or
             # specify their types, you can do so in the following section.
             # If you want to use all the fields present in the csv file, you
             # can simply omit this section. The field types will be
@@ -122,15 +122,15 @@ files have the following general format: ::
                 # if you don't have any specific option for a file, use "{}"
                 - <path>\<to>\<file2>.<ext>: {}
                 - ...
-                
+
             # OR, if all the files use the global options (the options defined
             # at the level of the entity):
             files:
                 - <path>\<to>\<file1>.<ext>
                 - <path>\<to>\<file2>.<ext>
                 - ...
-    
-            # if you want to fill missing values for some fields (this only 
+
+            # if you want to fill missing values for some fields (this only
             # works when "files" is used).
             interpolate:
                 <fieldX_name>: previous_value
@@ -139,12 +139,12 @@ files have the following general format: ::
             # (True -> False and False -> True), add them to the "invert" list
             # below.
             invert: [list, of, boolean, fields, to, invert]
-                
+
         <entity2_name>:
             ...
 
 Most elements of this description file are optional. The only required elements
-are "output" and "entities". If an element is not specified, it uses the 
+are "output" and "entities". If an element is not specified, it uses the
 following default value:
 
 - if *path* is omitted, it defaults to a file named after the entity in the same
@@ -152,19 +152,19 @@ following default value:
 - if the *fields* section is omitted, all columns of the csv file will be
   imported and their type will be detected automatically.
 - if *compression* is omitted, the output will not be compressed.
-  
+
 Note that if an "entity section" is entirely empty, you need to use the special
 code: "{}".
 
 *simplest example* ::
 
     output: simplest.h5
-    
+
     entities:
         household: {}
         person: {}
 
-This will try to load all the fields of the household and person entities in 
+This will try to load all the fields of the household and person entities in
 "*household.csv*" and "person.csv" in the same directory than the description
 file.
 
@@ -183,7 +183,7 @@ file.
         person:
             path: input/person.csv
 
-This will try to load all the fields of the household and person entities in 
+This will try to load all the fields of the household and person entities in
 "*household.csv*" and "person.csv" in the "input" sub-directory of the
 directory where the description file is.
 
@@ -199,21 +199,21 @@ directory where the description file is.
     entities:
         household:
             path: input/household.csv
-    
+
         person:
             path: input/person.csv
             fields:
                 - age:        int
                 - gender:     bool
                 - workstate:  int
-                - civilstate: int     
+                - civilstate: int
                 - partner_id: int
-    
+
             oldnames:
                 gender: male
 
-This will load all the fields of the household entity in 
-"*household.csv*" and load from "person.csv" only the fields listed above. 
+This will load all the fields of the household entity in
+"*household.csv*" and load from "person.csv" only the fields listed above.
 The data will be converted (if necessary) to the type declared. In this case,
 person.csv should contain at least the following columns (not necessarily in
 this order): period, id, age, male, workstate, civilstate, partner_id.
@@ -229,8 +229,8 @@ If the fields of an entity are scattered in several files, you can use the
                 - age:        int
                 - gender:     bool
                 - workstate:  int
-                - civilstate: int     
-     
+                - civilstate: int
+
             # renamings applying to all files of this entity
             newnames:
                 time: period
@@ -249,7 +249,7 @@ If the fields of an entity are scattered in several files, you can use the
                     newnames:
                         # we override the "global" renaming
                         period: period
-             
+
             interpolate:
                 workstate: previous_value
                 civilstate: previous_value
@@ -257,7 +257,7 @@ If the fields of an entity are scattered in several files, you can use the
 But this can become tedious if you have a lot of files to import and they all
 have the same column names. If the name of the field can be extracted from the
 name of the file, you can automate the process like this:
- 
+
 *example 5* ::
 
     output: example5.h5
@@ -267,7 +267,7 @@ name of the file, you can automate the process like this:
             fields:
                 - age:  int
                 - work: bool
-    
+
             newnames:
                 time: period
                 # {basename} evaluates to the name of the file without
@@ -282,7 +282,7 @@ name of the file, you can automate the process like this:
 
             interpolate:
                 work: previous_value
-            
+
 
 
 importing the data

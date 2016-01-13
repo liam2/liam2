@@ -43,6 +43,21 @@
 * implemented experimental align(link=) to use proportions in combination with the Chenard algorithm. It needs more
   testing though.
 
+* implemented a way of declaring global constants. These constant should be explicitely typed. (partially closes :issue:`203`): ::
+
+  globals:
+      BOOL_CONSTANT:
+          value: True
+          type: bool
+
+      FLOAT_CONSTANT:
+          value: 3.1415
+          type: float
+
+      INT_CONSTANT:
+          value: 42
+          type: int
+
 * implemented access to the error function (erf) function (scipy package is needed)
 
 * implemented assertRaises to check for expected errors.

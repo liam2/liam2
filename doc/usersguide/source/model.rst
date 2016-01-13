@@ -82,10 +82,22 @@ globals
 *globals* are variables (aka. parameters) that do not relate to any particular
 *entity* defined in the model. They can be used in expressions in any entity.
 
-LIAM2 currently supports two kinds of globals: tables and multi-dimensional
-arrays. Both kinds need to be declared in the simulation file, as follow: ::
+LIAM2 currently supports three kinds of globals: constants (scalars), tables and multi-dimensional
+arrays. All kinds need to be declared in the simulation file, as follow: ::
 
     globals:
+        BOOL_CONSTANT:
+            value: True
+            type: bool
+
+        FLOAT_CONSTANT:
+            value: 3.1415
+            type: float
+
+        INT_CONSTANT:
+            value: 42
+            type: int
+
         mytable:
             fields:
                 - MYINTFIELD: int

@@ -712,6 +712,7 @@ def load_path_globals(globals_def):
     for name, global_def in globals_def.iteritems():
         if 'path' not in global_def:
             continue
+
         kind, info = load_def(localdir, name, global_def, [])
         if kind == 'table':
             fields, numlines, datastream, csvfile = info
@@ -723,9 +724,17 @@ def load_path_globals(globals_def):
     return globals_data
 
 
+def handle_constant_globals(globals_def):
+    globals_data = {}
+    for name, global_def in globals_def.iteritems():
+        if 'value' in global_def:
+            globals_data[name] = global_def['value']
+
+    return globals_data
+
+
 def index_tables(globals_def, entities, fpath):
     print("reading data from %s ..." % fpath)
-
     input_file = tables.open_file(fpath)
     try:
         input_root = input_file.root
@@ -736,7 +745,8 @@ def index_tables(globals_def, entities, fpath):
                             '(but some are declared in the simulation file)')
 
         globals_data = load_path_globals(globals_def)
-
+        constant_globals_data = handle_constant_globals(globals_def)
+        globals_data.update(constant_globals_data)
         globals_node = getattr(input_root, 'globals', None)
         for name, global_def in globals_def.iteritems():
             # already loaded from another source (path)
@@ -853,8 +863,12 @@ class H5Sink(DataSink):
                 output_globals = output_file.create_group("/", "globals",
                                                           "Globals")
                 for k, g_def in globals_def.iteritems():
-                    if 'path' not in g_def:
-                        anyarray_to_disk(output_globals, k, globals_data[k])
+                    # Do not save global constants (ie those who have a value attribute)
+                    # nor globals loaded from external (.csv) files.
+                    if 'value' in g_def or 'path' in g_def:
+                        continue
+
+                    anyarray_to_disk(output_globals, k, globals_data[k])
 
             entities_tables = input_dataset['entities']
             output_entities = output_file.create_group("/", "entities",
