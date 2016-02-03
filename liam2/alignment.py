@@ -148,7 +148,7 @@ You may want to use a logistic function.
                     proba_sum = sum(score[sorted_global_indices])
                     if maybe_to_take > round(proba_sum):
                         raise ValueError(
-                            "Cannot use 'sidewalk' with need = {} > sum of probabilities = round({})".format(
+                            "Cannot use 'sidewalk' with need = {} > sum of probabilities = {}".format(
                                 maybe_to_take, proba_sum
                                 )
                             )
@@ -340,6 +340,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
             # calculate without leave_filter and without take_filter
             if need is None:
                 need = sum(score)
+            need = np.floor(need).astype(int)
 
         # need is a single scalar
         if np.isscalar(need):
