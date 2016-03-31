@@ -2231,6 +2231,11 @@ are available in most functions.
 
   .. note:: *pie()* does not support the *maxticks* argument.
 
+* *xmin*, *xmax*, *ymin*, *ymax*: provide manual bounds for charts. By
+  default, they are automatically inferred from the data.
+
+  .. versionadded:: 0.11.1
+
 
 .. index:: bar, bar charts
 

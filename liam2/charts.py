@@ -106,6 +106,8 @@ class Chart(FunctionExpr, FileProducer):
             axes = axes[1:]
         if self.show_axes:
             self.set_axes(axes, maxticks, projection)
+        plt.xlim(xmin=kwargs.pop('xmin', None), xmax=kwargs.pop('xmax', None))
+        plt.ylim(ymin=kwargs.pop('ymin', None), ymax=kwargs.pop('ymax', None))
 
         self._draw(data, colors, **kwargs)
 

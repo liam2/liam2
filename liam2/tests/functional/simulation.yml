@@ -574,7 +574,7 @@ entities:
                             fname='stackplot4.png')
 
                 - byage: groupby(age, percent=True)
-                - bar(byage, fname='bar1.png')
+                - bar(byage, ymax=100, fname='bar1.png')
                 - bar(groupby(agegroup), fname='bar2.png&pdf')
                 - bar(groupby(agegroup + 1), fname='bar3.png')
                 - bar(groupby(agegroup, gender), fname='bar4.png')
@@ -2685,7 +2685,7 @@ simulation:
                    test_seed,
 
                    # test the charts before test_new messes the demography
-#                   test_charts,
+                   test_charts,
 
                    # ...
                    test_logit,
