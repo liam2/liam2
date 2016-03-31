@@ -37,3 +37,7 @@ as we can.
 If you **really** do not want your message to be public, you can contact the
 authors at liam2 x plan y be (replace x and y by @ and . respectively) but
 **we would highly prefer if you used the mailing list instead if you can**.
+
+To contact the institution maintaining the project and this website, please
+see the `Federal Planning Bureau contact page
+<http://www.plan.be/aboutus/Contact.php?lang=en>`_.
