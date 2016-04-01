@@ -545,7 +545,7 @@ def build_period_array(input_table, output_fields, input_rows,
     for period in periods_before:
         period_id_to_rownum = input_index[period]
         present_in_period = period_id_to_rownum != -1
-        present_in_period.resize(max_id + 1)
+        present_in_period.resize(max_id + 1, refcheck=False)
         is_present |= present_in_period
 
     # if all individuals are present in the target period, we are done already!
