@@ -9,11 +9,14 @@ import numpy as np
 import config
 from expr import FunctionExpr
 from utils import (LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim,
-                   Axis, FileProducer)
+                   Axis, FileProducer, QtAvailable)
 
 try:
     import matplotlib
-    matplotlib.use('Qt4Agg')
+    if QtAvailable:
+        matplotlib.use('Qt4Agg')
+    else:
+        matplotlib.use('TkAgg')
     del matplotlib
     import matplotlib.pyplot as plt
     # set interactive mode

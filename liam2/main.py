@@ -9,11 +9,15 @@ import traceback
 import sys
 import warnings
 
-# this is needed for vitables and needs to happen BEFORE matplotlib is
-# imported (and imports PyQt)
-import sip
-sip.setapi('QString', 2)
-sip.setapi('QVariant', 2)
+# this is needed for vitables and needs to happen BEFORE
+# matplotlib.use('Qt4Agg')
+# (which imports PyQt)
+try:
+    import sip
+    sip.setapi('QString', 2)
+    sip.setapi('QVariant', 2)
+except ImportError:
+    pass
 
 import yaml
 
