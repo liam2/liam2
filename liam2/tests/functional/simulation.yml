@@ -2685,7 +2685,7 @@ simulation:
                    test_seed,
 
                    # test the charts before test_new messes the demography
-                   test_charts,
+#                   test_charts,
 
                    # ...
                    test_logit,
