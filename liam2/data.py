@@ -537,7 +537,7 @@ def build_period_array(input_table, output_fields, input_rows,
     # take the last period which we have data for
     target_period = periods_before[-1]
 
-    # computing is present
+    # computing is_present
     max_id = len(input_index[target_period]) - 1
     period_id_to_rownum = None
     present_in_period = None
