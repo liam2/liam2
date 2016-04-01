@@ -109,10 +109,16 @@ class Chart(FunctionExpr, FileProducer):
             axes = axes[1:]
         if self.show_axes:
             self.set_axes(axes, maxticks, projection)
-        plt.xlim(xmin=kwargs.pop('xmin', None), xmax=kwargs.pop('xmax', None))
-        plt.ylim(ymin=kwargs.pop('ymin', None), ymax=kwargs.pop('ymax', None))
-
+        left, right = kwargs.pop('xmin', None), kwargs.pop('xmax', None)
+        bottom, top = kwargs.pop('ymin', None), kwargs.pop('ymax', None)
         self._draw(data, colors, **kwargs)
+        if self.show_axes:
+            ax = plt.gca(projection=projection)
+            # setting x/ylim need to happen after draw, so that the "keep
+            # last value" behavior of setting them to None works, otherwise
+            # it breaks awfully (eg sets ylim to 0, 1)
+            ax.set_xlim(left=left, right=right, emit=False)
+            ax.set_ylim(bottom=bottom, top=top, emit=False)
 
         plt.grid(grid)
         if fname is None:
