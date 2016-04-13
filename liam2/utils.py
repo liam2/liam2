@@ -564,7 +564,7 @@ class LabeledArray(np.ndarray):
                 result[1].append('total')
         else:
             result = []
-        data = self.ravel()
+        data = np.asarray(self).ravel()
 
         if self.pvalues is not None:
             categ_values = list(product(*self.pvalues[:-1]))
