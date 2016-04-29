@@ -76,7 +76,10 @@ Note that it is perfectly valid to chain links as, for example, in: ::
     grand_parents_income: mother.mother.income + mother.father.income + 
                           father.mother.income + father.father.income  
         
-Another option to get values in the linked individual is to use the form: ::
+
+.. index:: get
+
+Another option to get values in the linked individual is to use get: ::
 
     link_name.get(expr)
     
