@@ -4,8 +4,6 @@
 * added seed() function to (re)set the pseudo-random generator seed
   mid-simulation.
 
-.. _misc:
-
 Miscellaneous improvements
 --------------------------
 

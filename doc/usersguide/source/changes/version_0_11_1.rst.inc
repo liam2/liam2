@@ -1,20 +1,12 @@
 ﻿New features
 ------------
 
-* added a feature (see the :ref:`miscellaneous section <misc>` for details).
-
 * chart functions gained *xmin*, *xmax*, *ymin*, *ymax* optional arguments to
   provide manual bounds for axes. By default, they are automatically inferred
   from the data (closes :issue:`209`).
 
-.. _misc:
-
 Miscellaneous improvements
 --------------------------
 
-* improved something.
-
-Fixes
------
-
-* fixed something (closes :issue:`1`).
+* view command can be called without file argument to launch the embedded
+  ViTables without opening any file (closes :issue:`194`).
