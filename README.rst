@@ -12,7 +12,7 @@ greatly reduce the development costs (in terms of both time and money) of
 microsimulation models.
 
 The toolbox is made as generic as possible so that it can be used to develop
-almost any microsimulation model as long as it use cross-sectional ageing, ie
+almost any microsimulation model as long as it uses cross-sectional ageing, ie
 all individuals are simulated at the same time for one period, then for the next
 period, etc.
 
