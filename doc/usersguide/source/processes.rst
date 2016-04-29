@@ -618,7 +618,7 @@ temporal functions
 - tsum(expr): sum of an expression since the individual was created
 
 
-.. index:: random, uniform, normal, gumbel, randint
+.. index:: random
 .. _random_functions:
 
 random functions
