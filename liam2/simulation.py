@@ -365,7 +365,8 @@ class Simulation(object):
                 field_type = dict(entity.fields.name_types)
                 lag_fields = [(v, field_type[v]) for v in sorted_vars]
                 # FIXME: this should be initialized to the data from
-                # start_period - 2, if any
+                # start_period - 2, if any so that we can use lag() in an init
+                # process
                 entity.array_lag = np.empty(0, dtype=np.dtype(lag_fields))
             else:
                 lag_fields = []
