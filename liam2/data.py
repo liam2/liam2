@@ -618,7 +618,9 @@ def index_table(table):
         if period != current_period:
             # 0 > None is True
             if period < current_period:
-                raise Exception("data is not time-ordered")
+                msg = "data is not ordered by period " \
+                      "({} at data line {} is < {})"
+                raise Exception(msg.format(period, idx + 1, current_period))
             if start_row is not None:
                 rows_per_period[current_period] = start_row, idx
                 # assumes the data is sorted on period then id
@@ -631,8 +633,11 @@ def index_table(table):
             extra = [-1] * (row_id - max_id_so_far)
             temp_id_to_rownum.extend(extra)
         if temp_id_to_rownum[row_id] != -1:
-            raise Exception("duplicate row for id %d (period %d)"
-                            % (row_id, period))
+            msg = "duplicate row for id {} for period {} (at data line {})"
+            # idx + 1 is correct for ViTables, which starts counting at 1, but
+            # is still off by one (or more) for .csv files because of headers
+            # and comments
+            raise Exception(msg.format(row_id, period, idx + 1))
         temp_id_to_rownum[row_id] = idx - start_row
         max_id_so_far = max(max_id_so_far, row_id)
     if current_period is not None:
@@ -658,7 +663,8 @@ def index_table_light(table, index='period'):
         if value != current_value:
             # 0 > None is True
             if value < current_value:
-                raise Exception("data is not time-ordered")
+                msg = "data is not ordered by {} ({} at data line {} is < {})"
+                raise Exception(msg.format(index, value, idx + 1, current_value))
             if start_row is not None:
                 rows_per_period[current_value] = (start_row, idx)
             start_row = idx
