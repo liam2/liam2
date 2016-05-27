@@ -7,7 +7,7 @@ import csv
 import numpy as np
 
 import config
-from expr import FunctionExpr, expr_cache
+from expr import FunctionExpr, expr_cache, expr_eval
 from process import BreakpointException
 from partition import filter_to_indices
 from utils import LabeledArray, FileProducer, merge_dicts, PrettyTable, ndim, \
@@ -239,6 +239,19 @@ class AssertIsClose(ComparisonAssert):
         return np.allclose(v1, v2)
 
 
+class AssertRaises(Assert):
+    no_eval = ('expr',)
+
+    def eval_assertion(self, context, exception, expr):
+        try:
+            expr_eval(expr)
+            return "did not raise"
+        except eval(exception):
+            return False
+        except Exception as e:
+            return "raised another exception (%s)" % e
+
+
 functions = {
     'csv': CSV,
     # can't use "print" in python 2.x because it's a keyword, not a function
@@ -251,5 +264,6 @@ functions = {
     'assertEqual': AssertEqual,
     'assertNanEqual': AssertNanEqual,
     'assertEquiv': AssertEquiv,
-    'assertIsClose': AssertIsClose
+    'assertIsClose': AssertIsClose,
+    'assertRaises': AssertRaises
 }
