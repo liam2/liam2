@@ -145,11 +145,12 @@ class Assert(FunctionExpr):
     def eval_assertion(self, context, *args):
         raise NotImplementedError()
 
-    def compute(self, context, *args):
+    def evaluate(self, context):
         if config.assertions == "skip":
             if config.log_level == "processes":
                 print("assertion skipped", end=' ')
         else:
+            args, kwargs = self._eval_args(context)
             if config.log_level == "processes":
                 print("assertion", end=' ')
             failure = self.eval_assertion(context, *args)
