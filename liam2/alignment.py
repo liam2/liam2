@@ -287,7 +287,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
                         # same frac_need. In this case we could try to be even
                         # closer to our target by randomly selecting X out of
                         # the Y bins which have a frac_need equal to the
-                        # cutoff.
+                        # cutoff (in addition to all those which are strictly
+                        # greater than it).
                         assert np.sum(frac_need == cutoff) > 1
                     need += extra
             elif method == 'round':
@@ -304,6 +305,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if method == 'carry':
             if self.past_error is None:
                 # TODO: we should store this somewhere in the context instead
+                # XXX: I wonder if past_error shouldn't be float
+                # (and _add_past_error should not be called before
+                # _handle_frac_need instead of after like it does now).
                 self.past_error = np.zeros(need.shape, dtype=int)
 
             print("adding %d individuals from last period error"
@@ -341,6 +345,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
             if need is None:
                 need = sum(score)
 
+        # XXX: move this to _eval_need?
         # need is a single scalar
         if np.isscalar(need):
             need = [need]
@@ -421,6 +426,10 @@ class AlignmentAbsoluteValues(FilteredExpression):
         need = need * self._get_need_correction(groups, possible_values)
         need = self._handle_frac_need(need, frac_need)
         need = self._add_past_error(context, need, errors)
+        need = np.asarray(need)
+        # FIXME: either handle past_error in no link (currently, the past
+        #        error is added... but never computed, so always 0 !) or raise
+        #        an error in case errors='carry" is used with no link.
         return align_get_indices_nd(ctx_length, groups, need, filter_value,
                                     score, take, leave, method)
 
@@ -428,6 +437,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                    expressions, possible_values, errors, frac_need, link,
                    secondary_axis, method):
         target_context = link._target_context(context)
+
         need, expressions, possible_values = \
             self._eval_need(context, need, expressions, possible_values,
                             target_context)
