@@ -221,8 +221,8 @@ class ColumnArray(object):
         while numlines > 0:
             buffer_rows = min(numlines, max_buffer_rows)
             # if buffer_rows < len(chunk):
-                # last chunk is smaller
-                # chunk = np.empty(buffer_rows, dtype=dtype)
+            #    # last chunk is smaller
+            #    chunk = np.empty(buffer_rows, dtype=dtype)
             chunk_indices = indices[start:stop]
             # as of PyTables 3.2.2, read_coordinates does not support out=
             # table.read_coordinates(chunk_indices, out=chunk)
