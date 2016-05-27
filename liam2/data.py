@@ -857,10 +857,14 @@ class H5Sink(DataSink):
             print(" * copying tables")
             for ent_name, entity in entities.iteritems():
                 print("    -", ent_name, "...", end=' ')
-                start_time = time.time()
-
                 index_node = output_file.create_group("/indexes", ent_name)
                 entity.output_index_node = index_node
+
+                if not entity.fields.in_output:
+                    print("skipped (no column in output)")
+                    continue
+
+                start_time = time.time()
 
                 # main table
                 table = entities_tables.get(ent_name)

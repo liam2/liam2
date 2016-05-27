@@ -1,0 +1,91 @@
+entities:
+    region:
+        fields:
+            # period and id are implicit
+            - a: int
+            - b: int
+
+        links:
+            persons: {type: one2many, target: person, field: region_id}
+
+        processes:
+            generate:
+                - new('region', number=3)
+
+    person:
+        fields:
+            # period and id are implicit
+            # fields which should NOT appear in minimal output
+            - not_minimal1: int
+            - not_minimal2: int
+            - not_minimal3: int
+            - not_minimal4: int
+            - not_minimal5: int
+
+            # fields which should appear in minimal output
+            - minimal1: int
+            - minimal2: int
+            - minimal3: int
+            - minimal4: int
+            - minimal5: int
+
+            - partner_id: int
+            - region_id:  int
+
+        macros:
+            PREV_NOTMIN_3: lag(not_minimal3)
+            USING_NOTMIN_4: not_minimal4 + 1
+
+            PREV_MIN_3: lag(minimal3, 2)
+            USING_MIN_4: minimal4 + 1
+
+        links:
+            partner: {type: many2one, target: person, field: partner_id}
+            region: {type: many2one, target: region, field: region_id}
+
+        processes:
+            generate:
+                # not giving a value to any field, as it does not matter
+                - new('person', number=10,
+                      partner_id=-1,
+                      region_id=randint(3))
+
+            test:
+                # should NOT appear in minimal output
+                - not_minimal1: not_minimal1 + 1
+                # lags of one period
+                - prev2: lag(not_minimal2)
+                - prev3: PREV_NOTMIN_3
+                - prev4: lag(USING_NOTMIN_4)
+                - prev5: value_for_period(not_minimal5, period - 1)
+
+                # should appear in minimal output
+                - zero: sum(minimal1 - minimal1)
+                - one: zero + 1
+                # sad but we need to take this one too
+                - prev1: lag(minimal1, one)
+                - prev2: lag(minimal2, 2)
+                - prev3: PREV_MIN_3
+                - prev4: lag(USING_MIN_4, 2)
+                - prev5: value_for_period(minimal5, period - 2)
+
+simulation:
+    init:
+        - region: [generate]
+        - person: [generate]
+
+    processes:
+        - person: [test]
+
+    input:
+        method: void
+        file: none
+
+    output:
+        path: output
+
+    logging:
+        level: processes
+    start_period: 2015   # first simulated period
+    periods: 2
+    random_seed: 0

@@ -213,13 +213,21 @@ class EntityContext(object):
 
     def __contains__(self, key):
         entity = self.entity
+        period = self.eval_ctx.period
+        array_period = entity.array_period
         # entity.array can be None! (eg. with "explore")
         keyinarray = (self.is_array_period and
                       (key in entity.temp_variables or
                        key in entity.array.dtype.fields))
+        # we need to check explicitly whether the key is in array_lag because
+        # with output=None it can contain more fields than table.
+        keyinlagarray = (entity.array_lag is not None and
+                         array_period is not None and
+                         period == array_period - 1 and
+                         key in entity.array_lag.dtype.fields)
         keyintable = (entity.table is not None and
                       key in entity.table.dtype.fields)
-        return key in self.extra or keyinarray or keyintable
+        return key in self.extra or keyinarray or keyinlagarray or keyintable
 
     def keys(self, extra=True):
         res = list(self.entity.array.dtype.names)

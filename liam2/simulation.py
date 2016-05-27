@@ -1,6 +1,7 @@
 # encoding: utf-8
 from __future__ import print_function, division
 
+import tempfile
 import time
 import os.path
 import operator
@@ -153,7 +154,7 @@ class Simulation(object):
             },
             '#output': {
                 'path': str,
-                '#file': str
+                'file': str
             },
             'logging': {
                 'timings': bool,
@@ -173,7 +174,7 @@ class Simulation(object):
 
     def __init__(self, globals_def, periods, start_period, init_processes,
                  processes, entities, input_method, input_path, output_path,
-                 default_entity=None, runs=1):
+                 default_entity=None, runs=1, minimal_output=False):
         if 'periodic' in globals_def:
             declared_fields = globals_def['periodic']['fields']
             fnames = {fname for fname, type_ in declared_fields}
@@ -203,6 +204,7 @@ class Simulation(object):
 
         self.stepbystep = False
         self.runs = runs
+        self.minimal_output = minimal_output
 
     @classmethod
     def from_str(cls, yaml_str, simulation_dir='',
@@ -313,9 +315,19 @@ class Simulation(object):
             os.makedirs(output_dir)
         config.output_directory = output_dir
 
+        minimal_output = False
         if output_file is None:
-            output_file = output_def['file']
-        output_path = os.path.join(output_dir, output_file)
+            output_file = output_def.get('file', '')
+            if output_file:
+                output_path = os.path.join(output_dir, output_file)
+            else:
+                # using a temporary directory instead of a temporary file
+                # because tempfile.* only returns file-like objects (which
+                # pytables does not support) or directories, not file names.
+                tmp_dir = tempfile.mkdtemp(prefix='liam2-', suffix='-tmp',
+                                           dir=output_dir)
+                output_path = os.path.join(tmp_dir, 'simulation.h5')
+                minimal_output = True
 
         entities = {}
         for k, v in content['entities'].iteritems():
@@ -329,11 +341,53 @@ class Simulation(object):
         parsing_context = global_context.copy()
         parsing_context.update((entity.name, entity.all_symbols(global_context))
                                for entity in entities.itervalues())
+        # compute the lag variable for each entity (an entity can cause fields from
+        # other entities to be added via links)
+        # dict of sets
+        lag_vars_by_entity = defaultdict(set)
         for entity in entities.itervalues():
             parsing_context['__entity__'] = entity.name
             entity.parse_processes(parsing_context)
-            entity.compute_lagged_fields()
-            # entity.optimize_processes()
+            entity_lag_vars = entity.compute_lagged_fields()
+            for e in entity_lag_vars:
+                lag_vars_by_entity[e.name] |= entity_lag_vars[e]
+
+        # store that in entity.lag_fields and create entity.array_lag
+        for entity in entities.itervalues():
+            entity_lag_vars = lag_vars_by_entity[entity.name]
+            if entity_lag_vars:
+                # make sure we have an 'id' column, and that it comes first
+                # (makes debugging easier). 'id' is always necessary for lag
+                # expressions to be able to "expand" the vector of values to the
+                # "current" individuals.
+                entity_lag_vars.discard('id')
+                sorted_vars = ['id'] + sorted(entity_lag_vars)
+                field_type = dict(entity.fields.name_types)
+                lag_fields = [(v, field_type[v]) for v in sorted_vars]
+                # FIXME: this should be initialized to the data from
+                # start_period - 2, if any
+                entity.array_lag = np.empty(0, dtype=np.dtype(lag_fields))
+            else:
+                lag_fields = []
+            entity.lag_fields = lag_fields
+
+        # compute minimal fields for each entity and set all which are not
+        # minimal to output=False
+        if minimal_output:
+            min_fields_by_entity = defaultdict(set)
+            for entity in entities.itervalues():
+                entity_lag_vars = entity.compute_lagged_fields(
+                    inspect_one_period=False)
+                for e in entity_lag_vars:
+                    min_fields_by_entity[e.name] |= entity_lag_vars[e]
+            for entity in entities.itervalues():
+                minimal_fields = min_fields_by_entity[entity.name]
+                if minimal_fields:
+                    minimal_fields.add('id')
+                    minimal_fields.add('period')
+                for field in entity.fields.in_output:
+                    if field.name not in minimal_fields:
+                        field.output = False
 
         if 'init' not in simulation_def and 'processes' not in simulation_def:
             raise SyntaxError("the 'simulation' section must have at least one "
@@ -383,7 +437,7 @@ class Simulation(object):
             runs = simulation_def.get('runs', 1)
         return Simulation(globals_def, periods, start_period, init_processes,
                           processes, entities_list, input_method, input_path,
-                          output_path, default_entity, runs)
+                          output_path, default_entity, runs, minimal_output)
 
     @classmethod
     def from_yaml(cls, fpath,
@@ -599,6 +653,15 @@ class Simulation(object):
             self.close()
             if h5_autodump is not None:
                 h5_autodump.close()
+            if self.minimal_output:
+                output_path = self.data_sink.output_path
+                dirname = os.path.dirname(output_path)
+                try:
+                    os.remove(output_path)
+                    os.rmdir(dirname)
+                except OSError:
+                    print("WARNING: could not delete temporary directory: %r"
+                          % dirname)
 
     def run(self, run_console=False):
         for i in range(int(self.runs)):

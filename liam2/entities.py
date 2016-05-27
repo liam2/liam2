@@ -13,12 +13,13 @@ import config
 from data import (merge_arrays, get_fields, ColumnArray, index_table,
                   build_period_array)
 from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
-                  GlobalArray, Expr, MethodSymbol, normalize_type)
+                  GlobalArray, Expr, BinaryOp, MethodSymbol, normalize_type)
 from exprtools import parse
 from process import Assignment, ProcessGroup, While, Function, Return
 from utils import (count_occurrences, field_str_to_type, size2str,
                    WarnOverrideDict, split_signature, argspec,
                    UserDeprecationWarning)
+from tfunc import ValueForPeriod
 
 
 default_value_by_strtype = {"bool": False, "float": np.nan, 'int': -1}
@@ -541,36 +542,49 @@ Please use this instead:
             if isinstance(p, ProcessGroup):
                 p.ssa(fields_versions)
 
-    def compute_lagged_fields(self):
+    def compute_lagged_fields(self, inspect_one_period=True):
         from tfunc import Lag
         from links import LinkGet
 
-        lag_vars = set()
+        lag_vars = collections.defaultdict(set)
         for p in self.processes.itervalues():
             for expr in p.expressions():
-                for node in expr.all_of(Lag):
-                    for v in node.all_of(Variable):
-                        if not isinstance(v, GlobalVariable):
-                            lag_vars.add(v.name)
-                    for lv in node.all_of(LinkGet):
-                        # noinspection PyProtectedMember
-                        lag_vars.add(lv.link._link_field)
-                        # noinspection PyProtectedMember
-                        target_entity = lv.link._target_entity
-                        if target_entity == self:
-                            target_vars = lv.target_expr.all_of(Variable)
-                            lag_vars.update(v.name for v in target_vars)
+                for node in expr.all_of((Lag, ValueForPeriod)):
+                    if isinstance(node, Lag):
+                        num_periods = node.args[1]
+                    else:
+                        assert isinstance(node, ValueForPeriod)
+                        period = node.args[1]
+                        # is the period argument equal to "period - X"?
+                        if (isinstance(period, BinaryOp) and
+                                period.op == '-' and
+                                isinstance(period.expr1, Variable) and
+                                period.expr1.name == 'period'):
+                            num_periods = period.expr2
+                        else:
+                            num_periods = None
 
-        if lag_vars:
-            # make sure we have an 'id' column, and that it comes first
-            # (makes debugging easier). 'id' is always necessary for lag
-            # expressions to be able to "expand" the vector of values to the
-            # "current" individuals.
-            lag_vars.discard('id')
-            lag_vars = ['id'] + sorted(lag_vars)
+                    # if num_periods is an Expr, we cannot really tell whether
+                    # or not it is 1 or more, so we must always take the node
+                    if num_periods is not None and np.isscalar(num_periods):
+                        inspect_expr = (num_periods == 1) == inspect_one_period
+                    else:
+                        # the safe thing is to take everything when not sure
+                        inspect_expr = True
 
-        field_type = dict(self.fields.name_types)
-        self.lag_fields = [(v, field_type[v]) for v in lag_vars]
+                    if inspect_expr:
+                        expr_node = node.args[0]
+                        for v in expr_node.all_of(Variable):
+                            if not isinstance(v, GlobalVariable):
+                                lag_vars[v.entity].add(v.name)
+                        for lv in expr_node.all_of(LinkGet):
+                            # noinspection PyProtectedMember
+                            lag_vars[lv.link._entity].add(lv.link._link_field)
+                            target_vars = list(lv.target_expr.all_of(Variable))
+                            assert all(v.entity is not None for v in target_vars)
+                            for v in target_vars:
+                                lag_vars[v.entity].add(v.name)
+        return lag_vars
 
     def build_period_array(self, start_period):
         self.array, self.id_to_rownum = \
@@ -678,11 +692,12 @@ Please use this instead:
         if period in self.output_rows:
             raise Exception("trying to modify already simulated rows")
 
-        startrow = self.table.nrows
-        self.array.append_to_table(self.table)
-        self.output_rows[period] = (startrow, self.table.nrows)
-        self.flush_index(period)
-        self.table.flush()
+        if self.table is not None:
+            startrow = self.table.nrows
+            self.array.append_to_table(self.table)
+            self.output_rows[period] = (startrow, self.table.nrows)
+            self.flush_index(period)
+            self.table.flush()
 
     #     def compress_period_data(self, level):
     #     compressed = bcolz.ctable(self.array, cparams=bcolz.cparams(level))
