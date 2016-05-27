@@ -254,6 +254,8 @@ def binop(opname, kind='binary', reverse=False):
 
 
 class Expr(object):
+    # XXX: I wonder if those couldn't be computed automatically by using
+    # isinstance(v, Expr)
     __children__ = ()
 
     def __init__(self):
@@ -426,6 +428,18 @@ class Expr(object):
         yield self
 
     def all_of(self, node_type):
+        """
+        Yields nodes corresponding to node_type.
+
+        Parameters
+        ----------
+        node_type : class or tuple of class
+
+        Yields
+        ------
+        all nodes of the tree (possibly including self) corresponding to
+        node_type
+        """
         for node in self.traverse():
             if isinstance(node, node_type):
                 yield node
