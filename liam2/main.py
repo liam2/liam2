@@ -185,14 +185,17 @@ def explore(fpath):
 
 def display(fpath):
     print("Launching ViTables...")
-    _, ext = splitext(fpath)
-    if ext in ('.h5', '.hdf5'):
-        files = [fpath]
+    if fpath:
+        _, ext = splitext(fpath)
+        if ext in ('.h5', '.hdf5'):
+            files = [fpath]
+        else:
+            simulation = Simulation.from_yaml(fpath)
+            files = [simulation.data_source.input_path,
+                     simulation.data_sink.output_path]
+        print("Trying to open:", " and ".join(str(f) for f in files))
     else:
-        simulation = Simulation.from_yaml(fpath)
-        files = [simulation.data_source.input_path,
-                 simulation.data_sink.output_path]
-    print("Trying to open:", " and ".join(str(f) for f in files))
+        files = []
     viewhdf(files)
 
 
@@ -310,7 +313,8 @@ def main():
 
     # create the parser for the "view" command
     parser_import = subparsers.add_parser('view', help='view data')
-    parser_import.add_argument('file', help='data file')
+    parser_import.add_argument('file', nargs='?',
+                               help='data (.h5) or simulation (.yml) file')
 
     parsed_args = parser.parse_args()
     if parsed_args.debug:
