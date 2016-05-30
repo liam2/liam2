@@ -859,7 +859,7 @@ class H5Sink(DataSink):
             entities_tables = input_dataset['entities']
             output_entities = output_file.create_group("/", "entities",
                                                        "Entities")
-            output_indexes = output_file.create_group("/", "indexes", "Indexes")
+            output_file.create_group("/", "indexes", "Indexes")
             print(" * copying tables")
             for ent_name, entity in entities.iteritems():
                 print("    -", ent_name, "...", end=' ')
