@@ -48,9 +48,10 @@ type_to_idx = {
     bool: 0, np.bool_: 0,
     int: 1, np.int8: 1, np.int16: 1, np.int32: 1, np.int64: 1, np.intc: 1,
         np.long: 1, np.longlong: 1,
-    float: 2, np.float64: 2
+    float: 2, np.float64: 2,
+    object: 3, np.object_: 3
 }
-idx_to_type = [bool, int, float]
+idx_to_type = [bool, int, float, object]
 
 missing_values = {
     # int: -2147483648,
