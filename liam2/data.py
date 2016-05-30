@@ -655,7 +655,7 @@ def index_table_light(table, index='period'):
     rows_per_period = {}
     current_value = None
     start_row = None
-    # I don't know whether or not but my attempts to only retrieve one column
+    # I don't know why but my attempts to only retrieve one column
     # made the function slower, not faster (this is only used in diff_h5 &
     # merge_h5 though).
     for idx, row in enumerate(table):
