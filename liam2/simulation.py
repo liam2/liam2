@@ -270,10 +270,10 @@ class Simulation(object):
                           UserDeprecationWarning)
             config.show_timings = simulation_def['timings']
 
-        if skip_timings:
-            show_timings = False
-        else:
+        if skip_timings is None:
             show_timings = logging_def.get('timings', config.show_timings)
+        else:
+            show_timings = not skip_timings
         config.show_timings = show_timings
 
         if autodump is None:

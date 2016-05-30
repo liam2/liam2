@@ -282,7 +282,7 @@ def main():
                                  'pseudo-random generator (integer)')
     parser_run.add_argument('-ss', '--skipshows', action='store_true',
                             help='do not log shows')
-    parser_run.add_argument('-st', '--skiptimings', action='store_true',
+    parser_run.add_argument('-st', '--skiptimings', action='store_const', const=True,
                             help='do not log timings')
     parser_run.add_argument('-ll', '--loglevel',
                             choices=['periods', 'functions', 'processes'],
