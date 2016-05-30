@@ -513,6 +513,8 @@ class Expr(object):
                 assert array_nan_equal(context[tmp_varname], result)
             else:
                 assert result != result or context[tmp_varname] == result
+        # FIXME: we should never modify the context in-place. We should rather
+        #        have a build_context method.
         context[tmp_varname] = result
         return Variable(context.entity, tmp_varname, gettype(result))
 
@@ -573,6 +575,8 @@ class SubscriptedExpr(EvaluableExpression):
                     newkey[~filter_value] = -1
                 else:
                     # avoid crashing on: if(always_false, array[badindex], val)
+                    # Note that if only some are False, we will return orig_key
+                    # (ie not fix), but this is OK because it would fail anyway.
                     if np.all(~filter_value):
                         newkey = -1
                     else:
@@ -620,6 +624,13 @@ class ExprAttribute(EvaluableExpression):
 
     def __call__(self, *args, **kwargs):
         return DynamicFunctionCall(self, *args, **kwargs)
+
+    def __getattr__(self, key):
+        if key == '_variables':
+            raise AttributeError("%s (of type '%s') has no attribute '%s'"
+                                 % (self, self.__class__.__name__, key))
+        else:
+            return ExprAttribute(self, key)
 
 
 # we need to inherit from ExplainTypeError, so that TypeError exceptions are
@@ -1169,6 +1180,8 @@ class GlobalArray(Variable):
         globals_data = context.global_tables
         result = globals_data[self.name]
         # XXX: maybe I should just use self.name?
+        # FIXME: use self.add_tmp_var, because in combination with autoindex,
+        # the variable could have a different value
         tmp_varname = '__%s' % self.name
         if tmp_varname in context:
             assert context[tmp_varname] is result
