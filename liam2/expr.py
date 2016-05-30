@@ -258,6 +258,7 @@ class Expr(object):
     # XXX: I wonder if those couldn't be computed automatically by using
     # isinstance(v, Expr)
     __children__ = ()
+    num_tmp = 0
 
     def __init__(self):
         raise NotImplementedError()
@@ -499,21 +500,13 @@ class Expr(object):
                 return True
         return False
 
-
-class EvaluableExpression(Expr):
-    num_tmp = 0
-
-    def evaluate(self, context):
-        raise NotImplementedError()
-
     def get_tmp_varname(self, context):
         tmp_varname = "temp_%d" % self.num_tmp
-        EvaluableExpression.num_tmp += 1
+        Expr.num_tmp += 1
         return tmp_varname
 
-    def as_simple_expr(self, context):
+    def add_tmp_var(self, context, result):
         tmp_varname = self.get_tmp_varname(context)
-        result = self.evaluate(context)
         if tmp_varname in context:
             # should be consistent but nan != nan
             if isinstance(result, np.ndarray):
@@ -522,6 +515,14 @@ class EvaluableExpression(Expr):
                 assert result != result or context[tmp_varname] == result
         context[tmp_varname] = result
         return Variable(context.entity, tmp_varname, gettype(result))
+
+
+class EvaluableExpression(Expr):
+    def evaluate(self, context):
+        raise NotImplementedError()
+
+    def as_simple_expr(self, context):
+        return self.add_tmp_var(context, self.evaluate(context))
 
 
 def non_scalar_array(a):

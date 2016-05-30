@@ -124,16 +124,13 @@ class Average(FilteredExpression):
         # FIXME: either take "contextual filter" into account here (by using
         # self._getfilter), or don't do it in sum & gini
         if filter is not None:
-            tmp_varname = self.get_tmp_varname(context)
-            context = context.copy()
-            context[tmp_varname] = filter
+            tmpvar = self.add_tmp_var(context, filter)
             if getdtype(expr, context) is bool:
                 # convert expr to int because mul_bbb is not implemented in
                 # numexpr
                 # expr *= 1
                 expr = BinaryOp('*', expr, 1)
             # expr *= filter_values
-            tmpvar = Variable(context.entity, tmp_varname)
             expr = BinaryOp('*', expr, tmpvar)
         else:
             filter = True
