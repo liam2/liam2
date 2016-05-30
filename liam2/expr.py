@@ -1,17 +1,17 @@
 # encoding: utf-8
 from __future__ import division, print_function
 
-import types
 import inspect
+import types
 from collections import Counter
 
 import numpy as np
 
 from cache import Cache
+from context import EntityContext, EvaluationContext
 from utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray,
                    NiceArgSpec, englishenum, make_hashable, add_context,
                    array_nan_equal)
-from context import EntityContext, EvaluationContext
 
 
 try:
