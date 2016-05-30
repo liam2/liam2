@@ -21,7 +21,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
     rel_need = still_needed.astype(np.float64) / still_available
 
     unfillable_bins = still_needed > still_available
-    overfilled_bins = still_needed <= 0
+    filled_bins = still_needed <= 0
 
     if secondary_axis is not None:
         assert secondary_axis < need.ndim
@@ -61,8 +61,8 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
         # Keep the highest relative need index for the family
         hh_rel_need = np.nanmax(rel_need[persons_in_hh])
 
-        # count number of objects in the family belonging to over-filled bins
-        surplus = overfilled_bins[persons_in_hh].sum()
+        # count number of objects in the family belonging to already filled bins
+        surplus = filled_bins[persons_in_hh].sum()
         if secondary_axis is not None and surplus == 0:
             hh_axis_values = persons_in_hh[secondary_axis]
             axis_num_pvalues = len(still_needed_by_sec_axis)
@@ -108,7 +108,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
                     still_needed_by_sec_axis[values[secondary_axis]] -= 1
 
                 # unfillable stays unchanged in this case
-                overfilled_bins[values] = sn <= 0
+                filled_bins[values] = sn <= 0
 
                 # using np.float64 to workaround an issue with numpy 1.8
                 # https://github.com/numpy/numpy/issues/4636
