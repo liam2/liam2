@@ -16,6 +16,7 @@ try:
     import sip
     sip.setapi('QString', 2)
     sip.setapi('QVariant', 2)
+    del sip
 except ImportError:
     pass
 
@@ -24,7 +25,7 @@ import yaml
 import config
 from console import Console
 from context import EvaluationContext
-from data import entities_from_h5, H5Source, H5Sink
+from data import entities_from_h5, H5Source
 from importer import csv2h5
 from simulation import Simulation
 from upgrade import upgrade
@@ -218,18 +219,21 @@ class PrintVersionsAction(argparse.Action):
         try:
             import vitables
             vt_version = vitables.__version__
+            del vitables
         except ImportError:
             vt_version = 'N/A'
 
         try:
             import matplotlib
             mpl_version = matplotlib.__version__
+            del matplotlib
         except ImportError:
             mpl_version = 'N/A'
 
         try:
             import bcolz
             bcolz_version = bcolz.__version__
+            del bcolz
         except ImportError:
             bcolz_version = 'N/A'
 
