@@ -128,7 +128,7 @@ def as_string(expr):
     elif isinstance(expr, tuple):
         return tuple([as_string(e) for e in expr])
     else:
-        return str(expr)
+        return repr(expr)
 
 
 def traverse_expr(expr):
