@@ -280,7 +280,9 @@ def main():
     parser_run.add_argument('-s', '--seed', type=int,
                             help='defines the starting point of the '
                                  'pseudo-random generator (integer)')
-    parser_run.add_argument('-ss', '--skipshows', action='store_true',
+    # action='store_const', const=True is NOT equivalent to action='store_true'
+    # (if the flag is not used, the result will be None vs False)
+    parser_run.add_argument('-ss', '--skipshows', action='store_const', const=True,
                             help='do not log shows')
     parser_run.add_argument('-st', '--skiptimings', action='store_const', const=True,
                             help='do not log timings')
