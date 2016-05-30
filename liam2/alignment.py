@@ -584,6 +584,7 @@ class Alignment(AlignmentAbsoluteValues):
                  filter=None, take=None, leave=None,
                  expressions=None, possible_values=None,
                  errors='default', frac_need='uniform',
+                 link=None, secondary_axis=None,
                  fname=None, method='bysorting'):
 
         if possible_values is not None:
@@ -608,11 +609,12 @@ class Alignment(AlignmentAbsoluteValues):
                                         filter, take, leave,
                                         expressions, possible_values,
                                         errors, frac_need,
+                                        link, secondary_axis,
                                         method=method)
 
     def _get_need_correction(self, groups, possible_values):
-        data = np.array([len(group) for group in groups])
         len_pvalues = [len(vals) for vals in possible_values]
+        data = np.array([len(group) for group in groups])
         return data.reshape(len_pvalues)
 
 
