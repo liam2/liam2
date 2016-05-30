@@ -1006,8 +1006,8 @@ class Variable(Expr):
         self.entity = entity
         self.name = name
         self._dtype = dtype
-        self.version = 0
-        self.used = 0
+        # self.version = 0
+        # self.used = 0
 
     def __repr__(self):
         return "%s.%s" % (self.entity, self.name)
