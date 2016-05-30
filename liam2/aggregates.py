@@ -115,6 +115,7 @@ class Sum(FilteredExpression):
 
 
 # TODO: inherit from NumpyAggregate, to get support for the axis argument
+# TODO: use nanmean (np & bn)
 class Average(FilteredExpression):
     funcname = 'avg'
     no_eval = ('expr',)
@@ -161,16 +162,19 @@ class Average(FilteredExpression):
     dtype = always(float)
 
 
+# TODO: use nanstd (np & bn)
 class Std(NumpyAggregate):
     np_func = np.std
     dtype = always(float)
 
 
+# TODO: use nanmedian (np & bn)
 class Median(NumpyAggregate):
     np_func = np.median
     dtype = always(float)
 
 
+# TODO: use nanpercentile (np only)
 class Percentile(NumpyAggregate):
     np_func = np.percentile
     dtype = always(float)
