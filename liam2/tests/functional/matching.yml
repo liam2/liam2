@@ -403,6 +403,6 @@ simulation:
 
     logging:
         level: processes
-    start_period: 2001   # first simulated period
+    start_period: 2015   # first simulated period
     periods: 1
     random_seed: 0
