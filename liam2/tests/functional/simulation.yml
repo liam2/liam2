@@ -2423,6 +2423,20 @@ entities:
 #                - warn1: choice([0, 1], [0.5, 0.499999])  # sum slightly < 1
 #                - warn2: choice([0, 1], [0.5, 0.5000009]) # sum slightly > 1
 
+                # test individual probability
+                - seed(0)
+                - p0: if(gender, 0.1, 0.3)
+                - p5: if(gender, 0.2, 0.4)
+                - p10: if(gender, 0.7, 0.3)
+                - intchoice: choice([0, 5, 10], [p0, p5, p10])
+                - num0: count(intchoice == 0)
+                - num5: count(intchoice == 5)
+                - num10: count(intchoice == 10)
+                - assertTrue(num0 > 0)
+                - assertTrue(num5 > 0)
+                - assertTrue(num10 > 0)
+                - assertEqual(num0 + num5 + num10, num_total)
+
             test_groupby:
                 # scalar dim
                 - num_males: count(gender)

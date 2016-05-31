@@ -3,8 +3,10 @@ from __future__ import division, print_function
 
 import numpy as np
 
-from expr import firstarg_dtype
+import config
+from expr import firstarg_dtype, ComparisonOp, Variable, expr_eval
 from exprbases import NumpyRandom, make_np_class, make_np_classes
+from exprmisc import Where
 from utils import argspec
 
 
@@ -30,6 +32,52 @@ class Choice(NumpyRandom):
     def _eval_args(self, context):
         (a, p, size, replace), kwargs = NumpyRandom._eval_args(self, context)
         return (a, size, replace, p), kwargs
+
+    def compute(self, context, a, size=None, replace=True, p=None):
+        if isinstance(p, (list, np.ndarray)) and len(p) and not np.isscalar(p[0]):
+            assert len(p) == len(a)
+            assert all(len(px) == size for px in p)
+            assert len(a) >= 2
+
+            # I have not found a way to do this without an explicit loop as
+            # np.digitize only supports a 1d array for bins. What we do is
+            # worse than a linear "search" since we always evaluate all
+            # possibilities (there is no shortcut when the value is found).
+            # It might be faster to rewrite this using numba + np.digitize
+            # for each individual (assuming it has a low setup overhead).
+            # if isinstance(p, list) and any(isinstance(px, la.LArray) for px in p):
+            #     p = [np.asarray(px) for px in p]
+            ap = np.asarray(p)
+            cdf = ap.cumsum(axis=0)
+
+            # copied & adapted from numpy/random/mtrand/mtrand.pyx
+            atol = np.sqrt(np.finfo(np.float64).eps)
+            if np.issubdtype(ap.dtype, np.floating):
+                atol = max(atol, np.sqrt(np.finfo(ap.dtype).eps))
+
+            if np.any(np.abs(cdf[-1] - 1.) > atol):
+                raise ValueError("probabilities do not sum to 1")
+
+            cdf /= cdf[-1]
+
+            # the goal is to build something like:
+            # if(u < proba1, outcome1,
+            #    if(u < proba2, outcome2,
+            #       outcome3))
+
+            data = {'u': np.random.uniform(size=size)}
+            expr = a[-1]
+            # iterate in reverse and skip last
+            pairs = zip(cdf[-2::-1], a[-2::-1])
+            for i, (proba_x, outcome_x) in enumerate(pairs):
+                data['p%d' % i] = proba_x
+                expr = Where(ComparisonOp('<', Variable(None, 'u'),
+                                          Variable(None, 'p%d' % i)),
+                             outcome_x, expr)
+            local_ctx = context.clone(fresh_data=True, entity_data=data)
+            return expr.evaluate(local_ctx)
+        else:
+            return NumpyRandom.compute(self, context, a, size, replace, p)
 
     dtype = firstarg_dtype
 
