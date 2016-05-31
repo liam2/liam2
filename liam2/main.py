@@ -203,10 +203,11 @@ def display(fpath):
 
 class PrintVersionsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        import numpy
-        import numexpr
-        import tables
-
+        import numpy as np
+        import numexpr as ne
+        import tables as pt
+        import larray as la
+        import pandas as pd
         try:
             from cpartition import filter_to_indices
 
@@ -238,20 +239,37 @@ class PrintVersionsAction(argparse.Action):
         except ImportError:
             bcolz_version = 'N/A'
 
+        try:
+            import bottleneck as bn
+            bn_version = bn.__version__
+            del bn
+        except ImportError:
+            bn_version = 'N/A'
+
         py_version = '{} ({})'.format(platform.python_version(),
                                       platform.architecture()[0])
+        # these should be kept sorted alphabetically for required then
+        # alphabetically for optional.
+        # we do not include PyQt because it is an indirect dependency. It might
+        # be a good idea to include those too, but the list will get long in
+        # that case.
         print("""
 python {py}
-numpy {np}
+larray {la}
 numexpr {ne}
+numpy {np}
+pandas {pd}
 pytables {pt}
-bcolz {bc}
 pyyaml {yml}
-vitables {vt}
+bcolz {bc}
+bottleneck {bn}
 matplotlib {mpl}
-""".format(py=py_version, np=numpy.__version__, ne=numexpr.__version__,
-           pt=tables.__version__, vt=vt_version, mpl=mpl_version,
-           bc=bcolz_version, yml=yaml.__version__))
+vitables {vt}
+""".format(py=py_version, la=la.__version__, ne=ne.__version__,
+           np=np.__version__, pd=pd.__version__, pt=pt.__version__,
+           yml=yaml.__version__,
+           bc=bcolz_version, bn=bn_version, mpl=mpl_version, vt=vt_version,
+           ))
         parser.exit()
 
 
