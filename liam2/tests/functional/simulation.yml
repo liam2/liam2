@@ -2645,6 +2645,9 @@ entities:
                 - assertEquiv(defaulted_float_variable, 99.99)
                 - assertTrue(all(defaulted_bool_variable))
 
+            test_show:
+                - show("yada yada")
+
 simulation:
     init:
         - household: [init_region]
@@ -2778,6 +2781,7 @@ simulation:
                    show_weight,
 #                   test_array,
                    test_default_value,
+                   test_show,
         ]
         - household: [composition,
                       test_align_link,
