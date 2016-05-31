@@ -122,6 +122,41 @@ entities:
                 - show('\n', groupby(num_men - num_women))
                 - aligned_all: align(persons.count(), ALIGN_LINK,
                                      link=persons)
+#                                     link=persons, secondary_axis=gender)
+                - qshow(sum(num_persons, filter=aligned_all), 'vs', needed_total)
+#                - assertTrue(sum(num_persons, filter=aligned_all) >= needed_total)
+                - qshow(sum(num_women, filter=aligned_all), 'vs', needed_women)
+#                - assertTrue(sum(num_women, filter=aligned_all) >= needed_women)
+                # for some reason men overshoot a lot less (they are correct most the time)
+                - qshow(sum(num_men, filter=aligned_all), 'vs', needed_men)
+#                - assertTrue(sum(num_men, filter=aligned_all) >= needed_men)
+
+                # with a filter
+#                - is_candidate: uniform() < 0.5
+#                - qshow(count(is_candidate),
+#                        sum(num_persons, filter=is_candidate))
+#
+#                - aligned: align_abs(persons.count(), need,
+#                                     link=persons, secondary_axis=gender,
+#                                     errors='carry',
+#                                     filter=is_candidate)
+#                - qshow(count(aligned),
+#                        sum(num_persons, filter=aligned))
+#
+##                - clone_id: clone(aligned)
+#
+#                # with pvalues != range(0, X)
+#                - bchoice: choice([False, True])
+#                - weird_num: choice([5, 25, 45, 65, 85, 105])
+#                - weird_need: groupby(bchoice, weird_num, expr=10)
+#                - show(weird_need)
+#                - show('by sex', weird_need.sum(axis=1))
+#                - aligned: align_abs(persons.count(), weird_need,
+#                                     link=persons, secondary_axis=0,
+#                                     filter=is_candidate,
+#                                     expressions=[gender, 5 + trunc(age / 20) * 20])
+#                - qshow(count(aligned),
+#                        sum(num_persons, filter=aligned))
 
             test_align_abs_link:
                 - num_persons: persons.count()
