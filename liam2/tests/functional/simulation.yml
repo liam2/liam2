@@ -25,6 +25,10 @@ globals:
         path: param/mig.csv
         type: float
 
+    ALIGN_LINK:
+        path: align_link.csv
+        type: float
+
     othertable:
         path: param/othertable.csv
         fields:
@@ -97,6 +101,29 @@ entities:
                 - csv(dump())
 
             test_align_link:
+                - num_men: persons.count(gender)
+                - num_women: persons.count(not gender)
+                - num_persons: num_men + num_women
+
+                # kill empty households
+                - remove(num_persons == 0)
+
+                - total_population: sum(num_persons)
+                - show("total:", count(), "households /",
+                                 total_population, "persons")
+
+                - needed_women: trunc(sum(num_men) * 0.2)
+                - needed_men: trunc(sum(num_men) * 0.22)
+                - show(needed_women, needed_men)
+                - needed_total: needed_women + needed_men
+
+                # without filter
+                - show('\n', groupby(num_men, num_women))
+                - show('\n', groupby(num_men - num_women))
+                - aligned_all: align(persons.count(), ALIGN_LINK,
+                                     link=persons)
+
+            test_align_abs_link:
                 - num_persons: persons.count()
                 # kill empty households
                 - remove(num_persons == 0)
@@ -2787,6 +2814,7 @@ simulation:
                    test_show,
         ]
         - household: [composition,
+                      test_align_abs_link,
                       test_align_link,
 #                      dump_csv_h,
                      ]

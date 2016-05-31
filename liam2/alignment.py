@@ -441,8 +441,6 @@ class AlignmentAbsoluteValues(FilteredExpression):
         need, expressions, possible_values = \
             self._eval_need(context, need, expressions, possible_values,
                             target_context)
-        need = self._handle_frac_need(need, frac_need)
-        need = self._add_past_error(context, need, errors)
 
         # handle secondary axis
         if isinstance(secondary_axis, Expr):
@@ -537,6 +535,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # filtered_columns are not filtered further on invalid labels
         # (num_unaligned) but this is not a problem since those will be
         # ignored by GroupBy anyway.
+        # TODO: this is ugly because a groupby on "values", returns an LArray with those
+        # values (ndarrays) as axes names. Ugh.
         groupby_expr = GroupBy(*filtered_columns, pvalues=possible_values)
 
         # FIXME: target_context is not correct, as it is not filtered while
@@ -565,6 +565,18 @@ class AlignmentAbsoluteValues(FilteredExpression):
                 continue
             hh[source_row].append(target_row)
 
+        class FakeContainer(object):
+            def __init__(self, length):
+                self.length = length
+
+            def __len__(self):
+                return self.length
+        groups = [FakeContainer(g) for g in num_candidates]
+        need = need * self._get_need_correction(groups, possible_values)
+        need = self._handle_frac_need(need, frac_need)
+        need = self._add_past_error(context, need, errors)
+        # need = np.asarray(need)
+        need = np.asarray(need)
         aligned, error = \
             align_link_nd(score, need, num_candidates, hh, fcols_labels,
                           secondary_axis)
