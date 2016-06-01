@@ -9,10 +9,15 @@ import fnmatch
 from os.path import join
 from itertools import chain
 
-
 from setuptools import setup
 from setuptools.extension import Extension
+
+# not using the try-except here as cython is not really optional now
+# if we ever make it optional again, we should uncomment it
+# try:
 from Cython.Distutils import build_ext
+# except ImportError:
+#     build_ext = None
 import numpy as np
 
 
@@ -97,22 +102,24 @@ extra_kwargs = {}
 
 # Add the output directory of cython build_ext to cxfreeze search path so that
 # build_exe finds and copies C extensions
-class MyBuildExt(build_ext):
-    def finalize_options(self):
-        build_ext.finalize_options(self)
+if build_ext is not None:
+    class MyBuildExt(build_ext):
+        def finalize_options(self):
+            build_ext.finalize_options(self)
 
-        if build_exe:
-            # need to be done in-place, otherwise build_exe_options['path'] will use
-            # the unmodified version because it is computed before build_ext is
-            # called
-            cxfreeze_searchpath.insert(0, self.build_lib)
+            if build_exe:
+                # need to be done in-place, otherwise build_exe_options['path'] will use
+                # the unmodified version because it is computed before build_ext is
+                # called
+                cxfreeze_searchpath.insert(0, self.build_lib)
+    extra_kwargs['cmdclass'] = {"build_ext": MyBuildExt}
 
-
-ext_modules = [Extension("cpartition", ["liam2/cpartition.pyx"],
-                         include_dirs=[np.get_include()]),
-               Extension("cutils", ["liam2/cutils.pyx"],
-                         include_dirs=[np.get_include()])]
-options["build_ext"] = {}
+    ext_modules = [Extension("cpartition", ["liam2/cpartition.pyx"],
+                             include_dirs=[np.get_include()]),
+                   Extension("cutils", ["liam2/cutils.pyx"],
+                             include_dirs=[np.get_include()])]
+    extra_kwargs['ext_modules'] = ext_modules
+    options["build_ext"] = {}
 
 
 # ================= #
@@ -183,8 +190,6 @@ setup(
     # cx_freeze wants only ints and dots (full version number)
     version=int_version(__version__),
     description="LIAM2",
-    cmdclass={"build_ext": MyBuildExt},
-    ext_modules=ext_modules,
     options=options,
     install_requires=[
         'numexpr',
