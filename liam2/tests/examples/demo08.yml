@@ -2,11 +2,11 @@
 
 # In this example, we will model the work state and education level of people.
 
-# To achieve that we demonstrate using the logit_score() and align() functions 
+# To achieve that we demonstrate using the logit_score() and align() functions
 # as a more versatile alternative to the logit_regr() function.
 
 # To run the simulation, press F6 if you are using the editor bundled with
-# LIAM2, otherwise run the following command in a console: 
+# LIAM2, otherwise run the following command in a console:
 # [BUNDLEPATH]\liam2\main run demo08.yml
 globals:
     periodic:
@@ -27,7 +27,7 @@ entities:
             init_reports:
                 - csv('period', 'N persons', 'N children',
                       fname='hh_size.csv')
-                      
+
             clean_empty:
                 - empty: persons.count() == 0
                 - show('Number of empty households:', count(empty))
@@ -232,7 +232,7 @@ entities:
             inwork:
                 # retire
                 - workstate: if(age >= RETIREMENTAGE, RETIRED, workstate)
-                
+
                 - work_score: UNSET
                 # men
                 - work_score: if(ISMALE and ACTIVEAGE and ISINWORK,
@@ -329,7 +329,7 @@ entities:
                                   leave=ISSTUDENT or ISRETIRED),
                             False)
                 - workstate: if(unemp, UNEMPLOYED, workstate)
-                - workstate: if(workstate == UNSET, 
+                - workstate: if(workstate == UNSET,
                                 OTHERINACTIVE,
                                 workstate)
                 - show(groupby(workstate, lag(workstate)))
@@ -356,11 +356,11 @@ entities:
                 - csv('period', 'men', 'women', 'total',
                       fname='average_age.csv')
                 - csv('period', 'ratio', fname='dependency_ratio.csv')
-               
+
 simulation:
     init:
         - household: [init_reports, csv_output]
-        - person: [init_reports, csv_output, 
+        - person: [init_reports, csv_output,
                    init_education_level, ineducation]
 
     processes:
