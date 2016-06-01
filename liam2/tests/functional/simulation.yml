@@ -73,6 +73,10 @@ globals:
         path: regr_test2.csv
         type: float
 
+    EXT_CHOICE:
+        path: ext_choice.csv
+        type: float
+
     ARRAY_DUPE_LABELS:
         path: param/array_dupe_labels.csv
         type: float
@@ -2873,6 +2877,56 @@ entities:
                 - assertTrue(num5 > 0)
                 - assertTrue(num10 > 0)
                 - assertEqual(num0 + num5 + num10, num_total)
+
+                # test probabilities from external file
+                - seed(0)
+                - intchoice2: choice('ext_choice.csv')
+                - assertEqual(intchoice, intchoice2)
+
+                # test probabilities from expr/global
+                - seed(0)
+                - intchoice3: choice(EXT_CHOICE.mean('gender'))
+                - num0: count(intchoice3 == 0)
+                - num5: count(intchoice3 == 5)
+                - num10: count(intchoice3 == 10)
+                - assertTrue(num0 > 0)
+                - assertTrue(num5 > 0)
+                - assertTrue(num10 > 0)
+                - assertEqual(num0 + num5 + num10, num_total)
+
+
+                - global_choice: choice(CHOICE2D.rename('choices', 'outcomes'))
+                # TODO: use a single 2D groupby (gender & not gender)
+                - w: groupby(global_choice, filter=not gender, percent=True)
+                - w1: w[1]
+                - w2: w[2]
+                - w3: w[3]
+                - assertTrue(17 < w1 and w1 < 23) # should be approx 20%
+                - assertTrue(27 < w2 and w2 < 33) # should be approx 30%
+                - assertTrue(47 < w3 and w3 < 53) # should be approx 50%
+                - m: groupby(global_choice, filter=gender, percent=True)
+                - m1: m[1]
+                - m2: m[2]
+                - m3: m[3]
+                - assertTrue(27 < m1 and m1 < 33) # should be approx 30%
+                - assertTrue(47 < m2 and m2 < 53) # should be approx 50%
+                - assertTrue(17 < m3 and m3 < 23) # should be approx 20%
+
+                - global_choice: choice(CHOICE2DT.rename('choices', 'outcomes'))
+                - w: groupby(global_choice, filter=not gender, percent=True)
+                - w1: w[1]
+                - w2: w[2]
+                - w3: w[3]
+                - assertTrue(17 < w1 and w1 < 23) # should be approx 20%
+                - assertTrue(27 < w2 and w2 < 33) # should be approx 30%
+                - assertTrue(47 < w3 and w3 < 53) # should be approx 50%
+                - m: groupby(global_choice, filter=gender, percent=True)
+                - m1: m[1]
+                - m2: m[2]
+                - m3: m[3]
+                - assertTrue(27 < m1 and m1 < 33) # should be approx 30%
+                - assertTrue(47 < m2 and m2 < 53) # should be approx 50%
+                - assertTrue(17 < m3 and m3 < 23) # should be approx 20%
 
             test_groupby():
                 # scalar dim

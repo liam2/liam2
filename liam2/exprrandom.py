@@ -1,6 +1,8 @@
 # encoding: utf-8
 from __future__ import division, print_function
 
+import os
+
 import numpy as np
 import larray as la
 
@@ -8,6 +10,7 @@ import config
 from expr import firstarg_dtype, ComparisonOp, Variable, expr_eval
 from exprbases import NumpyRandom, make_np_class, make_np_classes
 from exprmisc import Where
+from importer import load_ndarray
 from utils import argspec
 
 
@@ -20,6 +23,19 @@ class Choice(NumpyRandom):
     # choice(a, size=None, replace=True, p=None)
     argspec = argspec('choices, p=None, size=None, replace=True',
                       **NumpyRandom.kwonlyargs)
+
+    def __init__(self, *args, **kwargs):
+        NumpyRandom.__init__(self, *args, **kwargs)
+
+        probabilities = self.args[0]
+        if isinstance(probabilities, basestring):
+            fpath = os.path.join(config.input_directory, probabilities)
+            probabilities = load_ndarray(fpath)
+            # XXX: store args in a list so that we can modify it?
+            # self.args[1] = load_ndarray(fpath, float)
+            # XXX: but we should be able to do better than a list, eg.
+            # self.args.need = load_ndarray(fpath, float)
+            self.args = (probabilities,) + self.args[1:]
 
     # TODO: document the change in behavior for the case where the sum of
     # probabilities is != 1
@@ -35,6 +51,22 @@ class Choice(NumpyRandom):
         return (a, size, replace, p), kwargs
 
     def compute(self, context, a, size=None, replace=True, p=None):
+        if isinstance(a, la.LArray):
+            assert p is None
+            outcomes_axis = a.axes['outcomes']
+            outcomes = outcomes_axis.labels
+            other_axes = a.axes - outcomes_axis
+
+            if other_axes:
+                # XXX: parse expressions instead of only simple Variable?
+                expressions = tuple(Variable(context.entity, other_name)
+                                    for other_name in other_axes.names)
+                columns = tuple(expr_eval(expr, context) for expr in expressions)
+                p = np.asarray(a.points[columns].transpose('outcomes'))
+            else:
+                p = np.asarray(a)
+            a = outcomes
+
         if isinstance(p, (list, np.ndarray)) and len(p) and not np.isscalar(p[0]):
             assert len(p) == len(a)
             assert all(len(px) == size for px in p)
