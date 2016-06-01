@@ -5,6 +5,7 @@ from itertools import izip
 import os
 
 import numpy as np
+import larray as la
 
 import config
 from align_link import align_link_nd
@@ -15,7 +16,7 @@ from groupby import GroupBy
 from links import LinkGet, Many2One
 from partition import partition_nd, filter_to_indices
 from importer import load_ndarray
-from utils import PrettyTable, LabeledArray
+from utils import PrettyTable
 
 
 def kill_axis(axis_name, value, expressions, possible_values, need):
@@ -42,7 +43,7 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
     value_idx = value_idx[0]
     complete_idx = [slice(None) for _ in range(need.ndim)]
     complete_idx[axis_num] = value_idx
-    need = need[complete_idx]
+    need = need.i[tuple(complete_idx)]
     return expressions, possible_values, need
 
 
@@ -201,6 +202,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
             fpath = os.path.join(config.input_directory, need)
             need = load_ndarray(fpath, float)
             # XXX: store args in a list so that we can modify it?
+            # self.args[1] = load_ndarray(fpath, float)
+            # XXX: but we should be able to do better than a list, eg.
+            # self.args.need = load_ndarray(fpath, float)
             self.args = (self.args[0], need) + self.args[2:]
         self.past_error = None
 
@@ -215,7 +219,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
     def _eval_need(self, context, need, expressions, possible_values,
                    expressions_context=None):
-        assert isinstance(need, np.ndarray)
+        assert isinstance(need, (np.ndarray, la.LArray))
         if expressions_context is None:
             expressions_context = context
         # When given a 0d array, we convert it to 1d. This can happen e.g. for
@@ -227,14 +231,14 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if not need.shape:
             need = np.array([need])
 
-        if isinstance(need, LabeledArray):
+        if isinstance(need, la.LArray):
             if not expressions:
                 expressions = [Variable(expressions_context.entity, name)
-                               for name in need.dim_names]
+                               for name in need.axes.names]
             if not possible_values:
-                possible_values = need.pvalues
+                possible_values = need.axes.labels
 
-        assert isinstance(need, np.ndarray)
+        assert isinstance(need, (np.ndarray, la.LArray))
 
         if len(expressions) != len(possible_values):
             raise Exception("align() expressions and possible_values "
@@ -358,7 +362,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # need is a non-ndarray sequence
         if isinstance(need, (tuple, list)):
             need = np.array(need)
-        assert isinstance(need, np.ndarray)
+        assert isinstance(need, (np.ndarray, la.LArray))
 
         if expressions is None:
             expressions = []
@@ -451,7 +455,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if isinstance(secondary_axis, Expr):
             axis_name = str(secondary_axis)
             try:
-                secondary_axis = need.dim_names.index(axis_name)
+                secondary_axis = need.axes.names.index(axis_name)
             except ValueError:
                 raise ValueError("invalid value for secondary_axis: there is "
                                  "no axis named '%s' in the need array"
@@ -496,7 +500,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
         fcols_labels = []
         filtered_length = len(filtered_columns[0])
         unaligned = np.zeros(filtered_length, dtype=bool)
-        for fcol, pvalues in zip(filtered_columns, need.pvalues):
+        # XXX: probably needs to use "possible_values" instead
+        for fcol, pvalues in zip(filtered_columns, need.axes.labels):
             pvalues_index = dict((v, i) for i, v in enumerate(pvalues))
             fcol_labels = np.empty(filtered_length, dtype=np.int32)
             for i in range(filtered_length):

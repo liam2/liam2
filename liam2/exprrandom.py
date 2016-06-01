@@ -2,8 +2,10 @@
 from __future__ import division, print_function
 
 import numpy as np
+import larray as la
 
-from expr import firstarg_dtype, ComparisonOp, Variable
+import config
+from expr import firstarg_dtype, ComparisonOp, Variable, expr_eval
 from exprbases import NumpyRandom, make_np_class, make_np_classes
 from exprmisc import Where
 from utils import argspec
@@ -44,8 +46,8 @@ class Choice(NumpyRandom):
             # possibilities (there is no shortcut when the value is found).
             # It might be faster to rewrite this using numba + np.digitize
             # for each individual (assuming it has a low setup overhead).
-            # if isinstance(p, list) and any(isinstance(px, la.LArray) for px in p):
-            #     p = [np.asarray(px) for px in p]
+            if isinstance(p, list) and any(isinstance(px, la.LArray) for px in p):
+                p = [np.asarray(px) for px in p]
             ap = np.asarray(p)
             cdf = ap.cumsum(axis=0)
 

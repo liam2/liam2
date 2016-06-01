@@ -106,6 +106,7 @@ class Simulation(object):
             'periodic': None,  # either full-blown (dict) description or list
                                # of fields
             '*': Or(bool, int, float, str, {
+                'autoindex': None, # str or [str],
                 'path': str,
                 'type': str,
                 'fields': [{

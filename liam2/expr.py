@@ -6,10 +6,11 @@ import types
 from collections import Counter
 
 import numpy as np
+import larray as la
 
 from cache import Cache
 from context import EntityContext, EvaluationContext
-from utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray,
+from utils import (ExplainTypeError, safe_take, IrregularNDArray,
                    NiceArgSpec, englishenum, make_hashable, add_context,
                    array_nan_equal)
 
@@ -145,7 +146,7 @@ def traverse_expr(expr):
 
 
 def gettype(value):
-    if isinstance(value, np.ndarray):
+    if isinstance(value, (np.ndarray, la.LArray)):
         type_ = value.dtype.type
     elif isinstance(value, (tuple, list)):
         type_ = type(value[0])
@@ -211,6 +212,7 @@ def expr_eval(expr, context):
             # non-negligible cost (especially in matching), even when caching
             # collect_variables result (it is much better than before though).
             # TODO: also check for globals
+            # print("vars", expr.collect_variables())
             for var in expr.collect_variables():
                 if var.name not in globals_names and var not in context:
                     raise Exception("variable '%s' is unknown (it is either "
@@ -318,10 +320,10 @@ class Expr(object):
         # live with to avoid hitting the disk twice for each disk access.
 
         # TODO: I should rewrite this whole mess when my "dtype" method
-        # supports ndarrays and LabeledArray so that I can get the dtype from
+        # supports ndarrays and la.LArray so that I can get the dtype from
         # the expression instead of from actual values.
         labels = None
-        assert isinstance(context, EvaluationContext)
+        assert isinstance(context, EvaluationContext), type(context)
         local_ctx = context.entity_data
         if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
             for var in simple_expr.collect_variables():
@@ -334,20 +336,20 @@ class Expr(object):
                 # in expr_eval
                 value = context[var.name]
                 # value = local_ctx[var.name]
-                if isinstance(value, LabeledArray):
+                if isinstance(value, la.LArray):
                     if labels is None:
-                        labels = (value.dim_names, value.pvalues)
+                        labels = (value.axes.names, value.axes.labels)
                     else:
-                        if labels[0] != value.dim_names:
+                        if labels[0] != value.axes.names:
                             raise Exception('several arrays with inconsistent '
                                             'labels (dimension names) in the '
                                             'same expression: %s vs %s'
-                                            % (labels[0], value.dim_names))
+                                            % (labels[0], value.axes.names))
                         # check that for each dimension the labels are the same
-                        pvalues1, pvalues2 = labels[1], value.pvalues
+                        pvalues1, pvalues2 = labels[1], value.axes.labels
 
                         # None pvalues are simply ignored. This can happen due
-                        # to limitations in LabeledArray (should be lifted when
+                        # to limitations in la.LArray (should be lifted when
                         # we use LArray instead).
                         if pvalues1 is not None and pvalues2 is not None:
                             for labels1, labels2 in zip(pvalues1, pvalues2):
@@ -368,7 +370,10 @@ class Expr(object):
             # all the expression we evaluate through numexpr preserve
             # array shapes, but if we ever use numexpr reduction
             # capabilities, we will be in trouble
-            res = LabeledArray(res, labels[0], labels[1])
+            # names, ll = labels
+            axes = [la.Axis(axis_name, axis_labels)
+                    for axis_name, axis_labels in zip(*labels)]
+            res = la.LArray(res, axes)
 
         # if cache_key is not None:
         #     expr_cache[cache_key] = res
@@ -393,36 +398,41 @@ class Expr(object):
         return SubscriptedExpr(self, key)
 
     def __getattr__(self, key):
-        if key in {'data', 'dtype', 'itemsize', 'nbytes', 'ndim', 'shape', 'size',
-                   'dim_names', 'pvalues', 'row_totals', 'col_totals',
-                   # aggregates
-                   'all', 'any', 'max', 'mean', 'min', 'prod', 'ptp', 'std',
-                   'sum', 'var', 'cumprod', 'cumsum',
-                   # element-wise
-                   'astype', 'clip', 'copy', 'round',
-                   # inplace
-                   'fill', 'partition', 'sort',
-                   # indirect
-                   'argmax', 'argmin', 'argpartition', 'argsort',
-                   # other
-                   'nonzero', 'reshape', 'transpose',
-                   # should go away when I implement len()
-                   '__len__'}:
-            # excluded (and it would take some convincing to add them):
-            # base, byteswap, ctypes, data, dump, dumps, getfield, item,
-            # itemset, newbyteorder, put, resize, setfield, setflags, swapaxes,
-            # take, trace, view
-
-            # excluded for now (I am open if anybody asks for them):
-            # choose, compress, conj, conjugate, diagonal, dot, flags, flat,
-            # flatten, imag, ravel, real, repeat, squeeze, strides
-
-            # compress (select using a boolean index for one axis) is nice but
-            # I would like to implement a[bool_idx_wh_axis] instead in LArray
-            return ExprAttribute(self, key)
+        if key == '_variables':
+            raise AttributeError("%s (of type '%s') has no attribute '%s'"
+                                     % (self, self.__class__.__name__, key))
         else:
-            raise AttributeError("'%s' object has no attribute '%s'"
-                                 % (self.__class__.__name__, key))
+            return ExprAttribute(self, key)
+        # if key in {'data', 'dtype', 'itemsize', 'nbytes', 'ndim', 'shape', 'size',
+        #            'axes', 'points', 'row_totals', 'col_totals',
+        #            # aggregates
+        #            'all', 'any', 'max', 'mean', 'min', 'prod', 'ptp', 'std',
+        #            'sum', 'var', 'cumprod', 'cumsum',
+        #            # element-wise
+        #            'astype', 'clip', 'copy', 'round',
+        #            # inplace
+        #            'fill', 'partition', 'sort',
+        #            # indirect
+        #            'argmax', 'argmin', 'argpartition', 'argsort',
+        #            # other
+        #            'nonzero', 'reshape', 'transpose',
+        #            # should go away when I implement len()
+        #            '__len__'}:
+        #     # excluded (and it would take some convincing to add them):
+        #     # base, byteswap, ctypes, data, dump, dumps, getfield, item,
+        #     # itemset, newbyteorder, put, resize, setfield, setflags, swapaxes,
+        #     # take, trace, view
+        #
+        #     # excluded for now (I am open if anybody asks for them):
+        #     # choose, compress, conj, conjugate, diagonal, dot, flags, flat,
+        #     # flatten, imag, ravel, real, repeat, squeeze, strides
+        #
+        #     # compress (select using a boolean index for one axis) is nice but
+        #     # I would like to implement a[bool_idx_wh_axis] instead in LArray
+        #     return ExprAttribute(self, key)
+        # else:
+        #     raise AttributeError("%s (of type '%s') has no attribute '%s'"
+        #                          % (self, self.__class__.__name__, key))
 
     def traverse(self):
         for child in self.children:
@@ -570,42 +580,86 @@ class SubscriptedExpr(EvaluableExpression):
             assert isinstance(filter_value, (bool, np.bool_)) or \
                 np.issubdtype(filter_value.dtype, bool)
 
+            if isinstance(expr_value, la.LArray):
+                # ca craint, ce qui faut, c'est faire un guess axis sur la
+                # première valeur valide puis utiliser le label de cet axe
+                # là (ou faire un PGroup sur cet axe là), otherwise, we can
+                # introduce duplicate keys
+                # OR, I could replicate the first non-filtered key
+                # it might be a bad key, but if so, it would break anyway
+                always_good_key = expr_value.axes[0].labels[0]
+                missing_value = get_default_value(expr_value)
+                # print("good key", always_good_key)
+                # print("type missing", missing_value, type(missing_value))
+            elif isinstance(expr_value, la.core.array.LArrayPointsIndexer):
+                always_good_key = expr_value.array.axes[0].labels[0]
+                missing_value = get_default_value(expr_value.array)
+                # print("type missing", missing_value, type(missing_value))
+            elif isinstance(expr_value, np.ndarray):
+                always_good_key = -1
+                missing_value = get_default_value(expr_value)
+            else:
+                assert isinstance(expr_value, (tuple, list))
+                always_good_key = -1
+                missing_value = None
+
             def fixkey(orig_key, filter_value):
                 if non_scalar_array(orig_key):
+                    # print("orig_key", orig_key)
+                    non_filtered_idx = filter_value.nonzero()[0]
+                    if len(non_filtered_idx):
+                        first_non_filtered_value = \
+                            orig_key[non_filtered_idx[0]]
+                    else:
+                        # avoid crashing on: if(always_false,
+                        # array[badindex_scalar], val)
+                        return None
                     newkey = orig_key.copy()
-                    newkey[~filter_value] = -1
+                    newkey[~filter_value] = first_non_filtered_value
+                    # print("new key", newkey)
                 else:
                     # avoid crashing on: if(always_false, array[badindex], val)
                     # Note that if only some are False, we will return orig_key
                     # (ie not fix), but this is OK because it would fail anyway.
                     if np.all(~filter_value):
-                        newkey = -1
+                        # first_non_filtered_idx = filter_value.nonzero()[0][0]
+                        # first_non_filtered_value = \
+                        #     orig_key[first_non_filtered_idx]
+                        newkey = None #always_good_key #first_non_filtered_value
                     else:
                         newkey = orig_key
                 return newkey
 
+            # XXX: couldn't we use np.take(mode='clip') instead of all this
+            # Mumbo-jumbo? (and implement it in LArray)
             if non_scalar_array(filter_value):
                 if isinstance(key, tuple):
                     # nd-key
                     key = tuple(fixkey(k, filter_value) for k in key)
+                    if any(k is None for k in key):
+                        return missing_value
                 elif isinstance(key, slice):
                     raise NotImplementedError()
                 else:
                     # scalar or array key
                     key = fixkey(key, filter_value)
+                    if key is None:
+                        return missing_value
             else:
                 if not filter_value:
-                    missing_value = get_default_value(expr_value)
                     if (non_scalar_array(key) or
                         (isinstance(key, tuple) and
                          any(non_scalar_array(k) for k in key))):
                         # scalar filter, array or tuple key
+                        if isinstance(expr_value, la.core.array.LArrayPointsIndexer):
+                            expr_value = expr_value.array
                         return np.full_like(expr_value, missing_value)
                     elif isinstance(key, slice):
                         raise NotImplementedError()
                     else:
                         # scalar (or tuple of scalars) key
                         return missing_value
+        # print("fixed key", key)
         return expr_value[key]
 
 
@@ -620,8 +674,13 @@ class ExprAttribute(EvaluableExpression):
         return '%s.%s' % (self.expr, self.key)
 
     def evaluate(self, context):
-        return getattr(expr_eval(self.expr, context),
-                       expr_eval(self.key, context))
+        expr_value = expr_eval(self.expr, context)
+        key_value = expr_eval(self.key, context)
+        if hasattr(expr_value, key_value):
+            return getattr(expr_value, key_value)
+        else:
+            raise AttributeError("%s (of type '%s') has no attribute '%s'"
+                                 % (self, self.__class__.__name__, key_value))
 
     def __call__(self, *args, **kwargs):
         return DynamicFunctionCall(self, *args, **kwargs)
@@ -946,7 +1005,7 @@ class UnaryOp(Expr):
     def __repr__(self):
         nicerop = {'~': 'not '}
         niceop = nicerop.get(self.op, self.op)
-        return "(%s%s)" % (niceop, self.expr)
+        return "(%s%r)" % (niceop, self.expr)
 
 
 class BinaryOp(Expr):
@@ -974,7 +1033,7 @@ class BinaryOp(Expr):
     def __repr__(self):
         nicerop = {'&': 'and', '|': 'or'}
         niceop = nicerop.get(self.op, self.op)
-        return "(%s %s %s)" % (self.expr1, niceop, self.expr2)
+        return "(%r %s %r)" % (self.expr1, niceop, self.expr2)
 
 
 class DivisionOp(BinaryOp):
@@ -1173,18 +1232,27 @@ class SubscriptedGlobal(GlobalVariable):
 # TODO: this class shouldn't be needed. GlobalArray should be handled in the
 # context
 class GlobalArray(Variable):
-    def __init__(self, name, dtype=None):
+    def __init__(self, name, dtype=None, autoindex=None):
         Variable.__init__(self, None, name, dtype)
+        # convert to tuple so that it is hashable
+        if isinstance(autoindex, list):
+            autoindex = tuple(autoindex)
+        self.autoindex = autoindex
 
     def as_simple_expr(self, context):
         globals_data = context.global_tables
         result = globals_data[self.name]
+        if self.autoindex is not None:
+            expressions = [Variable(context.entity, name)
+                           for name in self.autoindex]
+            columns = tuple(expr_eval(expr, context) for expr in expressions)
+            result = result.points[columns]
         # XXX: maybe I should just use self.name?
         # FIXME: use self.add_tmp_var, because in combination with autoindex,
         # the variable could have a different value
         tmp_varname = '__%s' % self.name
         if tmp_varname in context:
-            assert context[tmp_varname] is result
+            assert la.larray_equal(context[tmp_varname], result)
         context[tmp_varname] = result
         return Variable(context.entity, tmp_varname)
 

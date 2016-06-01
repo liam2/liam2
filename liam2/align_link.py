@@ -9,7 +9,7 @@ import numpy as np
 # noinspection PyNoneFunctionAssignment
 def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
                   secondary_axis=None):
-    # need and num_candidates are LabeledArray, but we don't need the extra
+    # need and num_candidates are LArray, but we don't need the extra
     # functionality from this point on
     need = np.asarray(need)
     num_candidates = np.asarray(num_candidates)

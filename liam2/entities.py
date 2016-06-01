@@ -59,7 +59,12 @@ def global_symbols(globals_def):
         else:
             global_type = global_def['type']
             assert isinstance(global_type, type), "not a type: %s" % global_type
-            symbols[name] = GlobalArray(name, global_type)
+            autoindex = global_def.get('autoindex')
+            if isinstance(autoindex, str):
+                autoindex = [idx.strip() for idx in autoindex.split(',')]
+                if not isinstance(autoindex, list):
+                    autoindex = [autoindex]
+            symbols[name] = GlobalArray(name, global_type, autoindex)
     return symbols
 
 

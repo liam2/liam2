@@ -5,11 +5,12 @@ import time
 
 import tables
 import numpy as np
+import larray as la
 import config
 
 from expr import (normalize_type, get_default_value, get_default_array,
                   get_default_vector, gettype)
-from utils import loop_wh_progress, time2str, safe_put, LabeledArray, timed, MB
+from utils import loop_wh_progress, time2str, safe_put, timed, MB
 from importer import load_def, stream_to_array, array_to_disk_array
 
 
@@ -102,7 +103,7 @@ class ColumnArray(object):
         """does not copy value except if a type conversion is necessary"""
 
         if isinstance(key, basestring):
-            if isinstance(value, np.ndarray) and value.shape:
+            if isinstance(value, (np.ndarray, la.LArray)) and value.shape:
                 column = value
             else:
                 # expand scalars (like ndarray does) so that we don't have to
@@ -791,7 +792,9 @@ def index_tables(globals_def, entities, fpath):
                 dim_names = list(dim_names)
                 pvalues = [getattr(attrs, 'dim%d_pvalues' % i)
                            for i in range(len(dim_names))]
-                array = LabeledArray(array, dim_names, pvalues)
+                axes = [la.Axis(labels, axis_name)
+                        for axis_name, labels in zip(dim_names, pvalues)]
+                array = la.LArray(array, axes)
             globals_data[name] = array
 
         input_entities = input_root.entities

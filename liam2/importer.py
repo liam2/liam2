@@ -13,13 +13,16 @@ except ImportError:
     bcolz = None
 import tables
 import yaml
+import larray as la
 
 from expr import get_default_array
 from utils import (validate_dict, merge_dicts, merge_items, invert_dict,
                    countlines, skip_comment_cells, strip_rows, PrettyTable,
                    unique, duplicates, unique_duplicate, prod,
-                   field_str_to_type, fields_yaml_to_type, fromiter,
-                   LabeledArray, MB)
+                   field_str_to_type, fields_yaml_to_type, fromiter, MB)
+
+
+MB = 2.0 ** 20
 
 
 def to_int(v):
@@ -352,21 +355,22 @@ def array_to_disk_array(node, name, array, title='', compression=None):
     h5file = node._v_file
     msg, filters = compression_str2filter(compression)
     print(" - storing %s..." % msg)
+    array_data = np.asarray(array)
     if filters is not None:
-        disk_array = h5file.create_carray(node, name, array, title,
+        disk_array = h5file.create_carray(node, name, array_data, title,
                                           filters=filters)
     else:
-        disk_array = h5file.create_array(node, name, array, title)
-    if isinstance(array, LabeledArray):
+        disk_array = h5file.create_array(node, name, array_data, title)
+    if isinstance(array, la.LArray):
         attrs = disk_array.attrs
         # pytables serialises Python lists as pickles but np.arrays as native
         # types, so it is more portable this way
-        attrs.dimensions = np.array(array.dim_names)
+        attrs.dimensions = np.array(array.axes.names)
         # attrs.dim0_pvalues = array([a, b, c])
         # attrs.dim1_pvalues = array([d, e])
         # ...
-        for i, pvalues in enumerate(array.pvalues):
-            setattr(attrs, 'dim%d_pvalues' % i, pvalues)
+        for i, axis in enumerate(array.axes):
+            setattr(attrs, 'dim%d_pvalues' % i, axis.labels)
     return disk_array
 
 
@@ -474,6 +478,10 @@ def interpolate(target, arrays, id_periods, fields):
 
 def load_ndarray(fpath, celltype=None):
     print(" - reading", fpath)
+    # FIXME: implement celltype
+    a = la.read_csv(fpath, dialect='liam2')
+    # print(a.info)
+    return a
     with open(fpath, "rb") as f:
         reader = csv.reader(f)
         line_stream = skip_comment_cells(strip_rows(reader))
@@ -544,7 +552,7 @@ def load_ndarray(fpath, celltype=None):
         celltype = detect_column_type(str_table)
     data = convert_1darray(str_table, celltype)
     array = np.array(data, dtype=celltype)
-    return LabeledArray(array.reshape(shape), header, possible_values)
+    return la.LArray(array.reshape(shape), header, possible_values)
 
 
 def load_table(fpath, fields=None, newnames=None, delimiter=None, transpose=False):

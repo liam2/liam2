@@ -314,7 +314,8 @@ def context_subset(context, index=None, keys=None):
         assert len(index) == context_length(context), \
             "boolean index has length %d instead of %d" % \
             (len(index), context_length(context))
-        length = np.sum(index)
+        length = index.sum()
+        # length = np.sum(index)
     result = empty_context(length)
     for key in keys:
         value = context[key]

@@ -4,6 +4,7 @@ from __future__ import division, print_function
 import collections
 
 import numpy as np
+import larray as la
 
 import config
 from diff_h5 import diff_array
@@ -76,7 +77,7 @@ class Assignment(Process):
             self.store_result(value, context)
 
     def store_result(self, result, context):
-        if isinstance(result, np.ndarray):
+        if isinstance(result, (np.ndarray, la.LArray)):
             res_type = result.dtype.type
         else:
             res_type = type(result)
@@ -87,7 +88,7 @@ class Assignment(Process):
             # we cannot store/cache self.entity.array[self.name] because the
             # array object can change (eg when enlarging it due to births)
             target = self.entity.array
-
+            result = np.asarray(result)
             # TODO: assert type for temporary variables too
             target_type_idx = type_to_idx[target[self.name].dtype.type]
             res_type_idx = type_to_idx[res_type]

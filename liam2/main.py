@@ -139,9 +139,10 @@ def simulate(args):
                                       autodiff=args.autodiff)
 
     simulation.run(args.interactive)
-#    import cProfile as profile
-#    profile.runctx('simulation.run(args.interactive)', vars(), {},
-#                   'c:\\tmp\\simulation.profile')
+    # import cProfile as profile
+    # print("profiling...")
+    # profile.runctx('simulation.run(False)', vars(), {},
+    #                'c:\\tmp\\simulation.profile')
     # to use profiling data:
     # import pstats
     # p = pstats.Stats('c:\\tmp\\simulation.profile')

@@ -2,11 +2,12 @@
 from __future__ import print_function
 
 import numpy as np
+import larray as la
 
 from context import context_length
 from expr import expr_eval, collect_variables, not_hashable
 from exprbases import TableExpression
-from utils import expand, prod, LabeledArray
+from utils import expand, prod
 from aggregates import Count
 from partition import partition_nd
 
@@ -65,7 +66,8 @@ class GroupBy(TableExpression):
         # because we use them on a filtered_context.
         groups = partition_nd(filtered_columns, True, possible_values)
         if not groups:
-            return LabeledArray([], labels, possible_values)
+            # return la.LArray([], labels, possible_values)
+            return la.LArray([])
 
         # evaluate the expression on each group
         # we use not_hashable to avoid storing the subset in the cache
@@ -159,8 +161,12 @@ class GroupBy(TableExpression):
 
         # and reshape it
         data = data.reshape(len_pvalues)
-        return LabeledArray(data, labels, possible_values,
-                            row_totals, col_totals)
+        axes = [la.Axis(axis_labels, axis_name)
+                for axis_name, axis_labels in zip(labels, possible_values)]
+        # FIXME: also handle totals
+        return la.LArray(data, axes)
+        # return la.LArray(data, labels, possible_values,
+        #                     row_totals, col_totals)
 
 
 functions = {

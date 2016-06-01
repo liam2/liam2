@@ -5,11 +5,12 @@ import os
 import math
 
 import numpy as np
+import larray as la
 
-import config
-from expr import FunctionExpr
-from utils import (LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim,
-                   Axis, FileProducer, QtAvailable)
+from liam2.compat import basestring
+from liam2 import config
+from liam2.expr import FunctionExpr
+from liam2.utils import aslabeledarray, ExceptionOnGetAttr, ndim, FileProducer, QtAvailable
 
 try:
     import matplotlib
@@ -67,18 +68,16 @@ class Chart(FunctionExpr, FileProducer):
                                      "have compatible axes")
         if len(args) == 1:
             data = args[0]
-            if not isinstance(data, np.ndarray):
+            if not isinstance(data, (np.ndarray, la.LArray)):
                 data = np.asarray(data)
             if ndim(data) == ndim_req:
                 # move the last axis first so that the last dimension is stacked
                 axes = range(data.ndim)
                 data = data.transpose(axes[-1], *axes[:-1])
             elif ndim(data) == ndim_req - 1:
-                if isinstance(data, LabeledArray):
-                    # TODO: implement np.newaxis in LabeledArray.__getitem__
-                    data = LabeledArray(np.asarray(data)[np.newaxis],
-                                        dim_names=['dummy'] + data.dim_names,
-                                        pvalues=[[0]] + data.pvalues)
+                if isinstance(data, la.LArray):
+                    # add dummy axis and move it as the first axis
+                    data = data.expand(la.Axis(1, '__dummy__')).transpose('__dummy__')
                 else:
                     data = data[np.newaxis]
             else:
@@ -87,7 +86,7 @@ class Chart(FunctionExpr, FileProducer):
             data = args
         else:
             raise dimerror
-        return data, aslabeledarray(data).axes
+        return np.asarray(data), aslabeledarray(data).axes
 
     def compute(self, context, *args, **kwargs):
         entity = context.entity
@@ -179,6 +178,7 @@ class BoxPlot(Chart):
     check_length = False
 
     def _draw(self, data, colors, **kwargs):
+        data = np.asarray(data)
         # boxplot does not support varargs, so if we want several boxes,
         # we must pass a tuple instead of unpacking it (ie. no * on data)
         plt.boxplot(data, **kwargs)
@@ -191,7 +191,7 @@ class Scatter(Chart):
     colorbar_threshold = 10
 
     def prepare(self, args, kwargs):
-        axes = [Axis(None, np.unique(arg)) for arg in args]
+        axes = [la.Axis(np.unique(arg)) for arg in args]
         c = kwargs.get('c', 'b')
         unq_colors = np.unique(c)
         if len(unq_colors) >= self.colorbar_threshold:
@@ -199,11 +199,12 @@ class Scatter(Chart):
             self.show_legend = False
         else:
             # prepend a fake axis that will be used to make a legend
-            axes = [Axis(None, unq_colors)] + axes
+            axes = [la.Axis(unq_colors)] + axes
         return args, axes
 
     def _draw(self, data, colors, **kwargs):
         from matplotlib.colors import ListedColormap
+
         if 'cmap' not in kwargs:
             kwargs['cmap'] = ListedColormap(colors)
         r = kwargs.pop('r', None)
@@ -239,7 +240,8 @@ class Plot(Chart):
         x = np.arange(len(data[0])) + 1
 
         # we use np.asarray to work around missing "newaxis" implementation
-        # in LabeledArray
+        # in la.LArray
+        data = np.asarray(data)
         if self.styles is None:
             for array, color in zip(data, colors):
                 kw = dict(color=color)
@@ -256,7 +258,7 @@ class StackPlot(Chart):
     def _draw(self, data, colors, **kwargs):
         x = np.arange(len(data[0])) + 1
         # use np.asarray to work around missing "newaxis" implementation
-        # in LabeledArray
+        # in la.LArray
         plt.stackplot(x, np.asarray(data), colors=colors, **kwargs)
 
 
@@ -264,6 +266,7 @@ class Bar(Chart):
     show_grid = True
 
     def _draw(self, data, colors, **kwargs):
+        data = np.asarray(data)
         numvalues = len(data[0])
 
         # plots with the left of the first bar in a negative position look
@@ -286,6 +289,7 @@ class BarH(Bar):
     show_grid = True
 
     def _draw(self, data, colors, **kwargs):
+        data = np.asarray(data)
         numvalues = len(data[0])
 
         # plots with the bottom of the first bar in a negative position look
@@ -310,9 +314,10 @@ class Pie(Chart):
     ndim_req = 1
 
     def _draw(self, data, colors, **kwargs):
-        if isinstance(data, LabeledArray) and data.pvalues:
-            labels = data.pvalues[0]
-            title = data.dim_names[0]
+        if isinstance(data, la.LArray):
+            labels = data.axes[0].labels
+            title = data.axes[0].name
+            data = np.asarray(data)
         else:
             labels = None
             title = None

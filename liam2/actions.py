@@ -5,13 +5,13 @@ import os
 import csv
 
 import numpy as np
+import larray as la
 
 import config
 from expr import FunctionExpr, expr_cache, expr_eval
 from process import BreakpointException
 from partition import filter_to_indices
-from utils import LabeledArray, FileProducer, merge_dicts, PrettyTable, ndim, \
-    isnan
+from utils import FileProducer, merge_dicts, PrettyTable, ndim, isnan
 
 
 class Show(FunctionExpr):
@@ -42,7 +42,7 @@ class CSV(FunctionExpr, FileProducer):
     fname_required = True
 
     def compute(self, context, *args, **kwargs):
-        table = (LabeledArray, PrettyTable)
+        table = (la.LArray, PrettyTable)
         sequence = (list, tuple)
         if (len(args) > 1 and
                 not any(isinstance(arg, table + sequence) for arg in args)):
@@ -66,7 +66,7 @@ class CSV(FunctionExpr, FileProducer):
             writer = csv.writer(f)
             for arg in args:
                 # make sure the result is at least two-dimensional
-                if isinstance(arg, LabeledArray):
+                if isinstance(arg, la.LArray):
                     arg = arg.as_table()
                 elif isinstance(arg, PrettyTable):
                     pass
@@ -231,7 +231,8 @@ class AssertEqual(ComparisonAssert):
     def compare(self, v1, v2):
         # even though np.array_equal also works on scalars, we don't use it
         # systematically because it does not work on list of strings
-        if isinstance(v1, np.ndarray) or isinstance(v2, np.ndarray):
+        if (isinstance(v1, (np.ndarray, la.LArray)) or
+                isinstance(v2, (np.ndarray, la.LArray))):
             v1, v2 = np.asarray(v1), np.asarray(v2)
             if v1.shape != v2.shape:
                 return False, ' (shape differ: %s vs %s)' % (v1.shape, v2.shape)
