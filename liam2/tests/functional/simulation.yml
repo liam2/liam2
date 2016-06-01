@@ -69,6 +69,10 @@ globals:
         fields:
             - INTFIELD: int
 
+    EXT_EXPR_TEST:
+        path: regr_test2.csv
+        type: float
+
     ARRAY_DUPE_LABELS:
         path: param/array_dupe_labels.csv
         type: float
@@ -1735,7 +1739,37 @@ entities:
             test_extexpr():
                 # fields
                 - value: extexpr('regr_test_1d.csv')
-                - assertEqual(value, eduach * 0.3 + 0.2 * age + 0.1)
+                - assertEqual(value, 0.3 * eduach + 0.2 * age + 0.1)
+
+                # gender, fields
+                - value: extexpr('regr_test2.csv')
+                - assertEqual(value, if(gender,
+                                        0.4 * age + 0.5 * gender + 0.6,
+                                        0.3 * age + 0.2 * gender + 0.1))
+
+                # fields, gender
+                - value: extexpr('regr_test3.csv')
+                - assertEqual(value, if(gender,
+                                        0.34 * eduach + 0.23 * age + 0.12,
+                                        0.33 * eduach + 0.22 * age + 0.11))
+                # fields, gender, period
+                - value: extexpr('regr_test4.csv')
+                - pair_period: if(gender, 0.34 * eduach + 0.23 * age + 0.12,
+                                          0.33 * eduach + 0.22 * age + 0.11)
+                - odd_period: if(gender, 0.12 * eduach + 0.22 * age + 0.32,
+                                         0.11 * eduach + 0.21 * age + 0.31)
+                - control_value: if(period % 2 == 0, pair_period, odd_period)
+                - assertEqual(value, control_value)
+
+                # gender, fields via global
+                - value: extexpr(EXT_EXPR_TEST)
+                - assertEqual(value, if(gender,
+                                        0.4 * age + 0.5 * gender + 0.6,
+                                        0.3 * age + 0.2 * gender + 0.1))
+
+                # gender, fields via expression
+                - value: extexpr(EXT_EXPR_TEST.sum('gender'))
+                - assertEqual(value, 0.7 * age + 0.7 * gender + 0.7)
 
             test_logit_score():
                 - seed(0)

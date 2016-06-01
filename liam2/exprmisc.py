@@ -14,7 +14,7 @@ except ImportError:
 import larray as la
 
 import config
-from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
+from expr import (Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
                   LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
                   as_string, collect_variables,
                   get_default_array, get_default_vector, FunctionExpr,
@@ -502,71 +502,54 @@ def _mul(a, b):
     return BinaryOp('*', a, b)
 
 
+# TODO: add class to handle loading a single coefficient (array) from a file
+# TODO: rename to something else.
+# * LinearExpression (linear_expr?) but that would
+#   make it awkward if we want to support expression with non linear variables
+# * CoefficientsExpression (coef_expr)
 class ExtExpr(CompoundExpression):
-    def __init__(self, fname):
+    def __init__(self, *args, **kwargs):
         # to initialize .args, .kwargs, .original_args, ...
-        CompoundExpression.__init__(self)
-        data = load_ndarray(os.path.join(config.input_directory, fname))
+        CompoundExpression.__init__(self, *args, **kwargs)
 
-        # TODO: handle more dimensions. For that we need to evaluate a
-        # different expr depending on the values for the other dimensions
-        # we will need to either
-        # 1) create awful expressions with lots of nested if() (X*Y*Z)
-        # OR
-        # 2) use groupby (or partition_nd)
-        # the problem with groupby is that once we have one vector of values
-        # for each group, we have to recombine them into a single vector
-        # result = np.empty(context_length(context), dtype=expr.dtype)
-        # groups = partition_nd(filtered_columns, True, possible_values)
-        # if not groups:
-        #    return
-        # contexts = [filtered_context.subset(indices, expr_vars, not_hashable)
-        #             for indices in groups]
-        # data = [expr_eval(expr, c) for c in contexts]
-        # for group_indices, group_values in zip(groups, data):
-        #     result[group_indices] = group_values
-        # 3) use a lookup for each individual & coef (we can only envision
-        # this during the evaluation of the larger expression if done via numba,
-        # otherwise it will be too slow
-        # expr = age * AGECOEF[gender, xyz] + eduach * EDUCOEF[gender, xyz]
-        # 4) compute the coefs separately
-        # 4a) via nested if()
-        # AGECOEF = if(gender, if(workstate == 1, a, if(workstate == 2, b, c)
-        #                      if(workstate == 1, a, if(workstate == 2, b, c))
-        # EDUCOEF = ...
-        # expr = age * AGECOEF + eduach * EDUCOEF
-        # 4b) via lookup
-        # AGECOEF = AGECOEFS[gender, workstate]
-        # EDUCOEF = EDUCOEFS[gender, workstate]
-        # expr = age * AGECOEF + eduach * EDUCOEF
+        coefficients = self.args[0]
+        if isinstance(coefficients, basestring):
+            fpath = os.path.join(config.input_directory, coefficients)
+            coefficients = load_ndarray(fpath)
+            # XXX: store args in a list so that we can modify it?
+            # self.args[1] = load_ndarray(fpath, float)
+            # XXX: but we should be able to do better than a list, eg.
+            # self.args.need = load_ndarray(fpath, float)
+            self.args = (coefficients,) + self.args[1:]
 
-        # Note, in general, we could make
-        # EDUCOEFS (sans rien) equivalent to EDUCOEFS[:, :, period] s'il y a
-        #  une dimension period en 3eme position
-        # et non à EDUCOEFS[gender, workstate, period] car ca pose probleme
-        # pour l'alignement (on a pas besoin d'une valeur par personne)
-        # in general, we could let user tell explicitly which fields they want
-        # to index by (autoindex: period) for periodic
+    def build_expr(self, context, coefficients):
+        # XXX: change to "variables"? because we can use temporary variables too!
+        #      or even to "expressions" if we want to support expressions.
+        if isinstance(coefficients, Expr):
+            coefficients = coefficients.evaluate(context)
+        field_axis = coefficients.axes['fields']
+        other_axes = coefficients.axes - field_axis
 
-        fields_dim = data.axes.index('fields')
-        fields_axis = data.axes[fields_dim]
-        self.names = list(fields_axis.labels)
-        self.coefs = list(data)
-        # needed for compatibility with CompoundExpression
-        # self.args = []
-        # self.kwargs = []
-
-    def build_expr(self, context):
         res = None
-        for name, coef in zip(self.names, self.coefs):
-            # XXX: parse expressions instead of only simple Variable?
+        # XXX: instead of retrieving labels along a dimension & splitting manually,
+        #      we should have a "split" operation in LArray (opposite of stack)
+        for name in field_axis.labels:
+            coef_var = self.add_tmp_var(context, coefficients[name])
+
+            # automatically index other dimensions
+            if other_axes:
+                # XXX: parse expressions instead of only simple Variable?
+                expressions = tuple(Variable(context.entity, other_name)
+                                    for other_name in other_axes.names)
+                coef_var = coef_var.points[expressions]
+
             if name != 'constant':
-                # cond_dims = self.cond_dims
-                # cond_exprs = [Variable(context.entity, d) for d in cond_dims]
-                # coef = GlobalArray('__xyz')[name, *cond_exprs]
-                term = _mul(Variable(context.entity, name), coef)
+                # XXX: should I reuse variables instances defined in the entity at
+                # context.entity.variables[name]
+                # XXX: parse expressions instead of only simple Variable?
+                term = _mul(Variable(context.entity, name), coef_var)
             else:
-                term = coef
+                term = coef_var
             if res is None:
                 res = term
             else:
