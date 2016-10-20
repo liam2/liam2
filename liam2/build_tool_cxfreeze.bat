@@ -1,0 +1,1 @@
+cxfreeze -c --exclude-modules=Tkconstants,Tkinter,tcl,_ssl,pdb,pydoc,pydoc_topics,matplotlib,PyQt4 %1
