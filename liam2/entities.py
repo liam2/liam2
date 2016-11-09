@@ -118,12 +118,19 @@ class FieldCollection(list):
 
 
 class Entity(object):
-    """
-    fields is a list of tuple (name, type)
-    """
-
     def __init__(self, name, fields=None, links=None, macro_strings=None,
                  process_strings=None, array=None):
+        """
+
+        Parameters
+        ----------
+        name
+        fields : list of tuple (name, type)
+        links : {name: links.Link}
+        macro_strings
+        process_strings
+        array
+        """
         self.name = name
 
         # we should have exactly one of either array or fields defined

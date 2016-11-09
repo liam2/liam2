@@ -175,6 +175,23 @@ class Simulation(object):
     def __init__(self, globals_def, periods, start_period, init_processes,
                  processes, entities, input_method, input_path, output_path,
                  default_entity=None, runs=1, minimal_output=False):
+        """
+
+        Parameters
+        ----------
+        globals_def
+        periods
+        start_period
+        init_processes
+        processes
+        entities : list of Entity
+        input_method
+        input_path
+        output_path
+        default_entity
+        runs
+        minimal_output
+        """
         if 'periodic' in globals_def:
             declared_fields = globals_def['periodic']['fields']
             fnames = {fname for fname, type_ in declared_fields}
