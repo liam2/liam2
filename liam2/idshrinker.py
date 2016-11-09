@@ -226,7 +226,7 @@ def change_ids(input_path, output_path, changes, shuffle=False):
     h5_apply_rec_map(input_path, output_path, {'entities': fields_maps})
 
 
-def h5_sort(input_path, output_path, entities):
+def h5_sort(input_path, output_path, entities=None):
     """
     Sort the tables of a list of entities by period, then id
 
@@ -242,6 +242,9 @@ def h5_sort(input_path, output_path, entities):
         print("sorting ...", end=' ')
         return table_sort(table, new_parent, ('period', 'id'))
 
+    if entities is None:
+        with tables.open_file(input_path) as f:
+            entities = f.root.entities._v_children.keys()
     print(" * sorting entities tables")
     to_sort = {'entities': {ent_name: sort_entity for ent_name in entities}}
     h5_apply_rec_func(input_path, output_path, to_sort)
@@ -271,19 +274,24 @@ if __name__ == '__main__':
 
     args = sys.argv
     if len(args) < 4:
-        print("""Usage: {} action inputpath outputpath [fields]
+        print("""Usage: {} action inputpath outputpath [link_fields|entities]
     where:
-      * action must be either 'shuffle' or 'shrink'.
+      * action must be either 'shuffle', 'shrink' or 'sort'.
         'shuffle' will randomize ids (but keep links consistent)
         'shrink' will make ids as small as possible (e.g. if they range from
             1000 to 1999, they will be changed to 0 to 999.
+        'sort' will sort rows by 'period' then 'id'.
       * inputpath can point to either a .yml simulation file or a .h5 file.
-        If a .h5 file is supplied, fields must be supplied, otherwise fields
-        are taken from the links definitions in the simulation file.
+        If a .h5 file is supplied, link_fields must be supplied for shuffle or
+        shrink, otherwise link_fields or entities are taken from the
+        simulation file.
       * outputpath is the path to the .h5 output file
-      * fields, if given should have the following format [] denote optional
-        parts:
+      * link_fields, if given should have the following format. [] denote
+        optional parts:
         entityname1:[target_entity.]linkfield1,linkfield2;entityname2:...
+      * entities, if given should have the following format:
+        entityname1,entityname2,...
+        if not given, all entities present in the file will be sorted.
 """.format(args[0]))
         sys.exit()
 
@@ -293,27 +301,33 @@ if __name__ == '__main__':
 
     _, ext = splitext(inputpath)
     if ext in ('.h5', '.hdf5'):
-        if len(args) < 5:
-            print("fields argument must be provided if using a .h5 input file")
-        entities = [entity.split(':') for entity in args[4].split(';')]
-        to_change = {ent_name: fields.split(',') for ent_name, fields in
-                     entities}
-        # convert {ent_name: [target_ent1.fname1, target_ent2.fname2]}
-        #      to {ent_name: [(target_ent1, fname1), (target_ent2, fname2)]}
-        for ent_name, fields in to_change.iteritems():
-            for i, fname in enumerate(fields):
-                fields[i] = \
-                    fname.split('.') if '.' in fname else (ent_name, fname)
+        if action != 'sort':
+            if len(args) < 5 and action != 'sort':
+                print("link_fields argument must be provided if using an .h5 "
+                      "input file")
+
+            entities = [entity.split(':') for entity in args[4].split(';')]
+            to_change = {ent_name: fields.split(',')
+                         for ent_name, fields in entities}
+            # convert {ent_name: [target_ent1.fname1, target_ent2.fname2]}
+            #      to {ent_name: [(target_ent1, fname1), (target_ent2, fname2)]}
+            for ent_name, fields in to_change.iteritems():
+                for i, fname in enumerate(fields):
+                    fields[i] = \
+                        fname.split('.') if '.' in fname else (ent_name, fname)
     else:
         simulation = Simulation.from_yaml(inputpath)
         inputpath = simulation.data_source.input_path
         to_change = {entity.name: fields_from_entity(entity)
                      for entity in simulation.entities}
 
-    assert action in {'shrink', 'shuffle'}
-    if action == 'shuffle':
+    assert action in {'shrink', 'shuffle', 'sort'}
+    if action == 'shrink':
+        timed(change_ids, inputpath, outputpath, to_change)
+    elif action == 'shuffle':
         timed(change_ids, inputpath, '_shuffled_temp.h5', to_change,
               shuffle=True)
         timed(h5_sort, '_shuffled_temp.h5', outputpath, to_change.keys())
     else:
-        timed(change_ids, inputpath, outputpath, to_change)
+        ent_names = args[4].split(',') if len(args) >= 5 else None
+        timed(h5_sort, inputpath, outputpath, ent_names)
