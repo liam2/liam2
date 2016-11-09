@@ -1,33 +1,78 @@
 # encoding: utf-8
 from __future__ import print_function
 
-import tables
-import numpy as np
+from os.path import splitext
 import time
 
-from data import copy_table
-from utils import timed, time2str
+import tables
+import numpy as np
 
-__version__ = "0.1"
+from simulation import Simulation
+from utils import timed, time2str, multi_get
+
+__version__ = "0.2"
 
 
-def index_table(table):
+MB = 2 ** 20
+
+
+def get_shrink_dict(values, shuffle=False):
     """
-    table is an iterable of rows, each row is a mapping (name -> value).
-    Rows must contain at least an 'id' column.
+
+    Parameters
+    ----------
+    values : iterable of values
+        each value can be anything
+
+    Returns
+    -------
+    dict
+        {value: sorted_unique_value_num}
+
+    Examples
+    --------
+    >>> m = get_shrink_dict(['a', 'c', 'b', 'a'])
+    >>> sorted(m.items())
+    [('a', 0), ('b', 1), ('c', 2)]
     """
-    unique_ids = np.unique(table.col('id'))
-    return {identifier: i for i, identifier in enumerate(unique_ids)}
+    unique_values = np.unique(values)
+    if shuffle:
+        np.random.shuffle(unique_values)
+    return {value: i for i, value in enumerate(unique_values)}
 
 
-def map_rows(input_table, output_table, mappings):
-    newrow = output_table.row
+def table_empty_like(input_table, new_parent):
+    output_file = new_parent._v_file
+    # TODO: copy other table attributes
+    return output_file.create_table(new_parent, input_table.name,
+                                    input_table.dtype,
+                                    title=input_table._v_title)
+
+
+def table_apply_map(input_table, new_parent, fields_maps):
+    """Copy the contents of a table to another table passing some fields
+    through a mapping.
+
+    Parameters
+    ----------
+    input_table : tables.Table
+    new_parent : tables.Group
+    fields_maps : {fname: {value: new_value}}
+        fields for which there is no map are copied unmodified, but for
+        fields with a map, all possible values must be present in the map.
+    """
+    assert isinstance(input_table, tables.Table)
+    assert isinstance(new_parent, tables.Group)
+    output_table = table_empty_like(input_table, new_parent)
+    # TODO: it would probably be faster to use a buffer (load several rows at
+    #       once) and apply map using np.vectorize (or use a pd.Index)
     for i, row in enumerate(input_table):
+        newrow = output_table.row
         rec = row.fetch_all_fields()
         for fname in rec.dtype.fields:
             value = rec[fname]
-            if fname in mappings:
-                value = mappings[fname].get(value, value)
+            if fname in fields_maps:
+                value = fields_maps[fname][value]
             newrow[fname] = value
         newrow.append()
         if i % 1000 == 0:
@@ -35,65 +80,186 @@ def map_rows(input_table, output_table, mappings):
     output_table.flush()
 
 
-def map_file(input_file, output_file, entities_map):
-    # copy globals
-    if hasattr(input_file.root, 'globals'):
-        # noinspection PyProtectedMember
-        input_file.root.globals._f_copy(output_file.root, recursive=True)
+def table_sort(input_table, new_parent, fnames, buffersize=10 * MB):
+    """Copy the contents of a table to another table sorting rows along
+    several columns.
 
-    print(" * copying tables")
-    output_entities = output_file.create_group("/", "entities", "Entities")
-    for table in input_file.iterNodes(input_file.root.entities):
-        # noinspection PyProtectedMember
-        ent_name = table._v_name
-        print(ent_name, "...")
-        if ent_name in entities_map:
-            # noinspection PyProtectedMember
-            output_table = output_file.create_table(output_entities, table.name,
-                                                    table.dtype,
-                                                    title=table._v_title)
-            map_rows(table, output_table, entities_map[ent_name])
+    Parameters
+    ----------
+    input_table : tables.Table
+    new_parent : tables.Group
+    fnames : iterable
+        field names. Sort by first field then second.
+        eg ['period', 'id']
+    """
+    assert isinstance(input_table, tables.Table)
+    assert isinstance(new_parent, tables.Group)
+    output_table = table_empty_like(input_table, new_parent)
+    sort_columns = [input_table.col(fname) for fname in fnames]
+    dtype = input_table.dtype
+    # TODO: try with setting a pytables index and using read_sorted
+    indices = np.lexsort(sort_columns[::-1])
+    max_buffer_rows = buffersize // dtype.itemsize
+    lines_left = len(indices)
+    buffer_rows = min(lines_left, max_buffer_rows)
+    start, stop = 0, buffer_rows
+    while lines_left > 0:
+        buffer_rows = min(lines_left, max_buffer_rows)
+        chunk_indices = indices[start:stop]
+        # out is not supported in read_coordinates so far
+        chunk = input_table.read_coordinates(chunk_indices)
+        output_table.append(chunk)
+        # TODO: try flushing after each chunk, this should reduce memory
+        # use on large models, and (hopefully) should not be much slower
+        # given our chunks are rather large
+        # >>> on our 300k sample, it does not seem to make any difference
+        #     either way. I'd like to test this on the 2000k sample, but
+        #     that will have to wait for 0.8
+        lines_left -= buffer_rows
+        start += buffer_rows
+        stop += buffer_rows
+    output_table.flush()
+
+
+def h5_apply_func(input_path, output_path, node_func):
+    """
+    Apply node_func to all nodes of input_path and store the result in
+    output_path
+
+    Parameters
+    ----------
+    input_path : str
+        path to .h5 input file
+    output_path : str
+        path to .h5 output file
+    node_func : function
+        function that will be applied to all nodes
+        func(node, new_parent) -> new_node
+        new_node must be node if node must be copied
+                         None if node must not be copied
+                         another Node if node must not be copied (was already
+                                      handled/copied/modified by func)
+    """
+    with tables.open_file(input_path) as input_file, \
+            tables.open_file(output_path, mode="w") as output_file:
+        for node in input_file.walk_nodes(classname='Leaf'):
+            if node is not input_file.root:
+                print(node._v_pathname, "...", end=' ')
+                parent_path = node._v_parent._v_pathname
+                if parent_path in output_file:
+                    new_parent = output_file.get_node(parent_path)
+                else:
+                    new_parent = output_file._create_path(parent_path)
+                new_node = node_func(node, new_parent)
+                if new_node is node:
+                    print("copying (without modifications) ...", end=' ')
+                    node._f_copy(new_parent)
+                print("done.")
+
+
+# def h5_copy(input_path, output_path):
+#     def copy_node(node, new_parent):
+#         return node
+#     return h5_apply_func(input_path, output_path, copy_node)
+#
+#
+# def h5_apply_flat_map(input_path, output_path, changes):
+#     def map_node(node, new_parent):
+#         node_changes = changes.get(node._v_pathname)
+#         if node_changes is not None:
+#             return map_table(node, new_parent, node_changes)
+#         else:
+#             return node
+#     return h5_apply_func(input_path, output_path, map_node)
+
+
+def h5_apply_rec_func(input_path, output_path, change_funcs):
+    def handle_node(node, new_parent):
+        func = multi_get(change_funcs, node._v_pathname.lstrip('/'))
+        if func is not None:
+            return func(node, new_parent)
         else:
-            copy_table(table, output_entities)
+            return node
+    return h5_apply_func(input_path, output_path, handle_node)
 
 
-def shrinkids(input_path, output_path, toshrink):
-    input_file = tables.open_file(input_path)
-    output_file = tables.open_file(output_path, mode="w")
-    input_entities = input_file.root.entities
-    print(" * indexing tables")
-    idmaps = {}
-    for ent_name, fields in toshrink.iteritems():
-        print("    -", ent_name, "...", end=' ')
-        start_time = time.time()
-        idmaps[ent_name] = index_table(getattr(input_entities, ent_name))
-        print("done (%s elapsed)." % time2str(time.time() - start_time))
-
-    fields_to_change = {ent_name: {'id': idmaps[ent_name]}
-                        for ent_name in toshrink}
-    for ent_name, fields in toshrink.iteritems():
-        # fields_to_change[ent_name] = d = []
-        for fname in fields:
-            if '.' in fname:
-                source_ent, fname = fname.split('.')
-            else:
-                source_ent = ent_name
-            fields_to_change[source_ent][fname] = idmaps[ent_name]
-    print(" * shrinking ids")
-    map_file(input_file, output_file, fields_to_change)
-    input_file.close()
-    output_file.close()
+def h5_apply_rec_map(input_path, output_path, changes):
+    # we could also
+    # transform {l1: {l2: ... {lN: value_map}}}
+    #        to {l1: {l2: ... {lN: func(n, p): map_table(n, p, value_map)}}}
+    # then use h5_apply_rec_func
+    def handle_node(node, new_parent):
+        node_changes = multi_get(changes, node._v_pathname.lstrip('/'))
+        if node_changes is not None:
+            print("applying changes ...", end=' ')
+            return table_apply_map(node, new_parent, node_changes)
+        else:
+            return node
+    return h5_apply_func(input_path, output_path, handle_node)
 
 
-def fixlinks(input_path, output_path, tofix):
-    input_file = tables.open_file(input_path)
-    output_file = tables.open_file(output_path, mode="w")
-    tochange = {ent_name: {fname: {0: -1} for fname in fnames}
-                for ent_name, fnames in tofix.iteritems()}
-    print(" * fixing links")
-    map_file(input_file, output_file, tochange)
-    input_file.close()
-    output_file.close()
+def change_ids(input_path, output_path, changes, shuffle=False):
+    with tables.open_file(input_path) as input_file:
+        input_entities = input_file.root.entities
+        print(" * indexing entities tables")
+        idmaps = {}
+        for ent_name in changes.iterkeys():
+            print("    -", ent_name, "...", end=' ')
+            start_time = time.time()
+            table = getattr(input_entities, ent_name)
+
+            new_ids = get_shrink_dict(table.col('id'), shuffle=shuffle)
+            if -1 in new_ids:
+                raise Exception('found id == -1 in %s which is invalid (link '
+                                'columns can be -1)' % ent_name)
+            # -1 links should stay -1
+            new_ids[-1] = -1
+            idmaps[ent_name] = new_ids
+            print("done (%s elapsed)." % time2str(time.time() - start_time))
+
+    print(" * modifying ids")
+    fields_maps = {ent_name: {'id': idmaps[ent_name]}
+                   for ent_name in changes}
+    for ent_name, fields in changes.iteritems():
+        for target_ent, fname in fields:
+            fields_maps[ent_name][fname] = idmaps[target_ent]
+    h5_apply_rec_map(input_path, output_path, {'entities': fields_maps})
+
+
+def h5_sort(input_path, output_path, entities):
+    """
+    Sort the tables of a list of entities by period, then id
+
+    Parameters
+    ----------
+    input_path : str
+    output_path : str
+    entities : list of str
+        names of entities to sort
+    """
+
+    def sort_entity(table, new_parent):
+        print("sorting ...", end=' ')
+        return table_sort(table, new_parent, ('period', 'id'))
+
+    print(" * sorting entities tables")
+    to_sort = {'entities': {ent_name: sort_entity for ent_name in entities}}
+    h5_apply_rec_func(input_path, output_path, to_sort)
+
+
+def fields_from_entity(entity):
+    """
+    Parameters
+    ----------
+    entity : liam2.entities.Entity
+
+    Returns
+    -------
+    list
+        [(target_ent1, fname1), (target_ent2, fname2)]
+    """
+    return [(link._target_entity_name, link._link_field)
+            for link in entity.links.itervalues()]
 
 
 if __name__ == '__main__':
@@ -105,12 +271,49 @@ if __name__ == '__main__':
 
     args = sys.argv
     if len(args) < 4:
-        print("Usage: %s inputpath outputpath toshrink" % args[0])
-        print("    where toshrink is: entityname1:[entityname2.]linkfield1,"
-              "linkfield2;entityname2:...")
+        print("""Usage: {} action inputpath outputpath [fields]
+    where:
+      * action must be either 'shuffle' or 'shrink'.
+        'shuffle' will randomize ids (but keep links consistent)
+        'shrink' will make ids as small as possible (e.g. if they range from
+            1000 to 1999, they will be changed to 0 to 999.
+      * inputpath can point to either a .yml simulation file or a .h5 file.
+        If a .h5 file is supplied, fields must be supplied, otherwise fields
+        are taken from the links definitions in the simulation file.
+      * outputpath is the path to the .h5 output file
+      * fields, if given should have the following format [] denote optional
+        parts:
+        entityname1:[target_entity.]linkfield1,linkfield2;entityname2:...
+""".format(args[0]))
         sys.exit()
 
-    entities = [entity.split(':') for entity in args[3].split(';')]
-    toshrink = {ent_name: fields.split(',') for ent_name, fields in entities}
-    timed(shrinkids, args[1], 'shrinkedids.h5', toshrink)
-    timed(fixlinks, 'shrinkedids.h5', args[2], toshrink)
+    action = args[1]
+    inputpath = args[2]
+    outputpath = args[3]
+
+    _, ext = splitext(inputpath)
+    if ext in ('.h5', '.hdf5'):
+        if len(args) < 5:
+            print("fields argument must be provided if using a .h5 input file")
+        entities = [entity.split(':') for entity in args[4].split(';')]
+        to_change = {ent_name: fields.split(',') for ent_name, fields in
+                     entities}
+        # convert {ent_name: [target_ent1.fname1, target_ent2.fname2]}
+        #      to {ent_name: [(target_ent1, fname1), (target_ent2, fname2)]}
+        for ent_name, fields in to_change.iteritems():
+            for i, fname in enumerate(fields):
+                fields[i] = \
+                    fname.split('.') if '.' in fname else (ent_name, fname)
+    else:
+        simulation = Simulation.from_yaml(inputpath)
+        inputpath = simulation.data_source.input_path
+        to_change = {entity.name: fields_from_entity(entity)
+                     for entity in simulation.entities}
+
+    assert action in {'shrink', 'shuffle'}
+    if action == 'shuffle':
+        timed(change_ids, inputpath, '_shuffled_temp.h5', to_change,
+              shuffle=True)
+        timed(h5_sort, '_shuffled_temp.h5', outputpath, to_change.keys())
+    else:
+        timed(change_ids, inputpath, outputpath, to_change)
