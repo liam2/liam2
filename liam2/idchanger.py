@@ -1,7 +1,7 @@
 # encoding: utf-8
 from __future__ import print_function
 
-from os.path import splitext
+from os.path import splitext, basename
 import time
 
 import tables
@@ -269,7 +269,7 @@ if __name__ == '__main__':
     import sys
     import platform
 
-    print("LIAM2 HDF5 idshrinker %s using Python %s (%s)\n" %
+    print("LIAM2 HDF5 idchanger %s using Python %s (%s)\n" %
           (__version__, platform.python_version(), platform.architecture()[0]))
 
     args = sys.argv
@@ -292,7 +292,7 @@ if __name__ == '__main__':
       * entities, if given should have the following format:
         entityname1,entityname2,...
         if not given, all entities present in the file will be sorted.
-""".format(args[0]))
+""".format(basename(args[0])))
         sys.exit()
 
     action = args[1]
