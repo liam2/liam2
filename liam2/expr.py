@@ -73,7 +73,8 @@ def get_default_value(column, default_value=None):
     normalized_type = normalize_type(column.dtype.type)
     if default_value is None:
         default_value = missing_values[normalized_type]
-    assert isinstance(default_value, normalized_type)
+    assert isinstance(default_value, normalized_type), \
+        "%s is not of type %s" % (default_value, normalized_type)
     return default_value
 
 
