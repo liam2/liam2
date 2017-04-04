@@ -549,6 +549,13 @@ def load_ndarray(fpath, celltype=None):
     return LabeledArray(array.reshape(shape), header, possible_values)
 
 
+def load_table(fpath, fields=None, newnames=None, delimiter=None, transpose=False):
+    csv_file = CSV(fpath, newnames=newnames, delimiter=delimiter, transpose=transpose)
+    array = csv_file.as_array(fields)
+    csv_file.close()
+    return array
+
+
 def load_def(localdir, ent_name, section_def, required_fields):
     if 'type' in section_def and 'fields' in section_def:
         raise Exception("invalid structure for '%s': "

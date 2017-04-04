@@ -2713,6 +2713,14 @@ entities:
             test_show:
                 - show("yada yada")
 
+            test_load:
+                - arr: load('param/mig.csv', type=float)
+                - assertEqual(arr.shape, (2, 121, 61))
+                - assertEqual(arr.dim_names, ['gender', 'age', 'period'])
+                - table: load('param/othertable.csv',
+                              fields=[('PERIOD', int), ('INTFIELD', int), ('FLOATFIELD', float)])
+                - assertEqual(table.shape, (31,))
+
 simulation:
     init:
         - household: [init_region]
@@ -2847,6 +2855,7 @@ simulation:
 #                   test_array,
                    test_default_value,
                    test_show,
+                   test_load,
         ]
         - household: [composition,
                       test_align_abs_link,

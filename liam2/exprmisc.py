@@ -16,7 +16,7 @@ from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
 from exprbases import (FilteredExpression, CompoundExpression, NumexprFunction,
                        TableExpression, NumpyChangeArray)
 from context import context_length
-from importer import load_ndarray
+from importer import load_ndarray, load_table
 from utils import PrettyTable, argspec
 
 
@@ -557,6 +557,19 @@ class Array(FunctionExpr):
     dtype = firstarg_dtype
 
 
+class Load(FunctionExpr):
+    def compute(self, context, fname, type=None, fields=None):
+        # TODO: move those checks to __init__
+        if type is None and fields is None:
+            raise ValueError("type or fields must be specified")
+        if type is not None and fields is not None:
+            raise ValueError("cannot specify both type and fields")
+        if type is not None:
+            return load_ndarray(os.path.join(config.input_directory, fname), type)
+        elif fields is not None:
+            return load_table(os.path.join(config.input_directory, fname), fields)
+
+
 functions = {
     # element-wise functions
     # Min and Max are in aggregates.py.functions (because of the dispatcher)
@@ -578,4 +591,5 @@ functions = {
     'extexpr': ExtExpr,
     'seed': Seed,
     'array': Array,
+    'load': Load,
 }
