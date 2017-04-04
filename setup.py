@@ -88,6 +88,11 @@ def int_version(release_name):
     return release_name
 
 
+def read_local(fname):
+    with open(os.path.join(os.path.dirname(__file__), fname)) as f:
+        return f.read()
+
+
 # ============ #
 # main options #
 # ============ #
@@ -185,16 +190,42 @@ execfile('./liam2/version.py')
 # now we have a `__version__` variable
 
 
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science / Research",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Topic :: Scientific / Engineering",
+]
+
 setup(
     name="liam2",
     # cx_freeze wants only ints and dots (full version number)
     version=int_version(__version__),
-    description="LIAM2",
+    author="Gaëtan de Menten",
+    author_email="gdementen@gmail.com",
+    url="http://liam2.plan.be",
+    license='GNU General Public License v3 (GPLv3)',
+    description="Microsimulation platform",
+    long_description=read_local('README.rst'),
+    classifiers=classifiers,
     options=options,
+    packages=['liam2'],
+    include_package_data=True,
+    entry_points={
+        'console_scripts': ['liam2=liam2.main:main'],
+    },
     install_requires=[
+        # not specifying cython here because we need it to be installed
+        # *before* this script executes, if we want it to be of any use.
         'numexpr',
         'numpy >= 1.8',
         'tables >= 3',
+        'pyyaml',
     ],
     extras_require=dict(
         interpolation=['bcolz'],
