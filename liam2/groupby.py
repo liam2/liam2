@@ -15,7 +15,7 @@ class GroupBy(TableExpression):
     funcname = 'groupby'
     no_eval = ('expressions', 'expr')
     kwonlyargs = {'expr': None, 'filter': None, 'percent': False,
-                  'pvalues': None}
+                  'pvalues': None, 'totals': True}
 
     # noinspection PyNoneFunctionAssignment
     def compute(self, context, *expressions, **kwargs):
@@ -41,6 +41,7 @@ class GroupBy(TableExpression):
         filter_value = kwargs.pop('filter', None)
         percent = kwargs.pop('percent', False)
         possible_values = kwargs.pop('pvalues', None)
+        totals = kwargs.pop('totals', True)
 
         expr_vars = [v.name for v in collect_variables(expr)]
         labels = [str(e) for e in expressions]
@@ -93,24 +94,31 @@ class GroupBy(TableExpression):
 
         # add total for each row
         len_pvalues = [len(vals) for vals in possible_values]
-        width = len_pvalues[-1]
-        height = prod(len_pvalues[:-1])
 
-        rows_indices = [np.concatenate([groups[y * width + x]
-                                        for x in range(width)])
-                        for y in range(height)]
-        cols_indices = [np.concatenate([groups[y * width + x]
-                                        for y in range(height)])
-                        for x in range(width)]
-        cols_indices.append(np.concatenate(cols_indices))
+        if percent:
+            totals = True
 
-        # evaluate the expression on each "combined" group (ie compute totals)
-        row_ctxs = [filtered_context.subset(indices, expr_vars, not_hashable)
-                    for indices in rows_indices]
-        row_totals = [expr_eval(expr, ctx) for ctx in row_ctxs]
-        col_ctxs = [filtered_context.subset(indices, expr_vars, not_hashable)
-                    for indices in cols_indices]
-        col_totals = [expr_eval(expr, ctx) for ctx in col_ctxs]
+        if totals:
+            width = len_pvalues[-1]
+            height = prod(len_pvalues[:-1])
+            rows_indices = [np.concatenate([groups[y * width + x]
+                                            for x in range(width)])
+                            for y in range(height)]
+            cols_indices = [np.concatenate([groups[y * width + x]
+                                            for y in range(height)])
+                            for x in range(width)]
+            cols_indices.append(np.concatenate(cols_indices))
+
+            # evaluate the expression on each "combined" group (ie compute totals)
+            row_ctxs = [filtered_context.subset(indices, expr_vars, not_hashable)
+                        for indices in rows_indices]
+            row_totals = [expr_eval(expr, ctx) for ctx in row_ctxs]
+            col_ctxs = [filtered_context.subset(indices, expr_vars, not_hashable)
+                        for indices in cols_indices]
+            col_totals = [expr_eval(expr, ctx) for ctx in col_ctxs]
+        else:
+            row_totals = None
+            col_totals = None
 
         if percent:
             # convert to np.float64 to get +-inf if total_value is int(0)
