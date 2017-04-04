@@ -25,6 +25,10 @@ globals:
         path: param/mig.csv
         type: float
 
+    ARRAY2D:
+        path: param/array2d.csv
+        type: float
+
     ALIGN_LINK:
         path: align_link.csv
         type: float
@@ -2501,6 +2505,22 @@ entities:
                 - assertTrue(num5 > 0)
                 - assertTrue(num10 > 0)
                 - assertEqual(num0 + num5 + num10, num_total)
+
+                - global_choice: choice(ARRAY2D.pvalues[1], ARRAY2D[gender * 1].transpose())
+                - w: groupby(global_choice, filter=not gender, percent=True)
+                - w1: w[0]
+                - w2: w[1]
+                - w3: w[2]
+                - assertTrue(17 < w1 and w1 < 23) # should be approx 20%
+                - assertTrue(27 < w2 and w2 < 33) # should be approx 30%
+                - assertTrue(47 < w3 and w3 < 53) # should be approx 50%
+                - m: groupby(global_choice, filter=gender, percent=True)
+                - m1: m[0]
+                - m2: m[1]
+                - m3: m[2]
+                - assertTrue(27 < m1 and m1 < 33) # should be approx 30%
+                - assertTrue(47 < m2 and m2 < 53) # should be approx 50%
+                - assertTrue(17 < m3 and m3 < 23) # should be approx 20%
 
             test_groupby:
                 # scalar dim

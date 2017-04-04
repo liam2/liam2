@@ -1,0 +1,4 @@
+gender,choices,,
+,1,2,3
+FALSE,0.2,0.3,0.5
+TRUE,0.3,0.5,0.2
