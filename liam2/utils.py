@@ -478,8 +478,10 @@ class LabeledArray(np.ndarray):
                 # assert isinstance(key, int), \
                 #        "key: '%s' is of type %s" % (key, type(key))
                 # key is "int-like"
-                obj.dim_names = self.dim_names[1:]
-                obj.pvalues = self.pvalues[1:]
+                if self.dim_names is not None:
+                    obj.dim_names = self.dim_names[1:]
+                if self.pvalues is not None:
+                    obj.pvalues = self.pvalues[1:]
 
             # sanity checks
             if obj.dim_names is not None:
