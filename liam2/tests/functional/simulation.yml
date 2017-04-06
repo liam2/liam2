@@ -37,6 +37,10 @@ globals:
         path: align_link.csv
         type: float
 
+    MULTIALIGN:
+        path: param/multialign.csv
+        type: float
+
     othertable:
         path: param/othertable.csv
         fields:
@@ -2751,6 +2755,36 @@ entities:
                 - assertEquiv(defaulted_float_variable, 99.99)
                 - assertTrue(all(defaulted_bool_variable))
 
+            test_multi_align:
+                # it also works for hard-coded values, e.g.
+                #- target_values: ([5, 10, 15])
+                #- target_props: ([0.2, 0.5, 0.3])
+                - target_values: MULTIALIGN.pvalues[0]
+                - target_props: MULTIALIGN
+                # this is a strange way to set everybody to -1 (to workaround a small bug)
+                - new_value: if(gender, -1, -1)
+                - target_idx: 0
+                - while target_idx < target_values.__len__():
+                    - target_value: target_values[target_idx]
+                    - target_prop: target_props[target_idx]
+                    # this could be made different depending on target_value but needs some randomness (otherwise we
+                    # get successive ids for each values, which is bad
+                    - target_score: uniform()
+                    - to_target: align(target_score, target_prop, leave=new_value != -1)
+                    - new_value: if(to_target, target_value, new_value)
+                    - target_idx: target_idx + 1
+                # make sure everybody got a new value, by assigning any remaining individuals to the last bin.
+                # Ideally we should add them to the group which is farthest from its target
+                - new_value: if(new_value == -1, target_values[-1], new_value)
+                - result: groupby(new_value, percent=True)
+                - show(result)
+                - result5: result[0]
+                - result10: result[1]
+                - result15: result[2]
+                - assertTrue(19.9 < result5 and result5 < 20.1)   # should be very close to 20%
+                - assertTrue(49.9 < result10 and result10 < 50.1) # should be very close to 50%
+                - assertTrue(29.9 < result15 and result15 < 30.1) # should be very close to 30%
+
             test_show:
                 - show("yada yada")
 
@@ -2897,12 +2931,14 @@ simulation:
                    test_default_value,
                    test_show,
                    test_load,
+                   test_multi_align,
         ]
-        - household: [composition,
-                      test_align_abs_link,
-                      test_align_link,
-#                      dump_csv_h,
-                     ]
+        - household: [
+            composition,
+            test_align_abs_link,
+            test_align_link,
+#            dump_csv_h,
+        ]
 
 #    input:
 #        method: void
@@ -2924,3 +2960,4 @@ simulation:
         level: processes
 #        timings: False
 #    skip_shows: True
+#    assertions: skip
