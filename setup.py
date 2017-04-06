@@ -67,6 +67,8 @@ def int_version(release_name):
     '0.8.0.99803'
     >>> int_version('0.8.1rc1')
     '0.8.0.99901'
+    >>> int_version('0.12.0a1')
+    '0.11.99701'
     """
     if 'pre' in release_name:
         raise ValueError("'pre' is not supported anymore, use 'alpha' or "
@@ -82,6 +84,7 @@ def int_version(release_name):
         if pos != -1:
             head, tail = release_name[:pos], release_name[pos + len(tag):]
             assert tail.isdigit()
+            head = head.rstrip('.0')
             patch = '.99' + str(num) + tail.rjust(2, '0')
             head, middle = head.rsplit('.', 1)
             return head + '.' + str(int(middle) - 1) + patch
@@ -107,6 +110,7 @@ extra_kwargs = {}
 
 # Add the output directory of cython build_ext to cxfreeze search path so that
 # build_exe finds and copies C extensions
+# XXX: this is always the case currently
 if build_ext is not None:
     class MyBuildExt(build_ext):
         def finalize_options(self):
