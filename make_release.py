@@ -457,7 +457,7 @@ def check_clone(context):
 
     # check last commit
     print()
-    print(call('git log -1').decode('utf8'))
+    print(call('git log -1').decode('utf8', 'replace'))
     print()
 
     if no('Does that last commit look right?'):
