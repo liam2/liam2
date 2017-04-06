@@ -2234,7 +2234,7 @@ are available in most functions.
 * *xmin*, *xmax*, *ymin*, *ymax*: provide manual bounds for charts. By
   default, they are automatically inferred from the data.
 
-  .. versionadded:: 0.11.1
+  .. versionadded:: 0.12
 
 
 .. index:: bar, bar charts

@@ -3,12 +3,12 @@
 Change log
 ##########
 
-Version 0.11.1
-==============
+Version 0.12
+============
 
 In development.
 
-.. include:: changes/version_0_11_1.rst.inc
+.. include:: changes/version_0_12.rst.inc
 
 
 Version 0.11
