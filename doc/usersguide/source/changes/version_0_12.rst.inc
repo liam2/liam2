@@ -1,7 +1,7 @@
 ﻿New features
 ------------
 
-* implemented choice with a different probability per individual (closes :issue:`211`)
+* implemented choice with a different probability per individual (closes :issue:`211`): ::
 
     - p0: if(gender, 0.1, 0.3)
     - p5: if(gender, 0.2, 0.4)
@@ -13,7 +13,7 @@
     - global_choice: choice(ARRAY2D.pvalues[0], ARRAY2D[:, gender * 1])
 
 * implemented simulation without any user-visible .h5 output file (closes :issue:`220`). One can use an output
-  section without declaring any "file", or with file: '':
+  section without declaring any "file", or with file: '': ::
 
     output:
         file: ''
@@ -23,7 +23,7 @@
   improve performance when using large datasets.  The minimal output file will contain only the fields used in lag
   expression going back in time more than one period (because those are not kept in memory).
 
-* implemented load() function which can load both arrays and tables in the middle of a simulation.
+* implemented load() function which can load both arrays and tables in the middle of a simulation. ::
 
     - array: load('param/mig.csv', type=float)
     - table: load('param/othertable.csv',
@@ -74,17 +74,17 @@ Miscellaneous improvements
 Fixes
 -----
 
-* fixed importing models using relative paths in some cases. Also makes the display of the imported model path nicer
-  in that case (:pr:`200`). Thanks to Mahdi Ben Jelloul.
-
 * fixed running the bundled LIAM2 when another Python distribution is installed in the PATH of the system (closes
   :issue:`222`).
+
+* fixed importing models using relative paths in some cases. Also makes the display of the imported model path nicer
+  in that case (:pr:`200`). Thanks to Mahdi Ben Jelloul.
 
 * fixed skip_shows: True in simulation file being ignored.
 
 * fixed --skiptimings=False being ignored if timings: True was specified in the simulation file.
 
-* fixed subsetting an array created by indexing a global with a field when the result is an array.
+* fixed subsetting an array created by indexing a global with a field when the result is an array. ::
 
    - array: global[field1, :, field2]
    - first_item: array[0]
