@@ -7,6 +7,8 @@ import random
 
 import numpy as np
 import scipy
+import scipy.special as special
+
 
 import config
 from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
@@ -165,8 +167,7 @@ class Trunc(FunctionExpr):
 class Erf(FunctionExpr):
     def compute(self, context, expr):
         if isinstance(expr, np.ndarray):
-            vectrozied_erf = scipy.vectorize(scipy.math.erf)
-            return vectrozied_erf(expr)
+            return special.erf(expr)
         else:
             return scipy.math.erf(expr)
 
