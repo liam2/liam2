@@ -6,6 +6,7 @@ import os
 import random
 
 import numpy as np
+import scipy
 
 import config
 from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
@@ -159,6 +160,17 @@ class Trunc(FunctionExpr):
             return int(expr)
 
     dtype = always(int)
+
+
+class Erf(FunctionExpr):
+    def compute(self, context, expr):
+        if isinstance(expr, np.ndarray):
+            vectrozied_erf = scipy.vectorize(scipy.math.erf)
+            return vectrozied_erf(expr)
+        else:
+            return scipy.math.erf(expr)
+
+    dtype = always(float)
 
 # ------------------------------------
 
@@ -579,6 +591,7 @@ functions = {
     'round': Round,
     'trunc': Trunc,
     'exp': Exp,
+    'erf': Erf,
     'log': Log,
     'logit': Logit,
     'logistic': Logistic,
