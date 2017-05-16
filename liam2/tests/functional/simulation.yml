@@ -2796,6 +2796,13 @@ entities:
                               fields=[('PERIOD', int), ('INTFIELD', int), ('FLOATFIELD', float)])
                 - assertEqual(table.shape, (31,))
 
+            test_erf:
+                - assertEqual(erf(0), 0)
+                - x: age * 0
+                - assertEqual(erf(x), x)
+                - x: age * 1000000
+                - assertTrue(all(abs(erf(x) - 1)) < .0001)
+
 simulation:
     init:
         - household: [init_region]
@@ -2842,6 +2849,7 @@ simulation:
 
                    test_expr,
                    test_trunc,
+                   test_erf,
 
                    # random
                    test_uniform,
