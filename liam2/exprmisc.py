@@ -6,9 +6,11 @@ import os
 import random
 
 import numpy as np
-import scipy
-import scipy.special as special
-
+try:
+    import scipy
+    import scipy.special as special
+except ImportError:
+    scipy = None
 
 import config
 from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
@@ -166,6 +168,11 @@ class Trunc(FunctionExpr):
 
 class Erf(FunctionExpr):
     def compute(self, context, expr):
+        if scipy is None:
+            raise ImportError(
+                "Scipy was not succesfully imported",
+                "Check if it is installed correctly"
+                )
         if isinstance(expr, np.ndarray):
             return special.erf(expr)
         else:
