@@ -10,7 +10,7 @@ import numpy as np
 from simulation import Simulation
 from utils import timed, time2str, multi_get
 
-__version__ = "0.2"
+__version__ = "0.3"
 
 
 MB = 2 ** 20
@@ -72,7 +72,13 @@ def table_apply_map(input_table, new_parent, fields_maps):
         for fname in rec.dtype.fields:
             value = rec[fname]
             if fname in fields_maps:
-                value = fields_maps[fname][value]
+                value_map = fields_maps[fname]
+                try:
+                    value = value_map[value]
+                except KeyError:
+                    print("WARNING: row {row} has {fname} == {value} and this does not correspond to an existing id "
+                          "in the '{table}' table, this value has not been modified !"
+                          .format(row=i, fname=fname, value=value, table=input_table.name))
             newrow[fname] = value
         newrow.append()
         if i % 1000 == 0:
@@ -210,7 +216,7 @@ def change_ids(input_path, output_path, changes, shuffle=False):
 
             new_ids = get_shrink_dict(table.col('id'), shuffle=shuffle)
             if -1 in new_ids:
-                raise Exception('found id == -1 in %s which is invalid (link '
+                raise Exception('found id == -1 in %s which is invalid (only link '
                                 'columns can be -1)' % ent_name)
             # -1 links should stay -1
             new_ids[-1] = -1
