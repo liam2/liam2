@@ -1412,6 +1412,11 @@ entities:
                 - assertEqual(groupby(age, filter=expr_ndarray_aligned),
                               groupby(age, filter=gender))
 
+                # filtering on a boolean
+                #-----------------------
+                - python_bool_filter: False
+                - aligned: align(age, proportions=.1, leave = python_bool_filter)
+
             test_align_abs:
                 - num_all: count()
                 - num_women: count(not gender)
