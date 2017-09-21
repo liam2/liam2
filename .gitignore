@@ -9,6 +9,7 @@
 *.o
 *.egg-info
 .spyderproject
+.vscode
 doc/usersguide/build/
 liam2/build
 liam2/*.c

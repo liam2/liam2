@@ -60,6 +60,8 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
 
     maybe_filter = bool_filter_value
     if take_filter is not None:
+        if isinstance(take_filter, bool):
+            take_filter = np.asarray([take_filter])
         take_intersect = take_filter & bool_filter_value
         take = np.sum(take_intersect)
 
@@ -77,6 +79,9 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
         take_indices = None
 
     if leave_filter is not None:
+        if isinstance(leave_filter, bool):
+            leave_filter = np.asarray([leave_filter])
+        leave_filter = np.asarray(leave_filter)
         leave = np.sum(leave_filter & bool_filter_value)
         maybe_filter &= ~leave_filter
     else:
