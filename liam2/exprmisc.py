@@ -170,8 +170,7 @@ class Erf(FunctionExpr):
     def compute(self, context, expr):
         if scipy is None:
             raise ImportError(
-                "Scipy was not succesfully imported",
-                "Check if it is installed correctly"
+                "Failed to import scipy, which is required for erf(). Please make sure scipy is installed and working.",
                 )
         if isinstance(expr, np.ndarray):
             return special.erf(expr)
