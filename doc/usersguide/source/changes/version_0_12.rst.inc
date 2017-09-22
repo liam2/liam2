@@ -43,6 +43,8 @@
 * implemented experimental align(link=) to use proportions in combination with the Chenard algorithm. It needs more
   testing though.
 
+* implemented access to the error function (erf) function (scipy package is needed)
+
 * implemented assertRaises to check for expected errors.
 
 

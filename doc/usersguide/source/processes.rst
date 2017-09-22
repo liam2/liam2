@@ -440,7 +440,7 @@ mathematical functions
   expr as an integer.
 - clip(x, a, b): returns a if x < a, x if a < x < b, b if x > b.
 - min(x, a), max(x, a): the minimum or maximum of x and a.
-
+- erf(x): the error function
 
 .. index:: aggregate functions
 
