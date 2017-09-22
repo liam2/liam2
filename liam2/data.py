@@ -574,7 +574,7 @@ def build_period_array(input_table, output_fields, input_rows,
         id_is_in_period = input_id_to_rownum != -1
 
         # which output rows are filled by input for this period
-        output_rownums = id_to_rownum[id_is_in_period]
+        output_rownums = id_to_rownum[np.where(id_is_in_period)]
 
         # get source rows (in the global array) for individuals in this period
         source_rows = output_array_source_rows[output_rownums]
