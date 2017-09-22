@@ -6,6 +6,11 @@ import os
 import random
 
 import numpy as np
+try:
+    import scipy
+    import scipy.special as special
+except ImportError:
+    scipy = None
 
 import config
 from expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
@@ -159,6 +164,20 @@ class Trunc(FunctionExpr):
             return int(expr)
 
     dtype = always(int)
+
+
+class Erf(FunctionExpr):
+    def compute(self, context, expr):
+        if scipy is None:
+            raise ImportError(
+                "Failed to import scipy, which is required for erf(). Please make sure scipy is installed and working.",
+                )
+        if isinstance(expr, np.ndarray):
+            return special.erf(expr)
+        else:
+            return scipy.math.erf(expr)
+
+    dtype = always(float)
 
 # ------------------------------------
 
@@ -579,6 +598,7 @@ functions = {
     'round': Round,
     'trunc': Trunc,
     'exp': Exp,
+    'erf': Erf,
     'log': Log,
     'logit': Logit,
     'logistic': Logistic,
