@@ -145,6 +145,9 @@ class Sort(NumpyChangeArray):
     np_func = np.sort
 
 
+class Transpose(NumpyChangeArray):
+    np_func = np.transpose
+
 # ------------------------------------
 
 
@@ -612,4 +615,5 @@ functions = {
     'seed': Seed,
     'array': Array,
     'load': Load,
+    'transpose': Transpose
 }
