@@ -1351,7 +1351,7 @@ Here is a description of the arguments specific to align_abs:
   * **method**: is the name of the method to do the alignment.
     The default "bysorting" method sorts the individuals by score and takes as
     many individuals as necessary by descending order of score. The "sidewalk"
-    method traverse individuals in their original order, does a cumulative sum
+    method traverse individuals in some random order, does a cumulative sum
     of the probability and each time there is a change of the integer part of
     the accumulated probability, the corresponding individual is selected.
 
