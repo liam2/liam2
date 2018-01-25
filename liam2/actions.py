@@ -201,7 +201,8 @@ class ComparisonAssert(Assert):
             if isinstance(msg, tuple):
                 msg = ' '.join(str(v) for v in msg)
             msg = ': {}'.format(msg) if msg is not None else ''
-            return "%s %s %s (%s %s %s)%s%s" % (self.args[0], op, self.args[1],
+            # use %r to print values. At least for floats on python2, this yields to a better precision.
+            return "%s %s %s (%r %s %r)%s%s" % (self.args[0], op, self.args[1],
                                                 v1, op, v2, details, msg)
 
     def compare(self, v1, v2):

@@ -87,6 +87,9 @@ Miscellaneous improvements
 
 * misc improvements to the code, test models and the documentation, some of which done by Mahdi Ben Jelloul.
 
+* messages when an assertion concerning float values fails now contain all available decimals, instead of rounding
+  at the 12th decimal.
+
 
 Fixes
 -----
