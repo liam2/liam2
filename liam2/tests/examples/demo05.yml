@@ -1,4 +1,4 @@
-# This is a LIAM2 simulation file. 
+# This is a LIAM2 simulation file.
 
 # This example builds upon the previous ones to introduce the concept of
 # households, including young adults leaving their parents household.
@@ -9,7 +9,7 @@
 # how the new() function can be used with a different entity.
 
 # To run the simulation, press F6 if you are using the editor bundled with
-# LIAM2, otherwise run the following command in a console: 
+# LIAM2, otherwise run the following command in a console:
 # [BUNDLEPATH]\liam2\main run demo05.yml
 globals:
     periodic:
@@ -25,8 +25,8 @@ entities:
 
         processes:
             csv_output:
-                # write the period, 
-                # average number of persons by household, 
+                # write the period,
+                # average number of persons by household,
                 # and average number of children (age < 18) by household
                 # to a csv file
                 - csv(period,
@@ -44,7 +44,7 @@ entities:
                 - empty: persons.count() == 0
                 - show('Number of empty households:', count(empty))
                 - remove(empty)
-                      
+
     person:
         fields:
             # period and id are implicit
@@ -86,12 +86,12 @@ entities:
             ageing:
                 - age: age + 1
                 - agegroup: if(age < 50,
-                               5 * trunc(age / 5), 
+                               5 * trunc(age / 5),
                                10 * trunc(age / 10))
 
             birth:
                 # do NOT do this in a real model
-                - to_give_birth: (id % 100) < 6 and ISFEMALE and 
+                - to_give_birth: (id % 100) < 6 and ISFEMALE and
                                  (age >= 15) and (age <= 50)
                 # we link newborns to their mother, and place them in the
                 # same household than their mother.
@@ -101,7 +101,7 @@ entities:
                       age = 0,
                       agegroup = 0,
                       gender = id % 2 == 1)
-                # to access the value of another individual linked via a 
+                # to access the value of another individual linked via a
                 # many2one link, use: linkname.fieldname
                 - show('Average age of new mothers',
                        avg(mother.age, filter=age == 0))
@@ -169,7 +169,7 @@ entities:
                 - csv('period', 'men', 'women', 'total',
                       fname='average_age.csv')
                 - csv('period', 'ratio', fname='dependency_ratio.csv')
-                      
+
 simulation:
     init:
         - household: [init_reports, csv_output]
@@ -177,8 +177,8 @@ simulation:
 
     processes:
         - person: [
-            ageing, 
-            birth, 
+            ageing,
+            birth,
             death,
         ]
         - household: [clean_empty]

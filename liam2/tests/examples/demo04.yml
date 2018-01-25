@@ -6,7 +6,7 @@
 # Technically, this demonstrates lifecycle functions (new and remove).
 
 # To run the simulation, press F6 if you are using the editor bundled with
-# LIAM2, otherwise run the following command in a console: 
+# LIAM2, otherwise run the following command in a console:
 # [BUNDLEPATH]\liam2\main run demo04.yml
 globals:
     periodic:
@@ -21,7 +21,7 @@ entities:
 
             # fields not present in input
             - agegroup: {type: int, initialdata: False}
-        
+
         macros:
             ISMALE: gender
             ISFEMALE: not gender
@@ -36,24 +36,24 @@ entities:
                                10 * trunc(age / 10))
 
             birth:
-                # take 6% of the population. Of those, women between 15 and 50 
-                # will give birth this period. 
-                # id % 100 is the id number modulo 100, ie the remainder of 
+                # take 6% of the population. Of those, women between 15 and 50
+                # will give birth this period.
+                # id % 100 is the id number modulo 100, ie the remainder of
                 # dividing the id number by 100.
                 # This is an awful way to model a probability (do NOT do this
                 # in a real model) but we have not seen the required functions
                 # yet.
-                - to_give_birth: (id % 100) < 6 and ISFEMALE and 
+                - to_give_birth: (id % 100) < 6 and ISFEMALE and
                                  (age >= 15) and (age <= 50)
-                # one women out of two will always give birth to boys, the 
+                # one women out of two will always give birth to boys, the
                 # others to girls (obviously, one should not do it this way in
                 # a real model).
                 - child_gender: id % 2 == 1
-                
+
                 # fields that are not explicitly given a value will be
                 # initialized to "missing" (nan for float fields, -1 for
                 # integer fields, False for boolean fields). Fields can be
-                # initialized using any expression (not only constants). Those 
+                # initialized using any expression (not only constants). Those
                 # expressions are evaluated in the context of the "origin"
                 # individual (in this case the mother), so that values can be
                 # inherited (gender in this case).
@@ -63,7 +63,7 @@ entities:
                       gender = child_gender)
 
             death:
-                # all men aged 90+ and women aged 95+ die 
+                # all men aged 90+ and women aged 95+ die
                 - dead: if(ISMALE, age >= 90, age >= 95)
                 - show('Avg age of dead men',
                        avg(age, filter=dead and ISMALE))
@@ -86,20 +86,20 @@ entities:
                       fname='average_age.csv', mode='a')
                 - csv(period, count(not ACTIVEAGE) / count(ACTIVEAGE),
                       fname='dependency_ratio.csv', mode='a')
-                
+
             init_reports:
                 - csv('period', 'men', 'women', 'total',
                       fname='average_age.csv')
                 - csv('period', 'ratio', fname='dependency_ratio.csv')
-                      
+
 simulation:
     init:
         - person: [init_reports]
 
     processes:
         - person: [
-            ageing, 
-            birth, 
+            ageing,
+            birth,
             death,
             # reporting
             chart_demography,

@@ -1,12 +1,12 @@
-# This is a LIAM2 simulation file. 
+# This is a LIAM2 simulation file.
 
-# This example introduces miscellaneous other basic features: 
-# (periodic) globals, macros, local variables in user-defined functions, 
+# This example introduces miscellaneous other basic features:
+# (periodic) globals, macros, local variables in user-defined functions,
 # the aggregate functions count and avg, the init phase and a few new arguments
 # to built-in functions we have already seen.
 
 # To run the simulation, press F6 if you are using the editor bundled with
-# LIAM2, otherwise run the following command in a console: 
+# LIAM2, otherwise run the following command in a console:
 # [BUNDLEPATH]\liam2\main run demo03.yml
 
 # Globals are variables (aka. parameters) that do not relate to any particular
@@ -41,7 +41,7 @@ entities:
             ISFEMALE: not gender
 
             ACTIVEAGE: (age >= 15) and (age < RETIREMENTAGE)
-            
+
         # possible transitions and regressions
         processes:
             ageing:
@@ -77,7 +77,7 @@ entities:
                 # * groupby can also be saved to a csv file
                 # * you can customize the filename more precisely (than with
                 #   'suffix') by using the 'fname' argument, with the optional
-                #   {entity} and {period} keywords. They are respectively 
+                #   {entity} and {period} keywords. They are respectively
                 #   replaced by the name of the entity and the current period.
                 - csv(groupby(agegroup, gender),
                       fname='demography_{period}.csv')
@@ -105,7 +105,7 @@ entities:
                 - csv('period', 'men', 'women', 'total',
                       fname='average_age.csv')
                 - csv('period', 'ratio', fname='dependency_ratio.csv')
-                      
+
 simulation:
     # the functions listed in this section are only executed *once* in
     # start_period - 1 (that is 2015 in this case), instead of once per period.

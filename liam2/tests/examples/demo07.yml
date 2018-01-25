@@ -1,13 +1,13 @@
-# This is a LIAM2 simulation file. 
+# This is a LIAM2 simulation file.
 
-# In this example, we will implement simple marriage and divorce functions and 
-# model the civil status of persons. 
+# In this example, we will implement simple marriage and divorce functions and
+# model the civil status of persons.
 
 # Technically, it demonstrates the matching(), abs() and lag() functions
 # as well as the logit_regr() function with an actual score expression.
 
 # To run the simulation, press F6 if you are using the editor bundled with
-# LIAM2, otherwise run the following command in a console: 
+# LIAM2, otherwise run the following command in a console:
 # [BUNDLEPATH]\liam2\main run demo06.yml
 globals:
     periodic:
@@ -28,7 +28,7 @@ entities:
             init_reports:
                 - csv('period', 'N persons', 'N children',
                       fname='hh_size.csv')
-                      
+
             clean_empty:
                 - empty: persons.count() == 0
                 - show('Number of empty households:', count(empty))
@@ -194,7 +194,7 @@ entities:
                             hh_id)
 
             civilstate_changes:
-                # the lag() function returns the value of any expression 
+                # the lag() function returns the value of any expression
                 # at the end of the previous period. Note that for non-aggregate
                 # expressions, it returns a value for all individuals present
                 # in the *current* period. For individuals which were not
@@ -221,7 +221,7 @@ entities:
                 - csv('period', 'men', 'women', 'total',
                       fname='average_age.csv')
                 - csv('period', 'ratio', fname='dependency_ratio.csv')
-                            
+
 
 simulation:
     init:
@@ -230,20 +230,20 @@ simulation:
 
     processes:
         - person: [
-            ageing, 
-            birth, 
+            ageing,
+            birth,
             death,
         ]
         - household: [clean_empty]
         - person: [
-            marriage, 
+            marriage,
             get_a_life,
             divorce,
         ]
         # reporting
         - person: [
 #            chart_demography,
-            civilstate_changes,  
+            civilstate_changes,
             csv_output
         ]
         - household: [csv_output]

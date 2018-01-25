@@ -1,9 +1,9 @@
-# This is a LIAM2 simulation file. 
+# This is a LIAM2 simulation file.
 # This example demonstrates how to create a variant of a model by using imports.
 # We re-use demo08.yml and change an existing function (ineducation).
 
 # To run the simulation, press F6 if you are using the editor bundled with
-# LIAM2, otherwise run the following command in a console: 
+# LIAM2, otherwise run the following command in a console:
 # [BUNDLEPATH]\liam2\main run demo09.yml
 import: demo08.yml
 

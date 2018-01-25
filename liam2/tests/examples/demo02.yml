@@ -7,7 +7,7 @@
 # following built-in functions: if, trunc, csv, dump, show, groupby and bar.
 
 # To run the simulation, press F6 if you are using the editor bundled with
-# LIAM2, otherwise run the following command in a console: 
+# LIAM2, otherwise run the following command in a console:
 # [BUNDLEPATH]\liam2\main run demo02.yml
 entities:
     person:

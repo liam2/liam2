@@ -3,7 +3,7 @@
 
 # Please note that any line starting with a # sign is a comment and is ignored.
 
-# First, we define all our entities, their fields and functions (processes). 
+# First, we define all our entities, their fields and functions (processes).
 # In this case, we define only one 'person' entity, but LIAM2 can work with any
 # kind of entity and any number of them.
 entities:
@@ -61,8 +61,8 @@ simulation:
 # window becomes interactive. Any expression or command that can be used during
 # the simulation can also be used in that interactive console.
 
-# Let us use it to explore the results of our little simulation. 
-# For example, enter the following command (without the ">>>"): 
+# Let us use it to explore the results of our little simulation.
+# For example, enter the following command (without the ">>>"):
 #
 # >>> age
 #

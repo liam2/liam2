@@ -4,11 +4,11 @@
 # death functions of previous models by using observed probabilities and
 # alignment.
 
-# Technically, this demonstrates the choice and logit_regr (with alignment) 
+# Technically, this demonstrates the choice and logit_regr (with alignment)
 # functions, and the default_entity option.
 
 # To run the simulation, press F6 if you are using the editor bundled with
-# LIAM2, otherwise run the following command in a console: 
+# LIAM2, otherwise run the following command in a console:
 # [BUNDLEPATH]\liam2\main run demo06.yml
 globals:
     periodic:
@@ -29,7 +29,7 @@ entities:
             init_reports:
                 - csv('period', 'N persons', 'N children',
                       fname='hh_size.csv')
-                      
+
             clean_empty:
                 - empty: persons.count() == 0
                 - show('Number of empty households:', count(empty))
@@ -75,7 +75,7 @@ entities:
                 # logit_regr with an "align" argument will trigger alignment,
                 # that is the number of persons selected (ie for which the
                 # function returns True) will match the proportions given in
-                # al_p_birth.csv (by age and period in this case). In other 
+                # al_p_birth.csv (by age and period in this case). In other
                 # words, the proportion of women of each age who give birth
                 # per year are given in the alignment file. Since we use a
                 # constant as first argument to logit_regr, within each group
@@ -154,8 +154,8 @@ simulation:
 
     processes:
         - person: [
-            ageing, 
-            birth, 
+            ageing,
+            birth,
             death,
         ]
         - household: [clean_empty]
