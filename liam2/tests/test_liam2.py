@@ -5,9 +5,10 @@ import os
 import sys
 import traceback
 from StringIO import StringIO
-
-
 from itertools import chain
+
+# we want debug output. This must be done before importing liam2
+os.environ["DEBUG"] = "TRUE"
 
 from liam2.simulation import Simulation
 from liam2.importer import csv2h5
