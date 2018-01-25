@@ -402,8 +402,7 @@ class Simulation(object):
             for entity in entities.itervalues():
                 minimal_fields = min_fields_by_entity[entity.name]
                 if minimal_fields:
-                    minimal_fields.add('id')
-                    minimal_fields.add('period')
+                    minimal_fields.update(('id', 'period'))
                 for field in entity.fields.in_output:
                     if field.name not in minimal_fields:
                         field.output = False
