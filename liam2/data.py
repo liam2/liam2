@@ -9,10 +9,8 @@ import config
 
 from expr import (normalize_type, get_default_value, get_default_array,
                   get_default_vector, gettype)
-from utils import loop_wh_progress, time2str, safe_put, LabeledArray, timed
+from utils import loop_wh_progress, time2str, safe_put, LabeledArray, timed, MB
 from importer import load_def, stream_to_array, array_to_disk_array
-
-MB = 2 ** 20
 
 
 def anyarray_to_disk(node, name, array):
@@ -172,7 +170,7 @@ class ColumnArray(object):
         for name, column in self.columns.iteritems():
             self.columns[name] = np.concatenate((column, array[name]))
 
-    def append_to_table(self, table, buffersize=10 * 2 ** 20):
+    def append_to_table(self, table, buffersize=10 * MB):
         append_carray_to_table(self, table, buffersize=buffersize)
 
     @classmethod
@@ -184,7 +182,7 @@ class ColumnArray(object):
         return ca
 
     @classmethod
-    def from_table(cls, table, start=0, stop=None, buffersize=10 * 2 ** 20):
+    def from_table(cls, table, start=0, stop=None, buffersize=10 * MB):
         # reading a table one column at a time is very slow, this is why this
         # function is even necessary
         if stop is None:
@@ -210,7 +208,7 @@ class ColumnArray(object):
         return ca
 
     @classmethod
-    def from_table_coords(cls, table, indices, buffersize=10 * 2 ** 20):
+    def from_table_coords(cls, table, indices, buffersize=10 * MB):
         dtype = table.dtype
         max_buffer_rows = buffersize // dtype.itemsize
         numlines = len(indices)

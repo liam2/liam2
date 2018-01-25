@@ -8,12 +8,9 @@ import tables
 import numpy as np
 
 from simulation import Simulation
-from utils import timed, time2str, multi_get
+from utils import timed, time2str, multi_get, MB
 
 __version__ = "0.3"
-
-
-MB = 2 ** 20
 
 
 def get_shrink_dict(values, shuffle=False):

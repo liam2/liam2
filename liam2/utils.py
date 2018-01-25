@@ -1351,3 +1351,6 @@ def array_nan_equal(a, b):
             return False
     else:
         return np.all((a == b) | (np.isnan(a) & np.isnan(b)))
+
+
+MB = 2 ** 20

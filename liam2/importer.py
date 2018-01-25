@@ -19,10 +19,7 @@ from utils import (validate_dict, merge_dicts, merge_items, invert_dict,
                    countlines, skip_comment_cells, strip_rows, PrettyTable,
                    unique, duplicates, unique_duplicate, prod,
                    field_str_to_type, fields_yaml_to_type, fromiter,
-                   LabeledArray)
-
-
-MB = 2.0 ** 20
+                   LabeledArray, MB)
 
 
 def to_int(v):
@@ -313,7 +310,7 @@ def stream_to_array(fields, datastream, numlines=None, invert=()):
 
 
 def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
-                    title=None, invert=(), buffersize=10 * 2 ** 20,
+                    title=None, invert=(), buffersize=10 * MB,
                     compression=None):
     # make sure datastream is an iterator, not a list, otherwise it could
     # loop indefinitely as it will never be consumed.
@@ -695,7 +692,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         return 'table', (target_fields, total_lines, iter(target), None)
 
 
-def csv2h5(fpath, buffersize=10 * 2 ** 20):
+def csv2h5(fpath, buffersize=10 * MB):
     with open(fpath) as f:
         content = yaml.load(f)
 
