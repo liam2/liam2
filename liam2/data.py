@@ -25,6 +25,18 @@ def anyarray_to_disk(node, name, array):
 
 
 def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
+    """
+    Parameters
+    ----------
+    array : array-like
+        array must contain at least all table fields (but can contain more).
+    table : table-like
+        Any object with .append(np.ndarray[structured_dtype]) and .flush() methods should work. tables.Table.
+    numlines : int, optional
+        Number of lines to append. Defaults to all lines.
+    buffersize : int, optional
+        Maximum buffer size. Defaults to 10 Mb.
+    """
     dtype = table.dtype
     max_buffer_rows = buffersize // dtype.itemsize
     if numlines is None:
