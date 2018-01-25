@@ -139,13 +139,12 @@ entities:
                 - remove(num_persons == 0)
 
                 - total_population: sum(num_persons)
-                - show("total:", count(), "households /",
-                                 total_population, "persons")
+                - show("total:", count(), "households /", total_population, "persons")
 
                 - needed_women: trunc(sum(num_men) * 0.2)
                 - needed_men: trunc(sum(num_men) * 0.22)
-                - show(needed_women, needed_men)
                 - needed_total: needed_women + needed_men
+                - show("needed_total", needed_total, "needed_women", needed_women, "needed_men", needed_men)
 
                 # without filter
                 - show('\n', groupby(num_men, num_women))
@@ -273,7 +272,6 @@ entities:
             - undefaulted_float_variable:  {type: float, initialdata: False}
             - defaulted_integer_variable:  {type: int, initialdata: False, default: 99}
             - undefaulted_integer_variable:  {type: int, initialdata: False}
-
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
