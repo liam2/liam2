@@ -392,6 +392,7 @@ class Dump(TableExpression):
                 # dtype does not matter much
                 expr_value = np.empty(0)
             else:
+                # TODO: set filter before evaluating expressions
                 expr_value = expr_eval(expr, context)
                 if (filter_value is not None and
                         isinstance(expr_value, np.ndarray) and
@@ -414,12 +415,25 @@ class Dump(TableExpression):
                 dtype = type(col)
             elif not col.shape:
                 dtype = col.dtype.type
+
             if dtype is not None:
                 # TODO: try using itertools.repeat instead as it seems to be a
                 # bit faster and would consume less memory (however, it might
                 # not play very well with Pandas.to_csv)
                 newcol = np.full(numrows, col, dtype=dtype)
                 columns[idx] = newcol
+            elif col.ndim > 1:
+                # move last axis (should be id axis) first
+                # np.moveaxis requires numpy >= 1.11
+                # columns[idx] = np.moveaxis(col, -1, 0)
+                columns[idx] = col.transpose((-1,) + tuple(range(col.ndim - 1)))
+
+        assert all(isinstance(col, np.ndarray) for col in columns)
+        bad_lengths = {str_expr: col.shape for col, str_expr in zip(columns, str_expressions)
+                       if col.shape[0] != numrows}
+        if bad_lengths:
+            raise ValueError("first dimension of some columns are not the same length as the id column (%d): %s"
+                             % (numrows, str(bad_lengths)))
 
         if limit is not None:
             assert isinstance(limit, (int, long))

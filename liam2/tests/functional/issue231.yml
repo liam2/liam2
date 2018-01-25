@@ -1,0 +1,33 @@
+import: test_issue.yml.template
+
+entities:
+    person:
+        processes:
+            create:
+                - new('person', number=5)
+
+            test_issue:
+                # dump containing normal temporary variable (already worked)
+                - tmp: id + 1
+                - d: dump(period, id, tmp)
+                - assertEqual(d.data[0], ['period', 'id', 'tmp'])
+                - assertEqual(d.data[1:].__len__(), count())
+
+                # dump containing array
+                - arr: array([id, id + 1])
+                - show(dump(arr))
+                - assertEqual(arr.shape, (2, count()))
+
+                - d: dump(period, id, arr)
+                - assertEqual(d.data[0], ['period', 'id', 'arr'])
+                - assertEqual(d.data[1:].__len__(), count())
+
+                # dump containing 2d array
+                - arr2d: array([[id    , id + 1],
+                                [id + 2, id + 3],
+                                [id + 4, id + 5]])
+                - assertEqual(arr2d.shape, (3, 2, count()))
+
+                - d: dump(period, id, arr2d)
+                - assertEqual(d.data[0], ['period', 'id', 'arr2d'])
+                - assertEqual(d.data[1:].__len__(), count())
