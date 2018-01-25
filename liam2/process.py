@@ -329,6 +329,8 @@ class Function(Process):
             raise TypeError("%s() takes exactly %d arguments (%d given)" %
                             (self.name, len(self.argnames), len(args)))
 
+        # TODO: this should be done in a separate "validate" phase. Unsure we can reliably do it in __init__ in
+        # case we decide to parse methods before fields for some reason.
         for name in self.argnames:
             if name in self.entity.fields.names:
                 raise ValueError("function '%s' cannot have an argument named "

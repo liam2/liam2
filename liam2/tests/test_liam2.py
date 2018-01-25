@@ -23,6 +23,7 @@ def print_title(s):
 
 
 def simulate(test_file):
+    # XXX: overriding output_dir breaks some examples (e.g. demo_load.yml)
     output_dir = os.path.join(test_root, 'output')
     simulation = Simulation.from_yaml(test_file, output_dir=output_dir, log_level='processes')
     simulation.run()

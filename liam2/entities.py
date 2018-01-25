@@ -316,6 +316,7 @@ class Entity(object):
 
     @staticmethod
     def ismethod(v):
+        # the dict part is still required so that we can detect the old style way to define methods
         keys = ('args', 'code', 'return')
         return (isinstance(v, list) or
                 isinstance(v, dict) and any(key in v for key in keys))
@@ -365,6 +366,17 @@ class Entity(object):
         entity = context['__entities__'][ent_name]
         group_context = context.copy()
         entity_context = group_context[ent_name].copy()
+        # this creates a Variable for each name in varnames
+        # There is an obscure subtle bug here. get_group_context is used both for functions and for
+        # "code blocks". For functions where varnames represent arguments, this is probably fine to
+        # shadow global variables with local variables, but for code blocks, this means that
+        # global VariableMethodHybrid gets replaced by a simple Variable, if you set the value of that
+        # global VariableMethodHybrid anywhere in the method. For example, this will fail:
+        # age: age + 1
+        # ageing:
+        # - age: age + 1
+        # - age()
+        # I will not fix this though as it is too obscure and VariableMethodHybrids should not be used anyway.
         entity_context.update((name, Variable(entity, name))
                               for name in varnames)
         group_context[ent_name] = entity_context
