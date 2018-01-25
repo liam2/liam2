@@ -303,10 +303,14 @@ class Entity(object):
                              for name, type_ in self.fields.name_types
                              if name in field_names - process_names)
 
+            if config.debug:
+                print("hybrids (field and method):", field_names & process_names)
             # callable fields (fields with a process of the same name)
             variables.update((name, VariableMethodHybrid(self, name, type_))
                              for name, type_ in self.fields.name_types
                              if name in field_names & process_names)
+            if config.debug:
+                print("hybrids (global temporary & method):", all_predictors - field_names)
             # global temporaries (they are all callable).
             variables.update((name, VariableMethodHybrid(self, name))
                              for name in all_predictors - field_names)
