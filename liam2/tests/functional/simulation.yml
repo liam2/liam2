@@ -351,6 +351,53 @@ entities:
                 - assertRaises('AssertionError', assertEquiv(0, 1, msg="0 and 1 are NOT equivalent !"))
                 - assertRaises('AssertionError', assertIsClose(0, 1000, msg="0 and 1000 are NOT close !"))
 
+            test_literals:
+                - bool1: False
+                - assertFalse(bool1)
+                - bool2: True
+                - assertTrue(bool2)
+
+                - int1: 0
+                - assertEqual(int1, 0)
+                - int2: -1
+                - assertEqual(int2, -1)
+
+                - float1: 0.0
+                - assertEqual(float1, 0.0)
+                - float2: -1.0
+                - assertEqual(float2, -1.0)
+                - float3: 0.
+                - assertEqual(float3, 0.0)
+                - float4: 999.
+                - assertEqual(float4, 999.0)
+
+#                - str1: ""
+#                - assertEqual(str1, "")
+                - str2: "\"a nice string\""
+#                - assertEqual(str2, "a nice string")
+#                - str3: "a \"string\" with quotes"
+#                - assertEqual(str3, "a \"string\" with quotes")
+#                - str4: "a 'string' with quotes"
+#                - assertEqual(str4, "a 'string' with quotes")
+
+                - list1: []
+                - assertEqual(list1, [])
+                - list2: [1, 2, 3]
+                - assertEqual(list2, [1, 2, 3])
+
+                - dict1: {}
+                - assertEqual(dict1, {})
+                - dict2: {1: "for the money", 2: "for the show"}
+                # we cannot have dict literals in expressions (yaml limitation)
+#                - assertEqual(dict2, {1: "for the money", 2: "for the show"})
+                - dict2bis: {1: "for the money", 2: "for the show"}
+                - assertEqual(dict2, dict2bis)
+                - dict3: {"for the money": 1, "for the show": 2}
+                # we cannot have dict literals in expressions (yaml limitation)
+#                - assertEqual(dict3, {"for the money": 1, "for the show": 2})
+                - dict3bis: {"for the money": 1, "for the show": 2}
+                - assertEqual(dict3, dict3bis)
+
             expand:
                 - last_non_clone_id: max(id)
                 - toclone: household.clone_id != -1
@@ -2933,6 +2980,7 @@ simulation:
         - person: [
 #                   bp,
                    test_assert,
+                   test_literals,
                    compute_agegroup,
                    test_remove,
 
