@@ -399,8 +399,7 @@ class Entity(object):
         # items is a list of [dict (assignment) or string (action)]
         if items is None:
             raise ValueError("no processes in '%s'" % k)
-        group_expressions = [elem.items()[0] if isinstance(elem, dict)
-                             else (None, elem)
+        group_expressions = [elem.items()[0] if isinstance(elem, dict) else (None, elem)
                              for elem in items]
         group_predictors = self.collect_predictors(group_expressions)
         group_context = self.get_group_context(context, group_predictors)
@@ -413,33 +412,27 @@ class Entity(object):
     # parse_function_body.
     def parse_function(self, k, v, context):
         if isinstance(v, list):
-            # v should be a list of dicts (assignments) or
-            # strings (actions)
+            # v should be a list of dicts (assignments) or strings (actions)
             if "(" in k:
                 k, args = split_signature(k)
                 argnames = argspec(args).args
                 code_def, result_def = v, None
             else:
                 argnames, code_def, result_def = [], v, None
-            method_context = self.get_group_context(context,
-                                                    argnames)
+            method_context = self.get_group_context(context, argnames)
             code = self.parse_process_group(k + "_code", code_def,
                                             method_context,
                                             purge=False)
             # TODO: use code.predictors instead (but it currently
             # fails for some reason) or at least factor this out
             # with the code in parse_process_group
-            group_expressions = [elem.items()[0]
-                                 if isinstance(elem, dict)
-                                 else (None, elem)
+            group_expressions = [elem.items()[0] if isinstance(elem, dict) else (None, elem)
                                  for elem in code_def]
             group_predictors = \
                 self.collect_predictors(group_expressions)
-            method_context = self.get_group_context(
-                method_context, group_predictors)
+            method_context = self.get_group_context(method_context, group_predictors)
             result_expr = parse(result_def, method_context)
-            assert result_expr is None or \
-                   isinstance(result_expr, Expr)
+            assert result_expr is None or isinstance(result_expr, Expr)
             return Function(k, self, argnames, code, result_expr)
         elif isinstance(v, dict) and ('args' in v or 'code' in v or 'return' in v):
             args = v.get('args', '')
