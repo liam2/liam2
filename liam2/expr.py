@@ -915,12 +915,11 @@ class DynamicFunctionCall(GenericFunctionCall):
 
     @property
     def _original_args(self):
-        return self.args, self.kwargs
+        return self.args[1:], self.kwargs
 
-    def __repr__(self):
-        # FIXME
-        r = GenericFunctionCall.__repr__(self)
-        return '**DFC** // %s' % r
+    @property
+    def funcname(self):
+        return str(self.args[0])
 
 
 #############
