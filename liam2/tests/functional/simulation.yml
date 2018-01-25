@@ -304,7 +304,6 @@ entities:
 
             test_assert:
                 # check that assertions function do not raise when their "assertion" is respected
-                - assertTrue(all(age >= 100), msg="we have persons with negative age!")
                 - assertTrue(True)
                 - assertFalse(False)
                 - assertEqual(42, 42)
@@ -341,7 +340,6 @@ entities:
                 - assertRaises('AssertionError', assertTrue(all(age > 1000), msg=dump(age, filter=id < 10)))
                 - assertRaises('AssertionError',
                                assertTrue(all(age > 1000), msg=csv(dump(age, filter=id < 10), fname='error_dump.csv')))
-                - assertRaises('AssertionError', assertTrue(all(age > 1000), msg=breakpoint()))
 
                 # check that the "usual way" to specify a custom message works for all assert functions
                 - assertRaises('AssertionError', assertTrue(False, msg="False is NOT True !"))
