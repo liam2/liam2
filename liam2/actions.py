@@ -172,12 +172,16 @@ class Assert(FunctionExpr):
 
 
 class AssertTrue(Assert):
+    funcname = 'assertTrue'
+
     def eval_assertion(self, context, value, msg=None):
         if not value:
             return str(self.args[0]) + " is not True"
 
 
 class AssertFalse(Assert):
+    funcname = 'assertFalse'
+
     def eval_assertion(self, context, value):
         if value:
             return str(self.args[0]) + " is not False"
@@ -205,6 +209,7 @@ class ComparisonAssert(Assert):
 
 
 class AssertEqual(ComparisonAssert):
+    funcname = 'assertEqual'
     inv_op = "!="
 
     def compare(self, v1, v2):
@@ -227,6 +232,7 @@ class AssertEqual(ComparisonAssert):
 
 
 class AssertNanEqual(ComparisonAssert):
+    funcname = 'assertNanEqual'
     inv_op = "!="
 
     def compare(self, v1, v2):
@@ -235,6 +241,7 @@ class AssertNanEqual(ComparisonAssert):
 
 
 class AssertEquiv(ComparisonAssert):
+    funcname = 'assertEquiv'
     inv_op = "is not equivalent to"
 
     def compare(self, v1, v2):
@@ -242,6 +249,7 @@ class AssertEquiv(ComparisonAssert):
 
 
 class AssertIsClose(ComparisonAssert):
+    funcname = 'assertIsClose'
     inv_op = "is not close to"
 
     def compare(self, v1, v2):
@@ -249,6 +257,7 @@ class AssertIsClose(ComparisonAssert):
 
 
 class AssertRaises(Assert):
+    funcname = 'assertRaises'
     no_eval = ('expr',)
 
     def eval_assertion(self, context, exception, expr):
