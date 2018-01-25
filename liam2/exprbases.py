@@ -267,6 +267,11 @@ class TableExpression(FunctionExpr):
     pass
 
 
+def clean_docstring(s):
+    # skip first two lines, skip 8 first chars on each line
+    return '\n'.join([line[8:] for line in s.split('\n')[2:]])
+
+
 def make_np_class(baseclass, docstring, dtypefunc):
     name, args = split_signature(docstring)
     if isinstance(dtypefunc, type):
@@ -283,9 +288,7 @@ def make_np_class(baseclass, docstring, dtypefunc):
         if dtypefunc is not None:
             dtype = dtypefunc
     FuncClass.__name__ = name.capitalize()
-    # skip first two lines, skip 8 first chars on each line
-    newdoclines = [line[8:] for line in evalfunc.__doc__.split('\n')[2:]]
-    FuncClass.__doc__ = '\n'.join(newdoclines)
+    FuncClass.__doc__ = clean_docstring(evalfunc.__doc__)
     return FuncClass
 
 
