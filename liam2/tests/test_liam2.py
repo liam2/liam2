@@ -17,11 +17,6 @@ use_travis = os.environ.get('USE_TRAVIS', None) == 'true'
 test_root = os.path.dirname(__file__)
 
 
-def print_title(s):
-    print(s)
-    print("=" * len(s))
-
-
 def simulate(test_file):
     # XXX: overriding output_dir breaks some examples (e.g. demo_load.yml)
     output_dir = os.path.join(test_root, 'output')
@@ -29,46 +24,9 @@ def simulate(test_file):
     simulation.run()
 
 
-def printnow(*args, **kwargs):
-    print(*args, **kwargs)
-    sys.stdout.flush()
-
-
 def run_file(test_file):
-    importing = 'import' in test_file
-    verb = 'Importing' if importing else 'Running'
-    func = csv2h5 if importing else simulate
-
-    printnow('{} {}...'.format(verb, os.path.relpath(test_file, test_root)), end=' ')
-    sys.stdout = StringIO()
-    sys.stderr = StringIO()
-    exception = None
-    try:
-        func(test_file)
-    except Exception, e:
-        exception = e
-    sys.stdout.seek(0)
-    sys.stderr.seek(0)
-    stdout_content = sys.stdout.read()
-    stderr_content = sys.stderr.read()
-    # restore original
-    sys.stdout = sys.__stdout__
-    sys.stderr = sys.__stderr__
-    if exception is None:
-        printnow("done.")
-        return "ok"
-    else:
-        printnow("FAILED.\n")
-        if stdout_content:
-            printnow("STDOUT\n======\n{}\n".format(stdout_content))
-        if stderr_content:
-            printnow("STDERR\n======\n{}\n".format(stderr_content))
-        # print to stdout to avoid PyCharm randomly mixing up stdout and stderr output
-        printnow("TRACEBACK\n=========")
-        traceback.print_exc(file=sys.stdout)
-        sys.stdout.flush()
-        printnow()
-        return "failed"
+    func = csv2h5 if 'import' in test_file else simulate
+    func(test_file)
 
 
 def iterate_directory(directory, dataset_creator, excluded_files):
@@ -80,12 +38,13 @@ def iterate_directory(directory, dataset_creator, excluded_files):
             yield os.path.join(directory_path, test_file)
 
 
+# test generator for nosetests (must return test_func, args)
 def test_examples():
     # No pyqt4 on travis
     need_qt = ('demo02.yml', 'demo03.yml', 'demo04.yml', 'demo06.yml')
     excluded = need_qt if use_travis else ()
     for test_file in iterate_directory('examples', 'demo_import.yml', excluded):
-        yield test_file
+        yield run_file, test_file
 
 
 def test_functional():
@@ -93,11 +52,58 @@ def test_functional():
     if use_travis:
         excluded += ('static.yml', 'generate.yml')
     for test_file in iterate_directory('functional', 'import.yml', excluded):
-        yield test_file
+        yield run_file, test_file
 
 
 if __name__ == '__main__':
+    def print_title(s):
+        print(s)
+        print("=" * len(s))
+
+
+    def printnow(*args, **kwargs):
+        print(*args, **kwargs)
+        sys.stdout.flush()
+
+
+    def run_func(func, *args, **kwargs):
+        sys.stdout = StringIO()
+        sys.stderr = StringIO()
+        exception = None
+        try:
+            func(*args, **kwargs)
+        except Exception, e:
+            exception = e
+        sys.stdout.seek(0)
+        sys.stderr.seek(0)
+        stdout_content = sys.stdout.read()
+        stderr_content = sys.stderr.read()
+        # restore original
+        sys.stdout = sys.__stdout__
+        sys.stderr = sys.__stderr__
+        if exception is None:
+            printnow("done.")
+            return "ok"
+        else:
+            printnow("FAILED.\n")
+            if stdout_content:
+                printnow("STDOUT\n======\n{}\n".format(stdout_content))
+            if stderr_content:
+                printnow("STDERR\n======\n{}\n".format(stderr_content))
+            # print to stdout to avoid PyCharm randomly mixing up stdout and stderr output
+            printnow("TRACEBACK\n=========")
+            traceback.print_exc(file=sys.stdout)
+            sys.stdout.flush()
+            printnow()
+            return "failed"
+
+
     print_title('Using test root: {}'.format(test_root))
-    results = [run_file(f) for f in chain(test_examples(), test_functional())]
+
+    results = []
+    for test_func, test_file in chain(test_examples(), test_functional()):
+        verb = 'Importing' if 'import' in test_file else 'Running'
+        printnow('{} {}...'.format(verb, os.path.relpath(test_file, test_root)), end=' ')
+        run_func(test_func, test_file)
     if any(r == "failed" for r in results):
         sys.exit(1)

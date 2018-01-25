@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
 
-from version import __version__
+from liam2.version import __version__
