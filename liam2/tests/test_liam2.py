@@ -17,16 +17,14 @@ use_travis = os.environ.get('USE_TRAVIS', None) == 'true'
 test_root = os.path.abspath(os.path.dirname(__file__))
 
 
-def simulate(test_file):
-    # XXX: overriding output_dir breaks some examples (e.g. demo_load.yml)
-    output_dir = os.path.join(test_root, 'output')
-    simulation = Simulation.from_yaml(test_file, output_dir=output_dir, log_level='processes')
-    simulation.run()
-
-
 def run_file(test_file):
-    func = csv2h5 if 'import' in test_file else simulate
-    func(test_file)
+    if 'import' in test_file:
+        csv2h5(test_file)
+    else:
+        # We should NOT override output_dir here because it breaks tests and examples which load back what they
+        # write (e.g. demo_load.yml)
+        simulation = Simulation.from_yaml(test_file, log_level='processes')
+        simulation.run()
 
 
 def iterate_directory(directory, dataset_creator, excluded_files):
