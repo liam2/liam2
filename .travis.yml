@@ -19,7 +19,7 @@ before_install:
 #  - sudo apt-get install -qq cython python-yaml python-sip
 #  - sudo apt-get build-dep python-tables
   - pip install --upgrade pip setuptools wheel
-  - pip install --only-binary=numpy,scipy,tables,cython numpy scipy tables numexpr matplotlib cython yaml
+  - pip install --only-binary=numpy,scipy,tables,cython numpy scipy tables numexpr matplotlib cython pyyaml
   - pip install flake8  # Not yet available in Debian stable
 
 install:
