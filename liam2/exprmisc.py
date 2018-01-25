@@ -583,10 +583,12 @@ class Load(FunctionExpr):
             raise ValueError("type or fields must be specified")
         if type is not None and fields is not None:
             raise ValueError("cannot specify both type and fields")
+        # using abspath does not change anything except it makes relative paths using ".." easier to read
+        file_path = os.path.abspath(os.path.join(config.input_directory, fname))
         if type is not None:
-            return load_ndarray(os.path.join(config.input_directory, fname), type)
+            return load_ndarray(file_path, type)
         elif fields is not None:
-            return load_table(os.path.join(config.input_directory, fname), fields)
+            return load_table(file_path, fields)
 
 
 functions = {

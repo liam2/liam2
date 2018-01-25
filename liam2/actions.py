@@ -61,7 +61,7 @@ class CSV(FunctionExpr, FileProducer):
         if config.log_level in ("functions", "processes"):
             print("writing to", fname, "...", end=' ')
 
-        file_path = os.path.join(config.output_directory, fname)
+        file_path = os.path.abspath(os.path.join(config.output_directory, fname))
         with open(file_path, mode + 'b') as f:
             writer = csv.writer(f)
             for arg in args:
