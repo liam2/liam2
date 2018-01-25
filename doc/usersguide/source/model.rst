@@ -86,17 +86,10 @@ LIAM2 currently supports three kinds of globals: constants (scalars), tables and
 arrays. All kinds need to be declared in the simulation file, as follow: ::
 
     globals:
-        BOOL_CONSTANT:
-            value: True
-            type: bool
-
-        FLOAT_CONSTANT:
-            value: 3.1415
-            type: float
-
-        INT_CONSTANT:
-            value: 42
-            type: int
+        MY_BOOL_CONSTANT: True
+        MY_FLOAT_CONSTANT: 3.1415
+        MY_INT_CONSTANT: 42
+        MY_STRING_CONSTANT: "hello"
 
         mytable:
             fields:
@@ -107,7 +100,7 @@ arrays. All kinds need to be declared in the simulation file, as follow: ::
             type: float
 
 Please see the :ref:`globals_usage` usage section for how to use them in
-you expressions.
+your expressions.
 
 Globals can be loaded from either .csv files during the simulation, or from
 the HDF5 input file, along with the entities data. In the later case,

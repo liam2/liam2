@@ -20,7 +20,7 @@ from utils import (time2str, timed, gettime, validate_dict,
                    expand_wild, multi_get, multi_set,
                    merge_dicts, merge_items,
                    field_str_to_type, fields_yaml_to_type,
-                   UserDeprecationWarning)
+                   UserDeprecationWarning, Or)
 import config
 import console
 import expr
@@ -103,7 +103,7 @@ class Simulation(object):
         'globals': {
             'periodic': None,  # either full-blown (dict) description or list
                                # of fields
-            '*': {
+            '*': Or(bool, int, float, str, {
                 'path': str,
                 'type': str,
                 'fields': [{
@@ -117,8 +117,7 @@ class Simulation(object):
                 },
                 'invert': [str],
                 'transposed': bool,
-                'value': None,  # Or(str, bool, int, float})
-            }
+            })
         },
         '#entities': {
             '*': {
@@ -242,12 +241,13 @@ class Simulation(object):
         #                'MIG': {'type': int}}
         globals_def = {}
         for k, v in content.get('globals', {}).iteritems():
-            if "type" in v:
-                v["type"] = field_str_to_type(v["type"], "array '%s'" % k)
-            else:
-                # TODO: fields should be optional (would use all the fields
-                # provided in the file)
-                v["fields"] = fields_yaml_to_type(v["fields"])
+            if isinstance(v, dict):
+                if "type" in v:
+                    v["type"] = field_str_to_type(v["type"], "array '%s'" % k)
+                else:
+                    # TODO: fields should be optional (would use all the fields
+                    # provided in the file)
+                    v["fields"] = fields_yaml_to_type(v["fields"])
             globals_def[k] = v
 
         simulation_def = content['simulation']

@@ -36,21 +36,13 @@
 
 * implemented align(link=) to use proportions in combination with the Chenard algorithm (closes :issue:`216`).
 
-* implemented a way of declaring global constants. These constants should be explicitly typed. Partially closes
-  :issue:`203`): ::
+* implemented a way of declaring global constants (closes :issue:`203`): ::
 
   globals:
-      BOOL_CONSTANT:
-          value: True
-          type: bool
-
-      FLOAT_CONSTANT:
-          value: 3.1415
-          type: float
-
-      INT_CONSTANT:
-          value: 42
-          type: int
+      MY_BOOL_CONSTANT: True
+      MY_FLOAT_CONSTANT: 3.1415
+      MY_INT_CONSTANT: 42
+      MY_STRING_CONSTANT: "hello"
 
 * chart functions gained *xmin*, *xmax*, *ymin*, *ymax* optional arguments to provide manual bounds for axes.
   By default, they are automatically inferred from the data as before (closes :issue:`209`).

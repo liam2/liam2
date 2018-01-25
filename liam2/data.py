@@ -722,6 +722,10 @@ def load_path_globals(globals_def):
     localdir = config.input_directory
     globals_data = {}
     for name, global_def in globals_def.iteritems():
+        # skip constants
+        if not isinstance(global_def, dict):
+            continue
+        # skip globals stored in the .h5 input file
         if 'path' not in global_def:
             continue
 
@@ -737,11 +741,7 @@ def load_path_globals(globals_def):
 
 
 def handle_constant_globals(globals_def):
-    globals_data = {}
-    for name, global_def in globals_def.iteritems():
-        if 'value' in global_def:
-            globals_data[name] = global_def['value']
-
+    globals_data = {k: gdef for k, gdef in globals_def.iteritems() if np.isscalar(gdef)}
     return globals_data
 
 
@@ -751,8 +751,10 @@ def index_tables(globals_def, entities, fpath):
     try:
         input_root = input_file.root
 
-        if any('path' not in g_def for g_def in globals_def.itervalues()) and \
-                'globals' not in input_root:
+        def must_load_from_input_file(gdef):
+            return isinstance(gdef, dict) and 'path' not in gdef
+        any_global_from_input_file = any(must_load_from_input_file(gdef) for gdef in globals_def.itervalues())
+        if any_global_from_input_file and 'globals' not in input_root:
             raise Exception('could not find any globals in the input data file '
                             '(but some are declared in the simulation file)')
 
@@ -875,9 +877,8 @@ class H5Sink(DataSink):
                 output_globals = output_file.create_group("/", "globals",
                                                           "Globals")
                 for k, g_def in globals_def.iteritems():
-                    # Do not save global constants (ie those who have a value attribute)
-                    # nor globals loaded from external (.csv) files.
-                    if 'value' in g_def or 'path' in g_def:
+                    # Do not save global constants nor globals loaded from external (.csv) files.
+                    if np.isscalar(g_def) or 'path' in g_def:
                         continue
 
                     anyarray_to_disk(output_globals, k, globals_data[k])

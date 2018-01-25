@@ -18,17 +18,16 @@ globals:
             - MINR: float
             - MIG_PERCENT: float
 
-    BOOL_CONSTANT:
-        value: True
-        type: bool
-
-    FLOAT_CONSTANT:
-        value: 3.1415
-        type: float
-
-    INT_CONSTANT:
-        value: 42
-        type: int
+    BOOL_CONSTANT1: False
+    BOOL_CONSTANT2: True
+    INT_CONSTANT1: -1
+    INT_CONSTANT2: 42
+    FLOAT_CONSTANT1: -1.
+    FLOAT_CONSTANT2: 3.1415
+    STR_CONSTANT1: "abc"
+    STR_CONSTANT2: "a\"b\"c"
+    STR_CONSTANT3: "a/b/c"
+    STR_CONSTANT4: "a\\b\\c"
 
     ARRAY:
         type: float
@@ -2962,10 +2961,17 @@ entities:
                               fields=[('PERIOD', int), ('INTFIELD', int), ('FLOATFIELD', float)])
                 - assertEqual(table.shape, (31,))
 
-            test_global_parameter:
-                - assertTrue(BOOL_CONSTANT)
-                - assertEqual(FLOAT_CONSTANT, 3.1415)
-                - assertEqual(INT_CONSTANT, 42)
+            test_global_constants:
+                - assertEqual(BOOL_CONSTANT1, False)
+                - assertEqual(BOOL_CONSTANT2, True)
+                - assertEqual(INT_CONSTANT1, -1)
+                - assertEqual(INT_CONSTANT2, 42)
+                - assertEqual(FLOAT_CONSTANT1, -1.)
+                - assertEqual(FLOAT_CONSTANT2, 3.1415)
+                - assertEqual(STR_CONSTANT1, "abc")
+                - assertEqual(STR_CONSTANT2, "a\"b\"c")
+                - assertEqual(STR_CONSTANT3, "a/b/c")
+                - assertEqual(STR_CONSTANT4, "a\\b\\c")
 
 simulation:
     init:
@@ -3105,7 +3111,7 @@ simulation:
                    test_show,
                    test_load,
                    test_multi_align,
-                   test_global_parameter,
+                   test_global_constants,
         ]
         - household: [
             composition,
