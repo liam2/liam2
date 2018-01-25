@@ -144,3 +144,6 @@ Fixes
 
 * fixed csv(dump()) rounding float values at the 12th decimal instead of using all available precision when the missing
   argument is used (closes :issue:`252`).
+
+* fixed expressions with both a "non-simple" operation (everything except + - * / and where) and a function call failing
+  to evaluate (closes :issue:`186`).

@@ -1,0 +1,25 @@
+import: test_issue.yml.template
+
+entities:
+    person:
+        processes:
+            f1(a):
+                - return a + 1
+
+            f2(a):
+                - r: a + 1
+                - return r
+
+            test_issue:
+                # worked
+                - res1: id[0] + f1(1)
+                # worked
+                - x: id[0]
+                - res2: x + f2(1)
+                - assertEqual(res2, res1)
+                # failed
+                - res3: id[0] + f2(1)
+                - assertEqual(res3, res1)
+                # failed
+                - res4: f1(1) + f2(1)
+                - assertEqual(res4, 4)

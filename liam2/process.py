@@ -320,6 +320,8 @@ class Function(Process):
         # entity fields and global temporaries)
 
         backup = self.backup_and_purge_locals()
+        # in case the function call is in the middle of a larger expression (see issue #186)
+        backup_extra = context.entity_data.extra
 
         if len(args) != len(self.argnames):
             raise TypeError("%s() takes exactly %d arguments (%d given)" %
@@ -361,6 +363,8 @@ class Function(Process):
         except ReturnException as r:
             result = r.result
         self.purge_and_restore_locals(backup)
+        # restore extra
+        context.entity_data.extra = backup_extra
         return result
 
     def expressions(self):
