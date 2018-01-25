@@ -3,6 +3,8 @@ from __future__ import print_function
 
 import numpy as np
 
+from utils import unique
+
 
 class EvaluationContext(object):
     def __init__(self, simulation=None, entities=None, global_tables=None,
@@ -234,6 +236,9 @@ class EntityContext(object):
         res.extend(sorted(self.entity.temp_variables.keys()))
         if extra:
             res.extend(sorted(self.extra.keys()))
+        # in theory, this should not be needed because we present defining a function argument with the same
+        # name than an entity field
+        assert list(unique(res)) == res
         return res
 
     def get(self, key, elsevalue=None):
