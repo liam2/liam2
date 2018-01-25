@@ -32,4 +32,4 @@ test-ci:
 	nosetests $(TESTS_DIR) --verbose --exe --with-doctest
 
 test-with-coverage:
-	nosetests $(TESTS_DIR) --exe --stop --with-coverage --cover-package=openfisca_france --cover-erase --cover-branches --cover-html
+	nosetests $(TESTS_DIR) --exe --with-coverage --cover-package=liam2 --cover-erase --cover-branches --cover-html
