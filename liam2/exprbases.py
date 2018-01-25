@@ -272,8 +272,8 @@ def clean_docstring(s):
     return '\n'.join([line[8:] for line in s.split('\n')[2:]])
 
 
-def make_np_class(baseclass, docstring, dtypefunc):
-    name, args = split_signature(docstring)
+def make_np_class(baseclass, signature, dtypefunc):
+    name, args = split_signature(signature)
     if isinstance(dtypefunc, type):
         dtypefunc = always(dtypefunc)
     evalfunc = getattr(np.random, name)
