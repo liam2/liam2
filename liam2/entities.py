@@ -318,6 +318,7 @@ class Entity(object):
             self._variables = variables
         return self._variables
 
+    # this must work _before_ processes are parsed
     @staticmethod
     def ismethod(v):
         # the dict part is still required so that we can detect the old style way to define methods
@@ -325,8 +326,9 @@ class Entity(object):
         return (isinstance(v, list) or
                 isinstance(v, dict) and any(key in v for key in keys))
 
+    # this must work _before_ processes are parsed
     @property
-    def methods(self):
+    def method_symbols(self):
         if self._methods is None:
             pstrings = self.process_strings
             items = pstrings.iteritems() if pstrings is not None else ()
@@ -341,6 +343,7 @@ class Entity(object):
                              for name in methodnames]
         return self._methods
 
+    # this must work _before_ processes are parsed
     def all_symbols(self, global_context):
         from links import PrefixingLink
 
@@ -352,7 +355,7 @@ class Entity(object):
                       for k, v in self.macro_strings.iteritems())
         symbols.update(macros)
         symbols['other'] = PrefixingLink(self, macros, self.links, '__other_')
-        symbols.update(self.methods)
+        symbols.update(self.method_symbols)
         return symbols
 
     def parse_expr(self, k, v, context):
