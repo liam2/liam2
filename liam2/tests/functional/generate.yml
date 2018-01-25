@@ -37,7 +37,7 @@ entities:
             match_mother_child(target_prop, risk, mother_min, mother_max, child_min, child_max):
                 - i: 0
                 - childage: age >= child_min and age < child_max
-                - motherage: not male and 
+                - motherage: not male and
                              age >= mother_min and age < mother_max
                 - numchilds: count(childage)
                 - needmother: childage and mother_id == -1
@@ -91,7 +91,7 @@ entities:
                 - age: if(male, m_agegr, f_agegr) + randint(5)
 #                - bar(groupby(age))
 
-                # - 4,575,950 households in Belgium, of which 1,534,317 single-person 
+                # - 4,575,950 households in Belgium, of which 1,534,317 single-person
 
                 # 1.79 births per woman (2012)
                 # we get 1.15...
@@ -100,7 +100,7 @@ entities:
                 - match_mother_child(0.96, 0.7, 60, 80, 30, 45)
                 - match_mother_child(0.98, 0.7, 45, 65, 15, 30)
                 - match_mother_child(0.99, 0.7, 30, 50, 0, 15)
-                      
+
                 # - qshow(count(mother_id != -1 and age < 45))
                 # - qshow(count(age < 45))
                 # - qshow(count(not male))
@@ -111,8 +111,8 @@ entities:
                 - assertEqual(max(children.count(), filter=male), 0)
                 # - qshow(groupby(children.count(), filter=not male))
 
-                # The working (active) population (both self-employed persons 
-                # and employees) aged between 15 and 64 numbers 4,450,589. 
+                # The working (active) population (both self-employed persons
+                # and employees) aged between 15 and 64 numbers 4,450,589.
                 # The total population in this age group is 7,176,835.
 
                 # Young people in education total around 2,844,700
@@ -290,6 +290,6 @@ simulation:
 
     logging:
         level: processes    # optional
-        
+
     start_period: 2015   # first simulated period
     periods: 1

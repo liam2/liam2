@@ -44,6 +44,7 @@ def to_float(v):
 def to_bool(v):
     return v.lower() in ('1', 'true')
 
+
 converters = {bool: to_bool,
               int: to_int,
               float: to_float,
