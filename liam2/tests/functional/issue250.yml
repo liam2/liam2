@@ -1,3 +1,5 @@
+import: test_issue.yml.template
+
 globals:
     TEST:
         path: al_p_one_dim.csv
@@ -7,27 +9,9 @@ entities:
     person:
         processes:
             create:
-                - new('person', number=10)
+                - new('person', number=3)
 
-            test:
+            test_issue:
                 - array_temp: TEST + 1
                 - remove(id == 0)
-                - assertEqual(count(), 9)
-
-simulation:
-    init:
-        - person: [create]
-    processes:
-        - person: [test]
-
-    input:
-        method: void
-        file: none
-
-    output:
-        path: output
-
-    logging:
-        level: processes
-    start_period: 2002
-    periods: 2
+                - assertEqual(count(), 2)

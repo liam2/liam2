@@ -1,0 +1,23 @@
+entities:
+    person:
+        processes:
+            create:
+                - new('person', number=1)
+
+simulation:
+    init:
+        - person: [create]
+    processes:
+        - person: [test_issue]
+
+    input:
+        method: void
+        file: none
+    output:
+        path: output
+
+    logging:
+        level: processes
+
+    start_period: 2018
+    periods: 1
