@@ -427,9 +427,9 @@ class Entity(object):
             if "(" in k:
                 k, args = split_signature(k)
                 argnames = argspec(args).args
-                code_def, result_def = v, None
+                code_def = v
             else:
-                argnames, code_def, result_def = [], v, None
+                argnames, code_def = [], v
             method_context = self.get_group_context(context, argnames)
             code = self.parse_process_group(k + "_code", code_def,
                                             method_context,
@@ -441,9 +441,7 @@ class Entity(object):
                                  for elem in code_def]
             group_predictors = self.collect_predictors(group_expressions, in_process_group=True)
             method_context = self.get_group_context(method_context, group_predictors)
-            result_expr = parse(result_def, method_context)
-            assert result_expr is None or isinstance(result_expr, Expr)
-            return Function(k, self, argnames, code, result_expr)
+            return Function(k, self, argnames, code)
         elif isinstance(v, dict) and ('args' in v or 'code' in v or 'return' in v):
             args = v.get('args', '')
             code = v.get('code', '')

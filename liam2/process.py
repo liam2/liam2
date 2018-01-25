@@ -300,11 +300,10 @@ class ProcessGroup(Process):
 class Function(Process):
     """this class implements user-defined functions"""
 
-    def __init__(self, name, entity, argnames, code=None, result=None):
+    def __init__(self, name, entity, argnames, code=None):
         """
         args -- a list of strings
         code -- a ProcessGroup (or None)
-        result -- an Expr (or None)
         """
         Process.__init__(self, name, entity)
 
@@ -314,9 +313,6 @@ class Function(Process):
 
         assert code is None or isinstance(code, ProcessGroup)
         self.code = code
-
-        assert result is None or isinstance(result, Expr)
-        self.result = result
 
     def run_guarded(self, context, *args, **kwargs):
         # XXX: wouldn't some form of cascading context make all this junk much
@@ -361,7 +357,7 @@ class Function(Process):
             self.entity.temp_variables[name] = value
         try:
             self.code.run_guarded(context)
-            result = expr_eval(self.result, context)
+            result = None
         except ReturnException as r:
             result = r.result
         self.purge_and_restore_locals(backup)
@@ -371,8 +367,6 @@ class Function(Process):
         if self.code is not None:
             for e in self.code.expressions():
                 yield e
-        if self.result is not None:
-            yield self.result
 
     def backup_and_purge_locals(self):
         # backup and purge local variables
