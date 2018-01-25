@@ -28,7 +28,7 @@ flake8: clean-pyc
 test: check-syntax-errors
 	nosetests $(TESTS_DIR) --exe --stop --with-doctest
 
-test-ci: check-syntax-errors
+test-ci:
 	nosetests $(TESTS_DIR) --verbose --exe --with-doctest
 
 test-with-coverage:

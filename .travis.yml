@@ -12,7 +12,6 @@ python:
 before_install:
   - pip install --upgrade pip setuptools wheel
   - pip install --only-binary=numpy,scipy,tables,cython numpy scipy tables numexpr matplotlib cython pyyaml
-  - pip install flake8  # Not yet available in Debian stable
 
 install:
   - pip install -e .
