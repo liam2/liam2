@@ -259,16 +259,24 @@ class AssertIsClose(ComparisonAssert):
 
 class AssertRaises(Assert):
     funcname = 'assertRaises'
-    no_eval = ('expr',)
+
+    # avoid normal argument evaluation because we need to catch exceptions
+    # using no_eval for this does not work because "expr" is not in argspec (because argspec is computed from the
+    # "compute" method)
+    def _eval_args(self, context):
+        return self.args, dict(self.kwargs)
 
     def eval_assertion(self, context, exception, expr):
+        expected_exception = eval(exception)
         try:
-            expr_eval(expr)
-            return "did not raise"
-        except eval(exception):
+            expr_eval(expr, context)
+            return "expression did not raise any exception"
+        except expected_exception as e:
+            if config.debug:
+                print("exception raised (as expected): %r" % e, end=' ')
             return False
         except Exception as e:
-            return "raised another exception (%s)" % e
+            return "expression raised another exception (%r)" % e
 
 
 functions = {
