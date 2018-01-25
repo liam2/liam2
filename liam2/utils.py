@@ -716,8 +716,9 @@ def format_value(value, missing):
         else:
             return '%.2f' % value
     elif isinstance(value, np.ndarray) and value.shape:
-        # prevent numpy default wrapping
-        return str(list(value)).replace(',', '')
+        # print the whole array on one line (ie prevent numpy default wrapping)
+        # This is also faster than np.array_str(value, max_line_width=np.inf)
+        return str(value.tolist()).replace(',', '')
     else:
         return str(value)
 
@@ -758,6 +759,7 @@ def table2str(table, missing):
 
     lines = []
     for row in formatted:
+        # this kills any existing newline character in value
         wrapped_row = [wrap(value, width)
                        for value, width in izip(row, colwidths)]
         maxheight = max(len(value) for value in wrapped_row)
@@ -777,9 +779,14 @@ class PrettyTable(object):
 
     def __iter__(self):
         if self.missing is not None:
+            # FIXME: this means we pre-convert every type to str instead of relying on the consumer doing it,
+            # which on python2 means it truncates after the 12 decimal ! :(
             return iter(self.convert_nans())
         else:
             return iter(self.data)
+
+    def __len__(self):
+        return len(self.data)
 
     def convert_nans(self):
         missing = self.missing
