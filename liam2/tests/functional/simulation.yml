@@ -2849,13 +2849,6 @@ entities:
                               fields=[('PERIOD', int), ('INTFIELD', int), ('FLOATFIELD', float)])
                 - assertEqual(table.shape, (31,))
 
-            test_erf:
-                - assertEqual(erf(0), 0)
-                - x: age * 0
-                - assertEqual(erf(x), x)
-                - x: age * 1000000
-                - assertTrue(all(abs(erf(x) - 1)) < .0001)
-
             test_global_parameter:
                 - assertTrue(BOOL_CONSTANT)
                 - assertEqual(FLOAT_CONSTANT, 3.1415)
@@ -2907,7 +2900,6 @@ simulation:
 
                    test_expr,
                    test_trunc,
-                   test_erf,
 
                    # random
                    test_uniform,

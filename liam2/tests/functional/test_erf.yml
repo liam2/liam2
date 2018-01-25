@@ -1,0 +1,14 @@
+import: test_issue.yml.template
+
+entities:
+    person:
+        processes:
+            create:
+                - new('person', number=10)
+
+            test_issue:
+                - assertEqual(erf(0), 0)
+                - res: erf(id)
+                - assertTrue(all(res >= 0 and res <= 1))
+                - assertEqual(res[0], 0)
+                - assertEqual(res[-1], 1)
