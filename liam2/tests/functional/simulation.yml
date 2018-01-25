@@ -92,6 +92,10 @@ entities:
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
+            # utility/test function
+            reldiff(v1, v2):
+                - return abs(v2 - v1) / v1
+
             init_region:
                 - region_id: choice([0, 1, 2], [0.55, 0.35, 0.10])
 
@@ -138,54 +142,71 @@ entities:
                 # kill empty households
                 - remove(num_persons == 0)
 
+                - show("total households:", count())
                 - total_population: sum(num_persons)
-                - show("total:", count(), "households /", total_population, "persons")
+                - total_women: sum(num_women)
+                - total_men: sum(num_men)
+                - assertEqual(total_population, total_women + total_men)
+                - show("total population:", total_population, "=", total_women, "women +", total_men, "men")
 
-                - needed_women: trunc(sum(num_men) * 0.2)
-                - needed_men: trunc(sum(num_men) * 0.22)
+                # ALIGN_LINK has one axis: sex=women/men (0.2 for women, 0.22 for men)
+                - needed_women: trunc(round(sum(num_women) * ALIGN_LINK[0]))
+                - needed_men: trunc(round(sum(num_men) * ALIGN_LINK[1]))
                 - needed_total: needed_women + needed_men
-                - show("needed_total", needed_total, "needed_women", needed_women, "needed_men", needed_men)
+                - show("needed:", needed_total, "=", needed_women, "women +", needed_men, "men")
 
                 # without filter
-                - show('\n', groupby(num_men, num_women))
-                - show('\n', groupby(num_men - num_women))
-                - aligned_all: align(persons.count(), ALIGN_LINK,
-                                     link=persons)
-#                                     link=persons, secondary_axis=gender)
-                - qshow(sum(num_persons, filter=aligned_all), 'vs', needed_total)
-#                - assertTrue(sum(num_persons, filter=aligned_all) >= needed_total)
-                - qshow(sum(num_women, filter=aligned_all), 'vs', needed_women)
-#                - assertTrue(sum(num_women, filter=aligned_all) >= needed_women)
-                # for some reason men overshoot a lot less (they are correct most the time)
-                - qshow(sum(num_men, filter=aligned_all), 'vs', needed_men)
-#                - assertTrue(sum(num_men, filter=aligned_all) >= needed_men)
+#                - show("\n", groupby(num_men, num_women))
+#                - show("\n", groupby(num_men - num_women))
+                - aligned: align(persons.count(), ALIGN_LINK, link=persons)
+
+                - women_aligned: sum(num_women, filter=aligned)
+                - men_aligned: sum(num_men, filter=aligned)
+                - total_aligned: sum(num_persons, filter=aligned)
+                - assertEqual(total_aligned, women_aligned + men_aligned)
+
+                - show("women:", women_aligned, "aligned vs", needed_women, "needed")
+                - show("men:", men_aligned, "aligned vs", needed_men, "needed")
+                - show("total:", total_aligned, "aligned vs", needed_total, "needed")
+
+                # total should be mostly respected
+                - assertTrue(reldiff(total_aligned, needed_total) < 0.02)
+                # respecting per category totals depends if the distribution in the population match the needed
+                # distribution
+                - assertTrue(reldiff(women_aligned, needed_women) < 0.05)
+                - assertTrue(reldiff(men_aligned, needed_men) < 0.05)
 
                 # with a filter
-#                - is_candidate: uniform() < 0.5
-#                - qshow(count(is_candidate),
-#                        sum(num_persons, filter=is_candidate))
-#
-#                - aligned: align_abs(persons.count(), need,
-#                                     link=persons, secondary_axis=gender,
-#                                     errors='carry',
-#                                     filter=is_candidate)
-#                - qshow(count(aligned),
-#                        sum(num_persons, filter=aligned))
-#
-##                - clone_id: clone(aligned)
-#
-#                # with pvalues != range(0, X)
-#                - bchoice: choice([False, True])
-#                - weird_num: choice([5, 25, 45, 65, 85, 105])
-#                - weird_need: groupby(bchoice, weird_num, expr=10)
-#                - show(weird_need)
-#                - show('by sex', weird_need.sum(axis=1))
-#                - aligned: align_abs(persons.count(), weird_need,
-#                                     link=persons, secondary_axis=0,
-#                                     filter=is_candidate,
-#                                     expressions=[gender, 5 + trunc(age / 20) * 20])
-#                - qshow(count(aligned),
-#                        sum(num_persons, filter=aligned))
+                - is_candidate: uniform() < 0.8
+                - show("candidate households:", count(is_candidate))
+                - candidate_total: sum(num_persons, filter=is_candidate)
+                - candidate_women: sum(num_women, filter=is_candidate)
+                - candidate_men: sum(num_men, filter=is_candidate)
+                - assertEqual(candidate_total, candidate_women + candidate_men)
+                - show("candidates:", candidate_total, "=", candidate_women, "women +", candidate_men, "men")
+
+                - needed_women: trunc(round(candidate_women * ALIGN_LINK[0]))
+                - needed_men: trunc(round(candidate_men * ALIGN_LINK[1]))
+                - needed_total: needed_women + needed_men
+                - show("needed:", needed_total, "=", needed_women, "women +", needed_men, "men")
+
+                - aligned: align(persons.count(), ALIGN_LINK, link=persons, filter=is_candidate)
+
+                - women_aligned: sum(num_women, filter=aligned)
+                - men_aligned: sum(num_men, filter=aligned)
+                - total_aligned: sum(num_persons, filter=aligned)
+                - assertEqual(total_aligned, women_aligned + men_aligned)
+
+                - show("women:", women_aligned, "aligned vs", needed_women, "needed")
+                - show("men:", men_aligned, "aligned vs", needed_men, "needed")
+                - show("total:", total_aligned, "aligned vs", needed_total, "needed")
+
+                # total should be mostly respected
+                - assertTrue(reldiff(total_aligned, needed_total) < 0.02)
+                # respecting per category totals depends if the distribution in the population match the needed
+                # distribution
+                - assertTrue(reldiff(women_aligned, needed_women) < 0.05)
+                - assertTrue(reldiff(men_aligned, needed_men) < 0.05)
 
             test_align_abs_link:
                 - num_persons: persons.count()
