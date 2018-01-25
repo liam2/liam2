@@ -3,8 +3,7 @@ from __future__ import division, print_function
 
 import numpy as np
 
-import config
-from expr import firstarg_dtype, ComparisonOp, Variable, expr_eval
+from expr import firstarg_dtype, ComparisonOp, Variable
 from exprbases import NumpyRandom, make_np_class, make_np_classes
 from exprmisc import Where
 from utils import argspec
