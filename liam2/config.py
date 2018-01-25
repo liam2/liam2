@@ -5,7 +5,7 @@ import os
 
 # TODO: most of these (except possibly input_directory) should be moved to
 # Simulation attributes (or in the context)
-debug = os.environ.get("DEBUG", False)
+debug = os.environ.get("DEBUG", "False").lower() == "true"
 input_directory = "."
 output_directory = "."
 skip_shows = False
