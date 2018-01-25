@@ -302,6 +302,55 @@ entities:
             bp:
                 - breakpoint(2002)
 
+            test_assert:
+                # check that assertions function do not raise when their "assertion" is respected
+                - assertTrue(all(age >= 100), msg="we have persons with negative age!")
+                - assertTrue(True)
+                - assertFalse(False)
+                - assertEqual(42, 42)
+                - assertEqual(42, 43 - 1)
+                - assertNanEqual(42, 42)
+                - assertNanEqual(42, 43 - 1)
+                - assertNanEqual(nan, nan)
+                - assertEquiv(42, 42)
+                - assertEquiv([42, 42], 42)
+                - assertIsClose(1, 1)
+                - assertIsClose(1., 1.0000001)
+
+                # check that we get an assertion when trying to access some invalid index and that
+                # assertRaises catch it properly
+                - assertRaises('IndexError', id[1234567890])
+
+                # check that assertRaises raises NameError when used with an invalid Exception name
+                - assertRaises('NameError', assertRaises('YADA', True))
+
+                # check that assertions function raises when their "assertion" is not respected
+                - assertRaises('AssertionError', assertTrue(False))
+                - assertRaises('AssertionError', assertFalse(True))
+                - assertRaises('AssertionError', assertEqual(0, 1))
+                - assertRaises('AssertionError', assertNanEqual(0, 1))
+                - assertRaises('AssertionError', assertEquiv(0, 1))
+                - assertRaises('AssertionError', assertIsClose(0, 1))
+
+                # check that the different ways to pass the msg argument works
+                - assertRaises('AssertionError', assertTrue(False, "False is NOT True !"))
+                - assertRaises('AssertionError', assertTrue(False, msg="False is NOT True !"))
+                - assertRaises('AssertionError', assertTrue(False, msg=("False", "is", "NOT", "True", "!")))
+                - assertRaises('AssertionError', assertTrue(all(age > 1000), ("humans do no live that long!", age)))
+                - assertRaises('AssertionError', assertTrue(all(age > 1000), msg=("humans do no live that long!", age)))
+                - assertRaises('AssertionError', assertTrue(all(age > 1000), msg=dump(age, filter=id < 10)))
+                - assertRaises('AssertionError',
+                               assertTrue(all(age > 1000), msg=csv(dump(age, filter=id < 10), fname='error_dump.csv')))
+                - assertRaises('AssertionError', assertTrue(all(age > 1000), msg=breakpoint()))
+
+                # check that the "usual way" to specify a custom message works for all assert functions
+                - assertRaises('AssertionError', assertTrue(False, msg="False is NOT True !"))
+                - assertRaises('AssertionError', assertFalse(True, msg="True is NOT False !"))
+                - assertRaises('AssertionError', assertEqual(0, 1, msg="0 and 1 are NOT equal !"))
+                - assertRaises('AssertionError', assertNanEqual(0, 1, msg="0 and 1 are NOT nan equal !"))
+                - assertRaises('AssertionError', assertEquiv(0, 1, msg="0 and 1 are NOT equivalent !"))
+                - assertRaises('AssertionError', assertIsClose(0, 1000, msg="0 and 1000 are NOT close !"))
+
             expand:
                 - last_non_clone_id: max(id)
                 - toclone: household.clone_id != -1
@@ -2883,6 +2932,7 @@ simulation:
     processes:
         - person: [
 #                   bp,
+                   test_assert,
                    compute_agegroup,
                    test_remove,
 

@@ -2524,16 +2524,27 @@ assertions
 
 Assertions can be used to check that your model really produce the results it
 should produce. The behavior when an assertion fails is determined by
-the :ref:`assertions-label` simulation option.
+the :ref:`assertions-label` simulation option. All assertion functions accept a msg argument where you can specify a
+custom message to append to the normal message displayed when the assertion fails. This message can be **any**
+expression or tuple of expressions, and it is only evaluated if the assertion fails.
 
-- assertTrue(expr): evaluates the expression and check its result is True.
-- assertFalse(expr): evaluates the expression and check its result is False.
-- assertEqual(expr1, expr2): evaluates both expressions and check their
+- assertTrue(expr, msg=None): evaluates the expression and check its result is True.
+- assertFalse(expr, msg=None): evaluates the expression and check its result is False.
+- assertEqual(expr1, expr2, msg=None): evaluates both expressions and check their
   results are equal.
-- assertNanEqual(expr1, expr2): evaluates both expressions and check their
+- assertNanEqual(expr1, expr2, msg=None): evaluates both expressions and check their
   results are equal, even in the presence of nans (because normally nan != nan).
-- assertEquiv(expr1, expr2): evaluates both expressions and check their
+- assertEquiv(expr1, expr2, msg=None): evaluates both expressions and check their
   results are equal tolerating a difference in shape (though they must be
-  compatible).
-- assertIsClose(expr1, expr2): evaluates both expressions and check their
+  compatible). This is only useful to compare arrays.
+- assertIsClose(expr1, expr2, msg=None): evaluates both expressions and check their
   results are almost equal.
+- assertRaises(exception_name, expr, msg=None): evaluate the `expr` expression and raises an assertion if it did NOT
+  raise an Exception. This is mostly used internally to test that other assertions functions work but could be used
+  in models to check that some bad condition does not actually happen.
+
+*examples* ::
+
+    - assertTrue(all(age >= 0), msg="we have persons with negative age!")
+    - assertTrue(all(age < 150), msg=("we have abnormally old persons", dump(filter=age >= 150))
+    - assertTrue(all(total_income >= 0), msg=breakpoint())

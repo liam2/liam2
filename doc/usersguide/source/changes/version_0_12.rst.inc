@@ -64,6 +64,26 @@
 
 * implemented assertRaises to check for expected errors.
 
+* added support for a new "msg" argument to all assertion functions. It specifies a custom message to append to the
+  normal message displayed when the assertion fails. This is most useful when the condition of the assertion is complex.
+  The message can be **any** expression or tuple of expressions, and it is only evaluated if the assertion fails
+  (closes :issue:`208`). ::
+
+    - assertTrue(all(age >= 0), msg="we have persons with negative age!")
+
+  will display: ::
+
+    AssertionError: all((age >= 100)) is not True: we have persons with negative age!
+
+  instead of just: ::
+
+    AssertionError: all((age >= 100)) is not True
+
+  Using dump(), csv(dump()) or breakpoint() as the msg argument can be useful.
+
+    - assertTrue(all(age < 150), msg=("we have abnormally old persons", dump(filter=age >= 150))
+    - assertTrue(all(total_income >= 0), breakpoint())
+
 
 Miscellaneous improvements
 --------------------------

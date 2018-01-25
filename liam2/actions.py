@@ -148,8 +148,14 @@ class Breakpoint(FunctionExpr):
 
 
 class Assert(FunctionExpr):
-    def eval_assertion(self, context, *args):
-        raise NotImplementedError()
+    # subclasses should have msg in their no_eval attribute. We delay evaluating it because it can potentially be
+    # costly to compute. e.g. when using msg=dump()
+    no_eval = ('msg',)
+
+    def __init__(self, *args, **kwargs):
+        assert self.argspec.args[-1] == 'msg', \
+               "%s.compute MUST have 'msg' as its last argument" % self.__class__.__name__
+        FunctionExpr.__init__(self, *args, **kwargs)
 
     def evaluate(self, context):
         if config.assertions == "skip":
@@ -159,22 +165,34 @@ class Assert(FunctionExpr):
             args, kwargs = self._eval_args(context)
             if config.log_level == "processes":
                 print("assertion", end=' ')
-            failure = self.eval_assertion(context, *args)
+            failure = self.compute(context, *args, **kwargs)
             if failure:
+                # evaluate msg. It MUST be the last argument.
+                msg = expr_eval(args[-1], context)
+                if msg is None:
+                    msg = failure
+                else:
+                    if isinstance(msg, tuple):
+                        msg = ' '.join(str(v) for v in msg)
+                    msg = '{}: {}'.format(failure, msg)
                 if config.assertions == "warn":
                     # if config.log_level == "processes":
-                    print("FAILED:", failure, end=' ')
+                    print("FAILED:", msg, end=' ')
                 else:
-                    raise AssertionError(failure)
+                    raise AssertionError(msg)
             else:
                 if config.log_level == "processes":
                     print("ok", end=' ')
+
+    # any (direct) subclass MUST have a compute method with "msg" as its the last argument.
+    def compute(self, context, msg=None):
+        raise NotImplementedError()
 
 
 class AssertTrue(Assert):
     funcname = 'assertTrue'
 
-    def eval_assertion(self, context, value, msg=None):
+    def compute(self, context, value, msg=None):
         if not value:
             return str(self.args[0]) + " is not True"
 
@@ -182,7 +200,7 @@ class AssertTrue(Assert):
 class AssertFalse(Assert):
     funcname = 'assertFalse'
 
-    def eval_assertion(self, context, value):
+    def compute(self, context, value, msg=None):
         if value:
             return str(self.args[0]) + " is not False"
 
@@ -190,7 +208,7 @@ class AssertFalse(Assert):
 class ComparisonAssert(Assert):
     inv_op = None
 
-    def eval_assertion(self, context, v1, v2, msg=None):
+    def compute(self, context, v1, v2, msg=None):
         result = self.compare(v1, v2)
         if isinstance(result, tuple):
             result, details = result
@@ -198,12 +216,9 @@ class ComparisonAssert(Assert):
             details = ''
         if not result:
             op = self.inv_op
-            if isinstance(msg, tuple):
-                msg = ' '.join(str(v) for v in msg)
-            msg = ': {}'.format(msg) if msg is not None else ''
             # use %r to print values. At least for floats on python2, this yields to a better precision.
-            return "%s %s %s (%r %s %r)%s%s" % (self.args[0], op, self.args[1],
-                                                v1, op, v2, details, msg)
+            return "%s %s %s (%r %s %r)%s" % (self.args[0], op, self.args[1],
+                                              v1, op, v2, details)
 
     def compare(self, v1, v2):
         raise NotImplementedError()
@@ -259,14 +274,9 @@ class AssertIsClose(ComparisonAssert):
 
 class AssertRaises(Assert):
     funcname = 'assertRaises'
+    no_eval = ('expr', 'msg')
 
-    # avoid normal argument evaluation because we need to catch exceptions
-    # using no_eval for this does not work because "expr" is not in argspec (because argspec is computed from the
-    # "compute" method)
-    def _eval_args(self, context):
-        return self.args, dict(self.kwargs)
-
-    def eval_assertion(self, context, exception, expr):
+    def compute(self, context, exception, expr, msg=None):
         expected_exception = eval(exception)
         try:
             expr_eval(expr, context)
