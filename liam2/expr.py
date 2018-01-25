@@ -393,7 +393,7 @@ class Expr(object):
         return SubscriptedExpr(self, key)
 
     def __getattr__(self, key):
-        if key in {'dtype', 'itemsize', 'nbytes', 'ndim', 'shape', 'size',
+        if key in {'data', 'dtype', 'itemsize', 'nbytes', 'ndim', 'shape', 'size',
                    'dim_names', 'pvalues', 'row_totals', 'col_totals',
                    # aggregates
                    'all', 'any', 'max', 'mean', 'min', 'prod', 'ptp', 'std',
