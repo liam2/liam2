@@ -1039,6 +1039,13 @@ entities:
                 - assertEqual(percent_per_person[0],
                               MIG[gender[0] * 1, age[0], period - base_period])
 
+                # 3d array[int[:], :, int] -> 2d array
+                - base_period: 2000
+                - indexed: MIG[gender * 1, :, period - base_period]
+                # make sure we can further subset it
+                - i0: indexed[0]
+                - assertEqual(i0.shape, (121,))
+
                 # use the resulting vector in an expression
 
                 # using a temporary variable
@@ -2986,7 +2993,7 @@ simulation:
                    # misc
                    test_choice,
                    show_weight,
-#                   test_array,
+                   test_array,
                    test_default_value,
                    test_show,
                    test_load,
