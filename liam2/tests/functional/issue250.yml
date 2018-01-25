@@ -1,0 +1,33 @@
+globals:
+    TEST:
+        path: al_p_one_dim.csv
+        type: float
+
+entities:
+    person:
+        processes:
+            create:
+                - new('person', number=10)
+
+            test:
+                - array_temp: TEST + 1
+                - remove(id == 0)
+                - assertEqual(count(), 9)
+
+simulation:
+    init:
+        - person: [create]
+    processes:
+        - person: [test]
+
+    input:
+        method: void
+        file: none
+
+    output:
+        path: output
+
+    logging:
+        level: processes
+    start_period: 2002
+    periods: 2

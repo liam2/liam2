@@ -99,7 +99,13 @@ class RemoveIndividuals(FunctionExpr):
         entity.array.keep(not_removed)
         temp_variables = entity.temp_variables
         for name, temp_value in temp_variables.items():
-            if isinstance(temp_value, np.ndarray) and temp_value.shape:
+            # This is brittle but there is nothing I can do about it now. Ideally, we should disallow
+            # storing expressions which do not result in a scalar or per-individual value
+            # (eg expressions using global arrays) in entity.temporary_variables
+            # the problem is that users currently do not have any other choice in this regard.
+            # globals are not writable/there are no globals.temporary variables nor global processes nor global macros
+            # see issue #250.
+            if isinstance(temp_value, np.ndarray) and temp_value.ndim == 1 and len(temp_value) == len_before:
                 temp_variables[name] = temp_value[not_removed]
 
         # update id_to_rownum
@@ -166,7 +172,7 @@ class Assert(FunctionExpr):
 
 
 class AssertTrue(Assert):
-    def eval_assertion(self, context, value):
+    def eval_assertion(self, context, value, msg=None):
         if not value:
             return str(self.args[0]) + " is not True"
 
@@ -180,7 +186,7 @@ class AssertFalse(Assert):
 class ComparisonAssert(Assert):
     inv_op = None
 
-    def eval_assertion(self, context, v1, v2):
+    def eval_assertion(self, context, v1, v2, msg=None):
         result = self.compare(v1, v2)
         if isinstance(result, tuple):
             result, details = result
@@ -188,8 +194,11 @@ class ComparisonAssert(Assert):
             details = ''
         if not result:
             op = self.inv_op
-            return "%s %s %s (%s %s %s)%s" % (self.args[0], op, self.args[1],
-                                              v1, op, v2, details)
+            if isinstance(msg, tuple):
+                msg = ' '.join(str(v) for v in msg)
+            msg = ': {}'.format(msg) if msg is not None else ''
+            return "%s %s %s (%s %s %s)%s%s" % (self.args[0], op, self.args[1],
+                                                v1, op, v2, details, msg)
 
     def compare(self, v1, v2):
         raise NotImplementedError()

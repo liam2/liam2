@@ -115,3 +115,6 @@ Fixes
 * fixed some random number generator functions being referenced twice in the documentation index.
 
 * fix aligment when leave or take filters are set as python bool (and not numpy arrays)
+
+* fixed remove() failing if an array temporary variable is defined in the same function (closes
+  :issue:`222`).
