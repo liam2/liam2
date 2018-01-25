@@ -89,6 +89,36 @@ class Field(object):
         self.input = input
         self.output = output
 
+    @classmethod
+    def from_def(cls, name, fielddef):
+        initialdata = True
+        output = True
+        default_value = None
+
+        if isinstance(fielddef, Field):
+            return fielddef
+        elif isinstance(fielddef, (dict, str)):
+            if isinstance(fielddef, dict):
+                fielddef = fielddef.copy()
+                strtype = fielddef.pop('type')
+                initialdata = fielddef.pop('initialdata', True)
+                output = fielddef.pop('output', True)
+                default_value = fielddef.pop('default', default_value_by_strtype[strtype])
+                if fielddef:
+                    invalid_keywords = sorted(fielddef.keys())
+                    raise SyntaxError('invalid keyword(s) found in field definition: %s'
+                                      % ', '.join(invalid_keywords))
+            elif isinstance(fielddef, str):
+                strtype = fielddef
+                default_value = default_value_by_strtype[strtype]
+            else:
+                raise Exception('invalid field definition')
+            dtype = field_str_to_type(strtype, "field '%s'" % name)
+        else:
+            assert isinstance(fielddef, type)
+            dtype = normalize_type(fielddef)
+        return cls(name, dtype, input=initialdata, output=output, default_value=default_value)
+
 
 class FieldCollection(list):
     def __init__(self, iterable=None):
@@ -150,31 +180,7 @@ class Entity(object):
             array_period = None
 
         if not isinstance(fields, FieldCollection):
-            def fdef2field(name, fielddef):
-                initialdata = True
-                output = True
-                default_value = None
-
-                if isinstance(fielddef, Field):
-                    return fielddef
-                elif isinstance(fielddef, (dict, str)):
-                    if isinstance(fielddef, dict):
-                        strtype = fielddef['type']
-                        initialdata = fielddef.get('initialdata', True)
-                        output = fielddef.get('output', True)
-                        default_value = fielddef.get('default', default_value_by_strtype[strtype])
-                    elif isinstance(fielddef, str):
-                        strtype = fielddef
-                        default_value = default_value_by_strtype[strtype]
-                    else:
-                        raise Exception('invalid field definition')
-                    dtype = field_str_to_type(strtype, "field '%s'" % name)
-                else:
-                    assert isinstance(fielddef, type)
-                    dtype = normalize_type(fielddef)
-                return Field(name, dtype, initialdata, output, default_value)
-
-            fields = FieldCollection(fdef2field(name, fdef)
+            fields = FieldCollection(Field.from_def(name, fdef)
                                      for name, fdef in fields)
 
         duplicate_names = [name
