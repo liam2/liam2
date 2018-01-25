@@ -34,14 +34,7 @@
   thus are discarded when the function terminates. This can be used as a way to transfer groupby arrays from one
   entity to the other, which is otherwise not possible at the moment.
 
-* chart functions gained *xmin*, *xmax*, *ymin*, *ymax* optional arguments to provide manual bounds for axes.
-  By default, they are automatically inferred from the data as before (closes :issue:`209`).
-
-* implemented totals argument to groupby to specify whether or not totals should be computed. Defaults to True like
-  before.
-
-* implemented experimental align(link=) to use proportions in combination with the Chenard algorithm. It needs more
-  testing though (closes :issue:`216`).
+* implemented align(link=) to use proportions in combination with the Chenard algorithm (closes :issue:`216`).
 
 * implemented a way of declaring global constants. These constants should be explicitly typed. Partially closes
   :issue:`203`): ::
@@ -59,10 +52,14 @@
           value: 42
           type: int
 
-* implemented access to the error function (erf) function (if the scipy package is installed, which is not the case in
-  the Windows bundle)
+* chart functions gained *xmin*, *xmax*, *ymin*, *ymax* optional arguments to provide manual bounds for axes.
+  By default, they are automatically inferred from the data as before (closes :issue:`209`).
 
-* implemented assertRaises to check for expected errors.
+* implemented totals argument to groupby to specify whether or not totals should be computed. Defaults to True like
+  before.
+
+* implemented access to the error function (erf) function (if the scipy package is installed, which is NOT the case in
+  the Windows bundle)
 
 * added support for a new "msg" argument to all assertion functions. It specifies a custom message to append to the
   normal message displayed when the assertion fails. This is most useful when the condition of the assertion is complex.
@@ -83,6 +80,8 @@
 
     - assertTrue(all(age < 150), msg=("we have abnormally old persons", dump(filter=age >= 150))
     - assertTrue(all(total_income >= 0), breakpoint())
+
+* implemented assertRaises to check for expected errors.
 
 
 Miscellaneous improvements
