@@ -478,31 +478,24 @@ Please use this instead:
                              "should rather use functions.")
         elif isinstance(v, (basestring, bool, int, float)):
             if k in self.fields.names:
-                msg = """defining a process outside of a function is
-            deprecated because it is ambiguous. You should:
-             * wrap the '{name}: {expr}' assignment inside a function like this:
-                    compute_{name}:  # you can name it any way you like but simply \
-            '{name}' is not recommended !
-                        - {name}: {expr}
-             * update the simulation.processes list to use 'compute_{name}' (the function \
-            name) instead of '{name}'.
-            """
+                msg = """defining a process outside of a function is deprecated because it is ambiguous. You should:
+ * wrap the '{name}: {expr}' assignment inside a function like this:
+        compute_{name}:  # you can name it any way you like but simply '{name}' is not recommended !
+            - {name}: {expr}
+ * update the simulation.processes list to use 'compute_{name}' (the function name) instead of '{name}'.
+"""
             else:
-                msg = """defining a process outside of a function is \
-            deprecated because it is ambiguous.
-            1) If '{name}: {expr}' is an assignment ('{name}' stores the result of \
-            '{expr}'), you should:
-             * wrap the assignment inside a function, for example, like this:
-                    compute_{name}:  # you can name it any way you like but simply \
-            '{name}' is not recommended !
-                        - {name}: {expr}
-             * update the simulation.processes list to use 'compute_{name}' (the function \
-            name) instead of '{name}'.
-             * add '{name}' in the entities fields with 'output: False'
-            2) otherwise if '{expr}' is an expression which does not return any value, you \
-            can simply transform it into a function, like this:
-                    {name}:
-                        - {expr}
+                msg = """defining a process outside of a function is deprecated because it is ambiguous.
+1) If '{name}: {expr}' is an assignment ('{name}' stores the result of '{expr}'), you should:
+ * wrap the assignment inside a function, for example, like this:
+        compute_{name}:  # you can name it any way you like but simply '{name}' is not recommended !
+            - {name}: {expr}
+ * update the simulation.processes list to use 'compute_{name}' (the function name) instead of '{name}'.
+ * add '{name}' in the entities fields with 'output: False'
+2) otherwise if '{expr}' is an expression which does not return any value, you can simply transform it into a function,
+   like this:
+        {name}:
+            - {expr}
             """
             warnings.warn(msg.format(name=k, expr=v),
                           UserDeprecationWarning)
