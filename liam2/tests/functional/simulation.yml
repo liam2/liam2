@@ -99,6 +99,12 @@ entities:
                 - weight: randint(2, 32)
 
             expand:
+                # note that the while loop solution (for example in create_distrib.yml) does not work in this case
+                # because the weight is per household and not per person, thus we have to interleave expand on household
+                # and expand on person. Otherwise clone_id is overwritten by the second clone iteration and we can no
+                # longer know all household clones. We could expand persons using hh.weight in a loop, then expand hh
+                # in a loop to get correct proportions of both but then I don't know how to link cloned persons to their
+                # cloned hh instead of the original hh.
                 - last_non_clone_id: max(id)
                 - toclone: weight > 1
                 - clone_id: clone(toclone)
