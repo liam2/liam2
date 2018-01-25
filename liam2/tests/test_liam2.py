@@ -14,8 +14,7 @@ from liam2.simulation import Simulation
 from liam2.importer import csv2h5
 
 use_travis = os.environ.get('USE_TRAVIS', None) == 'true'
-
-test_root = os.path.dirname(__file__)
+test_root = os.path.abspath(os.path.dirname(__file__))
 
 
 def simulate(test_file):
