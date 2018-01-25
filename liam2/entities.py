@@ -300,7 +300,7 @@ class Entity(object):
 
             # names of all entity variables (temporary or not) which are set
             # globally
-            all_predictors = set(self.collect_predictors(processes))
+            all_entity_variables = set(self.collect_predictors(processes))
 
             field_names = set(self.fields.names)
 
@@ -316,10 +316,10 @@ class Entity(object):
                              for name, type_ in self.fields.name_types
                              if name in field_names & process_names)
             if config.debug:
-                print("hybrids (global temporary & method):", all_predictors - field_names)
+                print("hybrids (global temporary & method):", all_entity_variables - field_names)
             # global temporaries (they are all callable).
             variables.update((name, VariableMethodHybrid(self, name))
-                             for name in all_predictors - field_names)
+                             for name in all_entity_variables - field_names)
             variables.update(self.links)
             self._variables = variables
         return self._variables
