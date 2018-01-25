@@ -1007,8 +1007,11 @@ def invert_dict(d):
 # validate functions
 # ------------------
 
-def validate_keys(d, required=(), optional=(), context='',
-                  extra_allowed=False):
+def typename(value):
+    return type(value).__name__
+
+
+def validate_dict_keys(d, required=(), optional=(), context='', extra_allowed=False):
     required_keys = set(required)
     optional_keys = set(optional)
     used_keys = set(d.keys())
@@ -1036,24 +1039,51 @@ def validate_keys(d, required=(), optional=(), context='',
 def validate_list(l, target, context):
     assert len(target) == 1
     target_element = target[0]
+    if not isinstance(l, list):
+        raise Exception("invalid structure for '%s': it should be a list and it is a %s" % (context, typename(l)))
     for v in l:
         validate_value(v, target_element, context)
 
 
 def validate_dict(d, target, context=''):
+    """
+    Examples
+    --------
+
+    >>> validate_dict({'testkey': 'good'}, {'testkey': str})
+    >>> validate_dict({'testkey': 'good'}, {'testkey': 'good'})
+    >>> validate_dict({'testkey': 'bad'}, {'testkey': 'good'})
+    Traceback (most recent call last):
+    ...
+    Exception: invalid structure for 'testkey': it should be 'good' but it is 'bad'
+    >>> target1 = {'#reqkey': str, 'optkey': str}
+    >>> validate_dict({'reqkey': 'good'}, target1)
+    >>> validate_dict({'reqkey': 'good', 'optkey': 'good'}, target1)
+    >>> validate_dict({'reqkey': 'good', 'extrakey': 'good'}, target1)
+    Traceback (most recent call last):
+    ...
+    SyntaxError: invalid keyword(s): 'extrakey'
+    >>> target2 = {'#reqkey': str, 'optkey': 'good', '*': str}
+    >>> validate_dict({'reqkey': 'good'}, target2)
+    >>> validate_dict({'reqkey': 'good', 'optkey': 'good'}, target2)
+    >>> validate_dict({'reqkey': 'good', 'optkey': 'bad'}, target2)
+    Traceback (most recent call last):
+    ...
+    Exception: invalid structure for 'optkey': it should be 'good' but it is 'bad'
+    >>> validate_dict({'reqkey': 'good', 'extrakey': 'good'}, target2)
+    """
     assert isinstance(target, dict)
     if not isinstance(d, dict):
-        raise Exception("invalid structure for '%s': it should be a map and "
-                        "it is a %s" % (context, type(d).__name__))
-    targets = target.keys()
-    required = set(k[1:] for k in targets if k.startswith('#'))
-    optional = set(k for k in targets if not k.startswith('#'))
+        raise Exception("invalid structure for '%s': it should be a map and it is a %s" % (context, typename(d)))
+    target_keys = target.keys()
+    required = set(k[1:] for k in target_keys if k.startswith('#'))
+    optional = set(k for k in target_keys if not k.startswith('#'))
     anykey = '*' in optional
     if anykey:
         optional.remove('*')
     # in case we have a * in there, we should only make sure that required keys
     # are present, otherwise we have to also check if provided keys are valid
-    validate_keys(d, required, optional, context, extra_allowed=anykey)
+    validate_dict_keys(d, required, optional, context, extra_allowed=anykey)
     for k, v in d.iteritems():
         if k in required:
             section_def = target['#' + k]
@@ -1065,30 +1095,126 @@ def validate_dict(d, target, context=''):
             # this shouldn't happen unless target is an empty dictionary
             assert not target
             raise KeyError('empty section def at: %s' % context)
-        if section_def is None or isinstance(section_def, type):
-            target_type = section_def
-        else:
-            target_type = type(section_def)
-
-        if target_type is not None:
-            subcontext = context + ' -> ' + k if context else k
-            if isinstance(v, target_type):
-                validate_value(v, section_def, subcontext)
-            else:
-                raise Exception("invalid structure for '%s'" % subcontext)
+        subcontext = context + ' -> ' + k if context else k
+        validate_value(v, section_def, subcontext)
 
 
-def validate_value(v, target, context):
+class Or(object):
+    def __init__(self, *options):
+        self.options = options
+
+    @property
+    def valid_classes(self):
+        return tuple(option if isinstance(option, type) else option.__class__
+                     for option in self.options)
+
+
+def validate_value(v, target, context=''):
+    """
+    Parameters
+    ----------
+    v : object
+        value to validate
+    target : None, bool, int, float, str, list, dict or Or
+        target to validate against
+    context : str, optional
+        string describing where we are in the whole structure to validate. For example, if we are validating one
+        value of a dict, this is the name of the key. If we are in a nested structure, this is the path to the key.
+        This is only used as reporting to users so the format is not too strict. Defaults to ''.
+
+    Examples
+    --------
+    Tests for scalars
+
+    >>> validate_value("good", str, 'test')
+    >>> validate_value("good", "good", 'test')
+    >>> validate_value("bad", "good", 'test')
+    Traceback (most recent call last):
+    ...
+    Exception: invalid structure for 'test': it should be 'good' but it is 'bad'
+    >>> validate_value(1, int, 'test')
+    >>> validate_value(1, float, 'test')
+    Traceback (most recent call last):
+    ...
+    Exception: invalid structure for 'test': it should be a float and it is a int
+    >>> validate_value(True, bool, 'test')
+    >>> validate_value(True, int, 'test')  # yes, this works because isinstance(bool_instance, int) is True
+    >>> validate_value(1, bool, 'test')    # ... but the opposite is not true
+    Traceback (most recent call last):
+    ...
+    Exception: invalid structure for 'test': it should be a bool and it is a int
+
+    Tests for lists
+
+    >>> validate_value([1, 2, 3], [int])
+    >>> validate_value([], [int])
+    >>> validate_value(1, [int])
+    Traceback (most recent call last):
+    ...
+    Exception: invalid structure for '': it should be a list and it is a int
+    >>> validate_value(["abc"], [int])
+    Traceback (most recent call last):
+    ...
+    Exception: invalid structure for '': it should be a int and it is a str
+
+    Simple tests for dict (see validate_dict for more tests)
+
+    >>> validate_value({'testkey': 'good'}, {'testkey': str})
+    >>> validate_value({'testkey': 'good'}, {'testkey': 'good'})
+    >>> validate_value({'testkey': 'bad'}, {'testkey': 'good'})
+    Traceback (most recent call last):
+    ...
+    Exception: invalid structure for 'testkey': it should be 'good' but it is 'bad'
+
+    Tests for Or
+
+    >>> validate_value("good1", Or("good1", "good2"), 'test')
+    >>> validate_value("good3", Or("good1", "good2"), 'test')
+    Traceback (most recent call last):
+    ...
+    Exception: invalid structure for 'test': it should be one of 'good1', 'good2' but it is 'good3'
+    >>> validate_value("good", Or(str, int), 'test')
+    >>> validate_value("good", Or("good", int), 'test')
+    >>> validate_value(1, Or(str, int), 'test')
+    >>> validate_value(1, Or(str, 1), 'test')
+    """
     if target is None:
-        # None is meant as "any" object
+        # None is meant as "any" object/value not validated
         return
     if isinstance(target, dict):
         validate_dict(v, target, context)
     elif isinstance(target, list):
         validate_list(v, target, context)
-    else:
+    elif isinstance(target, Or):
+        def optiontype(option):
+            return option if isinstance(option, type) else type(option)
+
+        correct_type_options = [option for option in target.options if isinstance(v, optiontype(option))]
+        if not correct_type_options:
+            valid_class_names = [cls.__name__ for cls in target.valid_classes]
+            raise Exception("invalid structure for '%s': it should be one of %s but it is a(n) %s"
+                            % (context, ', '.join(valid_class_names), typename(v)))
+        elif len(correct_type_options) == 1:
+            validate_value(v, correct_type_options[0], context)
+        else:
+            for potential_target in correct_type_options:
+                try:
+                    validate_value(v, potential_target, context)
+                    return
+                except Exception:
+                    pass
+            raise Exception("invalid structure for '%s': it should be one of %s but it is %r"
+                            % (context, ', '.join(repr(o) for o in target.options), v))
+    elif isinstance(target, type):
         if not isinstance(v, target):
-            raise Exception("invalid structure for '%s'" % context)
+            raise Exception("invalid structure for '%s': it should be a %s and it is a %s"
+                            % (context, target.__name__, typename(v)))
+    else:
+        # target is an instance of a type, in that case, it must be equal to that instance
+        if v != target:
+            raise Exception("invalid structure for '%s': it should be %r but it is %r"
+                            % (context, target, v))
+
 
 # fields handling
 # ---------------
