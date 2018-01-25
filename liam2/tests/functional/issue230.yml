@@ -1,0 +1,13 @@
+import: test_issue.yml.template
+
+entities:
+    person:
+        fields:
+            - age: {type: int, output: False}
+
+        processes:
+            test_issue:
+                - age: age + 1
+                - d: dump()
+                - header: d.data[0]
+                - assertEqual(header, ['period', 'id', 'age'])

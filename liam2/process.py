@@ -64,7 +64,7 @@ class Assignment(Process):
     def __init__(self, name, entity, expr):
         super(Assignment, self).__init__(name, entity)
         self.expr = expr
-        self.temporary = name not in entity.fields.in_output.names
+        self.temporary = name not in entity.fields.names
 
     def run(self, context):
         value = expr_eval(self.expr, context)

@@ -94,6 +94,10 @@ Fixes
 * fixed running the bundled LIAM2 when another Python distribution is installed in the PATH of the system (closes
   :issue:`222`).
 
+* fixed output: False fields acting like temporary globals (i.e. being wiped at the end of each period) instead of like
+  a field (closes :issue:`230`). This had the indirect consequence of having both a field and a temporary
+  variable with the same name, which confused dump().
+
 * fixed importing models using relative paths in some cases. Also makes the display of the imported model path nicer
   in that case (:pr:`200`). Thanks to Mahdi Ben Jelloul.
 
