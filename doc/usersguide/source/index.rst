@@ -4,7 +4,7 @@ LIAM2 User Guide
 .. toctree::
    :maxdepth: 3
    :numbered:
-   
+
    intro
    environment
    model
@@ -26,7 +26,7 @@ Appendix
    :maxdepth: 1
 
    knownissues
-   architecture 
+   architecture
    technicalchoices
    changes
    credits

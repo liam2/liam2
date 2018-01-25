@@ -1,0 +1,75 @@
+globals:
+    DISTRIB:
+        path: distrib.csv
+        type: int
+
+entities:
+    person:
+        fields:
+            # period and id are implicit
+            - age:          int
+            - gender:       bool
+            - partner_id:   int     # identification number of the partner
+            - weight:       int
+
+        links:
+            partner: {type: many2one, target: person, field: partner_id}
+
+        processes:
+            create:
+                # show what we are trying to achieve
+                - show("TARGETS")
+                - show(DISTRIB)
+
+                # create one individual per possible combination
+                - num: DISTRIB.size
+                - new('person', number=num)
+                - age: trunc(id / 2)
+                - gender: (id % 2) == 1
+                # verify we have one individual per category (age * gender)
+                # - show(groupby(age, gender))
+
+                # set weight
+                - weight: DISTRIB[age, gender * 1]
+
+                # verify that num_individuals * sum(weight) == DISTRIB
+                - assertEqual(groupby(age, gender, expr=sum(weight)), DISTRIB)
+
+                # remove individuals which should not exist
+                - remove(weight == 0)
+
+            expand:
+                # compute target population
+                - target_pop: sum(weight)
+
+                # expand weighted individuals to real individuals
+                - while any(weight > 1):
+                    - last_non_clone_id: max(id)
+                    - clone_id: clone(weight > 1)
+                    - is_clone: id > last_non_clone_id
+                    - weight: if(weight > 1,
+                                 if(is_clone,
+                                    trunc(weight / 2),
+                                    trunc((weight + 1) / 2)),
+                                 1)
+
+                    # if you have links in your non-expanded data, they MUST be updated here
+                    # (in this example, it is useless since all individuals have partner_id == -1)
+                    - partner_id: if(is_clone, partner.clone_id, partner_id)
+
+                # verify that we actually reached our target
+                - assertEqual(count(), target_pop)
+
+simulation:
+    processes:
+        - person: [create, expand]
+
+    input:
+        method: void
+        file: none
+
+    output:
+        file: generated.h5
+
+    start_period: 2017
+    periods: 1
