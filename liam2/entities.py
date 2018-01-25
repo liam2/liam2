@@ -331,7 +331,7 @@ class Entity(object):
             pstrings = self.process_strings
             items = pstrings.iteritems() if pstrings is not None else ()
             # variable-method hybrids are handled by the self.variable property
-            stored_fields = set(self.fields.in_output.names)
+            stored_fields = set(self.fields.names)
             methodnames = [k for k, v in items
                            if self.ismethod(v) and k not in stored_fields]
             # factorial(n) -> factorial
