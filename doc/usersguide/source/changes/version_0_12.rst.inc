@@ -130,3 +130,6 @@ Fixes
 * fixed fields declared as initialdata: False to load data from the input file anyway if a field with
   the same name existed in the corresponding table (closes :issue:`227`). Additionally, those fields used the
   type from the input table instead of the one declared (if different).
+
+* fixed csv(dump()) rounding float values at the 12th decimal instead of using all available precision when the missing
+  argument is used (closes :issue:`252`).

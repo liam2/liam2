@@ -779,8 +779,6 @@ class PrettyTable(object):
 
     def __iter__(self):
         if self.missing is not None:
-            # FIXME: this means we pre-convert every type to str instead of relying on the consumer doing it,
-            # which on python2 means it truncates after the 12 decimal ! :(
             return iter(self.convert_nans())
         else:
             return iter(self.data)
@@ -791,7 +789,7 @@ class PrettyTable(object):
     def convert_nans(self):
         missing = self.missing
         for row in self.data:
-            formatted = [str(value) if value == value else missing
+            formatted = [missing if value != value else value
                          for value in row]
             yield formatted
 
