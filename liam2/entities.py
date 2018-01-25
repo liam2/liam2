@@ -281,11 +281,21 @@ class Entity(object):
         return Entity(table.name, get_fields(table), links={}, macro_strings={},
                       process_strings={})
 
+    # TODO: in_process_group argument will become useless if we drop support for detecting processes defined
+    # outside functions
     @staticmethod
-    def collect_predictors(items):
+    def is_expr(k, v, in_process_group=False):
+        if in_process_group:
+            # I prefer listing bool explicitly even if not necessary because isinstance(True, int) is True
+            iswhile = k is not None and k.startswith('while ')
+            return not iswhile and isinstance(v, (basestring, bool, int, float, list, dict))
+        else:
+            return isinstance(v, (basestring, bool, int, float))
+
+    @staticmethod
+    def collect_predictors(items, in_process_group=False):
         # this excludes lists (functions) and dict (while, ...)
-        return [k for k, v in items
-                if k is not None and isinstance(v, (basestring, int, float))]
+        return [k for k, v in items if k is not None and Entity.is_expr(k, v, in_process_group)]
 
     @property
     def variables(self):
@@ -365,7 +375,8 @@ class Entity(object):
         return symbols
 
     def parse_expr(self, k, v, context):
-        if isinstance(v, (bool, int, float)):
+        # I prefer listing bool explicitly even if not necessary because isinstance(True, int) is True
+        if isinstance(v, (bool, int, float, list, dict)):
             return Assignment(k, self, v)
         elif isinstance(v, basestring):
             return Assignment(k, self, parse(v, context))
@@ -401,7 +412,7 @@ class Entity(object):
             raise ValueError("no processes in '%s'" % k)
         group_expressions = [elem.items()[0] if isinstance(elem, dict) else (None, elem)
                              for elem in items]
-        group_predictors = self.collect_predictors(group_expressions)
+        group_predictors = self.collect_predictors(group_expressions, in_process_group=True)
         group_context = self.get_group_context(context, group_predictors)
         sub_processes = [(k, self.parse_process(k, v, group_context))
                          for k, v in group_expressions]
@@ -428,8 +439,7 @@ class Entity(object):
             # with the code in parse_process_group
             group_expressions = [elem.items()[0] if isinstance(elem, dict) else (None, elem)
                                  for elem in code_def]
-            group_predictors = \
-                self.collect_predictors(group_expressions)
+            group_predictors = self.collect_predictors(group_expressions, in_process_group=True)
             method_context = self.get_group_context(method_context, group_predictors)
             result_expr = parse(result_def, method_context)
             assert result_expr is None or isinstance(result_expr, Expr)
@@ -545,7 +555,7 @@ Please use this instead:
             return Return(None, self, result_expr)
         elif k is None and v is None:
             raise ValueError("empty process found ('-')")
-        elif isinstance(v, (basestring, bool, int, float)):
+        elif self.is_expr(k, v, in_process_group=True):
             return self.parse_expr(k, v, context)
         else:
             raise Exception("unknown expression type for %s: %s (%s)" % (k, v, type(v)))
