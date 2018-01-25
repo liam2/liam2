@@ -617,10 +617,11 @@ Please use this instead:
     def build_period_array(self, start_period):
         self.array, self.id_to_rownum = \
             build_period_array(self.input_table,
-                               list(self.fields.name_types),
+                               list(self.fields.in_input.names),
+                               self.fields.name_types,
                                self.input_rows,
                                self.input_index, start_period,
-                               default_values = self.fields.default_values)
+                               default_values=self.fields.default_values)
 
         assert isinstance(self.array, ColumnArray)
         self.array_period = start_period

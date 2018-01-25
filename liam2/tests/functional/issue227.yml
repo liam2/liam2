@@ -1,0 +1,24 @@
+import: test_issue.yml.template
+
+entities:
+    person:
+        fields:
+            # a field present in dataset and which is int
+            - age:    {type: float, initialdata: False}
+
+        processes:
+            test_issue:
+                - assertTrue(all(age != age))
+                - assertEqual(min(id), 0)
+                - num_persons: count()
+                - new('person', id == 0)
+                - assertEqual(count(), num_persons + 1)
+
+simulation:
+    init: []
+
+    input:
+        method: h5
+        file: small.h5
+
+    start_period: 2002

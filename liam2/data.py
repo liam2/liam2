@@ -243,22 +243,24 @@ class ColumnArray(object):
             numlines -= buffer_rows
         return ca
 
-    def add_and_drop_fields(self, output_fields, default_values=None):
-        """modify inplace"""
+    def add_and_drop_fields(self, names_to_keep, output_fields, default_values):
+        """modify inplace.
+        Only passing output_fields is not enough because one may want to reset a field data (see issue 227).
+        """
 
         output_dtype = np.dtype(output_fields)
         output_names = set(output_dtype.names)
         input_names = set(self.dtype.names)
+        # drop extra fields
+        for name in input_names - set(names_to_keep):
+            del self[name]
+
+        # add missing fields
+        length = len(self)
         if default_values is None:
             default_values = {}
-        length = len(self)
-        # add missing fields
-        for name in output_names - input_names:
-            self[name] = get_default_vector(length, output_dtype[name],
-                                            default_values.get(name))
-        # delete extra fields
-        for name in input_names - output_names:
-            del self[name]
+        for name in output_names - set(self.dtype.names):
+            self[name] = get_default_vector(length, output_dtype[name], default_values[name])
 
 
 def get_fields(array):
@@ -535,8 +537,8 @@ def copy_table(input_table, output_node, output_dtype=None,
 # this is a special case though because:
 # 1) all arrays have the same columns
 # 2) we have id_to_rownum already computed for each array
-def build_period_array(input_table, output_fields, input_rows,
-                       input_index, start_period, default_values=None):
+def build_period_array(input_table, fields_to_keep, output_fields, input_rows,
+                       input_index, start_period, default_values):
     periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
     if not periods_before:
         id_to_rownum = np.empty(0, dtype=int)
@@ -562,7 +564,7 @@ def build_period_array(input_table, output_fields, input_rows,
     if np.array_equal(present_in_period, is_present):
         start, stop = input_rows[target_period]
         input_array = ColumnArray.from_table(input_table, start, stop)
-        input_array.add_and_drop_fields(output_fields, default_values)
+        input_array.add_and_drop_fields(fields_to_keep, output_fields, default_values)
         return input_array, period_id_to_rownum
 
     # building id_to_rownum for the target period
@@ -607,7 +609,7 @@ def build_period_array(input_table, output_fields, input_rows,
     # reading data
     output_array = ColumnArray.from_table_coords(input_table,
                                                  output_array_source_rows)
-    output_array.add_and_drop_fields(output_fields, default_values)
+    output_array.add_and_drop_fields(fields_to_keep, output_fields, default_values)
     return output_array, id_to_rownum
 
 
@@ -910,12 +912,11 @@ class H5Sink(DataSink):
                     else:
                         stoprow = 0
 
-                    default_values = entity.fields.default_values
                     output_table = copy_table(table.table, output_entities,
                                               entity.fields.in_output.dtype,
                                               stop=stoprow,
                                               show_progress=True,
-                                              default_values=default_values)
+                                              default_values=entity.fields.default_values)
                     output_index = table.id2rownum_per_period.copy()
                 else:
                     output_rows = {}

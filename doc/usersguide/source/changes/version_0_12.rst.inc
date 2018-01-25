@@ -118,7 +118,11 @@ Fixes
 
 * fixed some random number generator functions being referenced twice in the documentation index.
 
-* fix aligment when leave or take filters are set as python bool (and not numpy arrays)
+* fixed alignment when take or leave filters are a single constant for all individuals (set as a Python bool).
 
 * fixed remove() failing if an array temporary variable is defined in the same function (closes
   :issue:`222`).
+
+* fixed fields declared as initialdata: False to load data from the input file anyway if a field with
+  the same name existed in the corresponding table (closes :issue:`227`). Additionally, those fields used the
+  type from the input table instead of the one declared (if different).
