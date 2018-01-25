@@ -865,9 +865,8 @@ class FunctionExpr(EvaluableExpression, AbstractFunction):
             # check whether extra kwargs (from **kwargs) should be evaluated
             if argspec.varkw is not None and argspec.varkw in no_eval:
                 allkwnames = set(name for name, _ in kwargs)
-                # "normal" args passed as kwargs have been transferred to
-                # positional args, so all remaining kwargs are either kwonlyargs
-                # or varkwargs
+                # "normal" args passed as kwargs have been transferred to positional args in AbstractFunction.__init__,
+                # so all remaining kwargs are either kwonlyargs or varkwargs
                 varkwnames = allkwnames - set(argspec.kwonlyargs)
                 no_eval |= varkwnames
 
@@ -880,6 +879,7 @@ class FunctionExpr(EvaluableExpression, AbstractFunction):
 
         return args, dict(kwargs)
 
+    # TODO: use abc.ABCMeta and abc.abstractmethod instead
     def compute(self, context, *args, **kwargs):
         raise NotImplementedError()
 
