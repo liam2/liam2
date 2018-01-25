@@ -36,7 +36,6 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
 
     still_needed_total = need.sum()
 
-    col_range = list(range(len(fcols_labels)))
     aligned = np.zeros(len(hh), dtype=bool)
     sorted_indices = scores.argsort()[::-1]
     for sorted_idx in sorted_indices:
@@ -51,12 +50,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
         if num_persons_in_hh == 0:
             continue
 
-        persons_in_hh = tuple(np.empty(num_persons_in_hh, dtype=int)
-                              for _ in col_range)
-        prange = list(range(num_persons_in_hh))
-        for hh_col, fcol_labels in zip(persons_in_hh, fcols_labels):
-            for i in prange:
-                hh_col[i] = fcol_labels[persons_in_hh_indices[i]]
+        persons_in_hh = tuple(fcol_labels[persons_in_hh_indices] for fcol_labels in fcols_labels)
 
         # Keep the highest relative need index for the family
         hh_rel_need = np.nanmax(rel_need[persons_in_hh])

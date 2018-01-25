@@ -580,7 +580,6 @@ class AlignmentAbsoluteValues(FilteredExpression):
         need = need * self._get_need_correction(groups, possible_values)
         need = self._handle_frac_need(need, frac_need)
         need = self._add_past_error(context, need, errors)
-        # need = np.asarray(need)
         need = np.asarray(need)
         aligned, error = \
             align_link_nd(score, need, num_candidates, hh, fcols_labels,
