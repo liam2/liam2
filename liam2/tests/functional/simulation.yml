@@ -2802,6 +2802,29 @@ entities:
                 - assertTrue(49.9 < result10 and result10 < 50.1) # should be very close to 50%
                 - assertTrue(29.9 < result15 and result15 < 30.1) # should be very close to 30%
 
+#            test_merge:
+#                # no fields argument => use all fields in file
+#                # XXX: do we accept merging "into" past data or only in the current period?
+#                - merge(load('param/person.csv'))
+#                # fields argument present, only load those.
+#                # XXX: the big question is do we want period & id to be implicit
+#                # * implicit is annoying if you have data without period that you want to load in the current period
+#                # * implicit breaks if I use the same function to load global tables
+#                #   (and without a special argument)
+#                # vs
+#                # * explicit would be error-prone because people would think
+#                #   it is implicit like in entity fields. The worst case, is
+#                #   that they declare only id and not period and the wrong
+#                #   period gets loaded.
+#                - table: load('param/person.csv',
+#                              fields=[('period', int), ('id', int), ('age', int)])
+#                - merge(table)
+#                # we need to be able to select what to load and what to merge (or is selecting what to load is enough?)
+#                - merge(table[2011]))
+#                # vs
+#                - merge(load('param/person.csv',
+#                             fields=[('period', int), ('id', int), ('age', int)], filter=period == 2011)
+
             test_show:
                 - show("yada yada")
 
@@ -2978,6 +3001,7 @@ simulation:
     output:
         path: output
         file: simulation.h5
+
     # does not play nicely with recursive functions (because dump wants to
     # access a local variable between the time it is purged from the local scope
     # and the time it is restored from the backup) nor with functions with
