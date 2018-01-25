@@ -398,165 +398,165 @@ class Entity(object):
                              for elem in items]
         group_predictors = self.collect_predictors(group_expressions)
         group_context = self.get_group_context(context, group_predictors)
-        sub_processes = self.parse_expressions(group_expressions, group_context)
+        sub_processes = [(k, self.parse_process(k, v, group_context))
+                         for k, v in group_expressions]
         return ProcessGroup(k, self, sub_processes, purge)
 
     # Once we can make it an error for non-function processes/statements,
     # we should probably split this method into parse_functions and
     # parse_function_body.
-    def parse_expressions(self, items, context, functions_only=False):
+    def parse_function(self, k, v, context):
+        if isinstance(v, list):
+            # v should be a list of dicts (assignments) or
+            # strings (actions)
+            if "(" in k:
+                k, args = split_signature(k)
+                argnames = argspec(args).args
+                code_def, result_def = v, None
+            else:
+                argnames, code_def, result_def = [], v, None
+            method_context = self.get_group_context(context,
+                                                    argnames)
+            code = self.parse_process_group(k + "_code", code_def,
+                                            method_context,
+                                            purge=False)
+            # TODO: use code.predictors instead (but it currently
+            # fails for some reason) or at least factor this out
+            # with the code in parse_process_group
+            group_expressions = [elem.items()[0]
+                                 if isinstance(elem, dict)
+                                 else (None, elem)
+                                 for elem in code_def]
+            group_predictors = \
+                self.collect_predictors(group_expressions)
+            method_context = self.get_group_context(
+                method_context, group_predictors)
+            result_expr = parse(result_def, method_context)
+            assert result_expr is None or \
+                   isinstance(result_expr, Expr)
+            return Function(k, self, argnames, code, result_expr)
+        elif isinstance(v, dict) and ('args' in v or 'code' in v or 'return' in v):
+            args = v.get('args', '')
+            code = v.get('code', '')
+            result = v.get('return', '')
+            oldargs = "\n      args: {}".format(args) \
+                if args else ''
+            oldcode = "\n      code:\n          - ..." \
+                if code else ''
+            newcode = "\n      - ..." if code else ''
+            oldresult = "\n      return: " + result \
+                if result else ''
+            newresult = "\n      - return " + result \
+                if result else ''
+            template = """
+This syntax for defining functions with arguments or a return value is not
+supported anymore:
+{funcname}:{oldargs}{oldcode}{oldresult}
+
+Please use this instead:
+{funcname}({newargs}):{newcode}{newresult}"""
+            msg = template.format(funcname=k, oldargs=oldargs,
+                                  oldcode=oldcode,
+                                  oldresult=oldresult,
+                                  newargs=args, newcode=newcode,
+                                  newresult=newresult)
+            raise SyntaxError(msg)
+        elif isinstance(v, dict) and 'predictor' in v:
+            raise ValueError("Using the 'predictor' keyword is "
+                             "not supported anymore. "
+                             "If you need several processes to "
+                             "write to the same variable, you "
+                             "should rather use functions.")
+        elif isinstance(v, (basestring, bool, int, float)):
+            if k in self.fields.names:
+                msg = """defining a process outside of a function is
+            deprecated because it is ambiguous. You should:
+             * wrap the '{name}: {expr}' assignment inside a function like this:
+                    compute_{name}:  # you can name it any way you like but simply \
+            '{name}' is not recommended !
+                        - {name}: {expr}
+             * update the simulation.processes list to use 'compute_{name}' (the function \
+            name) instead of '{name}'.
+            """
+            else:
+                msg = """defining a process outside of a function is \
+            deprecated because it is ambiguous.
+            1) If '{name}: {expr}' is an assignment ('{name}' stores the result of \
+            '{expr}'), you should:
+             * wrap the assignment inside a function, for example, like this:
+                    compute_{name}:  # you can name it any way you like but simply \
+            '{name}' is not recommended !
+                        - {name}: {expr}
+             * update the simulation.processes list to use 'compute_{name}' (the function \
+            name) instead of '{name}'.
+             * add '{name}' in the entities fields with 'output: False'
+            2) otherwise if '{expr}' is an expression which does not return any value, you \
+            can simply transform it into a function, like this:
+                    {name}:
+                        - {expr}
+            """
+            warnings.warn(msg.format(name=k, expr=v),
+                          UserDeprecationWarning)
+            # TODO: it would be cleaner if the process was wrapped in a function
+            return self.parse_expr(k, v, context)
+        else:
+            raise Exception("unknown expression type for %s: %s (%s)" % (k, v, type(v)))
+
+    def parse_process(self, k, v, context):
         """
         items -- a list of tuples (name, process_string)
         context -- parsing context
                    a dict of all symbols available for all entities
-        functions_only -- whether non-functions processes are allowed
         """
-        processes = []
-        for k, v in items:
-            if k == 'while':
-                if isinstance(v, dict):
-                    raise SyntaxError("""
+        if k == 'while':
+            if isinstance(v, dict):
+                raise SyntaxError("""
 This syntax for while is not supported anymore:
-  - while:
-      cond: {cond_expr}
-      code:
-          - ...
-Please use this instead:
-  - while {cond_expr}:
+- while:
+  cond: {cond_expr}
+  code:
       - ...
-""".format(cond_expr=v['cond']))
-                else:
-                    raise ValueError("while is a reserved keyword")
-            elif k is not None and k.startswith('while '):
-                if not isinstance(v, list):
-                    raise SyntaxError("while is a reserved keyword")
-                cond = parse(k[6:].strip(), context)
-                assert isinstance(cond, Expr)
-                code = self.parse_process_group("while_code", v, context,
-                                                purge=False)
-                process = While(k, self, cond, code)
-            elif k == 'return':
-                e = SyntaxError("return is a reserved keyword. To return "
-                                "from a function, use 'return expr' "
-                                "instead of 'return: expr'")
-                e.liam2context = "while parsing: return: {}".format(v)
-                raise e
-            elif k is None and isinstance(v, str) and v.startswith('return'):
-                assert len(v) == 6 or v[6] == ' '
-                if len(v) > 6:
-                    result_def = v[7:].strip()
-                else:
-                    result_def = None
-                result_expr = parse(result_def, context)
-                process = Return(None, self, result_expr)
-            else:
-                process = self.parse_expr(k, v, context)
-                if process is not None and functions_only:
-                    if k in self.fields.names:
-                        msg = """defining a process outside of a function is
-deprecated because it is ambiguous. You should:
- * wrap the '{name}: {expr}' assignment inside a function like this:
-        compute_{name}:  # you can name it any way you like but simply \
-'{name}' is not recommended !
-            - {name}: {expr}
- * update the simulation.processes list to use 'compute_{name}' (the function \
-name) instead of '{name}'.
-"""
-                    else:
-                        msg = """defining a process outside of a function is \
-deprecated because it is ambiguous.
-1) If '{name}: {expr}' is an assignment ('{name}' stores the result of \
-'{expr}'), you should:
- * wrap the assignment inside a function, for example, like this:
-        compute_{name}:  # you can name it any way you like but simply \
-'{name}' is not recommended !
-            - {name}: {expr}
- * update the simulation.processes list to use 'compute_{name}' (the function \
-name) instead of '{name}'.
- * add '{name}' in the entities fields with 'output: False'
-2) otherwise if '{expr}' is an expression which does not return any value, you \
-can simply transform it into a function, like this:
-        {name}:
-            - {expr}
-"""
-                    warnings.warn(msg.format(name=k, expr=v),
-                                  UserDeprecationWarning)
-                if process is None:
-                    if self.ismethod(v):
-                        if isinstance(v, dict):
-                            args = v.get('args', '')
-                            code = v.get('code', '')
-                            result = v.get('return', '')
-                            oldargs = "\n      args: {}".format(args) \
-                                if args else ''
-                            oldcode = "\n      code:\n          - ..." \
-                                if code else ''
-                            newcode = "\n      - ..." if code else ''
-                            oldresult = "\n      return: " + result \
-                                if result else ''
-                            newresult = "\n      - return " + result \
-                                if result else ''
-                            template = """
-This syntax for defining functions with arguments or a return value is not
-supported anymore:
-  {funcname}:{oldargs}{oldcode}{oldresult}
-
 Please use this instead:
-  {funcname}({newargs}):{newcode}{newresult}"""
-                            msg = template.format(funcname=k, oldargs=oldargs,
-                                                  oldcode=oldcode,
-                                                  oldresult=oldresult,
-                                                  newargs=args, newcode=newcode,
-                                                  newresult=newresult)
-                            raise SyntaxError(msg)
-
-                        assert isinstance(v, list)
-                        # v should be a list of dicts (assignments) or
-                        # strings (actions)
-                        if "(" in k:
-                            k, args = split_signature(k)
-                            argnames = argspec(args).args
-                            code_def, result_def = v, None
-                        else:
-                            argnames, code_def, result_def = [], v, None
-                        method_context = self.get_group_context(context,
-                                                                argnames)
-                        code = self.parse_process_group(k + "_code", code_def,
-                                                        method_context,
-                                                        purge=False)
-                        # TODO: use code.predictors instead (but it currently
-                        # fails for some reason) or at least factor this out
-                        # with the code in parse_process_group
-                        group_expressions = [elem.items()[0]
-                                             if isinstance(elem, dict)
-                                             else (None, elem)
-                                             for elem in code_def]
-                        group_predictors = \
-                            self.collect_predictors(group_expressions)
-                        method_context = self.get_group_context(
-                            method_context, group_predictors)
-                        result_expr = parse(result_def, method_context)
-                        assert result_expr is None or \
-                            isinstance(result_expr, Expr)
-                        process = Function(k, self, argnames, code, result_expr)
-                    elif isinstance(v, dict) and 'predictor' in v:
-                        raise ValueError("Using the 'predictor' keyword is "
-                                         "not supported anymore. "
-                                         "If you need several processes to "
-                                         "write to the same variable, you "
-                                         "should rather use functions.")
-                    elif k is None and v is None:
-                        raise ValueError("empty process found ('-')")
-                    else:
-                        raise Exception("unknown expression type for "
-                                        "%s: %s (%s)" % (k, v, type(v)))
-            processes.append((k, process))
-        return processes
+- while {cond_expr}:
+  - ...
+""".format(cond_expr=v['cond']))
+            else:
+                raise ValueError("while is a reserved keyword")
+        elif k is not None and k.startswith('while '):
+            if not isinstance(v, list):
+                raise SyntaxError("while is a reserved keyword")
+            cond = parse(k[6:].strip(), context)
+            assert isinstance(cond, Expr)
+            code = self.parse_process_group("while_code", v, context,
+                                            purge=False)
+            return While(k, self, cond, code)
+        elif k == 'return':
+            e = SyntaxError("return is a reserved keyword. To return "
+                            "from a function, use 'return expr' "
+                            "instead of 'return: expr'")
+            e.liam2context = "while parsing: return: {}".format(v)
+            raise e
+        elif k is None and isinstance(v, str) and v.startswith('return'):
+            assert len(v) == 6 or v[6] == ' '
+            if len(v) > 6:
+                result_def = v[7:].strip()
+            else:
+                result_def = None
+            result_expr = parse(result_def, context)
+            return Return(None, self, result_expr)
+        elif k is None and v is None:
+            raise ValueError("empty process found ('-')")
+        elif isinstance(v, (basestring, bool, int, float)):
+            return self.parse_expr(k, v, context)
+        else:
+            raise Exception("unknown expression type for %s: %s (%s)" % (k, v, type(v)))
 
     def parse_processes(self, context):
-        processes = self.parse_expressions(self.process_strings.iteritems(),
-                                           context, functions_only=True)
-        self.processes = dict(processes)
+        # TODO: when defining a process outside of a function is no longer allowed, simplify this code
+        functions = [(k, self.parse_function(k, v, context))
+                     for k, v in self.process_strings.iteritems()]
+        self.processes = {v.name if isinstance(v, Function) else k: v
+                          for k, v in functions}
         # self.ssa()
 
     # def resolve_method_calls(self):
