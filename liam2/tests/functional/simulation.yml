@@ -2747,23 +2747,23 @@ entities:
 
             test_array:
                 # - remove(id % 1000 < 999)
-                - v1: age - 1
-                - v2: age
-                - v3: age + 1
-                - v4: age + 2
-                - v5: age + 3
-                - v6: age + 4
-                - arr: array([v3, v1, v2, v5, v6, v4])
-                - arr2: sort(arr, axis=0)
-                - b1: arr2[-1]
-                - b2: arr2[-2]
-                - b3: arr2[-3]
-                - assertEqual(b1, v6)
-                - assertEqual(b2, v5)
-                - assertEqual(b3, v4)
-                # sum of 3 best
-                - s: arr2[-3:].sum(axis=0)
-                - assertEqual(s, b1 + b2 + b3)
+                - v0: age
+                - v1: age + 1
+                - v2: age + 2
+                - v3: age + 3
+                - v4: age + 4
+                - v5: age + 5
+                - arr: array([v3, v1, v2, v5, v0, v4])
+                - sorted_arr: sort(arr, axis=0)
+                - highest1: sorted_arr[-1]
+                - highest2: sorted_arr[-2]
+                - highest3: sorted_arr[-3]
+                - assertEqual(highest1, v5)
+                - assertEqual(highest2, v4)
+                - assertEqual(highest3, v3)
+                # sum of 3 highest
+                - sum_highest: sorted_arr[-3:].sum(axis=0)
+                - assertEqual(sum_highest, highest1 + highest2 + highest3)
 
             generate:
                 - new('person', number=100000,
