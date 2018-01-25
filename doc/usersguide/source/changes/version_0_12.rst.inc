@@ -41,9 +41,10 @@
   before.
 
 * implemented experimental align(link=) to use proportions in combination with the Chenard algorithm. It needs more
-  testing though.
+  testing though (closes :issue:`216`).
 
-* implemented a way of declaring global constants. These constant should be explicitely typed. (partially closes :issue:`203`): ::
+* implemented a way of declaring global constants. These constants should be explicitly typed. Partially closes
+  :issue:`203`): ::
 
   globals:
       BOOL_CONSTANT:
@@ -58,7 +59,8 @@
           value: 42
           type: int
 
-* implemented access to the error function (erf) function (scipy package is needed)
+* implemented access to the error function (erf) function (if the scipy package is installed, which is not the case in
+  the Windows bundle)
 
 * implemented assertRaises to check for expected errors.
 
@@ -123,8 +125,7 @@ Fixes
 
 * fixed alignment when take or leave filters are a single constant for all individuals (set as a Python bool).
 
-* fixed remove() failing if an array temporary variable is defined in the same function (closes
-  :issue:`222`).
+* fixed remove() failing if an array temporary variable is defined in the same function (closes :issue:`222`).
 
 * fixed fields declared as initialdata: False to load data from the input file anyway if a field with
   the same name existed in the corresponding table (closes :issue:`227`). Additionally, those fields used the
