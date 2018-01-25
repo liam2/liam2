@@ -105,6 +105,9 @@ if __name__ == '__main__':
     for test_func, test_file in chain(test_examples(), test_functional()):
         verb = 'Importing' if 'import' in test_file else 'Running'
         printnow('{} {}...'.format(verb, os.path.relpath(test_file, test_root)), end=' ')
-        run_func(test_func, test_file)
-    if any(r == "failed" for r in results):
+        results.append(run_func(test_func, test_file))
+    num_failed = sum(r == "failed" for r in results)
+    print()
+    print("ran %d tests, %d failed" % (len(results), num_failed))
+    if num_failed > 0:
         sys.exit(1)
