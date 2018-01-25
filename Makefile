@@ -29,7 +29,7 @@ test: check-syntax-errors
 	nosetests $(TESTS_DIR) --exe --stop --with-doctest
 
 test-ci: check-syntax-errors
-	nosetests $(TESTS_DIR) --exe --with-doctest
+	nosetests $(TESTS_DIR) --verbose --exe --with-doctest
 
 test-with-coverage:
 	nosetests $(TESTS_DIR) --exe --stop --with-coverage --cover-package=openfisca_france --cover-erase --cover-branches --cover-html
