@@ -83,9 +83,7 @@ Miscellaneous improvements
   (instead of only providing them in the source archive). It now includes a section concerning installation on Mac OS X.
   Closes :issue:`192`. Thanks to Paul Williamson for his help concerning installation on Macs.
 
-* the view command can be called without any file argument. This will launch the embedded ViTables without opening any
-  file. In other words, one can now use `liam2/main.exe view` (on Windows) or `python main.py view` without another
-  extra argument (closes :issue:`194`).
+* use "Read the Docs" theme for the documentation as it is nicer.
 
 * better error messages when trying to use data that is not ordered by period (display row and period) or which
   contains duplicated ids for a period (show row in addition to period and id).
@@ -97,6 +95,10 @@ Miscellaneous improvements
 * When installing LIAM2 via `python setup.py install`, a liam2 script will be created in the Python installation
   Scripts directory (which is in the system PATH in most cases), so that one can simply call:
   `liam2 run model.yml` from anywhere.
+
+* the view command can be called without any file argument. This will launch the embedded ViTables without opening any
+  file. In other words, one can now use ``liam2 view`` or ``python main.py view`` without another
+  extra argument (closes :issue:`194`).
 
 * made charts (matplotlib) work even without PyQt installed (i.e. fallback to the Tk backend).
 
