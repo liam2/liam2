@@ -1,4 +1,4 @@
-﻿New features
+New features
 ------------
 
 * implemented choice with a different probability per individual (closes :issue:`211`): ::

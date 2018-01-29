@@ -1,4 +1,6 @@
-﻿Introduction
+.. highlight:: yaml
+
+Introduction
 ############
 
 About LIAM2

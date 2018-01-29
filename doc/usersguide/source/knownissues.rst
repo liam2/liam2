@@ -1,4 +1,6 @@
-﻿.. index:: known issues
+.. highlight:: yaml
+
+.. index:: known issues
 
 Known issues
 ############

@@ -1,4 +1,6 @@
-﻿.. index:: bundle, notepad++
+.. highlight:: yaml
+
+.. index:: bundle, notepad++
 
 Environment
 ###########

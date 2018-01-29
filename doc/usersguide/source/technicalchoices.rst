@@ -1,4 +1,6 @@
-﻿.. index:: python, hdf5, yaml
+.. highlight:: yaml
+
+.. index:: python, hdf5, yaml
 
 Technical choices
 #################

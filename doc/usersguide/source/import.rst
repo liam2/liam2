@@ -1,4 +1,6 @@
-﻿.. index:: importing data
+.. highlight:: yaml
+
+.. index:: importing data
 .. _import_data:
 
 Importing data

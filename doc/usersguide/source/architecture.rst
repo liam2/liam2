@@ -1,3 +1,5 @@
+.. highlight:: yaml
+
 Code architecture
 #################
 

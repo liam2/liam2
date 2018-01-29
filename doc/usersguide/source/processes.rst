@@ -1,4 +1,5 @@
-﻿.. highlight:: yaml
+.. highlight:: yaml
+
 .. index:: processes
 
 .. _processes_label:

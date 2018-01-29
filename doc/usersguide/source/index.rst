@@ -1,3 +1,5 @@
+.. highlight:: yaml
+
 LIAM2 User Guide
 ================
 

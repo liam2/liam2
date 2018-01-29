@@ -1,4 +1,6 @@
-﻿.. index:: importing models
+.. highlight:: yaml
+
+.. index:: importing models
 .. _import_models:
 
 Importing other models

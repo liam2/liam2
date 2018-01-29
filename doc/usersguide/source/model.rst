@@ -1,4 +1,4 @@
-﻿.. highlight:: yaml
+.. highlight:: yaml
 
 Model Definition
 ################
