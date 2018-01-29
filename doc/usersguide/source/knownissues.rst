@@ -33,7 +33,8 @@ which is in fact evaluated as: ::
   - aligned_m: align(0.0, 'al_p_dead_m.csv', filter=gender and age > 10)
   - aligned_f: align(0.0, 'al_p_dead_f.csv', filter=not gender)
   - aligned: if(gender, aligned_m, aligned_f)
-  
+
+
 What is the inconsistency anyway?
 ---------------------------------
 
@@ -42,8 +43,8 @@ logit_regr(), matching() and **some** (but not all) aggregate functions.
 Specifically, it is implemented for sum and gini, but not for other
 aggregate functions (count, avg, min, max, std, median and
 percentile). This situation needs to be changed, but I am unsure in which
-way: implementing it for all aggregate functions or not contextutal filter
-for any aggregate function (or any function at all)?
+way: either implement it for all aggregate functions or disallow/ignore the
+contextual filter for all aggregate functions (or even all functions)?
 
 While this features feels natural for new, align and logit_regr, it feels 
 out of place for aggregate functions because it means we work at both
