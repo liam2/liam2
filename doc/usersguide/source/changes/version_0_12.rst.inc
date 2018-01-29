@@ -38,11 +38,11 @@ New features
 
 * implemented a way of declaring global constants (closes :issue:`203`): ::
 
-  globals:
-      MY_BOOL_CONSTANT: True
-      MY_FLOAT_CONSTANT: 3.1415
-      MY_INT_CONSTANT: 42
-      MY_STRING_CONSTANT: "hello"
+    globals:
+        MY_BOOL_CONSTANT: True
+        MY_FLOAT_CONSTANT: 3.1415
+        MY_INT_CONSTANT: 42
+        MY_STRING_CONSTANT: "hello"
 
 * chart functions gained *xmin*, *xmax*, *ymin*, *ymax* optional arguments to provide manual bounds for axes.
   By default, they are automatically inferred from the data as before (closes :issue:`209`).
@@ -50,8 +50,8 @@ New features
 * implemented totals argument to groupby to specify whether or not totals should be computed. Defaults to True like
   before.
 
-* implemented access to the error function (erf) function (if the scipy package is installed, which is NOT the case in
-  the Windows bundle)
+* implemented access to the error function (erf) function (if the scipy package is installed, which is **NOT** the case
+  in the Windows bundle). :pr:`234`.
 
 * added support for a new "msg" argument to all assertion functions. It specifies a custom message to append to the
   normal message displayed when the assertion fails. This is most useful when the condition of the assertion is complex.
@@ -68,7 +68,7 @@ New features
 
     AssertionError: all((age >= 100)) is not True
 
-  Using dump(), csv(dump()) or breakpoint() as the msg argument can be useful.
+  Using dump(), csv(dump()) or breakpoint() as the msg argument can be useful. ::
 
     - assertTrue(all(age < 150), msg=("we have abnormally old persons", dump(filter=age >= 150))
     - assertTrue(all(total_income >= 0), breakpoint())
@@ -93,8 +93,10 @@ Miscellaneous improvements
 * improved check on the sum of probabilities in sidewalk alignment (:pr:`197`). Thanks to Mahdi Ben Jelloul.
 
 * When installing LIAM2 via `python setup.py install`, a liam2 script will be created in the Python installation
-  Scripts directory (which is in the system PATH in most cases), so that one can simply call:
-  `liam2 run model.yml` from anywhere.
+  Scripts directory (which is in the system PATH in most cases), so that one can use liam2 on the command line
+  without specifying its path. For example: ::
+
+    liam2 run model.yml
 
 * the view command can be called without any file argument. This will launch the embedded ViTables without opening any
   file. In other words, one can now use ``liam2 view`` or ``python main.py view`` without another
@@ -102,7 +104,7 @@ Miscellaneous improvements
 
 * made charts (matplotlib) work even without PyQt installed (i.e. fallback to the Tk backend).
 
-* avoid evaluating assertions arguments when using `assertions: skip`. Previously, only the final test was skipped.
+* avoid evaluating assertions arguments when using ``assertions: skip``. Previously, only the final test was skipped.
 
 * misc improvements to the code, test models and the documentation, some of which done by Mahdi Ben Jelloul.
 
@@ -116,6 +118,13 @@ Fixes
 * fixed running the bundled LIAM2 when another Python distribution is installed in the PATH of the system (closes
   :issue:`222`).
 
+* fixed csv(dump()) rounding float values at the 12th decimal instead of using all available precision when the missing
+  argument is used (closes :issue:`252`).
+
+* fixed fields declared as initialdata: False to load data from the input file anyway if a field with
+  the same name existed in the corresponding table (closes :issue:`227`). Additionally, those fields used the
+  type from the input table instead of the one declared (if different).
+
 * fixed output: False fields acting like temporary globals (i.e. being wiped at the end of each period) instead of like
   a field (closes :issue:`230`). This had the indirect consequence of having both a field and a temporary
   variable with the same name, which confused dump().
@@ -125,7 +134,7 @@ Fixes
 
 * fixed skip_shows: True in simulation file being ignored.
 
-* fixed --skiptimings=False being ignored if timings: True was specified in the simulation file.
+* fixed ``--skiptimings=False`` being ignored if ``timings: True`` was specified in the simulation file.
 
 * fixed subsetting an array created by indexing a global with a field when the result is an array. ::
 
@@ -143,13 +152,6 @@ Fixes
 * fixed alignment when take or leave filters are a single constant for all individuals (set as a Python bool).
 
 * fixed remove() failing if an array temporary variable is defined in the same function (closes :issue:`222`).
-
-* fixed fields declared as initialdata: False to load data from the input file anyway if a field with
-  the same name existed in the corresponding table (closes :issue:`227`). Additionally, those fields used the
-  type from the input table instead of the one declared (if different).
-
-* fixed csv(dump()) rounding float values at the 12th decimal instead of using all available precision when the missing
-  argument is used (closes :issue:`252`).
 
 * fixed expressions with both a "non-simple" operation (everything except + - * / and where) and a function call failing
   to evaluate (closes :issue:`186`).

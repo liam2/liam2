@@ -16,7 +16,7 @@ from sub objects.
 Comments
 ========
 
-Another particularity inherited from YAML is the use of the hash character, `#`,
+Another particularity inherited from YAML is the use of the hash character, ``#``,
 to start comments, which extend to the end of the line. A comment may
 appear at the start of a line or following whitespace or a complete line of
 code, but not within an expression. Since comments are only meant to clarify
@@ -171,7 +171,7 @@ In LIAM2, entities are declared as follows: ::
         entity-name2:
             ...
 
-As a reminder, indentation and the use of ":" are important.
+As a reminder, indentation and the use of "``:``" are important.
 
 
 .. index:: fields

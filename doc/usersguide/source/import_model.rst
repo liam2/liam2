@@ -28,7 +28,7 @@ files, or add fields to an entity defined in the imported model.
 Note that both the importing model and the imported model need not be
 complete/valid models (they do not need to include all required (sub)sections),
 as long as the combined model is valid. See the examples below.
-                             
+
 *example* (common.yml) ::
 
   entities:
@@ -36,27 +36,27 @@ as long as the combined model is valid. See the examples below.
           fields:
               - age:      int
               - agegroup: {type: int, initialdata: False}
-  
+
           processes:
-              ageing: 
+              ageing:
                   - age: age + 1
                   - agegroup: trunc(age / 10)
-  
+
   simulation:
       processes:
           - person: [ageing]
-  
+
       # we do not specify output so this model is not valid in itself
       input:
           file: input.h5
-  
+
       start_period: 2015
       periods: 2
-                                  
+
 *example* (variant1.yml) ::
 
   import: common.yml
-  
+
   entities:
       person:
           processes:
@@ -66,21 +66,21 @@ as long as the combined model is valid. See the examples below.
                   - agegroup: if(age < 50,
                                  5 * trunc(age / 5),
                                  10 * trunc(age / 10))
-  
+
   simulation:
       # provide the required "output" section which is missing in common.yml
       output:
           file: variant1.h5
-                               
+
 *example* (variant2.yml) ::
-    
+
   import: common.yml
-  
+
   entities:
       person:
           fields:
               - severe_illness: {type: bool, initialdata: False}
-  
+
           processes:
               # adding new processes
               illness:
@@ -91,14 +91,14 @@ as long as the combined model is valid. See the examples below.
                                      align='al_p_dead.csv')
                   - show('Avg age of death', avg(age, filter=dead))
                   - remove(dead)
-  
+
   simulation:
       # since we have new processes, we have to override the *entire* process
       # list, as LIAM2 would not know where to insert the new processes
       # otherwise.
       processes:
           - person: [ageing, illness, death]
-  
+
       output:
           file: variant2.h5
 
@@ -108,7 +108,7 @@ variant3.yml.
 *example* (variant3.yml) ::
 
   import: variant2.yml
-  
+
   entities:
       person:
           processes:

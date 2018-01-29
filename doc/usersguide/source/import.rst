@@ -112,7 +112,7 @@ files have the following general format: ::
 
             # if you want to merge several files, use this format:
             files:
-                - <path>\<to>\<file1>.<ext>:
+                - <path>/<to>/<file1>.<ext>:
                     # any option (renamings, ...) specified here will override
                     # the corresponding options defined at the level of the
                     # entity
@@ -122,14 +122,14 @@ files have the following general format: ::
                         <fieldY_oldname>: <fieldY_newname>
 
                 # if you don't have any specific option for a file, use "{}"
-                - <path>\<to>\<file2>.<ext>: {}
+                - <path>/<to>/<file2>.<ext>: {}
                 - ...
 
             # OR, if all the files use the global options (the options defined
             # at the level of the entity):
             files:
-                - <path>\<to>\<file1>.<ext>
-                - <path>\<to>\<file2>.<ext>
+                - <path>/<to>/<file1>.<ext>
+                - <path>/<to>/<file2>.<ext>
                 - ...
 
             # if you want to fill missing values for some fields (this only
@@ -150,7 +150,7 @@ are "output" and "entities". If an element is not specified, it uses the
 following default value:
 
 - if *path* is omitted, it defaults to a file named after the entity in the same
-  directory than the description file (ie *local_path\\name_of_the_entity.csv*).
+  directory than the description file (ie ``local_path/name_of_the_entity.csv``).
 - if the *fields* section is omitted, all columns of the csv file will be
   imported and their type will be detected automatically.
 - if *compression* is omitted, the output will not be compressed.
@@ -176,7 +176,7 @@ file.
 
     globals:
         periodic:
-            path: input\globals.csv
+            path: input/globals.csv
 
     entities:
         household:
@@ -238,11 +238,11 @@ If the fields of an entity are scattered in several files, you can use the
                 time: period
 
             files:
-                - param\p_age.csv:
+                - param/p_age.csv:
                     # additional renamings for this file only
                     newnames:
                         value: age
-                - param\p_workstate.csv:
+                - param/p_workstate.csv:
                     newnames:
                         value: workstate
                 # person.csv should have at least 4 columns:
@@ -279,12 +279,11 @@ name of the file, you can automate the process like this:
                 value: eval('{basename}'.replace('p_', ''))
 
             files:
-                - param\p_age.csv
-                - param\p_work.csv
+                - param/p_age.csv
+                - param/p_work.csv
 
             interpolate:
                 work: previous_value
-
 
 
 importing the data

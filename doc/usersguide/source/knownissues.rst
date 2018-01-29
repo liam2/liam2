@@ -46,23 +46,23 @@ percentile). This situation needs to be changed, but I am unsure in which
 way: either implement it for all aggregate functions or disallow/ignore the
 contextual filter for all aggregate functions (or even all functions)?
 
-While this features feels natural for new, align and logit_regr, it feels 
+While this features feels natural for new, align and logit_regr, it feels
 out of place for aggregate functions because it means we work at both
 the individual level and at the "aggregate" levels in the same expression, or,
 in more technical terms, we work with both vectors and scalars, and it might be
 confusing: do users realize they are assigning a value for each individual,
 even if that is only one of two values?
 
-In an expression like the following: :: 
+In an expression like the following: ::
 
   - age_sum: if(gender, sum(age), sum(age))
-  
+
 do users realize they are assigning a different value for both branches? When I
 see an expression like this, I think: "it returns the same value whether the
-condition is True or not, let's simplify it by removing the condition": ::   
-  
+condition is True or not, let's simplify it by removing the condition": ::
+
   - age_sum: sum(age)
-  
+
 which will not have the same result.
 
 Another (smaller) point, is that implementing this contextual filter feature
@@ -72,7 +72,7 @@ means one cannot "escape" the filter of an if function, so for example: ::
                         abs(age - avg(age, filter=to_marry and gender)),
                         nan)
 
-would not work, and would need to be rewritten as: :: 
+would not work, and would need to be rewritten as: ::
 
   - avg_age_men: avg(age, filter=to_marry and gender)
   - difficult_match: if(to_marry and not gender,
@@ -81,7 +81,8 @@ would not work, and would need to be rewritten as: ::
 
 I would greatly appreciate more input on the subject, so *please* make your
 voice heard if you have an opinion about this, [on the -dev mailing list].
-    
+
+
 31 *different* variables per expression
 =======================================
 
