@@ -6,6 +6,7 @@ LIAM2 User Guide
    :numbered:
 
    intro
+   install
    environment
    model
    processes

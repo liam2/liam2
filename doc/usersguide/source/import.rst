@@ -296,4 +296,4 @@ import your data.
 
 - If you are using the command line, use: ::
 
-    [BUNDLEPATH]\liam2\main import <path_to_description_file>
+    liam2 import <path_to_description_file>

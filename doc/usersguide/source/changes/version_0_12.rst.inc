@@ -79,6 +79,10 @@
 Miscellaneous improvements
 --------------------------
 
+* improve installation/getting started instructions and include installation instructions in the documentation
+  (instead of only providing them in the source archive). It now includes a section concerning installation on Mac OS X.
+  Closes :issue:`192`. Thanks to Paul Williamson for his help concerning installation on Macs.
+
 * the view command can be called without any file argument. This will launch the embedded ViTables without opening any
   file. In other words, one can now use `liam2/main.exe view` (on Windows) or `python main.py view` without another
   extra argument (closes :issue:`194`).
