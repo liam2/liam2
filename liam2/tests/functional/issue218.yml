@@ -3,6 +3,6 @@ import: test_issue.yml.template
 entities:
     person:
         processes:
-            test_issue:
+            test_issue():
                 - mylist: [1, 5, 9]
                 - assertEqual(mylist[1], 5)

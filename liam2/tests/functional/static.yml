@@ -1,7 +1,7 @@
 entities:
     dummy:
         processes:
-            dummy:
+            dummy():
                 - a: 0
 
 simulation:

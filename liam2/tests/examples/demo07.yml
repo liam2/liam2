@@ -19,17 +19,17 @@ entities:
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
-            csv_output:
+            csv_output():
                 - csv(period,
                       avg(persons.count()),
                       avg(persons.count(age < 18)),
                       fname='hh_size.csv', mode='a')
 
-            init_reports:
+            init_reports():
                 - csv('period', 'N persons', 'N children',
                       fname='hh_size.csv')
 
-            clean_empty:
+            clean_empty():
                 - empty: persons.count() == 0
                 - show('Number of empty households:', count(empty))
                 - remove(empty)
@@ -78,13 +78,13 @@ entities:
 
         # possible transitions and regressions
         processes:
-            ageing:
+            ageing():
                 - age: age + 1
                 - agegroup_civilstate: if(age < 50,
                                           5 * trunc(age / 5),
                                           10 * trunc(age / 10))
 
-            birth:
+            birth():
                 - to_give_birth: logit_regr(0.0,
                                             filter=ISFEMALE and (age >= 15) and (age <= 50),
                                             align='al_p_birth.csv')
@@ -97,7 +97,7 @@ entities:
                       agegroup_civilstate = 0,
                       gender = choice([MALE, FEMALE], [0.51, 0.49]))
 
-            death:
+            death():
                 - dead: if(ISMALE,
                            logit_regr(0.0, align='al_p_dead_m.csv'),
                            logit_regr(0.0, align='al_p_dead_f.csv'))
@@ -109,7 +109,7 @@ entities:
                 - show('Widows', count(ISWIDOW))
                 - remove(dead)
 
-            marriage:
+            marriage():
                 - to_couple: if((age >= 18) and (age <= 90) and not ISMARRIED,
                                 if(ISMALE,
                                    logit_regr(0.0, align='al_p_mmkt_m.csv'),
@@ -157,7 +157,7 @@ entities:
 #                           partner.gender, hh_id, filter=justcoupled),
 #                      suffix='new_couples')
 
-            get_a_life:
+            get_a_life():
                 # create new households for persons aged 24+ who are still
                 # living with their mother
                 - in_mother_hh: hh_id == mother.hh_id
@@ -168,7 +168,7 @@ entities:
                             mother.hh_id,
                             hh_id)
 
-            divorce:
+            divorce():
                 - agediff: if(ISFEMALE and ISMARRIED, age - partner.age, 0)
                 - nb_children: household.get(persons.count(age < 18))
                 # select females to divorce
@@ -193,7 +193,7 @@ entities:
                             new('household'),
                             hh_id)
 
-            civilstate_changes:
+            civilstate_changes():
                 # the lag() function returns the value of any expression
                 # at the end of the previous period. Note that for non-aggregate
                 # expressions, it returns a value for all individuals present
@@ -202,11 +202,11 @@ entities:
                 # "missing" value (-1 for int fields, like in this case).
                 - show(groupby(civilstate, lag(civilstate)))
 
-            chart_demography:
+            chart_demography():
                 - bar(groupby(agegroup_civilstate, gender),
                       fname='demography_{period}.png')
 
-            csv_output:
+            csv_output():
                 - csv(groupby(agegroup_civilstate, gender),
                       fname='demography_{period}.csv')
 
@@ -217,7 +217,7 @@ entities:
                 - csv(period, count(not ACTIVEAGE) / count(ACTIVEAGE),
                       fname='dependency_ratio.csv', mode='a')
 
-            init_reports:
+            init_reports():
                 - csv('period', 'men', 'women', 'total',
                       fname='average_age.csv')
                 - csv('period', 'ratio', fname='dependency_ratio.csv')

@@ -19,7 +19,7 @@ entities:
         # order is defined later.
         processes:
             # ageing is the name of the function
-            ageing:
+            ageing():
                 # A simple process: increment the age of all persons by one.
                 - age: age + 1
 

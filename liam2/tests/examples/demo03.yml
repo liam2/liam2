@@ -44,7 +44,7 @@ entities:
 
         # possible transitions and regressions
         processes:
-            ageing:
+            ageing():
                 - age: age + 1
 
                 # juniors and plus50 are *local* variables. This means they are
@@ -59,11 +59,11 @@ entities:
             # * charts can be saved to files instead of being displayed
             #   interactively. The 'fname' and 'suffix' arguments of csv() also
             #   apply to all charting functions.
-            chart_demography:
+            chart_demography():
                 - bar(groupby(agegroup, gender),
                       fname='demography_{period}.png')
 
-            csv_output:
+            csv_output():
                 # * dump is not limited to simple columns, it can evaluate any
                 #   expression in-place
                 # * the filter argument can be used to dump only a part of the
@@ -101,7 +101,7 @@ entities:
             #   in the input dataset, like we will do in another demo model.
             # * they can also be used to add some fixed headers to files created
             #   progressively using "append".
-            init_reports:
+            init_reports():
                 - csv('period', 'men', 'women', 'total',
                       fname='average_age.csv')
                 - csv('period', 'ratio', fname='dependency_ratio.csv')

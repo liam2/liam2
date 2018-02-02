@@ -10,7 +10,7 @@ entities:
                 - r: a + 1
                 - return r
 
-            test_issue:
+            test_issue():
                 # worked
                 - res1: id[0] + f1(1)
                 # worked

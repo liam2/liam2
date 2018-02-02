@@ -12,15 +12,15 @@ entities:
 
         processes:
             # override function
-            agegroup:
+            agegroup():
                 - show('this is agegroup from the variant')
                 - agegroup: 10 * trunc(age / 10)
 
             # new functions
-            init_variant_field:
+            init_variant_field():
                 - variant_field: choice([0, 1, 2], [0.1, 0.8, 0.1])
 
-            check_macros:
+            check_macros():
                 # use a new macro
                 - assertEqual(count(VARIANT_MACRO),
                               count(variant_field == 1))

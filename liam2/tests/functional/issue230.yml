@@ -6,7 +6,7 @@ entities:
             - age: {type: int, output: False}
 
         processes:
-            test_issue:
+            test_issue():
                 - age: age + 1
                 - d: dump()
                 - header: d.data[0]

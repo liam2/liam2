@@ -1,3 +1,29 @@
+Syntax changes
+--------------
+
+* defining functions without any argument without using parentheses is now a warning. In a future release, this will be
+  an error. The goal of this change is both to make models more explicit and consistent: a function definition always
+  has parentheses and to make LIAM2 internal code simpler in the long run.
+
+  Given that literally all models ever written need to be updated and doing so by hand would take a lot of time,
+  the LIAM2 model upgrader can be used to automatically upgrade model files to the new syntax (the original version of
+  your model(s) will be saved in a .bak file). Closes :issue:`162`.
+
+  If you only have a few model files and you use the Windows bundle, you could open each of your model in turn and use
+  the ``LIAM2: upgrade model`` command in the ``Macro`` menu of Notepad++.
+
+  If you do not use the bundle, or have many models to upgrade, you should rather use the command line: ::
+
+     liam2 upgrade <pattern_for_your_models>
+
+  For example: ::
+
+     liam2 upgrade examples/*.yml
+     liam2 upgrade */*.yml
+
+  Note that if you are using the Windows bundle the executable is not ``liam2`` but ``liam2/main.exe``
+
+
 New features
 ------------
 
@@ -50,9 +76,6 @@ New features
 * implemented totals argument to groupby to specify whether or not totals should be computed. Defaults to True like
   before.
 
-* implemented access to the error function (erf) function (if the scipy package is installed, which is **NOT** the case
-  in the Windows bundle). :pr:`234`.
-
 * added support for a new "msg" argument to all assertion functions. It specifies a custom message to append to the
   normal message displayed when the assertion fails. This is most useful when the condition of the assertion is complex.
   The message can be **any** expression or tuple of expressions, and it is only evaluated if the assertion fails
@@ -74,6 +97,9 @@ New features
     - assertTrue(all(total_income >= 0), breakpoint())
 
 * implemented assertRaises to check for expected errors.
+
+* implemented access to the error function (erf) function (if the scipy package is installed, which is **NOT** the case
+  in the Windows bundle). :pr:`234`.
 
 
 Miscellaneous improvements

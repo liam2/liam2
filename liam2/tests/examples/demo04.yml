@@ -29,13 +29,13 @@ entities:
             ACTIVEAGE: (age >= 15) and (age < RETIREMENTAGE)
 
         processes:
-            ageing:
+            ageing():
                 - age: age + 1
                 - agegroup: if(age < 50,
                                5 * trunc(age / 5),
                                10 * trunc(age / 10))
 
-            birth:
+            birth():
                 # take 6% of the population. Of those, women between 15 and 50
                 # will give birth this period.
                 # id % 100 is the id number modulo 100, ie the remainder of
@@ -62,7 +62,7 @@ entities:
                       agegroup = 0,
                       gender = child_gender)
 
-            death:
+            death():
                 # all men aged 90+ and women aged 95+ die
                 - dead: if(ISMALE, age >= 90, age >= 95)
                 - show('Avg age of dead men',
@@ -72,11 +72,11 @@ entities:
                 # we remove them from the simulation for the following periods
                 - remove(dead)
 
-            chart_demography:
+            chart_demography():
                 - bar(groupby(agegroup, gender),
                       fname='demography_{period}.png')
 
-            csv_output:
+            csv_output():
                 - csv(groupby(agegroup, gender),
                       fname='demography_{period}.csv')
 
@@ -87,7 +87,7 @@ entities:
                 - csv(period, count(not ACTIVEAGE) / count(ACTIVEAGE),
                       fname='dependency_ratio.csv', mode='a')
 
-            init_reports:
+            init_reports():
                 - csv('period', 'men', 'women', 'total',
                       fname='average_age.csv')
                 - csv('period', 'ratio', fname='dependency_ratio.csv')

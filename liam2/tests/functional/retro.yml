@@ -18,7 +18,7 @@ entities:
             - agegroup:     {type: int, initialdata: False}
 
         processes:
-            ageing:
+            ageing():
                 - age: age + 1
 
 simulation:

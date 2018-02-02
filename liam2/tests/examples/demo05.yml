@@ -24,7 +24,7 @@ entities:
             persons: {type: one2many, target: person, field: hh_id}
 
         processes:
-            csv_output:
+            csv_output():
                 # write the period,
                 # average number of persons by household,
                 # and average number of children (age < 18) by household
@@ -34,13 +34,13 @@ entities:
                       avg(persons.count(age < 18)),
                       fname='hh_size.csv', mode='a')
 
-            init_reports:
+            init_reports():
                 - csv('period', 'Avg persons', 'Avg children',
                       fname='hh_size.csv')
 
             # after death, some households can be empty, this function removes
             # them
-            clean_empty:
+            clean_empty():
                 - empty: persons.count() == 0
                 - show('Number of empty households:', count(empty))
                 - remove(empty)
@@ -83,13 +83,13 @@ entities:
             ACTIVEAGE: (age >= 15) and (age < RETIREMENTAGE)
 
         processes:
-            ageing:
+            ageing():
                 - age: age + 1
                 - agegroup: if(age < 50,
                                5 * trunc(age / 5),
                                10 * trunc(age / 10))
 
-            birth:
+            birth():
                 # do NOT do this in a real model
                 - to_give_birth: (id % 100) < 6 and ISFEMALE and
                                  (age >= 15) and (age <= 50)
@@ -116,7 +116,7 @@ entities:
                 - show('Average age of mothers',
                        avg(age, filter=children.count() > 0))
 
-            death:
+            death():
                 - dead: if(ISMALE, age >= 90, age >= 95)
 
                 # We break the link to deceased mothers: the "mother" link is no
@@ -128,7 +128,7 @@ entities:
                        avg(age, filter=dead and ISFEMALE))
                 - remove(dead)
 
-            get_a_life:
+            get_a_life():
                 # create new households for persons aged 24+ who are still
                 # living with their mother
                 - in_mother_hh: hh_id == mother.hh_id
@@ -150,11 +150,11 @@ entities:
                             mother.hh_id,
                             hh_id)
 
-            chart_demography:
+            chart_demography():
                 - bar(groupby(agegroup, gender),
                       fname='demography_{period}.png')
 
-            csv_output:
+            csv_output():
                 - csv(groupby(agegroup, gender),
                       fname='demography_{period}.csv')
 
@@ -165,7 +165,7 @@ entities:
                 - csv(period, count(not ACTIVEAGE) / count(ACTIVEAGE),
                       fname='dependency_ratio.csv', mode='a')
 
-            init_reports:
+            init_reports():
                 - csv('period', 'men', 'women', 'total',
                       fname='average_age.csv')
                 - csv('period', 'ratio', fname='dependency_ratio.csv')

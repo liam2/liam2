@@ -8,10 +8,10 @@ globals:
 entities:
     person:
         processes:
-            create:
+            create():
                 - new('person', number=3)
 
-            test_issue:
+            test_issue():
                 - array_temp: TEST + 1
                 - remove(id == 0)
                 - assertEqual(count(), 2)

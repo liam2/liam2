@@ -1,7 +1,7 @@
 entities:
     household:
         processes:
-            dump_all:
+            dump_all():
                 - show(groupby(persons.count(), percent=True))
                 - csv(dump())
 
@@ -202,7 +202,7 @@ entities:
                 - show(groupby(workstate, filter=activeage, percent=True))
                 - show(groupby(workstate, percent=True))
 
-            marriage:
+            marriage():
                 # non married: 6397393
                 # 4,442,512 married => 41% pop (~52% above 18 year)
                 - to_marry: age >= 18 and uniform() < 0.53
@@ -265,13 +265,13 @@ entities:
                 # 46.86 | 40.84 | 7.20 | 5.10 | 100.00 <-- this model
                 # 54.60 | 22.69 | 10.10 | 12.61 | 100.00 <-- demo
 
-            dump_all:
+            dump_all():
                 - csv(dump())
 
-            create10000:
+            create10000():
                 - create(10000)
 
-            create1000000:
+            create1000000():
                 # 2 min 45 total (1min 36 for create)
                 - create(1000000)
 

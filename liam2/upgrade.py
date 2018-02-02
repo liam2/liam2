@@ -2,12 +2,13 @@ from __future__ import print_function
 
 import os.path
 import re
+from glob import glob
 
-__version__ = '0.2'
+__version__ = '0.3'
 
 
 def upgrade_str(content):
-    # transform *link(linkname, ...) -> linkname.*(...)
+    # 1) transform *link(linkname, ...) -> linkname.*(...)
     content = re.sub("([a-zA-Z]+)link\s*\(\s*([a-zA-Z_][a-zA-Z_0-9]*)\s*,?\s*",
                      r"\2.\1(",
                      content)
@@ -21,30 +22,98 @@ def upgrade_str(content):
     # if people used: grpmin(expr1, 0) where 0 is the axis number but since
     # this is undocumented it is very unlikely to have been used by anyone.
 
-    # grpXYZ(...) -> XYZ(...)
-    return re.sub("grp([a-zA-Z]+)\s*\(",
-                  r"\1(",
-                  content)
+    # 2) grpXYZ(...) -> XYZ(...)
+    content = re.sub("grp([a-zA-Z]+)\s*\(", r"\1(", content)
+
+    # 3) function: -> function():
+    # keepends=True so that we keep the line ending style (windows, unix, ...) intact
+    lines = content.splitlines(True)
+    cur_indent_len = 0
+    last_indent = -1
+    parent_per_level = {}
+    section_re = re.compile(r'^(\s*)([a-zA-Z_]\w*):(\s*(#.*)?$)')
+    for i in range(len(lines)):
+        line = lines[i]
+
+        # ignore blank or commented lines
+        if not line or line.isspace() or re.match('^\s*#.*$', line):
+            continue
+        section_match = section_re.match(line)
+        if not section_match:
+            continue
+
+        cur_indent = section_match.group(1)
+        cur_indent_len = len(cur_indent)
+        current_section = section_match.group(2)
+        for indent in range(cur_indent_len, last_indent + 1):
+            parent_per_level.pop(indent, None)
+        parent_per_level[cur_indent_len] = current_section
+        current_path = [parent_per_level[indent] for indent in sorted(parent_per_level.keys())
+                        if indent < cur_indent_len]
+        if len(current_path) == 3 and current_path[0] == 'entities' and current_path[2] == 'processes':
+            lines[i] = section_re.sub(r"\1\2():\3", line)
+        last_indent = cur_indent_len
+    content = ''.join(lines)
+
+    # 4) return result
+    return content
 
 
-def upgrade(inpath, outpath=None):
+def upgrade_one(inpath, outpath=None):
+    if outpath is not None:
+        print("Upgrading '%s'..." % inpath, end=' ')
+    else:
+        print("* '%s'..." % inpath, end=' ')
+
     if outpath is None:
         outpath = inpath
 
-    print("original model read from: '%s'" % inpath)
+    # read original
     with open(inpath, "rb") as f:
         content = f.read()
 
-    if outpath == inpath:
-        filename, _ = os.path.splitext(inpath)
-        backup_path = filename + ".bak"
-        print("original model copied to: '%s'" % backup_path)
-        with open(backup_path, "wb") as f:
-            f.write(content)
+    # do this before opening the destination file for write to avoid writing a blank file in case the
+    # update_str fails for some reason
+    updated_content = upgrade_str(content)
+    if updated_content != content:
+        # make a copy, if needed
+        if outpath == inpath:
+            filename, _ = os.path.splitext(inpath)
+            backup_path = filename + ".bak"
+            i = 2
+            while os.path.exists(backup_path):
+                backup_path = filename + ".bak{}".format(i)
+                i += 1
+            # print("original model copied to: '%s'" % backup_path)
+            with open(backup_path, "wb") as f:
+                f.write(content)
+        else:
+            backup_path = None
 
-    with open(outpath, "wb") as f:
-        f.write(upgrade_str(content))
-    print("upgraded model written to: '%s'" % outpath)
+        # writing back modified content
+        with open(outpath, "wb") as f:
+            f.write(updated_content)
+
+        if backup_path is not None:
+            print("done (original copied to '%s')" % backup_path)
+        else:
+            print("done (written to '%s')" % outpath)
+    else:
+        print("skipped (nothing to update)")
+
+
+def upgrade(pattern, outpath=None):
+    if os.path.isdir(pattern):
+        pattern = os.path.join(pattern, '*.yml')
+    fnames = glob(pattern)
+    if not fnames:
+        raise ValueError("No file found matching: {}".format(os.path.abspath(pattern)))
+
+    if len(fnames) > 1 and outpath is not None:
+        raise ValueError("Cannot specify output path when using multiple input files")
+    for fname in fnames:
+        upgrade_one(fname, outpath)
+
 
 if __name__ == '__main__':
     import sys
@@ -53,7 +122,36 @@ if __name__ == '__main__':
 
     args = sys.argv
     if len(args) < 2:
-        print("Usage: %s inputfile [outputfile]" % args[0])
-        sys.exit()
+        print("""\
+Usage
+=====
 
-    upgrade(args[1], args[2] if len(args) > 2 else None)
+* to upgrade a single file, use:
+
+  {cmd} <inputfile> [outputfile]
+
+* to upgrade all .yml files in a directory, use:
+
+  {cmd} <inputdirectory>
+
+* to upgrade several files matching a pattern, use:
+
+  {cmd} <inputpattern>
+
+  In a pattern, the following characters are special:
+      ?      matches any single character
+      *      matches any number of characters
+      [abc]  matches any character listed between the []
+      [!abc] matches any character not listed between the []
+
+  For example:
+
+  {cmd} models/*.yml
+  {cmd} */*.yml
+  {cmd} examples/demo0?.yml
+""".format(cmd=args[0]))
+        sys.exit()
+    try:
+        upgrade(args[1], args[2] if len(args) > 2 else None)
+    except ValueError as e:
+        print(e)

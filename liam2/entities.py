@@ -430,6 +430,11 @@ class Entity(object):
                 code_def = v
             else:
                 argnames, code_def = [], v
+                template = """\
+Function definitions should have parentheses after their name even if they have no argument.
+Please change "{name}:" to "{name}():". 
+You probably want to use the "upgrade" command to automatically convert your model file to the new syntax."""
+                warnings.warn(template.format(name=k), UserDeprecationWarning)
             method_context = self.get_group_context(context, argnames)
             code = self.parse_process_group(k + "_code", code_def,
                                             method_context,

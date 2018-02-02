@@ -16,7 +16,7 @@ entities:
 
         processes:
             # we override the ineducation function
-            ineducation:
+            ineducation():
                 # set study_years_failed if not set already
                 - study_years_failed: if(study_years_failed == -1,
                                          choice([0, 1, 2, 3],

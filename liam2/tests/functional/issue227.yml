@@ -7,7 +7,7 @@ entities:
             - age:    {type: float, initialdata: False}
 
         processes:
-            test_issue:
+            test_issue():
                 - assertTrue(all(age != age))
                 - assertEqual(min(id), 0)
                 - num_persons: count()

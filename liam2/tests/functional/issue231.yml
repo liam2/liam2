@@ -3,10 +3,10 @@ import: test_issue.yml.template
 entities:
     person:
         processes:
-            create:
+            create():
                 - new('person', number=5)
 
-            test_issue:
+            test_issue():
                 # dump containing normal temporary variable (already worked)
                 - tmp: id + 1
                 - d: dump(period, id, tmp)

@@ -21,7 +21,7 @@ entities:
             - agegroup: {type: int, initialdata: False}
 
         processes:
-            ageing:
+            ageing():
                 - age: age + 1
 
                 # Now we want to compute the 'agegroup' variable.
@@ -41,7 +41,7 @@ entities:
             # creates an (in-memory) table with all the columns (or expressions)
             # in its arguments. The 'csv' function can write any value
             # (including tables) to a .csv file.
-            dump_info:
+            dump_info():
                 - csv(dump(id, age, gender))
 
             # The "show_demography" function will, for each period, display in
@@ -54,7 +54,7 @@ entities:
             # group and creates an in-memory table out of that. The 'show'
             # function can write any value (including tables) to the
             # simulation log.
-            show_demography:
+            show_demography():
                 - show(groupby(agegroup, gender))
 
             # Finally, in the "chart_demography" function, we reuse the same
@@ -65,7 +65,7 @@ entities:
             # Note that, by default, the simulation is paused while the chart
             # window is open. So you need to **close the window** to continue
             # the simulation !
-            chart_demography:
+            chart_demography():
                 - bar(groupby(agegroup, gender))
 
 simulation:

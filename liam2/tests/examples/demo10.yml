@@ -25,12 +25,12 @@ entities:
 
         processes:
             # add a new function
-            init_years_failed:
+            init_years_failed():
                 - study_years_failed: choice([0, 1, 2, 3],
                                              [0.55, 0.3, 0.1, 0.05])
 
             # override the ineducation function
-            ineducation:
+            ineducation():
                 # theoretical age at which a person stops studying
                 - studies_end: if(IS_LOWER_SECONDARY_EDU, 15,
                                       if(IS_UPPER_SECONDARY_EDU, 18,

@@ -309,13 +309,27 @@ def main():
 
     # create the parser for the "upgrade" command
     parser_upgrade = subparsers.add_parser('upgrade',
-                                           help='upgrade a simulation file to '
-                                                'the latest syntax')
-    parser_upgrade.add_argument('input', help='input simulation file')
-    out_help = "output simulation file. If missing, the original file will " \
-               "be backed up (to filename.bak) and the upgrade will be " \
-               "done in-place."
+                                           help='upgrade a simulation file to the latest syntax',
+                                           formatter_class=argparse.RawTextHelpFormatter)
+    input_help = """path or pattern for simulation file(s). In a pattern, 
+    ?      matches any single character, 
+    *      matches any number of characters, 
+    [abc]  matches any character listed between the [] and 
+    [!abc] matches any character not listed between the [].
+"""
+    parser_upgrade.add_argument('input', help=input_help)
+    out_help = """output simulation file. If not specified, the original file
+will be backed up (to filename.bak) and the upgrade will be
+done in-place."""
     parser_upgrade.add_argument('output', help=out_help, nargs='?')
+    parser_upgrade.epilog = """A few examples:
+
+    {cmd} simulation.yml
+    {cmd} simulation.yml simulation_after_upgrade.yml
+    {cmd} examples/*.yml
+    {cmd} examples/demo0?.yml
+    {cmd} */*.yml
+""".format(cmd=parser_upgrade.prog)
 
     # create the parser for the "view" command
     parser_import = subparsers.add_parser('view', help='view data')

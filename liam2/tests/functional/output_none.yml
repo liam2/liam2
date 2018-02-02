@@ -9,7 +9,7 @@ entities:
             persons: {type: one2many, target: person, field: region_id}
 
         processes:
-            generate:
+            generate():
                 - new('region', number=3)
 
     person:
@@ -44,13 +44,13 @@ entities:
             region: {type: many2one, target: region, field: region_id}
 
         processes:
-            generate:
+            generate():
                 # not giving a value to any field, as it does not matter
                 - new('person', number=10,
                       partner_id=-1,
                       region_id=randint(3))
 
-            test:
+            test():
                 # should NOT appear in minimal output
                 - not_minimal1: not_minimal1 + 1
                 # lags of one period

@@ -3,7 +3,7 @@ import: test_issue.yml.template
 entities:
     person:
         processes:
-            test_issue:
+            test_issue():
                 - tmp: 0.12345678901234567890123456789
                 # first try without missing= (this already worked)
                 - csv(dump(id, tmp), fname='float_roundtrip.csv')

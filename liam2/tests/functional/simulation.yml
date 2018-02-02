@@ -95,13 +95,13 @@ entities:
             reldiff(v1, v2):
                 - return abs(v2 - v1) / v1
 
-            init_region:
+            init_region():
                 - region_id: choice([0, 1, 2], [0.55, 0.35, 0.10])
 
-            setweight:
+            setweight():
                 - weight: randint(2, 32)
 
-            expand:
+            expand():
                 # note that the while loop solution (for example in create_distrib.yml) does not work in this case
                 # because the weight is per household and not per person, thus we have to interleave expand on household
                 # and expand on person. Otherwise clone_id is overwritten by the second clone iteration and we can no
@@ -118,22 +118,22 @@ entities:
                                 trunc(weight / 2),
                                 1))
 
-            check:
+            check():
                 - show('min/max weight:', min(weight), max(weight))
                 - show('total population:', sum(persons.count()),
                        '/ expanded:', sum(weight * persons.count()))
 
-            composition:
+            composition():
                 - num_persons: persons.count()
                 - nch: persons.count(age <= 18)
 
                 # TODO: make this work
 #                - nch_macro: persons.count(ISCHILD)
 
-            dump_csv_h:
+            dump_csv_h():
                 - csv(dump())
 
-            test_align_link:
+            test_align_link():
                 - num_men: persons.count(gender)
                 - num_women: persons.count(not gender)
                 - num_persons: num_men + num_women
@@ -207,7 +207,7 @@ entities:
                 - assertTrue(reldiff(women_aligned, needed_women) < 0.05)
                 - assertTrue(reldiff(men_aligned, needed_men) < 0.05)
 
-            test_align_abs_link:
+            test_align_abs_link():
                 - num_persons: persons.count()
                 # kill empty households
                 - remove(num_persons == 0)
@@ -319,10 +319,10 @@ entities:
         # possible transitions & regressions. The actual list used in the
         # simulation must be defined below
         processes:
-            bp:
+            bp():
                 - breakpoint(2002)
 
-            test_assert:
+            test_assert():
                 # check that assertions function do not raise when their "assertion" is respected
                 - assertTrue(True)
                 - assertFalse(False)
@@ -369,7 +369,7 @@ entities:
                 - assertRaises('AssertionError', assertEquiv(0, 1, msg="0 and 1 are NOT equivalent !"))
                 - assertRaises('AssertionError', assertIsClose(0, 1000, msg="0 and 1000 are NOT close !"))
 
-            test_literals:
+            test_literals():
                 - bool1: False
                 - assertFalse(bool1)
                 - bool2: True
@@ -416,7 +416,7 @@ entities:
                 - dict3bis: {"for the money": 1, "for the show": 2}
                 - assertEqual(dict3, dict3bis)
 
-            expand:
+            expand():
                 - last_non_clone_id: max(id)
                 - toclone: household.clone_id != -1
                 - clone_id: clone(toclone)
@@ -428,7 +428,7 @@ entities:
                 - f_id: if(is_clone, father.clone_id, f_id)
                 - partner_id: if(is_clone, partner.clone_id, partner_id)
 
-            test_proc:
+            test_proc():
                 # same name than in the caller function, but should be local
                 - temp_var: age * 1
                 - local_var: temp_var * 2
@@ -558,7 +558,7 @@ entities:
                     - n: n - 1
                 - return r
 
-            test_call:
+            test_call():
                 # 1) no args and no result (concise/old style)
                 - temp_var: age * 42
                 - int_field1: age + 42
@@ -621,10 +621,10 @@ entities:
                 - axis: 0
                 - assertEqual(age.min(axis=axis), min(age))
 
-            test_issue119:
+            test_issue119():
                 - issue119callee(1.0)
 
-            test_issue120:
+            test_issue120():
                 # breakpoint to test issue 120: global temp produces
                 # warning in the interactive console. It needs to be
                 # called *after* the "temp_global" process !
@@ -632,7 +632,7 @@ entities:
                 - breakpoint()
 
             # issue126: prevent function arguments named like fields
-            test_issue126:
+            test_issue126():
                 - age_backup: age
                 - func_args_conflict_fields(age + 10)
                 - assertEqual(age, age_backup)
@@ -641,7 +641,7 @@ entities:
                 - hybrid_test: age + 1
                 - assertEqual(hybrid_test, age + 1)
 
-            test_hybrids:
+            test_hybrids():
                 # hybrid = both a variable and a method
                 # stored = in fields
 
@@ -676,7 +676,7 @@ entities:
 #                        - values: values + 1
 
 
-            test_while:
+            test_while():
                 - values: age
                 - while min(values) < 5:
                     - values: values + 1
@@ -689,7 +689,7 @@ entities:
 
             # pi using the Nilakantha series
             # pi = 3 + 4/(2*3*4) - 4/(4*5*6) + 4/(6*7*8) - 4/(8*9*10) + ...
-            test_pi_nilakantha:
+            test_pi_nilakantha():
                 - numiter: 10
                 - pi: 3
                 - n: 4
@@ -728,7 +728,7 @@ entities:
 #                    age += 1
 #                    done = min(age) >= 10
 
-            test_charts:
+            test_charts():
 # commented so that the tests can run without interaction
 #                - plot(groupby(age))
                 - plot(groupby(age), suffix='test')
@@ -811,7 +811,7 @@ entities:
                           r=2 ** eduach[:num], alpha=0.8,
                           fname='scatter2.png&pdf')
 
-            test_init:
+            test_init():
                 - eduach: choice([2, 3, 4], [0.40, 0.35, 0.25])
                 - weight: randint(1, 11)
 #                - new('person', number=10000000,
@@ -825,7 +825,7 @@ entities:
                 - assertTrue(all(partner.partner.id == id,
                                  filter=partner_id != -1))
 
-            test_remove_init:
+            test_remove_init():
                 # dead True only comes from the input
                 - numdead: count(dead)
                 - total: count()
@@ -841,17 +841,17 @@ entities:
 
             hybrid_temp_global: age + 10
 
-            set_hybrid_temp_global:
+            set_hybrid_temp_global():
                 - hybrid_temp_global: hybrid_temp_global * 2
-            check_hybrid_temp_global:
+            check_hybrid_temp_global():
                 - assertEqual(hybrid_temp_global, (age + 10) * 2)
 
-            set_temp_global:
+            set_temp_global():
                 - temp_global: age + 10
-            check_temp_global:
+            check_temp_global():
                 - assertEqual(temp_global, age + 10)
 
-            test_expr:
+            test_expr():
                 - show("count:", count())
                 - show("age:", age)
                 - show("age + 1:", age + 1)
@@ -868,7 +868,7 @@ entities:
                 - assertEqual(age, backup + 1)
                 - age: backup
 
-            test_trunc:
+            test_trunc():
                 - assertTrue(all(age >= 0))
                 - diff: (age / 5) - trunc(age / 5)
                 - assertTrue(all(0.0 <= diff and diff < 1.0))
@@ -885,28 +885,28 @@ entities:
 #                - clip(age, 5)
 #                - clip(age, 5, 10, 15, 20)
 
-            test_seed:
+            test_seed():
                 - seed(0)
                 - value1: uniform()
                 - seed(0)
                 - value2: uniform()
                 - assertEqual(value1, value2)
 
-            test_logit:
+            test_logit():
                 - float_field: age / 120.0
                 - assertNanEqual(logit(float_field),
                                  log(float_field / (1.0 - float_field)))
 
-            test_logistic:
+            test_logistic():
                 - assertEqual(logistic(age), 1.0 / (1.0 + exp(-age)))
                 - float_field: age * 1.0
                 - assertEqual(logistic(float_field),
                               1.0 / (1.0 + exp(-float_field)))
 
-            test_attr:
+            test_attr():
                 - assertEqual(age.ndim, 1)
 
-            test_subscript:
+            test_subscript():
                 # with constant argument
                 # take advantage of the fact that data is ordered by id
                 - assertEqual(id[0], min(id))
@@ -924,7 +924,7 @@ entities:
                 - assertEqual(ages.__len__(), 5)
                 - assertEqual(ages[0], age[index])
 
-            test_periodic_globals:
+            test_periodic_globals():
                 # implicit global namespace
                 # -------------------------
                 - fake_wemra: if(period <= 1996, 60,
@@ -1037,7 +1037,7 @@ entities:
                 - assertEqual(periodic.WEMRA[period - 1], fake_wemra_pm1)
                 - vector_idx: periodic.MINR[yearofbirth + 65]
 
-            test_other_globals:
+            test_other_globals():
                 # with a PERIOD column
                 - fake_intfield: if(period <= 1979, -1,
                                  if(period <= 1996, 60,
@@ -1061,7 +1061,7 @@ entities:
                 # should have this "current period if not indexed" behavior.
                 - assertEqual(othertable_noperiod.INTFIELD, -1)
 
-            test_globals_nd:
+            test_globals_nd():
                 # MIG is a 3d array: gender-age-period
 
                 # test that MIG was loaded correctly
@@ -1272,7 +1272,7 @@ entities:
                 - test4: if(false_, MIG[bad_idx2], -1)
                 - assertEquiv(test4, -1)
 
-            test_macro:
+            test_macro():
                 - ischild: age < 18
                 - test_nonmacro1: show(sum(ischild))
                 - test_macro1: show(sum(ISCHILD))
@@ -1292,10 +1292,10 @@ entities:
                 # calls __nonzero__ on the first part (age < (15 & eduach))
                 - show(groupby(eduach, gender))
 
-            compute_agegroup:
+            compute_agegroup():
                 - agegroup: if(age < 50, 5 * trunc(age / 5), 10 * trunc(age / 10))
 
-            test_align:
+            test_align():
                 - num_all: count()
                 - num_women: count(not gender)
                 - num_men: count(gender)
@@ -1542,7 +1542,7 @@ entities:
                 - python_bool_filter: False
                 - aligned: align(age, proportions=.1, leave = python_bool_filter)
 
-            test_align_abs:
+            test_align_abs():
                 - num_all: count()
                 - num_women: count(not gender)
                 - num_men: count(gender)
@@ -1615,7 +1615,7 @@ entities:
                 - assertEqual(count(by_gender and not gender), 30)
                 - assertEqual(count(by_gender and gender), 20)
 
-            test_align_abs_sidewalk:
+            test_align_abs_sidewalk():
                 - num_all: count()
                 - num_women: count(not gender)
                 - num_men: count(gender)
@@ -1686,11 +1686,11 @@ entities:
                 - assertEqual(count(by_gender and not gender), 30)
                 - assertEqual(count(by_gender and gender), 20)
 
-            test_extexpr:
+            test_extexpr():
                 - value: extexpr('regr_test_1d.csv')
                 - assertEqual(value, eduach * 0.3 + 0.2 * age + 0.1)
 
-            test_logit_score:
+            test_logit_score():
                 - seed(0)
                 - result: logit_score(0.0)
                 - seed(0)
@@ -1709,7 +1709,7 @@ entities:
                 - assertEqual(result, logit_score(expr))
                 - assertEqual(result, logistic(expr - epsilon))
 
-            test_logit_regr:
+            test_logit_regr():
                 # equivalent to uniform() > 0.5
                 - simple: logit_regr(0.0)
                 - fixed_percent: logit_regr(0.0, align=0.5)
@@ -1719,7 +1719,7 @@ entities:
                 - with_both_file: logit_regr('regr_test_1d.csv',
                                              align='al_p_one_dim.csv')
 
-            test_cont_regr:
+            test_cont_regr():
                 - show("expr only")
                 # -----------------
                 - assertEqual(cont_regr(2.4 + 0.22 * age),
@@ -1786,7 +1786,7 @@ entities:
                 - sigma: 1
                 - assertTrue(abs(sigma - std(check, filter=gender)) < 0.1)
 
-            test_log_regr:
+            test_log_regr():
                 # expr only
                 - assertEqual(log_regr(2.4 + 0.22 * age),
                               exp(2.4 + 0.22 * age))
@@ -1835,10 +1835,10 @@ entities:
 #            test_uninitialized_var:
 #                - result: uninitialized_var
 
-            set_uninitialized_var:
+            set_uninitialized_var():
                 - uninitialized_var: True
 
-            test_new:
+            test_new():
                 # with no filter nor number
                 - pop: count()
                 - child_id: new('person', age=999)
@@ -1924,7 +1924,7 @@ entities:
                                 eduach=choice([2, 3, 4], [0.40, 0.35, 0.25]),
                                 gender=choice([True, False], [0.51, 0.49]))
 
-            test_o2m:
+            test_o2m():
                 # count
                 - nch: children.count()
                 - assertEqual(sum(nch), count(mother.id != -1))
@@ -1956,7 +1956,7 @@ entities:
                 - all_nan: children.min(float_field1, age > 1000)
                 - assertTrue(all(all_nan != all_nan))
 
-            test_mixed_links:
+            test_mixed_links():
                 # multi-level
                 - assertEqual(partner.partner.age,
                               if(partner_id != -1, age, -1))
@@ -2000,7 +2000,7 @@ entities:
 #                predictor: plop
 #                expr: age
 
-            test_clone:
+            test_clone():
                 - count95: count(age == 95)
                 - total: count()
                 - clone(filter = age == 95,
@@ -2013,7 +2013,7 @@ entities:
                 - remove(isclone)
                 - assertEqual(count(), total)
 
-            marriage:
+            marriage():
                 - married: partner_id != -1
 
                 - to_marry: (age >= 18) and (age <= 90) and not married
@@ -2054,11 +2054,11 @@ entities:
                             if(gender, partner.newhousehold, newhousehold),
                             hh_id)
 
-            test_compound:
+            test_compound():
                 - assertEqual(max(min(age, 10)), 10)
                 - assertEqual(min(max(age, 20)), 20)
 
-            test_lag:
+            test_lag():
                 - global: show(MINR)
                 - global_t: show(MINR[period])
 
@@ -2123,7 +2123,7 @@ entities:
                 # FIXME: this fails (see issue #146)
                 #- g: groupby(agegroup, gender, expr=count(lag(TERTIARY_EDU)))
 
-            test_lag_o2m:
+            test_lag_o2m():
                 # this mostly tests that DiskBackedArrays work as expected
                 - past_nch: lag(children.count(), 2)
                 # this does not test much but I cannot think of anything more
@@ -2131,7 +2131,7 @@ entities:
                 - assertTrue(all(past_nch >= -1))
                 - assertTrue(all(past_nch < 50))
 
-            test_value_for_period:
+            test_value_for_period():
                 # period is a constant
                 - assertEqual(value_for_period(MINR, 2005), 13620.2)
                 - assertEqual(value_for_period(age, 2001)[0], 24)
@@ -2139,7 +2139,7 @@ entities:
                 # period is a scalar expression
                 - assertEqual(value_for_period(age, period - 1), lag(age))
 
-            test_duration:
+            test_duration():
                 - show("age > 10", duration(age > 10))
                 - show("max(d, 2)", max(duration(age > 10), 2))
 
@@ -2159,7 +2159,7 @@ entities:
                 - assertEqual(dur_work > 2,
                               work and lag(work) and lag(work, 2))
 
-            test_dump_init:
+            test_dump_init():
                 - empty_file: csv(fname='empty_file.csv')
                 - one_line_header: csv('period', 'id', 'age',
                                        fname='person_ages.csv')
@@ -2186,7 +2186,7 @@ entities:
 #                # would be equivalent to the current Entity.store_period_data:
 #                - h5(dump(temporaries=False), append=True)
 
-            test_dump:
+            test_dump():
                 - expr: csv(dump(gender, age, partner_id, partner.age),
                             suffix='partner_ages')
                 - full: csv(dump(), suffix='full')
@@ -2222,7 +2222,7 @@ entities:
                 - csv(dump(filter=period == 2100), suffix='norow_scalarfilter')
                 - csv(dump(filter=age > 150), suffix='norow_arrayfilter')
 
-            test_csv:
+            test_csv():
                 - show("single expr")
                 - csv(avg(age), fname='person_age_aggregates.csv', mode='a')
 
@@ -2237,7 +2237,7 @@ entities:
                 - show("empty groupby")
                 - csv(groupby(gender, filter=age > 200))
 
-            test_remove:
+            test_remove():
                 - assertTrue(all(partner.partner.id == id,
                                  filter=partner_id != -1))
                 - to_remove: age >= 100
@@ -2256,7 +2256,7 @@ entities:
                 - assertTrue(all(partner.partner.id == id,
                                  filter=partner_id != -1))
 
-            test_uniform:
+            test_uniform():
                 - u: uniform()
                 - assertEqual(u.__len__(), count())
                 - assertTrue(all(0.0 <= u and u < 1.0))
@@ -2269,7 +2269,7 @@ entities:
                 # nan outside the filter
                 - assertTrue(all(u != u, filter=not gender))
 
-            test_otherrandom:
+            test_otherrandom():
                 - g: gumbel()
                 - g: gumbel(filter=gender)
                 # nan outside the filter
@@ -2282,7 +2282,7 @@ entities:
                 - mn: multivariate_normal([0, 0], [[1.5, 1], [1, 1.5]])
                 - assertEqual(mn.shape, (count(), 2))
 
-            test_all:
+            test_all():
                 # scalars
                 - assertTrue(all(True))
                 - assertFalse(all(False))
@@ -2297,7 +2297,7 @@ entities:
                 - assertTrue(all(MALE, filter=MALE))
                 - assertFalse(all(FEMALE, filter=MALE))
 
-            test_any:
+            test_any():
                 # scalars
                 - assertTrue(any(True))
                 - assertFalse(any(False))
@@ -2312,7 +2312,7 @@ entities:
                 - assertTrue(any(MALE, filter=MALE))
                 - assertFalse(any(FEMALE, filter=MALE))
 
-            test_count:
+            test_count():
                 # simple
                 - population: count()
                 # not very useful but I could not think of something better
@@ -2324,7 +2324,7 @@ entities:
                 - assertEqual(count(MALE) + count(FEMALE), population)
                 - assertEqual(count(MALE) + count(FEMALE), population)
 
-            test_sum:
+            test_sum():
                 # simple
                 - population_age: sum(age)
                 # explicit filter
@@ -2402,7 +2402,7 @@ entities:
 #                - assertEqual(sum(2), 2 * count())
                 - assertEqual(sum(2, filter=MALE), 2 * count(MALE))
 
-            test_avg:
+            test_avg():
                 # simple
                 - assertEqual(avg(age), sum(age) / count())
 
@@ -2435,11 +2435,11 @@ entities:
                 # bool expr
                 - assertEqual(avg([False, True, True, False]), 0.5)
 
-            test_std:
+            test_std():
                 # bool expr
                 - assertEqual(std([False, True, True, False]), 0.5)
 
-            test_min:
+            test_min():
                 # simple scalars
                 - assertEqual(min([2, 1, 3]), 1)
                 - assertEqual(min([2.0, 1.0, 3.0]), 1.0)
@@ -2470,7 +2470,7 @@ entities:
                 # check that gender was not modified (used to be the case)
                 - assertEqual(gender, gender_backup)
 
-            test_max:
+            test_max():
                 # simple scalars
                 - assertEqual(max([2, 1, 3]), 3)
                 - assertEqual(max([2.0, 1.0, 3.0]), 3.0)
@@ -2503,7 +2503,7 @@ entities:
                 # check that gender was not modified (used to be the case)
                 - assertEqual(gender, gender_backup)
 
-            test_median:
+            test_median():
                 # simple without filter
                 - median_age: median(age)
                 - num_young: count(age < median_age)
@@ -2530,7 +2530,7 @@ entities:
                 - assertTrue(num_old <= num_total / 2)
                 - assertEqual(num_young + num_median + num_old, num_total)
 
-            test_percentile:
+            test_percentile():
                 # without filter
                 - age_10p: percentile(age, 10)
                 - num_young: count(age < age_10p)
@@ -2569,7 +2569,7 @@ entities:
                 - assertTrue(num_old <= (num_total * 90 / 100) + 1)
                 - assertEqual(num_young + num_10p + num_old, num_total)
 
-            test_gini:
+            test_gini():
                 # simple expr
                 - assertEqual(gini([1, 1, 1]), 0)
                 - assertEqual(gini([0, 0, 0, 1]), 0.75)
@@ -2605,7 +2605,7 @@ entities:
                 # check that gender was not modified (used to be the case)
                 - assertEqual(gender, gender_backup)
 
-            test_choice:
+            test_choice():
                 - intchoice: choice([0, 5, 10], [0.1, 0.2, 0.7])
                 - num0: count(intchoice == 0)
                 - num5: count(intchoice == 5)
@@ -2689,7 +2689,7 @@ entities:
                 - assertTrue(47 < m2 and m2 < 53) # should be approx 50%
                 - assertTrue(17 < m3 and m3 < 23) # should be approx 20%
 
-            test_groupby:
+            test_groupby():
                 # scalar dim
                 - num_males: count(gender)
                 - by_constant: groupby(num_males)
@@ -2848,16 +2848,16 @@ entities:
                 - assertEqual(min_count_by_gender.row_totals, None)
                 - assertEqual(min_count_by_gender.col_totals, None)
 
-            show_weight:
+            show_weight():
                 - show("avg weight", avg(weight),
                        "total population", sum(weight))
 
-            test_imported_process:
+            test_imported_process():
                 - qshow(imported_field1)
                 - assertEquiv(imported_field1, -1)
                 - assertEqual(imported_field2, age + 2)
 
-            test_array:
+            test_array():
                 # - remove(id % 1000 < 999)
                 - v0: age
                 - v1: age + 1
@@ -2877,7 +2877,7 @@ entities:
                 - sum_highest: sorted_arr[-3:].sum(axis=0)
                 - assertEqual(sum_highest, highest1 + highest2 + highest3)
 
-            generate:
+            generate():
                 - new('person', number=100000,
                       age=randint(0, 98),
                       dead=False,
@@ -2888,7 +2888,7 @@ entities:
                       m_id=-1,
                       hh_id=-1)
 
-            test_default_value:
+            test_default_value():
                 - assertEquiv(undefaulted_bool_variable, False)
                 - assertEquiv(undefaulted_integer_variable, -1)
                 - assertTrue(all(undefaulted_float_variable !=
@@ -2897,7 +2897,7 @@ entities:
                 - assertEquiv(defaulted_float_variable, 99.99)
                 - assertTrue(all(defaulted_bool_variable))
 
-            test_multi_align:
+            test_multi_align():
                 # it also works for hard-coded values, e.g.
                 #- target_values: ([5, 10, 15])
                 #- target_props: ([0.2, 0.5, 0.3])
@@ -2950,10 +2950,10 @@ entities:
 #                - merge(load('param/person.csv',
 #                             fields=[('period', int), ('id', int), ('age', int)], filter=period == 2011)
 
-            test_show:
+            test_show():
                 - show("yada yada")
 
-            test_load:
+            test_load():
                 - arr: load('param/mig.csv', type=float)
                 - assertEqual(arr.shape, (2, 121, 61))
                 - assertEqual(arr.dim_names, ['gender', 'age', 'period'])
@@ -2961,7 +2961,7 @@ entities:
                               fields=[('PERIOD', int), ('INTFIELD', int), ('FLOATFIELD', float)])
                 - assertEqual(table.shape, (31,))
 
-            test_global_constants:
+            test_global_constants():
                 - assertEqual(BOOL_CONSTANT1, False)
                 - assertEqual(BOOL_CONSTANT2, True)
                 - assertEqual(INT_CONSTANT1, -1)

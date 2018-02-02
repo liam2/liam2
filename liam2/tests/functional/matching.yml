@@ -9,7 +9,7 @@ entities:
             persons: {type: one2many, target: person, field: region_id}
 
         processes:
-            generate:
+            generate():
                 - new('region', number=10,
                       x=randint(100),
                       y=randint(100))
@@ -64,19 +64,19 @@ entities:
                 - age: if(age == -1, trunc(idxbysex * 100 / numbysex), age)
                 - show(groupby(age, male))
 
-            generate_few:
+            generate_few():
                 # make sure id != rownum
                 - generate(10, 10)
                 - remove()
                 # generate two men and three women of each age
                 - generate(200, 300)
 
-            generate_many:
+            generate_many():
                 - remove()
                 # generate 100 men and 100 women of each age
                 - generate(10000, 10000)
 
-            test_matching:
+            test_matching():
                 # men in set1 and women in set2, older men first
                 # ==============================================
                 # given we have 3 women for 2 men, each man can chose a woman
@@ -244,7 +244,7 @@ entities:
                                         score=- (other.age - age) ** 2)
                 - assertEqual(partner_id1, partner_id2)
 
-            test_matching_pool:
+            test_matching_pool():
                 # small pool, men in set1 and women in set2, older men first
                 # ==========================================================
                 - partner_id: matching(set1filter=MALE,
@@ -297,7 +297,7 @@ entities:
                 - assertEqual(count(INCOUPLE and FEMALE), 200)
                 - assertTrue(all(partner.age == age, filter=INCOUPLE))
 
-            test_rank_matching:
+            test_rank_matching():
                 # ordering both men and women by decreasing age, we should get
                 # almost the same results as:
                 # matching(set1filter=FEMALE, set2filter=MALE, orderby=age,
@@ -364,7 +364,7 @@ entities:
                 - assertTrue(all(age <= 33, filter=FEMALE and not INCOUPLE))
                 - assertTrue(all(not INCOUPLE, filter=FEMALE and age < 33))
 
-            test_optimized:
+            test_optimized():
                 # ordering by id is almost the only way to get exactly the same
                 # results for onebyone and byvalue algorithms
                 - normal_id: matching(set1filter=MALE, set2filter=FEMALE,

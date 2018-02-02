@@ -16,7 +16,7 @@ entities:
             partner: {type: many2one, target: person, field: partner_id}
 
         processes:
-            create:
+            create():
                 # show what we are trying to achieve
                 - show("TARGETS")
                 - show(DISTRIB)
@@ -38,7 +38,7 @@ entities:
                 # remove individuals which should not exist
                 - remove(weight == 0)
 
-            expand:
+            expand():
                 # compute target population
                 - target_pop: sum(weight)
 
