@@ -1277,6 +1277,12 @@ class MethodSymbol(object):
         # return MethodCallToResolve(self.entity, self.name, args, kwargs)
         return MethodCall(self.entity, self.name, args, kwargs)
 
+    def __repr__(self):
+        return 'MethodSymbol({}, {})'.format(self.name, self.entity)
+
+    def __str__(self):
+        return '{}.{}'.format(self.entity, self.name)
+
 
 class NotHashable(Expr):
     __hash__ = None
