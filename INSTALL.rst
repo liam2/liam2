@@ -69,26 +69,28 @@ Optional dependencies:
 
 There are several options to install all those packages. In order of increasing difficulty:
 
-* `Using Anaconda (all platforms)`_
+.. * `Using Anaconda (all platforms)`_
+
 * `Using Miniconda (all platforms)`_
 * `Getting binary packages using apt-get (GNU/linux debian-based distributions)`_
 * `Getting binary packages from Christoph Gohlke (Windows only)`_
 * `Getting third-party packages directly from their authors`_
 
 
-Using Anaconda (all platforms)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+..
+   Using Anaconda (all platforms)
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. Install Anaconda 2.1 or later (Python 2.7). It includes out of the box all required dependencies, matplotlib and
-   sphinx. We recommend using the 64-bit version if you have a 64bit OS.
+   1. Install Anaconda 2.1 or later (Python 2.7). It includes out of the box all required dependencies, matplotlib and
+      sphinx. We recommend using the 64-bit version if you have a 64bit OS.
 
-2. Install ViTables. In a command prompt, type: ::
+   2. Install ViTables. In a command prompt, type: ::
 
-    pip install https://github.com/gdementen/ViTables/archive/682eda12f8965715200dd326764cd0c7194d91fc.zip
+       pip install https://github.com/gdementen/ViTables/archive/682eda12f8965715200dd326764cd0c7194d91fc.zip
 
-Note that using other Python distributions should probably work, but we have
-not tested that. As of this writing, Python(x,y) and WinPython are both missing
-the "bcolz" package, so it would need to be installed from another source, if needed.
+   Note that using other Python distributions should probably work, but we have
+   not tested that. As of this writing, Python(x,y) and WinPython are both missing
+   the "bcolz" package, so it would need to be installed from another source, if needed.
 
 
 Using Miniconda (all platforms)
