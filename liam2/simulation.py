@@ -336,16 +336,17 @@ class Simulation(object):
         minimal_output = False
         if output_file is None:
             output_file = output_def.get('file', '')
-            if output_file:
-                output_path = os.path.join(output_dir, output_file)
-            else:
-                # using a temporary directory instead of a temporary file
-                # because tempfile.* only returns file-like objects (which
-                # pytables does not support) or directories, not file names.
-                tmp_dir = tempfile.mkdtemp(prefix='liam2-', suffix='-tmp',
-                                           dir=output_dir)
-                output_path = os.path.join(tmp_dir, 'simulation.h5')
-                minimal_output = True
+
+        if output_file:
+            output_path = os.path.join(output_dir, output_file)
+        else:
+            # using a temporary directory instead of a temporary file
+            # because tempfile.* only returns file-like objects (which
+            # pytables does not support) or directories, not file names.
+            tmp_dir = tempfile.mkdtemp(prefix='liam2-', suffix='-tmp',
+                                       dir=output_dir)
+            output_path = os.path.join(tmp_dir, 'simulation.h5')
+            minimal_output = True
 
         entities = {}
         for k, v in content['entities'].iteritems():
