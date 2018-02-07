@@ -88,8 +88,10 @@ def handle_imports(content, directory):
                     # simple list of items
                     import_fields = [d.items()[0] for d in import_fields]
                     local_fields = [d.items()[0] for d in local_fields]
-                    # merge the lists
-                    merged_fields = merge_items(import_fields, local_fields)
+                    # merge the lists,
+                    # result will contain imported_fields first then local_fields
+                    # local_fields definitions override imported definitions
+                    merged_fields = merge_items((import_fields, local_fields), value_priority='last')
                     # convert them back to "yaml ordered dict"
                     merged_fields = [{k: v} for k, v in merged_fields]
                     multi_set(content, multi_key, merged_fields)

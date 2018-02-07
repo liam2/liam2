@@ -147,13 +147,16 @@ Fixes
 * fixed csv(dump()) rounding float values at the 12th decimal instead of using all available precision when the missing
   argument is used (closes :issue:`252`).
 
+* fixed bug which made it impossible to override an existing field or global definition when importing another model.
+  It was using the original/imported field definition and ignoring the overridden definition (closes :issue:`264`).
+
 * fixed fields declared as initialdata: False to load data from the input file anyway if a field with
   the same name existed in the corresponding table (closes :issue:`227`). Additionally, those fields used the
   type from the input table instead of the one declared (if different).
 
 * fixed output: False fields acting like temporary globals (i.e. being wiped at the end of each period) instead of like
-  a field (closes :issue:`230`). This had the indirect consequence of having both a field and a temporary
-  variable with the same name, which confused dump().
+  a field (closes :issue:`230`). This had the indirect consequence of having both a field and a temporary variable with
+  the same name, which confused dump().
 
 * fixed importing models using relative paths in some cases. Also makes the display of the imported model path nicer
   in that case (:pr:`200`). Thanks to Mahdi Ben Jelloul.

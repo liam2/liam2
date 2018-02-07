@@ -917,19 +917,41 @@ def merge_dicts(*args, **kwargs):
     return result
 
 
-def merge_items(*args):
+def merge_items(item_sequences, merge_order='first_to_last', value_priority='first'):
     """
-    Returns a new list which is the result of merging all the lists of (key,
-    value) pairs passed as arguments. Earlier lists take precedence.
-    Order is preserved.
+    Returns a list of (key, value) pairs which is the result of merging all sequences of (key, value) pairs passed as
+    arguments.
+    Order of keys is preserved on a "first" merged basis.
+    If merge_order is 'first_to_last', items will be merged from first to last, appending if not present, otherwise the
+    merge happens from last to first.
+
+    value_priority determines which sequence items will have priority over the others. 'first' means the value of
+    a key will be from the earliest sequence (relative to the order given in item_sequences, independently of the
+    merge order).
     """
-    result = args[0][:]
-    keys_seen = set(k for k, _ in args[0])
-    for other_items in args[1:]:
-        new_items = [(k, v) for k, v in other_items if k not in keys_seen]
-        result.extend(new_items)
-        keys_seen |= set(k for k, _ in new_items)
-    return result
+    assert merge_order in {'first_to_last', 'last_to_first'}
+    assert value_priority in {'first', 'last'}
+
+    keep_first = value_priority == 'first'
+    if merge_order == 'last_to_first':
+        item_sequences = item_sequences[::-1]
+        keep_first = not keep_first
+
+    result_keys = []
+    values = {}
+    for items in item_sequences:
+        if keep_first:
+            for k, v in items:
+                if k not in values:
+                    result_keys.append(k)
+                    values[k] = v
+        else:
+            for k, v in items:
+                if k not in values:
+                    result_keys.append(k)
+                values[k] = v
+
+    return [(k, values[k]) for k in result_keys]
 
 
 def expand_wild_tuple(keys, d):

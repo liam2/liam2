@@ -1,0 +1,10 @@
+import: test_issue.yml.template
+
+entities:
+    person:
+        fields:
+            - test: {type: float, initialdata: false}
+
+        processes:
+            test_issue():
+                - show("nothing")

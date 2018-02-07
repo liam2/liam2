@@ -1,0 +1,11 @@
+import: issue264base.yml
+
+entities:
+    person:
+        fields:
+            # the field is present in base model but with a different type (we want to overridde its definition)
+            - test: {type: int, initialdata: False}
+
+        processes:
+            test_issue():
+                - assertEquiv(test, -1)

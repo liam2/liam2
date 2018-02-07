@@ -49,7 +49,7 @@ def diff_array(array1, array2, showdiffs=10, raiseondiff=False):
     fnames1 = set(array1.dtype.names)
     fnames2 = set(array2.dtype.names)
     # use merge_items instead of fnames1 | fnames2 to preserve ordering
-    for fname, _ in merge_items(fields1, fields2):
+    for fname, _ in merge_items((fields1, fields2)):
         print("  - %s:" % fname, end=' ')
         if fname not in fnames1:
             print("missing in file 1")
