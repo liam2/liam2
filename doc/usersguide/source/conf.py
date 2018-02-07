@@ -10,6 +10,7 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
+from __future__ import print_function
 
 import os
 import sys
@@ -104,7 +105,10 @@ pygments_style = 'sphinx'
 # html_theme = 'default'
 # html_theme = 'classic'   # (old default)
 # html_theme = 'alabaster'
-html_theme = 'sphinx_rtd_theme'
+if tags.has('force_classic_html_theme'):
+    html_theme = 'classic'
+else:
+    html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the

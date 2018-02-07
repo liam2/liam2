@@ -98,7 +98,7 @@ if "%1" == "json" (
 )
 
 if "%1" == "htmlhelp" (
-	%SPHINXBUILD% -b htmlhelp %ALLSPHINXOPTS% %BUILDDIR%/htmlhelp
+	%SPHINXBUILD% -b htmlhelp -t force_classic_html_theme %ALLSPHINXOPTS% %BUILDDIR%/htmlhelp
 	if errorlevel 1 exit /b 1
 	echo.
 	echo.Build finished; now you can run HTML Help Workshop with the ^
