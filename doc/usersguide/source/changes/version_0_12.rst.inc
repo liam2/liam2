@@ -62,7 +62,7 @@ New features
 
 * implemented align(link=) to use proportions in combination with the Chenard algorithm (closes :issue:`216`).
 
-* implemented a way of declaring global constants (closes :issue:`203`): ::
+* implemented a way of declaring global constants (based on :pr:`206` by Mahdi Ben Jelloul). For example: ::
 
     globals:
         MY_BOOL_CONSTANT: True
