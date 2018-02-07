@@ -14,7 +14,9 @@
 .vscode
 
 build/
+# for coverage
 cover/
+dist/
 doc/usersguide/build/
 experiments/
 junk/
