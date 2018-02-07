@@ -99,7 +99,7 @@ New features
 * implemented assertRaises to check for expected errors.
 
 * implemented access to the error function (erf) function (if the scipy package is installed, which is **NOT** the case
-  in the Windows bundle). :pr:`234`.
+  in the Windows bundle). Thanks to Mahdi Ben Jelloul (:pr:`234`).
 
 
 Miscellaneous improvements
@@ -116,8 +116,6 @@ Miscellaneous improvements
 
 * better error message when a field default value is not of the field type.
 
-* improved check on the sum of probabilities in sidewalk alignment (:pr:`197`). Thanks to Mahdi Ben Jelloul.
-
 * When installing LIAM2 via `python setup.py install`, a liam2 script will be created in the Python installation
   Scripts directory (which is in the system PATH in most cases), so that one can use liam2 on the command line
   without specifying its path. For example: ::
@@ -131,6 +129,8 @@ Miscellaneous improvements
 * made charts (matplotlib) work even without PyQt installed (i.e. fallback to the Tk backend).
 
 * avoid evaluating assertions arguments when using ``assertions: skip``. Previously, only the final test was skipped.
+
+* improved check on the sum of probabilities in sidewalk alignment (:pr:`197`). Thanks to Mahdi Ben Jelloul.
 
 * misc improvements to the code, test models and the documentation, some of which done by Mahdi Ben Jelloul.
 
