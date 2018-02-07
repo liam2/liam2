@@ -1,13 +1,13 @@
 Syntax changes
 --------------
 
-* defining functions without any argument without using parentheses is now a warning. In a future release, this will be
-  an error. The goal of this change is both to make models more explicit and consistent: a function definition always
-  has parentheses and to make LIAM2 internal code simpler in the long run.
+* defining functions without any argument without using parentheses is now a warning. Closes :issue:`162`.
+  In a future release, this will be an error. The goal of this change is both to make models more explicit and
+  consistent (a function definition *always* has parentheses) and to make LIAM2 internal code simpler in the long run.
 
   Given that literally all models ever written need to be updated and doing so by hand would take a lot of time,
   the LIAM2 model upgrader can be used to automatically upgrade model files to the new syntax (the original version of
-  your model(s) will be saved in a .bak file). Closes :issue:`162`.
+  your model(s) will be saved in a .bak file).
 
   If you only have a few model files and you use the Windows bundle, you could open each of your model in turn and use
   the ``LIAM2: upgrade model`` command in the ``Macro`` menu of Notepad++.
@@ -46,7 +46,7 @@ New features
 
   In that case, LIAM2 will create an hidden minimal output file and delete it automatically at the end of the
   simulation. For people who do not use the .h5 output file, this can substantially improve disk usage and slightly
-  improve performance when using large datasets.  The minimal output file will contain only the fields used in lag
+  improve performance when using large datasets. The minimal output file will contain only the fields used in lag
   expression going back in time more than one period (because those are not kept in memory).
 
 * implemented load() function which can load both arrays and tables in the middle of a simulation. ::
