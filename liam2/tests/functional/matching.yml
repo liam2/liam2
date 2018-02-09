@@ -23,11 +23,11 @@ entities:
             - partner_id: int
             - region_id:  int
 
-        macros: 
+        macros:
             INCOUPLE: partner_id > -1
             FEMALE: not male
             MALE: male
-            
+
         links:
             partner: {type: many2one, target: person, field: partner_id}
             region: {type: many2one, target: region, field: region_id}
@@ -74,7 +74,7 @@ entities:
             generate_many():
                 - remove()
                 # generate 100 men and 100 women of each age
-                - generate(10000, 10000)
+                - generate(2000, 2000)
 
             test_matching():
                 # men in set1 and women in set2, older men first
