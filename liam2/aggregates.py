@@ -4,7 +4,7 @@ from __future__ import print_function
 import numpy as np
 
 from expr import (Variable, BinaryOp, getdtype, expr_eval,
-                  ispresent, FunctionExpr, always, firstarg_dtype)
+                  ispresent, FunctionExpr, always, firstarg_dtype, ComparisonOp, missing_values)
 from exprbases import NumpyAggregate, FilteredExpression
 import exprmisc
 from context import context_length
@@ -89,16 +89,27 @@ def na_sum(a, overwrite=False):
 
 # TODO: inherit from NumpyAggregate, to get support for the axis argument
 class Sum(FilteredExpression):
-    no_eval = ('expr', 'filter')
+    no_eval = ('expr', 'filter', 'weights')
 
-    def compute(self, context, expr, filter=None, skip_na=True):
+    def compute(self, context, expr, filter=None, skip_na=True, weights=None):
         filter_expr = self._getfilter(context, filter)
         if filter_expr is not None:
             expr = BinaryOp('*', expr, filter_expr)
+        if weights is not None:
+            expr_dtype = getdtype(expr, context)
+            # missing (-1) * weight should be missing (-1)
+            if skip_na and np.issubdtype(expr_dtype, int):
+                # expr = where(expr != -1, expr * weights, -1)
+                missing_int = missing_values[int]
+                expr = exprmisc.Where(ComparisonOp('!=', expr, missing_int),
+                                      BinaryOp('*', expr, weights),
+                                      missing_int)
+            else:
+                # expr = expr * weights
+                expr = BinaryOp('*', expr, weights)
 
         values = expr_eval(expr, context)
         values = np.asarray(values)
-
         return na_sum(values) if skip_na else np.sum(values)
 
     def dtype(self, context):

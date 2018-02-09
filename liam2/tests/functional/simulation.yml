@@ -2319,22 +2319,19 @@ entities:
                 - assertTrue(population >= 0)
 
                 # with a filter
-                - qshow(count(MALE))
-                - qshow(count(FEMALE))
-                - assertEqual(count(MALE) + count(FEMALE), population)
                 - assertEqual(count(MALE) + count(FEMALE), population)
 
             test_sum():
+                # without weight
+                # ==============
+
                 # simple
                 - population_age: sum(age)
+
                 # explicit filter
                 - males_age: sum(age, filter=MALE)
                 - assertEqual(males_age, sum(age * MALE))
                 - females_age: sum(age, filter=FEMALE)
-                - qshow(FEMALE)
-                - qshow(sum(FEMALE))
-                - qshow(age * FEMALE)
-                - qshow(sum(age * FEMALE))
                 - assertEqual(females_age, sum(age * FEMALE))
                 - assertEqual(males_age + females_age, population_age)
 
@@ -2376,15 +2373,17 @@ entities:
                               count(FEMALE))
 
                 # with missing
-                - assertEqual(sum([1, -1, 2]), 3)
-                - assertEqual(sum([1.0, nan, 2.0]), 3.0)
+                - ints: array([1, -1, 2])
+                - floats: array([1.0, nan, 2.0])
+                - assertEqual(sum(ints), 3)
+                - assertEqual(sum(floats), 3.0)
 
                 # with missing but skip_na=False
-                - assertEqual(sum([1, -1, 2], skip_na=False), 2)
-                - withnan: sum([1.0, nan, 2.0], skip_na=False)
+                - assertEqual(sum(ints, skip_na=False), 2)
+                - res: sum(floats, skip_na=False)
                 # fails with numba
-#                - assertTrue(withnan != withnan)
-                - assertTrue(not (withnan == withnan))
+                - assertTrue(res != res)
+#                - assertTrue(not (res == res))
 
                 # with missing and filter
                 - assertEqual(sum(if(age > 10, -1, age), filter=gender),
@@ -2394,13 +2393,38 @@ entities:
                               sum(f_age, filter=age <= 10 and gender))
 
                 # bool expr
-                - sum_bool: sum([False, True, True])
+                - b: [False, True, True]
+                - sum_bool: sum(b)
                 - assertEqual(sum_bool, 2)
 
                 # scalar
                 # currently fails
 #                - assertEqual(sum(2), 2 * count())
                 - assertEqual(sum(2, filter=MALE), 2 * count(MALE))
+
+                # with weight
+                # ===========
+
+                # ints
+                - weights: array([3, 2, 1])
+                - filter: array([False, True, True])
+                - ints: array([1, -1, 2])
+
+                - assertEqual(sum(ints, weights=weights), 5)
+                - assertEqual(sum(ints, weights=weights, filter=filter), 2)
+                - assertEqual(sum(ints, weights=weights, skip_na=False), 3)
+                - assertEqual(sum(ints, weights=weights, filter=filter, skip_na=False), 0)
+
+                # floats
+                - weights: array([3, 2, 1])
+                - filter: array([False, True, True])
+                - floats: array([1.0, nan, 2.0])
+                - assertEqual(sum(floats, weights=weights), 5.0)
+                - assertEqual(sum(floats, weights=weights, filter=filter), 2.0)
+                - res: sum(floats, weights=weights, skip_na=False)
+                - assertTrue(res != res)
+                - res: sum(floats, weights=weights, filter=filter, skip_na=False)
+                - assertTrue(res != res)
 
             test_avg():
                 # simple
