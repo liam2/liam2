@@ -1,5 +1,5 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import print_function, division
 
 import numpy as np
 
@@ -186,6 +186,134 @@ class Median(NumpyAggregate):
 class Percentile(NumpyAggregate):
     np_func = np.percentile
     dtype = always(float)
+
+
+def wpercentile(a, weights=None, q=50, weights_type='freq'):
+    """
+    Calculates percentiles associated with a (possibly weighted) array. Ignores data points with 0 weight.
+
+    Parameters
+    ----------
+    a : array-like
+        The input array from which to calculate percentiles
+    weights : array-like, optional
+        The weights to assign to values of a. See weights_type for how they are interpreted. Defaults to None (weights
+        equal 1).
+    q : scalar or array-like, optional
+        The percentile(s) to calculate (0 to 100). Defaults to 50.
+    weights_type : 'freq'|'sampling', optional
+        'freq': frequency weights. They are assumed to be positive integers.
+        'sampling': sampling weights. Assumed to be between 0 and 1. In this case, weights are normalized so that they
+                    sum to the number of non-missing data points.
+
+    Returns
+    -------
+    scalar or np.ndarray
+        The value(s) associated with the specified percentile(s).
+
+    Notes
+    -----
+    For both kinds of weights, this implementation gives identical results to np.percentile when all weights are equal,
+    but it is only equivalent to calling np.percentile on an expanded array (using weights as the number of times
+    each value must be repeated) for weights_type='freq'.
+
+    Examples
+    --------
+
+    >>> a = [4, 9, 0, 2, 0, 3, 2, 7, 3, 9]
+    >>> round(np.percentile(a, q=40), 2)
+    2.6
+    >>> w = np.ones_like(a)
+    >>> round(wpercentile(a, w, 40), 2)
+    2.6
+
+    >>> round(np.percentile([0, 2, 3, 5, 6, 7, 9], q=40), 2)
+    3.8
+    >>> a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    >>> w = [1, 0, 1, 1, 0, 1, 1, 1, 0, 1]
+    >>> round(wpercentile(a, w, 40), 2)
+    3.8
+
+    >>> round(np.percentile([0, 1, 2, 3, 4], q=40), 2)
+    1.6
+    >>> a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    >>> w = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
+    >>> round(wpercentile(a, w, 40), 2)
+    1.6
+
+    >>> a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    >>> w = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+    >>> round(np.percentile([5, 6, 7, 8, 9], q=40), 2)
+    6.6
+    >>> round(wpercentile(a, w, 40), 2)
+    6.6
+
+    >>> a = [1, 2, 3]
+    >>> w = [3, 5, 4]
+    >>> np.repeat(a, w)
+    array([1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3])
+
+    >>> np.percentile(np.repeat(a, w), q=[0, 25, 50, 100])
+    array([ 1.  ,  1.75,  2.  ,  3.  ])
+    >>> wpercentile(a, w, q=[0, 25, 50, 100], weights_type='freq')
+    array([ 1.  ,  1.75,  2.  ,  3.  ])
+
+    >>> np.percentile([1, 2, 3], q=[0, 10, 40, 50, 60, 100])
+    array([ 1. ,  1.2,  1.8,  2. ,  2.2,  3. ])
+    >>> wpercentile([1, 2, 3], [0.1, 0.1, 0.1], q=[0, 10, 40, 50, 60, 100], weights_type='other')
+    array([ 1. ,  1.2,  1.8,  2. ,  2.2,  3. ])
+
+    >>> np.percentile([1, 2, 3, 4], q=[40, 50])
+    array([ 2.2,  2.5])
+    >>> wpercentile([1, 2, 3, 4], [0.1, 0.1, 0.1, 0.1], q=[40, 50], weights_type='other')
+    array([ 2.2,  2.5])
+    """
+    if not np.isscalar(q):
+        q = np.asarray(q)
+    if np.any(q < 0) or np.any(q > 100):
+        raise ValueError("percentile must be between 0 and 100")
+    q = q / 100
+    a = np.asarray(a)
+    if weights is None:
+        weights = np.ones(a.size)
+    else:
+        weights = np.asarray(weights)
+    to_ignore = np.isnan(a) | np.isnan(weights) | (weights <= 0)
+    if np.any(to_ignore):
+        a = a[~to_ignore]
+        weights = weights[~to_ignore]
+    if weights_type == 'freq':
+        n = np.sum(weights)
+    else:
+        n = len(a)
+        # normalize weights so that they sum to n (do NOT use an inplace op to not modify input)
+        weights = weights * n / np.sum(weights)
+
+    assert len(a) == len(weights)
+    assert len(a) > 0
+
+    ind_sorted = np.argsort(a)
+    sorted_values = a[ind_sorted]
+    sorted_weights = weights[ind_sorted]
+    cum_sorted_weight = np.cumsum(sorted_weights)
+    assert np.isclose(cum_sorted_weight[-1], n), "cum_sorted_weight (%f) != n (%f)" % (cum_sorted_weight[-1], n)
+
+    if weights_type == 'freq':
+        # compute target cumulative weight for requested percentile(s)
+        target = q * (n - 1)
+        # find indices which bound this cumweight
+        idx_left = np.searchsorted(cum_sorted_weight, target, side='right')
+        idx_right = np.searchsorted(cum_sorted_weight, target + 1, side='right')
+        idx_right = np.minimum(idx_right, len(sorted_values) - 1)
+        # where are we between the two bounds?
+        frac = target - np.floor(target)
+        # get two values to interpolate between
+        v_left = sorted_values[idx_left]
+        v_right = sorted_values[idx_right]
+        return v_left + (v_right - v_left) * frac
+    else:
+        p = (cum_sorted_weight - sorted_weights) / (n - 1)
+        return np.interp(q, p, sorted_values)
 
 
 # TODO: filter and skip_na should be provided by an "Aggregate" mixin that is
