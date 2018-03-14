@@ -258,15 +258,27 @@ def wpercentile(a, weights=None, q=50, weights_type='freq'):
     >>> wpercentile(a, w, q=[0, 25, 50, 100], weights_type='freq')
     array([ 1.  ,  1.75,  2.  ,  3.  ])
 
-    >>> np.percentile([1, 2, 3], q=[0, 10, 40, 50, 60, 100])
-    array([ 1. ,  1.2,  1.8,  2. ,  2.2,  3. ])
-    >>> wpercentile([1, 2, 3], [0.1, 0.1, 0.1], q=[0, 10, 40, 50, 60, 100], weights_type='other')
-    array([ 1. ,  1.2,  1.8,  2. ,  2.2,  3. ])
+    >>> q = [0, 10, 40, 50, 60, 90, 100]
+    >>> np.percentile([1, 2, 3], q=q)
+    array([ 1. ,  1.2,  1.8,  2. ,  2.2,  2.8,  3. ])
 
-    >>> np.percentile([1, 2, 3, 4], q=[40, 50])
-    array([ 2.2,  2.5])
-    >>> wpercentile([1, 2, 3, 4], [0.1, 0.1, 0.1, 0.1], q=[40, 50], weights_type='other')
-    array([ 2.2,  2.5])
+    >>> wpercentile([1, 2, 3], [0.1, 0.1, 0.1], q=q, weights_type='other')
+    array([ 1. ,  1.2,  1.8,  2. ,  2.2,  2.8,  3. ])
+
+    >>> np.percentile([1, 2, 3, 4], q=q)
+    array([ 1. ,  1.3,  2.2,  2.5,  2.8,  3.7,  4. ])
+    >>> wpercentile([1, 2, 3, 4], [0.1, 0.1, 0.1, 0.1], q=q, weights_type='other')
+    array([ 1. ,  1.3,  2.2,  2.5,  2.8,  3.7,  4. ])
+
+    >>> wpercentile([1, 2, 3, 4], [.2, .9, .3, .1], q=q, weights_type='other')
+    array([ 2. ,  2. ,  2.2,  2.5,  2.8,  3.7,  4. ])
+    >>> wpercentile([1, 2, 3, 4], [.9, .2, .3, .1], q=q, weights_type='other')
+    array([ 1. ,  1. ,  1.4,  2. ,  2.6,  3.7,  4. ])
+
+    Check using duplicated values
+
+    >>> wpercentile([1, 2, 2, 3], [.2, .1, .4, .1], q=q, weights_type='other')
+    array([ 1. ,  1.3,  2. ,  2. ,  2. ,  2.7,  3. ])
     """
     if not np.isscalar(q):
         q = np.asarray(q)
@@ -287,7 +299,9 @@ def wpercentile(a, weights=None, q=50, weights_type='freq'):
     else:
         n = len(a)
         # normalize weights so that they sum to n (do NOT use an inplace op to not modify input)
-        weights = weights * n / np.sum(weights)
+        # rounding is done to avoid a few pathological cases where wpercentile(a, q=0) > np.min(a)
+        # or wpercentile(a, constant_w, q=q) != np.percentile(a, constant_w)
+        weights = np.round(weights * n / np.sum(weights), 14)
 
     assert len(a) == len(weights)
     assert len(a) > 0
@@ -295,25 +309,28 @@ def wpercentile(a, weights=None, q=50, weights_type='freq'):
     ind_sorted = np.argsort(a)
     sorted_values = a[ind_sorted]
     sorted_weights = weights[ind_sorted]
-    cum_sorted_weight = np.cumsum(sorted_weights)
-    assert np.isclose(cum_sorted_weight[-1], n), "cum_sorted_weight (%f) != n (%f)" % (cum_sorted_weight[-1], n)
+    cum_weight = np.cumsum(sorted_weights)
+    assert np.isclose(cum_weight[-1], n), "cum_weight (%f) != n (%f)" % (cum_weight[-1], n)
+    cum_weight_m1 = cum_weight - 1
 
-    if weights_type == 'freq':
-        # compute target cumulative weight for requested percentile(s)
-        target = q * (n - 1)
-        # find indices which bound this cumweight
-        idx_left = np.searchsorted(cum_sorted_weight, target, side='right')
-        idx_right = np.searchsorted(cum_sorted_weight, target + 1, side='right')
-        idx_right = np.minimum(idx_right, len(sorted_values) - 1)
-        # where are we between the two bounds?
-        frac = target - np.floor(target)
-        # get two values to interpolate between
-        v_left = sorted_values[idx_left]
-        v_right = sorted_values[idx_right]
-        return v_left + (v_right - v_left) * frac
-    else:
-        p = (cum_sorted_weight - sorted_weights) / (n - 1)
-        return np.interp(q, p, sorted_values)
+    # compute target cumulative weight for requested percentile(s)
+    target_weight = q * (n - 1)
+    # compute the two integral weights bounding each target_weight
+    low_target = np.floor(target_weight)
+    # high_target is potentially > n - 1, but it does not matter
+    high_target = low_target + 1
+    # where are we between the two bounds? (== target % 1)
+    frac = target_weight - low_target
+    # find first value where cum_weight - 1 >= each bound
+    low_idx = np.searchsorted(cum_weight_m1, low_target)
+    # equivalent to sorted_values[low_idx] but with clipping
+    low_value = np.take(sorted_values, low_idx, mode='clip')
+    # this is an optimization to avoid searching again the whole array but it only works when q is a scalar
+    # high_idx = low_idx + np.searchsorted(cum_weight_m1[low_idx:], high_target)
+    high_idx = np.searchsorted(cum_weight_m1, high_target)
+    high_value = np.take(sorted_values, high_idx, mode='clip')
+    # interpolate the two values
+    return low_value + (high_value - low_value) * frac
 
 
 # TODO: filter and skip_na should be provided by an "Aggregate" mixin that is
