@@ -91,7 +91,7 @@ def na_sum(a, overwrite=False):
 class Sum(FilteredExpression):
     no_eval = ('expr', 'filter', 'weights')
 
-    def compute(self, context, expr, filter=None, skip_na=True, weights=None):
+    def compute(self, context, expr, filter=None, weights=None, skip_na=True):
         filter_expr = self._getfilter(context, filter)
         if filter_expr is not None:
             expr = BinaryOp('*', expr, filter_expr)
@@ -183,9 +183,35 @@ class Median(NumpyAggregate):
 
 
 # TODO: use nanpercentile (np only)
-class Percentile(NumpyAggregate):
+class Percentile(FilteredExpression):
     np_func = np.percentile
     dtype = always(float)
+
+    no_eval = ('filter',)
+
+    def compute(self, context, expr, q, filter=None, skip_na=True, weights=None, weights_type='sampling'):
+        # sampling, normalization(aka; reliability) weights
+        values = np.asarray(expr)
+        if weights is not None:
+            weights = np.asarray(weights)
+        filter_expr = self._getfilter(context, filter)
+        if filter_expr is not None:
+            filter_values = expr_eval(filter_expr, context)
+        else:
+            filter_values = True
+        if skip_na:
+            # we should *not* use an inplace operation because filter_values
+            # can be a simple variable
+            filter_values = filter_values & ispresent(values)
+        if filter_values is not True:
+            values = values[filter_values]
+            if weights is not None:
+                weights = weights[filter_values]
+
+        if weights is None:
+            return np.percentile(values, q)
+        else:
+            return wpercentile(values, weights, q, weights_type=weights_type)
 
 
 def wpercentile(a, weights=None, q=50, weights_type='freq'):

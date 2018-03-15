@@ -502,7 +502,7 @@ defaults to *True*.
 
 .. index:: percentile
 
-- **percentile(expr, percent[, filter=condition][, skip_na=True])**: percentile
+- **percentile(expr, percent[, filter=condition][, weights=expr][, skip_na=True])**: percentile
 
 .. index:: gini
 
