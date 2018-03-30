@@ -464,7 +464,7 @@ are eighteen years old or older.
 
 .. index:: sum
 
-- **sum(expr[, filter=condition][, skip_na=True])**: sum of an expression
+- **sum(expr[, filter=condition][, skip_na=True][, weights=expr])**: sum of an expression
 
 It computes the sum of any expression over all individuals of the current
 entity. If a **filter** (boolean condition) is given, it only takes into account
@@ -486,7 +486,7 @@ defaults to *True*.
 
 .. index:: std
 
-- **std(expr[, filter=condition][, weights=expr][, skip_na=True])**: standard deviation
+- **std(expr[, filter=condition][, skip_na=True][, weights=expr])**: standard deviation
 
 .. index:: min
 

@@ -172,10 +172,17 @@ class Average(FilteredExpression):
 
 
 # TODO: use nanstd (np & bn)
-class Std(NumpyAggregate):
-    np_func = np.std
+class Std(WeightedFilteredAggregateFunction):
     dtype = always(float)
 
+    def compute(self, context, expr, filter=None, skip_na=True, weights=None):
+        values, weights = self.get_filtered_values_weights(expr, filter_values=filter, weights=weights, skip_na=skip_na)
+        if weights is None:
+            return np.std(values)
+        else:
+            average = np.average(values, weights=weights)
+            variance = np.average((values - average) ** 2, weights=weights)
+            return np.sqrt(variance)
 
 
 def wpercentile(a, weights=None, q=50, weights_type='freq'):
