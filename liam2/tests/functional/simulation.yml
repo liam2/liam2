@@ -2554,6 +2554,23 @@ entities:
                 - assertTrue(num_old <= num_total / 2)
                 - assertEqual(num_young + num_median + num_old, num_total)
 
+                - x: [1, 2, 3]
+                - assertEqual(median(x), 2.0)
+                - assertEqual(median(x, weights=[0.1, 0.1, 0.1]), 2.0)
+
+                - assertEqual(median([1, 1, 2, 3]), 1.5)
+                - assertEqual(median(x, weights=[2, 1, 1], weights_type='freq'), 1.5)
+                - assertEqual(median(x, weights=[2, 1, 1]), 2.0)
+
+                - x: [1, 2, 3, 4]
+                - assertEqual(median(x), 2.5)
+                - assertEqual(median(x, weights=[0.1, 0.1, 0.1, 0.1]), 2.5)
+                - assertEqual(median(x, weights=[0.2, 0.9, 0.3, 0.1]), 2.5)
+                - assertEqual(median(x, weights=[0.9, 0.2, 0.3, 0.1]), 2.0)
+
+                # Check using duplicated values
+                - assertEqual(median([1, 2, 2, 3], weights=[0.2, 0.1, 0.4, 0.1]), 2.0)
+
             test_percentile():
                 # without filter
                 - age_10p: percentile(age, 10)

@@ -498,11 +498,12 @@ defaults to *True*.
 
 .. index:: median
 
-- **median(expr[, filter=condition][, weights=expr][, skip_na=True])**: median
+- **median(expr[, filter=condition][, skip_na=True][, weights=expr][, weights_type='sampling'])**: median
 
 .. index:: percentile
 
-- **percentile(expr, percent[, filter=condition][, weights=expr][, skip_na=True])**: percentile
+- **percentile(expr, percent[, filter=condition][, skip_na=True][, weights=expr][, weights_type='sampling'])**:
+percentile
 
 .. index:: gini
 

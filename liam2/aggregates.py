@@ -177,11 +177,6 @@ class Std(NumpyAggregate):
     dtype = always(float)
 
 
-# TODO: use nanmedian (np & bn)
-class Median(NumpyAggregate):
-    np_func = np.median
-    dtype = always(float)
-
 
 def wpercentile(a, weights=None, q=50, weights_type='freq'):
     """
@@ -338,6 +333,18 @@ class Percentile(WeightedFilteredAggregateFunction):
             return np.percentile(values, q)
         else:
             return wpercentile(values, weights, q, weights_type=weights_type)
+
+
+# TODO: use nanmedian (np & bn)
+class Median(WeightedFilteredAggregateFunction):
+    dtype = always(float)
+
+    def compute(self, context, expr, filter=None, skip_na=True, weights=None, weights_type='sampling'):
+        values, weights = self.get_filtered_values_weights(expr, filter_values=filter, weights=weights, skip_na=skip_na)
+        if weights is None:
+            return np.median(values)
+        else:
+            return wpercentile(values, weights, 50, weights_type=weights_type)
 
 
 # TODO: filter and skip_na should be provided by an "Aggregate" mixin that is
