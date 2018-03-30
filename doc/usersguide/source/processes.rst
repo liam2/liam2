@@ -482,11 +482,11 @@ defaults to *True*.
 
 .. index:: avg
 
-- **avg(expr[, filter=condition][, skip_na=True])**: average
+- **avg(expr[, filter=condition][, weights=expr][, skip_na=True])**: average
 
 .. index:: std
 
-- **std(expr[, filter=condition][, skip_na=True])**: standard deviation
+- **std(expr[, filter=condition][, weights=expr][, skip_na=True])**: standard deviation
 
 .. index:: min
 
@@ -498,7 +498,7 @@ defaults to *True*.
 
 .. index:: median
 
-- **median(expr[, filter=condition][, skip_na=True])**: median
+- **median(expr[, filter=condition][, weights=expr][, skip_na=True])**: median
 
 .. index:: percentile
 
@@ -506,7 +506,7 @@ defaults to *True*.
 
 .. index:: gini
 
-- **gini(expr[, filter=condition][, skip_na=True])**: gini
+- **gini(expr[, filter=condition][, skip_na=True][, weights=expr])**: gini
 
 .. index:: all
 

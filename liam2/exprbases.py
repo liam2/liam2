@@ -249,6 +249,26 @@ class NumpyAggregate(NumpyFunction):
         return func(*args, **kwargs)
 
 
+class WeightedFilteredAggregateFunction(FunctionExpr):
+    def get_filtered_values_weights(self, values, filter_values, weights, skip_na):
+        values = np.asarray(values)
+        if filter_values is not None:
+            filter_values = np.asarray(filter_values)
+        if weights is not None:
+            weights = np.asarray(weights)
+        if filter_values is None:
+            filter_values = True
+        if skip_na:
+            # we should *not* use an inplace operation because filter_values
+            # can be a simple variable
+            filter_values = filter_values & ispresent(values)
+        if filter_values is not True:
+            values = values[filter_values]
+            if weights is not None:
+                weights = weights[filter_values]
+        return values, weights
+
+
 class NumexprFunction(AbstractFunction):
     """For functions which are present as-is in numexpr"""
     # argspec need to be given manually for each function

@@ -5,7 +5,7 @@ import numpy as np
 
 from expr import (Variable, BinaryOp, getdtype, expr_eval,
                   ispresent, FunctionExpr, always, firstarg_dtype, ComparisonOp, missing_values)
-from exprbases import NumpyAggregate, FilteredExpression
+from exprbases import NumpyAggregate, FilteredExpression, WeightedFilteredAggregateFunction
 import exprmisc
 from context import context_length
 from utils import removed, argspec
@@ -15,6 +15,7 @@ try:
     nanmin = bn.nanmin
     nanmax = bn.nanmax
     nansum = bn.nansum
+    # nanmedian, nanstd, nanmean, nanvar
 except ImportError:
     nanmin = np.nanmin
     nanmax = np.nanmax
@@ -182,38 +183,6 @@ class Median(NumpyAggregate):
     dtype = always(float)
 
 
-# TODO: use nanpercentile (np only)
-class Percentile(FilteredExpression):
-    np_func = np.percentile
-    dtype = always(float)
-
-    no_eval = ('filter',)
-
-    def compute(self, context, expr, q, filter=None, skip_na=True, weights=None, weights_type='sampling'):
-        # sampling, normalization(aka; reliability) weights
-        values = np.asarray(expr)
-        if weights is not None:
-            weights = np.asarray(weights)
-        filter_expr = self._getfilter(context, filter)
-        if filter_expr is not None:
-            filter_values = expr_eval(filter_expr, context)
-        else:
-            filter_values = True
-        if skip_na:
-            # we should *not* use an inplace operation because filter_values
-            # can be a simple variable
-            filter_values = filter_values & ispresent(values)
-        if filter_values is not True:
-            values = values[filter_values]
-            if weights is not None:
-                weights = weights[filter_values]
-
-        if weights is None:
-            return np.percentile(values, q)
-        else:
-            return wpercentile(values, weights, q, weights_type=weights_type)
-
-
 def wpercentile(a, weights=None, q=50, weights_type='freq'):
     """
     Calculates percentiles associated with a (possibly weighted) array. Ignores data points with 0 weight.
@@ -359,43 +328,66 @@ def wpercentile(a, weights=None, q=50, weights_type='freq'):
     return low_value + (high_value - low_value) * frac
 
 
+# TODO: use nanpercentile (np only)
+class Percentile(WeightedFilteredAggregateFunction):
+    dtype = always(float)
+
+    def compute(self, context, expr, q, filter=None, skip_na=True, weights=None, weights_type='sampling'):
+        values, weights = self.get_filtered_values_weights(expr, filter_values=filter, weights=weights, skip_na=skip_na)
+        if weights is None:
+            return np.percentile(values, q)
+        else:
+            return wpercentile(values, weights, q, weights_type=weights_type)
+
+
 # TODO: filter and skip_na should be provided by an "Aggregate" mixin that is
 # used both here and in NumpyAggregate
-class Gini(FilteredExpression):
-    no_eval = ('filter',)
-
-    def compute(self, context, expr, filter=None, skip_na=True):
-        values = np.asarray(expr)
-
-        filter_expr = self._getfilter(context, filter)
-        if filter_expr is not None:
-            filter_values = expr_eval(filter_expr, context)
+class Gini(WeightedFilteredAggregateFunction):
+    def compute(self, context, expr, filter=None, skip_na=True, weights=None):
+        values, weights = self.get_filtered_values_weights(expr, filter_values=filter, weights=weights, skip_na=skip_na)
+        if weights is not None:
+            # ported from a GPL algorithm written in R found at:
+            # https://rdrr.io/cran/acid/src/R/weighted.gini.R
+            sorted_indices = np.argsort(values)
+            sorted_values = values[sorted_indices]
+            sorted_weights = weights[sorted_indices]
+            # force float to avoid overflows with integer inputs
+            cumw = np.cumsum(sorted_weights, dtype=float)
+            cumvalw = np.cumsum(sorted_values * sorted_weights, dtype=float)
+            sumw = cumw[-1]
+            sumvalw = cumvalw[-1]
+            if sumvalw == 0:
+                print("WARNING: gini(%s, filter=%s): value * weight is all zeros (or nan) for filter"
+                      % (self.args[0], self.args[1]))
+            # FWIW, this formula with all weights equal to 1 simplifies to the "usual" gini formula without weights,
+            # as seen below. Using c = cumxw for concision:
+            # cumw = np.arange(1, n + 1)
+            # gini = sum(c[1] * 1 - c[0] * 2 + c[2] * 2 - c[1] * 3 + ... + c[-1] * n-1 - c[-2] * n) / (c[-1] * n)
+            # gini = sum(- 2 * c[0] - 2 * c[1] - 2 * c[2] - ... - 2 * c[-2] + c[-1] * n-1) / (c[-1] * n)
+            # gini = (- 2 * sum(c) + (n + 1) * c[-1]) / (c[-1] * n)
+            # gini = (n + 1 - 2 * sum(c) / c[-1]) / n
+            return np.sum(cumvalw[1:] * cumw[:-1] - cumvalw[:-1] * cumw[1:]) / (sumvalw * sumw)
         else:
-            filter_values = True
-        if skip_na:
-            # we should *not* use an inplace operation because filter_values
-            # can be a simple variable
-            filter_values = filter_values & ispresent(values)
-        if filter_values is not True:
-            values = values[filter_values]
-
-        # from Wikipedia:
-        # G = 1/n * (n + 1 - 2 * (sum((n + 1 - i) * a[i]) / sum(a[i])))
-        #                        i=1..n                    i=1..n
-        # but sum((n + 1 - i) * a[i])
-        #    i=1..n
-        #   = sum((n - i) * a[i] for i in range(n))
-        #   = sum(cumsum(a))
-        sorted_values = np.sort(values)
-        n = len(values)
-
-        # force float to avoid overflows with integer input expressions
-        cumsum = np.cumsum(sorted_values, dtype=float)
-        values_sum = cumsum[-1]
-        if values_sum == 0:
-            print("gini(%s, filter=%s): expression is all zeros (or nan) "
-                  "for filter" % (self.args[0], filter))
-        return (n + 1 - 2 * np.sum(cumsum) / values_sum) / n
+            sorted_values = np.sort(values)
+            n = len(values)
+            # force float to avoid overflows with integer input expressions
+            cumval = np.cumsum(sorted_values, dtype=float)
+            sumval = cumval[-1]
+            if sumval == 0:
+                print("WARNING: gini(%s, filter=%s): expression is all zeros (or nan) for filter"
+                      % (self.args[0], self.args[1]))
+            # From Wikipedia (https://en.wikipedia.org/wiki/Gini_coefficient)
+            # G = 1/n * (n + 1 - 2 * (sum((n + 1 - i) * a[i]) / sum(a[i])))
+            #                        i=1..n                    i=1..n
+            # but since in Python we are indexing from 0, a[i] should be written a[i - 1].
+            # The central part is thus:
+            #  = sum((n + 1 - i) * a[i - 1])
+            #   i=1..n
+            #  = sum((n - i) * a[i])
+            #   i=0..n-1
+            #  = n * a[0] + (n - 1) * a[1] + (n - 2) * a[2] + ... + 1 * a[n - 1]
+            #  = sum(cumsum(a))
+            return (n + 1 - 2 * np.sum(cumval) / sumval) / n
 
     dtype = always(float)
 

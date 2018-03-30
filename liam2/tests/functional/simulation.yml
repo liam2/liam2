@@ -2625,6 +2625,12 @@ entities:
                 - assertEqual(gini([0, 0, 0, 1]), 0.75)
                 - assertEqual(gini([1.0, 0.0, 1.0, 1.0]), 0.25)
 
+                # examples from wikipedia (https://en.wikipedia.org/wiki/Gini_coefficient)
+                # I used the values divided by 1000 for short
+                - assertEqual(gini([20, 30, 40, 50, 60]), 0.2)
+                - assertEqual(gini([9, 40, 48, 48, 55]), 0.2)
+                - assertIsClose(round(gini([50, 90, 130, 170, 270]), 3), 0.293)
+
                 # with missing values
                 - assertEqual(gini([0, -1, 1, 0, 0, -1]), 0.75)
                 - assertEqual(gini([0.0, nan, 1.0, 0.0, 0.0, nan]), 0.75)
@@ -2654,6 +2660,13 @@ entities:
                               gini(f_age, filter=age <= 10 and gender))
                 # check that gender was not modified (used to be the case)
                 - assertEqual(gender, gender_backup)
+
+                # check with weights
+                - x: [3, 1, 7, 2, 5]
+                - w: [1, 2, 3, 4, 5]
+
+                - assertEqual(round(gini(x, weights=w), 10), 0.2983050847)
+                - assertEqual(gini([0.25, 0.75], weights=[1, 1]), 0.25)
 
             test_choice():
                 - intchoice: choice([0, 5, 10], [0.1, 0.2, 0.7])
