@@ -2459,6 +2459,35 @@ entities:
                 # bool expr
                 - assertEqual(avg([False, True, True, False]), 0.5)
 
+                # bool expr with filter
+                - assertEqual(avg([False, True, True, False], [True, False, False, True]), 0.0)
+                - assertEqual(avg([False, True, True, False], [True, True, False, False]), 0.5)
+                - assertEqual(avg([False, True, True, False], [False, True, True, False]), 1.0)
+
+                # with weight
+                # -----------
+
+                # simple
+                - ones: (age + 1) / (age + 1)
+                - assertEqual(avg(age, weights=ones), sum(age) / count())
+
+                - weight: randint(1, 11)
+                - assertEqual(avg(age, weights=weight), sum(age, weights=weight) / sum(weight))
+
+                # with missing
+                - assertEqual(avg([1.0, nan, 3.0], weights=[3, 2, 1]), 1.5)
+                - assertEqual(avg([1, -1, 3], weights=[3, 2, 1]), 1.5)
+
+                # with missing but skip_na=False
+                - assertEqual(avg([4, -1, 2], weights=[3, 2, 1], skip_na=False), 2.0)
+                - withnan: avg([4.0, nan, 2.0], weights=[3, 2, 1], skip_na=False)
+                - assertTrue(withnan != withnan)
+
+                # with missing but skip_na=False
+                - assertEqual(avg([4, -1, 2], weights=[3, 2, 1], skip_na=False), 2.0)
+                - withnan: avg([4.0, nan, 2.0], weights=[3, 2, 1], skip_na=False)
+                - assertTrue(withnan != withnan)
+
             test_std():
                 # bool expr
                 - assertEqual(std([False, True, True, False]), 0.5)

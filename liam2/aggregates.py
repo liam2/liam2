@@ -130,43 +130,47 @@ class Sum(FilteredExpression):
 # TODO: use nanmean (np & bn)
 class Average(FilteredExpression):
     funcname = 'avg'
-    no_eval = ('expr',)
+    no_eval = ('expr', 'filter', 'weights')
 
-    def compute(self, context, expr, filter=None, skip_na=True):
+    def compute(self, context, expr, filter=None, skip_na=True, weights=None):
         # FIXME: either take "contextual filter" into account here (by using
         # self._getfilter), or don't do it in sum & gini
-        if filter is not None:
-            tmpvar = self.add_tmp_var(context, filter)
-            if getdtype(expr, context) is bool:
-                # convert expr to int because mul_bbb is not implemented in
-                # numexpr
-                # expr *= 1
-                expr = BinaryOp('*', expr, 1)
-            # expr *= filter_values
-            expr = BinaryOp('*', expr, tmpvar)
+
+        if filter is not None and weights is not None:
+            filter_weight_expr = BinaryOp('*', filter, weights)
+        elif filter is not None:
+            filter_weight_expr = filter
+        elif weights is not None:
+            filter_weight_expr = weights
         else:
-            filter = True
+            filter_weight_expr = True
 
-        values = expr_eval(expr, context)
-        values = np.asarray(values)
+        filter_weight = expr_eval(filter_weight_expr, context)
+        if filter_weight is not True:
+            filter_weight = np.asarray(filter_weight)
 
+        # we do not build an expression for values * filter_weight because we will need filter_weight "alone" to
+        # compute numrows
+        values = np.asarray(expr_eval(expr, context))
+
+        sum_func = np.sum
         if skip_na:
-            # we should *not* use an inplace operation because filter can be a
-            # simple variable
-            filter = filter & ispresent(values)
+            filter_weight = filter_weight * ispresent(values)
+            # even though we already set filter_weight to 0 for na, we still need to ignore nans because nan * 0 == nan
+            sum_func = np.nansum
 
-        if filter is True:
+        # we cannot simply use filter_weight is True because it can also be 1 (because of the "* ispresent(values)"
+        if np.isscalar(filter_weight) and filter_weight:
+            values_filter_weight = values
             numrows = len(values)
         else:
-            numrows = np.sum(filter)
+            values_filter_weight = values * filter_weight
+            numrows = np.sum(filter_weight)
 
-        if numrows:
-            if skip_na:
-                return na_sum(values) / float(numrows)
-            else:
-                return np.sum(values) / float(numrows)
-        else:
+        if not numrows:
             return float('nan')
+
+        return sum_func(values_filter_weight) / numrows
 
     dtype = always(float)
 

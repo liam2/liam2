@@ -259,8 +259,7 @@ class WeightedFilteredAggregateFunction(FunctionExpr):
         if filter_values is None:
             filter_values = True
         if skip_na:
-            # we should *not* use an inplace operation because filter_values
-            # can be a simple variable
+            # we should *not* use an inplace operation because filter_values can be a simple variable
             filter_values = filter_values & ispresent(values)
         if filter_values is not True:
             values = values[filter_values]

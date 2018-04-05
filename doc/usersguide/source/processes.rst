@@ -482,7 +482,7 @@ defaults to *True*.
 
 .. index:: avg
 
-- **avg(expr[, filter=condition][, weights=expr][, skip_na=True])**: average
+- **avg(expr[, filter=condition][, skip_na=True][, weights=expr])**: average
 
 .. index:: std
 
