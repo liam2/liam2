@@ -31,7 +31,8 @@ def upgrade_str(content):
     cur_indent_len = 0
     last_indent = -1
     parent_per_level = {}
-    section_re = re.compile(r'^(\s*)([a-zA-Z_]\w*):(\s*(#.*)?$)')
+    # - is a valid character in yaml sections (and currently used in models). See issues #270 and #271.
+    section_re = re.compile(r'^(\s*)([a-zA-Z_][\w-]*):(\s*(#.*)?$)')
     for i in range(len(lines)):
         line = lines[i]
 
