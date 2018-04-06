@@ -240,13 +240,13 @@ class LinkGet(LinkExpression):
 
 
 class Aggregate(LinkExpression):
-    no_eval = ('target_expr', 'target_filter')
+    no_eval = ('target_expr', 'target_filter', 'weights')
 
     @property
     def target_filter(self):
         return self.args[2]
 
-    def compute(self, context, link, target_expr, target_filter=None):
+    def compute(self, context, link, target_expr, target_filter=None, weights=None):
         # assert isinstance(context, EntityContext), \
         #         "one2many aggregates in groupby are currently not supported"
         assert isinstance(link, One2Many), "%s (%s)" % (link, type(link))
@@ -261,12 +261,15 @@ class Aggregate(LinkExpression):
         source_ids = target_context[link._link_field]
         expr_value = expr_eval(target_expr, target_context)
         filter_value = expr_eval(target_filter, target_context)
+        weights_value = expr_eval(weights, target_context)
         if filter_value is not None:
             source_ids = source_ids[filter_value]
             # intentionally not using np.isscalar because of some corner
             # cases, eg. None and np.array(1.0)
             if isinstance(expr_value, np.ndarray) and expr_value.shape:
                 expr_value = expr_value[filter_value]
+            if isinstance(weights_value, np.ndarray) and weights_value.shape:
+                weights_value = weights_value[filter_value]
 
         missing_int = missing_values[int]
 
@@ -289,14 +292,14 @@ class Aggregate(LinkExpression):
             assert len(source_rows) == len(expr_value), \
                 "%d != %d" % (len(source_rows), len(expr_value))
 
-        return self.eval_rows(source_rows, expr_value, context)
+        return self.eval_rows(source_rows, expr_value, weights_value, context)
 
     def eval_rows(self, source_rows, expr_value, context):
         raise NotImplementedError()
 
 
 class Sum(Aggregate):
-    def eval_rows(self, source_rows, expr_value, context):
+    def eval_rows(self, source_rows, expr_value, weights_value, context):
         # We can't use a negative value because that is not allowed by
         # bincount, and using a value too high will uselessly increase the size
         # of the array returned by bincount
@@ -309,12 +312,17 @@ class Sum(Aggregate):
         # XXX: use np.putmask(source_rows, source_ids == missing_int,
         #                    missing_int)
         source_rows[source_rows == missing_int] = idx_for_missing
-
-        counts = self.count(source_rows, expr_value)
+        # ideally this should be done with expr_eval in Aggregate.compute but then it is no longer generic
+        # and I need to refactor the whole internal API
+        if weights_value is not None:
+            expr_value = expr_value * weights_value
+        counts = self.count(source_rows, expr_value, weights_value)
+        # missing entries are filled with zeros, so it works nicely in this case (sum/count)
         counts.resize(idx_for_missing)
         return counts
 
-    def count(self, source_rows, expr_value):
+    # XXX: does not depend on self => move to class method?
+    def count(self, source_rows, expr_value, weights_value):
         if isinstance(expr_value, np.ndarray) and expr_value.shape:
             res = np.bincount(source_rows, expr_value)
 
@@ -325,7 +333,7 @@ class Sum(Aggregate):
         else:
             # summing a scalar value
             counts = np.bincount(source_rows)
-            # Optimization for countlink. Not using != 1 because it would
+            # Optimization for link.count. Not using != 1 because it would
             # return a bad type (int) when expr_value is 1.0.
             return counts * expr_value if expr_value is not 1 else counts
 
@@ -342,15 +350,19 @@ class Count(Sum):
     def target_filter(self):
         return self.args[1]
 
-    def compute(self, context, link, target_filter=None):
-        return super(Count, self).compute(context, link, 1, target_filter)
+    def compute(self, context, link, target_filter=None, weights=None):
+        return super(Count, self).compute(context, link, 1, target_filter, weights)
 
 
 class Avg(Sum):
-    def count(self, source_rows, expr_value):
-        sums = super(Avg, self).count(source_rows, expr_value)
-        count = np.bincount(source_rows)
-        return sums / count
+    def count(self, source_rows, expr_value, weights_value):
+        sums = super(Avg, self).count(source_rows, expr_value, weights_value)
+        if weights_value is None:
+            counts = np.bincount(source_rows)
+        else:
+            # sum weights
+            counts = super(Avg, self).count(source_rows, expr_value=weights_value, weights_value=None)
+        return sums / counts
 
     dtype = always(float)
 
@@ -358,7 +370,7 @@ class Avg(Sum):
 class Min(Aggregate):
     aggregate_func = min
 
-    def eval_rows(self, source_rows, expr_value, context):
+    def eval_rows(self, source_rows, expr_value, weights_value, context):
         fill = get_default_value(expr_value)
         result = np.full(context_length(context), fill, dtype=expr_value.dtype)
 
@@ -392,5 +404,6 @@ def removed_functions():
     return {name: removed(func, "%s(link, ...)" % name,
                           "link.%s(...)" % name[:-4])
             for name, func in to_remove}
+
 
 functions = removed_functions()

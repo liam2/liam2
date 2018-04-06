@@ -533,15 +533,11 @@ link methods
 ------------
 (one2many links)
 
-- link.count([filter]) - counts the number of related individuals
-- link.sum(expr[, filter]) - compute the sum of an expression over the related
-                             individuals
-- link.avg(expr[, filter]) - compute the average of an expression over the
-                             related individuals
-- link.min(expr[, filter]) - compute the minimum of an expression over the
-                             related individuals
-- link.max(expr[, filter]) - compute the maximum of an expression over the
-                             related individuals
+- link.count([filter][, weights]) - counts the number of related individuals
+- link.sum(expr[, filter][, weights]) - compute the sum of an expression over the related individuals
+- link.avg(expr[, filter][, weights]) - compute the average of an expression over the related individuals
+- link.min(expr[, filter]) - compute the minimum of an expression over the related individuals
+- link.max(expr[, filter]) - compute the maximum of an expression over the related individuals
 
 *example* ::
 

@@ -1,0 +1,98 @@
+import: test_issue.yml.template
+
+entities:
+    household:
+        links:
+            persons: {type: one2many, target: person, field: hh_id}
+
+        processes:
+            create():
+                - new('household', number=2)
+
+            # hh_id            0        1
+            # age    [0, 10, 30] [20, 40]
+            # weight [5,  4,  2] [ 3,  1]
+            test_count():
+                # no filter and no weight
+                - assertEqual(persons.count(), [3, 2])
+                # filter and no weight
+                - assertEqual(persons.count(age <= 20), [2, 1])
+                # no filter and weight
+                - assertEqual(persons.count(weights=weight), [11, 4]) # [5 + 4 + 2, 3 + 1]
+                # filter and weight
+                - assertEqual(persons.count(age <= 20, weights=weight), [9, 3]) # [5 + 4, 3]
+
+            test_sum():
+                # no filter and no weight
+                - assertEqual(persons.sum(age), [40, 60]) # [0 + 10 + 30, 20 + 40])
+                # filter and no weight
+                - assertEqual(persons.sum(age, age <= 20), [10, 20]) # [0 + 10, 20]
+                # no filter and weight
+                - assertEqual(persons.sum(age, weights=weight), [100, 100]) # [5*0 + 4*10 + 2*30, 3*20 + 1*40]
+                # filter and weight
+                - assertEqual(persons.sum(age, age <= 20, weights=weight), [40, 60]) # [5*0 + 4*10, 3*20]
+
+            test_avg():
+                # Note: should be equal to sum() / count()
+
+                # no filter and no weight
+                - assertEqual(persons.avg(age), [40 / 3, 30]) # [40 / 3, 60 / 2]
+                # filter and no weight
+                - assertEqual(persons.avg(age, age <= 20), [5, 20]) # [10 / 2, 20 / 1]
+                # no filter and weight
+                - assertEqual(persons.avg(age, weights=weight), [100 / 11, 25]) # [100 / 11, 100 / 4]
+                # filter and weight
+                - assertEqual(persons.avg(age, age <= 20, weights=weight), [40 / 9, 20]) # [40 / 9, 60 / 3]
+
+            test_min():
+                # Notes:
+                # * weights have no effect on min/max
+                # * inverted the filter compared to other tests to make the test more interesting
+
+                # no filter and no weight
+                - assertEqual(persons.min(age), [0, 20])
+                # filter and no weight
+                - assertEqual(persons.min(age, age > 20), [30, 40])
+                # no filter and weight
+                - assertEqual(persons.min(age, weights=weight), [0, 20])
+                # filter and weight
+                - assertEqual(persons.min(age, age > 20, weights=weight), [30, 40])
+
+            test_max():
+                # Note: weights have no effect on min/max
+
+                # no filter and no weight
+                - assertEqual(persons.max(age), [30, 40])
+                # filter and no weight
+                - assertEqual(persons.max(age, age <= 20), [10, 20])
+                # no filter and weight
+                - assertEqual(persons.max(age, weights=weight), [30, 40])
+                # filter and weight
+                - assertEqual(persons.max(age, age <= 20, weights=weight), [10, 20])
+
+    person:
+        fields:
+            - hh_id: int
+            - age: int
+            - weight: float
+
+        links:
+            household: {type: many2one, target: household, field: hh_id}
+
+        processes:
+            create():
+                - new('person', number=10)
+                # hh_id            0        1
+                # age    [0, 10, 30] [20, 40]
+                # weight [5,  4,  2] [ 3,  1]
+                - hh_id:  array([ 0,  0,  1,  0,  1])
+                - age:    array([ 0, 10, 20, 30, 40])
+                - weight: array([5,  4,  3,  2,  1])
+
+simulation:
+    init:
+        - household: [create]
+        - person: [create]
+
+    processes:
+        - household: [test_count, test_sum, test_avg, test_min, test_max]
