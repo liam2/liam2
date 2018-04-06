@@ -12,7 +12,7 @@ Syntax changes
   If you only have a few model files and you use the Windows bundle, you could open each of your model in turn and use
   the ``LIAM2: upgrade model`` command in the ``Macro`` menu of Notepad++.
 
-  If you do not use the bundle, or have many models to upgrade, you should rather use the command line: ::
+  If you do not use the bundle, or have many models/files to upgrade, you should rather use the command line: ::
 
      liam2 upgrade <pattern_for_your_models>
 
@@ -102,7 +102,7 @@ New features
 
 * implemented assertRaises to check for expected errors.
 
-* implemented access to the error function (erf) function (if the scipy package is installed, which is **NOT** the case
+* implemented access to the error function (erf) function if the scipy package is installed (which is **NOT** the case
   in the Windows bundle). Thanks to Mahdi Ben Jelloul (:pr:`234`).
 
 

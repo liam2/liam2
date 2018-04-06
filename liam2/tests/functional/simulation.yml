@@ -2411,9 +2411,9 @@ entities:
                 - ints: array([1, -1, 2])
 
                 - assertEqual(sum(ints, weights=weights), 5)
-                - assertEqual(sum(ints, weights=weights, filter=filter), 2)
+                - assertEqual(sum(ints, filter=filter, weights=weights), 2)
                 - assertEqual(sum(ints, weights=weights, skip_na=False), 3)
-                - assertEqual(sum(ints, weights=weights, filter=filter, skip_na=False), 0)
+                - assertEqual(sum(ints, filter=filter, weights=weights, skip_na=False), 0)
 
                 # floats
                 - weights: array([3, 2, 1])
