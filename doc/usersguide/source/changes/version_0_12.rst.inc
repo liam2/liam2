@@ -27,6 +27,10 @@ Syntax changes
 New features
 ------------
 
+* added support for weights in all aggregate functions (closes :issue:`226`): ::
+
+    - avg(income, filter=WORKING, weights=weight)
+
 * implemented choice with a different probability per individual (closes :issue:`211`): ::
 
     - p0: if(gender, 0.1, 0.3)
