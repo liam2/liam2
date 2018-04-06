@@ -34,17 +34,27 @@ class Any(NumpyAggregate):
 
 # XXX: inherit from FilteredExpression instead?
 class Count(FunctionExpr):
-    def compute(self, context, filter=None):
-        if filter is None:
-            return context_length(context)
-        else:
-            # TODO: check this at "compile" time (in __init__), though for
-            # that we need to know the type of all temporary variables
-            # first
+    def compute(self, context, filter=None, weights=None):
+        if filter is not None:
+            filter = np.asarray(filter)
+
+            # TODO: check this at "compile" time (in __init__), though for that we need to know the type of all
+            # temporary variables first
             if not np.issubdtype(filter.dtype, bool):
                 raise ValueError("count filter must be a boolean expression")
-            return np.sum(filter)
+        if weights is not None:
+            weights = np.asarray(weights)
 
+        if filter is None and weights is None:
+            return context_length(context)
+        elif weights is None:
+            return np.sum(filter)
+        elif filter is None:
+            return np.sum(weights)
+        else:
+            return np.sum(weights * filter)
+
+    # FIXME: this is wrong when weights are floats
     dtype = always(int)
 
 
@@ -128,7 +138,7 @@ class Sum(FilteredExpression):
 
 # TODO: inherit from NumpyAggregate, to get support for the axis argument
 # TODO: use nanmean (np & bn)
-class Average(FilteredExpression):
+class Average(FunctionExpr):
     funcname = 'avg'
     no_eval = ('expr', 'filter', 'weights')
 

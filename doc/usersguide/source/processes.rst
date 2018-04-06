@@ -450,7 +450,7 @@ aggregate functions
 
 .. index:: count
 
-- **count([condition])**: count individuals
+- **count([condition][, weights=expr])**: count individuals
 
 It counts the individuals in the current entity. If a (boolean) condition is
 given, it only counts the ones satisfying that condition. For example,

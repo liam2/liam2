@@ -2313,13 +2313,20 @@ entities:
                 - assertFalse(any(FEMALE, filter=MALE))
 
             test_count():
-                # simple
+                # no filter and no weights
                 - population: count()
                 # not very useful but I could not think of something better
                 - assertTrue(population >= 0)
 
-                # with a filter
+                # filter and no weights
                 - assertEqual(count(MALE) + count(FEMALE), population)
+                - assertEqual(count([True, False, True, True]), 3)
+
+                # no filter and weights
+                - assertEqual(count(weights=[1, 2, 3, 4]), 10)
+
+                # filter and weights
+                - assertEqual(count([True, False, True, True], weights=[1, 2, 3, 4]), 8)
 
             test_sum():
                 # without weight
