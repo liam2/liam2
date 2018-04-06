@@ -238,19 +238,19 @@ latex_preamble = '''
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    ('index', 'liam2userguide', 'LIAM2 User Guide',
-     ['gb@plan.be, gd@plan.be, gdm@plan.be'], 1)
-]
+# man_pages = [
+#     ('index', 'liam2userguide', 'LIAM2 User Guide',
+#      ['gb@plan.be, gd@plan.be, gdm@plan.be'], 1)
+# ]
 
 
 # -- Options for Epub output ---------------------------------------------------
 
 # Bibliographic Dublin Core info.
-epub_title = u'LIAM2 User Guide'
-epub_author = u'gb@plan.be, gd@plan.be, gdm@plan.be'
-epub_publisher = u'gb@plan.be, gd@plan.be, gdm@plan.be'
-epub_copyright = u'2011-2017, gb@plan.be, gd@plan.be, gdm@plan.be'
+# epub_title = u'LIAM2 User Guide'
+# epub_author = u'gb@plan.be, gd@plan.be, gdm@plan.be'
+# epub_publisher = u'gb@plan.be, gd@plan.be, gdm@plan.be'
+# epub_copyright = u'2011-2018, gb@plan.be, gd@plan.be, gdm@plan.be'
 
 # The language of the text. It defaults to the language option
 # or en if the language is not set.
