@@ -1,4 +1,4 @@
-from groupby import *
+from liam2.groupby import *
 
 import numpy as np
 

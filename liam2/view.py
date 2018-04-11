@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
+# encoding: utf-8
+from __future__ import absolute_import, division, print_function
 
 #       Copyright (C) 2005-2007 Carabos Coop. V. All rights reserved
 #       Copyright (C) 2008-2013 Vicent Mas. All rights reserved
@@ -22,11 +22,11 @@ from __future__ import print_function
 import locale
 import warnings
 
-from utils import ExceptionOnGetAttr
+from liam2.utils import ExceptionOnGetAttr
 
 try:
     from PyQt4 import QtGui
-except ImportError, e:
+except ImportError as e:
     QtGui = ExceptionOnGetAttr(e)
     print("Warning: the 'view' command is not available because 'PyQt4.QtGui' "
           "could not be imported (%s)." % e)

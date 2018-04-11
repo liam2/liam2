@@ -1,12 +1,11 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
-from context import context_length
-from expr import (expr_eval, getdtype, hasvalue, FunctionExpr, always,
-                  firstarg_dtype, get_default_value)
-from utils import safe_put
+from liam2.context import context_length
+from liam2.expr import expr_eval, getdtype, hasvalue, FunctionExpr, always, firstarg_dtype, get_default_value
+from liam2.utils import safe_put
 
 
 class TimeFunction(FunctionExpr):

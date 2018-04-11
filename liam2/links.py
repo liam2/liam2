@@ -1,16 +1,16 @@
 # encoding: utf-8
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 
-from itertools import izip, groupby
+from itertools import groupby
 from operator import itemgetter
 
 import numpy as np
 import numexpr as ne
 
-from expr import (Expr, Variable, getdtype, expr_eval, missing_values,
-                  get_default_value, always, FunctionExpr)
-from context import context_length
-from utils import removed
+from liam2.compat import zip, basestring
+from liam2.expr import Expr, Variable, getdtype, expr_eval, missing_values, get_default_value, always, FunctionExpr
+from liam2.context import context_length
+from liam2.utils import removed
 
 # TODO: merge this typemap with the one in tsum
 counting_typemap = {bool: int, int: int, float: float}
@@ -377,7 +377,7 @@ class Min(Aggregate):
         id_sort_indices = np.argsort(source_rows)
         sorted_rownum = source_rows[id_sort_indices]
         sorted_values = expr_value[id_sort_indices]
-        groups = groupby(izip(sorted_rownum, sorted_values), key=itemgetter(0))
+        groups = groupby(zip(sorted_rownum, sorted_values), key=itemgetter(0))
         aggregate_func = self.aggregate_func
         for rownum, values in groups:
             if rownum == -1:

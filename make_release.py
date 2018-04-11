@@ -25,6 +25,8 @@ from os.path import exists, abspath, dirname
 from shutil import copytree, copy2, rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
 
+from liam2.compat import input
+
 WEBSITE = 'liam2.plan.be'
 TMP_PATH = r"c:\tmp\liam2_new_release"
 # not using tempfile.mkdtemp to be able to resume an aborted release
@@ -85,7 +87,7 @@ def rmtree(path):
 def call(*args, **kwargs):
     try:
         return check_output(*args, stderr=STDOUT, **kwargs)
-    except CalledProcessError, e:
+    except CalledProcessError as e:
         print(e.output)
         raise e
 
@@ -127,7 +129,7 @@ def yes(msg, default='y'):
     while answer not in ('', 'y', 'n'):
         if answer is not None:
             print("answer should be 'y', 'n', or <return>")
-        answer = raw_input(msg + choices).lower()
+        answer = input(msg + choices).lower()
     return (default if answer == '' else answer) == 'y'
 
 

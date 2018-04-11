@@ -1,18 +1,18 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from itertools import product
 
 import numpy as np
 
 try:
-    from cpartition import filter_to_indices
+    from liam2.cpartition import filter_to_indices
 except ImportError:
     def filter_to_indices(filter_value):
         return filter_value.nonzero()[0]
 
 try:
-    from cpartition import group_indices_nd
+    from liam2.cpartition import group_indices_nd
 
     def partition_nd(columns, filter_value, possible_values):
         assert len(columns) > 0
@@ -111,7 +111,7 @@ except ImportError:
 #        fill_with_empty_list = np.frompyfunc(lambda _: [], 1, 1)
 #        fill_with_empty_list(result, result)
 #
-#        for idx, row in enumerate(izip(*columns)):
+#        for idx, row in enumerate(zip(*columns)):
 #            # returns a tuple with the position of the group this row belongs
 #            # to. eg. (0, 1, 5)
 #            # XXX: this uses strict equality, partitioning using
@@ -121,7 +121,7 @@ except ImportError:
 #                    # pos = tuple([values_i.index(vi) for vi, values_i
 #                    pos = tuple([np.searchsorted(values_i, vi)
 #                                 for vi, values_i
-#                                 in izip(row, possible_values)])
+#                                 in zip(row, possible_values)])
 #                    result[pos].append(idx)
 #                except ValueError:
 #                    # XXX: issue a warning?

@@ -1,23 +1,24 @@
 # encoding: utf-8
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 import ast
 import types
 
-from expr import UnaryOp, BinaryOp, LogicalOp, ComparisonOp
-from utils import add_context
+from liam2.compat import basestring
+from liam2.expr import UnaryOp, BinaryOp, LogicalOp, ComparisonOp
+from liam2.utils import add_context
 
-import actions
-import aggregates
-import alignment
-import charts
-import groupby
-import links
-import matching
-import exprmisc
-import exprrandom
-import regressions
-import tfunc
+from liam2 import actions
+from liam2 import aggregates
+from liam2 import alignment
+from liam2 import charts
+from liam2 import groupby
+from liam2 import links
+from liam2 import matching
+from liam2 import exprmisc
+from liam2 import exprrandom
+from liam2 import regressions
+from liam2 import tfunc
 
 
 functions = {}
@@ -35,7 +36,7 @@ def to_ast(expr, context):
     elif isinstance(expr, tuple):
         return tuple([to_ast(e, context) for e in expr])
     elif isinstance(expr, dict):
-        return {k: to_ast(v, context) for k, v in expr.iteritems()}
+        return {k: to_ast(v, context) for k, v in expr.items()}
     elif isinstance(expr, slice):
         return slice(to_ast(expr.start, context),
                      to_ast(expr.stop, context),
@@ -349,7 +350,7 @@ def _parse(s, interactive=False):
 
     for mode, compiled_code in to_eval:
         if mode == 'exec':
-            exec compiled_code in context
+            exec(compiled_code, context)
 
             # cleanup result. I tried different things to not get the context
             # "polluted" by builtins but could not achieve that, so I cleanup
@@ -377,6 +378,6 @@ def parse(s, context, interactive=False):
     try:
         node = _parse(s, interactive=interactive)
         return to_ast(node, context)
-    except Exception, e:
+    except Exception as e:
         add_context(e, "while parsing: " + s)
         raise

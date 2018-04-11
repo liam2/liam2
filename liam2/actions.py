@@ -1,16 +1,17 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 import csv
 
 import numpy as np
 
-import config
-from expr import FunctionExpr, expr_cache, expr_eval
-from process import BreakpointException
-from partition import filter_to_indices
-from utils import LabeledArray, FileProducer, merge_dicts, PrettyTable, ndim, \
+from liam2 import config
+from liam2.compat import csv_open
+from liam2.expr import FunctionExpr, expr_cache, expr_eval
+from liam2.process import BreakpointException
+from liam2.partition import filter_to_indices
+from liam2.utils import LabeledArray, FileProducer, merge_dicts, PrettyTable, ndim, \
     isnan
 
 
@@ -62,7 +63,7 @@ class CSV(FunctionExpr, FileProducer):
             print("writing to", fname, "...", end=' ')
 
         file_path = os.path.abspath(os.path.join(config.output_directory, fname))
-        with open(file_path, mode + 'b') as f:
+        with csv_open(file_path, mode) as f:
             writer = csv.writer(f)
             for arg in args:
                 # make sure the result is at least two-dimensional
