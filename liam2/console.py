@@ -4,6 +4,8 @@ from __future__ import print_function
 import sys
 import textwrap
 
+import numpy as np
+
 import config
 from entities import global_symbols
 from expr import expr_eval, Variable
@@ -141,7 +143,7 @@ class Console(object):
     def list_globals(self):
         print("globals:")
         for k, v in self.eval_ctx.global_tables.iteritems():
-            if v.dtype.names:
+            if isinstance(v, np.ndarray) and v.dtype.names:
                 details = ": " + ", ".join(v.dtype.names)
             else:
                 details = ""
