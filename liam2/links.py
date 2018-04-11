@@ -188,7 +188,7 @@ class LinkGet(LinkExpression):
         while isinstance(lv.target_expr, LinkGet):
             lv = lv.target_expr
             link_chain.append(lv.link)
-        assert isinstance(lv.target_expr, Link)
+        assert isinstance(lv.target_expr, Link), str(type(lv.target_expr))
 
         # add one more link to the chain. Previously, we modified
         # lv.target_expr inplace and it was easier but this relied on the

@@ -133,7 +133,7 @@ class NumpyFunction(FunctionExpr):
             # <function f at 0x02844470>
             # >>> A.m
             # <unbound method A.f>
-            assert isinstance(func, types.MethodType)
+            assert isinstance(func, types.MethodType), str(type(func))
             return func.im_func
 
     # subclasses can override this by a class-constant
