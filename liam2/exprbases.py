@@ -1,17 +1,16 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import types
 
 import numpy as np
 
-import config
-from context import context_length
-from expr import (FunctionExpr, not_hashable,
-                  getdtype, as_simple_expr, as_string,
-                  get_default_value, ispresent, LogicalOp, AbstractFunction,
-                  always, FillArgSpecMeta)
-from utils import classproperty, argspec, split_signature
+from liam2 import config
+from liam2.compat import with_metaclass
+from liam2.context import context_length
+from liam2.expr import (FunctionExpr, not_hashable, getdtype, as_simple_expr, as_string, get_default_value, ispresent,
+                        LogicalOp, AbstractFunction, always, FillArgSpecMeta)
+from liam2.utils import classproperty, argspec, split_signature
 
 
 # class CompoundExpression(Expr):
@@ -45,13 +44,10 @@ from utils import classproperty, argspec, split_signature
 #         return self._complete_expr
 
 
-class CompoundExpression(AbstractFunction):
+class CompoundExpression(with_metaclass(FillArgSpecMeta, AbstractFunction)):
     """
     function expression written in terms of other expressions
     """
-
-    __metaclass__ = FillArgSpecMeta
-
     kwonlyargs = {}
 
     @classmethod
@@ -118,7 +114,8 @@ class NumpyFunction(FunctionExpr):
         func = cls.np_func
         if func is None:
             return None
-        elif isinstance(func, types.BuiltinFunctionType):
+        # types.FunctionType is required on Python3
+        elif isinstance(func, (types.BuiltinFunctionType, types.FunctionType)):
             # Note that types.BuiltinFunctionType and types.BuiltinMethodType
             # are the same object (equal to <type 'builtin_function_or_method'>)
             return func

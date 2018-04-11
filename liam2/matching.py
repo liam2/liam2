@@ -1,15 +1,15 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import random
 
-from expr import expr_eval, always, expr_cache
-from exprbases import FilteredExpression
-from context import context_length, context_delete, context_subset, context_keep
-from utils import loop_wh_progress
+from liam2.expr import expr_eval, always, expr_cache
+from liam2.exprbases import FilteredExpression
+from liam2.context import context_length, context_delete, context_subset, context_keep
+from liam2.utils import loop_wh_progress
 # FIXME: should be optional
-from cpartition import group_indices_nd
+from liam2.cpartition import group_indices_nd
 
 
 def group_context(used_variables, setfilter, context):
@@ -200,7 +200,7 @@ class SequentialMatching(Matching):
 
         # prefix all keys except __len__
         matching_ctx = {'__other_' + k if k != '__len__' else k: v
-                        for k, v in set2.iteritems()}
+                        for k, v in set2.items()}
 
         def match_cell(idx, sorted_idx, pool_size):
             global matching_ctx
@@ -210,7 +210,7 @@ class SequentialMatching(Matching):
                 raise StopIteration
 
             if pool_size is not None and set2_size > pool_size:
-                pool = random.sample(xrange(set2_size), pool_size)
+                pool = random.sample(range(set2_size), pool_size)
                 local_ctx = context_subset(matching_ctx, pool)
             else:
                 local_ctx = matching_ctx.copy()
@@ -240,7 +240,7 @@ class SequentialMatching(Matching):
 
             result[id_to_rownum[ids1]] = ids2
             result[id_to_rownum[ids2]] = ids1
-            
+
             if nb_match == cell2size:
                 matching_ctx = context_delete(matching_ctx, cell2_idx)
             else:

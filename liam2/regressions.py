@@ -1,12 +1,12 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
-from alignment import Alignment
-from expr import (Expr, Variable, BinaryOp, ComparisonOp, missing_values,
-                  getdtype, always)
-from exprbases import CompoundExpression
-from exprmisc import Exp, Max, Where, Logit, Logistic, ExtExpr
-from exprrandom import Normal, Uniform
+from liam2.compat import basestring
+from liam2.alignment import Alignment
+from liam2.expr import Expr, Variable, BinaryOp, ComparisonOp, missing_values, getdtype, always
+from liam2.exprbases import CompoundExpression
+from liam2.exprmisc import Exp, Max, Where, Logit, Logistic, ExtExpr
+from liam2.exprrandom import Normal, Uniform
 
 
 class Regression(CompoundExpression):

@@ -1,10 +1,10 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import tables
 
-from data import copy_table
-from utils import timed
+from liam2.data import copy_table
+from liam2.utils import timed
 
 __version__ = "0.4"
 

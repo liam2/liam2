@@ -1,17 +1,18 @@
 # encoding: utf-8
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 
 import numpy as np
 import larray as la
 
-import config
-from expr import firstarg_dtype, ComparisonOp, Variable, expr_eval
-from exprbases import NumpyRandom, make_np_class, make_np_classes
-from exprmisc import Where
-from importer import load_ndarray
-from utils import argspec
+from liam2 import config
+from liam2.compat import basestring
+from liam2.expr import firstarg_dtype, ComparisonOp, Variable, expr_eval
+from liam2.exprbases import NumpyRandom, make_np_class, make_np_classes
+from liam2.exprmisc import Where
+from liam2.importer import load_ndarray
+from liam2.utils import argspec
 
 
 def make_random(docstring, dtypefunc):

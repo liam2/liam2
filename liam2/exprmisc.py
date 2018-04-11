@@ -1,7 +1,7 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
-from itertools import izip, chain
+from itertools import chain
 import os
 import random
 
@@ -13,17 +13,15 @@ except ImportError:
     scipy = None
 import larray as la
 
-import config
-from expr import (Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp,
-                  LogicalOp, getdtype, coerce_types, expr_eval, as_simple_expr,
-                  as_string, collect_variables,
-                  get_default_array, get_default_vector, FunctionExpr,
-                  always, firstarg_dtype, expr_cache)
-from exprbases import (FilteredExpression, CompoundExpression, NumexprFunction,
-                       TableExpression, NumpyChangeArray)
-from context import context_length
-from importer import load_ndarray, load_table
-from utils import PrettyTable, argspec
+from liam2 import config
+from liam2.compat import zip, basestring, long
+from liam2.expr import (Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp, LogicalOp, getdtype, coerce_types,
+                        expr_eval, as_simple_expr, as_string, collect_variables, get_default_array, get_default_vector,
+                        FunctionExpr, always, firstarg_dtype, expr_cache)
+from liam2.exprbases import FilteredExpression, CompoundExpression, NumexprFunction, TableExpression, NumpyChangeArray
+from liam2.context import context_length
+from liam2.importer import load_ndarray, load_table
+from liam2.utils import PrettyTable, argspec
 
 
 # TODO: implement functions in expr to generate "Expr" nodes at the python level
@@ -212,7 +210,7 @@ def add_individuals(target_context, children):
     target_entity.array.append(children)
 
     temp_variables = target_entity.temp_variables
-    for name, temp_value in temp_variables.iteritems():
+    for name, temp_value in temp_variables.items():
         # FIXME: OUCH, this is getting ugly, I'll need a better way to
         # differentiate nd-arrays from "entity" variables
         # I guess having the context contain all entities and a separate
@@ -231,7 +229,7 @@ def add_individuals(target_context, children):
             temp_variables[name] = np.concatenate((temp_value, extra))
 
     extra_variables = target_context.entity_data.extra
-    for name, temp_value in extra_variables.iteritems():
+    for name, temp_value in extra_variables.items():
         if name == '__globals__':
             continue
         if isinstance(temp_value, np.ndarray) and temp_value.shape:
@@ -253,7 +251,7 @@ class New(FilteredExpression):
     def _collect_kwargs_variables(cls, kwargs):
         used_variables = set()
         # kwargs are stored as a list of (k, v) pairs
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             used_variables.update(collect_variables(v))
         return used_variables
 
@@ -314,7 +312,7 @@ class New(FilteredExpression):
             else:
                 child_context = context.subset(to_give_birth, used_variables,
                                                filter_expr)
-            for k, v in kwargs.iteritems():
+            for k, v in kwargs.items():
                 if k not in array.dtype.names:
                     print("WARNING: {} is unknown, ignoring it!".format(k))
                     continue
@@ -440,7 +438,7 @@ class Dump(TableExpression):
             assert isinstance(limit, (int, long))
             columns = [col[:limit] for col in columns]
 
-        data = izip(*columns)
+        data = zip(*columns)
         table = chain([str_expressions], data) if header else data
         return PrettyTable(table, missing)
 

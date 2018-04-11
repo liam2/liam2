@@ -1,10 +1,11 @@
-from __future__ import print_function
+# encoding: utf-8
+from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import tables
 
-from data import index_table_light, get_fields
-from utils import PrettyTable, merge_items
+from liam2.data import index_table_light, get_fields
+from liam2.utils import PrettyTable, merge_items
 
 __version__ = "0.2"
 
@@ -115,8 +116,8 @@ def diff_h5(input1_path, input2_path, numdiff=10):
         table2 = getattr(input2_entities, ent_name)
         input2_rows = index_table_light(table2)
 
-        input1_periods = input1_rows.keys()
-        input2_periods = input2_rows.keys()
+        input1_periods = list(input1_rows.keys())
+        input2_periods = list(input2_rows.keys())
         if input1_periods != input2_periods:
             print("periods are different in both files for '%s'" % ent_name)
 

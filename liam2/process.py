@@ -1,17 +1,18 @@
 # encoding: utf-8
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 import collections
 
 import numpy as np
 import larray as la
 
-import config
-from diff_h5 import diff_array
-from data import append_carray_to_table, ColumnArray
-from expr import Expr, Variable, type_to_idx, idx_to_type, expr_eval, expr_cache
-from context import EntityContext
-import utils
+from liam2 import config
+from liam2.compat import basestring
+from liam2.diff_h5 import diff_array
+from liam2.data import append_carray_to_table, ColumnArray
+from liam2.expr import Expr, Variable, type_to_idx, idx_to_type, expr_eval, expr_cache
+from liam2.context import EntityContext
+from liam2 import utils
 
 
 class BreakpointException(Exception):
@@ -384,5 +385,5 @@ class Function(Process):
         # purge the local from the function we just ran
         self.entity.purge_locals()
         # restore local variables for our caller
-        for k, v in backup.iteritems():
+        for k, v in backup.items():
             self.entity.temp_variables[k] = v

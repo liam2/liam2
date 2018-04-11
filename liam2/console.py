@@ -1,15 +1,16 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import sys
 import textwrap
 
 import numpy as np
 
-import config
-from entities import global_symbols
-from expr import expr_eval, Variable
-from exprtools import parse, functions
+from liam2 import config
+from liam2.compat import input
+from liam2.entities import global_symbols
+from liam2.expr import expr_eval, Variable
+from liam2.exprtools import parse, functions
 
 entity_required = \
     "current entity is not set. It is required to set one using " \
@@ -49,7 +50,7 @@ class Console(object):
         globals_parse_ctx = {'__globals__': global_symbols(globals_def)}
         parse_ctx = globals_parse_ctx.copy()
         parse_ctx.update((entity.name, entity.all_symbols(globals_parse_ctx))
-                         for entity in eval_ctx.entities.itervalues())
+                         for entity in eval_ctx.entities.values())
         parse_ctx['__entity__'] = eval_ctx.entity_name
         self.parse_ctx = parse_ctx
 
@@ -142,7 +143,7 @@ class Console(object):
 
     def list_globals(self):
         print("globals:")
-        for k, v in self.eval_ctx.global_tables.iteritems():
+        for k, v in self.eval_ctx.global_tables.items():
             if isinstance(v, np.ndarray) and v.dtype.names:
                 details = ": " + ", ".join(v.dtype.names)
             else:
@@ -152,7 +153,7 @@ class Console(object):
     def list_functions(self):
         # TODO: group functions by module
         print("available functions:")
-        funcnames = sorted(k for k, v in functions.iteritems()
+        funcnames = sorted(k for k, v in functions.items()
                            if not v.__name__.startswith("__removed_"))
         print('\n'.join(textwrap.wrap(', '.join(funcnames))))
 
@@ -197,7 +198,7 @@ class Console(object):
         self._display_period()
         while True:
             try:
-                s = raw_input('>>> ').strip()
+                s = input('>>> ').strip()
                 if s == '':
                     continue
                 elif s == 'help':
@@ -235,7 +236,7 @@ class Console(object):
                     res = self.execute(s)
                     if res is not None:
                         print(res)
-            except Exception, e:
+            except Exception as e:
                 if config.debug:
                     import traceback
                     traceback.print_exc()

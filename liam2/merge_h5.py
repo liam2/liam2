@@ -1,11 +1,11 @@
-from __future__ import print_function
+# encoding: utf-8
+from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import tables
 
-from data import merge_arrays, get_fields, index_table_light, \
-    merge_array_records
-from utils import timed, loop_wh_progress, merge_items
+from liam2.data import merge_arrays, get_fields, index_table_light, merge_array_records
+from liam2.utils import timed, loop_wh_progress, merge_items
 
 __version__ = "0.4"
 
@@ -65,9 +65,9 @@ def merge_group(parent1, parent2, name, output_file, index_col):
             input2_rows = {}
 
         print(" * merging: ", end=' ')
-        input1_periods = input1_rows.keys()
-        input2_periods = input2_rows.keys()
-        output_periods = sorted(set(input1_periods) | set(input2_periods))
+        input1_periods = set(input1_rows.keys())
+        input2_periods = set(input2_rows.keys())
+        output_periods = sorted(input1_periods | input2_periods)
 
         # noinspection PyUnusedLocal
         def merge_period(period_idx, period):

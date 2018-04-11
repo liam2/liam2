@@ -1,10 +1,10 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import ast
 from collections import defaultdict, deque, namedtuple
 import itertools
-from itertools import izip, product
+from itertools import product
 import math
 import operator
 from textwrap import wrap
@@ -23,7 +23,8 @@ except ImportError:
     QtGui, QtCore = None, None
     QtAvailable = False
 
-import config
+from liam2.compat import zip, basestring
+from liam2 import config
 
 
 def make_hashable(obj):
@@ -213,7 +214,10 @@ def timed(func, *args, **kwargs):
 
 
 def prod(values):
-    return reduce(operator.mul, values, 1)
+    res = 1
+    for value in values:
+        res *= value
+    return res
 
 
 def ndim(arraylike):
@@ -237,7 +241,7 @@ def safe_put(a, ind, v):
     instead of being copied to the last position
     assumes indices in ind are sorted !
     """
-    from data import ColumnArray
+    from liam2.data import ColumnArray
 
     if not len(a) or not len(ind):
         return
@@ -414,7 +418,7 @@ class TextProgressBar(ProgressBar):
 
     def update(self, value):
         # update progress bar
-        percent_done = (value * 100) / self.maximum
+        percent_done = (value * 100) // self.maximum
         to_display = percent_done - self.percent
         if to_display:
             chars_to_write = list("." * to_display)
@@ -441,7 +445,7 @@ def count_occurrences(seq):
     counter = defaultdict(int)
     for e in seq:
         counter[e] += 1
-    return counter.items()
+    return list(counter.items())
 
 
 def skip_comment_cells(lines):
@@ -505,25 +509,25 @@ def table2str(table, missing):
             row.extend([''] * (numcols - len(row)))
     formatted = [[format_value(value, missing) for value in row]
                  for row in table]
-    colwidths = [get_col_width(formatted, i) for i in xrange(numcols)]
+    colwidths = [get_col_width(formatted, i) for i in range(numcols)]
 
     total_width = sum(colwidths)
     sep_width = (len(colwidths) - 1) * 3
     if total_width + sep_width > 80:
-        minwidths = [get_min_width(formatted, i) for i in xrange(numcols)]
+        minwidths = [get_min_width(formatted, i) for i in range(numcols)]
         available_width = 80.0 - sep_width - sum(minwidths)
         ratio = available_width / total_width
         colwidths = [minw + max(int(width * ratio), 0)
-                     for minw, width in izip(minwidths, colwidths)]
+                     for minw, width in zip(minwidths, colwidths)]
 
     lines = []
     for row in formatted:
         # this kills any existing newline character in value
         wrapped_row = [wrap(value, width)
-                       for value, width in izip(row, colwidths)]
+                       for value, width in zip(row, colwidths)]
         maxheight = max(len(value) for value in wrapped_row)
         newlines = [[] for _ in range(maxheight)]
-        for value, width in izip(wrapped_row, colwidths):
+        for value, width in zip(wrapped_row, colwidths):
             for i in range(maxheight):
                 chunk = value[i] if i < len(value) else ''
                 newlines[i].append(chunk.rjust(width))
@@ -669,7 +673,7 @@ def merge_dicts(*args, **kwargs):
     """
     result = args[0].copy()
     for arg in args[1:] + (kwargs,):
-        for k, v in arg.iteritems():
+        for k, v in arg.items():
             if isinstance(v, dict) and k in result:
                 v = merge_dicts(result[k], v)
             result[k] = v
@@ -782,7 +786,7 @@ def multi_set(d, key, value):
 
 
 def invert_dict(d):
-    return dict((v, k) for k, v in d.iteritems())
+    return dict((v, k) for k, v in d.items())
 
 
 # validate functions
@@ -865,7 +869,7 @@ def validate_dict(d, target, context=''):
     # in case we have a * in there, we should only make sure that required keys
     # are present, otherwise we have to also check if provided keys are valid
     validate_dict_keys(d, required, optional, context, extra_allowed=anykey)
-    for k, v in d.iteritems():
+    for k, v in d.items():
         if k in required:
             section_def = target['#' + k]
         elif k in optional:
@@ -1026,7 +1030,7 @@ def fields_yaml_to_type(dict_fields_list):
     Transform a list of (one item) dict with str types to a list of tuple with
     Python types
     """
-    return fields_str_to_type([d.items()[0] for d in dict_fields_list])
+    return fields_str_to_type([list(d.items())[0] for d in dict_fields_list])
 
 
 # exceptions handling
@@ -1050,7 +1054,7 @@ class ExplainTypeError(type):
         try:
             # noinspection PyArgumentList
             return type.__call__(cls, *args, **kwargs)
-        except TypeError, e:
+        except TypeError as e:
             funcname = cls.funcname
             msg = e.args[0].replace('__init__()', funcname)
 

@@ -1,5 +1,5 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from os.path import splitext, basename
 import time
@@ -7,8 +7,8 @@ import time
 import tables
 import numpy as np
 
-from simulation import Simulation
-from utils import timed, time2str, multi_get, MB
+from liam2.simulation import Simulation
+from liam2.utils import timed, time2str, multi_get, MB
 
 __version__ = "0.3"
 
@@ -206,7 +206,7 @@ def change_ids(input_path, output_path, changes, shuffle=False):
         input_entities = input_file.root.entities
         print(" * indexing entities tables")
         idmaps = {}
-        for ent_name in changes.iterkeys():
+        for ent_name in changes.keys():
             print("    -", ent_name, "...", end=' ')
             start_time = time.time()
             table = getattr(input_entities, ent_name)
@@ -223,7 +223,7 @@ def change_ids(input_path, output_path, changes, shuffle=False):
     print(" * modifying ids")
     fields_maps = {ent_name: {'id': idmaps[ent_name]}
                    for ent_name in changes}
-    for ent_name, fields in changes.iteritems():
+    for ent_name, fields in changes.items():
         for target_ent, fname in fields:
             fields_maps[ent_name][fname] = idmaps[target_ent]
     h5_apply_rec_map(input_path, output_path, {'entities': fields_maps})
@@ -247,7 +247,7 @@ def h5_sort(input_path, output_path, entities=None):
 
     if entities is None:
         with tables.open_file(input_path) as f:
-            entities = f.root.entities._v_children.keys()
+            entities = list(f.root.entities._v_children.keys())
     print(" * sorting entities tables")
     to_sort = {'entities': {ent_name: sort_entity for ent_name in entities}}
     h5_apply_rec_func(input_path, output_path, to_sort)
@@ -265,7 +265,7 @@ def fields_from_entity(entity):
         [(target_ent1, fname1), (target_ent2, fname2)]
     """
     return [(link._target_entity_name, link._link_field)
-            for link in entity.links.itervalues()]
+            for link in entity.links.values()]
 
 
 if __name__ == '__main__':
@@ -314,7 +314,7 @@ if __name__ == '__main__':
                          for ent_name, fields in entities}
             # convert {ent_name: [target_ent1.fname1, target_ent2.fname2]}
             #      to {ent_name: [(target_ent1, fname1), (target_ent2, fname2)]}
-            for ent_name, fields in to_change.iteritems():
+            for ent_name, fields in to_change.items():
                 for i, fname in enumerate(fields):
                     fields[i] = \
                         fname.split('.') if '.' in fname else (ent_name, fname)
@@ -330,7 +330,7 @@ if __name__ == '__main__':
     elif action == 'shuffle':
         timed(change_ids, inputpath, '_shuffled_temp.h5', to_change,
               shuffle=True)
-        timed(h5_sort, '_shuffled_temp.h5', outputpath, to_change.keys())
+        timed(h5_sort, '_shuffled_temp.h5', outputpath, list(to_change.keys()))
     else:
         ent_names = args[4].split(',') if len(args) >= 5 else None
         timed(h5_sort, inputpath, outputpath, ent_names)

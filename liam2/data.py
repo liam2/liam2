@@ -1,17 +1,17 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import time
 
 import tables
 import numpy as np
 import larray as la
-import config
 
-from expr import (normalize_type, get_default_value, get_default_array,
-                  get_default_vector, gettype)
-from utils import loop_wh_progress, time2str, safe_put, timed, MB
-from importer import load_def, stream_to_array, array_to_disk_array
+from liam2.compat import basestring
+from liam2 import config
+from liam2.expr import normalize_type, get_default_value, get_default_array, get_default_vector, gettype
+from liam2.utils import loop_wh_progress, time2str, safe_put, timed, MB
+from liam2.importer import load_def, stream_to_array, array_to_disk_array
 
 
 def anyarray_to_disk(node, name, array):
@@ -94,7 +94,7 @@ class ColumnArray(object):
         else:
             # int, slice, ndarray
             ca = ColumnArray()
-            for name, colvalue in self.columns.iteritems():
+            for name, colvalue in self.columns.items():
                 ca[name] = colvalue[key]
             ca.dtype = self.dtype
             return ca
@@ -121,23 +121,23 @@ class ColumnArray(object):
                 self._update_dtype()
 
 #            ids = {}
-#            for k, v in self.columns.iteritems():
+#            for k, v in self.columns.items():
 #                ids.setdefault(id(v), set()).add(k)
-#            dupes = [v for k, v in ids.iteritems() if len(v) > 1]
+#            dupes = [v for k, v in ids.items() if len(v) > 1]
 #            if dupes:
 #                print "aliases", dupes
         else:
             # int, slice, ndarray
-            for name, column in self.columns.iteritems():
+            for name, column in self.columns.items():
                 column[key] = value[name]
 
     def put(self, indices, values, mode='raise'):
-        for name, column in self.columns.iteritems():
+        for name, column in self.columns.items():
             column.put(indices, values[name], mode)
 
     @property
     def nbytes(self):
-        return sum(v.nbytes for v in self.columns.itervalues())
+        return sum(v.nbytes for v in self.columns.values())
 
     def __delitem__(self, key):
         del self.columns[key]
@@ -157,13 +157,13 @@ class ColumnArray(object):
         # add new fields (not already handled)
         old_fields = set(old_fields)
         fields += [(name, column.dtype)
-                   for name, column in self.columns.iteritems()
+                   for name, column in self.columns.items()
                    if name not in old_fields]
         self.dtype = np.dtype(fields)
 
     def __len__(self):
         if len(self.columns):
-            anycol = next(self.columns.itervalues())
+            anycol = next(iter(self.columns.values()))
             return len(anycol)
         else:
             return 0
@@ -173,14 +173,14 @@ class ColumnArray(object):
 
         # using gc.collect() after each column update frees a bit of memory
         # but slows things down significantly.
-        for name, column in self.columns.iteritems():
+        for name, column in self.columns.items():
             self.columns[name] = column[key]
 
     def append(self, array):
         assert array.dtype == self.dtype, (array.dtype, self.dtype)
         # using gc.collect() after each column update frees a bit of memory
         # but slows things down significantly.
-        for name, column in self.columns.iteritems():
+        for name, column in self.columns.items():
             self.columns[name] = np.concatenate((column, array[name]))
 
     def append_to_table(self, table, buffersize=10 * MB):
@@ -540,7 +540,7 @@ def copy_table(input_table, output_node, output_dtype=None,
 # 2) we have id_to_rownum already computed for each array
 def build_period_array(input_table, fields_to_keep, output_fields, input_rows,
                        input_index, start_period, default_values):
-    periods_before = [p for p in input_rows.iterkeys() if p <= start_period]
+    periods_before = [p for p in input_rows.keys() if p <= start_period]
     if not periods_before:
         id_to_rownum = np.empty(0, dtype=int)
         output_array = ColumnArray.empty(0, np.dtype(output_fields))
@@ -629,8 +629,7 @@ def index_table(table):
     for idx, row in enumerate(table):
         period, row_id = row['period'], row['id']
         if period != current_period:
-            # 0 > None is True
-            if period < current_period:
+            if current_period is not None and period < current_period:
                 msg = "data is not ordered by period " \
                       "({} at data line {} is < {})"
                 raise Exception(msg.format(period, idx + 1, current_period))
@@ -722,7 +721,7 @@ class DataSet(object):
 def load_path_globals(globals_def):
     localdir = config.input_directory
     globals_data = {}
-    for name, global_def in globals_def.iteritems():
+    for name, global_def in globals_def.items():
         # skip constants
         if not isinstance(global_def, dict):
             continue
@@ -734,6 +733,7 @@ def load_path_globals(globals_def):
         if kind == 'table':
             fields, numlines, datastream, csvfile = info
             array = stream_to_array(fields, datastream, numlines)
+            csvfile.close()
         else:
             assert kind == 'ndarray'
             array = info
@@ -742,7 +742,7 @@ def load_path_globals(globals_def):
 
 
 def handle_constant_globals(globals_def):
-    globals_data = {k: gdef for k, gdef in globals_def.iteritems() if np.isscalar(gdef)}
+    globals_data = {k: gdef for k, gdef in globals_def.items() if np.isscalar(gdef)}
     return globals_data
 
 
@@ -754,7 +754,7 @@ def index_tables(globals_def, entities, fpath):
 
         def must_load_from_input_file(gdef):
             return isinstance(gdef, dict) and 'path' not in gdef
-        any_global_from_input_file = any(must_load_from_input_file(gdef) for gdef in globals_def.itervalues())
+        any_global_from_input_file = any(must_load_from_input_file(gdef) for gdef in globals_def.values())
         if any_global_from_input_file and 'globals' not in input_root:
             raise Exception('could not find any globals in the input data file '
                             '(but some are declared in the simulation file)')
@@ -763,7 +763,7 @@ def index_tables(globals_def, entities, fpath):
         constant_globals_data = handle_constant_globals(globals_def)
         globals_data.update(constant_globals_data)
         globals_node = getattr(input_root, 'globals', None)
-        for name, global_def in globals_def.iteritems():
+        for name, global_def in globals_def.items():
             # already loaded from another source (path)
             if name in globals_data:
                 continue
@@ -789,7 +789,8 @@ def index_tables(globals_def, entities, fpath):
                 # we serialise dim_names as a numpy array so that it is
                 # stored as a native hdf type and not a pickle but we
                 # prefer to work with simple lists
-                dim_names = list(dim_names)
+                # also files serialized using Python2 are "bytes" not "str"
+                dim_names = [str(dim_name) for dim_name in dim_names]
                 pvalues = [getattr(attrs, 'dim%d_pvalues' % i)
                            for i in range(len(dim_names))]
                 axes = [la.Axis(labels, axis_name)
@@ -801,7 +802,7 @@ def index_tables(globals_def, entities, fpath):
 
         entities_tables = {}
         print(" * indexing tables")
-        for ent_name, entity in entities.iteritems():
+        for ent_name, entity in entities.items():
             print("    -", ent_name, "...", end=' ')
 
             table = getattr(input_entities, ent_name)
@@ -842,7 +843,7 @@ class H5Source(DataSource):
     def load(self, globals_def, entities):
         h5file, dataset = index_tables(globals_def, entities, self.input_path)
         entities_tables = dataset['entities']
-        for ent_name, entity in entities.iteritems():
+        for ent_name, entity in entities.items():
             table = entities_tables[ent_name]
             # entity.indexed_input_table = table
             entity.input_index = table.id2rownum_per_period
@@ -858,7 +859,7 @@ class H5Source(DataSource):
 
     def as_fake_output(self, dataset, entities):
         entities_tables = dataset['entities']
-        for ent_name, entity in entities.iteritems():
+        for ent_name, entity in entities.items():
             table = entities_tables[ent_name]
             entity.output_index = table.id2rownum_per_period
             entity.output_rows = table.period_index
@@ -879,7 +880,7 @@ class H5Sink(DataSink):
             if globals_data is not None:
                 output_globals = output_file.create_group("/", "globals",
                                                           "Globals")
-                for k, g_def in globals_def.iteritems():
+                for k, g_def in globals_def.items():
                     # Do not save global constants nor globals loaded from external (.csv) files.
                     if np.isscalar(g_def) or 'path' in g_def:
                         continue
@@ -891,7 +892,7 @@ class H5Sink(DataSink):
                                                        "Entities")
             output_file.create_group("/", "indexes", "Indexes")
             print(" * copying tables")
-            for ent_name, entity in entities.iteritems():
+            for ent_name, entity in entities.items():
                 print("    -", ent_name, "...", end=' ')
                 index_node = output_file.create_group("/indexes", ent_name)
                 entity.output_index_node = index_node
@@ -907,12 +908,12 @@ class H5Sink(DataSink):
                 if table is not None:
                     input_rows = table.period_index
                     output_rows = dict((p, rows)
-                                       for p, rows in input_rows.iteritems()
+                                       for p, rows in input_rows.items()
                                        if p < start_period)
                     if output_rows:
                         # stoprow = last row of the last period before
                         #           start_period
-                        _, stoprow = input_rows[max(output_rows.iterkeys())]
+                        _, stoprow = input_rows[max(output_rows.keys())]
                     else:
                         stoprow = 0
 
@@ -948,7 +949,7 @@ class H5Sink(DataSink):
 
 
 def entities_from_h5(fpath):
-    from entities import Entity
+    from liam2.entities import Entity
     h5in = tables.open_file(fpath)
     h5root = h5in.root
     entities = {}

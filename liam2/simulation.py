@@ -1,5 +1,5 @@
 # encoding: utf-8
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 
 import tempfile
 import time
@@ -13,17 +13,15 @@ import numpy as np
 import tables
 import yaml
 
-from context import EvaluationContext
-from data import VoidSource, H5Source, H5Sink
-from entities import Entity, global_symbols
-from utils import (time2str, timed, gettime, validate_dict,
-                   expand_wild, multi_get, multi_set,
-                   merge_dicts, merge_items,
-                   field_str_to_type, fields_yaml_to_type,
-                   UserDeprecationWarning, Or)
-import config
-import console
-import expr
+from liam2.compat import basestring
+from liam2.context import EvaluationContext
+from liam2.data import VoidSource, H5Source, H5Sink
+from liam2.entities import Entity, global_symbols
+from liam2.utils import (time2str, timed, gettime, validate_dict, expand_wild, multi_get, multi_set, merge_dicts,
+                         merge_items, field_str_to_type, fields_yaml_to_type, UserDeprecationWarning, Or)
+from liam2 import config
+from liam2 import console
+from liam2 import expr
 
 
 def show_top_times(what, times, count):
@@ -51,7 +49,7 @@ def show_top_times(what, times, count):
 
 
 def show_top_processes(process_time, count):
-    process_times = sorted(process_time.iteritems(),
+    process_times = sorted(process_time.items(),
                            key=operator.itemgetter(1),
                            reverse=True)
     show_top_times('processes', process_times, count)
@@ -86,8 +84,8 @@ def handle_imports(content, directory):
                     local_fields = multi_get(content, multi_key, [])
                     # fields are in "yaml ordered dict" format and we want
                     # simple list of items
-                    import_fields = [d.items()[0] for d in import_fields]
-                    local_fields = [d.items()[0] for d in local_fields]
+                    import_fields = [list(d.items())[0] for d in import_fields]
+                    local_fields = [list(d.items())[0] for d in local_fields]
                     # merge the lists,
                     # result will contain imported_fields first then local_fields
                     # local_fields definitions override imported definitions
@@ -243,7 +241,7 @@ class Simulation(object):
         # globals_def = {'periodic': {'fields': [('a': int), ...], ...},
         #                'MIG': {'type': int}}
         globals_def = {}
-        for k, v in content.get('globals', {}).iteritems():
+        for k, v in content.get('globals', {}).items():
             if isinstance(v, dict):
                 if "type" in v:
                     v["type"] = field_str_to_type(v["type"], "array '%s'" % k)
@@ -352,22 +350,22 @@ class Simulation(object):
             minimal_output = True
 
         entities = {}
-        for k, v in content['entities'].iteritems():
+        for k, v in content['entities'].items():
             entities[k] = Entity.from_yaml(k, v)
 
-        for entity in entities.itervalues():
+        for entity in entities.values():
             entity.attach_and_resolve_links(entities)
 
         global_context = {'__globals__': global_symbols(globals_def),
                           '__entities__': entities}
         parsing_context = global_context.copy()
         parsing_context.update((entity.name, entity.all_symbols(global_context))
-                               for entity in entities.itervalues())
+                               for entity in entities.values())
         # compute the lag variable for each entity (an entity can cause fields from
         # other entities to be added via links)
         # dict of sets
         lag_vars_by_entity = defaultdict(set)
-        for entity in entities.itervalues():
+        for entity in entities.values():
             parsing_context['__entity__'] = entity.name
             entity.parse_processes(parsing_context)
             entity_lag_vars = entity.compute_lagged_fields()
@@ -375,7 +373,7 @@ class Simulation(object):
                 lag_vars_by_entity[e.name] |= entity_lag_vars[e]
 
         # store that in entity.lag_fields and create entity.array_lag
-        for entity in entities.itervalues():
+        for entity in entities.values():
             entity_lag_vars = lag_vars_by_entity[entity.name]
             if entity_lag_vars:
                 # make sure we have an 'id' column, and that it comes first
@@ -398,12 +396,12 @@ class Simulation(object):
         # minimal to output=False
         if minimal_output:
             min_fields_by_entity = defaultdict(set)
-            for entity in entities.itervalues():
+            for entity in entities.values():
                 entity_lag_vars = entity.compute_lagged_fields(
                     inspect_one_period=False)
                 for e in entity_lag_vars:
                     min_fields_by_entity[e.name] |= entity_lag_vars[e]
-            for entity in entities.itervalues():
+            for entity in entities.values():
                 minimal_fields = min_fields_by_entity[entity.name]
                 if minimal_fields:
                     minimal_fields.update(('id', 'period'))
@@ -414,10 +412,10 @@ class Simulation(object):
         if 'init' not in simulation_def and 'processes' not in simulation_def:
             raise SyntaxError("the 'simulation' section must have at least one "
                               "of 'processes' or 'init' subsection")
-        # for entity in entities.itervalues():
+        # for entity in entities.values():
         #     entity.resolve_method_calls()
         used_entities = set()
-        init_def = [d.items()[0] for d in simulation_def.get('init', [])]
+        init_def = [list(d.items())[0] for d in simulation_def.get('init', [])]
         init_processes = []
         for ent_name, proc_names in init_def:
             if ent_name not in entities:
@@ -428,7 +426,7 @@ class Simulation(object):
             init_processes.extend([(entity.processes[proc_name], 1)
                                    for proc_name in proc_names])
 
-        processes_def = [d.items()[0]
+        processes_def = [list(d.items())[0]
                          for d in simulation_def.get('processes', [])]
         processes = []
         for ent_name, proc_defs in processes_def:
@@ -497,7 +495,7 @@ class Simulation(object):
               input_dataset, self.start_period - 1)
 
         print(" * building arrays for first simulated period")
-        for ent_name, entity in self.entities_map.iteritems():
+        for ent_name, entity in self.entities_map.items():
             print("    -", ent_name, "...", end=' ')
             # TODO: this whole process of merging all periods is very
             # opinionated and does not allow individuals to die/disappear
@@ -660,7 +658,7 @@ class Simulation(object):
             if run_console:
                 ent_name = self.default_entity
                 if ent_name is None and len(eval_ctx.entities) == 1:
-                    ent_name = eval_ctx.entities.keys()[0]
+                    ent_name = list(eval_ctx.entities.keys())[0]
                 # FIXME: fresh_data prevents the old (cloned) EvaluationContext
                 # to be referenced from each EntityContext, which lead to period
                 # being fixed to the last period of the simulation. This should

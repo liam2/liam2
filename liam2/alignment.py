@@ -1,22 +1,22 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
-from itertools import izip
 import os
 
 import numpy as np
 import larray as la
 
-import config
-from align_link import align_link_nd
-from context import context_length
-from expr import Expr, Variable, expr_eval, missing_values, always
-from exprbases import FilteredExpression
-from groupby import GroupBy
-from links import LinkGet, Many2One
-from partition import partition_nd, filter_to_indices
-from importer import load_ndarray
-from utils import PrettyTable
+from liam2 import config
+from liam2.compat import zip, basestring
+from liam2.align_link import align_link_nd
+from liam2.context import context_length
+from liam2.expr import Expr, Variable, expr_eval, missing_values, always
+from liam2.exprbases import FilteredExpression
+from liam2.groupby import GroupBy
+from liam2.links import LinkGet, Many2One
+from liam2.partition import partition_nd, filter_to_indices
+from liam2.importer import load_ndarray
+from liam2.utils import PrettyTable
 
 
 def kill_axis(axis_name, value, expressions, possible_values, need):
@@ -108,7 +108,7 @@ Sidewalk alignment can only be used with a score between 0 and 1.
 You may want to use a logistic function.
 """.format(score_min, score_max))
 
-    for members_indices, group_need in izip(groups, need.flat):
+    for members_indices, group_need in zip(groups, need.flat):
         if len(members_indices):
             affected = group_need
             total_affected += affected
@@ -460,12 +460,14 @@ class AlignmentAbsoluteValues(FilteredExpression):
                 raise ValueError("invalid value for secondary_axis: there is "
                                  "no axis named '%s' in the need array"
                                  % axis_name)
-        else:
+        elif isinstance(secondary_axis, int):
             if secondary_axis >= need.ndim:
                 raise Exception("%d is an invalid value for secondary_axis: "
                                 "it should be smaller than the number of "
                                 "dimension of the need array (%d)"
                                 % (secondary_axis, need.ndim))
+        else:
+            assert secondary_axis is None
 
         # evaluate columns
         target_columns = [expr_eval(e, target_context) for e in expressions]

@@ -1,5 +1,5 @@
 # encoding: utf-8
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 
 import os
 import math
@@ -22,7 +22,7 @@ try:
     import matplotlib.pyplot as plt
     # set interactive mode
     # plt.ion()
-except ImportError, e:
+except ImportError as e:
     plt = ExceptionOnGetAttr(e)
     print("Warning: charts functionality is not available because "
           "'matplotlib.pyplot' could not be imported (%s)." % e)
@@ -72,7 +72,7 @@ class Chart(FunctionExpr, FileProducer):
                 data = np.asarray(data)
             if ndim(data) == ndim_req:
                 # move the last axis first so that the last dimension is stacked
-                axes = range(data.ndim)
+                axes = list(range(data.ndim))
                 data = data.transpose(axes[-1], *axes[:-1])
             elif ndim(data) == ndim_req - 1:
                 if isinstance(data, la.LArray):

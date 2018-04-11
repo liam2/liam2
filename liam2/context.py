@@ -1,9 +1,9 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
-from utils import unique
+from liam2.utils import unique
 
 
 class EvaluationContext(object):
@@ -29,7 +29,7 @@ class EvaluationContext(object):
         self.filter_expr = filter_expr
         if entities_data is None:
             entities_data = {name: EntityContext(self, entity)
-                             for name, entity in entities.iteritems()}
+                             for name, entity in entities.items()}
         self.entities_data = entities_data
 
     def copy(self, fresh_data=False):
@@ -52,7 +52,7 @@ class EvaluationContext(object):
                                 entities_data)
         # res.entities_data = {name: ent_ctx.clone(eval_ctx=res)
         #                      for name, ent_ctx
-        #                      in self.entities_data.iteritems()}
+        #                      in self.entities_data.items()}
         return res
 
     def clone(self, fresh_data=False, **kwargs):
@@ -60,7 +60,7 @@ class EvaluationContext(object):
         allowed_kwargs = {'simulation', 'entities', 'global_tables',
                           'period', 'entity_name', 'filter_expr',
                           'entities_data', 'entity_data'}
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             assert k in allowed_kwargs, "%s is not a valid kwarg" % k
             setattr(res, k, v)
         return res
@@ -109,7 +109,7 @@ class EvaluationContext(object):
         self.entity_data[key] = value
 
     def __contains__(self, key):
-        from expr import Variable
+        from liam2.expr import Variable
         if isinstance(key, Variable):
             entity, name = key.entity, key.name
             if entity is None:
@@ -129,7 +129,8 @@ class EvaluationContext(object):
         if isinstance(entity_data, EntityContext):
             return entity_data.keys(extra)
         else:
-            return entity_data.keys()
+            assert isinstance(entity_data, dict)
+            return list(entity_data.keys())
 
     def update(self, other, **kwargs):
         self.entity_data.update(other, **kwargs)
@@ -253,7 +254,7 @@ class EntityContext(object):
     def clone(self, **kwargs):
         res = self.copy()
         allowed_kwargs = {'eval_ctx', 'entity', 'extra'}
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             assert k in allowed_kwargs, "%s is not a valid kwarg" % k
             setattr(res, k, v)
         return res
@@ -298,7 +299,7 @@ def empty_context(length):
 def context_subset(context, index=None, keys=None):
     # if keys is None, take all fields
     if keys is None:
-        keys = context.keys()
+        keys = list(context.keys())
     # tuples are not valid numpy indexes (I don't know why)
     if isinstance(index, list):
         if not index:
@@ -355,7 +356,7 @@ def context_length(ctx):
         return ctx['__len__']
     else:
         usual_len = None
-        for k, value in ctx.iteritems():
+        for k, value in ctx.items():
             if isinstance(value, np.ndarray):
                 if usual_len is not None and len(value) != usual_len:
                     raise Exception('incoherent array lengths: %s''s is %d '

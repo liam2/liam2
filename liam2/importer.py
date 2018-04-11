@@ -1,5 +1,5 @@
 # encoding: utf-8
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 
 import csv
 import os.path
@@ -15,11 +15,11 @@ import tables
 import yaml
 import larray as la
 
-from expr import get_default_array
-from utils import (validate_dict, merge_dicts, merge_items, invert_dict,
-                   countlines, skip_comment_cells, strip_rows, PrettyTable,
-                   unique, duplicates, unique_duplicate, prod,
-                   field_str_to_type, fields_yaml_to_type, fromiter, MB)
+from liam2.compat import basestring, csv_open
+from liam2.expr import get_default_array
+from liam2.utils import (validate_dict, merge_dicts, merge_items, invert_dict, countlines, skip_comment_cells,
+                         strip_rows, PrettyTable, unique, duplicates, unique_duplicate, prod, field_str_to_type,
+                         fields_yaml_to_type, fromiter, MB)
 
 
 MB = 2.0 ** 20
@@ -166,7 +166,7 @@ class CSV(object):
     eval_re = re.compile('eval\((.*)\)')
 
     def __init__(self, fpath, newnames=None, delimiter=None, transpose=False):
-        f = open(fpath, "rb")
+        f = csv_open(fpath)
         if delimiter is None:
             dialect = csv.Sniffer().sniff(f.read(1024))
 #            dialect = csv.Sniffer().sniff(f.read(1024), ',:|\t')
@@ -201,7 +201,7 @@ class CSV(object):
         return iter(self.data_stream)
 
     def next(self):
-        return self.data_stream.next()
+        return next(self.data_stream)
 
     def rewind(self):
         if self.transposed is not None:
@@ -632,7 +632,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         elif isinstance(files_def, list) and files_def:
             if isinstance(files_def[0], dict):
                 # handle YAML ordered dict structure
-                files_items = [d.items()[0] for d in files_def]
+                files_items = [list(d.items())[0] for d in files_def]
             elif isinstance(files_def[0], basestring):
                 files_items = [(path, {}) for path in files_def]
             else:
@@ -688,10 +688,10 @@ def load_def(localdir, ent_name, section_def, required_fields):
         # booleans are loaded as int8.
         if interpolate_def is not None:
             if any(v != 'previous_value'
-                   for v in interpolate_def.itervalues()):
+                   for v in interpolate_def.values()):
                 raise Exception("currently, only 'previous_value' "
                                 "interpolation is supported")
-            to_interpolate = [k for k, v in interpolate_def.iteritems()
+            to_interpolate = [k for k, v in interpolate_def.items()
                               if v == 'previous_value']
         else:
             to_interpolate = []
@@ -780,7 +780,7 @@ def csv2h5(fpath, buffersize=10 * MB):
             print("globals")
             print("-------")
             const_node = h5file.create_group("/", "globals", "Globals")
-            for global_name, global_def in globals_def.iteritems():
+            for global_name, global_def in globals_def.items():
                 print()
                 print(" %s" % global_name)
                 req_fields = [('PERIOD', int)] \
@@ -808,7 +808,7 @@ def csv2h5(fpath, buffersize=10 * MB):
         print("entities")
         print("--------")
         ent_node = h5file.create_group("/", "entities", "Entities")
-        for ent_name, entity_def in content['entities'].iteritems():
+        for ent_name, entity_def in content['entities'].items():
             print()
             print(" %s" % ent_name)
             kind, info = load_def(localdir, ent_name,

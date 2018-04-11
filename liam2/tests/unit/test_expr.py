@@ -109,7 +109,7 @@ class TestLink(StringExprTestCase):
         parse_ctx = {'__globals__': {}, '__entities__': entities,
                      '__entity__': 'person'}
         parse_ctx.update((entity.name, entity.all_symbols(parse_ctx))
-                         for entity in entities.itervalues())
+                         for entity in entities.values())
         self.parse_ctx = parse_ctx
         self.eval_ctx = EvaluationContext(entities=entities, period=2002,
                                           entity_name='person')

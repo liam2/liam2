@@ -1,5 +1,5 @@
 # encoding: utf-8
-from __future__ import division, print_function
+from __future__ import absolute_import, division, print_function
 
 import inspect
 import types
@@ -8,11 +8,12 @@ from collections import Counter
 import numpy as np
 import larray as la
 
-from cache import Cache
-from context import EntityContext, EvaluationContext
-from utils import (ExplainTypeError, safe_take, IrregularNDArray,
-                   NiceArgSpec, englishenum, make_hashable, add_context,
-                   array_nan_equal)
+from liam2.compat import basestring, PY2
+from liam2.compat import with_metaclass
+from liam2.cache import Cache
+from liam2.context import EntityContext, EvaluationContext
+from liam2.utils import (ExplainTypeError, safe_take, IrregularNDArray, NiceArgSpec, englishenum, make_hashable,
+                         add_context, array_nan_equal)
 
 
 try:
@@ -240,7 +241,7 @@ def expr_eval(expr, context):
                          expr_eval(expr.step, context))
         else:
             return expr
-    except Exception, e:
+    except Exception as e:
         add_context(e, "when evaluating: " + str(expr))
         raise
 
@@ -461,7 +462,7 @@ class Expr(object):
         # TODO: it would be cleaner if we initialized _variables in __init__,
         # however it means each Expr subclass would have to call its parent
         # __init__ (which is a good thing but too much hassle at this point).
-        if not hasattr(self, "_variables"):
+        if not hasattr(self, "_variables") or self._variables is None:
             # FIXME: this is a quick hack to make "othertable" work.
             # We should return prefixed variable instead.
             badvar = lambda v: isinstance(v, ShortLivedVariable) or \
@@ -736,7 +737,9 @@ class FillArgSpecMeta(FillFuncNameMeta):
                                 'signature needs to be specified '
                                 'explicitly. See exprmisc.Uniform for an '
                                 'example' % compute.__name__)
-            if isinstance(compute, types.MethodType):
+            # On Python >= 3, method attributes appear as functions on the *class* itself
+            # (they only appear as methods on the class instances)
+            if isinstance(compute, types.MethodType) or not PY2:
                 # for methods, strip "self" and "context" args
                 args = [arg for arg in spec.args
                         if arg not in {'self', 'context'}]
@@ -747,17 +750,15 @@ class FillArgSpecMeta(FillFuncNameMeta):
             if spec[2] is not None and kwonly and not cls.kwonlyandvarkw:
                 # we set varkw to None
                 spec = spec[:2] + (None,) + spec[3:]
-            extra = (kwonly.keys(), kwonly, {})
+            extra = (list(kwonly.keys()), kwonly, {})
             cls.argspec = NiceArgSpec._make(spec + extra)
 
     def get_compute_func(cls):
         raise NotImplementedError()
 
 
-class AbstractFunction(Expr):
+class AbstractFunction(with_metaclass(FillFuncNameMeta, Expr)):
     __children__ = ('args', 'kwargs')
-
-    __metaclass__ = FillFuncNameMeta
 
     funcname = None
     argspec = None
@@ -818,7 +819,7 @@ class AbstractFunction(Expr):
                                englishenum(repr(a) for a in missing)))
 
         # save original arguments before we mess with them
-        self._original_args = args, sorted(kwargs.iteritems())
+        self._original_args = args, sorted(kwargs.items())
 
         # move all "non-kwonly" kwargs to args
         # def func(a, b, c, d, e=1, f=1):
@@ -846,6 +847,7 @@ class AbstractFunction(Expr):
         kwargs = tuple(sorted(kwargs.items()))
         self.args = args
         self.kwargs = kwargs
+        self._variables = None
 
     @staticmethod
     def format_args_str(args, kwargs):
@@ -869,15 +871,13 @@ class AbstractFunction(Expr):
 
 # this needs to stay in the expr module because of ExprAttribute, which uses
 # DynamicFunctionCall -> GenericFunctionCall -> FunctionExpr
-class FunctionExpr(EvaluableExpression, AbstractFunction):
+class FunctionExpr(with_metaclass(FillArgSpecMeta, EvaluableExpression, AbstractFunction)):
     """
     Base class for defining (python-level) functions. That is, if you want to
     make a new function available in LIAM2 models, you should inherit from this
     class. In most cases, overriding the compute and dtype methods is
     enough, but your mileage may vary.
     """
-    __metaclass__ = FillArgSpecMeta
-
     # argspec is set automatically for pure-python functions, but needs to
     # be set manually for builtin/C functions.
     argspec = None
@@ -967,7 +967,7 @@ class DynamicFunctionCall(GenericFunctionCall):
     # so we deliberately do not call FunctionExpr.__init__ which does both
     def __init__(self, *args, **kwargs):
         self.args = args
-        self.kwargs = tuple(sorted(kwargs.iteritems()))
+        self.kwargs = tuple(sorted(kwargs.items()))
 
     def compute(self, context, func, *args, **kwargs):
         return func(*args, **kwargs)
@@ -1292,10 +1292,10 @@ class MethodCall(EvaluableExpression):
         self.entity = entity
         self.name = name
         self.args = args
-        self.kwargs = tuple(sorted(kwargs.iteritems()))
+        self.kwargs = tuple(sorted(kwargs.items()))
 
     def evaluate(self, context):
-        from process import Assignment, Function
+        from liam2.process import Assignment, Function
         entity_processes = self.entity.processes
         method = entity_processes[self.name]
         # hybrid (method & variable) assignment can be called

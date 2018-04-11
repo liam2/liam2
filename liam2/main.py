@@ -1,5 +1,5 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import argparse
 import os
@@ -22,15 +22,15 @@ except ImportError:
 
 import yaml
 
-import config
-from console import Console
-from context import EvaluationContext
-from data import entities_from_h5, H5Source
-from importer import csv2h5
-from simulation import Simulation
-from upgrade import upgrade
-from utils import AutoFlushFile
-from view import viewhdf
+from liam2 import config
+from liam2.console import Console
+from liam2.context import EvaluationContext
+from liam2.data import entities_from_h5, H5Source
+from liam2.importer import csv2h5
+from liam2.simulation import Simulation
+from liam2.upgrade import upgrade
+from liam2.utils import AutoFlushFile
+from liam2.view import viewhdf
 
 
 from version import __version__
@@ -51,10 +51,10 @@ def write_traceback(ex_type, e, tb):
             if hasattr(e, 'liam2context'):
                 f.write(e.liam2context)
         return error_path
-    except IOError, log_ex:
+    except IOError as log_ex:
         print("WARNING: could not save technical error log "
               "({} on '{}')".format(log_ex.strerror, log_ex.filename))
-    except Exception, log_ex:
+    except Exception as log_ex:
         print(log_ex)
     return None
 
@@ -156,7 +156,7 @@ def explore(fpath):
     if ftype == 'data':
         globals_def, entities = entities_from_h5(fpath)
         simulation = Simulation(globals_def, None, None, None, None,
-                                entities.values(), 'h5', fpath, None)
+                                list(entities.values()), 'h5', fpath, None)
         period, entity_name = None, None
     else:
         simulation = Simulation.from_yaml(fpath)
@@ -170,7 +170,7 @@ def explore(fpath):
     data_sink = simulation.data_sink
     entities = simulation.entities_map
     if entity_name is None and len(entities) == 1:
-        entity_name = entities.keys()[0]
+        entity_name = list(entities.keys())[0]
     if period is None and entity_name is not None:
         entity = entities[entity_name]
         period = max(entity.output_index.keys())

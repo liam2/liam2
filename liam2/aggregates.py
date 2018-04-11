@@ -1,15 +1,15 @@
 # encoding: utf-8
-from __future__ import print_function, division
+from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import larray as la
 
-from expr import (Variable, BinaryOp, getdtype, expr_eval,
-                  ispresent, FunctionExpr, always, firstarg_dtype, ComparisonOp, missing_values)
-from exprbases import NumpyAggregate, FilteredExpression, WeightedFilteredAggregateFunction
-import exprmisc
-from context import context_length
-from utils import removed, argspec
+from liam2.expr import (Variable, BinaryOp, getdtype, expr_eval, ispresent, FunctionExpr, always, firstarg_dtype,
+                        ComparisonOp, missing_values)
+from liam2.exprbases import NumpyAggregate, FilteredExpression, WeightedFilteredAggregateFunction
+from liam2 import exprmisc
+from liam2.context import context_length
+from liam2.utils import removed, argspec
 
 try:
     import bottleneck as bn
@@ -442,5 +442,5 @@ functions = {
     'gini': Gini
 }
 
-for k, v in functions.items():
+for k, v in list(functions.items()):
     functions['grp' + k] = removed(v, 'grp' + k, k)

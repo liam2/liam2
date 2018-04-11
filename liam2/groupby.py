@@ -1,15 +1,15 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import larray as la
 
-from context import context_length
-from expr import expr_eval, collect_variables, not_hashable
-from exprbases import TableExpression
-from utils import expand, prod
-from aggregates import Count
-from partition import partition_nd
+from liam2.context import context_length
+from liam2.expr import expr_eval, collect_variables, not_hashable
+from liam2.exprbases import TableExpression
+from liam2.utils import expand, prod
+from liam2.aggregates import Count
+from liam2.partition import partition_nd
 
 
 class GroupBy(TableExpression):
@@ -148,7 +148,7 @@ class GroupBy(TableExpression):
 #                divisors = ...
 #
 #            data = [100.0 * value / divisor
-#                    for value, divisor in izip(data, divisors)]
+#                    for value, divisor in zip(data, divisors)]
 
         # convert to a 1d array. We don't simply use data = np.array(data),
         # because if data is a list of ndarray (for example if we use

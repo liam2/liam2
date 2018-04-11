@@ -1,5 +1,5 @@
 # encoding: utf-8
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import collections
 import sys
@@ -9,17 +9,16 @@ import warnings
 import numpy as np
 import tables
 
-import config
-from data import (merge_arrays, get_fields, ColumnArray, index_table,
-                  build_period_array)
-from expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable,
-                  GlobalArray, Expr, BinaryOp, MethodSymbol, normalize_type)
-from exprtools import parse
-from process import Assignment, ProcessGroup, While, Function, Return
-from utils import (count_occurrences, field_str_to_type, size2str,
-                   WarnOverrideDict, split_signature, argspec,
-                   UserDeprecationWarning)
-from tfunc import ValueForPeriod
+from liam2 import config
+from liam2.compat import basestring
+from liam2.data import merge_arrays, get_fields, ColumnArray, index_table, build_period_array
+from liam2.expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable, GlobalArray, Expr, BinaryOp,
+                        MethodSymbol, normalize_type)
+from liam2.exprtools import parse
+from liam2.process import Assignment, ProcessGroup, While, Function, Return
+from liam2.utils import (count_occurrences, field_str_to_type, size2str, WarnOverrideDict, split_signature, argspec,
+                         UserDeprecationWarning)
+from liam2.tfunc import ValueForPeriod
 
 
 default_value_by_strtype = {"bool": False, "float": np.nan, 'int': -1}
@@ -40,7 +39,7 @@ def global_symbols(globals_def):
     # FIXME: these should be computed once somewhere else, not for each
     # entity. I guess they should have a class of their own
     symbols = {}
-    for name, global_def in globals_def.iteritems():
+    for name, global_def in globals_def.items():
         if isinstance(global_def, dict):
             global_type = global_def.get('fields')
         else:
@@ -253,19 +252,19 @@ class Entity(object):
 
     @classmethod
     def from_yaml(cls, ent_name, entity_def):
-        from links import Many2One, One2Many
+        from liam2.links import Many2One, One2Many
 
         # YAML "ordered dict" syntax returns a list of dict and we want a list
         # of tuples
         # FIXME: if "fields" key is present but no field is defined,
         # entity_def.get('fields', []) returns None and this breaks
-        fields_def = [d.items()[0] for d in entity_def.get('fields', [])]
+        fields_def = [list(d.items())[0] for d in entity_def.get('fields', [])]
 
         link_defs = entity_def.get('links', {})
         str2class = {'one2many': One2Many, 'many2one': Many2One}
         links = dict((name,
                       str2class[l['type']](name, l['field'], l['target']))
-                     for name, l in link_defs.iteritems())
+                     for name, l in link_defs.items())
 
         return Entity(ent_name, fields_def, links,
                       entity_def.get('macros', {}),
@@ -273,7 +272,7 @@ class Entity(object):
 
     # noinspection PyProtectedMember
     def attach_and_resolve_links(self, entities):
-        for link in self.links.itervalues():
+        for link in self.links.values():
             link._attach(self)
             link._resolve_target(entities)
 
@@ -306,7 +305,7 @@ class Entity(object):
     def variables(self):
         if self._variables is None:
             if self.process_strings:
-                processes = self.process_strings.items()
+                processes = list(self.process_strings.items())
             else:
                 processes = []
 
@@ -352,7 +351,7 @@ class Entity(object):
     def method_symbols(self):
         if self._methods is None:
             pstrings = self.process_strings
-            items = pstrings.iteritems() if pstrings is not None else ()
+            items = pstrings.items() if pstrings is not None else ()
             # variable-method hybrids are handled by the self.variable property
             stored_fields = set(self.fields.names)
             methodnames = [k for k, v in items
@@ -366,14 +365,14 @@ class Entity(object):
 
     # this must work _before_ processes are parsed
     def all_symbols(self, global_context):
-        from links import PrefixingLink
+        from liam2.links import PrefixingLink
 
         symbols = WarnOverrideDict(self.variables.copy())
         local_context = global_context.copy()
         local_context[self.name] = symbols
         local_context['__entity__'] = self.name
         macros = dict((k, parse(v, local_context))
-                      for k, v in self.macro_strings.iteritems())
+                      for k, v in self.macro_strings.items())
         symbols.update(macros)
         symbols['other'] = PrefixingLink(self, macros, self.links, '__other_')
         symbols.update(self.method_symbols)
@@ -415,7 +414,7 @@ class Entity(object):
         # items is a list of [dict (assignment) or string (action)]
         if items is None:
             raise ValueError("no processes in '%s'" % k)
-        group_expressions = [elem.items()[0] if isinstance(elem, dict) else (None, elem)
+        group_expressions = [list(elem.items())[0] if isinstance(elem, dict) else (None, elem)
                              for elem in items]
         group_predictors = self.collect_predictors(group_expressions, in_process_group=True)
         group_context = self.get_group_context(context, group_predictors)
@@ -447,7 +446,7 @@ You probably want to use the "upgrade" command to automatically convert your mod
             # TODO: use code.predictors instead (but it currently
             # fails for some reason) or at least factor this out
             # with the code in parse_process_group
-            group_expressions = [elem.items()[0] if isinstance(elem, dict) else (None, elem)
+            group_expressions = [list(elem.items())[0] if isinstance(elem, dict) else (None, elem)
                                  for elem in code_def]
             group_predictors = self.collect_predictors(group_expressions, in_process_group=True)
             method_context = self.get_group_context(method_context, group_predictors)
@@ -564,13 +563,13 @@ Please use this instead:
     def parse_processes(self, context):
         # TODO: when defining a process outside of a function is no longer allowed, simplify this code
         functions = [(k, self.parse_function(k, v, context))
-                     for k, v in self.process_strings.iteritems()]
+                     for k, v in self.process_strings.items()]
         self.processes = {v.name if isinstance(v, Function) else k: v
                           for k, v in functions}
         # self.ssa()
 
     # def resolve_method_calls(self):
-    #     for p in self.processes.itervalues():
+    #     for p in self.processes.values():
     #         for expr in p.expressions():
     #             for node in expr.all_of(MethodCallToResolve):
     #                 # replace node in the parent node by the "resolved" node
@@ -579,16 +578,16 @@ Please use this instead:
 
     def ssa(self):
         fields_versions = collections.defaultdict(int)
-        for p in self.processes.itervalues():
+        for p in self.processes.values():
             if isinstance(p, ProcessGroup):
                 p.ssa(fields_versions)
 
     def compute_lagged_fields(self, inspect_one_period=True):
-        from tfunc import Lag
-        from links import LinkGet
+        from liam2.tfunc import Lag
+        from liam2.links import LinkGet
 
         lag_vars = collections.defaultdict(set)
-        for p in self.processes.itervalues():
+        for p in self.processes.values():
             for expr in p.expressions():
                 for node in expr.all_of((Lag, ValueForPeriod)):
                     if isinstance(node, Lag):
@@ -683,7 +682,7 @@ Please use this instead:
         local_var_names = self.local_var_names
         num_locals = len(local_var_names)
         if config.debug and num_locals:
-            local_vars = [v for k, v in temp_vars.iteritems()
+            local_vars = [v for k, v in temp_vars.items()
                           if k in local_var_names]
             max_vars = max(max_vars, num_locals)
             temp_mem = sum(sys.getsizeof(v) +
@@ -720,7 +719,7 @@ Please use this instead:
 
     def store_period_data(self, period):
         if config.debug and config.log_level in ("functions", "processes"):
-            temp_mem = sum(v.nbytes for v in self.temp_variables.itervalues()
+            temp_mem = sum(v.nbytes for v in self.temp_variables.values()
                            if isinstance(v, np.ndarray))
             main_mem = self.array.nbytes
             print("mem used: %s (main: %s / temp: %s)"
@@ -771,7 +770,7 @@ Please use this instead:
         #   find duplicated expr and number of occurrences of each expr, then
         #   proceed with the factorization
         expr_count = collections.Counter()
-        for p in self.processes.itervalues():
+        for p in self.processes.values():
             for expr in p.expressions():
                 for subexpr in expr.traverse():
                     if isinstance(subexpr, Expr) and \
@@ -786,7 +785,7 @@ Please use this instead:
         # if count(smaller) > count(larger) + 1: do both (larger uses smaller)
 
         # seen = {}
-        # for p in self.processes.itervalues():
+        # for p in self.processes.values():
         #     for expr in p.expressions():
         #         for subexpr in expr.traverse():
         #             if subexpr in seen:

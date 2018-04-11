@@ -1,10 +1,11 @@
-from __future__ import division, print_function
+# encoding: utf-8
+from __future__ import absolute_import, division, print_function
 
 import math
 from types import BuiltinFunctionType, FunctionType
 
 
-from utils import prod
+from liam2.utils import prod
 
 
 class Manager(object):

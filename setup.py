@@ -4,6 +4,7 @@
 from __future__ import print_function
 
 import os
+import re
 import sys
 import fnmatch
 from os.path import join
@@ -190,8 +191,16 @@ if build_exe:
 # main stuff #
 # ========== #
 
-execfile('./liam2/version.py')
-# now we have a `__version__` variable
+def get_version(filepath):
+    with open(filepath, 'r') as f:
+        for line in f:
+            m = re.match('__version__ = "([^"]+)"\s*', line)
+            if m:
+                return m.group(1)
+        return None
+
+
+version = get_version('./liam2/version.py')
 
 
 classifiers = [
@@ -209,7 +218,7 @@ classifiers = [
 setup(
     name="liam2",
     # cx_freeze wants only ints and dots (full version number)
-    version=int_version(__version__),
+    version=int_version(version),
     author="Gaëtan de Menten",
     author_email="gdementen@gmail.com",
     url="http://liam2.plan.be",

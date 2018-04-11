@@ -70,7 +70,7 @@ if __name__ == '__main__':
         exception = None
         try:
             func(*args, **kwargs)
-        except Exception, e:
+        except Exception as e:
             exception = e
         sys.stdout.seek(0)
         sys.stderr.seek(0)
