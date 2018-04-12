@@ -147,7 +147,7 @@ class Chart(FunctionExpr, FileProducer):
             set_axis_ticks = getattr(ax, 'set_%sticks' % name)
             set_axis_label = getattr(ax, 'set_%slabel' % name)
             set_axis_ticklabels = getattr(ax, 'set_%sticklabels' % name)
-            set_axis_ticks(np.arange(1, numvalues + 1, step))
+            set_axis_ticks(np.arange(0, numvalues, step))
             if axis.name is not None:
                 set_axis_label(axis.name)
             set_axis_ticklabels(axis.labels[::step])
@@ -237,29 +237,24 @@ class Plot(Chart):
         return super(Plot, self).prepare(args, kwargs)
 
     def _draw(self, data, colors, **kwargs):
-        x = np.arange(len(data[0])) + 1
-
-        # we use np.asarray to work around missing "newaxis" implementation
-        # in la.LArray
         data = np.asarray(data)
         if self.styles is None:
             for array, color in zip(data, colors):
                 kw = dict(color=color)
                 kw.update(kwargs)
-                plt.plot(x, np.asarray(array), **kw)
+                plt.plot(array, **kw)
         else:
             for array, style, color in zip(data, self.styles, colors):
                 kw = dict(color=color)
                 kw.update(kwargs)
-                plt.plot(x, np.asarray(array), style, **kw)
+                plt.plot(array, style, **kw)
 
 
 class StackPlot(Chart):
     def _draw(self, data, colors, **kwargs):
-        x = np.arange(len(data[0])) + 1
-        # use np.asarray to work around missing "newaxis" implementation
-        # in la.LArray
-        plt.stackplot(x, np.asarray(data), colors=colors, **kwargs)
+        data = np.asarray(data)
+        x = np.arange(len(data[0]))
+        plt.stackplot(x, data, colors=colors, **kwargs)
 
 
 class Bar(Chart):
@@ -269,19 +264,18 @@ class Bar(Chart):
         data = np.asarray(data)
         numvalues = len(data[0])
 
-        # plots with the left of the first bar in a negative position look
-        # ugly, so we shift ticks by 1 and left coordinates of bars by
-        # 1 - width / 2
-        width = kwargs.get('width', 0.5)
-        left = np.arange(numvalues) + 1.0
-        left -= width / 2
-        kw = dict(left=left, width=width)
+        x = kwargs.pop('x', None)
+        if x is None:
+            x = np.arange(numvalues)
+        # use an explicit align='center' because this is only the default for matplotlib >= 2.0
+        kw = dict(width=0.5, align='center')
         kw.update(kwargs)
+        # we need to handle bottom explicitly to stack several rows
         bottom = np.zeros(numvalues, dtype=data[0].dtype)
         for row, color in zip(data, colors):
             if 'color' not in kwargs:
                 kw['color'] = color
-            plt.bar(height=row, bottom=bottom, **kw)
+            plt.bar(x, height=row, bottom=bottom, **kw)
             bottom += row
 
 
@@ -292,19 +286,18 @@ class BarH(Bar):
         data = np.asarray(data)
         numvalues = len(data[0])
 
-        # plots with the bottom of the first bar in a negative position look
-        # ugly, so we shift ticks by 1 and bottom coordinates of bars by
-        # 1 - height / 2
-        height = kwargs.get('height', 0.5)
-        bottom = np.arange(numvalues) + 1.0
-        bottom -= height / 2
-        kw = dict(bottom=bottom, height=height)
+        y = kwargs.pop('y', None)
+        if y is None:
+            y = np.arange(numvalues)
+        # use an explicit align='center' because this is only the default for matplotlib >= 2.0
+        kw = dict(height=0.5, align='center')
         kw.update(kwargs)
+        # we need to handle left explicitly to stack several rows
         left = np.zeros(numvalues, dtype=data.dtype)
         for row, color in zip(data, colors):
             if 'color' not in kwargs:
                 kw['color'] = color
-            plt.barh(width=row, left=left, **kw)
+            plt.barh(y, width=row, left=left, **kw)
             left += row
 
 
