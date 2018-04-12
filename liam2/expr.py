@@ -175,11 +175,11 @@ def firstarg_dtype(self, context):
 
 def ispresent(values):
     dt = values.dtype
-    if np.issubdtype(dt, float):
+    if np.issubdtype(dt, np.floating):
         return np.isfinite(values)
-    elif np.issubdtype(dt, int):
+    elif np.issubdtype(dt, np.integer):
         return values != missing_values[int]
-    elif np.issubdtype(dt, bool):
+    elif np.issubdtype(dt, np.bool_):
         # return values != missing_values[bool]
         return True
     else:

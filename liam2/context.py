@@ -308,10 +308,10 @@ def context_subset(context, index=None, keys=None):
             index = np.array(index)
     if index is None:
         length = context_length(context)
-    elif np.issubdtype(index.dtype, int):
+    elif np.issubdtype(index.dtype, np.integer):
         length = len(index)
     else:
-        assert np.issubdtype(index.dtype, bool)
+        assert np.issubdtype(index.dtype, np.bool_)
         assert len(index) == context_length(context), \
             "boolean index has length %d instead of %d" % \
             (len(index), context_length(context))

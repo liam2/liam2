@@ -41,7 +41,7 @@ class Count(FunctionExpr):
 
             # TODO: check this at "compile" time (in __init__), though for that we need to know the type of all
             # temporary variables first
-            if not np.issubdtype(filter.dtype, bool):
+            if not np.issubdtype(filter.dtype, np.bool_):
                 raise ValueError("count filter must be a boolean expression")
         if weights is not None:
             weights = np.asarray(weights)
