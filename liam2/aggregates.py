@@ -161,7 +161,11 @@ class Average(FunctionExpr):
 
         # we do not build an expression for values * filter_weight because we will need filter_weight "alone" to
         # compute numrows
-        values = np.asarray(expr_eval(expr, context))
+        values = expr_eval(expr, context)
+        if np.isscalar(values):
+            values = np.array([values])
+        else:
+            values = np.asarray(values)
 
         sum_func = np.sum
         if skip_na:

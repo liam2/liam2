@@ -2495,6 +2495,9 @@ entities:
                 - withnan: avg([4.0, nan, 2.0], weights=[3, 2, 1], skip_na=False)
                 - assertTrue(withnan != withnan)
 
+                # with a scalar
+                - assertEqual(avg(1.0), 1.0)
+
             test_std():
                 # bool expr
                 - assertEqual(std([False, True, True, False]), 0.5)
