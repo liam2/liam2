@@ -1,4 +1,4 @@
-.. highlight:: yaml
+﻿.. highlight:: yaml
 
 Model Definition
 ################
@@ -48,7 +48,7 @@ Here is an example of what a trivial model looks like: ::
                 - age: int
 
             processes:
-                ageing:
+                ageing():
                     - age: age + 1
 
     simulation:
@@ -284,7 +284,7 @@ convention is to use *capital* letters to define macros.
                 ISCHILD: age < 18
 
             processes:
-                test_macros:
+                test_macros():
                     - show("before", ISCHILD)
                     - age: age + 1
                     - show("after", ISCHILD)
@@ -523,3 +523,4 @@ Running a model/simulation
 - If you are using the command line, use: ::
 
     <BUNDLEPATH>\liam2\main run <path_to_simulation_file>
+

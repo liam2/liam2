@@ -73,6 +73,7 @@ LIAM2 supports many common operators:
 
      (age >= 10) and (age < 20)
 
+
 .. _assignments:
 
 Assignments
@@ -95,6 +96,7 @@ not always necessary.
 
 This process increases the variable *age* of each individual by one, each period.
 
+
 .. _functions:
 
 Functions
@@ -115,15 +117,25 @@ model.
    Functions were previously called "procedures".
 
 Each function definition starts at a new line with an extra indentation of four
-spaces compared to the "processes" keyword of the current entity. Within a
-function, each process should start on a new line, with an extra indentation of
-four spaces compared to the function name and a -. So, the usual setup to
+spaces compared to the "processes" keyword of the current entity, then the name of the function,
+then the list of its arguments between parentheses, then the ":" symbol.
+
+.. versionchanged:: 0.12
+   Functions without arguments previously did not require the parentheses.
+
+Within a function, each process should start on a new line, with an extra indentation of
+four spaces compared to the function name and a -. So, the general setup to
 declare a function is: ::
 
     processes:
-        function_name:
+        function_name(argument1, argument2, ...):
             - process1
             - process2
+            - return value
+
+.. versionadded:: 0.10
+
+Since version 0.10, functions can optionally take arguments and return a value.
 
 *example* ::
 
@@ -133,14 +145,18 @@ declare a function is: ::
                 - age: int
 
             processes:
-                ageing:
+                ageing():
                     - age: age + 1
                     - agegroup: trunc(age / 10) * 10
 
-                display:
+                display():
                     - show("agegroup", agegroup)
 
-In this example, there are two functions, one with two processes, and one
+                plus(a, b):
+                    - show("adding", a, "and", b)
+                    - return a + b
+
+In this example, there are three functions, two with two processes, and one
 with only one process. If the *ageing* function is executed, then both
 processes will be executed in turn (*age*, then *agegroup*).
 
@@ -155,32 +171,10 @@ readable.
 *example* ::
 
     processes:
-        ageing:
+        ageing():
             - age: age + 1
             - agegroup: trunc(age / 10)
             - agegroup: agegroup * 10
-
-.. versionadded:: 0.10
-
-Since version 0.10, functions can optionally also take arguments and return a
-value. So the general setup to declare a function is: ::
-
-    processes:
-        function_name(argument1, argument2, ...):
-            - process1
-            - process2
-            - return value
-
-*example* ::
-
-    plus(a, b):
-        - show("adding", a, "and", b)
-        - return a + b
-
-.. note:: There are currently two ways to define a function without arguments
- (with or without the parentheses after the function name). The version without
- parentheses is going to be deprecated at some point in the future, so you
- might want to get used to typing the parentheses.
 
 
 .. index:: function call
@@ -191,7 +185,7 @@ Call
 
 To execute a function, it has to be either:
 
-#. specified in the "processes" section of the simulation block of the model.
+#. specified in the "processes" section of the simulation block of the model (if it does not require any argument).
 
    *example* ::
 
@@ -199,8 +193,9 @@ To execute a function, it has to be either:
          person:
              fields:
                  - age: int
+
              processes:
-                 ageing:
+                 ageing():
                      - age: age + 1
      simulation:
          processes:
@@ -215,8 +210,8 @@ To execute a function, it has to be either:
    interesting), this comes down to: ::
 
      processes:
-         myfunction:
-             - anotherfunction()
+         myfunction():
+             - other_function_called()
 
    but it can really be used anywhere within an expression (whose result can
    be stored in a variable like any other expression): ::
@@ -228,13 +223,13 @@ To execute a function, it has to be either:
      entities:
          person:
              processes:
-                 other_func:
+                 other_func():
                      - show("in other_func")
 
                  plus(a, b):
                      - return a + b
 
-                 test_func:
+                 test_func():
                      - show("in test_func")
                      - other_func()
                      - show("back to test_func")
@@ -273,7 +268,7 @@ function.
             - agegroup: int
 
     processes:
-        ageing:
+        ageing():
             - age: age + 1
             - agediv10: trunc(age / 10)
             - agegroup: agediv10 * 10
@@ -295,12 +290,12 @@ defining them in the **fields** section.
             - age: int
 
         processes:
-            ageing:
+            ageing():
                 - age: age + 1
                 - isold: age >= 150   # isold is a local variable
                 - show("isold", isold)
 
-            rejuvenation:
+            rejuvenation():
                 - age: age – 1
                 - backfromoldage: isold and age < 150  # <-- WRONG !
                 - show("back from old age", backfromoldage)
@@ -310,6 +305,7 @@ be used in the function where they are defined. Because we are trying
 to use the local variable *isold* in another function in this example, LIAM2
 will refuse to run, complaining that *isold* is not defined.
 
+
 .. _actions:
 
 Actions
@@ -317,10 +313,10 @@ Actions
 
 In LIAM2, there are a few builtin functions which do not return any value (but
 have other effects). We call those *actions*. Since they do not need a
-variable to store their result, we simply: ::
+variable to store their result, we simply use them: ::
 
     processes:
-        function_name:
+        function_name():
             - action_expression
             ...
 
@@ -330,7 +326,6 @@ variable to store their result, we simply: ::
         death:
             - dead: age > 150
             - remove(dead)
-
 
 
 .. index:: globals usage
@@ -443,6 +438,7 @@ mathematical functions
 - min(x, a), max(x, a): the minimum or maximum of x and a.
 - erf(x): the error function
 
+
 .. index:: aggregate functions
 
 aggregate functions
@@ -526,6 +522,7 @@ Returns True if any individual who satisfy the optional condition2
 also satisfy condition1, False otherwise. Note that *any(condition1,
 filter=condition2)* is equivalent to *any(condition1 and condition2)*.
 
+
 .. index:: link methods, link.count, link.sum, link.avg, link.min, link.max
 .. _link_methods:
 
@@ -551,11 +548,12 @@ link methods
                 persons: {type: one2many, target: person, field: household_id}
 
             processes:
-                household_composition:
+                household_composition():
                     - nb_persons: persons.count()
                     - nb_children: persons.count(age < 18)
                     - total_income: persons.sum(income)
                     - avg_age: persons.avg(age)
+
 
 .. index:: temporal functions, lag, value_for_period, duration, tavg, tsum
 
@@ -926,6 +924,7 @@ seed(value)
 
   .. versionadded:: 0.10.3
 
+
 .. index:: choice
 
 choice
@@ -965,9 +964,9 @@ Here is a more complex example of a process using choice. Suppose we want to
 simulate the work status (blue collar worker or white collar worker) for all
 working individuals. We want to assign 1 or 2 to their collar variable based
 on their sex and level of education (education_level=2, 3, 4). We could write
-our process as follow: ::
+our function as follow: ::
 
-    collar_process:
+    collar_function():
         - no_collar: WORKING and collar == -1
         - collar: if(no_collar and (education_level == 2),
                      if(gender,
@@ -998,6 +997,7 @@ one meets the above *no_collar* filter and has the lowest level of education
 being a blue collar worker. If one has "education_level" equal to 3, the
 probability of being a blue collar worker is lower (64.3% for men and
 31.3% for women), etc.
+
 
 .. index:: logit, alignment
 
@@ -1038,7 +1038,7 @@ However, the nested structure can make things less readable if you have many
 different conditions. In that case, one would prefer the following longer
 form: ::
 
-    process_name:
+    function_name():
         # initialise the score to -1
         - score_variable: -1
 
@@ -1068,6 +1068,7 @@ When the score is known, it can be either used as-is: ::
     - event_happened: uniform() < score_variable
 
 or in combination with an alignment (see below).
+
 
 .. index:: align, take, leave
 
@@ -1106,6 +1107,9 @@ An alignment expression takes the following general form: ::
           [, expressions=expressions]
           [, possible_values=pvalues]
           [, frac_need="uniform"|"round"|"cutoff"])
+          [, link=link_name]
+          [, secondary_axis=column_name]
+          [, errors="default"|"carry"]
 
 For example, it could look like: ::
 
@@ -1227,6 +1231,27 @@ Now let us examine each argument in turn:
 
         count(frac_need >= cutoff) == sum(frac_need)
 
+  * **link**: must be the name of a one2many link. When the link argument is
+    used, the groups (given by the alignment file or in the *expressions*
+    argument) are evaluated on the linked entity and the needs are expressed
+    in terms of that linked entity. When the link argument is in effect,
+    align_abs uses the "Chenard" algorithm.
+
+    This can be used, for example, to take as many *households* as necessary
+    trying to get as close as possible to a particular distribution of
+    *persons*.
+
+  * **secondary_axis**: name of an axis which will influence rel_need when the
+    subtotal for that axis is exceeded. See total_by_sex in Chenard.
+    *secondary_axis* can only be used in combination with the link argument
+    and it *must* be one of the alignment columns.
+
+  * **errors**: if set to 'carry', the error for a period (difference between
+    the number of individuals aligned and the target for each category) is
+    stored and added to the target for the next period.
+    In the current version of LIAM2, *errors* can only be used in combination
+    with the *link* argument.
+
 In practice alignment data is often separate for men and women. In that case,
 one will usually use the following form: ::
 
@@ -1248,7 +1273,7 @@ single align() expression: ::
 
 The example below describes the process of getting (or keeping) a job: ::
 
-    inwork:
+    inwork():
         - work_score: -1
         # men
         - work_score: if(ISMALE and ACTIVEAGE and ISINWORK,
@@ -1295,6 +1320,40 @@ alignment process uses as input the scores simulated previously, and the
 information in the alignment files and sets the boolean variable *work*.
 No "take" or "leave" conditions are used in this case.
 
+Here is an example using the link argument: ::
+
+    # this is a function defined at the level of households
+    test_align_link():
+        - num_persons_in_hh: persons.count()
+
+        # EMIG is a 3d array: age - gender - period containing the
+        # proportions of each category of the population who will emigrate
+        # (e.g. 1% of the 25 years old men will emigrate in 2020)
+
+        # We need the 2d array for the current period.
+        # As of LIAM2 0.12, we need to manually compute the index (0-based)
+        # for the current period in the array. We know the first period in our
+        # array is 2000, so the index for the current period is:
+        # "period - 2000"
+
+        # period is the last dimension of the array and we do not
+        # want to modify other dimensions, so we use ":" for those
+        # dimensions.
+        - emig_period: EMIG[:, :, period - 2000]
+
+        # households have a 50% chance to be "candidate" for emigration.
+        # In a real model we would probably estimate this with a nice regression.
+        - is_candidate: uniform() < 0.5
+
+        # apply alignment, using the number of persons in each household
+        # as a score, so that households with more persons are tried first
+        # as this gives better results.
+        - will_emigrate: align(num_persons_in_hh, emig_period,
+                               filter=is_candidate,
+                               link=persons, secondary_axis=gender,
+                               errors='carry')
+
+
 .. _align_abs:
 .. index:: align_abs
 
@@ -1302,8 +1361,8 @@ align_abs
 ~~~~~~~~~
 
 align_abs is equivalent to align(), except that it aligns to absolute numbers
-instead of proportions. It also supports a few additional arguments to work
-on a **linked entity**.
+instead of proportions. It also supports one additional argument to change the
+algorithm used.
 
 The general form of align_abs is : ::
 
@@ -1321,30 +1380,7 @@ The general form of align_abs is : ::
               [method="bysorting"|"sidewalk"])
 
 In addition to all the arguments supported by *align()*, *align_abs()* also
-supports an optional "link" argument, which makes it work on a linked entity.
-
-Here is a description of the arguments specific to align_abs:
-
-  * **link**: must be the name of a one2many link. When the link argument is
-    used, the groups (given by the alignment file or in the *expressions*
-    argument) are evaluated on the linked entity and the needs are expressed
-    in terms of that linked entity. When the link argument is in effect,
-    align_abs uses the "Chenard" algorithm.
-
-    This can be used, for example, to take as many *households* as necessary
-    trying to get as close as possible to a particular distribution of
-    *persons*.
-
-  * **secondary_axis**: name of an axis which will influence rel_need when the
-    subtotal for that axis is exceeded. See total_by_sex in Chenard.
-    *secondary_axis* can only be used in combination with the link argument
-    and it *must* be one of the alignment columns.
-
-  * **errors**: if set to 'carry', the error for a period (difference between
-    the number of individuals aligned and the target for each category) is
-    stored and added to the target for the next period.
-    In the current version of LIAM2, *errors* can only be used in combination
-    with the *link* argument.
+supports an optional "method" argument:
 
   * **method**: is the name of the method to do the alignment.
     The default "bysorting" method sorts the individuals by score and takes as
@@ -1353,40 +1389,6 @@ Here is a description of the arguments specific to align_abs:
     of the probability and each time there is a change of the integer part of
     the accumulated probability, the corresponding individual is selected.
 
-*example* ::
-
-    test_align_link:
-        # this is a function defined at the level of households
-        - num_persons: persons.count()
-        - total_population: sum(num_persons)
-
-        # MIG_PERCENT is a simple float periodic global
-        - num_migrants: total_population * MIG_PERCENT
-
-        # MIG is a 3d array: age - gender - period but we want only the
-        # 2d array for this period.
-        # currently, we need to manually compute the index (0-based)
-        # for the current period in the array. We know the first
-        # period in our array is 2000, so the index for the current
-        # period is: "period - 2000"
-        # period is the last dimension of the array and we do not
-        # want to modify other dimensions, so we use ":" for those
-        # dimensions.
-        - mig_period: MIG[:,:,period - 2000]
-
-        # Distribute total desired migrants, by age and gender
-        - need: num_migrants * mig_period
-
-        # households have a 50% chance to be candidate for immigration
-        - is_candidate: uniform() < 0.5
-
-        # apply alignment, using the number of persons in each household
-        # as a score, so that households with more persons are tried first
-        # as this gives better results.
-        - aligned: align_abs(num_persons, need,
-                             filter=is_candidate,
-                             link=persons, secondary_axis=gender,
-                             errors='carry')
 
 .. index:: logit_regr
 
@@ -1441,6 +1443,7 @@ are many different algorithms to do so. LIAM2 currently implements two:
 **matching** takes the highest scoring individual in set 2 for each
 individual in set1, while **rank_matching** sorts both sets by their own
 ordering expression and match individuals with the same rank.
+
 
 .. _matching:
 .. index:: matching
@@ -1520,7 +1523,7 @@ Arguments:
 
 *example* ::
 
-    marriage:
+    marriage():
         - to_couple: not in_couple and age >= 18 and age <= 90
         - avg_age_males_to_couple: avg(age, filter=to_couple and MALE)
         - difficult_match: if(to_couple and FEMALE,
@@ -1580,6 +1583,7 @@ the surplus of the largest set is ignored.
                   set2filter=boolean_expr,
                   orderby1=expression, orberby2=expression)
 
+
 .. index:: lifecycle functions
 .. _lifecycle:
 
@@ -1626,7 +1630,7 @@ children to the age of their mother.
 
 *example 1* ::
 
-    birth:
+    birth():
         - to_give_birth: logit_regr(0.0,
                                     filter=not gender and
                                            (age >= 15) and (age <= 50),
@@ -1662,7 +1666,7 @@ this new household is created randomly through a choice-process.
 
 *example 2* ::
 
-    get_a_life:
+    get_a_life():
         - household_id: if(ISSINGLE and age == 24,
                            new('household',
                                region_id=choice([0, 1, 2, 3],
@@ -1689,9 +1693,10 @@ id number which is always set automatically.
 
 *example* ::
 
-    make_twins:
+    make_twins():
         - clone(filter=new_born and is_twin,
                 gender=choice([True, False], [0.51, 0.49]))
+
 
 .. index:: remove
 
@@ -1707,7 +1712,7 @@ improve simulation speed.
 The function below simulates whether an individual survives or not, and what
 happens in the latter case. ::
 
-    dead_function:
+    dead_function():
         # decide who dies
         - dead: if(gender,
                    logit_regr(0.0, align='al_p_dead_m.csv'),
@@ -1730,6 +1735,7 @@ erased. All other processes describing the heritage process should be included
 here. Finally, the *remove* command is called to removes the *dead* from the
 simulation dataset.
 
+
 .. index:: while
 .. _while:
 
@@ -1751,7 +1757,7 @@ While loops
 
 *example 1* ::
 
-    count_to_5:
+    count_to_5():
         - i: 1
         - while i <= 5:
             - show(i)
@@ -1762,7 +1768,7 @@ met per individual. One could intuitively write it like below.
 
 **bad** *example* ::
 
-    wrong_repeat_while_below_1:
+    wrong_repeat_while_below_1():
         - score: age / max(age)
         - while score < 1:   # <-- this line is WRONG !
             - score: score + 0.1
@@ -1778,7 +1784,7 @@ this case.
 
 *example 2* ::
 
-    repeat_while_below_1:
+    repeat_while_below_1():
         - score: age / max(age)
         - while any(score < 1):
             - score: score + 0.1
@@ -1791,11 +1797,12 @@ update the individuals which are not "done" yet.
 
 *example 3* ::
 
-    repeat_while_below_1:
+    repeat_while_below_1():
         - score: age / max(age)
         - while any(score < 1):
             - score: if(score < 1, score + 0.1, score)
         - show(score)
+
 
 Output
 ======
@@ -1857,6 +1864,7 @@ gives ::
     Count: 19944
     Average age: 42.7496991576
     Age std dev: 21.9815913417
+
 
 .. index:: qshow
 
@@ -1986,6 +1994,7 @@ Will produce a file with a layout like this: ::
 | this is | a header      |
 | with    | several lines |
 
+
 .. index:: dump
 
 dump
@@ -2034,6 +2043,7 @@ gives ::
      7 |  65 |          29 |  False
      8 |  38 |          35 |   True
      9 |  48 |          52 |   True
+
 
 .. index:: groupby
 
@@ -2170,6 +2180,7 @@ or ::
            2 |          [47] |          [45 46] |                   [47 45 46]
            4 |          [46] |               [] |                         [46]
        total | [46 47 47 46] | [46 47 47 45 46] | [46 47 47 46 46 47 47 45 46]
+
 
 .. index:: charts
 .. _charts:
@@ -2369,6 +2380,7 @@ Example: ::
 
 .. image:: /charts/stackplot2.*
 
+
 .. index:: pie, pie charts
 
 pie charts
@@ -2394,6 +2406,7 @@ dimension). Examples: ::
 
 .. image:: /charts/pie1.*
 .. image:: /charts/pie2.*
+
 
 .. index:: scatter, scatter plots
 
@@ -2433,6 +2446,7 @@ Examples: ::
 .. image:: /charts/scatter1.*
 .. image:: /charts/scatter2.*
 
+
 .. index:: boxplot
 
 boxplot
@@ -2456,6 +2470,7 @@ Examples: ::
 
 .. image:: /charts/bplot1.*
 .. image:: /charts/bplot2.*
+
 
 .. index:: interactive console, debugging
 
@@ -2491,6 +2506,7 @@ file and have the result directly. Show is implicit for all operations.
                   5 |      0 |    0 |     0
               total |    689 |  874 |  1563
 
+
 .. index:: breakpoint
 
 breakpoint
@@ -2510,10 +2526,11 @@ interactive console when you reach it through a breakpoint: "step" to execute
 
 *example* ::
 
-    marriage:
+    marriage():
         - in_couple: MARRIED or COHAB
         - breakpoint(2002)
         - ...
+
 
 .. index:: assertions, assertTrue, assertEqual
 

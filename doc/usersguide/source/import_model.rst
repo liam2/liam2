@@ -1,4 +1,4 @@
-.. highlight:: yaml
+﻿.. highlight:: yaml
 
 .. index:: importing models
 .. _import_models:
@@ -38,7 +38,7 @@ as long as the combined model is valid. See the examples below.
               - agegroup: {type: int, initialdata: False}
 
           processes:
-              ageing:
+              ageing():
                   - age: age + 1
                   - agegroup: trunc(age / 10)
 
@@ -61,7 +61,7 @@ as long as the combined model is valid. See the examples below.
       person:
           processes:
               # override the ageing process
-              ageing:
+              ageing():
                   - age: age + 1
                   - agegroup: if(age < 50,
                                  5 * trunc(age / 5),
@@ -83,10 +83,10 @@ as long as the combined model is valid. See the examples below.
 
           processes:
               # adding new processes
-              illness:
+              illness():
                   - severe_illness: uniform() < 0.001
 
-              death:
+              death():
                   - dead: logit_regr(0.5 * severe_illness,
                                      align='al_p_dead.csv')
                   - show('Avg age of death', avg(age, filter=dead))
@@ -113,7 +113,7 @@ variant3.yml.
       person:
           processes:
               # use the "alternate" ageing function
-              ageing:
+              ageing():
                   - age: age + 1
                   - agegroup: if(age < 50,
                                  5 * trunc(age / 5),
@@ -130,3 +130,4 @@ variant2.h5.
   import:
       - variant1.yml
       - variant2.yml
+

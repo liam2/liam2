@@ -1,4 +1,4 @@
-.. highlight:: yaml
+﻿.. highlight:: yaml
 
 .. index:: links
 
@@ -50,9 +50,10 @@ This allows the modeller to use information stored in the linked entities. ::
                 partner: {type: many2one, target: person, field: partner_id}
 
             processes:
-                age: age + 1
-                mother_age: mother.age
-                parents_income: mother.income + father.income
+                test_link():
+                    - age: age + 1
+                    - mother_age: mother.age
+                    - parents_income: mother.income + father.income
 
 
 To access a field of a linked individual (possibly of the same entity), you
@@ -91,6 +92,7 @@ of each individual, you can do it so: ::
 
     mother.get((mother.age + father.age) / 2)
 
+
 .. index:: one2many
 
 one2many
@@ -109,7 +111,7 @@ household to its members). ::
             fields:
                 - age: int
                 - income: float
-                - household_id : int
+                - household_id: int
 
             links:
                 household: {type: many2one, target: household, field: household_id}
@@ -141,7 +143,8 @@ max(). See :ref:`link_methods` for details.
                 persons: {type: one2many, target: person, field: household_id}
 
             processes:
-                num_children: persons.count(age <= 17)
+                composition():
+                    - num_children: persons.count(age <= 17)
 
         person:
             fields:
@@ -154,10 +157,11 @@ max(). See :ref:`link_methods` for details.
                             field: household_id}
 
             processes:
-                num_kids_in_hh: household.num_children
+                use_variable_computed_with_a_link():
+                    - num_kids_in_hh: household.num_children
 
 
-The num_children process, once called will compute the number of persons aged
+The composition function, once called will compute the number of persons aged
 17 or less in each household and store the result in the *num_children* field
 (of the **household**).
 Afterwards, that variable can be used like any other variable, for example
@@ -166,7 +170,7 @@ computes for each **person**, the number of children in the household of that
 person.
 
 Note that the variable *num_kids_in_hh* could also have been
-simulated by just one process, on the "person" level, by using: ::
+simulated by just one process, on the "person" entity, by using: ::
 
     - num_kids_in_hh: household.get(persons.count(age <= 17))
 
