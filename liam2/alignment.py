@@ -540,8 +540,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # filtered_columns are not filtered further on invalid labels
         # (num_unaligned) but this is not a problem since those will be
         # ignored by GroupBy anyway.
-        # TODO: this is ugly because a groupby on "values", returns an LArray with those
-        # values (ndarrays) as axes names. Ugh.
+        # TODO: the result of this is ugly because a groupby on *values*, returns an LArray with those
+        # values (ndarrays) as axes *names*. Ugh.
         groupby_expr = GroupBy(*filtered_columns, pvalues=possible_values)
 
         # FIXME: target_context is not correct, as it is not filtered while
