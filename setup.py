@@ -124,9 +124,9 @@ if build_ext is not None:
                 cxfreeze_searchpath.insert(0, self.build_lib)
     extra_kwargs['cmdclass'] = {"build_ext": MyBuildExt}
 
-    ext_modules = [Extension("cpartition", ["liam2/cpartition.pyx"],
+    ext_modules = [Extension("liam2.cpartition", ["liam2/cpartition.pyx"],
                              include_dirs=[np.get_include()]),
-                   Extension("cutils", ["liam2/cutils.pyx"],
+                   Extension("liam2.cutils", ["liam2/cutils.pyx"],
                              include_dirs=[np.get_include()])]
     extra_kwargs['ext_modules'] = ext_modules
     options["build_ext"] = {}
