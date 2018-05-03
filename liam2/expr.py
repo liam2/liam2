@@ -11,6 +11,7 @@ import larray as la
 from liam2.compat import basestring, PY2
 from liam2.compat import with_metaclass
 from liam2.cache import Cache
+from liam2.config import debug
 from liam2.context import EntityContext, EvaluationContext
 from liam2.utils import (ExplainTypeError, safe_take, IrregularNDArray, NiceArgSpec, englishenum, make_hashable,
                          add_context, array_nan_equal)
@@ -323,7 +324,8 @@ class Expr(object):
         # TODO: I should rewrite this whole mess when my "dtype" method
         # supports ndarrays and la.LArray so that I can get the dtype from
         # the expression instead of from actual values.
-        labels = None
+        expr_axes = None
+        numexpr_eval = True
         assert isinstance(context, EvaluationContext), type(context)
         local_ctx = context.entity_data
         if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
@@ -337,44 +339,37 @@ class Expr(object):
                 # in expr_eval
                 value = context[var.name]
                 # value = local_ctx[var.name]
+
+                # check that LArrays (if any) have all the same axes and bypass numexpr otherwise
                 if isinstance(value, la.LArray):
-                    if labels is None:
-                        labels = (value.axes.names, value.axes.labels)
+                    if expr_axes is None:
+                        expr_axes = value.axes
                     else:
-                        if labels[0] != value.axes.names:
-                            raise Exception('several arrays with inconsistent '
-                                            'labels (dimension names) in the '
-                                            'same expression: %s vs %s'
-                                            % (labels[0], value.axes.names))
-                        # check that for each dimension the labels are the same
-                        pvalues1, pvalues2 = labels[1], value.axes.labels
+                        if value.axes != expr_axes:
+                            numexpr_eval = False
 
-                        # None pvalues are simply ignored. This can happen due
-                        # to limitations in la.LArray (should be lifted when
-                        # we use LArray instead).
-                        if pvalues1 is not None and pvalues2 is not None:
-                            for labels1, labels2 in zip(pvalues1, pvalues2):
-                                if not np.array_equal(labels1, labels2):
-                                    raise Exception('several arrays with '
-                                                    'inconsistent axis values '
-                                                    'in the same expression: '
-                                                    '\n%s\n\nvs\n\n%s'
-                                                    % (labels1, labels2))
-
+        # TODO: when numexpr_eval is False, we should bypass the string roundtrip
         s = simple_expr.as_string()
         constants = {'nan': float('nan'), 'inf': float('inf')}
-        res = evaluate(s, local_ctx, constants, truediv='auto')
+        if numexpr_eval:
+            try:
+                res = evaluate(s, local_ctx, constants, truediv='auto')
+                if expr_axes is not None:
+                    # This relies on the fact that currently all the expression we evaluate through numexpr preserve
+                    # array shapes, but if we ever use numexpr reduction capabilities, we will be in trouble
+                    res = la.LArray(res, expr_axes)
+            except Exception:
+                if debug:
+                    print("evaluate failed")
+                    print("s:", s)
+                    print("local context:", local_ctx)
+                    print("constants:", constants)
+                raise
+        else:
+            res = eval(s, constants, local_ctx)
+
         if isinstance(res, np.ndarray) and not res.shape:
             res = np.asscalar(res)
-        if labels is not None:
-            # This is a hack which relies on the fact that currently
-            # all the expression we evaluate through numexpr preserve
-            # array shapes, but if we ever use numexpr reduction
-            # capabilities, we will be in trouble
-            # names, ll = labels
-            axes = [la.Axis(axis_name, axis_labels)
-                    for axis_name, axis_labels in zip(*labels)]
-            res = la.LArray(res, axes)
 
         # if cache_key is not None:
         #     expr_cache[cache_key] = res

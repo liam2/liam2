@@ -1083,18 +1083,25 @@ entities:
                 - assertEqual(MIG.shape, (2, 121, 61))
                 - assertEqual(MIG.axes.names, ['gender', 'age', 'period'])
 
-                # need should have the same characteristics
+                # binary op with a scalar (need should have the same characteristics than MIG)
                 - need: MIG * 2.5
                 - assertEqual(need.ndim, 3)
                 - assertEqual(need.shape, (2, 121, 61))
                 - assertEqual(need.axes.names, ['gender','age', 'period'])
 
-                # nd_plus_nd should have the same characteristics too
+                # binary op with same axes (nd_plus_nd should have the same characteristics than MIG)
                 - nd_plus_nd: need + MIG
                 - assertEqual(nd_plus_nd.ndim, 3)
                 - assertEqual(nd_plus_nd.shape, (2, 121, 61))
                 - assertEqual(nd_plus_nd.axes.names, ['gender','age', 'period'])
                 - assertIsClose(nd_plus_nd, 3.5 * MIG)
+
+                # binary op with different axes (res should have the same characteristics than MIG)
+                - res: need / need.sum('age')
+                - assertEqual(res.ndim, 3)
+                - assertEqual(res.shape, (2, 121, 61))
+                - assertEqual(res.axes.names, ['gender','age', 'period'])
+                - assertIsClose(res, res.ratio('age'))
 
                 # let us take the 2d table for this period
                 # currently, we need to compute the index manually
@@ -1116,11 +1123,11 @@ entities:
                 - need_by_sex_period: need.sum(axis=1)
                 - assertEqual(need_by_sex_period.ndim, 2)
                 - assertEqual(need_by_sex_period.shape, (2, 61))
+                - assertEqual(need_by_sex_period.axes.names, ['gender', 'period'])
                 - need_by_sex_period: need.sum('age')
                 - assertEqual(need_by_sex_period.ndim, 2)
                 - assertEqual(need_by_sex_period.shape, (2, 61))
-                - assertEqual(need_by_sex_period.axes.names,
-                              ['gender', 'period'])
+                - assertEqual(need_by_sex_period.axes.names, ['gender', 'period'])
 
                 # should be a 1d table: gender
                 - total_need_by_sex: need_by_sex_period.sum(axis=1)
@@ -1295,14 +1302,16 @@ entities:
                 # does not work because __getitem__ exists on the exprtools.Node/Symbol class
                 # => Node.__getattr__ is not called !
                 # - assertRaises('ValueError', ARRAY_DUPE_LABELS[1])
+                # FIXME13
                 # with boolean labels (array_dupe_labels2.csv)
                 # - test1: ARRAY_DUPE_LABELS[True]
-#                - test1: ARRAY_DUPE_LABELS[A.work[True]]
-#                - test1: ARRAY_DUPE_LABELS[x.work[True]]
+#                - test1: ARRAY_DUPE_LABELS[X.work[True]]
                 # can we make this work?
-#                - test1: ARRAY_DUPE_LABELS[work=func(expr1, kw=expr2)]
+#                - test1: ARRAY_DUPE_LABELS[work=func(expr1, kw=expr2), gender=True]
                 # translated to:
-#                - test1: ARRAY_DUPE_LABELS[{'work'=func(expr1, kw=expr2)}]
+#                - test1: ARRAY_DUPE_LABELS[{'work': func(expr1, kw=expr2), 'gender': True}]
+# OR
+#                - test1: ARRAY_DUPE_LABELS[X.work[func(expr1, kw=expr2)], X.gender[True]]
                 - show(test1)
 
             test_autoindex():

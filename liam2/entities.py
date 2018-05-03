@@ -36,8 +36,6 @@ max_vars = 0
 
 
 def global_symbols(globals_def):
-    # FIXME: these should be computed once somewhere else, not for each
-    # entity. I guess they should have a class of their own
     symbols = {}
     for name, global_def in globals_def.items():
         if isinstance(global_def, dict):
