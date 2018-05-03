@@ -81,6 +81,11 @@ globals:
         path: param/array_dupe_labels.csv
         type: float
 
+    ARRAY_DUPE_LABELS_AUTOINDEX:
+        autoindex: axis0, axis1
+        path: param/array_dupe_labels.csv
+        type: float
+
 entities:
 #    test:
 #        fields:
@@ -1317,23 +1322,30 @@ entities:
             test_autoindex():
                 # MIG_AUTOINDEX is originally a 3d array: gender-age-period
 
-                # test that MIG_AUTOINDEX has the correct shape
-                # after "autoindexing" by "gender, age, period", it should
-                # have the same length as the population
-                - assertEqual(MIG_AUTOINDEX.ndim, 1)
-                - assertEqual(MIG_AUTOINDEX.shape, (count(),))
-                - assertEqual(MIG_AUTOINDEX.axes.names,
-                              ['gender,age'])
+                # test that MIG_AUTOINDEX has the correct shape: after "autoindexing" by gender, age and period,
+                # it should have the same length as the population
+                - tmp: MIG_AUTOINDEX
+                - assertEqual(tmp.ndim, 1)
+                - assertEqual(tmp.shape, (count(),))
+                - assertEqual(tmp.axes.names, ['gender_age'])
 
                 # test that indexed behavior is not affected by autoindex
                 - explicit1: MIG.points[gender, age, period]
-                # FIXME
-                #- explicit2: MIG_AUTOINDEX[gender, age,
-                #                                   period]
-                #- assertEqual(explicit2, explicit1)
+                # FIXME13: this does not work (autoindex happens before .points)
+                # unsure it is fixable though. If not, scrap this test.
+#                - explicit2: MIG_AUTOINDEX.points[gender, age, period]
+#                - assertEqual(explicit2, explicit1)
 
-                # test that the global is indexed automatically
-                - assertEqual(MIG_AUTOINDEX, explicit1)
+                # test that the automatic index has the same result than an explicit index
+                - assertEqual(tmp, explicit1)
+
+                # with dupe/ambiguous labels
+                - axis0: id % 2
+                - axis1: (id < median(id)) * 1
+                - expected: if(axis0 == 0,
+                               if(axis1 == 0, 0.2, 0.3),
+                               if(axis1 == 0, 0.4, 0.5))
+                - assertEqual(ARRAY_DUPE_LABELS_AUTOINDEX, expected)
 
             test_macro():
                 - ischild: age < 18
@@ -1783,6 +1795,15 @@ entities:
                 # gender, fields via expression
                 - value: extexpr(EXT_EXPR_TEST.sum('gender'))
                 - assertEqual(value, 0.7 * age + 0.7 * gender + 0.7)
+
+                # fields, gender, work (ie ambiguous labels)
+                - value: extexpr('regr_test5.csv')
+                - expected_ifwork: if(gender, 0.12 * eduach + 0.22 * age + 0.32,
+                                              0.11 * eduach + 0.21 * age + 0.31)
+                - expected_nowork: if(gender, 0.34 * eduach + 0.23 * age + 0.12,
+                                              0.33 * eduach + 0.22 * age + 0.11)
+                - expected: if(work, expected_ifwork, expected_nowork)
+                - assertEqual(value, expected)
 
             test_logit_score():
                 - seed(0)
@@ -2937,6 +2958,26 @@ entities:
                 - assertTrue(47 < m2 and m2 < 53) # should be approx 50%
                 - assertTrue(17 < m3 and m3 < 23) # should be approx 20%
 
+                # choice with duplicate/ambiguous labels
+                #  work gender outcomes
+                #                0   5  10  15
+                # FALSE  FALSE 0.7 0.1 0.1 0.1
+                # FALSE   TRUE 0.1 0.7 0.1 0.1
+                #  TRUE  FALSE 0.1 0.1 0.7 0.1
+                #  TRUE   TRUE 0.1 0.1 0.1 0.7
+                - outcome: choice('ext_choice_ambiguous.csv')
+                - actual: groupby(work, gender, outcome) / groupby(work, gender)
+                - min_: array([[[60,  5,  5,  5],
+                               [ 5, 60,  5,  5]],
+                              [[ 5,  5, 60,  5],
+                               [ 5,  5,  5, 60]]]) / 100
+                - max_: array([[[80, 15, 15, 15],
+                               [15, 80, 15, 15]],
+                              [[15, 15, 80, 15],
+                               [15, 15, 15, 80]]]) / 100
+                - check: min_ < actual and actual < max_
+                - assertTrue(check.all())
+
             test_groupby():
                 # scalar dim
                 - num_males: count(gender)
@@ -3304,7 +3345,7 @@ simulation:
                    test_periodic_globals,
                    test_other_globals,
                    test_globals_nd,
-#                   test_autoindex,
+                   test_autoindex,
 
                    test_macro,
                    test_compound,

@@ -15,9 +15,9 @@ import larray as la
 
 from liam2 import config
 from liam2.compat import zip, basestring, long
-from liam2.expr import (Expr, Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp, LogicalOp, getdtype, coerce_types,
+from liam2.expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp, LogicalOp, getdtype, coerce_types,
                         expr_eval, as_simple_expr, as_string, collect_variables, get_default_array, get_default_vector,
-                        FunctionExpr, always, firstarg_dtype, expr_cache)
+                        FunctionExpr, always, firstarg_dtype, expr_cache, index_array_by_variables)
 from liam2.exprbases import FilteredExpression, CompoundExpression, NumexprFunction, TableExpression, NumpyChangeArray
 from liam2.context import context_length
 from liam2.importer import load_ndarray, load_table
@@ -505,10 +505,10 @@ def _mul(a, b):
 # * LinearExpression (linear_expr?) but that would
 #   make it awkward if we want to support expression with non linear variables
 # * CoefficientsExpression (coef_expr)
-class ExtExpr(CompoundExpression):
+class ExtExpr(FunctionExpr):
     def __init__(self, *args, **kwargs):
         # to initialize .args, .kwargs, .original_args, ...
-        CompoundExpression.__init__(self, *args, **kwargs)
+        FunctionExpr.__init__(self, *args, **kwargs)
 
         coefficients = self.args[0]
         if isinstance(coefficients, basestring):
@@ -520,27 +520,26 @@ class ExtExpr(CompoundExpression):
             # self.args.need = load_ndarray(fpath, float)
             self.args = (coefficients,) + self.args[1:]
 
-    def build_expr(self, context, coefficients):
-        # XXX: change to "variables"? because we can use temporary variables too!
+    def compute(self, context, coefficients):
+        assert isinstance(coefficients, la.LArray)
+
+        # XXX: change to "variable"? because we can use temporary variables too!
         #      or even to "expressions" if we want to support expressions.
-        if isinstance(coefficients, Expr):
-            coefficients = coefficients.evaluate(context)
+        # FIXME013: in any case, it should be singular
         field_axis = coefficients.axes['fields']
         other_axes = coefficients.axes - field_axis
 
-        res = None
+        expr = None
         # XXX: instead of retrieving labels along a dimension & splitting manually,
         #      we should have a "split" operation in LArray (opposite of stack)
         for name in field_axis.labels:
-            coef_var = self.add_tmp_var(context, coefficients[name])
+            coef_value = coefficients[name]
 
-            # automatically index other dimensions
+            # automatically index other (remaining) dimensions
             if other_axes:
-                # XXX: parse expressions instead of only simple Variable?
-                expressions = tuple(Variable(context.entity, other_name)
-                                    for other_name in other_axes.names)
-                coef_var = coef_var.points[expressions]
+                coef_value = index_array_by_variables(coef_value, context, other_axes)
 
+            coef_var = self.add_tmp_var(context, coef_value)
             if name != 'constant':
                 # XXX: should I reuse variables instances defined in the entity at
                 # context.entity.variables[name]
@@ -548,11 +547,11 @@ class ExtExpr(CompoundExpression):
                 term = _mul(Variable(context.entity, name), coef_var)
             else:
                 term = coef_var
-            if res is None:
-                res = term
+            if expr is None:
+                expr = term
             else:
-                res = _plus(res, term)
-        return res
+                expr = _plus(expr, term)
+        return expr_eval(expr, context)
 
     # def __repr__(self):
     #     return "yada"

@@ -1,0 +1,6 @@
+work,gender,outcomes,,,
+,,0,5,10,15
+FALSE,FALSE,0.7,0.1,0.1,0.1
+FALSE,TRUE,0.1,0.7,0.1,0.1
+TRUE,FALSE,0.1,0.1,0.7,0.1
+TRUE,TRUE,0.1,0.1,0.1,0.7
