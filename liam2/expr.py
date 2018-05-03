@@ -1224,6 +1224,16 @@ class SubscriptedGlobal(GlobalVariable):
         return expr_eval(self.key, context)
 
 
+def index_array_by_variables(array, context, axes):
+    # TODO: either parse expressions instead of only simple Variable, or take variable value directly in
+    # context instead of creating a Variable and using expr_eval
+    expressions = tuple(Variable(context.entity, axis_name)
+                        for axis_name in axes.names)
+    columns = tuple(expr_eval(expr, context) for expr in expressions)
+    axes_groups = tuple(axis[col] for axis, col in zip(axes, columns))
+    return array.points[axes_groups]
+
+
 # TODO: this class shouldn't be needed. GlobalArray should be handled in the
 # context
 class GlobalArray(Variable):
@@ -1238,10 +1248,7 @@ class GlobalArray(Variable):
         globals_data = context.global_tables
         result = globals_data[self.name]
         if self.autoindex is not None:
-            expressions = [Variable(context.entity, name)
-                           for name in self.autoindex]
-            columns = tuple(expr_eval(expr, context) for expr in expressions)
-            result = result.points[columns]
+            result = index_array_by_variables(result, context, result.axes[self.autoindex])
         # XXX: maybe I should just use self.name?
         # FIXME: use self.add_tmp_var, because in combination with autoindex,
         # the variable could have a different value

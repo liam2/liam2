@@ -8,7 +8,7 @@ import larray as la
 
 from liam2 import config
 from liam2.compat import basestring
-from liam2.expr import firstarg_dtype, ComparisonOp, Variable, expr_eval
+from liam2.expr import firstarg_dtype, ComparisonOp, Variable, expr_eval, index_array_by_variables
 from liam2.exprbases import NumpyRandom, make_np_class, make_np_classes
 from liam2.exprmisc import Where
 from liam2.importer import load_ndarray
@@ -59,11 +59,8 @@ class Choice(NumpyRandom):
             other_axes = a.axes - outcomes_axis
 
             if other_axes:
-                # XXX: parse expressions instead of only simple Variable?
-                expressions = tuple(Variable(context.entity, other_name)
-                                    for other_name in other_axes.names)
-                columns = tuple(expr_eval(expr, context) for expr in expressions)
-                p = np.asarray(a.points[columns].transpose('outcomes'))
+                a = index_array_by_variables(a, context, other_axes)
+                p = np.asarray(a.transpose('outcomes'))
             else:
                 p = np.asarray(a)
             a = outcomes
@@ -73,12 +70,6 @@ class Choice(NumpyRandom):
             assert all(len(px) == size for px in p)
             assert len(a) >= 2
 
-            # I have not found a way to do this without an explicit loop as
-            # np.digitize only supports a 1d array for bins. What we do is
-            # worse than a linear "search" since we always evaluate all
-            # possibilities (there is no shortcut when the value is found).
-            # It might be faster to rewrite this using numba + np.digitize
-            # for each individual (assuming it has a low setup overhead).
             if isinstance(p, list) and any(isinstance(px, la.LArray) for px in p):
                 p = [np.asarray(px) for px in p]
             ap = np.asarray(p)
@@ -93,6 +84,13 @@ class Choice(NumpyRandom):
                 raise ValueError("probabilities do not sum to 1")
 
             cdf /= cdf[-1]
+
+            # I have not found a way to do this without an explicit loop as
+            # np.digitize only supports a 1d array for bins. What we do is
+            # worse than a linear "search" since we always evaluate all
+            # possibilities (there is no shortcut when the value is found).
+            # It might be faster to rewrite this using numba + np.digitize
+            # for each individual (assuming it has a low setup overhead).
 
             # the goal is to build something like:
             # if(u < proba1, outcome1,
