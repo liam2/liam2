@@ -9,7 +9,7 @@ import numpy as np
 import config
 from expr import FunctionExpr
 from utils import (LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim,
-                   Axis, FileProducer, QtAvailable)
+                   Axis, FileProducer)
 
 try:
     import matplotlib

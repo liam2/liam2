@@ -19,7 +19,7 @@ from liam2.expr import get_default_array
 from liam2.utils import (validate_dict, merge_dicts, merge_items, invert_dict, countlines, skip_comment_cells,
                          strip_rows, PrettyTable, unique, duplicates, unique_duplicate, prod, field_str_to_type,
                          fields_yaml_to_type, fromiter,
-                   LabeledArray, MB)
+                         LabeledArray, MB)
 
 
 def to_int(v):
@@ -121,7 +121,7 @@ def detect_column_type(iterable):
 # complicated and slower, so let's keep this seemingly duplicate code here.
 def detect_column_types(iterable):
     iterator = iter(iterable)
-    header = iterator.next()
+    header = next(iterator)
     numcolumns = len(header)
     coltypes = [0] * numcolumns
     type2code = {None: 0, bool: 1, int: 2, float: 3, str: 4}
@@ -372,7 +372,7 @@ def array_to_disk_array(node, name, array, title='', compression=None):
 
 def union1d(arrays):
     """arrays is an iterable returning arrays"""
-    result = arrays.next()
+    result = next(arrays)
     for array in arrays:
         result = np.union1d(result, array)
     return result
@@ -431,7 +431,7 @@ def interpolate(target, arrays, id_periods, fields):
         # 10, 2001, 5324.0
         # 10, 2004, 6200.0
         # 10, 2005, 7300.0
-        prev_row = input_stream.next()
+        prev_row = next(input_stream)
         fields_to_set = \
             [name for name in prev_row.dtype.names
              if name in target.dtype.names and name not in ('id', 'period')]
@@ -474,10 +474,10 @@ def interpolate(target, arrays, id_periods, fields):
 
 def load_ndarray(fpath, celltype=None):
     print(" - reading", fpath)
-    with open(fpath, "rb") as f:
+    with open(fpath, "rt") as f:
         reader = csv.reader(f)
         line_stream = skip_comment_cells(strip_rows(reader))
-        header = line_stream.next()
+        header = next(line_stream)
         str_table = []
         for line in line_stream:
             if any(value == '' for value in line):

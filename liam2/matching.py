@@ -23,7 +23,7 @@ def group_context(used_variables, setfilter, context):
     # group_indices_nd returns a dict {value_or_tuple: array_of_indices}
     d = group_indices_nd(columns, setfilter)
 
-    keylists = zip(*d.keys()) if len(columns) > 1 else [d.keys()]
+    keylists = zip(*list(d.keys())) if len(columns) > 1 else [list(d.keys())]
     keyarrays = [np.array(c) for c in keylists]
 
     # we want a 1d array of arrays, not the 2d array that np.array(d.values())

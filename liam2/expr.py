@@ -7,8 +7,7 @@ from collections import Counter
 
 import numpy as np
 
-from liam2.compat import basestring, PY2
-from liam2.compat import with_metaclass
+from liam2.compat import basestring, PY2, zip, with_metaclass
 from liam2.cache import Cache
 from liam2.context import EntityContext, EvaluationContext
 from liam2.utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray, NiceArgSpec, englishenum, make_hashable,

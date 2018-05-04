@@ -4,12 +4,12 @@ from __future__ import print_function
 import os
 import sys
 import traceback
-from StringIO import StringIO
 from itertools import chain
 
 # we want debug output. This must be done before importing liam2
 os.environ["DEBUG"] = "TRUE"
 
+from liam2.compat import StringIO
 from liam2.simulation import Simulation
 from liam2.importer import csv2h5
 
@@ -67,11 +67,11 @@ if __name__ == '__main__':
     def run_func(func, *args, **kwargs):
         sys.stdout = StringIO()
         sys.stderr = StringIO()
-        exception = None
         try:
             func(*args, **kwargs)
+            exc_type, exc_value, exc_traceback = None, None, None
         except Exception as e:
-            exception = e
+            exc_type, exc_value, exc_traceback = sys.exc_info()
         sys.stdout.seek(0)
         sys.stderr.seek(0)
         stdout_content = sys.stdout.read()
@@ -79,8 +79,10 @@ if __name__ == '__main__':
         # restore original
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
-        if exception is None:
+        if exc_value is None:
             printnow("done.")
+            if stderr_content:
+                printnow("STDERR\n======\n{}\n".format(stderr_content))
             return "ok"
         else:
             printnow("FAILED.\n")
@@ -90,7 +92,8 @@ if __name__ == '__main__':
                 printnow("STDERR\n======\n{}\n".format(stderr_content))
             # print to stdout to avoid PyCharm randomly mixing up stdout and stderr output
             printnow("TRACEBACK\n=========")
-            traceback.print_exc(file=sys.stdout)
+            traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                      file=sys.stdout)
             sys.stdout.flush()
             printnow()
             return "failed"
