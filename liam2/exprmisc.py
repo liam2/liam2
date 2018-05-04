@@ -407,7 +407,6 @@ class Dump(TableExpression):
             numrows = 1
 
         # expand scalar columns to full columns in memory
-        # TODO: handle or explicitly reject columns wh ndim > 1
         for idx, col in enumerate(columns):
             dtype = None
             if not isinstance(col, np.ndarray):
@@ -438,8 +437,19 @@ class Dump(TableExpression):
             assert isinstance(limit, (int, long))
             columns = [col[:limit] for col in columns]
 
+        # Transform to Python lists of normal Python types (ie no numpy types).
+        # on py2, csv.writer uses repr(value) for float and str(value) for other but
+        # on py3 since str(float) == repr(float), they switched to str(value) for everything
+        # but str(np.float64) does not have full precision (truncated at the 12th decimal)
+        # besides, this seems to be faster (but probably takes more memory).
+        # Also on python2, converting produces nicer/shorter float strings (see issue #225).
+        columns = [c.tolist() for c in columns]
         data = zip(*columns)
-        table = chain([str_expressions], data) if header else data
+        if header:
+            table = [str_expressions]
+            table.extend(data)
+        else:
+            table = list(data)
         return PrettyTable(table, missing)
 
     dtype = always(None)
