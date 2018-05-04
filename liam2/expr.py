@@ -568,7 +568,7 @@ class SubscriptedExpr(EvaluableExpression):
             # filter_value should be a bool scalar or a bool array
             filter_value = expr_eval(filter_expr, sub_context)
             assert isinstance(filter_value, (bool, np.bool_)) or \
-                np.issubdtype(filter_value.dtype, bool)
+                np.issubdtype(filter_value.dtype, np.bool_)
 
             def fixkey(orig_key, filter_value):
                 if non_scalar_array(orig_key):
