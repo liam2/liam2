@@ -235,6 +235,7 @@ setup(
     install_requires=[
         # not specifying cython here because we need it to be installed
         # *before* this script executes, if we want it to be of any use.
+        'larray',
         'numexpr',
         'numpy >= 1.8',
         'tables >= 3',
