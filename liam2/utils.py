@@ -536,8 +536,9 @@ def table2str(table, missing):
 
 
 class PrettyTable(object):
-    def __init__(self, iterable, missing=None):
-        self.data = list(iterable)
+    def __init__(self, data, missing=None):
+        assert isinstance(data, (tuple, list))
+        self.data = data
         self.missing = missing
 
     def __iter__(self):

@@ -14,3 +14,14 @@ entities:
                 - csv(dump(id, tmp, missing='nan'), fname='float_roundtrip_with_missing.csv')
                 - table: load('output/float_roundtrip_with_missing.csv', fields=[('id', int), ('tmp', float)])
                 - assertEqual(table[0][1], 0.12345678901234568)
+
+                # check that we use the "short"/nice float representation in .csv files
+                # (this needs to be checked manually though as this tests only verify the roundtrip
+                #  work, which is the case with the long/ugly representation too).
+                - tmp1: 1.1
+                - tmp2: 453.78
+                - csv(dump(id, tmp1, tmp2), fname='float_roundtrip2.csv')
+                - table: load('output/float_roundtrip2.csv',
+                              fields=[('id', int), ('tmp1', float), ('tmp2', float)])
+                - assertEqual(table[0][1], 1.1)
+                - assertEqual(table[0][2], 453.78)
