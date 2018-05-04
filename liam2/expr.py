@@ -8,8 +8,7 @@ from collections import Counter
 import numpy as np
 import larray as la
 
-from liam2.compat import basestring, PY2
-from liam2.compat import with_metaclass
+from liam2.compat import basestring, PY2, zip, with_metaclass
 from liam2.cache import Cache
 from liam2.config import debug
 from liam2.context import EntityContext, EvaluationContext

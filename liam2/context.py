@@ -328,7 +328,7 @@ def context_subset(context, index=None, keys=None):
 
 def context_keep(context, keys):
     keep = set(keys)
-    for key in context.keys():
+    for key in list(context.keys()):
         if key not in keep and not key.startswith('__'):
             del context[key]
 
