@@ -573,7 +573,7 @@ class SubscriptedExpr(EvaluableExpression):
             # filter_value should be a bool scalar or a bool array
             filter_value = expr_eval(filter_expr, sub_context)
             assert isinstance(filter_value, (bool, np.bool_)) or \
-                np.issubdtype(filter_value.dtype, bool)
+                np.issubdtype(filter_value.dtype, np.bool_)
 
             if isinstance(expr_value, la.LArray):
                 # ca craint, ce qui faut, c'est faire un guess axis sur la
@@ -1253,7 +1253,9 @@ class GlobalArray(Variable):
         # the variable could have a different value
         tmp_varname = '__%s' % self.name
         if tmp_varname in context:
-            assert la.larray_equal(context[tmp_varname], result)
+            array = context[tmp_varname]
+            assert isinstance(array, la.LArray)
+            assert context[tmp_varname].equals(result)
         context[tmp_varname] = result
         return Variable(context.entity, tmp_varname)
 

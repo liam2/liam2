@@ -110,7 +110,7 @@ class Sum(FilteredExpression):
         if weights is not None:
             expr_dtype = getdtype(expr, context)
             # missing (-1) * weight should be missing (-1)
-            if skip_na and np.issubdtype(expr_dtype, int):
+            if skip_na and np.issubdtype(expr_dtype, np.integer):
                 # expr = where(expr != -1, expr * weights, -1)
                 missing_int = missing_values[int]
                 expr = exprmisc.Where(ComparisonOp('!=', expr, missing_int),
