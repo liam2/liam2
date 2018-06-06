@@ -9,7 +9,10 @@ from liam2.exprbases import FilteredExpression
 from liam2.context import context_length, context_delete, context_subset, context_keep
 from liam2.utils import loop_wh_progress
 # FIXME: should be optional
-from liam2.cpartition import group_indices_nd
+try:
+    from cpartition import group_indices_nd
+except:
+    pass
 
 
 def group_context(used_variables, setfilter, context):
