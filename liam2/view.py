@@ -21,19 +21,26 @@ from __future__ import absolute_import, division, print_function
 
 import locale
 import warnings
+import sys
 
+from liam2 import config
+from liam2.compat import PY2
 from liam2.utils import ExceptionOnGetAttr
 
 try:
-    from PyQt4 import QtGui
+    from qtpy import QtWidgets
+    from vitables.vtapp import VTApp
 except ImportError as e:
-    QtGui = ExceptionOnGetAttr(e)
-    print("Warning: the 'view' command is not available because 'PyQt4.QtGui' "
-          "could not be imported (%s)." % e)
+    msg = "the 'view' command is not available because 'vitables' does not seem to be installed correctly (%s)." % e
+    print("Warning:", msg)
+    if not config.debug and not PY2:
+        e = ImportError(msg).with_traceback(sys.exc_info()[2])
+    VTApp = ExceptionOnGetAttr(e)
+    QtWidgets = ExceptionOnGetAttr(e)
 
 
 def viewhdf(filepaths):
-    app = QtGui.QApplication(filepaths)
+    app = QtWidgets.QApplication(filepaths)
 
     # These imports must be done after the QApplication has been instantiated
     with warnings.catch_warnings():

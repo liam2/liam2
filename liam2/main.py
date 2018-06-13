@@ -9,25 +9,10 @@ import traceback
 import sys
 import warnings
 
-# this is needed for vitables and needs to happen BEFORE
-# matplotlib.use('Qt4Agg')
-# (which imports PyQt)
-try:
-    import sip
-    sip.setapi('QString', 2)
-    sip.setapi('QVariant', 2)
-    sip.setapi('QDate', 2)
-    sip.setapi('QDateTime', 2)
-    sip.setapi('QTextStream', 2)
-    sip.setapi('QTime', 2)
-    sip.setapi('QUrl', 2)
-    del sip
-except ImportError:
-    pass
-
 import yaml
 
 from liam2 import config
+from liam2.compat import PY2
 from liam2.console import Console
 from liam2.context import EvaluationContext
 from liam2.data import entities_from_h5, H5Source
@@ -51,10 +36,14 @@ def write_traceback(ex_type, e, tb):
         out_dir = config.output_directory
         error_path = os.path.join(out_dir, 'error.log')
         error_path = os.path.abspath(error_path)
-        with file(error_path, 'w') as f:
+        with open(error_path, 'w') as f:
             traceback.print_exception(ex_type, e, tb, file=f)
             if hasattr(e, 'liam2context'):
-                f.write(e.liam2context)
+                context = e.liam2context
+                if PY2:
+                    encoding = sys.getdefaultencoding()
+                    context = context.encode(encoding, 'replace')
+                f.write(context)
         return error_path
     except IOError as log_ex:
         print("WARNING: could not save technical error log "
@@ -294,6 +283,7 @@ def main():
                         help='override the output file')
 
     subparsers = parser.add_subparsers(dest='action')
+    subparsers.required = True
 
     # create the parser for the "run" command
     parser_run = subparsers.add_parser('run', help='run a simulation')

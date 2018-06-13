@@ -4,9 +4,7 @@ from __future__ import absolute_import, division, print_function
 import ast
 from collections import defaultdict, deque, namedtuple
 import itertools
-from itertools import product
 import math
-import operator
 from textwrap import wrap
 import re
 import sys
@@ -16,12 +14,6 @@ import warnings
 import numpy as np
 import numexpr as ne
 import larray as la
-try:
-    from PyQt4 import QtGui, QtCore
-    QtAvailable = True
-except ImportError:
-    QtGui, QtCore = None, None
-    QtAvailable = False
 
 from liam2.compat import zip, basestring
 from liam2 import config
@@ -1045,8 +1037,7 @@ def add_context(exception, s):
         # SyntaxError instances have 'filename', 'lineno', 'offset' and 'text'
         # attributes.
         return
-    encoding = sys.getdefaultencoding()
-    exception.liam2context = s.encode(encoding, 'replace')
+    exception.liam2context = s
 
 
 # we cannot do this in classes __new__ (args are verified in metaclass.__call__)

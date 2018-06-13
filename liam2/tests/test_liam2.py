@@ -38,7 +38,7 @@ def iterate_directory(directory, dataset_creator, excluded_files):
 
 # test generator for nosetests (must return test_func, args)
 def test_examples():
-    # No pyqt4 on travis
+    # Cannot display charts/pop up windows on Travis
     need_qt = ('demo02.yml', 'demo03.yml', 'demo04.yml', 'demo06.yml')
     excluded = need_qt if use_travis else ()
     for test_file in iterate_directory('examples', 'demo_import.yml', excluded):
