@@ -37,7 +37,8 @@ LIAM2 is built on top of a number of other open-source packages. See below for t
 
 Required dependencies:
 
-- Python 2.7.x (32b or 64b) - http://www.python.org/
+- Python 2.7 or 3.5+ (32b or 64b) - http://www.python.org/
+- LArray 0.27.0 or later - https://larray.readthedocs.io/
 - Numpy 1.8.0 or later - http://www.numpy.org/
 - PyTables 3 or later - http://www.pytables.org
 - Numexpr 2.0 or later - https://github.com/pydata/numexpr
@@ -81,8 +82,10 @@ There are several options to install all those packages. In order of increasing 
    Using Anaconda (all platforms)
    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   1. Install Anaconda 2.1 or later (Python 2.7). It includes out of the box all required dependencies, matplotlib and
-      sphinx. We recommend using the 64-bit version if you have a 64bit OS.
+   1. Install Anaconda 2.1 or later (Python 2.7 or 3.X). It includes out of the box all required dependencies,
+      matplotlib and sphinx. We recommend using the 64-bit version if you have a 64bit OS.
+
+      https://www.anaconda.com/download/
 
    2. Install ViTables. In a command prompt, type: ::
 
@@ -96,8 +99,8 @@ There are several options to install all those packages. In order of increasing 
 Using Miniconda (all platforms)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. Install Miniconda for your platform (Python 2.7). We recommend using the 64-bit version if you have a 64bit OS.
-   https://conda.io/miniconda.html
+1. Install Miniconda for your platform (Python 2.7 or 3.X). We recommend using the 64-bit version if you have a
+   64bit OS. https://conda.io/miniconda.html
 
 2. Install required dependencies by typing in a command prompt: ::
 
@@ -129,6 +132,7 @@ Getting binary packages using apt-get (GNU/linux debian-based distributions)
 Install the required dependencies: ::
 
     sudo apt-get install python2.7 python-numpy python-tables python-numexpr python-yaml cython
+    pip install larray
 
 You can also install the optional dependencies:
 
@@ -153,7 +157,7 @@ You can also install the optional dependencies:
 Getting binary packages from Christoph Gohlke (Windows only)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. Install Python 2.7.x (either 32 bits or 64 bits version):
+1. Install Python 2.7 or 3.X (either 32 bits or 64 bits version):
    http://www.python.org/download/releases/
 
 2. Get and use the installers for all LIAM2 dependencies from:
@@ -165,7 +169,7 @@ Getting binary packages from Christoph Gohlke (Windows only)
 Getting third-party packages directly from their authors
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. Install Python 2.7.x (either 32 bits or 64 bits version):
+1. Install Python 2.7 or 3.X (either 32 bits or 64 bits version):
    http://www.python.org/download/releases/
 
 2. Install all third-party packages manually. The problem with this approach is that there is not a single way which
@@ -183,17 +187,17 @@ Getting third-party packages directly from their authors
 Install LIAM2 itself from source
 --------------------------------
 
-1. Download the zip file (e.g. ``LIAM2-0.12.0-src.zip``) from LIAM2 website.
+1. Download the zip file (e.g. ``LIAM2-0.13.0-src.zip``) from LIAM2 website.
 
 2. Unzip into a directory of your choice. Let us call that directory ``<SOURCEPATH>``. For example ::
 
-    Programs/LIAM2-0.12.0-src/
+    Programs/LIAM2-0.13.0-src/
 
 3. Open a terminal (Mac Terminal, gnome-terminal, konsole, xterm, ...)
 
 4. Change into the directory into which LIAM2 has been unzipped (``<SOURCEPATH>``). For example: ::
 
-    cd Programs/LIAM2-0.12.0-src/
+    cd Programs/LIAM2-0.13.0-src/
 
 5. Run installation of LIAM2 ::
 
