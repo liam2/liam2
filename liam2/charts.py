@@ -3,28 +3,26 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import math
+import sys
 
 import numpy as np
 
-import config
-from expr import FunctionExpr
-from utils import (LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim,
-                   Axis, FileProducer)
+from liam2.compat import basestring, PY2
+from liam2 import config
+from liam2.expr import FunctionExpr
+from liam2.utils import (LabeledArray, aslabeledarray, ExceptionOnGetAttr, ndim,
+                         Axis, FileProducer)
 
 try:
-    import matplotlib
-    if QtAvailable:
-        matplotlib.use('Qt4Agg')
-    else:
-        matplotlib.use('TkAgg')
-    del matplotlib
     import matplotlib.pyplot as plt
     # set interactive mode
     # plt.ion()
 except ImportError as e:
+    msg = "charts functionality is not available because 'matplotlib.pyplot' could not be imported (%s)." % e
+    print("Warning:", msg)
+    if not config.debug and not PY2:
+        e = ImportError(msg).with_traceback(sys.exc_info()[2])
     plt = ExceptionOnGetAttr(e)
-    print("Warning: charts functionality is not available because "
-          "'matplotlib.pyplot' could not be imported (%s)." % e)
 
 
 class Chart(FunctionExpr, FileProducer):
@@ -133,7 +131,7 @@ class Chart(FunctionExpr, FileProducer):
                 print("writing to", fname, "...", end=' ')
                 plt.savefig(os.path.join(config.output_directory, fname))
 
-        # explicit close is needed for Qt4 backend
+        # explicit close is needed for Qt backend
         plt.close(fig)
 
     def _draw(self, data, colors, **kwargs):

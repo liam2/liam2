@@ -166,7 +166,7 @@ if build_exe:
         # strip paths in __file__ attributes
         "replace_paths": [("*", "")],
 
-        "includes": ["matplotlib.backends.backend_qt4agg"],
+        "includes": ["matplotlib.backends.backend_qt4agg", "matplotlib.backends.backend_qt5agg"],
         "packages": ["vitables.plugins"],
         # matplotlib => calendar, distutils, unicodedata
         # matplotlib.backends.backend_tkagg => Tkconstants, Tkinter
