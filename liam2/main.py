@@ -38,7 +38,7 @@ from liam2.utils import AutoFlushFile
 from liam2.view import viewhdf
 
 
-from version import __version__
+from liam2.version import __version__
 
 
 def write_traceback(ex_type, e, tb):
@@ -335,10 +335,10 @@ def main():
     parser_upgrade = subparsers.add_parser('upgrade',
                                            help='upgrade a simulation file to the latest syntax',
                                            formatter_class=argparse.RawTextHelpFormatter)
-    input_help = """path or pattern for simulation file(s). In a pattern, 
-    ?      matches any single character, 
-    *      matches any number of characters, 
-    [abc]  matches any character listed between the [] and 
+    input_help = """path or pattern for simulation file(s). In a pattern,
+    ?      matches any single character,
+    *      matches any number of characters,
+    [abc]  matches any character listed between the [] and
     [!abc] matches any character not listed between the [].
 """
     parser_upgrade.add_argument('input', help=input_help)
