@@ -8,10 +8,11 @@ from liam2.expr import expr_eval, always, expr_cache
 from liam2.exprbases import FilteredExpression
 from liam2.context import context_length, context_delete, context_subset, context_keep
 from liam2.utils import loop_wh_progress
+# FIXME: should be optional
 try:
     from cpartition import group_indices_nd
-except:
-    pass
+except ImportError:
+    group_indices_nd = None
 
 
 def group_context(used_variables, setfilter, context):
@@ -21,6 +22,9 @@ def group_context(used_variables, setfilter, context):
     """
     names = sorted(used_variables)
     columns = [context[name] for name in names]
+
+    if group_indices_nd is None:
+        raise  Exception('aglo="byvalue" is not available when C extensions cannot be used')
 
     # group_indices_nd returns a dict {value_or_tuple: array_of_indices}
     d = group_indices_nd(columns, setfilter)
