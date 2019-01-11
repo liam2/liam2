@@ -214,7 +214,7 @@ class PrintVersionsAction(argparse.Action):
         import larray as la
         import pandas as pd
         try:
-            from cpartition import filter_to_indices
+            from liam2.cpartition import filter_to_indices
 
             del filter_to_indices
             cext = True

@@ -10,7 +10,7 @@ from liam2.context import context_length, context_delete, context_subset, contex
 from liam2.utils import loop_wh_progress
 # FIXME: should be optional
 try:
-    from cpartition import group_indices_nd
+    from liam2.cpartition import group_indices_nd
 except ImportError:
     group_indices_nd = None
 
