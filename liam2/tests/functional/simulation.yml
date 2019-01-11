@@ -1161,6 +1161,9 @@ entities:
                 - assertEqual(need_by_sex20.axes.names, ['gender'])
 
                 # 1d array[int[:]]
+                # converting to list is an (awful) workaround for #296
+#                - gender_list: gender.tolist()
+#                - need_per_person: need_by_sex20.points[gender.tolist()]
                 - need_per_person: need_by_sex20.points[gender]
                 - assertEqual(need_per_person.ndim, 1)
                 - assertEqual(need_per_person.shape, (count(),))

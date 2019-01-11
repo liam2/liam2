@@ -13,7 +13,7 @@ python:
 
 before_install:
   - pip install --upgrade pip setuptools wheel
-  - pip install --only-binary=numpy,scipy,tables,cython numpy scipy tables numexpr matplotlib cython pyyaml larray
+  - pip install --only-binary=numpy,scipy,tables,cython numpy scipy tables numexpr matplotlib cython pyyaml "larray<0.29"
 
 install:
   - pip install -e .
