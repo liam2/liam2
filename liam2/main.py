@@ -212,7 +212,7 @@ class PrintVersionsAction(argparse.Action):
         import tables
 
         try:
-            from cpartition import filter_to_indices
+            from liam2.cpartition import filter_to_indices
 
             del filter_to_indices
             cext = True
