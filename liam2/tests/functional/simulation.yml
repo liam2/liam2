@@ -2917,7 +2917,7 @@ entities:
                 - assertTrue(num10 > 0)
                 - assertEqual(num0 + num5 + num10, num_total)
 
-
+                # FIXME13: rename axis in .csv file
                 - global_choice: choice(CHOICE2D.rename('choices', 'outcomes'))
                 # TODO: use a single 2D groupby (gender & not gender)
                 - w: groupby(global_choice, filter=not gender, percent=True)
@@ -2995,7 +2995,7 @@ entities:
                 - assertEqual(by_agegroup_gender.ndim, 2)
                 - assertEqual(by_agegroup_gender.axes.names,
                               ['agegroup', 'gender'])
-                # FIXME
+                # FIXME13
 #                - assertTrue(by_agegroup_gender.row_totals.__len__() > 0)
 #                - assertEqual(by_agegroup_gender.col_totals,
 #                              [count(not gender),
@@ -3036,7 +3036,7 @@ entities:
                 - assertEqual(avg_age_work,
                               [avg(age, filter=work and not gender),
                                avg(age, filter=work and gender)])
-# FIXME
+# FIXME13
 #                - assertEqual(avg_age_work.row_totals,
 #                              [avg(age, filter=work)])
                 # expr=id

@@ -1246,7 +1246,7 @@ class GlobalArray(Variable):
         if self.autoindex is not None:
             result = index_array_by_variables(result, context, result.axes[self.autoindex])
         # XXX: maybe I should just use self.name?
-        # FIXME: use self.add_tmp_var, because in combination with autoindex,
+        # FIXME013: use self.add_tmp_var, because in combination with autoindex,
         # the variable could have a different value
         tmp_varname = '__%s' % self.name
         if tmp_varname in context:

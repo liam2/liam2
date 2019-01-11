@@ -345,6 +345,7 @@ class Clone(New):
         New.__init__(self, None, filter, None, **kwargs)
 
     def _initial_values(self, array, to_give_birth, num_birth, default_values):
+        # TODO: we should change the code in LColumnArray to transform the boolean index into indices
         return array[to_give_birth]
 
 
