@@ -327,6 +327,7 @@ def context_subset(context, index=None, keys=None):
     return result
 
 
+# this is only used in matching
 def context_keep(context, keys):
     keep = set(keys)
     for key in list(context.keys()):
@@ -334,6 +335,7 @@ def context_keep(context, keys):
             del context[key]
 
 
+# this is only used in matching
 def context_delete(context, rownum):
     result = {}
     # this copies everything including __len__, period, nan, ...

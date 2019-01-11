@@ -111,6 +111,7 @@ class ColumnArray(object):
             else:
                 # expand scalars (like ndarray does) so that we don't have to
                 # check isinstance(x, ndarray) and x.shape everywhere
+                # TODO: create ConstantArray(length, value, dtype)
                 column = np.full(length, value, dtype=gettype(value))
 
             if key in self.columns:

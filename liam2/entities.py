@@ -44,23 +44,25 @@ def global_symbols(globals_def):
             continue
 
         global_type = global_def.get('fields')
+        autoindex = global_def.get('autoindex')
+        if isinstance(autoindex, str):
+            autoindex = [idx.strip() for idx in autoindex.split(',')]
+            if not isinstance(autoindex, list):
+                autoindex = [autoindex]
         if isinstance(global_type, list):
             # add namespace for table
+            # TODO: add support for autoindex
             symbols[name] = GlobalTable(name, global_type)
             if name == 'periodic':
                 # special case to add periodic variables in the global
                 # namespace
+                # TODO: warn here if not autoindex is specified (issue 261)
                 symbols.update(
                     (name, GlobalVariable('periodic', name, type_))
                     for name, type_ in global_type)
         else:
             global_type = global_def['type']
             assert isinstance(global_type, type), "not a type: %s" % global_type
-            autoindex = global_def.get('autoindex')
-            if isinstance(autoindex, str):
-                autoindex = [idx.strip() for idx in autoindex.split(',')]
-                if not isinstance(autoindex, list):
-                    autoindex = [autoindex]
             symbols[name] = GlobalArray(name, global_type, autoindex)
     return symbols
 

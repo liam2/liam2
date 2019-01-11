@@ -479,6 +479,7 @@ def load_ndarray(fpath, celltype=None):
     a = la.read_csv(fpath, dialect='liam2')
     # print(a.info)
     return a
+    # FIXME: clean this up
     with open(fpath, "rb") as f:
         reader = csv.reader(f)
         line_stream = skip_comment_cells(strip_rows(reader))

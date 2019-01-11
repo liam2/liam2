@@ -383,7 +383,7 @@ def aslabeledarray(data):
         return data
     elif (isinstance(data, sequence) and len(data) and
           isinstance(data[0], la.LArray)):
-        # XXX: use la.stack?
+        # FIXME13: use la.stack?
         # TODO: check that all arrays have the same axes
         axes = [la.Axis(len(data))] + list(data[0].axes)
         return la.LArray(data, axes)

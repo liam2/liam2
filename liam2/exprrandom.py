@@ -54,6 +54,15 @@ class Choice(NumpyRandom):
     def compute(self, context, a, size=None, replace=True, p=None):
         if isinstance(a, la.LArray):
             assert p is None
+            # FIXME13: rename to outcome or __outcome__ and make the dimension name configurable
+            # TODO: add support for generating several variables at once
+            # e.g.
+            # agegroup, gender
+            #         , False, True
+            #        0,  0.17, 0.16
+            #       30,  0.16, 0.15
+            #       60,  0.13, 0.14
+            #       90,  0.04, 0.05
             outcomes_axis = a.axes['outcomes']
             outcomes = outcomes_axis.labels
             other_axes = a.axes - outcomes_axis
