@@ -43,20 +43,32 @@ def group_context(used_variables, setfilter, context):
     # group_indices_nd returns a dict {value_or_tuple: array_of_indices}
     # XXX: we cannot use partition_nd as-is because it computes unique labels per dimension, but we might want to
     #      factorize a common function.
-    d = group_indices_nd(columns, setfilter)
+    groups_indices = group_indices_nd(columns, setfilter)
+    num_groups = len(groups_indices)
 
-    combined_labels_present = list(d.keys())
+    # [(field1_value_for_group1, field2_value_for_group1, ..., fieldM_value_for_group1),
+    #  ...,
+    #  (field1_value_for_groupN, field2_value_for_group1, ..., fieldM_value_for_groupN)]
+    combined_labels_present = list(groups_indices.keys())
+
+    # transform that to a list per field:
+
+    # [[field1_value_for_group1, field1_value_for_group2, ..., field1_value_for_groupN]
+    #  ...,
+    #  [fieldM_value_for_group1, fieldM_value_for_group2, ..., fieldM_value_for_groupN]
     keylists = zip(*combined_labels_present) if len(columns) > 1 else [combined_labels_present]
-    keyarrays = [np.array(c) for c in keylists]
 
-    # we want a 1d array of arrays, not the 2d array that np.array(d.values())
+    # we need Arrays with an id axis (using wildcard axis because ids are bogus anyway -- those are *group* ids)
+    keyarrays = [la.Array(c, la.Axis(len(c), 'id')) for c in keylists]
+
+    # we want a 1d array of arrays, not the 2d array that np.array(groups_indices.values())
     # produces if we have a list of arrays with all the same length
-    ids_by_group = np.empty(len(d), dtype=object)
-    ids_by_group[:] = [idcol[v] for v in d.values()]
+    ids_by_group = np.empty(num_groups, dtype=object)
+    ids_by_group[:] = [idcol[group_indices] for group_indices in groups_indices.values()]
 
     result = dict(zip(names, keyarrays))
     result['__ids__'] = ids_by_group
-    result['__len__'] = len(d)
+    result['__len__'] = num_groups
     return result
 
 
@@ -163,7 +175,10 @@ class SequentialMatching(Matching):
         set2len = set2filtervalue.sum()
         print("matching with %d/%d individuals" % (set1len, set2len), end='')
 
-        varnames = {v.name for v in score.collect_variables()}
+        # TODO: instead of filtering "v.name not in global_tables", we should keep the whole Variable instance and use
+        #       that in context.subset, context_keep, et. al. But adding support for Variable in all those
+        #       functions would be some significant work.
+        varnames = {v.name for v in score.collect_variables() if v.name not in context.global_tables}
         used_variables1 = {n for n in varnames if not n.startswith('__other_')}
         used_variables2 = {n[8:] for n in varnames if n.startswith('__other_')}
 
