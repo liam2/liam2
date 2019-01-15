@@ -19,6 +19,9 @@ Fixes
 
 * Fix parsing error of function when their name termination is ìf (closes :issue:`280`)
 
+* fixed using an array (as a lookup table) in the score expression of matching().
+  Thanks to Mahdi Ben Jelloul (fixes :issue:`294`).
+
 * fixed error message when checking fields definitions (:pr:`133`).
 
 * allowed importing import files from within import files like in simulation files (closes :issue:`302`).
