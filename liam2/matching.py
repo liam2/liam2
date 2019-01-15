@@ -139,7 +139,7 @@ class SequentialMatching(Matching):
         set2len = set2filtervalue.sum()
         print("matching with %d/%d individuals" % (set1len, set2len), end='')
 
-        varnames = {v.name for v in score.collect_variables()}
+        varnames = {v.name for v in score.collect_variables() if v.name not in context.global_tables}
         used_variables1 = {n for n in varnames if not n.startswith('__other_')}
         used_variables2 = {n[8:] for n in varnames if n.startswith('__other_')}
 
