@@ -1,0 +1,39 @@
+import: test_issue.yml.template
+
+globals:
+  score_table:
+    path: matching_score_table.csv
+    type: int
+
+entities:
+  person:
+    fields:
+      - x: {type: int, initialdata: True}
+      - sex: {type: int, initialdata: True}
+
+    processes:
+      create():
+        - new('person', number = 1, id = 0, x = 0, sex = 0)
+        - new('person', number = 1, id = 1, x = 1, sex = 0)
+        - new('person', number = 1, id = 2, x = 2, sex = 0)
+        - new('person', number = 1, id = 3, x = 0, sex = 1)
+        - new('person', number = 1, id = 4, x = 1, sex = 1)
+        - new('person', number = 1, id = 5, x = 2, sex = 1)
+
+      test_issue():
+        - id_of_match: matching(
+            set1filter = (sex == 0),
+            set2filter = (sex == 1),
+            orderby = -x,
+            score = array(score_table)[x, other.x],
+            algo = "byvalue"
+            )
+
+        # expected behavior :
+        # id 0 is first considered as she has the highest value of -x
+        # and matched with id 3 which has the highest score for id 0 (x=0)
+        # then id 1 is considered
+        # and matched with id 4 which has the highest score for id 1 (x=1)
+        # then id 3 is considered and matched with id 5, the only one left
+        # in set 2
+        - assertTrue( (id_of_match == array([3,4,5,0,1,2])).all() )
