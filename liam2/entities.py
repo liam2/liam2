@@ -107,9 +107,12 @@ class Field(object):
                 output = fielddef.pop('output', True)
                 default_value = fielddef.pop('default', default_value_by_strtype[strtype])
                 if fielddef:
-                    invalid_keywords = sorted(fielddef.keys())
-                    raise SyntaxError('invalid keyword(s) found in field definition: %s'
-                                      % ', '.join(invalid_keywords))
+                    invalid_keywords = [str(definition) for definition in sorted(fielddef.keys())]
+                    raise SyntaxError(
+                        'invalid keyword(s) found in field {} definition: {}'.format(
+                            name, ', '.join(invalid_keywords)
+                            )
+                        )
             elif isinstance(fielddef, str):
                 strtype = fielddef
                 default_value = default_value_by_strtype[strtype]
@@ -434,7 +437,7 @@ class Entity(object):
                 argnames, code_def = [], v
                 template = """\
 Function definitions should have parentheses after their name even if they have no argument.
-Please change "{name}:" to "{name}():". 
+Please change "{name}:" to "{name}():".
 You probably want to use the "upgrade" command to automatically convert your model file to the new syntax."""
                 warnings.warn(template.format(name=k), UserDeprecationWarning)
             method_context = self.get_group_context(context, argnames)
