@@ -16,3 +16,4 @@ Fixes
 -----
 
 * Fix error message when checking fields definitions (:pr:`133`).
+* Allow to import import files from within import files as in simulation console files (closes :issue:`302`).
