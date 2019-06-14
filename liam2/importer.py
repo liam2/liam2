@@ -702,6 +702,7 @@ def csv2h5(fpath, buffersize=10 * MB):
         content = yaml.load(f)
 
     yaml_layout = {
+        'import': None,
         '#output': str,
         'compression': str,
         'globals': {
@@ -759,9 +760,10 @@ def csv2h5(fpath, buffersize=10 * MB):
             }
         }
     }
-
-    validate_dict(content, yaml_layout)
+    from liam2.simulation import handle_imports
     localdir = os.path.dirname(os.path.abspath(fpath))
+    content = handle_imports(content, localdir)
+    validate_dict(content, yaml_layout)
 
     h5_filename = content['output']
     compression = content.get('compression')
