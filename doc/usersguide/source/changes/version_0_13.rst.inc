@@ -15,4 +15,4 @@ Miscellaneous improvements
 Fixes
 -----
 
-* fixed something (closes :issue:`1`).
+* Fix error message when checking fields definitions (:pr:`133`).
