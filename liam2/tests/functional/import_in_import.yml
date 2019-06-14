@@ -1,0 +1,7 @@
+import:
+    - ./import.yml
+
+globals:
+    ARRAY2:
+        path: param/mig.csv
+        type: float
