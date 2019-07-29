@@ -75,7 +75,7 @@ def handle_imports(content, directory):
         print("importing: '%s'" % import_path)
         import_directory = os.path.dirname(import_path)
         with open(import_path) as f:
-            import_content = handle_imports(yaml.load(f), import_directory)
+            import_content = handle_imports(yaml.safe_load(f), import_directory)
             expand_periodic_fields(import_content)
             for wild_key in ('globals/*/fields', 'entities/*/fields'):
                 multi_keys = expand_wild(wild_key, import_content)
@@ -232,7 +232,7 @@ class Simulation(object):
                  skip_shows=None, skip_timings=None, log_level=None,
                  assertions=None, autodump=None, autodiff=None,
                  runs=None):
-        content = yaml.load(yaml_str)
+        content = yaml.safe_load(yaml_str)
         expand_periodic_fields(content)
         content = handle_imports(content, simulation_dir)
         validate_dict(content, cls.yaml_layout)

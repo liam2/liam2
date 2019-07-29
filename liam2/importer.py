@@ -699,7 +699,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
 
 def csv2h5(fpath, buffersize=10 * MB):
     with open(fpath) as f:
-        content = yaml.load(f)
+        content = yaml.safe_load(f)
 
     yaml_layout = {
         'import': None,
