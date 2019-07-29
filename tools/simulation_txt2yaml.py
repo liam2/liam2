@@ -43,7 +43,7 @@ from align_txt2csv import convert_txt_align
 def load_renames(fpath):
     if fpath is not None:
         with open(fpath) as f:
-            return yaml.load(f)
+            return yaml.safe_load(f)
     else:
         return {}
 
@@ -431,7 +431,6 @@ class RegressionImporter(TextImporter):
             kwargs['align'] = 'al_p_%s.csv' % data['name']
             if pred_type != 2:
                 print("unimplemented align for pred_type:", pred_type)
-
         if pred_type == 0:   # continuous
             expr = ContRegr(expr, **kwargs)
         elif pred_type == 1: # clipped continuous
@@ -654,7 +653,6 @@ def load_processes(input_path, fnames,
                 name += '_dupe'
 
             print("   renaming process to '%s'" % name)
-
             res = {'predictor': predictor,
                    'expr': expr_str}
         proc_names[name] = True
