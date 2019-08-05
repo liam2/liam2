@@ -358,7 +358,7 @@ def array_to_disk_array(node, name, array, title='', compression=None):
                                           filters=filters)
     else:
         disk_array = h5file.create_array(node, name, array_data, title)
-    if isinstance(array, la.LArray):
+    if isinstance(array, la.Array):
         attrs = disk_array.attrs
         # pytables serialises Python lists as pickles but np.arrays as native
         # types, so it is more portable this way
@@ -550,7 +550,7 @@ def load_ndarray(fpath, celltype=None):
         celltype = detect_column_type(str_table)
     data = convert_1darray(str_table, celltype)
     array = np.array(data, dtype=celltype)
-    return la.LArray(array.reshape(shape), header, possible_values)
+    return la.Array(array.reshape(shape), header, possible_values)
 
 
 def load_table(fpath, fields=None, newnames=None, delimiter=None, transpose=False):

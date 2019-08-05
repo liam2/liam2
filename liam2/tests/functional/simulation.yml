@@ -358,7 +358,7 @@ entities:
 
                 # check that we get an assertion when trying to access some invalid index and that
                 # assertRaises catch it properly
-                - assertRaises('IndexError', id[1234567890])
+                - assertRaises('ValueError', id[1234567890])
 
                 # check that assertRaises raises NameError when used with an invalid Exception name
                 - assertRaises('NameError', assertRaises('YADA', True))
@@ -627,10 +627,12 @@ entities:
                 # last number to not overflow a 32b int
                 - assertEqual(factorial3(12), 479001600)
 
-                # generic call (ndarray methods)
+                # generic call (LArray methods)
                 # without argument
                 - assertEqual(age.sum(), sum(age))
-                - assertEqual(age.std(), std(age))
+                # LArray defaults to ddof=1 while numpy defaults to ddof=0 and LIAM2 does not provide the ddof argument
+                # and use numpy's default
+                - assertEqual(age.std(ddof=0), std(age))
                 - assertEqual(age.max(), max(age))
                 - assertEqual(age.min(), min(age))
 
@@ -917,22 +919,38 @@ entities:
                 - assertEqual(age.ndim, 1)
 
             test_subscript():
+                # indices subscript
+                # -----------------
                 # with constant argument
                 # take advantage of the fact that data is ordered by id
-                - assertEqual(id[0], min(id))
+                - assertEqual(id.i[0], min(id))
 
-                # with expr argument
-                - newborn: age[age == 0]
-                - assertEqual(newborn[0], 0)
-
-                # with slice
-                - assertEqual(age[0:1], [age[0]])
+                # with constant slice
+                - assertEqual(age.i[0:1], [age.i[0]])
 
                 # with expr slice
                 - index: trunc(count() / 2)
-                - ages: age[index:index+10:2]
+                - ages: age.i[index:index+10:2]
                 - assertEqual(ages.__len__(), 5)
-                - assertEqual(ages[0], age[index])
+                - assertEqual(ages.i[0], age.i[index])
+
+                # labels subscript (i.e. by id)
+                # -----------------------------
+                # with a single label
+                - first_id: id.i[0]
+                - assertEqual(age[first_id], age.i[0])
+
+                # with boolean expr argument
+                - age_newborn: age[age == 0]
+                - assertEqual(age_newborn.i[0], 0)
+
+                # with slice (takes id 5 to 10, assuming they exist)
+                - assertEqual(age[5:10], age[id[5:10]])
+
+                # with expr slice
+                # equivalent to ids [0, 2, 4, 6, 8, 10]
+                - ages: age[first_id:first_id+10:2]
+                - assertEqual(ages.__len__(), 6)
 
             test_periodic_globals():
                 # implicit global namespace
@@ -999,18 +1017,18 @@ entities:
 
                 #    2) scalar start, vector stop
                 - scalar_start: MINR[period:age - age + period + 10]
-                - assertNanEqual(scalar_start[0][0], MINR[period])
-                - assertNanEqual(scalar_start[0][9], MINR[period + 9])
+                - assertNanEqual(scalar_start.i[0][0], MINR[period])
+                - assertNanEqual(scalar_start.i[0][9], MINR[period + 9])
 
                 #    3) vector start, scalar stop
                 - scalar_stop: MINR[age - age + period:period + 10]
-                - assertNanEqual(scalar_stop[0][0], MINR[period])
-                - assertNanEqual(scalar_stop[0][9], MINR[period + 9])
+                - assertNanEqual(scalar_stop.i[0][0], MINR[period])
+                - assertNanEqual(scalar_stop.i[0][9], MINR[period + 9])
 
                 #    4) vector start, vector stop
                 - vector_bounds: MINR[yearofbirth:yearofpension]
-                - assertNanEqual(vector_bounds[0],
-                                 MINR[yearofbirth[0]:yearofpension[0]])
+                - assertNanEqual(vector_bounds.i[0],
+                                 MINR[yearofbirth.i[0]:yearofpension.i[0]])
 
                 # b) slices of varying length
                 #    (ie. any(stop - start != stop[0] - start[0]))
@@ -1072,7 +1090,7 @@ entities:
                 - assertEqual(othertable_noperiod.INTFIELD, -1)
 
             test_globals_nd():
-                # MIG is a 3d array: gender-age-period
+                # MIG is a 3d array: gender x age x period
                 # test that MIG was loaded correctly
                 - assertEqual(MIG.ndim, 3)
                 - assertEqual(MIG.shape, (2, 121, 61))
@@ -1098,13 +1116,11 @@ entities:
                 - assertEqual(res.axes.names, ['gender','age', 'period'])
                 - assertIsClose(res, res.ratio('age'))
 
-                # let us take the 2d table for this period
-                # currently, we need to compute the index manually
+                # let us take the 2d array for this period
                 - mig_period: MIG[period]
                 - assertEqual(mig_period.ndim, 2)
                 - assertEqual(mig_period.shape, (2, 121))
                 - assertEqual(mig_period.axes.names, ['gender', 'age'])
-                - assertEqual(mig_period.axes.labels.__len__(), 2)
 
                 # test that expressions with more than one dimension (2 in
                 # this case) work when the axes from both sides are not the
@@ -1114,7 +1130,7 @@ entities:
                 - mig_period_x2: mig_period + mig_period_bis
                 - assertEqual(mig_period_x2, mig_period * 2)
 
-                # should be a 2d table: gender-period
+                # should be a 2d array: gender-period
                 - need_by_sex_period: need.sum(axis=1)
                 - assertEqual(need_by_sex_period.ndim, 2)
                 - assertEqual(need_by_sex_period.shape, (2, 61))
@@ -1124,18 +1140,20 @@ entities:
                 - assertEqual(need_by_sex_period.shape, (2, 61))
                 - assertEqual(need_by_sex_period.axes.names, ['gender', 'period'])
 
-                # should be a 1d table: gender
+                # should be a 1d array: gender
                 - total_need_by_sex: need_by_sex_period.sum(axis=1)
                 - total_need_by_sex: need_by_sex_period.sum('period')
                 - assertEqual(total_need_by_sex.ndim, 1)
                 - assertEqual(total_need_by_sex.shape, (2,))
+                - assertEqual(total_need_by_sex.axes.names, ['gender'])
                 - assertIsClose(total_need_by_sex,
                                 [77.6138352312, 74.8861646933])
 
-                # for current period, a 1d table: gender
+                # for current period, a 1d array: gender
                 - need_by_sex: need_by_sex_period[period]
                 - assertEqual(need_by_sex.ndim, 1)
                 - assertEqual(need_by_sex.shape, (2,))
+                - assertEqual(need_by_sex.axes.names, ['gender'])
 
                 - total_need: need_by_sex.sum()
                 - assertEqual(total_need.ndim, 0)
@@ -1144,33 +1162,31 @@ entities:
                 # vector indexes (should produce a non labeled vector)
                 # ----------------------------------------------------
 
-                # first, produce a 1 dim LabeledArray to test with
+                # first, produce a 1 dim LArray to test with
                 - need_by_sex20: MIG[20, period]
                 - assertEqual(need_by_sex20.ndim, 1)
                 - assertEqual(need_by_sex20.shape, (2,))
                 - assertEqual(need_by_sex20.axes.names, ['gender'])
 
                 # 1d array[int[:]]
-                # converting to list is an (awful) workaround for #296
-#                - gender_list: gender.tolist()
-#                - need_per_person: need_by_sex20.points[gender.tolist()]
-                - need_per_person: need_by_sex20.points[gender]
+                - need_per_person: need_by_sex20[gender]
                 - assertEqual(need_per_person.ndim, 1)
                 - assertEqual(need_per_person.shape, (count(),))
-                #- assertEqual(need_per_person.axes.names, None)
-                #- assertEqual(need_per_person.axes.labels, None)
+                - assertEqual(need_per_person.axes.names, ['id'])
 
-                # 3d array[bool[:], int[:], int]
-                - percent_per_person: MIG.points[gender, age, period]
+                # 3d array[bool[:], int[:], int] -> 1d array (id)
+                - percent_per_person: MIG[gender, age, period]
                 - assertEqual(percent_per_person.ndim, 1)
                 - assertEqual(percent_per_person.shape, (count(),))
-                #- assertEqual(percent_per_person.axes.names, None)
-                #- assertEqual(percent_per_person.axes.labels, None)
+                - assertEqual(need_per_person.axes.names, ['id'])
                 - assertEqual(percent_per_person.i[0],
-                              MIG[gender[0], age[0], period])
+                              MIG[gender.i[0], age.i[0], period])
 
-                # 3d array[int[:], :, int] -> 2d array
-                - indexed: MIG.points[gender, period]
+                # 3d array[bool[:], :, int] -> 2d array (id x age)
+                - indexed: MIG[gender, period]
+                - assertEqual(indexed.ndim, 2)
+                - assertEqual(indexed.shape, (count(), 121))
+                - assertEqual(indexed.axes.names, ['id', 'age'])
                 # make sure we can further subset it
                 - i0: indexed.i[0]
                 - assertEqual(i0.shape, (121,))
@@ -1190,15 +1206,17 @@ entities:
                                 count() - sum(percent_per_person))
 
                 # direct use
-                - remainder_per_person: 1 - MIG.points[gender, age, period]
+                - remainder_per_person: 1 - MIG[gender, age, period]
                 - assertIsClose(sum(remainder_per_person),
                                 count() - sum(percent_per_person))
 
-                # test an expr with two 3d array
-                - strange: MIG.points[gender, 0, period] -
-                           MIG.points[gender, 1, period]
-                - control1: MIG.i[:,0,:] - MIG.i[:,1,:]
-                - control2: control1.points[gender, period]
+                # test an expr with two 1d arrays
+                # twice "3d (gender, age, period) -> 1d (id)" then combine to a single 1d (id)
+                - strange: MIG[gender, 0, period] - MIG[gender, 1, period]
+                # twice "3d (gender, age, period) -> 2d (gender, period)" then combine to a single 2d (gender, period)
+                - control1: MIG.i[:, 0, :] - MIG.i[:, 1, :]
+                # 2d (gender, period) -> 1d (id)
+                - control2: control1[gender, period]
                 - assertIsClose(sum(strange), sum(control2))
 
                 # test combination with if() filter, to test whether the
@@ -1235,7 +1253,7 @@ entities:
                 - need_by_age_men: MIG[True, period]
                 - good_idx: age
                 - bad_idx: if(age < 60, age, age + 100)
-                - good_res: need_by_age_men.points[good_idx]
+                - good_res: need_by_age_men[good_idx]
                 - target: if(age < 60, good_res, 0)
 
                 # array filter
@@ -1263,19 +1281,19 @@ entities:
                 - good_idx: gender, if(age < 70, age + 20, 0), period
                 - bad_idx1: gender, age + 20, period
                 - bad_idx2: gender, age, period + 100
-                - good_res: MIG.points[good_idx]
+                - good_res: MIG[good_idx]
                 - target: if(age < 70, good_res, -1)
 
                 # array filter
-                - test1: if(age < 70, MIG.points[good_idx], -1)
+                - test1: if(age < 70, MIG[good_idx], -1)
                 - assertEqual(test1, target)
                 # XXX
-                - test2: if(allfalse, MIG.points[good_idx], -1)
+                - test2: if(allfalse, MIG[good_idx], -1)
                 - assertEquiv(test2, -1)
                 # bad index
-                - test3: if(allfalse, MIG.points[bad_idx1], -1)
+                - test3: if(allfalse, MIG[bad_idx1], -1)
                 - assertEquiv(test3, -1)
-                - test4: if(allfalse, MIG.points[bad_idx2], -1)
+                - test4: if(allfalse, MIG[bad_idx2], -1)
                 - assertEquiv(test4, -1)
 
                 # scalar filter
@@ -1292,17 +1310,11 @@ entities:
                 # ambiguous key
                 # -------------
                 - show(ARRAY_DUPE_LABELS)
-                # there is a bug in the loading code, the dtype for both axes are different
-#               - ARRAY_DUPE_LABELS.axes.labels
-#                [array([False, True], dtype=object), array([False,  True], dtype=bool)]
                 # this should fail with an ambiguous error
-                # TODO: implement assertRaise
-                # does not work because __getitem__ exists on the exprtools.Node/Symbol class
-                # => Node.__getattr__ is not called !
-                # - assertRaises('ValueError', ARRAY_DUPE_LABELS[1])
+                - assertRaises('ValueError', ARRAY_DUPE_LABELS[1])
                 # FIXME13
                 # with boolean labels (array_dupe_labels2.csv)
-                # - test1: ARRAY_DUPE_LABELS[True]
+#                - test1: ARRAY_DUPE_LABELS[True]
 #                - test1: ARRAY_DUPE_LABELS[X.work[True]]
                 # can we make this work?
 #                - test1: ARRAY_DUPE_LABELS[work=func(expr1, kw=expr2), gender=True]
@@ -1320,10 +1332,10 @@ entities:
                 - tmp: MIG_AUTOINDEX
                 - assertEqual(tmp.ndim, 1)
                 - assertEqual(tmp.shape, (count(),))
-                - assertEqual(tmp.axes.names, ['gender_age'])
+                - assertEqual(tmp.axes.names, ['id'])
 
                 # test that indexed behavior is not affected by autoindex
-                - explicit1: MIG.points[gender, age, period]
+                - explicit1: MIG[gender, age, period]
                 # FIXME13: this does not work (autoindex happens before .points)
                 # unsure it is fixable though. If not, scrap this test.
 #                - explicit2: MIG_AUTOINDEX.points[gender, age, period]
@@ -1947,8 +1959,9 @@ entities:
                 - uninitialized_var: True
 
             test_new():
-                # with no filter nor number
                 - pop: count()
+
+                # with no filter nor number => doubles the population
                 - child_id: new('person', age=999)
                 # child_id is set to the child id for the "parent" individual and -1
                 # for others, including the child itself
@@ -1980,9 +1993,8 @@ entities:
                 - remove(age == 999)
                 - assertEqual(count(), pop)
 
-                - givebirth: not gender and (age >= 16) and (age <= 50) and uniform() < 0.1
-
                 # with implicit filters
+                - givebirth: not gender and (age >= 16) and (age <= 50) and uniform() < 0.1
                 # unknown father when the mother is < 25 years old (even if
                 # she has a partner, so that we can differentiate them.
                 - child_id: if(givebirth,
@@ -3016,7 +3028,7 @@ entities:
 
                 # grouping by expressions (not only simple columns)
                 - show(groupby(round(logit_score(0.0), 1)))
-                - show('groupby global', groupby(if(gender, 65, WEMRA), gender))
+                - show('groupby global\n', groupby(if(gender, 65, WEMRA), gender))
 
                 # with expr=
                 - explicit_count: groupby(gender, expr=count())

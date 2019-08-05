@@ -7,6 +7,7 @@ from collections import Counter
 
 import numpy as np
 import larray as la
+from larray.core.axis import AxisReference
 
 from liam2.compat import basestring, PY2, zip, with_metaclass, getargspec
 from liam2.cache import Cache
@@ -71,8 +72,9 @@ def normalize_type(type_):
     return idx_to_type[type_to_idx[type_]]
 
 
-def get_default_value(column, default_value=None):
-    normalized_type = normalize_type(column.dtype.type)
+def get_default_value(column_or_dtype, default_value=None):
+    dtype = column_or_dtype if isinstance(column_or_dtype, np.dtype) else column_or_dtype.dtype
+    normalized_type = normalize_type(dtype.type)
     if default_value is None:
         default_value = missing_values[normalized_type]
     assert isinstance(default_value, normalized_type), \
@@ -147,7 +149,7 @@ def traverse_expr(expr):
 
 
 def gettype(value):
-    if isinstance(value, (np.ndarray, la.LArray)):
+    if isinstance(value, (np.ndarray, la.Array)):
         type_ = value.dtype.type
     elif isinstance(value, (tuple, list)):
         type_ = type(value[0])
@@ -212,6 +214,8 @@ def expr_eval(expr, context):
             # FIXME: systematically checking for the presence of variables has a
             # non-negligible cost (especially in matching), even when caching
             # collect_variables result (it is much better than before though).
+            # so this check should be done at "compile/check" time, not run/evaluation time but
+            # we do not have any "compile/check" step yet.
             # TODO: also check for globals
             # print("vars", expr.collect_variables())
             for var in expr.collect_variables():
@@ -321,31 +325,34 @@ class Expr(object):
         # live with to avoid hitting the disk twice for each disk access.
 
         # TODO: I should rewrite this whole mess when my "dtype" method
-        # supports ndarrays and la.LArray so that I can get the dtype from
+        # supports ndarrays and la.Array so that I can get the dtype from
         # the expression instead of from actual values.
         expr_axes = None
         numexpr_eval = True
         assert isinstance(context, EvaluationContext), type(context)
         local_ctx = context.entity_data
-        if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
-            for var in simple_expr.collect_variables():
-                assert var.entity is None or var.entity is context.entity, \
-                    "should not have happened (as_simple_expr should " \
-                    "have transformed non-local variables)"
+        assert isinstance(local_ctx, (dict, EntityContext)), type(context)
+        # if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
+        for var in simple_expr.collect_variables():
+            assert var.entity is None or var.entity is context.entity, \
+                "should not have happened (as_simple_expr should " \
+                "have transformed non-local variables)"
 
-                # var_name should always be in the context at this point
-                # because missing temporaries should have been already caught
-                # in expr_eval
-                value = context[var.name]
-                # value = local_ctx[var.name]
+            # var_name should always be in the context at this point
+            # because missing temporaries should have been already caught
+            # in expr_eval
+            # value = context[var.name]
+            value = local_ctx[var.name]
 
-                # check that LArrays (if any) have all the same axes and bypass numexpr otherwise
-                if isinstance(value, la.LArray):
-                    if expr_axes is None:
-                        expr_axes = value.axes
-                    else:
-                        if value.axes != expr_axes:
-                            numexpr_eval = False
+            # check that LArrays (if any) have all the same axes and bypass numexpr otherwise
+            if isinstance(value, la.Array):
+                if expr_axes is None:
+                    expr_axes = value.axes
+                else:
+                    if value.axes != expr_axes:
+                        # TODO: what I should do instead is to make all arguments numpy-broadcastable (via larray)
+                        #       but then let numexpr compute the expression anyway
+                        numexpr_eval = False
 
         # TODO: when numexpr_eval is False, we should bypass the string roundtrip
         s = simple_expr.as_string()
@@ -356,7 +363,7 @@ class Expr(object):
                 if expr_axes is not None:
                     # This relies on the fact that currently all the expression we evaluate through numexpr preserve
                     # array shapes, but if we ever use numexpr reduction capabilities, we will be in trouble
-                    res = la.LArray(res, expr_axes)
+                    res = la.Array(res, expr_axes)
             except Exception:
                 if debug:
                     print("evaluate failed")
@@ -537,6 +544,10 @@ def non_scalar_array(a):
     return isinstance(a, np.ndarray) and a.shape
 
 
+def non_scalar_larray(a):
+    return isinstance(a, la.Array) and a.shape
+
+
 class SubscriptedExpr(EvaluableExpression):
     __children__ = ('expr', 'key')
 
@@ -575,7 +586,7 @@ class SubscriptedExpr(EvaluableExpression):
             assert isinstance(filter_value, (bool, np.bool_)) or \
                 np.issubdtype(filter_value.dtype, np.bool_)
 
-            if isinstance(expr_value, la.LArray):
+            if isinstance(expr_value, la.Array):
                 # ca craint, ce qui faut, c'est faire un guess axis sur la
                 # première valeur valide puis utiliser le label de cet axe
                 # là (ou faire un PGroup sur cet axe là), otherwise, we can
@@ -586,7 +597,7 @@ class SubscriptedExpr(EvaluableExpression):
                 missing_value = get_default_value(expr_value)
                 # print("good key", always_good_key)
                 # print("type missing", missing_value, type(missing_value))
-            elif isinstance(expr_value, la.core.array.LArrayPointsIndexer):
+            elif isinstance(expr_value, la.core.array.ArrayPointsIndexer):
                 always_good_key = expr_value.array.axes[0].labels[0]
                 missing_value = get_default_value(expr_value.array)
                 # print("type missing", missing_value, type(missing_value))
@@ -607,8 +618,19 @@ class SubscriptedExpr(EvaluableExpression):
                         first_non_filtered_value = \
                             orig_key[non_filtered_idx[0]]
                     else:
-                        # avoid crashing on: if(always_false,
-                        # array[badindex_scalar], val)
+                        # avoid crashing on: if(always_false, array[badindex_scalar], val)
+                        return None
+                    newkey = orig_key.copy()
+                    newkey[~filter_value] = first_non_filtered_value
+                    # print("new key", newkey)
+                elif non_scalar_larray(orig_key):
+                    # print("orig_key", orig_key)
+                    non_filtered_idx = filter_value.nonzero()[0]
+                    if len(non_filtered_idx):
+                        first_non_filtered_value = \
+                            orig_key[non_filtered_idx[0]]
+                    else:
+                        # avoid crashing on: if(always_false, array[badindex_scalar], val)
                         return None
                     newkey = orig_key.copy()
                     newkey[~filter_value] = first_non_filtered_value
@@ -626,9 +648,21 @@ class SubscriptedExpr(EvaluableExpression):
                         newkey = orig_key
                 return newkey
 
-            # XXX: couldn't we use np.take(mode='clip') instead of all this
-            # Mumbo-jumbo? (and implement it in LArray)
+            # XXX: couldn't we use np.take(mode='clip') instead of all this mumbo-jumbo? (and implement it in LArray)
             if non_scalar_array(filter_value):
+                if isinstance(key, tuple):
+                    # nd-key
+                    key = tuple(fixkey(k, filter_value) for k in key)
+                    if any(k is None for k in key):
+                        return missing_value
+                elif isinstance(key, slice):
+                    raise NotImplementedError()
+                else:
+                    # scalar or array key
+                    key = fixkey(key, filter_value)
+                    if key is None:
+                        return missing_value
+            elif non_scalar_larray(filter_value):
                 if isinstance(key, tuple):
                     # nd-key
                     key = tuple(fixkey(k, filter_value) for k in key)
@@ -647,7 +681,7 @@ class SubscriptedExpr(EvaluableExpression):
                         (isinstance(key, tuple) and
                          any(non_scalar_array(k) for k in key))):
                         # scalar filter, array or tuple key
-                        if isinstance(expr_value, la.core.array.LArrayPointsIndexer):
+                        if isinstance(expr_value, la.core.array.ArrayPointsIndexer):
                             expr_value = expr_value.array
                         return np.full_like(expr_value, missing_value)
                     elif isinstance(key, slice):
@@ -655,7 +689,6 @@ class SubscriptedExpr(EvaluableExpression):
                     else:
                         # scalar (or tuple of scalars) key
                         return missing_value
-        # print("fixed key", key)
         return expr_value[key]
 
 
@@ -1128,6 +1161,8 @@ class GlobalVariable(EvaluableExpression):
         key = self._eval_key(context)
         # TODO: this row computation should be encapsulated in the
         # globals_table object and the index column should be configurable
+        # TODO: global_table should be an LArray or LFrame with a 'period' axis
+        #       (or whatever object which returns LArray with a period axis)
         colnames = globals_table.dtype.names
         if 'period' in colnames or 'PERIOD' in colnames:
             try:
@@ -1148,31 +1183,76 @@ class GlobalVariable(EvaluableExpression):
         numrows = len(column)
         missing_value = get_default_value(column)
 
-        if isinstance(translated_key, np.ndarray) and translated_key.shape:
+        if isinstance(translated_key, (np.ndarray, la.Array)) and translated_key.shape:
             return safe_take(column, translated_key, missing_value)
         elif isinstance(translated_key, slice):
             start, stop = translated_key.start, translated_key.stop
             step = translated_key.step
             if step is not None and step != 1:
                 raise NotImplementedError("step != 1 (%d)" % step)
-            if (isinstance(start, np.ndarray) and start.shape or
-                    isinstance(stop, np.ndarray) and stop.shape):
+            larray_start = isinstance(start, la.Array) and start.shape
+            larray_stop = isinstance(stop, la.Array) and stop.shape
+            array_start = isinstance(start, np.ndarray) and start.shape
+            array_stop = isinstance(stop, np.ndarray) and stop.shape
+            if larray_start or larray_stop:
+                # TODO: we should deprecate this case
+                lengths = stop - start
+                length0 = lengths.i[0]
+                id_axis = lengths.id
+                if not larray_start:
+                    start = la.full(id_axis, start)
+                # MINR[yearofbirth:yearofpension].sum()
+                # to
+                # where((period_axis >= yearofbirth) & (period_axis <= yearofpension), MINR, nan).sum('period')
+                # or (support this in LArray):
+                # MINR.sum(period[yearofbirth:yearofpension])
+                # where internally in LArray we would translate period[yearofbirth:yearofpension]
+                # to either a Grid([period[yearofbirth[id_i]:yearofpension[id_i]]) (elegant but slow solution)
+                # or to the above code. The problem with the above code is that it only works for aggregates which
+                # ignore nans. If we have *other* nans, they will be ignored too. So skip_na=False should raise an
+                # exception.
+                if (lengths == length0).all():
+                    # constant length => result is a 2D array:
+                    # num_individuals x slice_length
+                    period_axis = la.Axis(length0).rename('_')
+                    indices = (start + la.sequence(period_axis)).rename('_', None)
+                    return safe_take(column, indices, missing_value)
+                else:
+                    # varying length => result is an array (num_individuals) of
+                    # 1D arrays (slice lengths)
+                    # each "item" of the result is a view, so we pay "only" for
+                    # all the arrays overhead, not for the data itself.
+                    result = la.empty(id_axis, dtype=object)
+                    # XXX: I don't think this is necessary with zip_array_values
+                    # if not larray_stop:
+                    #     stop = la.full(id_axis, stop)
+
+                    # TODO: I should provide something better in LArray to fill an array with the result of
+                    #       some computation on other arrays. np.nditer returns 0d arrays instead of scalars in this
+                    #       case so that something like this works:
+                    #       for a1, a2, a3 in la.zip_array_values((arr1, arr2, arr3)): a3[...] = a1 + a2
+                    res_data = result.values(id_axis).array.data
+                    for i, (start_for_id, stop_for_id) in enumerate(la.zip_array_values((start, stop), axes=id_axis)):
+                        res_data[i] = column[start_for_id:stop_for_id]
+                    # for res_for_id, start_for_id, stop_for_id in la.zip_array_values((result, start, stop),
+                    #                                                                  axes=id_axis):
+                    #     res_for_id[:] = column[start_for_id:stop_for_id]
+                    return IrregularNDArray(result)
+            elif array_start or array_stop:
                 lengths = stop - start
                 length0 = lengths[0]
-                if not isinstance(start, np.ndarray) or not start.shape:
+                if not array_start:
                     start = np.repeat(start, len(lengths))
                 if np.all(lengths == length0):
                     # constant length => result is a 2D array:
                     # num_individuals x slice_length
-                    result = np.empty((len(lengths), length0),
-                                      dtype=column.dtype)
+                    result = np.empty((len(lengths), length0), dtype=column.dtype)
                     # we assume there are more individuals than there are
                     # "periods" (or other ticks) in the table.
                     # XXX: We might want to actually test that it is true and
                     # loop on the individuals instead if that is not the case
                     for i in range(length0):
-                        result[:, i] = safe_take(column, start + i,
-                                                 missing_value)
+                        result[:, i] = safe_take(column, start + i, missing_value)
                     return result
                 else:
                     # varying length => result is an array (num_individuals) of
@@ -1251,7 +1331,7 @@ class GlobalArray(Variable):
         tmp_varname = '__%s' % self.name
         if tmp_varname in context:
             array = context[tmp_varname]
-            assert isinstance(array, la.LArray)
+            assert isinstance(array, la.Array)
             assert context[tmp_varname].equals(result)
         context[tmp_varname] = result
         return Variable(context.entity, tmp_varname)
@@ -1350,6 +1430,49 @@ class MethodSymbol(object):
 
     def __str__(self):
         return '{}.{}'.format(self.entity, self.name)
+
+
+# a specialized/simplified version of SubscriptedExpr
+class DelayedGroup(EvaluableExpression):
+    __children__ = ('axis_ref', 'key')
+
+    def __init__(self, axis_name, key):
+        # we store a real AxisReference, not the DelayedAxisReference that created us, this makes evaluation
+        # a bit more efficient
+        self.axis_ref = AxisReference(axis_name)
+        self.key = key
+
+    def __repr__(self):
+        key = self.key
+        if isinstance(key, slice):
+            key_str = '%s:%s' % (key.start, key.stop)
+            if key.step is not None:
+                key_str += ':%s' % key.step
+        else:
+            key_str = str(key)
+        return 'X.%s[%s]' % (self.axis_ref.name, key_str)
+
+    def evaluate(self, context):
+        return self.axis_ref[expr_eval(self.key, context)]
+
+
+class DelayedAxisReference(object):
+    def __init__(self, name):
+        self.name = name
+
+    def __getitem__(self, key):
+        return DelayedGroup(self.name, key)
+
+
+class DelayedAxisReferenceFactory(object):
+    def __getattr__(self, key):
+        return DelayedAxisReference(key)
+
+    def __getitem__(self, key):
+        return DelayedAxisReference(key)
+
+
+X = DelayedAxisReferenceFactory()
 
 
 class NotHashable(Expr):

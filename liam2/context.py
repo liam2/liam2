@@ -2,7 +2,9 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
+import larray as la
 
+from liam2.partition import filter_to_indices
 from liam2.utils import unique
 
 
@@ -133,6 +135,9 @@ class EvaluationContext(object):
             assert isinstance(entity_data, dict)
             return list(entity_data.keys())
 
+    def items(self):
+        return [(k, self[k]) for k in self.keys()]
+
     def update(self, other, **kwargs):
         self.entity_data.update(other, **kwargs)
 
@@ -145,7 +150,7 @@ class EvaluationContext(object):
         The main use case is to take a subset of rows. Since this is a
         costly operation, the user can also provide keys so that only the
         columns he needs are filtered.
-        :param index: indices to take (list or ndarray)
+        :param index: indices to take (list or ndarray) or bool array-like
         :param keys: list of column names or None (take all)
         :param filter_expr: expression used to compute the index. This is
         only used to compute the cache key
@@ -177,32 +182,38 @@ class EntityContext(object):
             return self.extra[key]
         except KeyError:
             period = self.eval_ctx.period
-            array_period = self.entity.array_period
+            entity = self.entity
+            array_period = entity.array_period
             if period == array_period:
                 try:
-                    return self.entity.temp_variables[key]
+                    return entity.temp_variables[key]
                 except KeyError:
                     try:
-                        return self.entity.array[key]
+                        array = entity.array
+                        data = array[key]
+                        assert isinstance(data, la.Array)
+                        return data
                     except ValueError:
                         raise KeyError(key)
             else:
                 # FIXME: lags will break if used from a context subset (eg in
                 # new() or groupby(): all individuals will be returned instead
                 # of only the "filtered" ones.
-                if (self.entity.array_lag is not None and
-                    array_period is not None and
-                    period == array_period - 1 and
-                        key in self.entity.array_lag.dtype.fields):
-                    return self.entity.array_lag[key]
+                if (entity.array_lag is not None and array_period is not None and
+                        period == array_period - 1 and key in entity.array_lag.dtype.fields):
+                    data = entity.array_lag[key]
+                    assert isinstance(data, la.Array)
+                    return data
 
-                bounds = self.entity.output_rows.get(period)
+                bounds = entity.output_rows.get(period)
                 if bounds is not None:
                     startrow, stoprow = bounds
+                    axis = self.entity.id_axis_per_period[period]
                 else:
                     startrow, stoprow = 0, 0
-                return self.entity.table.read(start=startrow, stop=stoprow,
-                                              field=key)
+                    axis = la.Axis(np.empty(0, dtype=int), 'id')
+                data = entity.table.read(start=startrow, stop=stoprow, field=key)
+                return la.Array(data, axis)
 
     # is the current array period the same as the context period?
     @property
@@ -286,9 +297,9 @@ class EntityContext(object):
         elif period in self.entity.output_index:
             return self.entity.output_index[period]
         else:
-            # FIXME: yes, it's true, that if period is not in output_index, it
+            # FIXME: yes, this works because if period is not in output_index, it
             # probably means that we are before start_period and in that case,
-            # input_index == output_index, but it would be cleaner to simply
+            # input_index == output_index, but it would be much cleaner to simply
             # initialise output_index correctly
             return self.entity.input_index[period]
 
@@ -298,6 +309,8 @@ def empty_context(length):
 
 
 def context_subset(context, index=None, keys=None):
+    """index can *at least* be a bool ndarray or an ndarray of indices
+    """
     # if keys is None, take all fields
     if keys is None:
         keys = list(context.keys())
@@ -306,6 +319,10 @@ def context_subset(context, index=None, keys=None):
     if isinstance(index, list):
         # forcing to int, even for empty lists
         index = np.array(index, dtype=int)
+    elif isinstance(index, la.Array):
+        assert np.issubdtype(index.dtype, np.bool_)
+        assert index.ndim == 1
+        index = index.data
 
     if index is None:
         length = context_length(context)
@@ -316,14 +333,33 @@ def context_subset(context, index=None, keys=None):
         assert len(index) == context_length(context), \
             "boolean index has length %d instead of %d" % \
             (len(index), context_length(context))
-        length = index.sum()
+        index = filter_to_indices(index)
+        length = len(index)
 
     result = empty_context(length)
-    for key in keys:
-        value = context[key]
-        if index is not None and isinstance(value, np.ndarray) and value.shape:
-            value = value[index]
-        result[key] = value
+    if index is None:
+        for key in keys:
+            result[key] = context[key]
+    else:
+        old_column_axes = None
+        new_column_axes = None
+        for key in keys:
+            value = context[key]
+            if isinstance(value, np.ndarray) and value.shape:
+                value = value[index]
+            elif isinstance(value, la.Array):
+                if value.axes[0].name == 'id':
+                    if new_column_axes is None:
+                        old_column_axes = value.axes
+                        new_column_axes = la.AxisCollection(old_column_axes.id.subaxis(index))
+
+                    if value.axes == old_column_axes:
+                        value = la.Array(value.data[index], new_column_axes)
+                    else:
+                        print("WARNING: incoherent axes collection")
+                else:
+                    print("WARNING: id not first axis")
+            result[key] = value
     return result
 
 
@@ -338,15 +374,31 @@ def context_keep(context, keys):
 # this is only used in matching
 def context_delete(context, rownum):
     result = {}
+    old_column_axes = None
+    new_column_axes = None
     # this copies everything including __len__, period, nan, ...
     for key in context.keys():
         value = context[key]
         # globals are left unmodified
         if key != '__globals__':
+
             if isinstance(value, np.ndarray) and value.shape:
                 # axis=0 so that if value.ndim > 1, treat it as if it was an
                 # array of arrays
+                # TODO: this case should not happen
                 value = np.delete(value, rownum, axis=0)
+            elif isinstance(value, la.Array):
+                if value.axes[0].name == 'id':
+                    if new_column_axes is None:
+                        old_column_axes = value.axes
+                        new_column_axes = la.AxisCollection(la.Axis(np.delete(old_column_axes.id.labels, rownum), 'id'))
+
+                    if value.axes == old_column_axes:
+                        value = la.Array(np.delete(value.data, rownum, axis=0), new_column_axes)
+                    else:
+                        print("WARNING: incoherent axes collection")
+                else:
+                    print("WARNING: id not first axis")
         result[key] = value
     result['__len__'] -= 1
     return result

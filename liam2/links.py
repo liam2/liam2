@@ -6,10 +6,12 @@ from operator import itemgetter
 
 import numpy as np
 import numexpr as ne
+import larray as la
 
 from liam2.compat import zip, basestring
 from liam2.expr import Expr, Variable, getdtype, expr_eval, missing_values, get_default_value, always, FunctionExpr
 from liam2.context import context_length
+from liam2.partition import filter_to_indices
 from liam2.utils import removed
 
 # TODO: merge this typemap with the one in tsum
@@ -213,6 +215,8 @@ class LinkGet(LinkExpression):
 
         # noinspection PyProtectedMember
         target_ids = context[link._link_field]
+        if isinstance(target_ids, la.Array):
+            target_ids = target_ids.data
         target_context = self.target_context(context)
 
         id_to_rownum = target_context.id_to_rownum
@@ -223,6 +227,8 @@ class LinkGet(LinkExpression):
         target_values = expr_eval(target_expr, target_context)
         missing_value = get_default_value(target_values, missing_value)
 
+        if isinstance(target_values, la.Array):
+            target_values = target_values.data
         result_values = target_values[target_rows]
 
         # it is a bit faster with numexpr (mixed_links: 0.22s -> 0.17s)
@@ -262,14 +268,25 @@ class Aggregate(LinkExpression):
         expr_value = expr_eval(target_expr, target_context)
         filter_value = expr_eval(target_filter, target_context)
         weights_value = expr_eval(weights, target_context)
+        if isinstance(source_ids, la.Array):
+            source_ids = source_ids.data
+        if isinstance(expr_value, la.Array):
+            expr_value = expr_value.data
+        if isinstance(filter_value, la.Array):
+            filter_value = filter_value.data
+        if isinstance(weights_value, la.Array):
+            weights_value = weights_value.data
+
         if filter_value is not None:
-            source_ids = source_ids[filter_value]
+            # when applying the same boolean filter to several arrays it is faster to convert it to indices once
+            filter_indices = filter_to_indices(filter_value)
+            source_ids = source_ids[filter_indices]
             # intentionally not using np.isscalar because of some corner
             # cases, eg. None and np.array(1.0)
             if isinstance(expr_value, np.ndarray) and expr_value.shape:
-                expr_value = expr_value[filter_value]
+                expr_value = expr_value[filter_indices]
             if isinstance(weights_value, np.ndarray) and weights_value.shape:
-                weights_value = weights_value[filter_value]
+                weights_value = weights_value[filter_indices]
 
         missing_int = missing_values[int]
 

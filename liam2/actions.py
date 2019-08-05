@@ -9,6 +9,7 @@ import larray as la
 
 from liam2 import config
 from liam2.compat import csv_open
+from liam2.context import EvaluationContext, EntityContext
 from liam2.expr import FunctionExpr, expr_cache, expr_eval
 from liam2.process import BreakpointException
 from liam2.partition import filter_to_indices
@@ -43,7 +44,7 @@ class CSV(FunctionExpr, FileProducer):
     fname_required = True
 
     def compute(self, context, *args, **kwargs):
-        table = (la.LArray, PrettyTable)
+        table = (la.Array, PrettyTable)
         sequence = (list, tuple)
         if (len(args) > 1 and
                 not any(isinstance(arg, table + sequence) for arg in args)):
@@ -67,8 +68,8 @@ class CSV(FunctionExpr, FileProducer):
             writer = csv.writer(f)
             for arg in args:
                 # make sure the result is at least two-dimensional
-                if isinstance(arg, la.LArray):
-                    arg = arg.as_table()
+                if isinstance(arg, la.Array):
+                    arg = arg.dump()
                 elif isinstance(arg, PrettyTable):
                     pass
                 else:
@@ -80,34 +81,52 @@ class CSV(FunctionExpr, FileProducer):
                 writer.writerows(arg)
 
 
+def shrink_array_dict(d, not_removed_indices, old_array_axes, new_array_axes):
+    assert isinstance(not_removed_indices, np.ndarray)
+    old_id_axis = old_array_axes.id
+    len_before = len(old_id_axis)
+    for name, value in d.items():
+        # This is brittle but there is nothing I can do about it now. Ideally, we should disallow
+        # storing expressions which do not result in a scalar or per-individual value
+        # (eg expressions using global arrays) in entity.temporary_variables
+        # the problem is that users currently do not have any other choice in this regard.
+        # globals are not writable/there are no globals.temporary variables nor global processes nor global macros
+        # see issue #250.
+        if isinstance(value, np.ndarray) and value.ndim == 1 and len(value) == len_before:
+            # TODO: we should make sure this case never happens !
+            d[name] = value[not_removed_indices]
+        elif isinstance(value, la.Array) and value.axes == old_array_axes:
+            d[name] = la.Array(value.data[not_removed_indices], new_array_axes)
+        # this case can currently actually happen (see above comment and issue #250)
+        # elif isinstance(value, la.Array):
+        #   pass
+
+
 class RemoveIndividuals(FunctionExpr):
     def compute(self, context, filter=None):
-        filter_value = filter
-        if filter_value is None:
-            # this is pretty inefficient, but remove without filter is not
-            # common enough to bother
-            filter_value = np.ones(len(context), dtype=bool)
-
-        if not np.any(filter_value):
-            return
-
-        not_removed = ~filter_value
+        assert isinstance(context, EvaluationContext)
 
         entity = context.entity
+        old_array_axes = entity.array.axes
         len_before = len(entity.array)
 
+        filter_value = filter
+        if isinstance(filter_value, la.Array):
+            filter_value = filter_value.data
+
+        if filter_value is None:
+            # this is inefficient, but remove without filter is not common enough to bother
+            filter_value = np.ones(old_array_axes.shape, dtype=bool)
+        elif not filter_value.any():
+            return
+
+        assert isinstance(filter_value, np.ndarray) and filter_value.ndim == 1
+        not_removed = ~filter_value
+        not_removed_indices = filter_to_indices(not_removed)
+
         # Shrink array & temporaries. 99% of the function time is spent here.
-        entity.array.keep(not_removed)
-        temp_variables = entity.temp_variables
-        for name, temp_value in temp_variables.items():
-            # This is brittle but there is nothing I can do about it now. Ideally, we should disallow
-            # storing expressions which do not result in a scalar or per-individual value
-            # (eg expressions using global arrays) in entity.temporary_variables
-            # the problem is that users currently do not have any other choice in this regard.
-            # globals are not writable/there are no globals.temporary variables nor global processes nor global macros
-            # see issue #250.
-            if isinstance(temp_value, np.ndarray) and temp_value.ndim == 1 and len(temp_value) == len_before:
-                temp_variables[name] = temp_value[not_removed]
+        entity.array.keep(not_removed_indices)
+        shrink_array_dict(entity.temp_variables, not_removed_indices, old_array_axes, entity.array.axes)
 
         # update id_to_rownum
         already_removed = entity.id_to_rownum == -1
@@ -122,6 +141,7 @@ class RemoveIndividuals(FunctionExpr):
         entity.id_to_rownum = np.insert(id_to_rownum,
                                         already_removed_indices_shifted,
                                         -1)
+
         # this version is cleaner and slightly faster but the result is also
         # slightly wrong: it eliminates ids for dead/removed individuals at
         # the end of the array and this cause bugs in time-related functions
@@ -232,8 +252,8 @@ class AssertEqual(ComparisonAssert):
     def compare(self, v1, v2):
         # even though np.array_equal also works on scalars, we don't use it
         # systematically because it does not work on list of strings
-        if (isinstance(v1, (np.ndarray, la.LArray)) or
-                isinstance(v2, (np.ndarray, la.LArray))):
+        if (isinstance(v1, (np.ndarray, la.Array)) or
+                isinstance(v2, (np.ndarray, la.Array))):
             v1, v2 = np.asarray(v1), np.asarray(v2)
             if v1.shape != v2.shape:
                 return False, ' (shape differ: %s vs %s)' % (v1.shape, v2.shape)

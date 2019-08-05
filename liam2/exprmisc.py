@@ -1,7 +1,6 @@
 # encoding: utf-8
 from __future__ import absolute_import, division, print_function
 
-from itertools import chain
 import os
 import random
 
@@ -12,15 +11,17 @@ try:
 except ImportError:
     scipy = None
 import larray as la
+from larray.core.array import concat
 
 from liam2 import config
 from liam2.compat import zip, basestring, long
+from liam2.data import LColumnArray
 from liam2.expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp, LogicalOp, getdtype, coerce_types,
-                        expr_eval, as_simple_expr, as_string, collect_variables, get_default_array, get_default_vector,
-                        FunctionExpr, always, firstarg_dtype, expr_cache, index_array_by_variables)
+                        expr_eval, as_simple_expr, as_string, collect_variables, get_default_vector,
+                        FunctionExpr, always, firstarg_dtype, expr_cache, index_array_by_variables, get_default_value)
 from liam2.exprbases import FilteredExpression, CompoundExpression, NumexprFunction, TableExpression, NumpyChangeArray
-from liam2.context import context_length
 from liam2.importer import load_ndarray, load_table
+from liam2.partition import filter_to_indices
 from liam2.utils import PrettyTable, argspec
 
 
@@ -157,7 +158,7 @@ class Trunc(FunctionExpr):
     # early since we do not have the context yet)
     # assert getdtype(self.args[0], context) == float
     def compute(self, context, expr):
-        if isinstance(expr, np.ndarray):
+        if isinstance(expr, (np.ndarray, la.Array)):
             return expr.astype(int)
         else:
             return int(expr)
@@ -167,11 +168,12 @@ class Trunc(FunctionExpr):
 
 class Erf(FunctionExpr):
     def compute(self, context, expr):
+        # TODO: move check to __init__ instead
         if scipy is None:
             raise ImportError(
                 "Failed to import scipy, which is required for erf(). Please make sure scipy is installed and working.",
                 )
-        if isinstance(expr, np.ndarray):
+        if isinstance(expr, (np.ndarray, la.Array)):
             return special.erf(expr)
         else:
             return scipy.math.erf(expr)
@@ -196,21 +198,13 @@ class Exp(NumexprFunction):
     dtype = always(float)
 
 
-def add_individuals(target_context, children):
-    target_entity = target_context.entity
-    id_to_rownum = target_entity.id_to_rownum
-    array = target_entity.array
-    num_rows = len(array)
-    num_birth = len(children)
-    if config.log_level == "processes":
-        print("%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name,
-                                           num_rows, num_rows + num_birth),
-              end=' ')
-
-    target_entity.array.append(children)
-
-    temp_variables = target_entity.temp_variables
-    for name, temp_value in temp_variables.items():
+def expand_with_defaults(d, old_array_axes, children_axes, new_array_axes):
+    old_id_axis = old_array_axes.id
+    num_birth = len(children_axes.id)
+    len_before = len(old_id_axis)
+    for name, value in d.items():
+        if name == '__globals__':
+            continue
         # FIXME: OUCH, this is getting ugly, I'll need a better way to
         # differentiate nd-arrays from "entity" variables
         # I guess having the context contain all entities and a separate
@@ -223,29 +217,29 @@ def add_individuals(target_context, children):
         # to further distinguish between aggregated entity var and other global
         # temporaries to store them in the entity somewhere, but I am unsure
         # whether it is possible.
-        if (isinstance(temp_value, np.ndarray) and
-                temp_value.shape == (num_rows,)):
-            extra = get_default_vector(num_birth, temp_value.dtype)
-            temp_variables[name] = np.concatenate((temp_value, extra))
-
-    extra_variables = target_context.entity_data.extra
-    for name, temp_value in extra_variables.items():
-        if name == '__globals__':
-            continue
-        if isinstance(temp_value, np.ndarray) and temp_value.shape:
-            extra = get_default_vector(num_birth, temp_value.dtype)
-            extra_variables[name] = np.concatenate((temp_value, extra))
-
-    id_to_rownum_tail = np.arange(num_rows, num_rows + num_birth)
-    target_entity.id_to_rownum = np.concatenate(
-        (id_to_rownum, id_to_rownum_tail))
+        if isinstance(value, np.ndarray) and value.shape == (len_before,):
+            # TODO: I should make sure this case never happens (so that I can remove the FIXME above)
+            extra = get_default_vector(num_birth, value.dtype)
+            d[name] = np.concatenate((value, extra))
+        elif isinstance(value, la.Array) and value.axes is old_array_axes:
+            # fastpath for the usual case of simple columns
+            assert value.ndim == 1
+            new_column = la.empty(new_array_axes, dtype=value.dtype)
+            new_column.data[:len_before] = value.data
+            new_column.data[len_before:] = get_default_value(value.dtype)
+            d[name] = new_column
+        elif isinstance(value, la.Array) and 'id' in value.axes:
+            # TODO: I should make sure this case never happens (so that I can remove the FIXME above)
+            # raise NotImplementedError("other id axis for {}".format(name))
+            extra = la.full(children_axes, get_default_value(value.dtype))
+            d[name] = concat((value, extra), 'id')
 
 
 class New(FilteredExpression):
     no_eval = ('filter', 'kwargs')
 
-    def _initial_values(self, array, to_give_birth, num_birth, default_values):
-        return get_default_array(num_birth, array.dtype, default_values)
+    def _initial_values(self, array, to_give_birth, extra_axes, default_values):
+        return LColumnArray.default_array(extra_axes, array.dtype, default_values)
 
     @classmethod
     def _collect_kwargs_variables(cls, kwargs):
@@ -265,6 +259,8 @@ class New(FilteredExpression):
             raise ValueError("new() 'filter' and 'number' arguments are "
                              "mutually exclusive")
         source_entity = context.entity
+        source_axes = source_entity.array.axes
+
         if entity_name is None:
             target_entity = source_entity
         else:
@@ -275,7 +271,7 @@ class New(FilteredExpression):
         if target_entity is source_entity:
             target_context = context
         else:
-            # we do need to copy the data (.extra) because we will insert into
+            # we do not need to copy the data (.extra) because we will insert into
             # the entity.array anyway => fresh_data=True
             target_context = context.clone(fresh_data=True,
                                            entity_name=target_entity.name)
@@ -288,8 +284,13 @@ class New(FilteredExpression):
             to_give_birth = None
             num_birth = number
         else:
-            to_give_birth = np.ones(len(context), dtype=bool)
+            # this is inefficient but we don't care given this is a very rare case
+            to_give_birth = la.ones(source_axes, dtype=bool)
             num_birth = len(context)
+
+        if isinstance(to_give_birth, np.ndarray):
+            print("WARNING: to_give_birth is not an la.Array")
+            to_give_birth = la.Array(to_give_birth, source_axes)
 
         array = target_entity.array
         default_values = target_entity.fields.default_values
@@ -297,11 +298,11 @@ class New(FilteredExpression):
         id_to_rownum = target_entity.id_to_rownum
         num_individuals = len(id_to_rownum)
 
-        children = self._initial_values(array, to_give_birth, num_birth,
-                                        default_values)
+        extra_ids = np.arange(num_individuals, num_individuals + num_birth)
+        children_axes = la.AxisCollection(la.Axis(extra_ids, 'id'))
+        children = self._initial_values(array, to_give_birth, children_axes, default_values)
         if num_birth:
-            children['id'] = np.arange(num_individuals,
-                                       num_individuals + num_birth)
+            children['id'] = extra_ids
             children['period'] = context.period
 
             used_variables = [v.name for v in
@@ -316,23 +317,43 @@ class New(FilteredExpression):
                 if k not in array.dtype.names:
                     print("WARNING: {} is unknown, ignoring it!".format(k))
                     continue
-                children[k] = expr_eval(v, child_context)
+                value = expr_eval(v, child_context)
+                if isinstance(value, la.Array):
+                    # the whole point is to set child fields using expressions computed on the parent, so the ids will
+                    # not match !
+                    value = value.ignore_labels('id')
+                children[k] = value
 
-        add_individuals(target_context, children)
+        # add children to the target_context
+        assert isinstance(children, LColumnArray)
+        num_rows = len(array)
+        if config.log_level == "processes":
+            print("%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name,
+                                               num_rows, num_rows + num_birth),
+                  end=' ')
+        old_array_axes = array.axes
+        array.append(children)
+        new_array_axes = array.axes
+        children_axes = children.axes
+        expand_with_defaults(target_entity.temp_variables, old_array_axes, children_axes, new_array_axes)
+        expand_with_defaults(target_context.entity_data.extra, old_array_axes, children_axes, new_array_axes)
+        id_to_rownum_tail = np.arange(num_rows, num_rows + num_birth)
+        target_entity.id_to_rownum = np.concatenate((target_entity.id_to_rownum, id_to_rownum_tail))
 
         expr_cache.invalidate(context.period, context.entity_name)
 
         # result is the ids of the new individuals corresponding to the source
         # entity
         if to_give_birth is not None:
-            result = np.full(context_length(context), -1, dtype=int)
-            if source_entity is target_entity:
-                extra_bools = np.zeros(num_birth, dtype=bool)
-                to_give_birth = np.concatenate((to_give_birth, extra_bools))
+            # working with indices is usually faster and allows us to avoid enlarging to_give_bith to match
+            # the source_entity new length when the source_entity is the same as the target entity
+            to_give_birth_indices = filter_to_indices(to_give_birth.data)
+            result = la.full(source_entity.array.axes, -1, dtype=int)
+
             # Note that np.place is a bit faster, but is currently buggy when
             # working with columns of structured arrays.
             # See https://github.com/numpy/numpy/issues/2462
-            result[to_give_birth] = children['id']
+            result.i[to_give_birth_indices] = children['id'].ignore_labels()
             return result
         else:
             return None
@@ -344,7 +365,9 @@ class Clone(New):
     def __init__(self, filter=None, **kwargs):
         New.__init__(self, None, filter, None, **kwargs)
 
-    def _initial_values(self, array, to_give_birth, num_birth, default_values):
+    def _initial_values(self, array, to_give_birth, extra_axes, default_values):
+        if to_give_birth is None:
+            raise ValueError("filter argument must be provided for clone()")
         # TODO: we should change the code in LColumnArray to transform the boolean index into indices
         return array[to_give_birth]
 
@@ -394,23 +417,23 @@ class Dump(TableExpression):
             else:
                 # TODO: set filter before evaluating expressions
                 expr_value = expr_eval(expr, context)
-                if (filter_value is not None and
-                        isinstance(expr_value, np.ndarray) and
-                        expr_value.shape):
+                if filter_value is not None and isinstance(expr_value, (np.ndarray, la.Array)) and expr_value.shape:
                     expr_value = expr_value[filter_value]
             columns.append(expr_value)
 
         ids = columns[id_pos]
-        if isinstance(ids, np.ndarray) and ids.shape:
+        if isinstance(ids, (np.ndarray, la.Array)) and ids.shape:
             numrows = len(ids)
         else:
-            # FIXME: we need a test for this case (no idea how this can happen)
+            # FIXME: we need a test for this case (when there are no rows selected by the filter)
+            # XXX: numrows should probably be 0 instead (but then we can use len(ids)??
             numrows = 1
 
         # expand scalar columns to full columns in memory
+        # TODO: we should rather check for an id axis
         for idx, col in enumerate(columns):
             dtype = None
-            if not isinstance(col, np.ndarray):
+            if not isinstance(col, (la.Array, np.ndarray)):
                 dtype = type(col)
             elif not col.shape:
                 dtype = col.dtype.type
@@ -421,14 +444,20 @@ class Dump(TableExpression):
                 # not play very well with Pandas.to_csv)
                 newcol = np.full(numrows, col, dtype=dtype)
                 columns[idx] = newcol
-            elif col.ndim > 1:
+            elif isinstance(col, la.Array):
+                if col.ndim > 1 and col.axes[0].name != 'id':
+                    # move id axis first
+                    col = col.transpose('id')
+                # only store raw ndarray
+                columns[idx] = col.data
+            elif col.ndim > 1:  # np.ndarray case
                 # move last axis (should be id axis) first
                 # np.moveaxis requires numpy >= 1.11
                 # columns[idx] = np.moveaxis(col, -1, 0)
                 columns[idx] = col.transpose((-1,) + tuple(range(col.ndim - 1)))
 
         assert all(isinstance(col, np.ndarray) for col in columns)
-        bad_lengths = {str_expr: col.shape for col, str_expr in zip(columns, str_expressions)
+        bad_lengths = {str_expr: col.shape[0] for col, str_expr in zip(columns, str_expressions)
                        if col.shape[0] != numrows}
         if bad_lengths:
             raise ValueError("first dimension of some columns are not the same length as the id column (%d): %s"
@@ -532,7 +561,7 @@ class ExtExpr(FunctionExpr):
             self.args = (coefficients,) + self.args[1:]
 
     def compute(self, context, coefficients):
-        assert isinstance(coefficients, la.LArray)
+        assert isinstance(coefficients, la.Array)
 
         # XXX: change to "variable"? because we can use temporary variables too!
         #      or even to "expressions" if we want to support expressions.
@@ -588,12 +617,15 @@ class Array(FunctionExpr):
 
 
 class Load(FunctionExpr):
-    def compute(self, context, fname, type=None, fields=None):
-        # TODO: move those checks to __init__
+    def __init__(self, fname, type=None, fields=None):
         if type is None and fields is None:
             raise ValueError("type or fields must be specified")
         if type is not None and fields is not None:
             raise ValueError("cannot specify both type and fields")
+
+        FunctionExpr.__init__(self, fname, type=type, fields=fields)
+
+    def compute(self, context, fname, type=None, fields=None):
         # using abspath does not change anything except it makes relative paths using ".." easier to read
         file_path = os.path.abspath(os.path.join(config.input_directory, fname))
         if type is not None:
@@ -603,9 +635,15 @@ class Load(FunctionExpr):
 
 
 class View(FunctionExpr):
-    def compute(self, context, expr):
-        # XXX: is expr_eval necessary here?
-        la.view(expr_eval(expr, context))
+    def compute(self, context, obj=None):
+        print(la.__version__)
+        if obj is None:
+            def entity():
+                return context.entity_name
+            d = dict(context.items())
+            d['entity'] = entity
+            obj = d
+        la.view(obj)
 
     dtype = None
 

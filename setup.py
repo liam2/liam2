@@ -235,10 +235,14 @@ setup(
     install_requires=[
         # not specifying cython here because we need it to be installed
         # *before* this script executes, if we want it to be of any use.
-        'larray < 0.29',
+
+        # we fix a precise version of larray because we monkey-patch a private method of it and this is probably
+        # going to be more brittle than usual. See larray_monkey.py for more details.
+        'larray == 0.32.*',
         'numexpr >= 2.6.6',
         'numpy >= 1.8',
         'tables >= 3',
+        'pandas',
         'pyyaml',
     ],
     extras_require=dict(

@@ -275,13 +275,16 @@ entities:
 
                 # the arrays are small enough in this test that we can build
                 # the whole score matrix in memory
-                - potential_score: -(age[FEMALE].reshape(300, 1) - men_age) ** 2
+                - potential_score: -(age[FEMALE].rename('id', 'woman_id') - men_age) ** 2
 
                 # has each man 10 women with a <= potential_score?
-                - has10lower: (potential_score <= score_match).sum(0) >= 10
+                - has10lower: (potential_score <= score_match).sum('woman_id') >= 10
+
                 # the last 10 men matched (ie the youngest) are ignored,
                 # because they had to choose in a smaller pool
-                - assertTrue(all(has10lower, filter=age[MALE] < 5))
+                - assertTrue(all(has10lower))
+#                - assertTrue(all(has10lower[age[MALE] < 5]))
+#                - assertTrue(all(has10lower, filter=age[MALE] < 5))
 
                 # large pool, men in set1 and women in set2, older men first
                 # ==========================================================

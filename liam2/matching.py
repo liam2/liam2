@@ -1,14 +1,16 @@
 # encoding: utf-8
 from __future__ import absolute_import, division, print_function
 
-import numpy as np
 import random
+
+import numpy as np
+import larray as la
 
 from liam2.expr import expr_eval, always, expr_cache
 from liam2.exprbases import FilteredExpression
 from liam2.context import context_length, context_delete, context_subset, context_keep
 from liam2.utils import loop_wh_progress
-# FIXME: should be optional
+
 try:
     from liam2.cpartition import group_indices_nd
 except ImportError:
@@ -18,23 +20,37 @@ except ImportError:
 def group_context(used_variables, setfilter, context):
     """
     return a dict of the form:
-    {'field1': array1, 'field2': array2, 'idx': array_of_arrays_of_ids}
+    {
+    'field1': array([field1_value_for_group1, field1_value_for_group2, ...]),
+    'field2': array([field2_value_for_group1, field2_value_for_group2, ...]),
+    '__ids__': array([array_of_ids_for_group1, array_of_ids_for_group2, ...]),
+    '__len__': number_of_groups
+    }
     """
     names = sorted(used_variables)
+    if isinstance(setfilter, la.Array):
+        setfilter = setfilter.data
+    idcol = context['id']
+    assert isinstance(idcol, la.Array)
+    idcol = idcol.data
     columns = [context[name] for name in names]
+    columns = [col.data if isinstance(col, la.Array) else col
+               for col in columns]
 
     if group_indices_nd is None:
-        raise  Exception('aglo="byvalue" is not available when C extensions cannot be used')
+        raise Exception('aglo="byvalue" is not available when C extensions cannot be used')
 
     # group_indices_nd returns a dict {value_or_tuple: array_of_indices}
+    # XXX: we cannot use partition_nd as-is because it computes unique labels per dimension, but we might want to
+    #      factorize a common function.
     d = group_indices_nd(columns, setfilter)
 
-    keylists = zip(*list(d.keys())) if len(columns) > 1 else [list(d.keys())]
+    combined_labels_present = list(d.keys())
+    keylists = zip(*combined_labels_present) if len(columns) > 1 else [combined_labels_present]
     keyarrays = [np.array(c) for c in keylists]
 
     # we want a 1d array of arrays, not the 2d array that np.array(d.values())
     # produces if we have a list of arrays with all the same length
-    idcol = context['id']
     ids_by_group = np.empty(len(d), dtype=object)
     ids_by_group[:] = [idcol[v] for v in d.values()]
 
@@ -74,18 +90,26 @@ class RankMatching(Matching):
         if not numtomatch:
             return result
 
-        sorted_set1_indices = orderby1[set1filtervalue].argsort()[-numtomatch:]
-        sorted_set2_indices = orderby2[set2filtervalue].argsort()[-numtomatch:]
+        filtered_orderby1 = orderby1[set1filtervalue]
+        if isinstance(filtered_orderby1, la.Array):
+            sorted_set1_indices = filtered_orderby1.indicesofsorted().i[-numtomatch:]
+        else:
+            sorted_set1_indices = filtered_orderby1.argsort()[-numtomatch:]
+        filtered_orderby2 = orderby2[set2filtervalue]
+        if isinstance(filtered_orderby2, la.Array):
+            sorted_set2_indices = filtered_orderby2.indicesofsorted().i[-numtomatch:]
+        else:
+            sorted_set2_indices = filtered_orderby2.argsort()[-numtomatch:]
 
         set1ids = context['id'][set1filtervalue]
         set2ids = context['id'][set2filtervalue]
 
         id_to_rownum = context.id_to_rownum
-        id1 = set1ids[sorted_set1_indices]
-        id2 = set2ids[sorted_set2_indices]
+        sorted_set1_ids = set1ids.i[sorted_set1_indices]
+        sorted_set2_ids = set2ids.i[sorted_set2_indices]
         # cannot use sorted_setX_indices because those are "local" indices
-        result[id_to_rownum[id1]] = id2
-        result[id_to_rownum[id2]] = id1
+        result[id_to_rownum[sorted_set1_ids]] = sorted_set2_ids
+        result[id_to_rownum[sorted_set2_ids]] = sorted_set1_ids
         return result
 
 
@@ -155,13 +179,16 @@ class SequentialMatching(Matching):
             set2 = context.subset(set2filtervalue, {'id'} | used_variables2,
                                   set2filterexpr)
 
-            # subset creates a dict for the current entity, so .entity_data is a
-            # dict
+            # subset creates a dict for the current entity, so .entity_data is a dict
             set1 = set1.entity_data
             set2 = set2.entity_data
 
-            set1['__ids__'] = set1['id'].reshape(set1len, 1)
-            set2['__ids__'] = set2['id'].reshape(set2len, 1)
+            # FIXME
+            # TypeError: reshape() takes 2 positional arguments but 3 were given
+            # this was meant to make set1['__ids__'][sorted_idx] an array of length 1
+            # so that "onebyone" and "byvalue" branches can use the same code within the loop
+            set1['__ids__'] = set1['id'].data.reshape(set1len, 1)
+            set2['__ids__'] = set2['id'].data.reshape(set2len, 1)
 
             print()
         else:
@@ -199,7 +226,11 @@ class SequentialMatching(Matching):
         context_keep(set1, used_variables1)
         context_keep(set2, used_variables2)
 
-        sorted_set1_indices = orderbyvalue.argsort()[::-1]
+        if isinstance(orderbyvalue, la.Array):
+            # TODO: this should be the only case supported
+            sorted_set1_indices = orderbyvalue.data.argsort()[::-1]
+        else:
+            sorted_set1_indices = orderbyvalue.argsort()[::-1]
 
         result = np.full(context_length(context), -1, dtype=int)
         id_to_rownum = context.id_to_rownum
@@ -216,24 +247,37 @@ class SequentialMatching(Matching):
                 raise StopIteration
 
             if pool_size is not None and set2_size > pool_size:
-                pool = random.sample(range(set2_size), pool_size)
-                local_ctx = context_subset(matching_ctx, pool)
+                pool_indices = random.sample(range(set2_size), pool_size)
+                local_ctx = context_subset(matching_ctx, pool_indices)
             else:
                 local_ctx = matching_ctx.copy()
 
-            local_ctx.update((k, set1[k][sorted_idx])
-                             for k in {'__ids__'} | used_variables1)
+            # local_var_names = {'__ids__'} | used_variables1
+            local_ctx['__ids__'] = set1['__ids__'][sorted_idx]
+            # using .data instead of .i is marginally faster
+            local_ctx.update((k, set1[k].data[sorted_idx] if isinstance(set1[k], la.Array) else set1[k][sorted_idx])
+                             for k in used_variables1)
 
             eval_ctx = context.clone(entity_data=local_ctx)
             set2_scores = expr_eval(score, eval_ctx)
-            cell2_idx = set2_scores.argmax()
+            if isinstance(set2_scores, la.Array):
+                assert set2_scores.ndim == 1 and set2_scores.axes[0].name == 'id'
+                cell2_idx = set2_scores.data.argmax()
+            else:
+                cell2_idx = set2_scores.argmax()
 
             cell1ids = local_ctx['__ids__']
+            if np.isscalar(cell1ids):
+                # this is the "onebyone" case
+                cell1ids = [cell1ids]
+
             cell2ids = local_ctx['__other___ids__'][cell2_idx]
+            if np.isscalar(cell2ids):
+                cell2ids = [cell2ids]
 
             if pool_size is not None and set2_size > pool_size:
                 # transform pool-local index to set/matching_ctx index
-                cell2_idx = pool[cell2_idx]
+                cell2_idx = pool_indices[cell2_idx]
 
             cell1size = len(cell1ids)
             cell2size = len(cell2ids)
@@ -265,7 +309,7 @@ class SequentialMatching(Matching):
             # * use a local cache so that methods after matching() can use
             # what was in the cache before matching(). Shouldn't the cache be
             # stored inside the context anyway?
-            expr_cache.invalidate(context.period, context.entity_name)
+            # expr_cache.invalidate(context.period, context.entity_name)
 
             if nb_match < cell1size:
                 set1['__ids__'][sorted_idx] = cell1ids[nb_match:]

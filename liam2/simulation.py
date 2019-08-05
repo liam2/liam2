@@ -13,9 +13,11 @@ import numpy as np
 import tables
 import yaml
 
+# must not do this in main, because some code does not use main (namely test_liam2)
+from liam2 import larray_monkey
 from liam2.compat import basestring
 from liam2.context import EvaluationContext
-from liam2.data import VoidSource, H5Source, H5Sink
+from liam2.data import VoidSource, H5Source, H5Sink, LColumnArray
 from liam2.entities import Entity, global_symbols
 from liam2.utils import (time2str, timed, gettime, validate_dict, expand_wild, multi_get, multi_set, merge_dicts,
                          merge_items, field_str_to_type, fields_yaml_to_type, UserDeprecationWarning, Or)
@@ -404,7 +406,7 @@ class Simulation(object):
                 # FIXME: this should be initialized to the data from
                 # start_period - 2, if any so that we can use lag() in an init
                 # process
-                entity.array_lag = np.empty(0, dtype=np.dtype(lag_fields))
+                entity.array_lag = LColumnArray.empty(0, dtype=np.dtype(lag_fields))
             else:
                 lag_fields = []
             entity.lag_fields = lag_fields
@@ -541,117 +543,24 @@ class Simulation(object):
         np.seterr(divide='ignore', invalid='ignore')
 
         process_time = defaultdict(float)
-        period_objects = {}
+        self.period_objects = {}
         eval_ctx = EvaluationContext(self, self.entities_map, globals_data)
-
-        def simulate_period(period_idx, period, processes, entities,
-                            init=False):
-            period_start_time = time.time()
-
-            # set current period
-            eval_ctx.period = period
-
-            if config.log_level in ("functions", "processes"):
-                print()
-            print("period", period,
-                  end=" " if config.log_level == "periods" else "\n")
-            if init and config.log_level in ("functions", "processes"):
-                for entity in entities:
-                    print("  * %s: %d individuals" % (entity.name,
-                                                      len(entity.array)))
-            else:
-                if config.log_level in ("functions", "processes"):
-                    print("- loading input data")
-                    for entity in entities:
-                        print("  *", entity.name, "...", end=' ')
-                        timed(entity.load_period_data, period)
-                        print("    -> %d individuals" % len(entity.array))
-                else:
-                    for entity in entities:
-                        entity.load_period_data(period)
-            for entity in entities:
-                entity.array_period = period
-                entity.array['period'] = period
-
-            if processes:
-                num_processes = len(processes)
-                for p_num, process_def in enumerate(processes, start=1):
-                    process, periodicity = process_def
-
-                    # set current entity
-                    eval_ctx.entity_name = process.entity.name
-
-                    if config.log_level in ("functions", "processes"):
-                        print("- %d/%d" % (p_num, num_processes), process.name,
-                              end=' ')
-                        print("...", end=' ')
-                    if period_idx % periodicity == 0:
-                        elapsed, _ = gettime(process.run_guarded, eval_ctx)
-                    else:
-                        elapsed = 0
-                        if config.log_level in ("functions", "processes"):
-                            print("skipped (periodicity)")
-
-                    process_time[process.name] += elapsed
-                    if config.log_level in ("functions", "processes"):
-                        if config.show_timings:
-                            print("done (%s elapsed)." % time2str(elapsed))
-                        else:
-                            print("done.")
-                    self.start_console(eval_ctx)
-
-            if config.log_level in ("functions", "processes"):
-                print("- storing period data")
-                for entity in entities:
-                    print("  *", entity.name, "...", end=' ')
-                    timed(entity.store_period_data, period)
-                    print("    -> %d individuals" % len(entity.array))
-            else:
-                for entity in entities:
-                    entity.store_period_data(period)
-#            print(" - compressing period data")
-#            for entity in entities:
-#                print("  *", entity.name, "..."),
-#                for level in range(1, 10, 2):
-#                    print("   %d:" % level),
-#                    timed(entity.compress_period_data, level)
-            period_objects[period] = sum(len(entity.array)
-                                         for entity in entities)
-            period_elapsed_time = time.time() - period_start_time
-            if config.log_level in ("functions", "processes"):
-                print("period %d" % period, end=' ')
-            print("done", end=' ')
-            if config.show_timings:
-                print("(%s elapsed)" % time2str(period_elapsed_time), end="")
-                if init:
-                    print(".")
-                else:
-                    main_elapsed_time = time.time() - main_start_time
-                    periods_done = period_idx + 1
-                    remaining_periods = self.periods - periods_done
-                    avg_time = main_elapsed_time / periods_done
-                    # future_time = period_elapsed_time * 0.4 + avg_time * 0.6
-                    remaining_time = avg_time * remaining_periods
-                    print(" - estimated remaining time: %s."
-                          % time2str(remaining_time))
-            else:
-                print()
 
         print("""
 =====================
  starting simulation
 =====================""")
         try:
-            simulate_period(0, self.start_period - 1, self.init_processes,
-                            self.entities, init=True)
+            self.simulate_period(eval_ctx, 0, self.start_period - 1, self.init_processes,
+                                 self.entities, None, process_time, init=True)
             main_start_time = time.time()
             periods = range(self.start_period,
                             self.start_period + self.periods)
             for period_idx, period in enumerate(periods):
-                simulate_period(period_idx, period,
-                                self.processes, self.entities)
+                self.simulate_period(eval_ctx, period_idx, period, self.processes, self.entities,
+                                     main_start_time, process_time)
 
-            total_objects = sum(period_objects[period] for period in periods)
+            total_objects = sum(self.period_objects[period] for period in periods)
             avg_objects = str(total_objects // self.periods) \
                 if self.periods else 'N/A'
             main_elapsed_time = time.time() - main_start_time
@@ -699,6 +608,104 @@ class Simulation(object):
                 except OSError:
                     print("WARNING: could not delete temporary directory: %r"
                           % dirname)
+
+    def simulate_period(self, eval_ctx, period_idx, period, processes, entities,
+                        main_start_time, process_time, init=False):
+        period_start_time = time.time()
+
+        # set current period
+        eval_ctx.period = period
+
+        if config.log_level in ("functions", "processes"):
+            print()
+        print("period", period, end=" " if config.log_level == "periods" else "\n")
+        if init and config.log_level in ("functions", "processes"):
+            for entity in entities:
+                print("  * %s: %d individuals" % (entity.name, len(entity.array)))
+        else:
+            if config.log_level in ("functions", "processes"):
+                print("- loading input data")
+                for entity in entities:
+                    print("  *", entity.name, "...", end=' ')
+                    timed(entity.load_period_data, period)
+                    print("    -> %d individuals" % len(entity.array))
+            else:
+                for entity in entities:
+                    entity.load_period_data(period)
+        for entity in entities:
+            entity.array_period = period
+            entity.array['period'] = period
+
+        if processes:
+            num_processes = len(processes)
+            for p_num, process_def in enumerate(processes, start=1):
+                process, periodicity = process_def
+
+                # set current entity
+                eval_ctx.entity_name = process.entity.name
+
+                if config.log_level in ("functions", "processes"):
+                    print("- %d/%d" % (p_num, num_processes), process.name,
+                          end=' ')
+                    print("...", end=' ')
+                if period_idx % periodicity == 0:
+                    elapsed, _ = gettime(process.run_guarded, eval_ctx)
+                else:
+                    elapsed = 0
+                    if config.log_level in ("functions", "processes"):
+                        print("skipped (periodicity)")
+
+                process_time[process.name] += elapsed
+                if config.log_level in ("functions", "processes"):
+                    if config.show_timings:
+                        print("done (%s elapsed)." % time2str(elapsed))
+                    else:
+                        print("done.")
+                self.start_console(eval_ctx)
+
+        if config.log_level in ("functions", "processes"):
+            print("- storing period data")
+            for entity in entities:
+                print("  *", entity.name, "...", end=' ')
+                timed(entity.store_period_data, period)
+                print("    -> %d individuals" % len(entity.array))
+        else:
+            for entity in entities:
+                entity.store_period_data(period)
+        #            print(" - compressing period data")
+        #            for entity in entities:
+        #                print("  *", entity.name, "..."),
+        #                for level in range(1, 10, 2):
+        #                    print("   %d:" % level),
+        #                    timed(entity.compress_period_data, level)
+        self.period_objects[period] = sum(len(entity.array) for entity in entities)
+        period_elapsed_time = time.time() - period_start_time
+        if config.log_level in ("functions", "processes"):
+            print("period %d" % period, end=' ')
+        print("done", end=' ')
+        if config.show_timings:
+            print("(%s elapsed)" % time2str(period_elapsed_time), end="")
+            if init:
+                print(".")
+            else:
+                main_elapsed_time = time.time() - main_start_time
+                periods_done = period_idx + 1
+                remaining_periods = self.periods - periods_done
+                avg_time = main_elapsed_time / periods_done
+                # future_time = period_elapsed_time * 0.4 + avg_time * 0.6
+                remaining_time = avg_time * remaining_periods
+                print(" - estimated remaining time: %s."
+                      % time2str(remaining_time))
+        else:
+            print()
+
+    def run_from_state(self, call_stack):
+        """
+        call_stack: list
+            # function name is not strictly necessary by will probably make debugging easier
+            list of {'function_name': str, 'n_process_done': int, 'variables': dict}
+        """
+        pass
 
     def run(self, run_console=False):
         for i in range(int(self.runs)):
