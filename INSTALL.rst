@@ -38,7 +38,7 @@ LIAM2 is built on top of a number of other open-source packages. See below for t
 Required dependencies:
 
 - Python 2.7 or 3.5+ (32b or 64b) - http://www.python.org/
-- LArray 0.27.0 or later - https://larray.readthedocs.io/
+- LArray 0.32 - https://larray.readthedocs.io/
 - Numpy 1.8.0 or later - http://www.numpy.org/
 - PyTables 3 or later - http://www.pytables.org
 - Numexpr 2.0 or later - https://github.com/pydata/numexpr

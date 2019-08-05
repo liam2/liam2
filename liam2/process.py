@@ -78,7 +78,7 @@ class Assignment(Process):
             self.store_result(value, context)
 
     def store_result(self, result, context):
-        if isinstance(result, (np.ndarray, la.LArray)):
+        if isinstance(result, (np.ndarray, la.Array)):
             res_type = result.dtype.type
         else:
             res_type = type(result)

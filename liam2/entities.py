@@ -12,7 +12,8 @@ import tables
 
 from liam2 import config
 from liam2.compat import basestring
-from liam2.data import merge_arrays, get_fields, ColumnArray, index_table, build_period_array
+from liam2.data import (merge_arrays, get_fields, ColumnArray, index_table, build_period_array,
+                        index_per_period_to_axis_per_period, LColumnArray)
 from liam2.expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable, GlobalArray, Expr, BinaryOp,
                         MethodSymbol, normalize_type)
 from liam2.exprtools import parse
@@ -230,6 +231,7 @@ class Entity(object):
         self.output_rows = {}
         self.output_index = {}
         self.output_index_node = None
+        self.output_axes_node = None
 
         self.base_period = None
         # we need a separate field, instead of using array['period'] to be able
@@ -243,13 +245,17 @@ class Entity(object):
         self.num_tmp = 0
         self.temp_variables = {}
         self.id_to_rownum = None
+        self.id_axis_per_period = {}
         if array is not None:
+            assert isinstance(array, LColumnArray)
             rows_per_period, index_per_period = index_table(array)
+            self.id_axis_per_period = index_per_period_to_axis_per_period(index_per_period)
             self.input_rows = rows_per_period
             self.output_rows = rows_per_period
             self.input_index = index_per_period
             self.output_index = index_per_period
             self.id_to_rownum = index_per_period[array_period]
+            assert array.axes.id.equals(self.id_axis_per_period[array_period])
         self._variables = None
         self._methods = None
 
@@ -289,7 +295,7 @@ class Entity(object):
                       process_strings={})
 
     # TODO: in_process_group argument will become useless if we drop support for detecting processes defined
-    # outside functions
+    #       outside functions
     @staticmethod
     def is_expr(k, v, in_process_group=False):
         if in_process_group:
@@ -628,25 +634,20 @@ Please use this instead:
         return lag_vars
 
     def build_period_array(self, start_period):
-        self.array, self.id_to_rownum = \
-            build_period_array(self.input_table,
-                               list(self.fields.in_input.names),
-                               self.fields.name_types,
-                               self.input_rows,
-                               self.input_index, start_period,
-                               default_values=self.fields.default_values)
-
-        assert isinstance(self.array, ColumnArray)
+        self.array, self.id_to_rownum = build_period_array(self.input_table,
+                                                           list(self.fields.in_input.names),
+                                                           self.fields.name_types,
+                                                           self.input_rows,
+                                                           self.input_index, start_period,
+                                                           default_values=self.fields.default_values)
+        assert isinstance(self.array, LColumnArray)
         self.array_period = start_period
 
     def load_period_data(self, period):
+        # copy the current data to array_lag before we overwrite it
         if self.lag_fields:
-            # TODO: use ColumnArray here
-            # XXX: do we need np.empty? (but watch for alias problems)
-            self.array_lag = np.empty(len(self.array),
-                                      dtype=np.dtype(self.lag_fields))
-            for field, _ in self.lag_fields:
-                self.array_lag[field] = self.array[field]
+            self.array_lag = LColumnArray([(field, self.array[field]) for field, _ in self.lag_fields],
+                                          self.array.axes)
 
         # if not self.indexed_input_table.has_period(period):
         #     # nothing needs to be done in that case
@@ -661,19 +662,20 @@ Please use this instead:
 
         start, stop = rows
 
-        # It would be nice to use ColumnArray.from_table and adapt merge_arrays
-        # to produce a ColumnArray in all cases, but it is not a huge priority
+        # It would be nice to use LColumnArray.from_table and adapt merge_arrays
+        # to produce a LColumnArray in all cases, but it is not a huge priority
         # for now
         input_array = self.input_table.read(start, stop)
 
-        self.array, self.id_to_rownum = \
-            merge_arrays(self.array, input_array, result_fields='array1',
-                         default_values=self.fields.default_values)
-        # this can happen, depending on the layout of columns in input_array,
-        # but the usual case (in retro) is that self.array is a superset of
+        assert isinstance(self.array, LColumnArray)
+        carray = self.array.to_carray()
+        merged_data, self.id_to_rownum = merge_arrays(carray, input_array, result_fields='array1',
+                                                      default_values=self.fields.default_values)
+
+        # merged_data can be a structured numpy array or a ColumnArray, depending on the layout of
+        # columns in input_array, but the usual case (in retro) is that self.array is a superset of
         # input_array, in which case merge_arrays returns a ColumnArray
-        if not isinstance(self.array, ColumnArray):
-            self.array = ColumnArray(self.array)
+        self.array = LColumnArray(merged_data)
 
     def purge_locals(self):
         """purge all local variables"""
@@ -702,6 +704,7 @@ Please use this instead:
     def flush_index(self, period):
         # keep an in-memory copy of the index for the current period
         self.output_index[period] = self.id_to_rownum
+        self.id_axis_per_period[period] = self.array.axes.id.copy()
 
         # also flush it to disk
         # noinspection PyProtectedMember

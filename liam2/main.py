@@ -22,7 +22,6 @@ from liam2.upgrade import upgrade
 from liam2.utils import AutoFlushFile
 from liam2.view import viewhdf
 
-
 from liam2.version import __version__
 
 
@@ -136,11 +135,11 @@ def simulate(args):
     # import cProfile as profile
     # print("profiling...")
     # profile.runctx('simulation.run(False)', vars(), {},
-    #                'c:\\tmp\\simulation.profile')
+    #                'simulation.profile')
     # to use profiling data:
     # import pstats
-    # p = pstats.Stats('c:\\tmp\\simulation.profile')
-    # p.strip_dirs().sort_stats('cum').print_stats(30)
+    # p = pstats.Stats('simulation.profile')
+    # p.strip_dirs().sort_stats('cumtime').print_stats(30)
 
 
 def explore(fpath):
@@ -356,10 +355,13 @@ done in-place."""
 
     # this can happen via the environment variable too!
     if config.debug:
+        import larray_editor
+
         # by default, DeprecationWarning and PendingDeprecationWarning, and
         # ImportWarning are ignored, this shows them.
         warnings.simplefilter('default')
-        sys.excepthook = print_exception_wh_context
+        # sys.excepthook = print_exception_wh_context
+        larray_editor.run_editor_on_exception(usercode_traceback=False)
     else:
         sys.excepthook = print_exception_simplified
 

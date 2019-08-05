@@ -4,15 +4,17 @@ from __future__ import absolute_import, division, print_function
 import random
 
 import numpy as np
+import larray as la
 
 
 # noinspection PyNoneFunctionAssignment
 def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
                   secondary_axis=None):
-    # need and num_candidates are LArray, but we don't need the extra
+    # need, num_candidates and fcols_labels are LArray, but we don't need the extra
     # functionality from this point on
     need = np.asarray(need)
     num_candidates = np.asarray(num_candidates)
+    fcols_labels = [np.asarray(fcol_labels) for fcol_labels in fcols_labels]
     print("total needed", need.sum())
 
     still_needed = need.copy()
@@ -118,3 +120,54 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
                 rel_need[values] = np.float64(sn) / sa
     print("missing %d individuals" % np.sum(still_needed))
     return aligned, still_needed
+
+
+# To get a baseline when trying to find an alternative algorithm, I devised this small snippet, which
+# find the optimal solution. It runs in O(2^N) which is impractical for real usage, but can serve as a
+# comparison for the real algo with very small datasets.
+'''
+from itertools import chain, combinations
+
+# from python itertools documentation
+def powerset(iterable):
+    """
+    powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)
+
+    >>> len(list(powerset(range(10))))
+    1024
+    >>> len(list(powerset(range(16))))
+    65536
+    """
+    s = list(iterable)
+    return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
+
+
+def dist(arr, need):
+    return abs(need - arr.sum(0)).sum()
+
+
+def best_dist(arr, need):
+    """this works in O(2^n) so do NOT run this on an array > ~16 elements"""
+    if len(arr) > 16:
+        raise ValueError("this works in O(2^n) so do NOT run this on an array > ~16 elements")
+
+    indices = range(len(arr))
+    combinations = list(powerset(indices))
+    idx, dist_ = min(enumerate(dist(arr[list(comb)], need) for comb in combinations),
+                     key=lambda kv: kv[1])
+    return dist_, combinations[idx]
+
+
+arr = LArray([[2, 5, 3],
+              [1, 0, 0],
+              [0, 2, 0],
+              [0, 0, 5],
+              [1, 1, 1],
+              [5, 0, 2],
+              [3, 2, 1],
+              [1, 2, 3],
+              [5, 3, 3]]).rename(0, 'hh').set_axes(1, 'age=0,1,2')
+need = LArray([10, 9, 9], arr.age)
+best_dist(arr.data, need.data)
+Out[18]: (1, (0, 5, 6, 7))
+'''

@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 from itertools import product
 
 import numpy as np
+import larray as la
 
 try:
     from liam2.cpartition import filter_to_indices
@@ -15,6 +16,9 @@ try:
     from liam2.cpartition import group_indices_nd
 
     def partition_nd(columns, filter_value, possible_values):
+        columns = [col.data if isinstance(col, la.Array) else col
+                   for col in columns]
+        filter_value = filter_value.data if isinstance(filter_value, la.Array) else filter_value
         ndim = len(columns)
         assert ndim > 0
         assert all(isinstance(c, np.ndarray) for c in columns), \

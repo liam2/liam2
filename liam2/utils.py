@@ -218,11 +218,11 @@ def ndim(arraylike):
     sequence of arrays and array of sequences.
     """
     n = 0
-    while isinstance(arraylike, (list, tuple, np.ndarray, la.LArray)):
+    while isinstance(arraylike, (list, tuple, np.ndarray, la.Array)):
         if len(arraylike) == 0:
             raise ValueError('Cannot compute ndim of array with empty dim')
         # XXX: check that other elements have the same length?
-        arraylike = arraylike.i[0] if isinstance(arraylike, la.LArray) else arraylike[0]
+        arraylike = arraylike.i[0] if isinstance(arraylike, la.Array) else arraylike[0]
         n += 1
     return n
 
@@ -255,10 +255,17 @@ def safe_take(a, indices, missing_value):
     """
     like np.take but out-of-bounds indices return the missing value
     """
-    indexed = a.take(indices, mode='clip')
-    return ne.evaluate('where((idx < 0) | (idx >= maxidx), missing, indexed)',
-                       {'idx': indices, 'maxidx': len(a),
-                        'missing': missing_value, 'indexed': indexed})
+    result = a.take(indices, mode='clip')
+    if isinstance(indices, la.Array):
+        res_axes = indices.axes
+        indices = indices.data
+    else:
+        res_axes = None
+    context = {'indices': indices, 'maxidx': len(a), 'missing': missing_value, 'result': result}
+    fixed_result = ne.evaluate('where((indices < 0) | (indices >= maxidx), missing, result)', context)
+    if res_axes is not None:
+        return la.Array(fixed_result, res_axes)
+    return fixed_result
 
 
 # we provide our own version of fromiter because it swallows any exception
@@ -309,7 +316,7 @@ def expand(value, shape):
     """
     if np.isscalar(shape):
         shape = (shape,)
-    if isinstance(value, np.ndarray) and value.shape:
+    if isinstance(value, (np.ndarray, la.Array)) and value.shape:
         # assert value.shape == shape, "%s != %s" % (value.shape, shape)
         # FIXME: this assertion fails because we are sloppy in
         # AlignmentAbsoluteValues.align_link (target_context is not filtered)
@@ -379,16 +386,16 @@ class IrregularNDArray(object):
 
 def aslabeledarray(data):
     sequence = (tuple, list)
-    if isinstance(data, la.LArray):
+    if isinstance(data, la.Array):
         return data
     elif (isinstance(data, sequence) and len(data) and
-          isinstance(data[0], la.LArray)):
+          isinstance(data[0], la.Array)):
         # FIXME13: use la.stack?
         # TODO: check that all arrays have the same axes
         axes = [la.Axis(len(data))] + list(data[0].axes)
-        return la.LArray(data, axes)
+        return la.Array(data, axes)
     else:
-        return la.LArray(data)
+        return la.Array(data)
 
 
 class ProgressBar(object):

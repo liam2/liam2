@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
+import larray as la
 
 from liam2.context import context_length
 from liam2.expr import expr_eval, getdtype, hasvalue, FunctionExpr, always, firstarg_dtype, get_default_value
@@ -39,7 +40,7 @@ class TimeFunction(FunctionExpr):
     def value_for_period(expr, period, context, fill='auto'):
         sub_context = context.clone(fresh_data=True, period=period)
         result = expr_eval(expr, sub_context)
-        if isinstance(result, np.ndarray) and result.shape:
+        if isinstance(result, (np.ndarray, la.Array)) and result.shape:
             ids = sub_context['id']
             if fill is None:
                 return ids, result
@@ -194,6 +195,7 @@ class TimeSum(TimeFunction):
         return sum_values
 
     dtype = firstarg_dtype
+
 
 functions = {
     'value_for_period': ValueForPeriod,

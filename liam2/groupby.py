@@ -48,19 +48,22 @@ class GroupBy(TableExpression):
 
         totals = kwargs.pop('totals', True)
 
-        expr_vars = [v.name for v in collect_variables(expr)]
-
-        columns = [expr_eval(e, context) for e in expressions]
-        columns = [expand(c, context_length(context)) for c in columns]
+        expr_vars = collect_variables(expr)
+        expr_vars_names = [v.name for v in expr_vars]
 
         if filter_value is not None:
-            filtered_columns = [col[filter_value] for col in columns]
+            all_vars = expr_vars.copy()
+            for e in expressions:
+                all_vars |= collect_variables(e)
+            all_vars_names = [v.name for v in all_vars]
+
             # FIXME: use the actual filter_expr instead of not_hashable
-            filtered_context = context.subset(filter_value, expr_vars,
-                                              not_hashable)
+            filtered_context = context.subset(filter_value, all_vars_names, not_hashable)
         else:
-            filtered_columns = columns
             filtered_context = context
+
+        filtered_columns = [expr_eval(e, filtered_context) for e in expressions]
+        filtered_columns = [expand(c, context_length(filtered_context)) for c in filtered_columns]
 
         if axes is not None:
             possible_values = [axis.labels for axis in axes]
@@ -68,36 +71,19 @@ class GroupBy(TableExpression):
         # We pre-filtered columns instead of passing the filter to partition_nd
         # because it is a bit faster this way. The indices are still correct,
         # because we use them on a filtered_context.
-        # if filter_value is not None and la.all(~filter_value):
-        #     la.view()
         groups, possible_values = partition_nd(filtered_columns, True, possible_values)
         if axes is None:
             axes = [la.Axis(axis_labels, name=str(e))
                     for axis_labels, e in zip(possible_values, expressions)]
 
         if not groups:
-            return la.LArray([])
+            return la.Array([])
 
         # evaluate the expression on each group
         # we use not_hashable to avoid storing the subset in the cache
-        contexts = [filtered_context.subset(indices, expr_vars, not_hashable)
-                    for indices in groups]
-        data = [expr_eval(expr, c) for c in contexts]
-
-        # TODO: use group_indices_nd directly to avoid using np.unique
-        # this is twice as fast (unique is very slow) but breaks because
-        # the rest of the code assumes all combinations are present
-#        if self.filter is not None:
-#            filter_value = expr_eval(self.filter, context)
-#        else:
-#            filter_value = True
-#
-#        d = group_indices_nd(columns, filter_value)
-#        pvalues = sorted(d.keys())
-#        ndim = len(columns)
-#        possible_values = [[pv[i] for pv in pvalues]
-#                           for i in range(ndim)]
-#        groups = [d[k] for k in pvalues]
+        group_contexts = [filtered_context.subset(indices, expr_vars_names, not_hashable)
+                          for indices in groups]
+        data = [expr_eval(expr, group_context) for group_context in group_contexts]
 
         # groups is a (flat) list of list.
         # the first variable is the outer-most "loop",
@@ -121,10 +107,10 @@ class GroupBy(TableExpression):
             cols_indices.append(np.concatenate(cols_indices))
 
             # evaluate the expression on each "combined" group (ie compute totals)
-            row_ctxs = [filtered_context.subset(indices, expr_vars, not_hashable)
+            row_ctxs = [filtered_context.subset(indices, expr_vars_names, not_hashable)
                         for indices in rows_indices]
             row_totals = [expr_eval(expr, ctx) for ctx in row_ctxs]
-            col_ctxs = [filtered_context.subset(indices, expr_vars, not_hashable)
+            col_ctxs = [filtered_context.subset(indices, expr_vars_names, not_hashable)
                         for indices in cols_indices]
             col_totals = [expr_eval(expr, ctx) for ctx in col_ctxs]
         else:
@@ -171,8 +157,8 @@ class GroupBy(TableExpression):
         # and reshape it
         data = data.reshape(len_pvalues)
         # FIXME13: also handle totals
-        return la.LArray(data, axes)
-        # return la.LArray(data, labels, possible_values,
+        return la.Array(data, axes)
+        # return la.Array(data, labels, possible_values,
         #                     row_totals, col_totals)
 
 

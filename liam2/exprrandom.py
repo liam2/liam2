@@ -52,7 +52,7 @@ class Choice(NumpyRandom):
         return (a, size, replace, p), kwargs
 
     def compute(self, context, a, size=None, replace=True, p=None):
-        if isinstance(a, la.LArray):
+        if isinstance(a, la.Array):
             assert p is None
             # FIXME13: rename to outcome or __outcome__ and make the dimension name configurable
             # TODO: add support for generating several variables at once
@@ -79,7 +79,7 @@ class Choice(NumpyRandom):
             assert all(len(px) == size for px in p)
             assert len(a) >= 2
 
-            if isinstance(p, list) and any(isinstance(px, la.LArray) for px in p):
+            if isinstance(p, list) and any(isinstance(px, la.Array) for px in p):
                 p = [np.asarray(px) for px in p]
             ap = np.asarray(p)
             cdf = ap.cumsum(axis=0)

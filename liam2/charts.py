@@ -65,14 +65,14 @@ class Chart(FunctionExpr, FileProducer):
                                      "have compatible axes")
         if len(args) == 1:
             data = args[0]
-            if not isinstance(data, (np.ndarray, la.LArray)):
+            if not isinstance(data, (np.ndarray, la.Array)):
                 data = np.asarray(data)
             if ndim(data) == ndim_req:
                 # move the last axis first so that the last dimension is stacked
                 axes = list(range(data.ndim))
                 data = data.transpose(axes[-1], *axes[:-1])
             elif ndim(data) == ndim_req - 1:
-                if isinstance(data, la.LArray):
+                if isinstance(data, la.Array):
                     # add dummy axis and move it as the first axis
                     data = data.expand(la.Axis(1, '__dummy__')).transpose('__dummy__')
                 else:
@@ -304,7 +304,7 @@ class Pie(Chart):
     ndim_req = 1
 
     def _draw(self, data, colors, **kwargs):
-        if isinstance(data, la.LArray):
+        if isinstance(data, la.Array):
             labels = data.axes[0].labels
             title = data.axes[0].name
             data = np.asarray(data)

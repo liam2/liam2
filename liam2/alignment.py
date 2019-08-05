@@ -51,6 +51,12 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                          method="bysorting"):
     assert isinstance(need, np.ndarray) and \
         np.issubdtype(need.dtype, np.integer)
+
+    filter_value = filter_value.data if isinstance(filter_value, la.Array) else filter_value
+    score = score.data if isinstance(score, la.Array) else score
+    take_filter = take_filter.data if isinstance(take_filter, la.Array) else take_filter
+    leave_filter = leave_filter.data if isinstance(leave_filter, la.Array) else leave_filter
+
     assert score is None or isinstance(score, (bool, int, float, np.ndarray))
 
     if filter_value is not None:
@@ -72,6 +78,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
         # instead of
         #     group_always = np.intersect1d(members_indices, take_indices,
         #                                   assume_unique=True)
+        take_intersect = np.asarray(take_intersect)
         take_indices = filter_to_indices(take_intersect)
         maybe_filter &= ~take_filter
     else:
@@ -218,7 +225,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
     def _eval_need(self, context, need, expressions, possible_values,
                    expressions_context=None):
-        assert isinstance(need, (np.ndarray, la.LArray))
+        assert isinstance(need, (np.ndarray, la.Array))
         if expressions_context is None:
             expressions_context = context
         # When given a 0d array, we convert it to 1d. This can happen e.g. for
@@ -227,17 +234,21 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # True
         # >>> x.shape
         # ()
-        if not need.shape:
-            need = np.array([need])
+        # if not need.shape:
+        #     need = np.array([need])
 
-        if isinstance(need, la.LArray):
+        if isinstance(need, la.Array):
             if not expressions:
                 expressions = [Variable(expressions_context.entity, name)
                                for name in need.axes.names]
             if not possible_values:
                 possible_values = need.axes.labels
+        else:
+            # XXX: use expressions as axes names?
+            need_axes = [la.Axis(pvalues) for pvalues in possible_values]
+            need = la.Array(need, axes=need_axes)
 
-        assert isinstance(need, (np.ndarray, la.LArray))
+        assert isinstance(need, la.Array)
 
         if len(expressions) != len(possible_values):
             raise Exception("align() expressions and possible_values "
@@ -355,13 +366,18 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         # XXX: move this to _eval_need?
         # need is a single scalar
-        if np.isscalar(need):
-            need = [need]
+        # if np.isscalar(need):
+        #     need = [need]
+
+        if isinstance(need, la.Array) and 'id' in need.axes:
+            need = need.compact()
 
         # need is a non-ndarray sequence
         if isinstance(need, (tuple, list)):
             need = np.array(need)
-        assert isinstance(need, (np.ndarray, la.LArray))
+        elif np.isscalar(need):
+            need = np.array(need)
+        assert isinstance(need, (np.ndarray, la.Array))
 
         if expressions is None:
             expressions = []
@@ -399,8 +415,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
             self._eval_need(context, need, expressions, possible_values)
 
         filter_value = expr_eval(self._getfilter(context, filter), context)
-
         if filter_value is not None:
+            if isinstance(filter_value, la.Array):
+                filter_value = filter_value.data
             num_to_align = np.sum(filter_value)
         else:
             num_to_align = ctx_length
@@ -408,10 +425,8 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # retrieve the columns we need to work with
         if expressions:
             columns = [expr_eval(expr, context) for expr in expressions]
-            if filter_value is not None:
-                groups, _ = partition_nd(columns, filter_value, possible_values)
-            else:
-                groups, _ = partition_nd(columns, True, possible_values)
+            filter_value_ = True if filter_value is None else filter_value
+            groups, _ = partition_nd(columns, filter_value_, possible_values)
         else:
             columns = []
             if filter_value is not None:
@@ -484,7 +499,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
             # because we loose information about "indices", but in this case,
             # it is fine, because we do not need that information afterwards.
             filtered_columns = [col[target_filter_value]
-                                if isinstance(col, np.ndarray) and col.shape
+                                if isinstance(col, (np.ndarray, la.Array)) and col.shape
                                 else [col]
                                 for col in target_columns]
 
@@ -498,37 +513,41 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # We can't use _group_labels_light because group_labels assigns labels
         # on a first come, first served basis, not using the order they are
         # in pvalues
-        fcols_labels = []
-        filtered_length = len(filtered_columns[0])
-        unaligned = np.zeros(filtered_length, dtype=bool)
-        # XXX: probably needs to use "possible_values" instead
-        for fcol, pvalues in zip(filtered_columns, need.axes.labels):
-            pvalues_index = dict((v, i) for i, v in enumerate(pvalues))
-            fcol_labels = np.empty(filtered_length, dtype=np.int32)
-            for i in range(filtered_length):
-                value_idx = pvalues_index.get(fcol[i], -1)
-                if value_idx == -1:
-                    unaligned[i] = True
-                fcol_labels[i] = value_idx
-            fcols_labels.append(fcol_labels)
+        try:
+            fcols_labels = [axis.index(fcol) for axis, fcol in zip(need.axes, filtered_columns)]
+        except KeyError:
+            fcols_labels = []
+            filtered_length = len(filtered_columns[0])
+            unaligned = np.zeros(filtered_length, dtype=bool)
+            fcols_data = [fcol.data if isinstance(fcol, la.Array) else fcol
+                          for fcol in filtered_columns]
+            for fcol_data, axis in zip(fcols_data, need.axes):
+                axis_map = axis._mapping
+                fcol_labels = np.empty(filtered_length, dtype=np.int32)
+                for i in range(filtered_length):
+                    value_idx = axis_map.get(fcol_data[i], -1)
+                    if value_idx == -1:
+                        unaligned[i] = True
+                    fcol_labels[i] = value_idx
+                fcols_labels.append(fcol_labels)
 
-        num_unaligned = np.sum(unaligned)
-        if num_unaligned:
-            # further filter label columns and link_column
-            validlabels = ~unaligned
-            fcols_labels = [labels[validlabels] for labels in fcols_labels]
-            link_column = link_column[validlabels]
+            num_unaligned = np.sum(unaligned)
+            if num_unaligned:
+                # further filter label columns and link_column
+                validlabels = ~unaligned
+                fcols_labels = [labels[validlabels] for labels in fcols_labels]
+                link_column = link_column[validlabels]
 
-            # display who are the evil ones
-            ids = target_context['id']
-            if target_filter_value is not None:
-                filtered_ids = ids[target_filter_value]
+                # display who are the evil ones
+                ids = target_context['id']
+                if target_filter_value is not None:
+                    filtered_ids = ids[target_filter_value]
+                else:
+                    filtered_ids = ids
+                self._display_unaligned(expressions, filtered_ids,
+                                        filtered_columns, unaligned)
             else:
-                filtered_ids = ids
-            self._display_unaligned(expressions, filtered_ids,
-                                    filtered_columns, unaligned)
-        else:
-            del unaligned
+                del unaligned
 
         id_to_rownum = context.id_to_rownum
         missing_int = missing_values[int]
@@ -582,6 +601,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
             def __len__(self):
                 return self.length
+
         groups = [FakeContainer(g) for g in num_candidates]
         need = need * self._get_need_correction(groups, possible_values)
         need = self._handle_frac_need(need, frac_need)
@@ -635,7 +655,7 @@ class Alignment(AlignmentAbsoluteValues):
                                         method=method)
 
     def _get_need_correction(self, groups, possible_values):
-        len_pvalues = [len(vals) for vals in possible_values]
+        len_pvalues = [len(pvals) for pvals in possible_values]
         data = np.array([len(group) for group in groups])
         return data.reshape(len_pvalues)
 

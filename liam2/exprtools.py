@@ -6,7 +6,7 @@ import re
 import types
 
 from liam2.compat import basestring
-from liam2.expr import UnaryOp, BinaryOp, LogicalOp, ComparisonOp
+from liam2.expr import UnaryOp, BinaryOp, LogicalOp, ComparisonOp, X
 from liam2.utils import add_context
 
 from liam2 import actions
@@ -371,7 +371,8 @@ def parse(s, context, interactive=False):
                        'inf': float('inf'),
                        'float': float,
                        'int': int,
-                       'bool': bool}
+                       'bool': bool,
+                       'X': X}
     globals_context.update(functions)
     globals_context.update(context.get('__globals__', {}))
     # modify in-place

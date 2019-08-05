@@ -9,6 +9,7 @@ import larray as la
 
 from liam2.compat import basestring
 from liam2 import config
+from liam2.partition import filter_to_indices
 from liam2.expr import normalize_type, get_default_value, get_default_array, get_default_vector, gettype
 from liam2.utils import loop_wh_progress, time2str, safe_put, timed, MB
 from liam2.importer import load_def, stream_to_array, array_to_disk_array
@@ -29,8 +30,9 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
     """
     Parameters
     ----------
-    array : array-like
-        array must contain at least all table fields (but can contain more).
+    array : structured-array-like
+        must be indexable by field name and each field value must be array-like.
+        must contain at least all table fields (but can contain more).
     table : table-like
         Any object with .append(np.ndarray[structured_dtype]) and .flush() methods should work. tables.Table.
     numlines : int, optional
@@ -51,7 +53,8 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
             # last chunk is smaller
             chunk = np.empty(buffer_rows, dtype=dtype)
         for fieldname in dtype.names:
-            chunk[fieldname] = array[fieldname][start:stop]
+            field_value = array[fieldname]
+            chunk[fieldname] = field_value[start:stop]
         table.append(chunk)
         # TODO: try flushing after each chunk, this should reduce memory
         # use on large models, and (hopefully) should not be much slower
@@ -67,26 +70,25 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
 
 class ColumnArray(object):
     def __init__(self, array=None):
-        columns = {}
         if array is not None:
+            columns = {}
             if isinstance(array, (np.ndarray, ColumnArray)):
+                self.dtype = array.dtype
                 for name in array.dtype.names:
                     columns[name] = array[name].copy()
-                self.dtype = array.dtype
                 self.columns = columns
             elif isinstance(array, list):
-                for name, column in array:
-                    columns[name] = column
+                # list of (name, column) pairs
                 self.dtype = np.dtype([(name, column.dtype)
                                        for name, column in array])
+                for name, column in array:
+                    columns[name] = column
                 self.columns = columns
             else:
-                # TODO: make a property instead?
-                self.dtype = None
-                self.columns = columns
+                raise TypeError('invalid array', array)
         else:
             self.dtype = None
-            self.columns = columns
+            self.columns = {}
 
     def __getitem__(self, key):
         if isinstance(key, basestring):
@@ -103,7 +105,9 @@ class ColumnArray(object):
 
         if isinstance(key, basestring):
             length = len(self)
-            if isinstance(value, (np.ndarray, la.LArray)) and value.shape:
+            if isinstance(value, la.Array) and value.shape:
+                raise TypeError("la.Array not supported in ColumnArray, you should use LColumnArray instead")
+            if isinstance(value, np.ndarray) and value.shape:
                 if len(value) != length:
                     raise ValueError("could not broadcast input array from shape ({}) into shape ({})"
                                      .format(len(value), length))
@@ -172,6 +176,7 @@ class ColumnArray(object):
         else:
             return 0
 
+    # this is an inplace method so the old memory for each column can be freed before all columns have been changed
     def keep(self, key):
         """key can be either a vector of int indices or boolean filter"""
 
@@ -180,6 +185,7 @@ class ColumnArray(object):
         for name, column in self.columns.items():
             self.columns[name] = column[key]
 
+    # this is an inplace method so the old memory for each column can be freed before all columns have been changed
     def append(self, array):
         assert array.dtype == self.dtype, (array.dtype, self.dtype)
         # using gc.collect() after each column update frees a bit of memory
@@ -266,6 +272,263 @@ class ColumnArray(object):
             default_values = {}
         for name in output_names - set(self.dtype.names):
             self[name] = get_default_vector(length, output_dtype[name], default_values[name])
+
+
+class LColumnArray(object):
+    def __init__(self, array=None, axes=None):
+        if array is not None:
+            columns = {}
+            if isinstance(array, (np.ndarray, ColumnArray)):
+                if axes is None and 'id' in array.dtype.names:
+                    axes = la.AxisCollection([la.Axis(array['id'], 'id')])
+                self.axes = axes
+                self.dtype = array.dtype
+                for name in array.dtype.names:
+                    columns[name] = self._prepare_column(array[name].copy())
+                self.columns = columns
+            elif isinstance(array, list):
+                assert isinstance(axes, la.AxisCollection)
+                # array is a list of (name, column) pairs
+                self.axes = axes
+                self.dtype = np.dtype([(name, column.dtype)
+                                       for name, column in array])
+                for name, column in array:
+                    columns[name] = self._prepare_column(column)
+                self.columns = columns
+            else:
+                raise TypeError('invalid array', array)
+        else:
+            assert axes is None
+            self.axes = None
+            self.dtype = None
+            self.columns = {}
+
+    def __getitem__(self, key):
+        if isinstance(key, basestring):
+            return self.columns[key]
+        else:
+            # int, slice, ndarray or bool LArray
+            if isinstance(key, la.Array):
+                assert key.ndim == 1 and np.issubdtype(key.dtype, np.bool_)
+                key = filter_to_indices(key.data)
+            assert not isinstance(key, la.Array)
+            ca = LColumnArray()
+            ca.axes = la.AxisCollection(self.axes.id.subaxis(key))
+            ca.columns = {colname: la.Array(colvalue.data[key], ca.axes)
+                          for colname, colvalue in self.columns.items()}
+            ca.dtype = self.dtype
+            return ca
+
+    def __setitem__(self, key, value):
+        """does not copy value except if a type conversion is necessary"""
+
+        if isinstance(key, basestring):
+            value = self._prepare_column(value)
+            if key in self.columns:
+                # converting to existing dtype
+                if value.dtype != self.dtype[key]:
+                    value = value.astype(self.dtype[key])
+                self.columns[key] = value
+            else:
+                # adding a new column so we need to update the dtype
+                assert isinstance(value, la.Array)
+                self.columns[key] = value
+                self._update_dtype()
+        else:
+            # key is int, slice or ndarray, value is an LColumnArray
+            # assert isinstance(value, LColumnArray)
+            # assert self.id_axis.subaxis(key).equals(value.id_axis)
+            for name, column in self.columns.items():
+                assert isinstance(column, la.Array)
+                column.data[key] = value[name]
+
+    def _prepare_column(self, value):
+        id_axis = self.axes.id
+        if isinstance(value, np.ndarray) and value.shape:
+            if len(value) != len(id_axis):
+                raise ValueError("could not broadcast input array from shape ({}) into shape ({})"
+                                 .format(len(value), len(id_axis)))
+            return la.Array(value, self.axes)
+        elif isinstance(value, la.Array) and value.shape:
+            value_axis = value.axes.id
+            if not value_axis.iscompatible(id_axis):
+                raise ValueError("incompatible id axis between value column ({}) and LColumnArray ({})"
+                                 .format(repr(value_axis), repr(id_axis)))
+            return value
+        else:
+            # expand scalars (like ndarray does) so that we don't have to
+            # check isinstance(x, ndarray) and x.shape everywhere
+            # TODO: create ConstantLArray(length, value, dtype)
+            return la.full(self.axes, value, dtype=gettype(value))
+
+    # FIXME: this is broken (but unused)
+    def put(self, indices, values, mode='raise'):
+        for name, column in self.columns.items():
+            assert isinstance(column, la.Array)
+            column.put(indices, values[name], mode)
+
+    @property
+    def nbytes(self):
+        return sum(v.nbytes for v in self.columns.values())
+
+    def __delitem__(self, key):
+        del self.columns[key]
+        self._update_dtype()
+
+    def _update_dtype(self):
+        # handle fields already present (iterate over old dtype to preserve order)
+        if self.dtype is not None:
+            old_fields = self.dtype.names
+            fields = [(name, self.dtype[name])
+                      for name in old_fields
+                      if name in self.columns]
+        else:
+            old_fields = []
+            fields = []
+        # add new fields (not already handled)
+        old_fields = set(old_fields)
+        fields += [(name, column.dtype)
+                   for name, column in self.columns.items()
+                   if name not in old_fields]
+        self.dtype = np.dtype(fields)
+
+    def __len__(self):
+        return len(self.axes.id) if self.axes is not None else 0
+
+    # this is an inplace method so the old memory for each column can be freed before all columns have been changed
+    def keep(self, key):
+        """key must be a vector of int indices"""
+
+        assert isinstance(key, np.ndarray) and np.issubdtype(key.dtype, np.int_)
+        self.axes = la.AxisCollection(self.axes.id.subaxis(key))
+
+        # using gc.collect() after each column update frees a bit of memory but slows things down significantly.
+        for name, column in self.columns.items():
+            # intentionally not using column[key] to avoid computing the new id axis for each column
+            self.columns[name] = la.Array(column.data[key], self.axes)
+
+    # this is an inplace method so the old memory for each column can be freed before all columns have been changed
+    def append(self, array):
+        assert array.dtype == self.dtype, (array.dtype, self.dtype)
+        assert all(isinstance(array[name], la.Array) for name in array.dtype.names)
+        self.axes = la.AxisCollection(self.axes.id.extend(array.axes.id))
+
+        # using gc.collect() after each column update frees a bit of memory but slows things down significantly.
+        for name, column in self.columns.items():
+            # intentionally not using la.concat() to avoid computing the new id axis for each column
+            # XXX: we could update the LArray object inplace (only change .data and .axes) but I don't think it's
+            #      worth it
+            self.columns[name] = la.Array(np.concatenate((column.data, array[name].data)), self.axes)
+
+    def append_to_table(self, table, buffersize=10 * MB):
+        ca = ColumnArray([(k, v.data) for k, v in self.columns.items()])
+        append_carray_to_table(ca, table, buffersize=buffersize)
+
+    @classmethod
+    def empty(cls, axes, dtype):
+        ca = cls()
+        if isinstance(axes, int):
+            if axes == 0:
+                axes = np.empty(0, dtype=int)
+            axes = la.AxisCollection(la.Axis(axes, 'id'))
+        assert isinstance(axes, la.AxisCollection)
+        for name in dtype.names:
+            ca.columns[name] = la.empty(axes, dtype=dtype[name])
+        ca.dtype = dtype
+        ca.axes = axes
+        return ca
+
+    @classmethod
+    def default_array(cls, axes, dtype, default_values):
+        ca = cls()
+        assert isinstance(axes, la.AxisCollection)
+        for name in dtype.names:
+            coldtype = dtype[name]
+            coldefault = get_default_value(coldtype, default_values.get(name))
+            ca.columns[name] = la.full(axes, coldefault, dtype=coldtype)
+        ca.dtype = dtype
+        ca.axes = axes
+        return ca
+
+    @classmethod
+    def from_table(cls, table, start=0, stop=None, buffersize=10 * MB):
+        # reading a table one column at a time is very slow, this is why this
+        # function is even necessary
+        if stop is None:
+            stop = len(table)
+        dtype = table.dtype
+        max_buffer_rows = buffersize // dtype.itemsize
+        numlines = stop - start
+        # start with a wildcard id axis (we will replace it later)
+        ca = cls.empty(numlines, dtype)
+        buffer_rows = min(numlines, max_buffer_rows)
+        chunk = np.empty(buffer_rows, dtype=dtype)
+        array_start = 0
+        table_start = start
+        while numlines > 0:
+            buffer_rows = min(numlines, max_buffer_rows)
+            if buffer_rows < len(chunk):
+                # last chunk is smaller
+                chunk = np.empty(buffer_rows, dtype=dtype)
+            table.read(table_start, table_start + buffer_rows, out=chunk)
+            ca[array_start:array_start + buffer_rows] = chunk
+            table_start += buffer_rows
+            array_start += buffer_rows
+            numlines -= buffer_rows
+        # intentionally modifying the id axis inplace because it is referenced in each column (and in the LCA)
+        ca.axes.id.labels = ca['id']
+        return ca
+
+    def to_carray(self):
+        return ColumnArray([(name, column.data) for name, column in self.columns.items()])
+
+    @classmethod
+    def from_table_coords(cls, table, indices, buffersize=10 * MB):
+        dtype = table.dtype
+        max_buffer_rows = buffersize // dtype.itemsize
+        numlines = len(indices)
+        # start with a wildcard id axis (we will replace it later)
+        ca = cls.empty(numlines, dtype)
+        buffer_rows = min(numlines, max_buffer_rows)
+        # we don't need a buffer because table.read_coordinates allocates it (see below)
+        # chunk = np.empty(buffer_rows, dtype=dtype)
+        start, stop = 0, buffer_rows
+        while numlines > 0:
+            buffer_rows = min(numlines, max_buffer_rows)
+            # if buffer_rows < len(chunk):
+            #    # last chunk is smaller
+            #    chunk = np.empty(buffer_rows, dtype=dtype)
+            chunk_indices = indices[start:stop]
+            # as of PyTables 3.2.2, read_coordinates does not support out=
+            # table.read_coordinates(chunk_indices, out=chunk)
+            chunk = table.read_coordinates(chunk_indices)
+            ca[start:stop] = chunk
+            start += buffer_rows
+            stop += buffer_rows
+            numlines -= buffer_rows
+        # intentionally modifying the id_axis inplace because it is referenced in each column (and in the LCA)
+        ca.axes.id.labels = ca['id']
+        return ca
+
+    def add_and_drop_fields(self, names_to_keep, output_fields, default_values):
+        """modify inplace.
+
+        Only passing output_fields is not enough because one may want to reset a field data (see issue 227).
+        """
+
+        output_dtype = np.dtype(output_fields)
+        output_names = set(output_dtype.names)
+        input_names = set(self.dtype.names)
+        # drop extra fields
+        for name in input_names - set(names_to_keep):
+            del self[name]
+
+        # add missing fields
+        length = len(self)
+        if default_values is None:
+            default_values = {}
+        for name in output_names - set(self.dtype.names):
+            self[name] = get_default_value(output_dtype[name], default_values[name])
 
 
 def get_fields(array):
@@ -547,7 +810,7 @@ def build_period_array(input_table, fields_to_keep, output_fields, input_rows,
     periods_before = [p for p in input_rows.keys() if p <= start_period]
     if not periods_before:
         id_to_rownum = np.empty(0, dtype=int)
-        output_array = ColumnArray.empty(0, np.dtype(output_fields))
+        output_array = LColumnArray.empty(0, np.dtype(output_fields))
         return output_array, id_to_rownum
 
     periods_before.sort()
@@ -568,7 +831,7 @@ def build_period_array(input_table, fields_to_keep, output_fields, input_rows,
     # if all individuals are present in the target period, we are done already!
     if np.array_equal(present_in_period, is_present):
         start, stop = input_rows[target_period]
-        input_array = ColumnArray.from_table(input_table, start, stop)
+        input_array = LColumnArray.from_table(input_table, start, stop)
         input_array.add_and_drop_fields(fields_to_keep, output_fields, default_values)
         return input_array, period_id_to_rownum
 
@@ -612,8 +875,7 @@ def build_period_array(input_table, fields_to_keep, output_fields, input_rows,
             break
 
     # reading data
-    output_array = ColumnArray.from_table_coords(input_table,
-                                                 output_array_source_rows)
+    output_array = LColumnArray.from_table_coords(input_table, output_array_source_rows)
     output_array.add_and_drop_fields(fields_to_keep, output_fields, default_values)
     return output_array, id_to_rownum
 
@@ -799,7 +1061,7 @@ def index_tables(globals_def, entities, fpath):
                            for i in range(len(dim_names))]
                 axes = [la.Axis(labels, axis_name)
                         for axis_name, labels in zip(dim_names, pvalues)]
-                array = la.LArray(array, axes)
+                array = la.Array(array, axes)
             globals_data[name] = array
 
         input_entities = input_root.entities
@@ -854,6 +1116,7 @@ class H5Source(DataSource):
             entity.input_rows = table.period_index
             entity.input_table = table.table
             entity.base_period = table.base_period
+            entity.id_axis_per_period = index_per_period_to_axis_per_period(table.id2rownum_per_period)
         self.h5in = h5file
         return dataset
 
@@ -895,12 +1158,13 @@ class H5Sink(DataSink):
             output_entities = output_file.create_group("/", "entities",
                                                        "Entities")
             output_file.create_group("/", "indexes", "Indexes")
+            output_file.create_group("/", "axes", "Axes")
+
             print(" * copying tables")
             for ent_name, entity in entities.items():
                 print("    -", ent_name, "...", end=' ')
-                index_node = output_file.create_group("/indexes", ent_name)
-                entity.output_index_node = index_node
-
+                entity.output_index_node = output_file.create_group("/indexes", ent_name)
+                entity.output_axes_node = output_file.create_group("/axes", ent_name)
                 if not entity.fields.in_output:
                     print("skipped (no column in output)")
                     continue
@@ -970,3 +1234,12 @@ def entities_from_h5(fpath):
             globals_def[table.name] = global_def
     h5in.close()
     return globals_def, entities
+
+
+def id_to_rownum_to_id_axis(id_to_rownum):
+    return la.Axis([id_ for id_, rownum in enumerate(id_to_rownum) if rownum != -1], 'id')
+
+
+def index_per_period_to_axis_per_period(index_per_period):
+    return {period: id_to_rownum_to_id_axis(id_to_rownum)
+            for period, id_to_rownum in index_per_period.items()}

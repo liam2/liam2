@@ -8,7 +8,10 @@ entities:
 
             test_issue():
                 - assertEqual(erf(0), 0)
+                - assertEqual(round(erf(1), 4), 0.8427)
+                - assertEqual(erf(10), 1)
+
                 - res: erf(id)
                 - assertTrue(all(res >= 0 and res <= 1))
                 - assertEqual(res[0], 0)
-                - assertEqual(res[-1], 1)
+                - assertEqual(res[9], 1)
