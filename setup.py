@@ -194,7 +194,7 @@ if build_exe:
 def get_version(filepath):
     with open(filepath, 'r') as f:
         for line in f:
-            m = re.match('__version__ = "([^"]+)"\s*', line)
+            m = re.match(r'__version__ = "([^"]+)"\s*', line)
             if m:
                 return m.group(1)
         return None

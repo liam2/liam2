@@ -979,12 +979,12 @@ functions = {'lag': makefunc('lag', 'coerce'),
              'zeroclip': ZeroClip}
 
 
-and_re = re.compile('([ )])and([ (])')
-or_re = re.compile('([ )])or([ (])')
+and_re = re.compile(r'([ )])and([ (])')
+or_re = re.compile(r'([ )])or([ (])')
 not_re = re.compile(r'([ (=]|^)not(?=[ (])')
-if_re = re.compile('(^|\W)if\s*\(')
-and_bug_re = re.compile('\w\s+and\s+\w')
-or_bug_re = re.compile('\w\s+or\s+\w')
+if_re = re.compile(r'(^|\W)if\s*\(')
+and_bug_re = re.compile(r'\w\s+and\s+\w')
+or_bug_re = re.compile(r'\w\s+or\s+\w')
 
 def parse(s, globals=None, expression=True):
     str_to_parse = s.strip()

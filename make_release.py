@@ -201,7 +201,7 @@ def pretag_pos(release_name):
     """
     # 'a' needs to be searched for after 'beta'
     for tag in ('rc', 'c', 'beta', 'b', 'alpha', 'a'):
-        match = re.search(tag + '\d+', release_name)
+        match = re.search(tag + r'\d+', release_name)
         if match is not None:
             return match.start()
     return None
@@ -266,10 +266,10 @@ def rst2txt(s):
     s = s.replace("::", "")
     # first replace :ref:s which span across two lines (we want to *keep* the
     # blanks in those) then those on one line (where we kill the spaces)
-    s = re.sub(":ref:`(.+ *[\n\r] *)<.+>`", r"\1", s, flags=re.IGNORECASE)
-    s = re.sub(":ref:`(.+) +<.+>`", r"\1", s, flags=re.IGNORECASE)
-    s = re.sub(":pr:`(\d+)`", r"pull request \1", s, flags=re.IGNORECASE)
-    return re.sub(":issue:`(\d+)`", r"issue \1", s, flags=re.IGNORECASE)
+    s = re.sub(r":ref:`(.+ *[\n\r] *)<.+>`", r"\1", s, flags=re.IGNORECASE)
+    s = re.sub(r":ref:`(.+) +<.+>`", r"\1", s, flags=re.IGNORECASE)
+    s = re.sub(r":pr:`(\d+)`", r"pull request \1", s, flags=re.IGNORECASE)
+    return re.sub(r":issue:`(\d+)`", r"issue \1", s, flags=re.IGNORECASE)
 
 
 def relname2fname(release_name):
