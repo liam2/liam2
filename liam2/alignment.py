@@ -548,7 +548,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # ignored by GroupBy anyway.
         # TODO: the result of this is ugly because a groupby on *values*, returns an LArray with those
         # values (ndarrays) as axes *names*. Ugh.
-        groupby_expr = GroupBy(*filtered_columns, pvalues=possible_values)
+        groupby_expr = GroupBy(*filtered_columns, axes=need.axes)
 
         # FIXME: target_context is not correct, as it is not filtered while
         # filtered_columns are. Since we do not use the context "columns" it
