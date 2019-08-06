@@ -16,7 +16,7 @@ class GroupBy(TableExpression):
     funcname = 'groupby'
     no_eval = ('expressions', 'expr')
     kwonlyargs = {'expr': None, 'filter': None, 'percent': False,
-                  'pvalues': None, 'totals': True}
+                  'pvalues': None, 'axes': None, 'totals': True}
 
     # noinspection PyNoneFunctionAssignment
     def compute(self, context, *expressions, **kwargs):
@@ -25,11 +25,11 @@ class GroupBy(TableExpression):
 
         # TODO: allow lists/tuples of arguments to group by the combinations
         # of keys
-        for expr in expressions:
-            if isinstance(expr, (bool, int, float)):
+        for e in expressions:
+            if isinstance(e, (bool, int, float)):
                 raise TypeError("groupby() does not work with constant "
                                 "arguments")
-            if isinstance(expr, (tuple, list)):
+            if isinstance(e, (tuple, list)):
                 raise TypeError("groupby() takes expressions as arguments, "
                                 "not a list of expressions")
 
@@ -42,10 +42,14 @@ class GroupBy(TableExpression):
         filter_value = kwargs.pop('filter', None)
         percent = kwargs.pop('percent', False)
         possible_values = kwargs.pop('pvalues', None)
+        axes = kwargs.pop('axes', None)
+        if possible_values is not None and axes is not None:
+            raise ValueError("cannot use both possible_values and axes arguments in groupby")
+
         totals = kwargs.pop('totals', True)
 
         expr_vars = [v.name for v in collect_variables(expr)]
-        labels = [str(e) for e in expressions]
+
         columns = [expr_eval(e, context) for e in expressions]
         columns = [expand(c, context_length(context)) for c in columns]
 
@@ -58,15 +62,19 @@ class GroupBy(TableExpression):
             filtered_columns = columns
             filtered_context = context
 
-        if possible_values is None:
-            possible_values = [np.unique(col) for col in filtered_columns]
+        if axes is None:
+            if possible_values is None:
+                possible_values = [np.unique(col) for col in filtered_columns]
+            axes = [la.Axis(axis_labels, name=str(e))
+                    for axis_labels, e in zip(possible_values, expressions)]
+        else:
+            possible_values = [axis.labels for axis in axes]
 
         # We pre-filtered columns instead of passing the filter to partition_nd
         # because it is a bit faster this way. The indices are still correct,
         # because we use them on a filtered_context.
         groups = partition_nd(filtered_columns, True, possible_values)
         if not groups:
-            # return la.LArray([], labels, possible_values)
             return la.LArray([])
 
         # evaluate the expression on each group
@@ -161,9 +169,7 @@ class GroupBy(TableExpression):
 
         # and reshape it
         data = data.reshape(len_pvalues)
-        axes = [la.Axis(axis_labels, axis_name)
-                for axis_name, axis_labels in zip(labels, possible_values)]
-        # FIXME: also handle totals
+        # FIXME13: also handle totals
         return la.LArray(data, axes)
         # return la.LArray(data, labels, possible_values,
         #                     row_totals, col_totals)
