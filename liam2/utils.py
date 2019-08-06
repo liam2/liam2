@@ -1074,18 +1074,16 @@ class ExplainTypeError(type):
                 return 'missing %d positional argument' % (missing - 1)
 
             # Python2 style
-            msg = re.sub('(\d+) (arguments?) \((\d+) given\)', repl_py2, msg)
+            msg = re.sub(r'(\d+) (arguments?) \((\d+) given\)', repl_py2, msg)
             # Python3 style for too many args in the presence of default values
-            msg = re.sub('from (\d+) to (\d+) positional (arguments?) but '
-                         '(\d+) were given',
+            msg = re.sub(r'from (\d+) to (\d+) positional (arguments?) but (\d+) were given',
                          repl_py3_toomany_from_to, msg)
             # Python3 style for too many args with no default values
             # "takes" is included to not match from_to again
-            msg = re.sub('takes (\d+) positional (arguments?) but '
-                         '(\d+) were given',
+            msg = re.sub(r'takes (\d+) positional (arguments?) but (\d+) were given',
                          repl_py3_toomany, msg)
             # Python3 style for missing
-            msg = re.sub('missing (\d+) positional argument',
+            msg = re.sub(r'missing (\d+) positional argument',
                          repl_py3_missing, msg)
             raise TypeError(msg)
 

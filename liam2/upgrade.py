@@ -10,7 +10,7 @@ __version__ = '0.3'
 
 def upgrade_str(content):
     # 1) transform *link(linkname, ...) -> linkname.*(...)
-    content = re.sub("([a-zA-Z]+)link\s*\(\s*([a-zA-Z_][a-zA-Z_0-9]*)\s*,?\s*",
+    content = re.sub(r"([a-zA-Z]+)link\s*\(\s*([a-zA-Z_][a-zA-Z_0-9]*)\s*,?\s*",
                      r"\2.\1(",
                      content)
 
@@ -24,7 +24,7 @@ def upgrade_str(content):
     # this is undocumented it is very unlikely to have been used by anyone.
 
     # 2) grpXYZ(...) -> XYZ(...)
-    content = re.sub("grp([a-zA-Z]+)\s*\(", r"\1(", content)
+    content = re.sub(r"grp([a-zA-Z]+)\s*\(", r"\1(", content)
 
     # 3) function: -> function():
     # keepends=True so that we keep the line ending style (windows, unix, ...) intact
@@ -38,7 +38,7 @@ def upgrade_str(content):
         line = lines[i]
 
         # ignore blank or commented lines
-        if not line or line.isspace() or re.match('^\s*#.*$', line):
+        if not line or line.isspace() or re.match(r'^\s*#.*$', line):
             continue
         section_match = section_re.match(line)
         if not section_match:
