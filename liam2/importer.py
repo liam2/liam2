@@ -160,7 +160,7 @@ def eval_with_template(s, template_context):
 
 
 class CSV(object):
-    eval_re = re.compile('eval\((.*)\)')
+    eval_re = re.compile(r'eval\((.*)\)')
 
     def __init__(self, fpath, newnames=None, delimiter=None, transpose=False):
         f = csv_open(fpath)
