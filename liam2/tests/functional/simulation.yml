@@ -3011,9 +3011,10 @@ entities:
 #                              [count(not gender),
 #                               count(gender),
 #                               count()])
+                - first_age_group: by_agegroup_gender.agegroup.labels[0]
                 - assertEqual(by_agegroup_gender.i[0],
-                              [count(agegroup == -1 and not gender),
-                               count(agegroup == -1 and gender)])
+                              [count(agegroup == first_age_group and not gender),
+                               count(agegroup == first_age_group and gender)])
                 - assertEqual(by_agegroup_gender[0],
                               [count(agegroup == 0 and not gender),
                                count(agegroup == 0 and gender)])
@@ -3070,8 +3071,8 @@ entities:
                 - assertEqual(empty, [])
                 - empty_percent: groupby(gender, filter=age > 200,
                                          percent=True)
-                - assertEqual(empty_percent, [])
                 - show(empty_percent)
+                - assertEqual(empty_percent, [])
 
                 # ...
                 - num_persons2_percent: show(groupby(agegroup, gender, percent=True))
@@ -3144,8 +3145,9 @@ entities:
 
                 #- min_count_by_agegroup: min(by_agegroup_gender, axis=1)
                 - min_count_by_agegroup: by_agegroup_gender.min('gender')
-                - assertEqual(min_count_by_agegroup.shape, (16,))
                 - assertEqual(min_count_by_agegroup.axes.names, ['agegroup'])
+                - num_agegroups: groupby(agegroup).agegroup.__len__()
+                - assertEqual(min_count_by_agegroup.shape, (num_agegroups,))
 #                - assertEqual(min_count_by_gender.row_totals, None)
 #                - assertEqual(min_count_by_gender.col_totals, None)
 
