@@ -162,7 +162,7 @@ def filter_to_indices(ndarray[int8_t, cast=True] values):
     for i in range(n):
         val = values[i]
         if val:
-            indices[count] = <int32_t>i;
+            indices[count] = <int32_t>i
             count += 1
 
     return indices
@@ -316,7 +316,7 @@ def _group_labels_int32(ndarray[int32_t] values, object filter_value):
 def _group_labels_int32_light(ndarray[int32_t] values, object filter_value):
     '''
     Compute the label vector and a "label->real value" dict from a vector of
-    int32 input values and an optional filter. 
+    int32 input values and an optional filter.
     See _group_labels_light for details.
     '''
     cdef:
@@ -563,26 +563,30 @@ def _group_labels(ndarray values, object filter_value):
     if value_type is np.bool8:
         n = <int32_t>len(values)
         count_false, count_true = group_count_bool(values, filter_value)
-        if count_false == 0:
+        if count_false == 0 and count_true == 0:
+            reverse = {}
+            labels = np.zeros(n, dtype=np.int32)
+            counts = np.zeros(0, dtype=np.int32)
+        elif count_false == 0:
+            reverse = {0: True}
+            labels = np.zeros(n, dtype=np.int32)
             # count_true == n - num_missing
             # these lines are ugly but faster than
             # counts = np.array([count_false])
             counts = np.empty(1, dtype=np.int32)
             counts[0] = count_true
-            reverse = {0: True}
-            labels = np.zeros(n, dtype=np.int32)
         elif count_true == 0:
+            reverse = {0: False}
+            labels = np.zeros(n, dtype=np.int32)
             # count_false == n - num_missing
             counts = np.empty(1, dtype=np.int32)
             counts[0] = count_false
-            reverse = {0: False}
-            labels = np.zeros(n, dtype=np.int32)
         else:
+            reverse = {0: False, 1: True}
+            labels = values.astype(np.int32)
             counts = np.empty(2, dtype=np.int32)
             counts[0] = count_false
             counts[1] = count_true
-            reverse = {0: False, 1: True}
-            labels = values.astype(np.int32)
 
         if filter_value is not True:
             assert (isinstance(filter_value, np.ndarray) and
