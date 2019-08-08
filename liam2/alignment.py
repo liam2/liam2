@@ -409,9 +409,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
         if expressions:
             columns = [expr_eval(expr, context) for expr in expressions]
             if filter_value is not None:
-                groups = partition_nd(columns, filter_value, possible_values)
+                groups, _ = partition_nd(columns, filter_value, possible_values)
             else:
-                groups = partition_nd(columns, True, possible_values)
+                groups, _ = partition_nd(columns, True, possible_values)
         else:
             columns = []
             if filter_value is not None:

@@ -15,7 +15,8 @@ try:
     from liam2.cpartition import group_indices_nd
 
     def partition_nd(columns, filter_value, possible_values):
-        assert len(columns) > 0
+        ndim = len(columns)
+        assert ndim > 0
         assert all(isinstance(c, np.ndarray) for c in columns), \
             "not all columns are ndarrays: " + \
             ', '.join(str(type(c)) for c in columns)
@@ -23,23 +24,30 @@ try:
         # it's not worth it to copy non contiguous columns in this version
         d = group_indices_nd(columns, filter_value)
 
-        if len(columns) > 1:
-            pvalues = product(*possible_values)
-        else:
-            pvalues = possible_values[0]
+        if possible_values is None:
+            combined_labels_present = d.keys()
+            if ndim > 1:
+                possible_values = [np.unique(col) for col in zip(*combined_labels_present)]
+            else:
+                possible_values = [np.array(sorted(combined_labels_present))]
+            assert len(possible_values) == ndim
 
+        if ndim > 1:
+            all_combined_values = product(*possible_values)
+        else:
+            all_combined_values = possible_values[0]
         empty_list = np.empty(0, dtype=int)
 
         # XXX: It would be nice to print a warning if d contains keys not in
-        # pvalues but that might be hard to implement efficiently in the python
+        # combined_values but that might be hard to implement efficiently in the python
         # version (and I am not eager to diverge too much).
-        return [d.get(pv, empty_list) for pv in pvalues]
+        return [d.get(pv, empty_list) for pv in all_combined_values], possible_values
 except ImportError:
     group_indices_nd = None
 
     # TODO: make possible_values a list of combinations of value. In some cases,
     # (eg GroupBy), we are not interested in all possible combinations.
-    def partition_nd(columns, filter_value, possible_values):
+    def partition_nd(columns, filter_value, possible_values=None):
         """
         * columns is a list of columns containing the data to be partitioned
         * filter_value is a vector of booleans which selects individuals
@@ -66,6 +74,9 @@ except ImportError:
                 col = [col]
             contiguous_columns.append(col)
         columns = contiguous_columns
+
+        if possible_values is None:
+            possible_values = [np.unique(col) for col in columns]
 
         size = tuple([len(colvalues) for colvalues in possible_values])
 
@@ -97,7 +108,7 @@ except ImportError:
                 assert local_filter
                 group_indices = np.arange(len(columns[0]))
             result.append(group_indices)
-        return result
+        return result, possible_values
 
         # pure-python version. It is 10x slower than the NumPy version above
         # but it might be a better starting point to translate to C,

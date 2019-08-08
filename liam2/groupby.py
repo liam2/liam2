@@ -62,18 +62,19 @@ class GroupBy(TableExpression):
             filtered_columns = columns
             filtered_context = context
 
-        if axes is None:
-            if possible_values is None:
-                possible_values = [np.unique(col) for col in filtered_columns]
-            axes = [la.Axis(axis_labels, name=str(e))
-                    for axis_labels, e in zip(possible_values, expressions)]
-        else:
+        if axes is not None:
             possible_values = [axis.labels for axis in axes]
 
         # We pre-filtered columns instead of passing the filter to partition_nd
         # because it is a bit faster this way. The indices are still correct,
         # because we use them on a filtered_context.
-        groups = partition_nd(filtered_columns, True, possible_values)
+        # if filter_value is not None and la.all(~filter_value):
+        #     la.view()
+        groups, possible_values = partition_nd(filtered_columns, True, possible_values)
+        if axes is None:
+            axes = [la.Axis(axis_labels, name=str(e))
+                    for axis_labels, e in zip(possible_values, expressions)]
+
         if not groups:
             return la.LArray([])
 
