@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 import ast
+import re
 import types
 
 from liam2.compat import basestring
@@ -316,8 +317,7 @@ def _parse(s, interactive=False):
     if not isinstance(s, basestring):
         return s
 
-    # this prevents any function named something ending in "if"
-    str_to_parse = s.replace('if(', 'where(')
+    str_to_parse = re.sub(r'\b(if\()', 'where(', s)
     tree = ast.parse(str_to_parse)
     tree = BoolToBitTransformer().visit(tree)
     body = tree.body
