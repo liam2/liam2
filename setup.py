@@ -245,6 +245,7 @@ setup(
         interpolation=['bcolz'],
         plot=['matplotlib'],
         view=['vitables'],
+        test=['flake8','nose','matplotlib'],
     ),
     **extra_kwargs
 )
