@@ -28,11 +28,11 @@ def simplify(expr):
     simplified = expr.simplify() if isinstance(expr, Expr) else expr
     while simplified is not expr:
         if VERBOSE_SIMPLIFY:
-            print """simplifying
+            print("""simplifying
 %s
 to
 %s
-""" % (expr, simplified) 
+""" % (expr, simplified))
         expr = simplified
         simplified = expr.simplify() if isinstance(expr, Expr) else expr
     return simplified
@@ -62,14 +62,14 @@ def unflatten(op, expr_set):
         raise NotImplementedError()
     else:
         return '(' + op.join(unflatten(o, expr) for o, expr in expr_set) + ')'
-            
+
 def extract_common_subset(e1, e2, flattened=False):
     r1 = f1op, f1list = flatten(e1)
     r2 = f2op, f2list = flatten(e2)
-    
+
     if len(f1list) == 1:
         f1op, f1list = '&', (r1,)
-    
+
     if len(f2list) == 1:
         f2op, f2list = '&', (r2,)
 
@@ -84,7 +84,7 @@ def extract_common_subset(e1, e2, flattened=False):
                 e2_rest = unflatten(f1op, e2set - commonset)
             except NotImplementedError:
                 return None, e1, e2
-            
+
             vars = collect_variables(e1) | collect_variables(e2)
             globals = dict((v, Variable(v, t)) for v, t in vars)
             cs, e1, e2 = parse(common, globals), parse(e1_rest, globals), \
@@ -96,7 +96,7 @@ def extract_common_subset(e1, e2, flattened=False):
             return cs, e1, e2
     return None, e1, e2
 
-        
+
 class Expr(object):
     def __lt__(self, other):
         return ComparisonOp('<', self, other)
@@ -110,7 +110,7 @@ class Expr(object):
         return ComparisonOp('>', self, other)
     def __ge__(self, other):
         return GreaterOrEqual('>=', self, other)
-    
+
     def __add__(self, other):
         return Addition('+', self, other)
     def __sub__(self, other):
@@ -134,14 +134,14 @@ class Expr(object):
         return BinaryOp('<<', self, other)
     def __rshift__(self, other):
         return BinaryOp('>>', self, other)
-    
+
     def __and__(self, other):
         return And('&', self, other)
     def __xor__(self, other):
         return BinaryOp('^', self, other)
     def __or__(self, other):
         return Or('|', self, other)
-    
+
     def __radd__(self, other):
         return Addition('+', other, self)
     def __rsub__(self, other):
@@ -164,14 +164,14 @@ class Expr(object):
         return BinaryOp('<<', other, self)
     def __rrshift__(self, other):
         return BinaryOp('>>', other, self)
-    
+
     def __rand__(self, other):
         return And('&', other, self)
     def __rxor__(self, other):
         return BinaryOp('^', other, self)
     def __ror__(self, other):
         return Or('|', other, self)
-        
+
     def __neg__(self):
         return UnaryOp('-', self)
     def __pos__(self):
@@ -180,7 +180,7 @@ class Expr(object):
         return UnaryOp('abs', self)
     def __invert__(self):
         return Not('~', self)
-    
+
     def simplify(self):
         return self
 
@@ -197,24 +197,24 @@ class Expr(object):
         """
         raise NotImplementedError()
 
-    
+
 class UnaryOp(Expr):
     def __init__(self, op, expr):
         self.op = op
         self.expr = expr
-        
+
     def simplify(self):
         expr = simplify(self.expr)
         if expr is not self.expr:
             return self.__class__(self.op, expr)
-        
+
         if not isinstance(expr, Expr):
             return eval('%s%s' % (self.op, self.expr))
         return self
 
     def op_str(self):
         return self.op
-    
+
     def as_string(self, indent):
         expr = self.expr
         if not isinstance(expr, Expr) or isinstance(expr, Variable):
@@ -240,7 +240,7 @@ class Not(UnaryOp):
         expr = simplify(self.expr)
         if expr is not self.expr:
             return self.__class__(self.op, expr)
-        
+
         if not isinstance(expr, Expr):
             return not expr
         elif isinstance(expr, Not):
@@ -274,18 +274,18 @@ class BinaryOp(Expr):
         if not isinstance(expr, BinaryOp):
             return False
 #        return True
-    
+
         # theoretically, the commutative part it is only necessary for expr2,
-        # but it doesn't decrease readability anyway: 
+        # but it doesn't decrease readability anyway:
         # "(a - b) - c" is as readable as "a - b - c"
-        return self.priority < expr.priority or (self.op == expr.op and 
+        return self.priority < expr.priority or (self.op == expr.op and
                                                  not self.commutative)
 
     def op_str(self):
         return self.op
-    
+
     def as_string(self, indent):
-        # for priorities, see: 
+        # for priorities, see:
         # http://docs.python.org/reference/expressions.html#summary
         s1 = as_string(self.expr1, indent)
         if self.needparenthesis(self.expr1):
@@ -300,7 +300,7 @@ class BinaryOp(Expr):
         expr1, expr2 = simplify(orig_expr1), simplify(orig_expr2)
         if expr1 is not orig_expr1 or expr2 is not orig_expr2:
             return self.__class__(self.op, expr1, expr2)
-        
+
         if self.neutral_value is not None:
             if isinstance(expr1, self.accepted_types) and \
                expr1 == self.neutral_value:
@@ -308,7 +308,7 @@ class BinaryOp(Expr):
             elif isinstance(expr2, self.accepted_types) and \
                expr2 == self.neutral_value:
                 return expr1
-            
+
         if self.overpowering_value is not None:
             if isinstance(expr1, self.accepted_types) and \
                expr1 == self.overpowering_value:
@@ -319,14 +319,14 @@ class BinaryOp(Expr):
 
         if not isinstance(expr1, Expr) and not isinstance(expr2, Expr):
             res = eval('%s %s %s' % (expr1, self.op, expr2))
-            print "Warning: converted %s to %s" % (self, res)
+            print("Warning: converted %s to %s" % (self, res))
             return res
 
         return self
-    
+
     def collect_variables(self):
-        expr1_vars = collect_variables(self.expr1) 
-        expr2_vars = collect_variables(self.expr2) 
+        expr1_vars = collect_variables(self.expr1)
+        expr2_vars = collect_variables(self.expr2)
         return expr1_vars.union(expr2_vars)
 
     def isequal(self, other):
@@ -382,7 +382,7 @@ class LowerOrEqual(ComparisonOp):
         simplified = self.typecast()
         if simplified is not self:
             return simplified
-        
+
         expr1 = simplify(self.expr1)
         expr2 = simplify(self.expr2)
         # TODO: use generic bounds check instead
@@ -394,7 +394,7 @@ class LowerOrEqual(ComparisonOp):
         return self
 
 class GreaterOrEqual(ComparisonOp):
-    def simplify(self):        
+    def simplify(self):
         simplified = self.typecast()
         if simplified is not self:
             return simplified
@@ -408,7 +408,7 @@ class GreaterOrEqual(ComparisonOp):
             elif expr2 is True:
                 return expr1 == True
         return self
-    
+
 class Equality(ComparisonOp):
     def simplify(self):
         simplified = self.typecast()
@@ -446,7 +446,7 @@ class LogicalOp(BinaryOp):
     def dtype(self):
         assert dtype(self.expr1) is bool, \
                "logical expression arg (%s) is %s instead of bool" % \
-               (self.expr1, dtype(self.expr1)) 
+               (self.expr1, dtype(self.expr1))
         assert dtype(self.expr2) is bool
         return bool
 
@@ -463,8 +463,8 @@ class And(LogicalOp):
         presimplified = super(And, self).simplify()
         if presimplified is not self:
             return presimplified
-        
-        # (v >= value) & (v <= value)   ->   (v == value)    
+
+        # (v >= value) & (v <= value)   ->   (v == value)
         if isinstance(presimplified, And):
             e1 = presimplified.expr1
             e2 = presimplified.expr2
@@ -473,11 +473,11 @@ class And(LogicalOp):
                     return e1.expr1 == e1.expr2
 
         return presimplified
-            
+
 class Or(LogicalOp):
     priority = 9
     neutral_value = False
-    overpowering_value = True 
+    overpowering_value = True
     accepted_types = (bool,)
 
     def simplify(self):
@@ -487,13 +487,13 @@ class Or(LogicalOp):
 
         if isinstance(presimplified, Or):
             e1, e2 = presimplified.expr1, presimplified.expr2
-            
-            # A or not A -> True                    
-            # not A or A -> True                    
+
+            # A or not A -> True
+            # not A or A -> True
             if isinstance(e1, Not) and isequal(e1.expr, e2) or \
                isinstance(e2, Not) and isequal(e2.expr, e1):
                 return True
-            
+
 #            op, l = flattened = flatten(presimplified)
 #            assert op == '|'
 #
@@ -503,7 +503,7 @@ class Or(LogicalOp):
 #                indices = range(len(l))
 #                vars = self.collect_variables()
 #                globals = dict((v, Variable(v, t)) for v, t in vars)
-#                
+#
 #                for i1, i2 in itertools.combinations(indices, 2):
 #                    try:
 #                        e1 = parse(unflatten('&', [l[i1]]), globals)
@@ -511,12 +511,12 @@ class Or(LogicalOp):
 #                    except NotImplementedError:
 #                        continue
 #
-#                    # A or not A -> True                    
-#                    # not A or A -> True                    
+#                    # A or not A -> True
+#                    # not A or A -> True
 #                    if isinstance(e1, Not) and isequal(e1.expr, e2) or \
 #                       isinstance(e2, Not) and isequal(e2.expr, e1):
 #                        return True
-#                    
+#
 #                    # (A and B and C) or (A and B and D)
 #                    # ->
 #                    # A and B and (C or D)
@@ -524,54 +524,54 @@ class Or(LogicalOp):
 #                    if cs is not None:
 #                        notincomb = l[:i1] + l[i1+1:i2] + l[i2+1:]
 #                        if notincomb:
-#                            notincomb_expr = parse(unflatten('|', notincomb), 
+#                            notincomb_expr = parse(unflatten('|', notincomb),
 #                                                   globals)
 #                        else:
 #                            notincomb_expr = False
-#                            
+#
 #                        if e1 is not None and e2 is not None:
 #                            return notincomb_expr | (cs & (e1 | e2))
 #                        else:
 #                            return notincomb_expr | cs
-            
+
         return presimplified
 
-    
+
 class Addition(BinaryOp):
     priority = 5
     commutative = True
     neutral_value = 0.0
-    overpowering_value = None 
+    overpowering_value = None
     accepted_types = (float,)
 
     def simplify(self):
         simplified = super(Addition, self).simplify()
         if simplified is not self:
             return simplified
-        
+
         if dtype(self.expr1) is bool and dtype(self.expr2) is bool:
             return self.expr1 | self.expr2
-        
-        # a + -b 
-        # -> 
+
+        # a + -b
+        # ->
         # a - b
         if not isinstance(self.expr2, Expr) and self.expr2 < 0:
             return self.expr1 - -self.expr2
-        
+
         return self
 
 class Substraction(BinaryOp):
     priority = 5
     commutative = False
     neutral_value = 0.0
-    overpowering_value = None 
+    overpowering_value = None
     accepted_types = (float,)
-    
+
 class Multiplication(BinaryOp):
     priority = 4
     commutative = True
     neutral_value = 1.0
-    overpowering_value = 0.0 
+    overpowering_value = 0.0
     accepted_types = (float,)
 
 class Division(BinaryOp):
@@ -582,7 +582,7 @@ class Division(BinaryOp):
     accepted_types = (float,)
 
     def dtype(self):
-        # to be consistent with the division from the __future__ 
+        # to be consistent with the division from the __future__
         return float
 
 
@@ -597,7 +597,7 @@ class Variable(Expr):
             return self.name
         else:
             return str(self.value)
-        
+
     def simplify(self):
         if self.value is None:
             return self
@@ -609,7 +609,7 @@ class Variable(Expr):
 
     def dtype(self):
         return self._dtype
-    
+
     def isequal(self, other):
         if isinstance(other, Variable) and self.name == other.name:
             assert self._dtype == other._dtype
@@ -634,7 +634,7 @@ class SubscriptedVariable(Variable):
     def __init__(self, name, key):
         Variable.__init__(self, name, float)
         self.key = key
-    
+
     def as_string(self, indent):
         return '%s[%s]' % (self.name, self.key)
 
@@ -644,14 +644,14 @@ class SubscriptedVariable(Variable):
                isequal(self.key, other.key)
         return isequ
 
-    
+
 class Function(Expr):
     name = None
 
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
-    
+
     def as_string(self, indent):
         args = ', '.join(as_string(arg, indent) for arg in self.args)
         kwargs = ', '.join("%s=%s" % (k, as_string(v, indent))
@@ -668,9 +668,9 @@ class Function(Expr):
                            for (k1, v1), (k2, v2)
                            in zip(self_kwargs, other_kwargs))
         args_equal = all(isequal(self_arg, other_arg)
-                         for self_arg, other_arg in zip(self.args, other.args))  
+                         for self_arg, other_arg in zip(self.args, other.args))
         return self.name == other.name and args_equal and kwargs_equal
-            
+
     def simplify(self):
         sargs = [simplify(arg) for arg in self.args]
         skwargs = dict((k, simplify(v)) for k, v in self.kwargs.items())
@@ -681,10 +681,10 @@ class Function(Expr):
 
     def flatten(self):
         return ('func', (tuple(flatten(arg) for arg in self.args),
-                         tuple((k, flatten(v)) 
+                         tuple((k, flatten(v))
                                for k, v in self.kwargs.iteritems())))
 
-        
+
 class Where(Function):
     name = 'if'
 
@@ -697,18 +697,18 @@ class Where(Function):
 
     def simplify(self):
         assert len(self.args) == 3
-        
+
         orig_cond, orig_iftrue, orig_iffalse = self.args
-        cond_dtype = dtype(orig_cond) 
-        assert cond_dtype is bool, "cond dtype is %s" % cond_dtype 
-        
+        cond_dtype = dtype(orig_cond)
+        assert cond_dtype is bool, "cond dtype is %s" % cond_dtype
+
         cond = simplify(orig_cond)
         iftrue, iffalse = simplify(orig_iftrue), simplify(orig_iffalse)
         if cond is not orig_cond or \
            iftrue is not orig_iftrue or \
            iffalse is not orig_iffalse:
-            return Where(cond, iftrue, iffalse) 
-        
+            return Where(cond, iftrue, iffalse)
+
         # This is not really correct (it changes the type of the whole
         # expression) but it seems correct in most cases. Ideally, we should
         # only do this if the type for the enclosing expr (ie the target
@@ -730,7 +730,7 @@ class Where(Function):
             else:
                 # optimize "if(A, B, False)" to "A and B"
                 return cond & iftrue
-            
+
         if dtypeiffalse is bool and not isinstance(iftrue, Expr) and iftrue in (False, True):
             if iftrue:
                 # optimize "if(A, True, B)" to "A or B"
@@ -748,12 +748,12 @@ class Where(Function):
             return cond
         if iftrue is False and iffalse is True:
             return ~cond
-        
+
         if cond is True:
             return iftrue
         if cond is False:
             return iffalse
-        
+
         if isequal(iftrue, iffalse):
             return iftrue
 
@@ -761,12 +761,12 @@ class Where(Function):
 #            return cond * iftrue
 
         if isinstance(iffalse, Where):
-            # if(cond1, 
-            #    value1, 
-            #    if(cond2, 
-            #       value1, 
-            #       if(cond3, 
-            #          value1, 
+            # if(cond1,
+            #    value1,
+            #    if(cond2,
+            #       value1,
+            #       if(cond3,
+            #          value1,
             #          value2)))
             # ->
             # if(cond1 | cond2 | cond3, value1, value2)
@@ -798,16 +798,16 @@ class Where(Function):
                 if cs is not None:
                     # the case where both e1 & e2 are None is already
                     # taken care of above
-                    
+
                     # if(A & B, C, if(A & D, E, F))
                     # ->
                     # if(A, if(B, C, if(D, E, F)), F)
                     if e1 is not None and e2 is not None:
-                        return Where(cs, 
-                                     Where(e1, 
-                                           iftrue, 
-                                           Where(e2, 
-                                                 iffalse_iftrue, 
+                        return Where(cs,
+                                     Where(e1,
+                                           iftrue,
+                                           Where(e2,
+                                                 iffalse_iftrue,
                                                  iffalse_iffalse)),
                                      iffalse_iffalse)
 
@@ -816,12 +816,12 @@ class Where(Function):
                     # if(A & B, C, F)
                     elif e1 is None:
                         return Where(cs, iftrue, iffalse_iffalse)
-                    
+
                     # if(A & B, C, if(A, D, E))
                     # ->
-                    # if(A, if(B, C, D), E) 
+                    # if(A, if(B, C, D), E)
                     elif e2 is None:
-                        return Where(cs, 
+                        return Where(cs,
                                      Where(e1, iftrue, iffalse_iftrue),
                                      iffalse_iffalse)
 
@@ -847,29 +847,29 @@ class Where(Function):
                 return Where(folded_cond, other, iffalse)
 
             iftrue_cond, iftrue_iftrue, iftrue_iffalse = iftrue.args
-            
+
             # if(A, if(A, B, C), D)
             # ->
             # if(A, B, D)
             if isequal(cond, iftrue_cond):
                 return Where(cond, iftrue_iftrue, iffalse)
-            
+
             cs, e1, e2 = extract_common_subset(cond, iftrue_cond)
             if cs is not None:
                 # the case where both e1 & e2 are None is already
                 # taken care of above
-                
+
                 # if(A & B, if(A & C, D, E), F)
                 # ->
                 # if(A & B, if(C, D, E), F)
-                
+
                 # the result is the same whether e1 is None or not
-                
+
                 # if(A, if(A & B, C, D), E)
                 # ->
                 # if(A, if(B, C, D), E)
                 if e2 is not None:
-                    return Where(cond, 
+                    return Where(cond,
                                  Where(e2, iftrue_iftrue, iftrue_iffalse),
                                  iffalse)
 
@@ -877,22 +877,22 @@ class Where(Function):
                 # ->
                 # if(A & B, C, E)
                 else:
-                    return Where(cs, iftrue_iftrue, iffalse)  
-            
-                
+                    return Where(cs, iftrue_iftrue, iffalse)
+
+
         if isinstance(cond, Not):
             return Where(cond.expr, iffalse, iftrue)
 
-        return self        
+        return self
 
     def dtype(self):
         assert dtype(self.args[0]) == bool
         return coerce_types(*self.args[1:])
 
     def collect_variables(self):
-        vars_per_arg = [collect_variables(arg) for arg in self.args] 
+        vars_per_arg = [collect_variables(arg) for arg in self.args]
         return set.union(*vars_per_arg)
-        
+
 
 class ZeroClip(Function):
     name = 'zeroclip'
@@ -909,7 +909,7 @@ class ZeroClip(Function):
 
     def dtype(self):
         return dtype(self.args[0])
-        
+
 def makefunc(fname, dtype_=None):
     class Func(Function):
         name = fname
@@ -921,7 +921,7 @@ def makefunc(fname, dtype_=None):
                 return dtype_
         else:
             def dtype(self):
-                return None 
+                return None
     Func.__name__ = fname.title()
     return Func
 
@@ -954,10 +954,10 @@ class Link(object):
         return self._name
 
 functions = {'lag': makefunc('lag', 'coerce'),
-             'countlink': makefunc('countlink', int), 
-             'sumlink': makefunc('sumlink', float), 
-             'duration': makefunc('duration', int), 
-             'do_divorce': makefunc('do_divorce', int), 
+             'countlink': makefunc('countlink', int),
+             'sumlink': makefunc('sumlink', float),
+             'duration': makefunc('duration', int),
+             'do_divorce': makefunc('do_divorce', int),
              'KillPerson': makefunc('kill', int),
              'new': makefunc('new', int),
 
@@ -966,10 +966,10 @@ functions = {'lag': makefunc('lag', 'coerce'),
              'round': makefunc('round', float),
              'tavg': makefunc('tavg', float),
              'where': Where,
-             
+
              'log': makefunc('log', float),
              'exp': makefunc('exp', float),
-             
+
              'normal': makefunc('normal', float),
 
              'cont_regr': ContRegr,
@@ -1000,7 +1000,7 @@ def parse(s, globals=None, expression=True):
     try:
         c = compile(str_to_parse, '<expr>', mode)
     except SyntaxError:
-        print "syntax error in: ", s
+        print("syntax error in: ", s)
         raise
 
 #    varnames = c.co_names
@@ -1017,7 +1017,7 @@ def parse(s, globals=None, expression=True):
         return eval(c, context)
     else:
         exec(c, context)
-    
+
         # cleanup result
         del context['__builtins__']
         for funcname in functions.keys():
