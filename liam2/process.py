@@ -168,7 +168,6 @@ class ProcessGroup(Process):
                     utils.timed(v.run_guarded, context)
                 else:
                     v.run_guarded(context)
-                    #
                 context.simulation.start_console(context)
         finally:
             if config.autodump is not None:
