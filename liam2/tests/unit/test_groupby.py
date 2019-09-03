@@ -10,7 +10,7 @@ def assertResultEq(d1, d2):
         v1, v2 = d1[k], d2[k]
         assert np.array_equal(v1, v2), \
                "%s value differs. we get: %s\nexpected: %s" % (k, v1, v2)
-    print("."),
+    print(".", end="")
 
 
 def assertGroupByEq(arrays, filter, result):
