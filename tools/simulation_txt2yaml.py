@@ -12,16 +12,16 @@ from expr import *
 from align_txt2csv import convert_txt_align
 
 # TODO
-# - filter fields: output only those which are actually used (comment out 
+# - filter fields: output only those which are actually used (comment out
 #   the rest)
-# - convert "leaf" expression literals to the type of the variable being 
+# - convert "leaf" expression literals to the type of the variable being
 #   defined (only absolutely needed for bool)
 # - use "abfrage" to determine fields
 # ? remove useless bounds (eg age)
 # ? implement choose for top-level filter
 # ? build variable dependency tree and enclose any field which is used before it
 #   is computed in a lag function
-# ? generic if -> choose transformation: 
+# ? generic if -> choose transformation:
 #   if(c1, v1, if(c2, v2, if(c3, v3, if(c4, v4, 0))))
 #   ->
 #   choose(c1, v1,
@@ -36,7 +36,7 @@ from align_txt2csv import convert_txt_align
 # - if(p_yob=2003-60, MINR[2003], ...
 #   ->
 #   if((yob >= 1943) & (yob <= 2000), MINR[yob + 60], 0)
-# - divorce function 
+# - divorce function
 # - KillPerson: what is not handled by normal "kill" function
 
 
@@ -64,11 +64,11 @@ def load_txt_def(input_path, name_idx):
         if name.startswith('first_'):
             current_obj = name[6:]
             data[current_obj] = {}
-            print "reading '%s' variables" % current_obj
+            print("reading '%s' variables" % current_obj)
         elif name.startswith('end_'):
             current_obj = None
-            print "done"
-        elif current_obj is not None: 
+            print("done")
+        elif current_obj is not None:
             data[current_obj][name] = dict(zip(colnames, line))
     return data
 
@@ -85,16 +85,16 @@ def load_fields(input_path):
         'int': int,
         'int1000': float
     }
-    print "determining field types..."
+    print("determining field types...")
     for obj_type, obj_fields in data.iteritems():
-        print " *", obj_type
-        for name, fdef in obj_fields.iteritems(): 
+        print(" *", obj_type)
+        for name, fdef in obj_fields.iteritems():
             real_dtype = typemap.get(fdef['Type'])
             if real_dtype is None:
-                print "Warning: unknown type '%s', using int" % fdef['Type']
+                print("Warning: unknown type '%s', using int" % fdef['Type'])
                 real_dtype = int
-            ncateg = int(fdef['nCategory']) 
-            if ncateg == 2:  
+            ncateg = int(fdef['nCategory'])
+            if ncateg == 2:
                 assert fdef['Categories'] == "[0,1]", \
                        "field %s has 2 categories that are != from [0, 1]" \
                        % name
@@ -103,19 +103,19 @@ def load_fields(input_path):
                 # TODO: import the list of possible values
                 real_dtype = int
             obj_fields[name] = {'type': real_dtype}
-        print "   done"
+        print("   done")
     return data
 
 
 def transpose_table(data):
     numrows = len(data)
     numcols = len(data[0])
-    
+
     for rownum, row in enumerate(data, 1):
         if len(row) != numcols:
             raise Exception('line %d has %d columns instead of %d !'
                             % (rownum, len(row), numcols))
-    
+
     return [[data[rownum][colnum] for rownum in range(numrows)]
             for colnum in range(numcols)]
 
@@ -164,7 +164,7 @@ def load_agespine(input_path):
 
 class TextImporter(object):
     keywords = None
-    
+
     def __init__(self, input_path, fields, obj_type, renames):
         self.input_path = input_path
         self.fields = fields
@@ -174,17 +174,17 @@ class TextImporter(object):
         self.conditions = None
 
     def unimplemented(self, pos, line, lines):
-        print "unimplemented keyword: %s" % line[0]
+        print("unimplemented keyword: %s" % line[0])
         return pos + 1, None
-    
+
     def skipline(self, pos, line, lines):
         return pos + 1, None
-    
+
     def skipifzero(self, pos, line, lines):
         if len(line) > 1 and line[1] and float(line[1]):
-            print "unimplemented keyword:", line[0]
+            print("unimplemented keyword:", line[0])
         return pos + 1, None
-    
+
     def readvalues(self, *args):
         def f(pos, line, lines):
             values = [func(str_value)
@@ -195,10 +195,10 @@ class TextImporter(object):
                 values = values[0] if values else empty[args[0]]
             return pos + 1, values
         return f
-    
+
     def end(self, *args):
         raise StopIteration
-        
+
     def numorcond(self, pos, line, lines):
         # int=m, + skip line + m * (skipword, int=numand, +
         #                           numand * (str, float=min, float=max))
@@ -208,28 +208,28 @@ class TextImporter(object):
         for i in range(num_or):
             line = lines[pos]
             num_and = int(line[1]) if len(line) >= 1 else 0
-            and_conds = [(line[2 + j * 3], 
-                          float(line[3 + j * 3]), 
+            and_conds = [(line[2 + j * 3],
+                          float(line[3 + j * 3]),
                           float(line[4 + j * 3]))
                          for j in range(num_and)]
             or_conds.append(and_conds)
             pos += 1
         self.conditions[self.current_condition] = {'condition': or_conds}
-        
+
         # We return self.conditions for each condition. It will be overwritten
         # by later conditions if any, but this ensures they are stored even
         # if there are actually less conditions than declared.
         return pos, self.conditions
 #        return pos, res
-    
+
     def condition(self, pos, line, lines):
         self.current_condition = int(line[1]) - 1
         return pos + 1, None
-    
+
     def numconditions(self, pos, line, lines):
         self.conditions = [None] * int(line[1])
         return pos + 1, None
-    
+
     def load_txt_file(self):
         # regr_p_alive_f.txt -> alive_f:
         fpath, fname = path.split(self.input_path)
@@ -238,10 +238,10 @@ class TextImporter(object):
         assert len(chunks[1]) == 1
         del chunks[1]
         name = '_'.join(chunks)
-    
+
         with open(self.input_path, "rb") as f:
             lines = list(csv.reader(f, delimiter='\t'))
-    
+
         values = {'name': name}
         pos = 0
         while pos < len(lines):
@@ -249,35 +249,35 @@ class TextImporter(object):
             if not line:
                 pos += 1
                 continue
-            
+
             keyword = line[0].lower()
             if not keyword or keyword.isspace():
                 pos += 1
                 continue
-                
+
             f = self.keywords.get(keyword)
             if f is None:
-                print "unknown keyword: '%s'" % keyword
+                print("unknown keyword: '%s'" % keyword)
                 pos += 1
                 continue
-                
+
             try:
                 pos, value = f(pos, line, lines)
                 if value is not None:
                     values[keyword] = value
             except StopIteration:
                 break
-                
+
         return values
 
     # ------------------------
     # transform to expression
     # ------------------------
-    
+
     def var_type(self, name):
         var_def = self.fields.get(name)
         if var_def is None:
-            print "Warning: field '%s' not found (assuming int) !" % name
+            print("Warning: field '%s' not found (assuming int) !" % name)
             return int
         else:
             return var_def['type']
@@ -291,16 +291,16 @@ class TextImporter(object):
         name, minvalue, maxvalue = cond
         v = Variable(self.var_name(name), self.var_type(name))
         return (v >= minvalue) & (v <= maxvalue)
-        
+
     def andcond2expr(self, andconditions):
-        if andconditions: 
+        if andconditions:
             expr = self.simplecond2expr(andconditions[0])
             for andcond in andconditions[1:]:
-                expr = expr & self.simplecond2expr(andcond) 
+                expr = expr & self.simplecond2expr(andcond)
             return expr
         else:
             return True
-        
+
     def condition2expr(self, condition):
         assert condition
         expr = self.andcond2expr(condition[0])
@@ -312,13 +312,13 @@ class TextImporter(object):
     def import_file(self):
         data = self.load_txt_file()
         predictor, expr = self.data2expr(data)
-        return data['name'], predictor, expr 
+        return data['name'], predictor, expr
 
-    
+
 class RegressionImporter(TextImporter):
     def __init__(self, input_path, fields, renames):
         TextImporter.__init__(self, input_path, fields, obj_type, renames)
-        
+
         # cfr readdyparam.cpp
         self.keywords = {
             'file description:': self.readvalues(str),
@@ -344,14 +344,14 @@ class RegressionImporter(TextImporter):
             's_u': self.skipifzero, # float, skipword, skipword, str (unused?)
             's_v': self.skipifzero, # float (unused in MIDAS?)
             'r': self.skipifzero,   # float (unused?)
-            
+
             # ignore common junk
             'conditions': self.skipline,
             'distribution': self.skipline,
             'coefficients and structure': self.skipline,
             'errorstructure': self.skipline
         }
-        
+
     def indepentvar(self, pos, line, lines):
         # int = m + skip line +
         #           m * (skipword, str=name, skipword, float=min,
@@ -363,27 +363,27 @@ class RegressionImporter(TextImporter):
 
         def floatorempty(s):
             return float(s) if s else 0.0
-        
+
         readvariable = self.readvalues(str, None,
                                        floatorempty, floatorempty, floatorempty)
-        
+
         for i in range(num_vars):
             line = lines[pos]
             pos, values = readvariable(pos, line, lines)
             vars.append(values)
         self.conditions[self.current_condition]['vars'] = vars
         return pos, None
-    
+
     def interactionterms(self, pos, line, lines):
         numterms = int(line[1]) if line[1] else 0
         if numterms:
-            print "unimplemented keyword: interactionterms"
+            print("unimplemented keyword: interactionterms")
         return pos + 1, None
 
     # ------------------------
     # transform to expression
     # ------------------------
-   
+
     def var2expr(self, var):
         name, minvalue, maxvalue, coef = var
         if name == 'constant':
@@ -392,20 +392,20 @@ class RegressionImporter(TextImporter):
             v = Variable(self.var_name(name), self.var_type(name))
             return v * coef
 #            return ZeroClip(v, minvalue, maxvalue) * coef
-    
+
     def vars2expr(self, vars):
         assert vars
         expr = self.var2expr(vars[0])
         for var in vars[1:]:
             expr = expr + self.var2expr(var)
         return expr
-    
+
     def data2expr(self, data):
         conditions = data['numorcond']
         assert conditions
-        
+
         if len(conditions) == 1:
-            condition = conditions[0] 
+            condition = conditions[0]
             expr = self.vars2expr(condition['vars'])
             filter_expr = self.condition2expr(condition['condition'])
         else:
@@ -417,7 +417,7 @@ class RegressionImporter(TextImporter):
                 cond_expr = self.condition2expr(cond['condition'])
                 expr = Where(cond_expr, self.vars2expr(cond['vars']), expr)
                 filter_expr |= cond_expr
-                
+
         kwargs = {'filter': filter_expr}
         predictor, pred_type, _, _  = data['predictor']
         predictor = self.var_name(predictor)
@@ -430,8 +430,8 @@ class RegressionImporter(TextImporter):
         if bool(data['align']):
             kwargs['align'] = 'al_p_%s.csv' % data['name']
             if pred_type != 2:
-                print "unimplemented align for pred_type:", pred_type
-              
+                print("unimplemented align for pred_type:", pred_type)
+
         if pred_type == 0:   # continuous
             expr = ContRegr(expr, **kwargs)
         elif pred_type == 1: # clipped continuous
@@ -439,16 +439,16 @@ class RegressionImporter(TextImporter):
         elif pred_type == 2: # logit
             expr = LogitRegr(expr, **kwargs)
         elif pred_type == 3: # logged continuous
-            expr = LogRegr(expr, **kwargs) 
+            expr = LogRegr(expr, **kwargs)
         elif pred_type == 4: # clipped logged continuous
-            print "Converting clipped logged continuous to logged continuous"
+            print("Converting clipped logged continuous to logged continuous")
             expr = LogRegr(expr, **kwargs)
         else:
-            print "unimplemented predictor type:", pred_type
+            print("unimplemented predictor type:", pred_type)
 
         return predictor, expr
-    
-    
+
+
 class TransitionImporter(TextImporter):
     def __init__(self, input_path, fields, constants, links, obj_type, renames):
         TextImporter.__init__(self, input_path, fields, obj_type, renames)
@@ -469,9 +469,9 @@ class TransitionImporter(TextImporter):
             'gen': self.gen, # str
             'fpbcalc': self.fpbcalc, # str
             'fgen': self.fgen, # str
-            
+
             'zero': self.skipifzero,
-            
+
             'first': self.skipifzero,
             'second': self.skipifzero,
             'third': self.skipifzero,
@@ -480,7 +480,7 @@ class TransitionImporter(TextImporter):
             'conditions': self.skipline,
             'type': self.skipline,
         }
-    
+
     def gen(self, pos, line, lines):
         # min(arg1, arg2)
         # max(arg1, arg2)
@@ -536,7 +536,7 @@ class TransitionImporter(TextImporter):
         s = re.sub(r'([A-Z_][A-Z0-9_]*)\[(\d{4})Y1\]', r'\1[\2]', s)
         self.conditions[self.current_condition]['action'] = s
         return pos + 1, None
-    
+
 #    def zero(self, pos, line, lines):
 #        if line[1] != "0":
             # 1) find line with "predict" keyword
@@ -548,13 +548,13 @@ class TransitionImporter(TextImporter):
     # ------------------------
     # tranform to expression
     # ------------------------
-   
+
     def action2expr(self, data):
         const_sample, const_names = self.constants
         globals = dict((name, SubscriptableVariable(name))
                        for name in const_names)
-        
-        globals.update((name, Variable(self.var_name(name), 
+
+        globals.update((name, Variable(self.var_name(name),
                                        self.var_type(name)))
                        for name in self.fields.keys())
         links = [(name, Link(name, link_def['keyorig'], link_def['desttype'],
@@ -567,17 +567,17 @@ class TransitionImporter(TextImporter):
         # pred_type seem to be ignored for transitions
         predictor, pred_type = data['predictor']
         local_name = self.var_name(predictor)
-        
+
         conditions = data['numorcond']
         assert conditions
-        
+
         # this is a hack to work around useless conditions in liam 1
         for cond in conditions:
             for orcond in cond['condition']:
                 if ('p_co_alive', 1.0, 1.0) in orcond:
-                    print "   Warning: removed 'p_co_alive == 1' condition"
+                    print("   Warning: removed 'p_co_alive == 1' condition")
                     orcond.remove(('p_co_alive', 1.0, 1.0))
-                    
+
         lastcond = conditions[-1]
         if lastcond is None:
             raise Exception('Actual number of conditions do not match the '
@@ -588,7 +588,7 @@ class TransitionImporter(TextImporter):
         for cond in conditions[-2::-1]:
             cond_expr = self.condition2expr(cond['condition'])
             expr = Where(cond_expr, self.action2expr(cond['action']), expr)
-        return local_name, expr 
+        return local_name, expr
 
 
 class TrapImporter(TextImporter):
@@ -599,14 +599,14 @@ class TrapImporter(TextImporter):
 
 def load_processes(input_path, fnames,
                    fields, constants, links, obj_type, renames):
-    print "=" * 40
+    print("=" * 40)
     data = []
     predictor_seen = {}
     parsed = []
     obj_renames = renames.get(obj_type, {})
-    print "pass 1: parsing files..."
+    print("pass 1: parsing files...")
     for fname in fnames:
-        print " - %s" % fname
+        print(" - %s" % fname)
         fpath = path.join(input_path, fname)
         if fname.startswith('regr_'):
             importer = RegressionImporter(fpath, fields, renames)
@@ -623,8 +623,8 @@ def load_processes(input_path, fnames,
             parsed.append((fname, fullname, predictor, expr))
             predictor_seen.setdefault(predictor, []).append(fullname)
 
-    print "-" * 40
-    print "pass 2: simplifying..."
+    print("-" * 40)
+    print("pass 2: simplifying...")
     other_types = {
         'regr': ('tran', 'trap'),
         'tran': ('regr', 'trap'),
@@ -633,34 +633,34 @@ def load_processes(input_path, fnames,
     proc_name_per_file = {}
     proc_names = {}
     for fname, fullname, predictor, expr in parsed:
-        print " - %s (%s)" % (fname, predictor)
+        print(" - %s (%s)" % (fname, predictor))
         type_, name = fullname.split('_', 1)
         expr_str = str(simplify(expr))
         if len(predictor_seen[predictor]) == 1:
             if name != predictor:
-                print "   renaming '%s' process to '%s'" % (name, predictor)
+                print("   renaming '%s' process to '%s'" % (name, predictor))
                 name = predictor
             res = expr_str
         else:
             conflicting_names = predictor_seen[predictor]
-             
+
             assert len(conflicting_names) > 1
             names_to_check = ['%s_%s' % (other_type, name)
                               for other_type in other_types[type_]]
             if any(name in conflicting_names for name in names_to_check):
                 name = fullname
-                
+
             while name in proc_names:
                 name += '_dupe'
 
-            print "   renaming process to '%s'" % name
-            
+            print("   renaming process to '%s'" % name)
+
             res = {'predictor': predictor,
                    'expr': expr_str}
         proc_names[name] = True
         data.append((name, res))
         proc_name_per_file[fname] = name
-    print "=" * 40
+    print("=" * 40)
     return proc_name_per_file, data
 
 
@@ -692,7 +692,7 @@ def links2yaml(links):
                              for name, l in links)
     else:
         return ''
-    
+
 
 def process2yaml(processes):
     if processes:
@@ -732,7 +732,7 @@ def entities2yaml(entities):
         fields = entity['fields']
         if fields:
             fields = sorted([(fname, f['type'].__name__)
-                             for fname, f in fields.iteritems()]) 
+                             for fname, f in fields.iteritems()])
             fields_str = '\n        fields:\n            %s' \
                          % orderedmap2yaml(fields, 3)
         else:
@@ -746,44 +746,45 @@ def entities2yaml(entities):
 
 def process_list2yaml(processes):
     s = []
-    for ent_name, ent_processes in itertools.groupby(processes, 
+    for ent_name, ent_processes in itertools.groupby(processes,
                                                      operator.itemgetter(0)):
         p_str = ',\n              '.join(pname
                                          for ent_name, pname in ent_processes)
-        s.append('        - %s: [%s]' % (ent_name, p_str))  
+        s.append('        - %s: [%s]' % (ent_name, p_str))
     return '\n'.join(s)
 
 
 def simulation2yaml(constants, entities, process_list):
     constants_str = constants2yaml(constants)
     entities_str = entities2yaml(entities)
-    process_list_str = process_list2yaml(process_list)                
+    process_list_str = process_list2yaml(process_list)
     return """globals:
     periodic:
         # period is implicit
         %s
 
-entities: 
+entities:
 %s
 
 simulation:
     processes:
 %s
-    input: 
+    input:
         file: base.h5
-    output: 
+    output:
         file: simulation.h5
     start_period: 2003    # first simulated period
     periods: 20
 """ % (constants_str, entities_str, process_list_str)
-    
+
 # =====================
 
 if __name__ == '__main__':
     argv = sys.argv
     if len(argv) < 3:
-        print "Usage: %s input_path output_path [rename_file] [filtered]" \
-              % argv[0]
+        print(
+            "Usage: %s input_path output_path [rename_file] [filtered]" % argv[0]
+            )
         sys.exit()
     else:
         input_path = argv[1]
@@ -801,7 +802,7 @@ if __name__ == '__main__':
     constants = load_av_globals(path.join(input_path, 'macro.av'))[:2]
     links = load_links(path.join(input_path, 'linkage.txt'))
     process_list = load_agespine(path.join(input_path, 'agespine.txt'))
-    
+
     fields = {}
     for obj_type, obj_fields in fields_per_obj.iteritems():
         for name, fdef in obj_fields.iteritems():
@@ -810,21 +811,21 @@ if __name__ == '__main__':
     if fname is None:
         raw_names = os.listdir(input_path)
     else:
-        raw_names = [fname] 
+        raw_names = [fname]
         filtered = False
 
     if filtered:
         base_names = process_list
     else:
         base_names = []
-        for raw_name in raw_names: 
+        for raw_name in raw_names:
             basename, ext = path.splitext(raw_name)
             if ext == '.txt':
                 base_names.append(basename)
-            
+
     process_files = []
     proc_per_obj = {}
-    for basename in base_names:        
+    for basename in base_names:
         chunks = basename.split('_', 2)
         if len(chunks) < 3:  # tran_p_x
             continue
@@ -837,21 +838,21 @@ if __name__ == '__main__':
         process_files.append((obj_type, file_name))
         proc_per_obj.setdefault(obj_type, []).append(file_name)
 
-    proc_name_per_file = {}        
+    proc_name_per_file = {}
     entities = {}
     for obj_type, obj_fields in fields_per_obj.iteritems():
-        obj_links = [(k, v) for k, v in links.items() 
+        obj_links = [(k, v) for k, v in links.items()
                      if v['origintype'] == obj_type]
         obj_fields.update([(v['keyorig'], {'type': int}) for k, v in obj_links])
         obj_proc_files = proc_per_obj.get(obj_type, [])
-        print "loading processes for %s" % obj_type
-        obj_proc_names, obj_processes = load_processes(input_path, 
+        print("loading processes for %s" % obj_type)
+        obj_proc_names, obj_processes = load_processes(input_path,
                                                        obj_proc_files,
                                                        fields, constants, links,
                                                        obj_type,
                                                        renames)
         proc_name_per_file.update(obj_proc_names)
-        
+
         obj_renames = renames.get(obj_type, {})
         for old_name in obj_fields.keys():
             new_name = obj_renames.get(old_name)
@@ -868,14 +869,14 @@ if __name__ == '__main__':
         proc_name = proc_name_per_file.get(file_name)
         if proc_name is not None:
             process_names.append((obj, proc_name))
-                     
-    print "exporting to '%s'" % output_path
+
+    print("exporting to '%s'" % output_path)
     with open(output_path, 'w') as f_out:
         # default YAML serialization is ugly, so we produce the string ourselves
         f_out.write(simulation2yaml(constants, entities, process_names))
-#        yaml.dump(yamldata, f_out, default_flow_style=False, 
+#        yaml.dump(yamldata, f_out, default_flow_style=False,
 #                  default_style='"', indent=4)
-    
+
     if fname is None:
         convert_all_align(input_path)
-    print "done."
+    print("done.")
