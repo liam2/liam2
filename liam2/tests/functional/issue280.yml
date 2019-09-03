@@ -1,0 +1,10 @@
+import: test_issue.yml.template
+
+
+entities:
+    person:
+        processes:
+            testif():
+                - show("testif")
+            test_issue():
+                - testif()

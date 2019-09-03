@@ -4,7 +4,7 @@ entities:
     person:
         fields:
             # a field present in dataset and which is int
-            - age:    {type: float, initialdata: False}
+            - age: {type: float, initialdata: False}
 
         processes:
             test_issue():
