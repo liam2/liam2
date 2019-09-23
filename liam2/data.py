@@ -94,8 +94,7 @@ class ColumnArray(object):
         else:
             # int, slice, ndarray
             ca = ColumnArray()
-            for name, colvalue in self.columns.items():
-                ca[name] = colvalue[key]
+            ca.columns = {colname: colvalue[key] for colname, colvalue in self.columns.items()}
             ca.dtype = self.dtype
             return ca
 
@@ -103,12 +102,16 @@ class ColumnArray(object):
         """does not copy value except if a type conversion is necessary"""
 
         if isinstance(key, basestring):
+            length = len(self)
             if isinstance(value, (np.ndarray, la.LArray)) and value.shape:
+                if len(value) != length:
+                    raise ValueError("could not broadcast input array from shape ({}) into shape ({})"
+                                     .format(len(value), length))
                 column = value
             else:
                 # expand scalars (like ndarray does) so that we don't have to
                 # check isinstance(x, ndarray) and x.shape everywhere
-                column = np.full(len(self), value, dtype=gettype(value))
+                column = np.full(length, value, dtype=gettype(value))
 
             if key in self.columns:
                 # converting to existing dtype
