@@ -81,7 +81,7 @@ entities:
 
         processes:
             create():
-                - new('person', number=10)
+                - new('person', number=5)
                 # hh_id            0        1
                 # age    [0, 10, 30] [20, 40]
                 # weight [5,  4,  2] [ 3,  1]
