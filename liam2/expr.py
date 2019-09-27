@@ -362,7 +362,8 @@ class Expr(object):
         constants = {'nan': float('nan'), 'inf': float('inf')}
         res = evaluate(s, local_ctx, constants, truediv='auto')
         if isinstance(res, np.ndarray) and not res.shape:
-            res = np.asscalar(res)
+            # convert to scalar (equivalent to the now deprecated np.asscalar(res))
+            res = res.item()
         if labels is not None:
             # This is a hack which relies on the fact that currently
             # all the expression we evaluate through numexpr preserve

@@ -587,7 +587,7 @@ class LabeledArray(np.ndarray):
 
     def __repr__(self):
         if not self.ndim:
-            return str(np.asscalar(self))
+            return str(self.item())
         else:
             return '\n' + table2str(self.as_table(), 'nan') + '\n'
     # explicitly defining __str__ is needed here because it exists on ndarray
