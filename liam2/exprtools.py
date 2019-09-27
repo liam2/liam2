@@ -316,7 +316,7 @@ def _parse(s, interactive=False):
     """
     if not isinstance(s, basestring):
         return s
-    
+
     # anchors \b : matches a word boundary
     str_to_parse = re.sub(r'\b(if\()', 'where(', s)
     tree = ast.parse(str_to_parse)

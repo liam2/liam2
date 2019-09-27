@@ -34,10 +34,11 @@ class EvaluationContext(object):
 
     def copy(self, fresh_data=False):
         # FIXME: when fresh_data is False, entities_data should clone each
-        # EntityContext and set their eval_ctx attribute to the newly created
-        # EvaluationContext (res), otherwise each EntityContext still points to
-        # the old EvaluationContext (which obviously can have some different
-        # attributes, eg period).
+        #        EntityContext and set their eval_ctx attribute to the newly created
+        #        EvaluationContext (res), otherwise each EntityContext still points to
+        #        the old EvaluationContext (which obviously can have some different
+        #        attributes, eg period).
+
         # The problem is that the fix currently breaks many models because in
         # some (all?) cases EvaluableExpression are stored in a context (extra)
         # that is not the same than the context where it is used (and thus the
@@ -45,7 +46,7 @@ class EvaluationContext(object):
         # entities_data = None if fresh_data else {}
         entities_data = None if fresh_data else self.entities_data.copy()
         # FIXME: when switching entities, filter should not come along, or maybe
-        # filter should be a per-entity dict?
+        #        filter should be a per-entity dict?
         res = EvaluationContext(self.simulation, self.entities,
                                 self.global_tables, self.period,
                                 self.entity_name, self.filter_expr,
@@ -138,7 +139,7 @@ class EvaluationContext(object):
     def __len__(self):
         return self.length()
 
-    def subset(self, index=None, keys=None, filter_expr=None):
+    def subset(self, index, keys=None, filter_expr=None):
         """
         returns a copy of the context with only a subset of the current entity.
         The main use case is to take a subset of rows. Since this is a
@@ -300,12 +301,12 @@ def context_subset(context, index=None, keys=None):
     # if keys is None, take all fields
     if keys is None:
         keys = list(context.keys())
-    # tuples are not valid numpy indexes (I don't know why)
+
+    # tuples are not valid numpy indexes
     if isinstance(index, list):
-        if not index:
-            index = np.array([], dtype=int)
-        else:
-            index = np.array(index)
+        # forcing to int, even for empty lists
+        index = np.array(index, dtype=int)
+
     if index is None:
         length = context_length(context)
     elif np.issubdtype(index.dtype, np.integer):
@@ -316,7 +317,7 @@ def context_subset(context, index=None, keys=None):
             "boolean index has length %d instead of %d" % \
             (len(index), context_length(context))
         length = index.sum()
-        # length = np.sum(index)
+
     result = empty_context(length)
     for key in keys:
         value = context[key]
