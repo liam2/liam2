@@ -368,7 +368,8 @@ class Expr(object):
             res = eval(s, constants, local_ctx)
 
         if isinstance(res, np.ndarray) and not res.shape:
-            res = np.asscalar(res)
+            # convert to scalar (equivalent to the now deprecated np.asscalar(res))
+            res = res.item()
 
         # if cache_key is not None:
         #     expr_cache[cache_key] = res
