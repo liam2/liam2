@@ -225,7 +225,7 @@ class ProcessGroup(Process):
         print("writing {} to {}/{}/{} ...".format(', '.join(fnames),
                                                   fname, period, name))
 
-        entity_context = EntityContext(context, self.entity, {'period': period})
+        entity_context = EntityContext(context, self.entity)
         append_carray_to_table(entity_context, table, numrows)
         print("done.")
 

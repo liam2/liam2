@@ -60,9 +60,22 @@ def show_top_expr(count=None):
 
 
 def expand_periodic_fields(content):
+    """
+    change
+
+    globals:
+        periodic:
+            - abc: int
+
+    to:
+
+    globals:
+        periodic:
+            fields:
+                - abc: int
+    """
     periodic = multi_get(content, 'globals/periodic')
-    if isinstance(periodic, list) and \
-            all(isinstance(f, dict) for f in periodic):
+    if isinstance(periodic, list) and all(isinstance(f, dict) for f in periodic):
         multi_set(content, 'globals/periodic', {'fields': periodic})
 
 
@@ -75,8 +88,12 @@ def handle_imports(content, directory):
         print("importing: '%s'" % import_path)
         import_directory = os.path.dirname(import_path)
         with open(import_path) as f:
-            import_content = handle_imports(yaml.safe_load(f), import_directory)
+            import_content = yaml.safe_load(f)
             expand_periodic_fields(import_content)
+            import_content = handle_imports(import_content, import_directory)
+
+            # globals fields and entities fields are not handled by the simple merge_dicts below the loop because they
+            # are not dict but lists of items
             for wild_key in ('globals/*/fields', 'entities/*/fields'):
                 multi_keys = expand_wild(wild_key, import_content)
                 for multi_key in multi_keys:
@@ -356,10 +373,10 @@ class Simulation(object):
         for entity in entities.values():
             entity.attach_and_resolve_links(entities)
 
-        global_context = {'__globals__': global_symbols(globals_def),
+        global_parse_context = {'__globals__': global_symbols(globals_def),
                           '__entities__': entities}
-        parsing_context = global_context.copy()
-        parsing_context.update((entity.name, entity.all_symbols(global_context))
+        parsing_context = global_parse_context.copy()
+        parsing_context.update((entity.name, entity.all_symbols(global_parse_context))
                                for entity in entities.values())
         # compute the lag variable for each entity (an entity can cause fields from
         # other entities to be added via links)

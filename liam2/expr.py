@@ -460,8 +460,7 @@ class Expr(object):
         if not hasattr(self, "_variables") or self._variables is None:
             # FIXME: this is a quick hack to make "othertable" work.
             # We should return prefixed variable instead.
-            badvar = lambda v: isinstance(v, ShortLivedVariable) or \
-                               (isinstance(v, GlobalVariable) and
+            badvar = lambda v: (isinstance(v, GlobalVariable) and
                                 v.tablename != 'periodic')
             self._variables = set(v for v in self.all_of(Variable)
                                   if not badvar(v))
@@ -1090,10 +1089,6 @@ class Variable(Expr):
             return gettype(context[self.name])
         else:
             return self._dtype
-
-
-class ShortLivedVariable(Variable):
-    pass
 
 
 # class GlobalVariable(Variable):

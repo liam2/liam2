@@ -39,12 +39,11 @@ max_vars = 0
 def global_symbols(globals_def):
     symbols = {}
     for name, global_def in globals_def.items():
-        if isinstance(global_def, dict):
-            global_type = global_def.get('fields')
-        else:
+        if not isinstance(global_def, dict):
             symbols[name] = global_def
             continue
 
+        global_type = global_def.get('fields')
         if isinstance(global_type, list):
             # add namespace for table
             symbols[name] = GlobalTable(name, global_type)
@@ -366,36 +365,36 @@ class Entity(object):
         return self._methods
 
     # this must work _before_ processes are parsed
-    def all_symbols(self, global_context):
+    def all_symbols(self, global_parse_context):
         from liam2.links import PrefixingLink
 
         symbols = WarnOverrideDict(self.variables.copy())
-        local_context = global_context.copy()
-        local_context[self.name] = symbols
-        local_context['__entity__'] = self.name
-        macros = dict((k, parse(v, local_context))
+        local_parse_context = global_parse_context.copy()
+        local_parse_context[self.name] = symbols
+        local_parse_context['__entity__'] = self.name
+        macros = dict((k, parse(v, local_parse_context))
                       for k, v in self.macro_strings.items())
         symbols.update(macros)
         symbols['other'] = PrefixingLink(self, macros, self.links, '__other_')
         symbols.update(self.method_symbols)
         return symbols
 
-    def parse_expr(self, k, v, context):
+    def parse_expr(self, k, v, parse_context):
         # I prefer listing bool explicitly even if not necessary because isinstance(True, int) is True
         if isinstance(v, (bool, int, float, list, dict)):
             return Assignment(k, self, v)
         elif isinstance(v, basestring):
-            return Assignment(k, self, parse(v, context))
+            return Assignment(k, self, parse(v, parse_context))
         else:
             # lets be explicit about it
             return None
 
     @staticmethod
-    def get_group_context(context, varnames):
-        ent_name = context['__entity__']
-        entity = context['__entities__'][ent_name]
-        group_context = context.copy()
-        entity_context = group_context[ent_name].copy()
+    def get_group_parse_context(parse_context, varnames):
+        ent_name = parse_context['__entity__']
+        entity = parse_context['__entities__'][ent_name]
+        group_parse_context = parse_context.copy()
+        entity_parse_context = group_parse_context[ent_name].copy()
         # this creates a Variable for each name in varnames
         # There is an obscure subtle bug here. get_group_context is used both for functions and for
         # "code blocks". For functions where varnames represent arguments, this is probably fine to
@@ -407,27 +406,27 @@ class Entity(object):
         # - age: age + 1
         # - age()
         # I will not fix this though as it is too obscure and VariableMethodHybrids should not be used anyway.
-        entity_context.update((name, Variable(entity, name))
-                              for name in varnames)
-        group_context[ent_name] = entity_context
-        return group_context
+        entity_parse_context.update((name, Variable(entity, name))
+                                    for name in varnames)
+        group_parse_context[ent_name] = entity_parse_context
+        return group_parse_context
 
-    def parse_process_group(self, k, items, context, purge=True):
+    def parse_process_group(self, k, items, parse_context, purge=True):
         # items is a list of [dict (assignment) or string (action)]
         if items is None:
             raise ValueError("no processes in '%s'" % k)
         group_expressions = [list(elem.items())[0] if isinstance(elem, dict) else (None, elem)
                              for elem in items]
         group_predictors = self.collect_predictors(group_expressions, in_process_group=True)
-        group_context = self.get_group_context(context, group_predictors)
-        sub_processes = [(k, self.parse_process(k, v, group_context))
+        group_parse_context = self.get_group_parse_context(parse_context, group_predictors)
+        sub_processes = [(k, self.parse_process(k, v, group_parse_context))
                          for k, v in group_expressions]
         return ProcessGroup(k, self, sub_processes, purge)
 
     # Once we can make it an error for non-function processes/statements,
     # we should probably split this method into parse_functions and
     # parse_function_body.
-    def parse_function(self, k, v, context):
+    def parse_function(self, k, v, parse_context):
         if isinstance(v, list):
             # v should be a list of dicts (assignments) or strings (actions)
             if "(" in k:
@@ -441,17 +440,10 @@ Function definitions should have parentheses after their name even if they have 
 Please change "{name}:" to "{name}():".
 You probably want to use the "upgrade" command to automatically convert your model file to the new syntax."""
                 warnings.warn(template.format(name=k), UserDeprecationWarning)
-            method_context = self.get_group_context(context, argnames)
+            method_context = self.get_group_parse_context(parse_context, argnames)
             code = self.parse_process_group(k + "_code", code_def,
                                             method_context,
                                             purge=False)
-            # TODO: use code.predictors instead (but it currently
-            # fails for some reason) or at least factor this out
-            # with the code in parse_process_group
-            group_expressions = [list(elem.items())[0] if isinstance(elem, dict) else (None, elem)
-                                 for elem in code_def]
-            group_predictors = self.collect_predictors(group_expressions, in_process_group=True)
-            method_context = self.get_group_context(method_context, group_predictors)
             return Function(k, self, argnames, code)
         elif isinstance(v, dict) and ('args' in v or 'code' in v or 'return' in v):
             args = v.get('args', '')
@@ -509,11 +501,11 @@ Please use this instead:
             warnings.warn(msg.format(name=k, expr=v),
                           UserDeprecationWarning)
             # TODO: it would be cleaner if the process was wrapped in a function
-            return self.parse_expr(k, v, context)
+            return self.parse_expr(k, v, parse_context)
         else:
             raise Exception("unknown expression type for %s: %s (%s)" % (k, v, type(v)))
 
-    def parse_process(self, k, v, context):
+    def parse_process(self, k, v, parse_context):
         """
         items -- a list of tuples (name, process_string)
         context -- parsing context
@@ -537,12 +529,12 @@ Please use this instead:
             if not isinstance(v, list):
                 raise SyntaxError("while is a reserved keyword")
             cond = (
-                parse(k[6:].strip(), context)
+                parse(k[6:].strip(), parse_context)
                 if k[6] == " "
-                else parse(k[5:].strip(), context)
+                else parse(k[5:].strip(), parse_context)
                 )
             assert isinstance(cond, Expr)
-            code = self.parse_process_group("while_code", v, context,
+            code = self.parse_process_group("while_code", v, parse_context,
                                             purge=False)
             return While(k, self, cond, code)
         elif k == 'return':
@@ -557,18 +549,18 @@ Please use this instead:
                 result_def = v[7:].strip()
             else:
                 result_def = None
-            result_expr = parse(result_def, context)
+            result_expr = parse(result_def, parse_context)
             return Return(None, self, result_expr)
         elif k is None and v is None:
             raise ValueError("empty process found ('-')")
         elif self.is_expr(k, v, in_process_group=True):
-            return self.parse_expr(k, v, context)
+            return self.parse_expr(k, v, parse_context)
         else:
             raise Exception("unknown expression type for %s: %s (%s)" % (k, v, type(v)))
 
-    def parse_processes(self, context):
+    def parse_processes(self, parse_context):
         # TODO: when defining a process outside of a function is no longer allowed, simplify this code
-        functions = [(k, self.parse_function(k, v, context))
+        functions = [(k, self.parse_function(k, v, parse_context))
                      for k, v in self.process_strings.items()]
         self.processes = {v.name if isinstance(v, Function) else k: v
                           for k, v in functions}

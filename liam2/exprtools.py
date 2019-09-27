@@ -316,7 +316,7 @@ def _parse(s, interactive=False):
     """
     if not isinstance(s, basestring):
         return s
-    
+
     # anchors \b : matches a word boundary
     str_to_parse = re.sub(r'\b(if\()', 'where(', s)
     tree = ast.parse(str_to_parse)
@@ -364,7 +364,7 @@ def _parse(s, interactive=False):
             return eval(compiled_code, context)
 
 
-def parse(s, context, interactive=False):
+def parse(s, parse_context, interactive=False):
     globals_context = {'False': False,
                        'True': True,
                        'nan': float('nan'),
@@ -373,12 +373,12 @@ def parse(s, context, interactive=False):
                        'int': int,
                        'bool': bool}
     globals_context.update(functions)
-    globals_context.update(context.get('__globals__', {}))
+    globals_context.update(parse_context.get('__globals__', {}))
     # modify in-place
-    context['__globals__'] = globals_context
+    parse_context['__globals__'] = globals_context
     try:
         node = _parse(s, interactive=interactive)
-        return to_ast(node, context)
+        return to_ast(node, parse_context)
     except Exception as e:
         add_context(e, "while parsing: " + s)
         raise
