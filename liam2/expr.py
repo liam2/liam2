@@ -602,6 +602,7 @@ class SubscriptedExpr(EvaluableExpression):
             def fixkey(orig_key, filter_value):
                 if non_scalar_array(orig_key):
                     # print("orig_key", orig_key)
+                    # not using filter_to_indices because filter_value can be an LArray
                     non_filtered_idx = filter_value.nonzero()[0]
                     if len(non_filtered_idx):
                         first_non_filtered_value = \
