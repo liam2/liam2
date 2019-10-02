@@ -5,6 +5,7 @@ import numpy as np
 import tables
 
 from liam2.data import index_table_light, get_fields
+from liam2.partition import filter_to_indices
 from liam2.utils import PrettyTable, merge_items
 
 __version__ = "0.2"
@@ -75,16 +76,16 @@ def diff_array(array1, array2, showdiffs=10, raiseondiff=False):
             if len(col1) != len(col2):
                 print("(length)")
             else:
-                diff = (col1 != col2).nonzero()[0]
-                print("(%d differences)" % len(diff))
+                diff_indices = filter_to_indices(col1 != col2)
+                print("(%d differences)" % len(diff_indices))
                 ids = array1['id']
-                if len(diff) > showdiffs:
-                    diff = diff[:showdiffs]
+                if len(diff_indices) > showdiffs:
+                    diff_indices = diff_indices[:showdiffs]
                 print(PrettyTable([['id',
                                     fname + ' (file1)',
                                     fname + ' (file2)']] +
                                   [[ids[idx], col1[idx], col2[idx]]
-                                   for idx in diff]))
+                                   for idx in diff_indices]))
             if raiseondiff:
                 raise Exception('different')
 

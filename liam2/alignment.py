@@ -31,8 +31,7 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
     axis_values = possible_values.pop(axis_num)
 
     # TODO: make sure possible_values are sorted and use searchsorted instead
-    is_wanted_value = axis_values == value
-    value_idx = is_wanted_value.nonzero()[0]
+    value_idx = filter_to_indices(axis_values == value)
     num_idx = len(value_idx)
     if not num_idx:
         raise Exception('missing alignment data for %s %s' % (axis_name, value))
