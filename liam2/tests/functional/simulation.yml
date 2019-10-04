@@ -695,17 +695,22 @@ entities:
 #                    code:
 #                        - values: values + 1
 
-
-            test_while():
+            test_while_keyword():
                 - values: age
+                - min_age: min(age)
                 - while min(values) < 5:
                     - values: values + 1
+                - inc: 5 - min_age
+                - assertEqual(values, age + inc)
 
                 - i: 5
+                - numiter: 0
                 - assertEqual(i, 5)
-                - while i:
+                - while i > 0:
                     - i: i - 1
+                    - numiter: numiter + 1
                 - assertEqual(i, 0)
+                - assertEqual(numiter, 5)
 
             # pi using the Nilakantha series
             # pi = 3 + 4/(2*3*4) - 4/(4*5*6) + 4/(6*7*8) - 4/(8*9*10) + ...
@@ -3355,7 +3360,7 @@ simulation:
                    test_macro,
                    test_compound,
 
-                   test_while,
+                   test_while_keyword,
                    test_pi_nilakantha,
 
 #                   test_extra_comma,
