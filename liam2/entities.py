@@ -17,7 +17,7 @@ from liam2.data import (merge_arrays, get_fields, ColumnArray, index_table, buil
 from liam2.expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable, GlobalArray, Expr, BinaryOp,
                         MethodSymbol, normalize_type)
 from liam2.exprtools import parse
-from liam2.process import Assignment, ProcessGroup, While, Function, Return
+from liam2.process import Assignment, ProcessGroup, While, If, Function, Return
 from liam2.utils import (count_occurrences, field_str_to_type, size2str, WarnOverrideDict, split_signature, argspec,
                          UserDeprecationWarning)
 from liam2.tfunc import ValueForPeriod, Lag, Duration
@@ -545,6 +545,14 @@ Please use this instead:
             code = self.parse_process_group("while_code", v, context,
                                             purge=False)
             return While(k, self, cond, code)
+        elif k is not None and k.startswith('if '):
+            if not isinstance(v, list):
+                raise SyntaxError("if is a reserved keyword")
+            cond = parse(k[3:].strip(), context)
+            assert isinstance(cond, Expr)
+            code = self.parse_process_group("if_code", v, context,
+                                            purge=False)
+            return If(k, self, cond, code)
         elif k == 'return':
             e = SyntaxError("return is a reserved keyword. To return "
                             "from a function, use 'return expr' "
