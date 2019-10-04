@@ -712,21 +712,6 @@ entities:
                 - assertEqual(i, 0)
                 - assertEqual(numiter, 5)
 
-            # pi using the Nilakantha series
-            # pi = 3 + 4/(2*3*4) - 4/(4*5*6) + 4/(6*7*8) - 4/(8*9*10) + ...
-            test_pi_nilakantha():
-                - numiter: 10
-                - pi: 3
-                - n: 4
-                - d: 2
-                - i: 0
-                - while i < numiter:
-                    - pi: pi + n / (d * (d + 1) * (d + 2))
-                    - n: -n
-                    - d: d + 2
-                    - i: i + 1
-                - show("pi approximation after", numiter, "iterations:", pi)
-
 #            test_for:
 #                - n: 42
 #                # => for is a reserved keyword and can't be used as a
@@ -3361,7 +3346,6 @@ simulation:
                    test_compound,
 
                    test_while_keyword,
-                   test_pi_nilakantha,
 
 #                   test_extra_comma,
 #                   test_uninitialized_var,
