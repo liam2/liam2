@@ -386,7 +386,8 @@ Globals **arrays** can simply be used like a normal field: ::
 Built-in Functions
 ==================
 
-.. index:: conditional function, if
+.. _if_function:
+.. index:: conditional function, if function
 
 conditional function
 --------------------
@@ -1736,8 +1737,76 @@ here. Finally, the *remove* command is called to removes the *dead* from the
 simulation dataset.
 
 
+.. index:: if keyword
+.. _if_keyword:
+
+Conditional block
+=================
+
+.. versionadded:: 0.13
+
+*generic format* ::
+
+    - if scalar_condition:
+        - the code to execute if the condition is satisfied
+        - ...
+
+.. warning:: the condition must be a scalar expression, that is it must have
+             **a single value for all individuals**. In other words, the code in
+             the if block is either executed for all individuals, or for none of them.
+             If one wants to assign different values to a variable depending on a
+             per-individual condition, one should use an :ref:`if() function
+             <if_function>` instead. See examples below.
+
+*example 1* ::
+
+    show_age_in_2020():
+        - if period == 2020:
+            - show(age)
+
+Now let us suppose one wants to repeat a computation until some condition is
+met per individual. One could intuitively write it like below.
+
+**bad** *example* ::
+
+    wrong_if_keyword_usage():
+        - score: age / max(age)
+        - if score < 1:   # <-- this line is WRONG !
+            - score: score + 0.1
+        - show(score)
+
+However, that would result in this error: ::
+
+    ValueError: The truth value of an array with more than one element is
+    ambiguous. Use a.any() or a.all()
+
+The solution is to follow the advice in the error message and use any() in
+this case.
+
+*example 2* ::
+
+    repeat_while_below_1():
+        - score: age / max(age)
+        - while any(score < 1):
+            - score: score + 0.1
+        - show(score)
+
+This will repeat the code until all individuals have reached the target **but**
+individuals who reached it early will continue to be updated, and it might
+not be what is needed. If that is the case, one has to **explicitly** only
+update the individuals which are not "done" yet.
+
+*example 3* ::
+
+    repeat_while_below_1():
+        - score: age / max(age)
+        - if any(score < 1):
+            - score: if(score < 1, score + 0.1, score)
+        - show(score)
+
+
 .. index:: while
-.. _while:
+.. _while_keyword:
 
 While loops
 ===========

@@ -121,7 +121,7 @@ class While(Process):
 
     def __init__(self, name, entity, cond, code):
         """
-        cond -- an Expr returning a (single) boolean, it means the condition
+        cond -- an Expr returning a *single* boolean, it means the condition
                 value must be the same for all individuals
         code -- a ProcessGroup
         """
@@ -137,6 +137,31 @@ class While(Process):
             # otherwise test_while loops indefinitely (because "values" is
             # never incremented)
             expr_cache.clear()
+
+    def expressions(self):
+        if isinstance(self.cond, Expr):
+            yield self.cond
+        for e in self.code.expressions():
+            yield e
+
+
+class If(Process):
+    """this class implements if block"""
+
+    def __init__(self, name, entity, cond, code):
+        """
+        cond -- an Expr returning a *single* boolean, it means the condition
+                value must be the same for all individuals
+        code -- a ProcessGroup
+        """
+        Process.__init__(self, name, entity)
+        self.cond = cond
+        assert isinstance(code, ProcessGroup)
+        self.code = code
+
+    def run_guarded(self, context):
+        if expr_eval(self.cond, context):
+            self.code.run_guarded(context)
 
     def expressions(self):
         if isinstance(self.cond, Expr):

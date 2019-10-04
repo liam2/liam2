@@ -696,6 +696,16 @@ entities:
 #                    cond: min(values) < 5
 #                    code:
 #                        - values: values + 1
+            test_if_keyword():
+                - if min(age) > 1000:
+                      - show("this should not happen!")
+
+                - test: False
+                - if period == 2003:
+                      - show('this is 2003 !')
+                      - test: True
+                - assertEqual(test, period == 2003)
+
 
             test_while_keyword():
                 - values: age
@@ -3354,6 +3364,7 @@ simulation:
                    test_globals_nd,
                    test_autoindex,
 
+                   test_if_keyword,
                    test_macro,
                    test_compound,
 
