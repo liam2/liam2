@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 import sys
+import inspect
 
 
 PY2 = sys.version_info[0] == 2
@@ -78,3 +79,27 @@ def csv_open(filename, mode='r'):
         return open(filename, mode + 'b')
     else:
         return open(filename, mode, newline='', encoding='utf8')
+
+
+if sys.version_info[:2] >= (3, 3):
+    import inspect
+
+    # we don't use inspect.getargspec/getfullargspec directly because ...
+    def getargspec(func):
+        sig = inspect.signature(func)
+        Parameter = inspect.Parameter
+
+        def params(sig, kind):
+            return [p for p in sig.parameters.values() if p.kind == kind]
+
+        pos_or_kw = params(sig, Parameter.POSITIONAL_OR_KEYWORD)
+        args = [p.name for p in pos_or_kw]
+        varargs = [p.name for p in params(sig, Parameter.VAR_POSITIONAL)]
+        varargs = varargs[0] if varargs else None
+        varkw = [p.name for p in params(sig, Parameter.VAR_KEYWORD)]
+        varkw = varkw[0] if varkw else None
+        defaults = [p.default for p in pos_or_kw if p.default is not Parameter.empty]
+        defaults = defaults if defaults else None
+        return inspect.ArgSpec(args, varargs, varkw, defaults)
+else:
+    getargspec = inspect.getargspec
