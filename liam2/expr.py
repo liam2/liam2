@@ -7,7 +7,7 @@ from collections import Counter
 
 import numpy as np
 
-from liam2.compat import basestring, PY2, zip, with_metaclass
+from liam2.compat import basestring, PY2, zip, with_metaclass, getargspec
 from liam2.cache import Cache
 from liam2.context import EntityContext, EvaluationContext
 from liam2.utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray, NiceArgSpec, englishenum, make_hashable,
@@ -672,7 +672,7 @@ class FillArgSpecMeta(FillFuncNameMeta):
                 # >>> inspect.getargspec(a)
                 # ArgSpec(args=['a', 'b', 'c'], varargs='d', keywords='e',
                 #         defaults=(1,))
-                spec = inspect.getargspec(compute)
+                spec = getargspec(compute)
             except TypeError:
                 raise Exception('%s is not a pure-Python function so its '
                                 'signature needs to be specified '
