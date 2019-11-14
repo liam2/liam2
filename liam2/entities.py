@@ -536,7 +536,11 @@ Please use this instead:
         elif k is not None and re.match("while[ (].*", k):
             if not isinstance(v, list):
                 raise SyntaxError("while is a reserved keyword")
-            cond = parse(k[6:].strip(), context)
+            cond = (
+                parse(k[6:].strip(), context)
+                if k[6] == " "
+                else parse(k[5:].strip(), context)
+                )
             assert isinstance(cond, Expr)
             code = self.parse_process_group("while_code", v, context,
                                             purge=False)
