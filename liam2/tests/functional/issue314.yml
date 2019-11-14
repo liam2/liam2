@@ -1,0 +1,16 @@
+import: test_issue.yml.template
+
+entities:
+    person:
+        processes:
+            test_issue():
+                - condition: true
+                - while condition:
+                    - assertTrue(condition)
+                    - condition: false
+                - assertFalse(condition)
+                - condition: true
+                - while(condition):
+                    - assertTrue(condition)
+                    - condition: false
+                - assertFalse(condition)
