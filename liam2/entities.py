@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 import collections
+import re
 import sys
 import warnings
 
@@ -292,7 +293,7 @@ class Entity(object):
     def is_expr(k, v, in_process_group=False):
         if in_process_group:
             # I prefer listing bool explicitly even if not necessary because isinstance(True, int) is True
-            iswhile = k is not None and k.startswith('while ')
+            iswhile = k is not None and re.match("while[ (].*", k)
             return not iswhile and isinstance(v, (basestring, bool, int, float, list, dict))
         else:
             return isinstance(v, (basestring, bool, int, float))
@@ -532,10 +533,14 @@ Please use this instead:
 """.format(cond_expr=v['cond']))
             else:
                 raise ValueError("while is a reserved keyword")
-        elif k is not None and k.startswith('while '):
+        elif k is not None and re.match("while[ (].*", k):
             if not isinstance(v, list):
                 raise SyntaxError("while is a reserved keyword")
-            cond = parse(k[6:].strip(), context)
+            cond = (
+                parse(k[6:].strip(), context)
+                if k[6] == " "
+                else parse(k[5:].strip(), context)
+                )
             assert isinstance(cond, Expr)
             code = self.parse_process_group("while_code", v, context,
                                             purge=False)
