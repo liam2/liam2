@@ -805,14 +805,20 @@ def index_tables(globals_def, entities, fpath):
         for ent_name, entity in entities.items():
             print("    -", ent_name, "...", end=' ')
 
-            table = getattr(input_entities, ent_name)
-            assert_valid_type(table, list(entity.fields.in_input.name_types))
+            try:
+                table = getattr(input_entities, ent_name)
 
-            rows_per_period, id_to_rownum_per_period = \
-                timed(index_table, table)
-            indexed_table = IndexedTable(table, rows_per_period,
-                                         id_to_rownum_per_period)
-            entities_tables[ent_name] = indexed_table
+                assert_valid_type(table, list(entity.fields.in_input.name_types))
+
+                rows_per_period, id_to_rownum_per_period = \
+                    timed(index_table, table)
+                indexed_table = IndexedTable(table, rows_per_period,
+                                            id_to_rownum_per_period)
+                entities_tables[ent_name] = indexed_table
+            except Exception as e:
+                print(e)
+                pass
+
     except:
         input_file.close()
         raise
@@ -844,12 +850,17 @@ class H5Source(DataSource):
         h5file, dataset = index_tables(globals_def, entities, self.input_path)
         entities_tables = dataset['entities']
         for ent_name, entity in entities.items():
-            table = entities_tables[ent_name]
-            # entity.indexed_input_table = table
-            entity.input_index = table.id2rownum_per_period
-            entity.input_rows = table.period_index
-            entity.input_table = table.table
-            entity.base_period = table.base_period
+            try:
+                table = entities_tables[ent_name]
+                # entity.indexed_input_table = table
+                entity.input_index = table.id2rownum_per_period
+                entity.input_rows = table.period_index
+                entity.input_table = table.table
+                entity.base_period = table.base_period
+            except Exception as e:
+                print(e)
+                pass
+
         self.h5in = h5file
         return dataset
 
