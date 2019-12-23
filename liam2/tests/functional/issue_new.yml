@@ -1,0 +1,64 @@
+import: ../examples/demo01.yml
+
+entities:
+    person:
+        fields:
+            - age:    int
+            - gender: bool
+            - year_of_birth: {type: int, initialdata: False, default: -1}
+
+        links:
+              generation: {type: many2one, target: generation, field: year_of_birth}
+
+        processes:
+            ageing():
+                - age: age + 1
+
+            create_year_of_birth():
+                - year_of_birth: period - age
+                - show(min(year_of_birth))
+                - show(max(year_of_birth))
+
+            test_issue():
+                - show(generation.year_of_birth)
+
+    generation:
+        macros:
+            year_of_birth_max: 2015
+            year_of_birth_min: 1916
+
+        fields:
+            - year_of_birth: {type: int, initialdata: False, default: -1}
+
+        links:
+            members: {type: one2many, target: person, field: year_of_birth}
+
+        processes:
+            create_year_of_birth():
+                # - year_of_birth_max: members.max(year_of_birth)
+                # - year_of_birth_: members.min(year_of_birth)
+                - x: year_of_birth_min
+                - show(year_of_birth_max)
+                - show(x)
+                - while x <= year_of_birth_max:
+                    - show(x)
+                    - new('generation', number = 1)
+                    - year_of_birth: if(year_of_birth == -1, x, year_of_birth)
+                    - x: x + 1
+
+simulation:
+    init:
+        - person: [create_year_of_birth]
+        - generation: [create_year_of_birth]
+
+    processes:
+        - person: [ageing, test_issue]
+
+    input:
+        file: ../examples/demo.h5
+    output:
+        path: output
+        file: simulation_bis.h5
+
+    start_period: 2016
+    periods: 2
