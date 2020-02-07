@@ -401,8 +401,8 @@ class LColumnArray(object):
 
         if not isinstance(key, np.ndarray):
             raise ValueError("key is {} and not ndarray".format(type(key).__name__))
-        if not np.issubdtype(key.dtype, np.int_):
-            raise ValueError("key dtype is {} and not int-like".format(key.dtype))
+        if not np.issubdtype(key.dtype, np.integer):
+            raise ValueError("key dtype is {} and not one of the integer types".format(key.dtype))
         self.axes = la.AxisCollection(self.axes.id.subaxis(key))
 
         # using gc.collect() after each column update frees a bit of memory but slows things down significantly.
