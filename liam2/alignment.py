@@ -180,7 +180,9 @@ You may want to use a logistic function.
 
     num_aligned = int(np.sum(aligned))
     # this assertion is only valid in the non weighted case
-    assert num_aligned == total_affected + total_overflow - total_underflow
+    should_be_aligned = total_affected + total_overflow - total_underflow
+    assert num_aligned == should_be_aligned, "%d != %d (%d + %d - %d)" % \
+        (num_aligned, should_be_aligned, total_affected, total_overflow, total_underflow)
     num_partitioned = sum(len(g) for g in groups)
     if config.log_level == "processes":
         print(" %d/%d" % (num_aligned, num_partitioned), end=" ")
