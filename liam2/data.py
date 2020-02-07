@@ -399,7 +399,10 @@ class LColumnArray(object):
     def keep(self, key):
         """key must be a vector of int indices"""
 
-        assert isinstance(key, np.ndarray) and np.issubdtype(key.dtype, np.int_)
+        if not isinstance(key, np.ndarray):
+            raise ValueError("key is {} and not ndarray".format(type(key).__name__))
+        if not np.issubdtype(key.dtype, np.int_):
+            raise ValueError("key dtype is {} and not int-like".format(key.dtype))
         self.axes = la.AxisCollection(self.axes.id.subaxis(key))
 
         # using gc.collect() after each column update frees a bit of memory but slows things down significantly.
