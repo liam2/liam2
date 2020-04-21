@@ -3,11 +3,11 @@ import unittest
 import numpy as np
 from numpy import array
 
-from context import EvaluationContext
-from entities import Entity
-from expr import Variable
-from exprtools import parse
-import links
+from liam2.context import EvaluationContext
+from liam2.entities import Entity
+from liam2.expr import Variable
+from liam2.exprtools import parse
+from liam2 import links
 
 
 class ArrayTestCase(unittest.TestCase):
