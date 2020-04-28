@@ -48,7 +48,7 @@ def test_examples():
 def test_functional():
     excluded = ('imported1.yml', 'imported2.yml')
     if use_travis:
-        excluded += ('static.yml', 'generate.yml')
+        excluded += ('test_erf.yml', 'static.yml', 'generate.yml')
     for test_file in iterate_directory('functional', 'import.yml', excluded):
         yield run_file, test_file
 
