@@ -93,7 +93,7 @@ except ImportError:
             # it is a bit faster to do: v = expr; v &= b
             # than
             # v = copy(b); v &= expr
-            parts = zip(idx, possible_values, columns)
+            parts = list(zip(idx, possible_values, columns))
             if parts:
                 first_i, first_colvalues, first_coldata = parts[0]
                 local_filter = first_coldata == first_colvalues[first_i]
@@ -105,10 +105,13 @@ except ImportError:
                 # get a 0-d array.
                 local_filter = np.copy(filter_value)
 
-            if local_filter.shape:
+            if isinstance(local_filter, np.ndarray) and local_filter.shape:
                 group_indices = filter_to_indices(local_filter)
+            elif not local_filter:
+                # local_filter is False
+                group_indices = np.empty(0, dtype=int)
             else:
-                # local_filter = True
+                # local_filter is True
                 assert local_filter
                 group_indices = np.arange(len(columns[0]))
             result.append(group_indices)
