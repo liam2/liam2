@@ -20,7 +20,7 @@ class TimeFunction(FunctionExpr):
         context: current period context
         """
 
-        if filler is 'auto':
+        if isinstance(filler, str) and filler == 'auto':
             filler = get_default_value(values)
         result = np.full(context_length(context), filler, dtype=values.dtype)
         if len(ids):

@@ -350,9 +350,14 @@ class Sum(Aggregate):
         else:
             # summing a scalar value
             counts = np.bincount(source_rows)
-            # Optimization for link.count. Not using != 1 because it would
-            # return a bad type (int) when expr_value is 1.0.
-            return counts * expr_value if expr_value is not 1 else counts
+
+            # Optimization for link.count.
+            # The isinstance check is necessary to avoid returning an integer array instead of a float array
+            # when expr_value is 1.0
+            if isinstance(expr_value, int) and expr_value == 1:
+                return counts
+            else:
+                return counts * expr_value
 
     def dtype(self, context):
         return counting_typemap[super(Sum, self).dtype(context)]
