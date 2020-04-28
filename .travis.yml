@@ -14,7 +14,7 @@ python:
 
 before_install:
   - pip install --upgrade pip setuptools wheel
-  - pip install --only-binary=numpy,scipy,tables,cython,pandas numpy scipy tables cython pandas numexpr matplotlib pyyaml
+  - pip install --only-binary=numpy,scipy,tables,cython,pandas larray numpy scipy tables cython pandas numexpr matplotlib pyyaml
 
 install:
   - pip install -e .
