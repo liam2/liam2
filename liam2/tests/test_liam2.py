@@ -39,8 +39,8 @@ def iterate_directory(directory, dataset_creator, excluded_files):
 # test generator for nosetests (must return test_func, args)
 def test_examples():
     # Cannot display charts/pop up windows on Travis
-    need_qt = ('demo02.yml', 'demo03.yml', 'demo04.yml', 'demo06.yml')
-    excluded = need_qt if use_travis else ()
+    tests_needing_qt = ('demo02.yml', 'demo03.yml', 'demo04.yml', 'demo06.yml')
+    excluded = tests_needing_qt if use_travis else ()
     for test_file in iterate_directory('examples', 'demo_import.yml', excluded):
         yield run_file, test_file
 
@@ -53,52 +53,52 @@ def test_functional():
         yield run_file, test_file
 
 
-if __name__ == '__main__':
-    def print_title(s):
-        print(s)
-        print("=" * len(s))
+def print_title(s):
+    print(s)
+    print("=" * len(s))
 
 
-    def printnow(*args, **kwargs):
-        print(*args, **kwargs)
+def printnow(*args, **kwargs):
+    print(*args, **kwargs)
+    sys.stdout.flush()
+
+
+def run_func(func, *args, **kwargs):
+    sys.stdout = StringIO()
+    sys.stderr = StringIO()
+    try:
+        func(*args, **kwargs)
+        exc_type, exc_value, exc_traceback = None, None, None
+    except Exception as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+    sys.stdout.seek(0)
+    sys.stderr.seek(0)
+    stdout_content = sys.stdout.read()
+    stderr_content = sys.stderr.read()
+    # restore original
+    sys.stdout = sys.__stdout__
+    sys.stderr = sys.__stderr__
+    if exc_value is None:
+        printnow("done.")
+        if stderr_content:
+            printnow("STDERR\n======\n{}\n".format(stderr_content))
+        return "ok"
+    else:
+        printnow("FAILED.\n")
+        if stdout_content:
+            printnow("STDOUT\n======\n{}\n".format(stdout_content))
+        if stderr_content:
+            printnow("STDERR\n======\n{}\n".format(stderr_content))
+        # print to stdout to avoid PyCharm randomly mixing up stdout and stderr output
+        printnow("TRACEBACK\n=========")
+        traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                  file=sys.stdout)
         sys.stdout.flush()
+        printnow()
+        return "failed"
 
 
-    def run_func(func, *args, **kwargs):
-        sys.stdout = StringIO()
-        sys.stderr = StringIO()
-        try:
-            func(*args, **kwargs)
-            exc_type, exc_value, exc_traceback = None, None, None
-        except Exception as e:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-        sys.stdout.seek(0)
-        sys.stderr.seek(0)
-        stdout_content = sys.stdout.read()
-        stderr_content = sys.stderr.read()
-        # restore original
-        sys.stdout = sys.__stdout__
-        sys.stderr = sys.__stderr__
-        if exc_value is None:
-            printnow("done.")
-            if stderr_content:
-                printnow("STDERR\n======\n{}\n".format(stderr_content))
-            return "ok"
-        else:
-            printnow("FAILED.\n")
-            if stdout_content:
-                printnow("STDOUT\n======\n{}\n".format(stdout_content))
-            if stderr_content:
-                printnow("STDERR\n======\n{}\n".format(stderr_content))
-            # print to stdout to avoid PyCharm randomly mixing up stdout and stderr output
-            printnow("TRACEBACK\n=========")
-            traceback.print_exception(exc_type, exc_value, exc_traceback,
-                                      file=sys.stdout)
-            sys.stdout.flush()
-            printnow()
-            return "failed"
-
-
+def run_tests():
     print_title('Using test root: {}'.format(test_root))
 
     results = []
@@ -111,3 +111,7 @@ if __name__ == '__main__':
     print("ran %d tests, %d failed" % (len(results), num_failed))
     if num_failed > 0:
         sys.exit(1)
+
+
+if __name__ == '__main__':
+    run_tests()
