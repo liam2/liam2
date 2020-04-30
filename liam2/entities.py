@@ -19,7 +19,7 @@ from liam2.exprtools import parse
 from liam2.process import Assignment, ProcessGroup, While, Function, Return
 from liam2.utils import (count_occurrences, field_str_to_type, size2str, WarnOverrideDict, split_signature, argspec,
                          UserDeprecationWarning)
-from liam2.tfunc import ValueForPeriod
+from liam2.tfunc import ValueForPeriod, Lag, Duration
 
 
 default_value_by_strtype = {"bool": False, "float": np.nan, 'int': -1}
@@ -589,15 +589,16 @@ Please use this instead:
                 p.ssa(fields_versions)
 
     def compute_lagged_fields(self, inspect_one_period=True):
-        from liam2.tfunc import Lag
         from liam2.links import LinkGet
 
         lag_vars = collections.defaultdict(set)
         for p in self.processes.values():
             for expr in p.expressions():
-                for node in expr.all_of((Lag, ValueForPeriod)):
+                for node in expr.all_of((Lag, ValueForPeriod, Duration)):
                     if isinstance(node, Lag):
                         num_periods = node.args[1]
+                    elif isinstance(node, Duration):
+                        num_periods = None
                     else:
                         assert isinstance(node, ValueForPeriod)
                         period = node.args[1]
