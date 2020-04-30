@@ -1,0 +1,18 @@
+import: test_issue.yml.template
+
+entities:
+    person:
+        fields:
+            - age: {type: int}
+
+        processes:
+            test_issue():
+                - test_value: duration(age)
+
+simulation:
+    # TODO: do not use any input file once issue #312 is fixed
+    input:
+        method: h5
+        file: small.h5
+
+    periods: 1

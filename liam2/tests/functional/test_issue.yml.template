@@ -13,7 +13,10 @@ simulation:
     input:
         method: void
         file: none
+
     output:
+        # since we don't specify an output file this will not generate an output h5 file
+        # unless the issue test provides one
         path: output
 
     logging:
