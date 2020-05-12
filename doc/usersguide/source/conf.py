@@ -38,7 +38,7 @@ extlinks = {
     # For base numpy (no occurence)
     # 'numpy': (numpydoc_baseurl + 'generated/numpy.%s.html', 'numpy.'),
     # Works only for numpy.random module
-    'numpy': (numpydoc_baseurl + 'random/generated/numpy.%s.html', 'numpy.'),
+    'numpy_random': (numpydoc_baseurl + 'random/generated/numpy.%s.html', 'numpy_random.'),
     }
 
 # Add any paths that contain templates here, relative to this directory.
