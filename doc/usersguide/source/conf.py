@@ -31,12 +31,15 @@ import sys
 #extensions = ['sphinx.ext.todo', 'sphinx.ext.pngmath', 'rst2pdf.pdfbuilder']
 extensions = ['sphinx.ext.extlinks']
 
-numpydoc_baseurl = 'http://docs.scipy.org/doc/numpy/reference/generated'
+numpydoc_baseurl = 'https://numpy.org/doc/stable/reference/'
 extlinks = {
     'issue': ('https://github.com/liam2/liam2/issues/%s', 'issue '),
     'pr': ('https://github.com/liam2/liam2/pull/%s', 'pull request '),
-    'numpy': (numpydoc_baseurl + '/numpy.%s.html', 'numpy.')
-}
+    # For base numpy (no occurence)
+    # 'numpy': (numpydoc_baseurl + 'generated/numpy.%s.html', 'numpy.'),
+    # Works only for numpy.random module
+    'numpy_random': (numpydoc_baseurl + 'random/generated/numpy.%s.html', 'numpy_random.'),
+    }
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

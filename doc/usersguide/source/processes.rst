@@ -638,14 +638,14 @@ use) the corresponding functions in `numpy.random
 .. index:: beta
 
 beta(a, b, size=None)
-  The Beta distribution over [0, 1]. See :numpy:`random.beta` for details.
+  The Beta distribution over [0, 1]. See :numpy_random:`random.beta` for details.
 
   .. versionadded:: 0.9
 
 .. index:: binomial
 
 binomial(n, p, size=None)
-  Draw samples from a binomial distribution. See :numpy:`random.binomial` for
+  Draw samples from a binomial distribution. See :numpy_random:`random.binomial` for
   details.
 
   .. versionadded:: 0.9
@@ -653,7 +653,7 @@ binomial(n, p, size=None)
 .. index:: chisquare
 
 chisquare(df, size=None)
-  Draw samples from a chi-square distribution. See :numpy:`random.chisquare`
+  Draw samples from a chi-square distribution. See :numpy_random:`random.chisquare`
   for details.
 
   .. versionadded:: 0.9
@@ -661,7 +661,7 @@ chisquare(df, size=None)
 .. index:: dirichlet
 
 dirichlet(alpha, size=None)
-  Draw samples from the Dirichlet distribution. See :numpy:`random.dirichlet`
+  Draw samples from the Dirichlet distribution. See :numpy_random:`random.dirichlet`
   for details.
 
   .. versionadded:: 0.9
@@ -669,28 +669,28 @@ dirichlet(alpha, size=None)
 .. index:: exponential
 
 exponential(scale=1.0, size=None)
-  Exponential distribution. See :numpy:`random.exponential` for details.
+  Exponential distribution. See :numpy_random:`random.exponential` for details.
 
   .. versionadded:: 0.9
 
 .. index:: f
 
 f(dfnum, dfden, size=None)
-  Draw samples from a F distribution. See :numpy:`random.f` for details.
+  Draw samples from a F distribution. See :numpy_random:`random.f` for details.
 
   .. versionadded:: 0.9
 
 .. index:: gamma
 
 gamma(shape, scale=1.0, size=None)
-  Draw samples from a Gamma distribution. See :numpy:`random.gamma` for details.
+  Draw samples from a Gamma distribution. See :numpy_random:`random.gamma` for details.
 
   .. versionadded:: 0.9
 
 .. index:: geometric
 
 geometric(p, size=None)
-  Draw samples from the geometric distribution. See :numpy:`random.geometric`
+  Draw samples from the geometric distribution. See :numpy_random:`random.geometric`
   for details.
 
   .. versionadded:: 0.9
@@ -699,7 +699,7 @@ geometric(p, size=None)
 
 gumbel(loc=0.0, scale=1.0, size=None)
   Gumbel distribution, also known as the Smallest Extreme Value (SEV)
-  distribution. See :numpy:`random.gumbel` for details.
+  distribution. See :numpy_random:`random.gumbel` for details.
 
   .. versionadded:: 0.8.1
 
@@ -707,7 +707,7 @@ gumbel(loc=0.0, scale=1.0, size=None)
 
 hypergeometric(ngood, nbad, nsample, size=None)
   Draw samples from a Hypergeometric distribution.
-  See :numpy:`random.hypergeometric` for details.
+  See :numpy_random:`random.hypergeometric` for details.
 
   .. versionadded:: 0.9
 
@@ -715,7 +715,7 @@ hypergeometric(ngood, nbad, nsample, size=None)
 
 laplace(loc=0.0, scale=1.0, size=None)
   Draw samples from the Laplace or double exponential distribution with
-  specified location (or mean) and scale (decay). See :numpy:`random.laplace`
+  specified location (or mean) and scale (decay). See :numpy_random:`random.laplace`
   for details.
 
   .. versionadded:: 0.9
@@ -726,7 +726,7 @@ laplace(loc=0.0, scale=1.0, size=None)
   .. index:: logistic
 
   logistic ([loc, scale, size])
-    Draw samples from a Logistic distribution. See :numpy:`random.logistic`
+    Draw samples from a Logistic distribution. See :numpy_random:`random.logistic`
     for details.
 
     .. versionadded:: 0.9
@@ -735,7 +735,7 @@ laplace(loc=0.0, scale=1.0, size=None)
 
 lognormal(mean=0.0, sigma=1.0, size=None)
   Return samples drawn from a log-normal distribution.
-  See :numpy:`random.lognormal` for details.
+  See :numpy_random:`random.lognormal` for details.
 
   .. versionadded:: 0.9
 
@@ -743,14 +743,14 @@ lognormal(mean=0.0, sigma=1.0, size=None)
 
 logseries(p, size=None)
   Draw samples from a Logarithmic Series distribution.
-  See :numpy:`random.logseries` for details.
+  See :numpy_random:`random.logseries` for details.
 
   .. versionadded:: 0.9
 
 .. index:: multinomial
 
 multinomial(n, pvals, size=None)
-  Draw samples from a multinomial distribution. See :numpy:`random.multinomial`
+  Draw samples from a multinomial distribution. See :numpy_random:`random.multinomial`
   for details.
 
   .. versionadded:: 0.9
@@ -759,7 +759,7 @@ multinomial(n, pvals, size=None)
 
 multivariate_normal(mean, cov, size=None)
   Draw random samples from a multivariate normal distribution.
-  See :numpy:`random.multivariate_normal` for details.
+  See :numpy_random:`random.multivariate_normal` for details.
 
   .. versionadded:: 0.9
 
@@ -767,7 +767,7 @@ multivariate_normal(mean, cov, size=None)
 
 negative_binomial(n, p, size=None)
   Draw samples from a negative_binomial distribution.
-  See :numpy:`random.negative_binomial` for details.
+  See :numpy_random:`random.negative_binomial` for details.
 
   .. versionadded:: 0.9
 
@@ -775,7 +775,7 @@ negative_binomial(n, p, size=None)
 
 noncentral_chisquare(df, nonc, size=None)
   Draw samples from a noncentral chi-square distribution.
-  See :numpy:`random.noncentral_chisquare` for details.
+  See :numpy_random:`random.noncentral_chisquare` for details.
 
   .. versionadded:: 0.9
 
@@ -783,7 +783,7 @@ noncentral_chisquare(df, nonc, size=None)
 
 noncentral_f(dfnum, dfden, nonc, size=None)
   Draw samples from the noncentral F distribution.
-  See :numpy:`random.noncentral_f` for details.
+  See :numpy_random:`random.noncentral_f` for details.
 
   .. versionadded:: 0.9
 
@@ -791,20 +791,20 @@ noncentral_f(dfnum, dfden, nonc, size=None)
 
 normal(loc=0.0, scale=1.0, size=None)
   Draw random samples from a normal (Gaussian) distribution.
-  See :numpy:`random.normal` for details.
+  See :numpy_random:`random.normal` for details.
 
 .. index:: pareto
 
 pareto(a, size=None)
   Draw samples from a Pareto II or Lomax distribution with specified shape.
-  See :numpy:`random.pareto` for details.
+  See :numpy_random:`random.pareto` for details.
 
   .. versionadded:: 0.9
 
 .. index:: poisson
 
 poisson(lam=1.0, size=None)
-  Draw samples from a Poisson distribution. See :numpy:`random.poisson` for
+  Draw samples from a Poisson distribution. See :numpy_random:`random.poisson` for
   details.
 
   .. versionadded:: 0.9
@@ -813,7 +813,7 @@ poisson(lam=1.0, size=None)
 
 power(a, size=None)
   Draws samples in [0, 1] from a power distribution with positive exponent a
-  - 1. See :numpy:`random.power` for details.
+  - 1. See :numpy_random:`random.power` for details.
 
   .. versionadded:: 0.9
 
@@ -821,12 +821,12 @@ power(a, size=None)
 
 randint(low, high=None, size=None)
   Return random integers between low (inclusive) and high (exclusive).
-  See :numpy:`random.randint` for details.
+  See :numpy_random:`random.randint` for details.
 
 .. index:: rayleigh
 
 rayleigh(scale=1.0, size=None)
-  Draw samples from a Rayleigh distribution. See :numpy:`random.rayleigh` for
+  Draw samples from a Rayleigh distribution. See :numpy_random:`random.rayleigh` for
   details.
 
   .. versionadded:: 0.9
@@ -835,7 +835,7 @@ rayleigh(scale=1.0, size=None)
 
 standard_cauchy(size=None)
   Standard Cauchy distribution with mode = 0.
-  See :numpy:`random.standard_cauchy` for details.
+  See :numpy_random:`random.standard_cauchy` for details.
 
   .. versionadded:: 0.9
 
@@ -843,7 +843,7 @@ standard_cauchy(size=None)
 
 standard_exponential(size=None)
   Draw samples from the standard exponential distribution.
-  See :numpy:`random.standard_exponential` for details.
+  See :numpy_random:`random.standard_exponential` for details.
 
   .. versionadded:: 0.9
 
@@ -851,7 +851,7 @@ standard_exponential(size=None)
 
 standard_gamma(shape, size=None)
   Draw samples from a Standard Gamma distribution.
-  See :numpy:`random.standard_gamma` for details.
+  See :numpy_random:`random.standard_gamma` for details.
 
   .. versionadded:: 0.9
 
@@ -859,7 +859,7 @@ standard_gamma(shape, size=None)
 
 standard_normal(size=None)
   Returns samples from a Standard Normal distribution (mean=0, stdev=1).
-  See :numpy:`random.standard_normal` for details.
+  See :numpy_random:`random.standard_normal` for details.
 
   .. versionadded:: 0.9
 
@@ -867,14 +867,14 @@ standard_normal(size=None)
 
 standard_t(df, size=None)
   Standard Student’s t distribution with df degrees of freedom.
-  See :numpy:`random.standard_t` for details.
+  See :numpy_random:`random.standard_t` for details.
 
   .. versionadded:: 0.9
 
 .. index:: triangular
 
 triangular(left, mode, right, size=None)
-  Draw samples from the triangular distribution. See :numpy:`random.triangular`
+  Draw samples from the triangular distribution. See :numpy_random:`random.triangular`
   for details.
 
   .. versionadded:: 0.9
@@ -883,12 +883,12 @@ triangular(left, mode, right, size=None)
 
 uniform(low=0.0, high=1.0, size=None)
   Draw random samples between low (inclusive) and high (exclusive) from a
-  uniform distribution. See :numpy:`random.uniform` for details.
+  uniform distribution. See :numpy_random:`random.uniform` for details.
 
 .. index:: vonmises
 
 vonmises(mu, kappa, size=None)
-  Draw samples from a von Mises distribution. See :numpy:`random.vonmises`
+  Draw samples from a von Mises distribution. See :numpy_random:`random.vonmises`
   for details.
 
   .. versionadded:: 0.9
@@ -897,21 +897,21 @@ vonmises(mu, kappa, size=None)
 
 wald(mean, scale, size=None)
   Draw samples from a Wald, or Inverse Gaussian, distribution.
-  See :numpy:`random.wald` for details.
+  See :numpy_random:`random.wald` for details.
 
   .. versionadded:: 0.9
 
 .. index:: weibull
 
 weibull(a, size=None)
-  Weibull distribution. See :numpy:`random.weibull` for details.
+  Weibull distribution. See :numpy_random:`random.weibull` for details.
 
   .. versionadded:: 0.9
 
 .. index:: zipf
 
 zipf(a, size=None)
-  Draw samples from a Zipf distribution. See :numpy:`random.zipf` for details.
+  Draw samples from a Zipf distribution. See :numpy_random:`random.zipf` for details.
 
   .. versionadded:: 0.9
 
@@ -920,7 +920,7 @@ zipf(a, size=None)
 seed(value)
   Re-seed the pseudo-random number generator. This can be useful if you want to
   test the results of functions using pseudo-random numbers. See
-  :numpy:`random.seed` for details.
+  :numpy_random:`random.seed` for details.
 
   .. versionadded:: 0.10.3
 
