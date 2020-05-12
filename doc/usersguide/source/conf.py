@@ -31,7 +31,7 @@ import sys
 #extensions = ['sphinx.ext.todo', 'sphinx.ext.pngmath', 'rst2pdf.pdfbuilder']
 extensions = ['sphinx.ext.extlinks']
 
-numpydoc_baseurl = 'https://numpy.org/doc/1.18/reference/'
+numpydoc_baseurl = 'https://numpy.org/doc/stable/reference/'
 extlinks = {
     'issue': ('https://github.com/liam2/liam2/issues/%s', 'issue '),
     'pr': ('https://github.com/liam2/liam2/pull/%s', 'pull request '),
