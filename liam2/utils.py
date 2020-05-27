@@ -670,10 +670,29 @@ def merge_dicts(*args, **kwargs):
     Returns a new dictionary which is the result of recursively merging all
     the dictionaries passed as arguments and the keyword arguments.
     Later dictionaries overwrite earlier ones. kwargs overwrite all.
+
+    >>> # add key
+    ... merge_dicts({'a': 0}, {'b': 0})
+    {'a': 0, 'b': 0}
+    >>> # update key
+    ... merge_dicts({'a': 0}, {'a': 1})
+    {'a': 1}
+    >>> # add key in nested dict
+    ... merge_dicts({'a': {'a1': 0}}, {'a': {'a2': 0}})
+    {'a': {'a1': 0, 'a2': 0}}
+    >>> # update key in nested dict
+    ... merge_dicts({'a': {'a1': 0}}, {'a': {'a1': 1}})
+    {'a': {'a1': 1}}
+    >>> # replace nested dict by simple value
+    ... merge_dicts({'a': {'a1': 0}}, {'a': 0})
+    {'a': 0}
+    >>> # replace simple value by nested dict
+    ... merge_dicts({'a': 0}, {'a': {'a1': 0}})
+    {'a': {'a1': 0}}
     """
     result = args[0].copy()
-    for arg in args[1:] + (kwargs,):
-        for k, v in arg.items():
+    for d in args[1:] + (kwargs,):
+        for k, v in d.items():
             if isinstance(v, dict) and k in result and isinstance(result[k], dict):
                 v = merge_dicts(result[k], v)
             result[k] = v
@@ -707,6 +726,7 @@ def merge_items(item_sequences, merge_order='first_to_last', value_priority='fir
     """
     Returns a list of (key, value) pairs which is the result of merging all sequences of (key, value) pairs passed as
     arguments.
+
     Order of keys is preserved on a "first" merged basis.
     If merge_order is 'first_to_last', items will be merged from first to last, appending if not present, otherwise the
     merge happens from last to first.
