@@ -819,6 +819,31 @@ def multi_set(d, key, value):
     """
     equivalent to d[key] = value, but d and key can be multi-level
     (separated by '/'). Creates dictionaries on missing keys.
+
+    create nested dict
+
+    >>> d = {}
+    >>> multi_set(d, 'a/b', 0)
+    >>> d
+    {'a': {'b': 0}}
+
+    replace scalar value by nested dict -> fails (like it should) but we should provide a nicer exception
+
+    >>> # multi_set({'a': 0}, 'a/b', 0)
+
+    update key in nested dict
+
+    >>> d = {'a': {'b': 0}}
+    >>> multi_set(d, 'a/b', 1)
+    >>> d
+    {'a': {'b': 1}}
+
+    add key in nested dict
+
+    >>> d = {'a': {'b': 0}}
+    >>> multi_set(d, 'a/c', 0)
+    >>> d
+    {'a': {'b': 0, 'c': 0}}
     """
     keys = key.split('/')
     for k in keys[:-1]:
