@@ -17,13 +17,13 @@ use_travis = os.environ.get('USE_TRAVIS', None) == 'true'
 test_root = os.path.abspath(os.path.dirname(__file__))
 
 
-def run_file(test_file):
-    if 'import' in test_file:
-        csv2h5(test_file)
+def run_file(fpath):
+    if 'import' in fpath:
+        csv2h5(fpath)
     else:
         # We should NOT override output_dir here because it breaks tests and examples which load back what they
         # write (e.g. demo_load.yml)
-        simulation = Simulation.from_yaml(test_file, log_level='processes')
+        simulation = Simulation.from_yaml(fpath, log_level='processes')
         simulation.run()
 
 
@@ -46,8 +46,12 @@ def test_examples():
 
 
 def test_functional():
+    # those are not runnable by themselves (and would be considered as data
+    # import files anyway)
     excluded = ('imported1.yml', 'imported2.yml')
     if use_travis:
+        # test_erf is excluded because it needs scipy and this is a big
+        # dependency to install for a single function
         excluded += ('test_erf.yml', 'static.yml', 'generate.yml')
     for test_file in iterate_directory('functional', 'import.yml', excluded):
         yield run_file, test_file
@@ -64,6 +68,7 @@ def printnow(*args, **kwargs):
 
 
 def run_func(func, *args, **kwargs):
+    # capture stdout and stderr
     sys.stdout = StringIO()
     sys.stderr = StringIO()
     try:
@@ -78,6 +83,7 @@ def run_func(func, *args, **kwargs):
     # restore original
     sys.stdout = sys.__stdout__
     sys.stderr = sys.__stderr__
+
     if exc_value is None:
         printnow("done.")
         if stderr_content:
@@ -89,7 +95,8 @@ def run_func(func, *args, **kwargs):
             printnow("STDOUT\n======\n{}\n".format(stdout_content))
         if stderr_content:
             printnow("STDERR\n======\n{}\n".format(stderr_content))
-        # print to stdout to avoid PyCharm randomly mixing up stdout and stderr output
+        # print errors to stdout instead of stderr to avoid PyCharm
+        # randomly mixing up stdout and stderr output
         printnow("TRACEBACK\n=========")
         traceback.print_exception(exc_type, exc_value, exc_traceback,
                                   file=sys.stdout)
