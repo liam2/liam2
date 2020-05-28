@@ -17,45 +17,52 @@ use_travis = os.environ.get('USE_TRAVIS', None) == 'true'
 test_root = os.path.abspath(os.path.dirname(__file__))
 
 
-def run_file(fpath):
-    if 'import' in fpath:
-        csv2h5(fpath)
-    else:
-        # We should NOT override output_dir here because it breaks tests and examples which load back what they
-        # write (e.g. demo_load.yml)
-        simulation = Simulation.from_yaml(fpath, log_level='processes')
-        simulation.run()
+def run_simulation(fpath):
+    # We should NOT override output_dir here because it breaks tests and examples which load back what they
+    # write (e.g. demo_load.yml)
+    simulation = Simulation.from_yaml(fpath, log_level='processes')
+    simulation.run()
 
 
-def iterate_directory(directory, dataset_creator, excluded_files):
+# we can't name this function anything containing "test" otherwise nosetests tries to execute it
+def iterate_directory(directory, import_files, excluded_files):
     directory_path = os.path.join(test_root, directory)
-    excluded_files = excluded_files + (dataset_creator,)
-    yield os.path.join(directory_path, dataset_creator)
+    excluded_files = excluded_files + import_files
+
+    # run import files before other tests to allow other tests to use created files
+    for import_file in import_files:
+        yield csv2h5, os.path.join(directory_path, import_file)
+
     for test_file in os.listdir(directory_path):
         if test_file.endswith('.yml') and test_file not in excluded_files:
-            yield os.path.join(directory_path, test_file)
+            yield run_simulation, os.path.join(directory_path, test_file)
 
 
 # test generator for nosetests (must return test_func, args)
 def test_examples():
+    import_files = ('demo_import.yml',)
     # Cannot display charts/pop up windows on Travis
     tests_needing_qt = ('demo02.yml', 'demo03.yml', 'demo04.yml', 'demo06.yml')
     excluded = tests_needing_qt if use_travis else ()
-    for test_file in iterate_directory('examples', 'demo_import.yml', excluded):
-        yield run_file, test_file
+    for func, test_file in iterate_directory('examples', import_files, excluded):
+        yield func, test_file
 
 
 def test_functional():
-    # those are not runnable by themselves (and would be considered as data
-    # import files anyway)
+    import_files = ('import_in_import.yml', 'import_issue154.yml', 'import.yml',)
+    # those are not runnable by themselves
     excluded = ('imported1.yml', 'imported2.yml')
+    # XXX: why are static.yml and generate.yml excluded???
     if use_travis:
-        # test_erf is excluded because it needs scipy and this is a big
-        # dependency to install for a single function
+        # exclude test_erf because scipy is a big dependency for a single function
         excluded += ('test_erf.yml', 'static.yml', 'generate.yml')
-    for test_file in iterate_directory('functional', 'import.yml', excluded):
-        yield run_file, test_file
+    for func, test_file in iterate_directory('functional', import_files, excluded):
+        yield func, test_file
 
+
+# =======================================================
+# below is a basic test runner not depending on nosetests
+# =======================================================
 
 def print_title(s):
     print(s)
@@ -68,6 +75,9 @@ def printnow(*args, **kwargs):
 
 
 def run_func(func, *args, **kwargs):
+    verb = 'Importing' if func is csv2h5 else 'Running'
+    printnow('{} {}...'.format(verb, os.path.relpath(args[0], test_root)), end=' ')
+
     # capture stdout and stderr
     sys.stdout = StringIO()
     sys.stderr = StringIO()
@@ -107,12 +117,8 @@ def run_func(func, *args, **kwargs):
 
 def run_tests():
     print_title('Using test root: {}'.format(test_root))
-
-    results = []
-    for test_func, test_file in chain(test_examples(), test_functional()):
-        verb = 'Importing' if 'import' in test_file else 'Running'
-        printnow('{} {}...'.format(verb, os.path.relpath(test_file, test_root)), end=' ')
-        results.append(run_func(test_func, test_file))
+    all_tests = chain(test_examples(), test_functional())
+    results = [run_func(func, test_file) for func, test_file in all_tests]
     num_failed = sum(r == "failed" for r in results)
     print()
     print("ran %d tests, %d failed" % (len(results), num_failed))
