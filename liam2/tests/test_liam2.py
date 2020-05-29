@@ -55,7 +55,8 @@ def test_functional():
     # XXX: why are static.yml and generate.yml excluded???
     if use_travis:
         # exclude test_erf because scipy is a big dependency for a single function
-        excluded += ('test_erf.yml', 'static.yml', 'generate.yml')
+        # exclude generate.yml because it does not test anything in itself but takes a few seconds
+        excluded += ('test_erf.yml', 'generate.yml')
     for func, test_file in iterate_directory('functional', import_files, excluded):
         yield func, test_file
 
