@@ -71,6 +71,10 @@ globals:
         path: param/array_dupe_labels.csv
         type: float
 
+    ARRAY_DUPE_BOOL_LABELS:
+        path: param/array_dupe_bool_labels.csv
+        type: float
+
     ARRAY_DUPE_LABELS_AUTOINDEX:
         autoindex: axis0, axis1
         path: param/array_dupe_labels.csv
@@ -1309,20 +1313,36 @@ entities:
 
                 # ambiguous key
                 # -------------
-                - show(ARRAY_DUPE_LABELS)
+                # ARRAY_DUPE_LABELS has two axes with the same labels: axis0=0,1 and axis1=0,1
                 # this should fail with an ambiguous error
                 - assertRaises('ValueError', ARRAY_DUPE_LABELS[1])
-                # FIXME13
-                # with boolean labels (array_dupe_labels2.csv)
-#                - test1: ARRAY_DUPE_LABELS[True]
-#                - test1: ARRAY_DUPE_LABELS[X.work[True]]
+                - test1: ARRAY_DUPE_LABELS[X.axis0[0], X.axis1[0]]
+                - assertEqual(test1, 0.2)
+                - test2: ARRAY_DUPE_LABELS[X.axis0[0], X.axis1[1]]
+                - assertEqual(test2, 0.3)
+                - test3: ARRAY_DUPE_LABELS[X.axis0[1], X.axis1[0]]
+                - assertEqual(test3, 0.4)
+                - test4: ARRAY_DUPE_LABELS[X.axis0[1], X.axis1[1]]
+                - assertEqual(test4, 0.5)
+
+                # ARRAY_DUPE_BOOL_LABELS has two axes with the same labels:
+                # axis0=False,True and axis1=False,True
+                - assertRaises('ValueError', ARRAY_DUPE_BOOL_LABELS[True])
+                - test1: ARRAY_DUPE_BOOL_LABELS[X.axis0[False], X.axis1[False]]
+                - assertEqual(test1, 0.2)
+                - test2: ARRAY_DUPE_BOOL_LABELS[X.axis0[False], X.axis1[True]]
+                - assertEqual(test2, 0.3)
+                - test3: ARRAY_DUPE_BOOL_LABELS[X.axis0[True], X.axis1[False]]
+                - assertEqual(test3, 0.4)
+                - test4: ARRAY_DUPE_BOOL_LABELS[X.axis0[True], X.axis1[True]]
+                - assertEqual(test4, 0.5)
+
                 # can we make this work?
 #                - test1: ARRAY_DUPE_LABELS[work=func(expr1, kw=expr2), gender=True]
                 # translated to:
 #                - test1: ARRAY_DUPE_LABELS[{'work': func(expr1, kw=expr2), 'gender': True}]
 # OR
 #                - test1: ARRAY_DUPE_LABELS[X.work[func(expr1, kw=expr2)], X.gender[True]]
-                - show(test1)
 
             test_autoindex():
                 # MIG_AUTOINDEX is originally a 3d array: gender-age-period
@@ -1334,15 +1354,13 @@ entities:
                 - assertEqual(tmp.shape, (count(),))
                 - assertEqual(tmp.axes.names, ['id'])
 
-                # test that indexed behavior is not affected by autoindex
-                - explicit1: MIG[gender, age, period]
-                # FIXME13: this does not work (autoindex happens before .points)
-                # unsure it is fixable though. If not, scrap this test.
-#                - explicit2: MIG_AUTOINDEX.points[gender, age, period]
-#                - assertEqual(explicit2, explicit1)
-
                 # test that the automatic index has the same result than an explicit index
-                - assertEqual(tmp, explicit1)
+                - explicit: MIG[gender, age, period]
+                - assertEqual(tmp, explicit)
+
+                # Note that we cannot make it possible to manually/explicitly index an autoindex array because
+                # it would make it impossible to "further" index the result of any autoindex variable
+                # (for example if an autoindex array is not auto-indexed on *all* its axes)
 
                 # with dupe/ambiguous labels
                 - axis0: id % 2
@@ -3071,6 +3089,7 @@ entities:
                 - empty: groupby(gender, filter=age > 200)
                 - show(empty)
                 - assertEqual(empty, [])
+
                 - empty_percent: groupby(gender, filter=age > 200,
                                          percent=True)
                 - show(empty_percent)
