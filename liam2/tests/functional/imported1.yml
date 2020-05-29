@@ -1,34 +1,46 @@
+# imported by test_simulation_import.yml, (partly) overridden by imported2.yml
 globals:
-    periodic:
-        - WEMRA: int
+    IMPORTED1_GLOBAL_UNMODIFIED: 1
+    IMPORTED1_GLOBAL_TO_MODIFY: 1
+    IMPORTED1_GLOBAL_TO_DELETE: 1
 
 entities:
     person:
         fields:
-            - imported_field1: {type: int, initialdata: False}
+            - imported1_field1: {type: int, initialdata: False}
+            - imported1_field2: {type: int, initialdata: False}
+            - imported1_field_to_delete: {type: int, initialdata: False}
 
         macros:
-            IMPORTED_MACRO: imported_field1 == 1
-            ISCHILD: age < 17
+            IMPORTED1_MACRO_UNMODIFIED: imported1_field1 == 1
+            IMPORTED1_MACRO_TO_MODIFY: imported1_field2 == 1
+            IMPORTED1_MACRO_TO_DELETE: imported1_field_to_delete == 1
 
         processes:
-            compute_agegroup():
-                - agegroup: trunc(age / 10)
+            imported1_function_unmodified():
+                - imported1_field1: id + 1
 
-            imported_process():
-                - imported_field1: age + 1
+            imported1_function_to_modify():
+                - imported1_field2: id + 1
+
+            imported1_function_to_delete():
+                # using a deleted fields or macros in a deleted function should not be a problem
+                - test1: imported1_field_to_delete + 1
+                - test2: IMPORTED1_MACRO_TO_DELETE
 
 simulation:
-    # overridden by simulation.yml
+    # overridden by test_simulation_import.yml
     processes:
-        - person: [compute_agegroup, imported_process]
+        - person: [imported1_function_unmodified, imported1_function_to_modify]
 
-    periods: 55
+    # not overridden (present in neither imported2.yml nor test_simulation_import.yml)
+    input:
+        method: void
+        file: none
+
+    # overridden by imported2.yml and test_simulation_import.yml
+    periods: 100
 
     # overridden by imported2.yml
-    start_period: 2020   # first simulated period
+    start_period: 9999
     default_entity: doesnotexist
-
-    # not overridden (present in neither imported2.yml nor simulation.yml)
-    input:
-        file: small.h5
