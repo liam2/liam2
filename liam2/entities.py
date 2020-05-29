@@ -123,6 +123,7 @@ class Field(object):
                 raise Exception('invalid field definition')
             dtype = field_str_to_type(strtype, "field '%s'" % name)
         else:
+            # it is a type object itself
             assert isinstance(fielddef, type)
             dtype = normalize_type(fielddef)
         return cls(name, dtype, input=initialdata, output=output, default_value=default_value)

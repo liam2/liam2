@@ -20,7 +20,7 @@ from liam2.context import EvaluationContext
 from liam2.data import VoidSource, H5Source, H5Sink, LColumnArray
 from liam2.entities import Entity, global_symbols
 from liam2.utils import (time2str, timed, gettime, validate_dict, expand_wild, multi_get, multi_set, merge_dicts,
-                         merge_items, field_str_to_type, fields_yaml_to_type, UserDeprecationWarning, Or)
+                         merge_items, field_str_to_type, fields_yaml_to_type, UserDeprecationWarning, Or, del_none)
 from liam2 import config
 from liam2 import console
 from liam2 import expr
@@ -254,6 +254,21 @@ class Simulation(object):
         content = yaml.safe_load(yaml_str)
         expand_periodic_fields(content)
         content = handle_imports(content, simulation_dir)
+
+        # allow importing simulations to remove a global/macro/function from an imported simulation
+        # -----------------------------------------------------------------------------------------
+        # 1) drop keys in (nested) dict corresponding to None values (~) so that
+        content = del_none(content)
+
+        # 2) drop fields set to None (~)
+        for wild_key in ('globals/*/fields', 'entities/*/fields'):
+            for multi_key in expand_wild(wild_key, content):
+                fields = multi_get(content, multi_key)
+                # drop None fields
+                fields = [d for d in fields if next(iter(d.values())) is not None]
+                # update content inplace with modified fields
+                multi_set(content, multi_key, fields)
+
         validate_dict(content, cls.yaml_layout)
 
         # the goal is to get something like:
@@ -376,7 +391,7 @@ class Simulation(object):
             entity.attach_and_resolve_links(entities)
 
         global_parse_context = {'__globals__': global_symbols(globals_def),
-                          '__entities__': entities}
+                                '__entities__': entities}
         parsing_context = global_parse_context.copy()
         parsing_context.update((entity.name, entity.all_symbols(global_parse_context))
                                for entity in entities.values())
