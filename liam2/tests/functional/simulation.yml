@@ -1,20 +1,10 @@
-import:
-    - imported1.yml
-    - imported2.yml
-
 globals:
     periodic:
         path: param/globals.csv
         transposed: True
         fields:
             # PERIOD is implicit
-
-            # WEMRA is defined in imported1.yml. It works even though no "path"
-            # key is specified in imported1.yml (as if the periodic table was in
-            # the H5 file) and even though it is specified using the "shortcut
-            # syntax" for periodic globals because that syntax is expanded
-            # before merging imported models, so it just do the right thing.
-
+            - WEMRA: int
             - MINR: float
             - MIG_PERCENT: float
 
@@ -3167,11 +3157,6 @@ entities:
                 - show("avg weight", avg(weight),
                        "total population", sum(weight))
 
-            test_imported_process():
-                - qshow(imported_field1)
-                - assertEquiv(imported_field1, -1)
-                - assertEqual(imported_field2, age + 2)
-
             test_array():
                 # - remove(id % 1000 < 999)
                 - v0: age
@@ -3412,9 +3397,6 @@ simulation:
                    test_dump,
                    test_csv,
 
-                   imported_process,
-                   test_imported_process,
-
                    # alignment
                    test_align,
                    test_align_abs,
@@ -3437,9 +3419,8 @@ simulation:
 #            dump_csv_h,
         ]
 
-#    input:
-#        method: void
-#        file: none
+    input:
+        file: small.h5
 
     output:
         path: output
@@ -3453,7 +3434,12 @@ simulation:
 #    autodiff: True
 
     random_seed: 0
+
+    start_period: 2002
     periods: 2
+
+    default_entity: person
+
     logging:
         level: processes
 #        timings: False

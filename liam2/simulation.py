@@ -20,7 +20,7 @@ from liam2.context import EvaluationContext
 from liam2.data import VoidSource, H5Source, H5Sink, LColumnArray
 from liam2.entities import Entity, global_symbols
 from liam2.utils import (time2str, timed, gettime, validate_dict, expand_wild, multi_get, multi_set, merge_dicts,
-                         merge_items, field_str_to_type, fields_yaml_to_type, UserDeprecationWarning, Or)
+                         merge_items, field_str_to_type, fields_yaml_to_type, UserDeprecationWarning, Or, del_none)
 from liam2 import config
 from liam2 import console
 from liam2 import expr
@@ -82,37 +82,52 @@ def expand_periodic_fields(content):
 
 
 def handle_imports(content, directory):
-    import_files = content.get('import', [])
-    if isinstance(import_files, basestring):
-        import_files = [import_files]
-    for fname in import_files[::-1]:
+    imported_files = content.get('import', [])
+    if isinstance(imported_files, basestring):
+        imported_files = [imported_files]
+
+    # imported files are merged in reverse order because the local content has priority over the imported content and
+    # the merged content becomes the new local content
+
+    # For example, assuming a simulation having two files listed in imports (imported1.yml and imported2.yml),
+    # merged_content = merge(local_content, imported2.yml)   # local content has priority over imported2 content
+    # merged_content = merge(merged_content, imported1.yml)  # merged content has priority over imported1 content
+    for fname in imported_files[::-1]:
         import_path = os.path.abspath(os.path.join(directory, fname))
         print("importing: '%s'" % import_path)
         import_directory = os.path.dirname(import_path)
         with open(import_path) as f:
-            import_content = yaml.safe_load(f)
-            expand_periodic_fields(import_content)
-            import_content = handle_imports(import_content, import_directory)
+            imported_content = yaml.safe_load(f)
 
-            # globals fields and entities fields are not handled by the simple merge_dicts below the loop because they
-            # are not dict but lists of items
-            for wild_key in ('globals/*/fields', 'entities/*/fields'):
-                multi_keys = expand_wild(wild_key, import_content)
-                for multi_key in multi_keys:
-                    import_fields = multi_get(import_content, multi_key)
-                    local_fields = multi_get(content, multi_key, [])
-                    # fields are in "yaml ordered dict" format and we want
-                    # simple list of items
-                    import_fields = [list(d.items())[0] for d in import_fields]
-                    local_fields = [list(d.items())[0] for d in local_fields]
-                    # merge the lists,
-                    # result will contain imported_fields first then local_fields
-                    # local_fields definitions override imported definitions
-                    merged_fields = merge_items((import_fields, local_fields), value_priority='last')
-                    # convert them back to "yaml ordered dict"
-                    merged_fields = [{k: v} for k, v in merged_fields]
-                    multi_set(content, multi_key, merged_fields)
-            content = merge_dicts(import_content, content)
+        expand_periodic_fields(imported_content)
+        imported_content = handle_imports(imported_content, import_directory)
+
+        # globals fields and entities fields are not handled by the simple merge_dicts below this loop because they
+        # are not dict but lists of items
+        for wild_key in ('globals/*/fields', 'entities/*/fields'):
+            multi_keys = expand_wild(wild_key, imported_content)
+            for multi_key in multi_keys:
+                imported_fields = multi_get(imported_content, multi_key)
+                local_fields = multi_get(content, multi_key, [])
+
+                # fields are in "yaml ordered dict" format (list of dict of one element)
+                # convert them to a simple list of (k, v) pairs
+                imported_fields = [list(d.items())[0] for d in imported_fields]
+                local_fields = [list(d.items())[0] for d in local_fields]
+
+                # merge the lists, result will contain imported_fields first then local_fields
+                # local_fields definitions override imported definitions
+                merged_fields = merge_items((imported_fields, local_fields), value_priority='last')
+
+                # convert them back to "yaml ordered dict"
+                merged_fields = [{k: v} for k, v in merged_fields]
+
+                # modify local content inplace with merged fields
+                multi_set(content, multi_key, merged_fields)
+
+        # merge dicts, content taking precedence over imported_content
+        content = merge_dicts(imported_content, content)
+
     return content
 
 
@@ -254,6 +269,21 @@ class Simulation(object):
         content = yaml.safe_load(yaml_str)
         expand_periodic_fields(content)
         content = handle_imports(content, simulation_dir)
+
+        # allow importing simulations to remove a global/macro/function from an imported simulation
+        # -----------------------------------------------------------------------------------------
+        # 1) drop keys in (nested) dict corresponding to None values (~) so that
+        content = del_none(content)
+
+        # 2) drop fields set to None (~)
+        for wild_key in ('globals/*/fields', 'entities/*/fields'):
+            for multi_key in expand_wild(wild_key, content):
+                fields = multi_get(content, multi_key)
+                # drop None fields
+                fields = [d for d in fields if next(iter(d.values())) is not None]
+                # update content inplace with modified fields
+                multi_set(content, multi_key, fields)
+
         validate_dict(content, cls.yaml_layout)
 
         # the goal is to get something like:
@@ -376,7 +406,7 @@ class Simulation(object):
             entity.attach_and_resolve_links(entities)
 
         global_parse_context = {'__globals__': global_symbols(globals_def),
-                          '__entities__': entities}
+                                '__entities__': entities}
         parsing_context = global_parse_context.copy()
         parsing_context.update((entity.name, entity.all_symbols(global_parse_context))
                                for entity in entities.values())
@@ -702,7 +732,7 @@ class Simulation(object):
     def run_from_state(self, call_stack):
         """
         call_stack: list
-            # function name is not strictly necessary by will probably make debugging easier
+            # function name is not strictly necessary but will probably make debugging easier
             list of {'function_name': str, 'n_process_done': int, 'variables': dict}
         """
         pass

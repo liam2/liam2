@@ -1,0 +1,102 @@
+import:
+    - imported1.yml
+    - imported2.yml
+
+globals:
+    IMPORTED2_GLOBAL_TO_MODIFY: 4
+    IMPORTED2_GLOBAL_TO_DELETE: ~
+
+    IMPORTING_SIM_GLOBAL: 5
+
+entities:
+    person:
+        fields:
+            - imported2_field_to_delete: ~
+            - importing_sim_field: {type: int, initialdata: False}
+
+        macros:
+            IMPORTED2_MACRO_TO_DELETE: ~
+            IMPORTED2_MACRO_TO_MODIFY: imported2_field2 == 4
+            IMPORTING_SIM_MACRO: importing_sim_field == 1
+
+        processes:
+            # overrides imported2 function
+            imported2_function_to_modify():
+                - imported2_field2: id + 4
+
+            imported2_function_to_delete(): ~
+
+            # new functions
+            generate():
+                - new('person', number=3)
+                - importing_sim_field: id - 1
+
+            check_results():
+                # GLOBALS
+                # =======
+                - assertEqual(IMPORTED1_GLOBAL_UNMODIFIED, 1)
+                - assertEqual(IMPORTED1_GLOBAL_TO_MODIFY, 2)
+                - assertEqual(IMPORTED2_GLOBAL_UNMODIFIED, 3)
+                - assertEqual(IMPORTED2_GLOBAL_TO_MODIFY, 4)
+                - assertEqual(IMPORTING_SIM_GLOBAL, 5)
+
+                # FIELDS
+                # ======
+                # check we have the correct fields (i.e. that *_to_delete fields are not present)
+                - d: dump()
+                - show(d)
+
+                # d is a PrettyTable object
+                - columns: d.data[0]
+                - expected_columns: ['period', 'id', 'imported1_field1', 'imported1_field2',
+                                     'imported2_field1', 'imported2_field2', 'importing_sim_field']
+                - assertEqual(columns, expected_columns)
+
+                # check their value
+                - assertEqual(imported1_field1, id + 1)
+                - assertEqual(imported1_field2, id + 2)
+                - assertEqual(imported2_field1, id + 3)
+                - assertEqual(imported2_field2, id + 4)
+
+                # MACROS
+                # ======
+                - assertEqual(IMPORTED1_MACRO_UNMODIFIED, imported1_field1 == 1)
+                - assertEqual(IMPORTED1_MACRO_TO_MODIFY, imported1_field2 == 2)
+
+                - assertEqual(IMPORTED2_MACRO_UNMODIFIED, imported2_field1 == 3)
+                - assertEqual(IMPORTED2_MACRO_TO_MODIFY, imported2_field2 == 4)
+
+                - assertEqual(IMPORTING_SIM_MACRO, importing_sim_field == 1)
+
+                # uncommenting any of these lines should make the model fail with a NameError
+#                - bad1: IMPORTED1_GLOBAL_TO_DELETE
+#                - bad2: IMPORTED2_GLOBAL_TO_DELETE
+#                - bad3: IMPORTED1_MACRO_TO_DELETE
+#                - bad4: IMPORTED2_MACRO_TO_DELETE
+#                - imported1_function_to_delete()
+#                - imported2_function_to_delete()
+
+simulation:
+    # not defined elsewhere thus does not override anything
+    init:
+        - person: [generate]
+
+    # overrides imported1.yml
+    processes:
+        - person: [
+            imported1_function_unmodified,
+            imported1_function_to_modify,
+            imported2_function_unmodified,
+            imported2_function_to_modify,
+            check_results
+        ]
+
+    # not defined elsewhere thus does not override anything
+    output:
+        path: output
+
+    logging:
+        level: processes
+
+    # overrides imported2.yml (which itself overrides imported1.yml)
+    periods: 1

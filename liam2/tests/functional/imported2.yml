@@ -1,26 +1,54 @@
+# imported by test_simulation_import.yml, (partly) overrides imported1.yml
+globals:
+    IMPORTED1_GLOBAL_TO_MODIFY: 2
+    IMPORTED1_GLOBAL_TO_DELETE: ~
+
+    IMPORTED2_GLOBAL_UNMODIFIED: 3
+    IMPORTED2_GLOBAL_TO_MODIFY: 3
+    IMPORTED2_GLOBAL_TO_DELETE: 3
+
 entities:
     person:
         fields:
-            - imported_field2: {type: int, initialdata: False}
+            - imported1_field_to_delete: ~
+            - imported2_field1: {type: int, initialdata: False}
+            - imported2_field2: {type: int, initialdata: False}
+            - imported2_field_to_delete: {type: int, initialdata: False}
 
         macros:
-            IMPORTED_MACRO: imported_field2 == 2
-            ISCHILD: age < 16
+            IMPORTED1_MACRO_TO_DELETE: ~
+            IMPORTED1_MACRO_TO_MODIFY: imported1_field2 == 2
+
+            IMPORTED2_MACRO_UNMODIFIED: imported2_field1 == 3
+            IMPORTED2_MACRO_TO_MODIFY: imported2_field2 == 4
+            IMPORTED2_MACRO_TO_DELETE: imported2_field_to_delete == 1
 
         processes:
-            compute_agegroup():
-                - agegroup: trunc(age / 20)
+            # overrides imported1 function
+            imported1_function_to_modify():
+                - imported1_field2: id + 2
 
-            imported_process():
-                - imported_field2: age + 2
+            imported1_function_to_delete(): ~
+
+            imported2_function_unmodified():
+                - imported2_field1: id + 3
+
+            imported2_function_to_modify():
+                - imported2_field2: id + 3
+
+            imported2_function_to_delete():
+                # using a deleted fields or macros in a deleted function should not be a problem
+                - test1: imported2_field_to_delete + 1
+                - test2: IMPORTED2_MACRO_TO_DELETE
+
 
 simulation:
-    # overrides imported1.yml and is overridden by simulation.yml
-    periods: 1
+    # overrides imported1.yml and is overridden by test_simulation_import.yml
+    periods: 200
 
     # overrides imported1.yml and is not overridden
-    start_period: 2002   # first simulated period
+    start_period: 2020
     default_entity: person
 
-    # not defined elsewhere thus not overridden
+    # not overridden (not present in test_simulation_import.yml)
     random_seed: 0

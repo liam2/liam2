@@ -674,8 +674,31 @@ def merge_dicts(*args, **kwargs):
     result = args[0].copy()
     for arg in args[1:] + (kwargs,):
         for k, v in arg.items():
-            if isinstance(v, dict) and k in result:
+            if isinstance(v, dict) and k in result and isinstance(result[k], dict):
                 v = merge_dicts(result[k], v)
+            result[k] = v
+    return result
+
+
+def del_none(m):
+    """
+    Returns a new dictionary with keys with None as value removed. Inspects nested dicts.
+
+    >>> # no None
+    ... del_none({'a': 0, 'b': {'b1': 0}})
+    {'a': 0, 'b': {'b1': 0}}
+    >>> # simple None
+    ... del_none({'a': None, 'b': {'b1': 0}})
+    {'b': {'b1': 0}}
+    >>> # None in nested
+    ... del_none({'a': 0, 'b': {'b1': None}})
+    {'a': 0, 'b': {}}
+    """
+    result = {}
+    for k, v in m.items():
+        if isinstance(v, dict):
+            result[k] = del_none(v)
+        elif v is not None:
             result[k] = v
     return result
 
@@ -765,7 +788,7 @@ def multi_get(d, key, default=None):
     """
     keys = key.split('/')
     for k in keys:
-        if k in d:
+        if isinstance(d, dict) and k in d:
             d = d[k]
         else:
             return default

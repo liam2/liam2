@@ -25,8 +25,14 @@ files), the "current" file (the model importing the other model) takes
 priority. This means one can override entity processes defined in imported
 files, or add fields to an entity defined in the imported model.
 
-Note that both the importing model and the imported model need not be
-complete/valid models (they do not need to include all required (sub)sections),
+Imported models can themselves import other models, as for example in
+variant3.yml below.
+
+An importing model can entirely remove an imported model global, function,
+macro or field by setting it to `~`. See variant5.yml below.
+
+Note that both the importing and imported models need not be complete/valid
+models by themselves (they do not need to include all required (sub)sections),
 as long as the combined model is valid. See the examples below.
 
 *example* (common.yml) ::
@@ -60,7 +66,7 @@ as long as the combined model is valid. See the examples below.
   entities:
       person:
           processes:
-              # override the ageing process
+              # override the ageing function
               ageing():
                   - age: age + 1
                   - agegroup: if(age < 50,
@@ -79,10 +85,11 @@ as long as the combined model is valid. See the examples below.
   entities:
       person:
           fields:
+              # adding a variant-specific field
               - severe_illness: {type: bool, initialdata: False}
 
           processes:
-              # adding new processes
+              # adding variant-specific functions
               illness():
                   - severe_illness: uniform() < 0.001
 
@@ -93,12 +100,13 @@ as long as the combined model is valid. See the examples below.
                   - remove(dead)
 
   simulation:
-      # since we have new processes, we have to override the *entire* process
+      # since we have new functions, we have to override the *entire* process
       # list, as LIAM2 would not know where to insert the new processes
       # otherwise.
       processes:
           - person: [ageing, illness, death]
 
+      # provide the required "output" section which is missing in common.yml
       output:
           file: variant2.h5
 
@@ -120,8 +128,8 @@ variant3.yml.
                                  10 * trunc(age / 10))
 
 This last example could also be achieved by importing both variant1.yml and
-variant2.yml. Notice that the order of imports is important, since it determines
-the result of conflicts between variants. For example in variant4.yml below, the
+variant2.yml. Note that **the order of imports matters**, since it determines
+the result of *conflicts* between variants. For example in variant4.yml below, the
 process list will be the one from variant2 and the output will go in
 variant2.h5.
 
@@ -131,3 +139,22 @@ variant2.h5.
       - variant1.yml
       - variant2.yml
 
+*example* (variant5.yml) ::
+
+  import: common.yml
+
+  entities:
+      person:
+          fields:
+              # remove the agegroup field as this variant does not use it
+              - agegroup: ~
+
+          processes:
+              # override the ageing function
+              ageing():
+                  - age: age + 1
+
+  simulation:
+      # provide the required "output" section which is missing in common.yml
+      output:
+          file: variant5.h5
