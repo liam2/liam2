@@ -11,7 +11,7 @@ import larray as la
 from liam2.compat import basestring, PY2
 from liam2 import config
 from liam2.expr import FunctionExpr
-from liam2.utils import aslabeledarray, ExceptionOnGetAttr, ndim, FileProducer
+from liam2.utils import get_axes, ExceptionOnGetAttr, ndim, FileProducer
 
 try:
     import matplotlib.pyplot as plt
@@ -66,7 +66,10 @@ class Chart(FunctionExpr, FileProducer):
         if len(args) == 1:
             data = args[0]
             if not isinstance(data, (np.ndarray, la.Array)):
+                # If data is a tuple of array/Array, it will be converted to
+                # a 2d array if all arrays are the same length but to an array of arrays otherwise
                 data = np.asarray(data)
+
             if ndim(data) == ndim_req:
                 # move the last axis first so that the last dimension is stacked
                 axes = list(range(data.ndim))
@@ -74,7 +77,8 @@ class Chart(FunctionExpr, FileProducer):
             elif ndim(data) == ndim_req - 1:
                 if isinstance(data, la.Array):
                     # add dummy axis and move it as the first axis
-                    data = data.expand(la.Axis(1, '__dummy__')).transpose('__dummy__')
+                    dummy = la.Axis(1, '')
+                    data = data.expand(dummy).transpose(dummy)
                 else:
                     data = data[np.newaxis]
             else:
@@ -83,7 +87,7 @@ class Chart(FunctionExpr, FileProducer):
             data = args
         else:
             raise dimerror
-        return np.asarray(data), aslabeledarray(data).axes
+        return data, get_axes(data)
 
     def compute(self, context, *args, **kwargs):
         entity = context.entity
@@ -141,12 +145,13 @@ class Chart(FunctionExpr, FileProducer):
             numvalues = len(axis)
             numticks = min(maxticks, numvalues)
             step = int(math.ceil(numvalues / float(numticks)))
+
             set_axis_ticks = getattr(ax, 'set_%sticks' % name)
-            set_axis_label = getattr(ax, 'set_%slabel' % name)
-            set_axis_ticklabels = getattr(ax, 'set_%sticklabels' % name)
             set_axis_ticks(np.arange(0, numvalues, step))
             if axis.name is not None:
+                set_axis_label = getattr(ax, 'set_%slabel' % name)
                 set_axis_label(axis.name)
+            set_axis_ticklabels = getattr(ax, 'set_%sticklabels' % name)
             set_axis_ticklabels(axis.labels[::step])
         return set_axis
     set_xaxis = _set_axis_method('x')
@@ -174,8 +179,20 @@ class BoxPlot(Chart):
     # boxplot works fine with several arrays of different lengths
     check_length = False
 
+    def prepare(self, args, kwargs):
+        if len(args) > 1:
+            args = (args,)
+        data, axes = super(BoxPlot, self).prepare(args, kwargs)
+        self.label_axis = axes[0]
+        return data, axes
+
     def _draw(self, data, colors, **kwargs):
-        data = np.asarray(data)
+        axis = self.label_axis
+        # tell matplotlib we don't want it to add default ticks (1 .. N)
+        if not axis.iswildcard:
+            kwargs['positions'] = np.arange(len(axis))
+            kwargs['manage_ticks'] = False
+
         # boxplot does not support varargs, so if we want several boxes,
         # we must pass a tuple instead of unpacking it (ie. no * on data)
         plt.boxplot(data, **kwargs)

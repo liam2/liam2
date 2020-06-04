@@ -384,18 +384,19 @@ class IrregularNDArray(object):
         return self.data[key]
 
 
-def aslabeledarray(data):
+def get_axes(data):
     sequence = (tuple, list)
     if isinstance(data, la.Array):
-        return data
+        return data.axes
     elif (isinstance(data, sequence) and len(data) and
           isinstance(data[0], la.Array)):
-        # FIXME13: use la.stack?
-        # TODO: check that all arrays have the same axes
-        axes = [la.Axis(len(data))] + list(data[0].axes)
-        return la.Array(data, axes)
+        # TODO: add an option to check that all arrays have the same axes.
+        #       This cannot be systematic because some charts support plotting several args
+        #       with different shapes/axes
+        return [la.Axis(len(data))] + list(data[0].axes)
     else:
-        return la.Array(data)
+        assert isinstance(data, np.ndarray)
+        return la.AxisCollection(data.shape)
 
 
 class ProgressBar(object):
