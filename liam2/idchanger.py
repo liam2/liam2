@@ -38,10 +38,16 @@ def get_shrink_dict(values, shuffle=False):
     return {value: i for i, value in enumerate(unique_values)}
 
 
-def table_empty_like(input_table, new_parent):
+def table_empty_like(input_table, new_parent=None, new_name=None):
+    if new_parent is None:
+        new_parent = input_table._v_parent
+
+    if new_name is None:
+        new_name = input_table.name
+    assert isinstance(new_parent, tables.Group)
     output_file = new_parent._v_file
     # TODO: copy other table attributes
-    return output_file.create_table(new_parent, input_table.name,
+    return output_file.create_table(new_parent, new_name,
                                     input_table.dtype,
                                     title=input_table._v_title)
 
@@ -83,7 +89,122 @@ def table_apply_map(input_table, new_parent, fields_maps):
     output_table.flush()
 
 
-def table_sort(input_table, new_parent, fnames, buffersize=10 * MB):
+import csv
+import tempfile
+import os
+
+def csv_rows(filename):
+    with open(filename) as fp:
+        yield from csv.reader(fp)
+
+
+def mergesort(sorted_filenames, columns, nway=2):
+    """Merge sorted csv files into a single output file"""
+
+    keyfunc = operator.itemgetter(*columns)
+
+    while len(sorted_filenames) > 1:
+        merge_filenames, sorted_filenames = sorted_filenames[:nway], sorted_filenames[nway:]
+        with tempfile.NamedTemporaryFile(delete=False, mode='w') as output_fp:
+            writer = csv.writer(output_fp)
+            for row in heapq.merge(*[csv_rows(filename) for filename in merge_filenames],
+                                   key=keyfunc):
+                writer.writerow(row)
+            sorted_filenames.append(output_fp.name)
+        for filename in merge_filenames:
+            os.remove(filename)
+    return sorted_filenames[0]
+
+
+MB = 2 ** 20
+
+import operator
+import heapq
+import numpy as np
+import math
+
+
+def sort_table(input_table, col_names, new_parent=None, new_name=None, nway=2, buffersize=10 * MB):
+    """Sort a potentially huge table using col_names"""
+
+    if new_parent is None:
+        new_parent = input_table._v_parent
+
+    output_file = new_parent._v_file
+    dtype = input_table.dtype
+    max_buffer_rows = buffersize // dtype.itemsize
+    table_name = input_table.name
+    if new_name is None:
+        new_name = table_name
+
+    # read chunks, sort them and store them back in temporary tables
+    remaining_rows = len(input_table)
+    ndigits = math.ceil(math.log10(remaining_rows + 1))
+    sorted_tables = []
+    buffer_rows = max_buffer_rows
+    buffer = np.empty(buffer_rows, dtype=dtype)
+    start = 0
+    while remaining_rows > 0:
+        buffer_rows = min(remaining_rows, max_buffer_rows)
+        if buffer_rows < len(buffer):
+            # last chunk is smaller
+            buffer = np.empty(buffer_rows, dtype=dtype)
+        stop = start + buffer_rows
+        input_table.read(start, stop, out=buffer)
+        buffer.sort(order=col_names)
+        chunk_name = f"_{table_name}_sorted_{start:0{ndigits}}_to_{stop - 1:0{ndigits}}"
+        sorted_chunk_table = output_file.create_table(new_parent, chunk_name, dtype)
+        sorted_chunk_table.append(buffer)
+        sorted_chunk_table.flush()
+        sorted_tables.append(sorted_chunk_table)
+        start += buffer_rows
+        remaining_rows -= buffer_rows
+
+    all_col_names = dtype.names
+    col_indices = [all_col_names.index(name) for name in col_names]
+    keyfunc = operator.itemgetter(*col_indices)
+
+    if nway is None:
+        nway = len(sorted_tables)
+
+    iter_num = 0
+    remaining_tables = sorted_tables
+    while len(remaining_tables) > 1:
+        current_tables, remaining_tables = remaining_tables[:nway], remaining_tables[nway:]
+
+        # TODO: copy other table attributes
+        table = output_file.create_table(new_parent, f'_{table_name}_merged_{iter_num}', dtype,
+                                         title=input_table._v_title)
+        chunk_lengths = [len(table) for table in current_tables]
+        remaining_rows = sum(chunk_lengths)
+
+        def yield_row_tuples(table):
+            for row in table.iterrows():
+                yield row.fetch_all_fields()
+
+        merged_rows_iter = heapq.merge(*[yield_row_tuples(table) for table in current_tables],
+                                       key=keyfunc)
+        while remaining_rows > 0:
+            buffer_rows = min(remaining_rows, max_buffer_rows)
+            array = np.fromiter(merged_rows_iter, dtype=dtype, count=buffer_rows)
+            remaining_rows -= buffer_rows
+            assert len(array) > 0
+            table.append(array)
+            table.flush()
+
+        remaining_tables.append(table)
+
+        for table in current_tables:
+            output_file.remove_node(table)
+
+        iter_num += 1
+
+    merged_table = remaining_tables[0]
+    output_file.rename_node(merged_table, new_name, overwrite=True)
+    return merged_table
+
+
+def table_sort(input_table, fnames, new_parent=None, new_name=None, buffersize=10 * MB):
     """Copy the contents of a table to another table sorting rows along
     several columns.
 
@@ -96,11 +217,11 @@ def table_sort(input_table, new_parent, fnames, buffersize=10 * MB):
         eg ['period', 'id']
     """
     assert isinstance(input_table, tables.Table)
-    assert isinstance(new_parent, tables.Group)
-    output_table = table_empty_like(input_table, new_parent)
+
+    output_table = table_empty_like(input_table, new_parent, new_name)
     sort_columns = [input_table.col(fname) for fname in fnames]
     dtype = input_table.dtype
-    # TODO: try with setting a pytables index and using read_sorted
+    # TODO: try with setting a pytables index and using read_sorted (cannot work!)
     indices = np.lexsort(sort_columns[::-1])
     max_buffer_rows = buffersize // dtype.itemsize
     lines_left = len(indices)
@@ -243,7 +364,7 @@ def h5_sort(input_path, output_path, entities=None):
 
     def sort_entity(table, new_parent):
         print("sorting ...", end=' ')
-        return table_sort(table, new_parent, ('period', 'id'))
+        return table_sort(table, ('period', 'id'), new_parent)
 
     if entities is None:
         with tables.open_file(input_path) as f:
@@ -269,6 +390,9 @@ def fields_from_entity(entity):
 
 
 if __name__ == '__main__':
+    with tables.open_file('c:/tmp/is/flanders.h5', 'a') as t:
+        sort_table(t.root.entities.person, ['period', 'id'], buffersize=10000)
+
     import sys
     import platform
 

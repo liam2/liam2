@@ -749,6 +749,9 @@ entities:
 #                - plot(groupby(age))
                 - plot(groupby(age), suffix='test')
 
+                # FIXME: this is currently broken (unsure it worked in 0.12 though)
+                - boxplot(age,
+                          fname='bplot0.png')
                 - boxplot(age[gender], age[not gender],
                           fname='bplot1.png&pdf')
                 - boxplot((age[gender], age[not gender]),
@@ -814,6 +817,7 @@ entities:
                 - pie(groupby(eduach),
                       explode=[0.1, 0, 0],
                       labels=['Lower secondary', 'Upper secondary', 'Tertiary'],
+                      title='Proportion of education',
                       fname='pie2.png&pdf')
 
                 # limit number of individuals to get smaller .pdf files
