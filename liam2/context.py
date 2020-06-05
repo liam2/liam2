@@ -144,7 +144,7 @@ class EvaluationContext(object):
     def __len__(self):
         return self.length()
 
-    def subset(self, index, keys=None, filter_expr=None):
+    def subset(self, index=None, keys=None, filter_expr=None):
         """
         returns a copy of the context with only a subset of the current entity.
         The main use case is to take a subset of rows. Since this is a
