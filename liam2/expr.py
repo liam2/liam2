@@ -709,7 +709,7 @@ class ExprAttribute(EvaluableExpression):
             return getattr(expr_value, key_value)
         else:
             raise AttributeError("%s (of type '%s') has no attribute '%s'"
-                                 % (self, self.__class__.__name__, key_value))
+                                 % (self, type(expr_value).__name__, key_value))
 
     def __call__(self, *args, **kwargs):
         return DynamicFunctionCall(self, *args, **kwargs)
