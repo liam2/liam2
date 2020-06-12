@@ -532,20 +532,10 @@ class Where(NumexprFunction):
         return coerce_types(context, self.iftrue, self.iffalse)
 
 
-def _plus(a, b):
-    return BinaryOp('+', a, b)
-
-
-def _mul(a, b):
-    return BinaryOp('*', a, b)
-
-
 # TODO: add class to handle loading a single coefficient (array) from a file
-# TODO: rename to something else.
-# * LinearExpression (linear_expr?) but that would
-#   make it awkward if we want to support expression with non linear variables
-# * CoefficientsExpression (coef_expr)
-class ExtExpr(FunctionExpr):
+# this is called linear_expr because it is a linear combination of variables, even though the variables
+# being combined can be non-linear. See discussion in issue #269.
+class LinearExpr(FunctionExpr):
     def __init__(self, *args, **kwargs):
         # to initialize .args, .kwargs, .original_args, ...
         FunctionExpr.__init__(self, *args, **kwargs)
@@ -563,38 +553,32 @@ class ExtExpr(FunctionExpr):
     def compute(self, context, coefficients):
         assert isinstance(coefficients, la.Array)
 
-        # XXX: change to "variable"? because we can use temporary variables too!
-        #      or even to "expressions" if we want to support expressions.
-        # FIXME013: in any case, it should be singular
-        field_axis = coefficients.axes['fields']
-        other_axes = coefficients.axes - field_axis
+        variable_axis = coefficients.axes['__variable__']
+        other_axes = coefficients.axes - variable_axis
 
         expr = None
-        # XXX: instead of retrieving labels along a dimension & splitting manually,
-        #      we should have a "split" operation in LArray (opposite of stack)
-        for name in field_axis.labels:
+        for name in variable_axis.labels:
             coef_value = coefficients[name]
 
             # automatically index other (remaining) dimensions
+            # TODO: this should be configurable: autoindex='__all__'
             if other_axes:
                 coef_value = index_array_by_variables(coef_value, context, other_axes)
 
             coef_var = self.add_tmp_var(context, coef_value)
-            if name != 'constant':
+            if name != '__constant__':
                 # XXX: should I reuse variables instances defined in the entity at
                 # context.entity.variables[name]
                 # XXX: parse expressions instead of only simple Variable?
-                term = _mul(Variable(context.entity, name), coef_var)
+                v = Variable(context.entity, name)
+                term = BinaryOp('*', v, coef_var)
             else:
                 term = coef_var
             if expr is None:
                 expr = term
             else:
-                expr = _plus(expr, term)
+                expr = BinaryOp('+', expr, term)
         return expr_eval(expr, context)
-
-    # def __repr__(self):
-    #     return "yada"
 
 
 class Seed(FunctionExpr):
@@ -667,7 +651,7 @@ functions = {
     'new': New,
     'clone': Clone,
     'dump': Dump,
-    'extexpr': ExtExpr,
+    'linear_expr': LinearExpr,
     'seed': Seed,
     'array': Array,
     'load': Load,
