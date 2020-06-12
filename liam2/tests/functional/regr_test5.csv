@@ -1,8 +1,8 @@
-fields,gender,work,
+__variable__,gender,work,
 ,,FALSE,TRUE
 eduach,FALSE,0.33,0.11
 eduach,TRUE,0.34,0.12
 age,FALSE,0.22,0.21
 age,TRUE,0.23,0.22
-constant,FALSE,0.11,0.31
-constant,TRUE,0.12,0.32
+__constant__,FALSE,0.11,0.31
+__constant__,TRUE,0.12,0.32

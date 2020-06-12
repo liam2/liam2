@@ -5,7 +5,7 @@ from liam2.compat import basestring
 from liam2.alignment import Alignment
 from liam2.expr import Expr, Variable, BinaryOp, ComparisonOp, missing_values, getdtype, always
 from liam2.exprbases import CompoundExpression
-from liam2.exprmisc import Exp, Max, Where, Logit, Logistic, ExtExpr
+from liam2.exprmisc import Exp, Max, Where, Logit, Logistic, LinearExpr
 from liam2.exprrandom import Normal, Uniform
 
 
@@ -29,7 +29,7 @@ class LogitScore(CompoundExpression):
     def build_expr(self, context, expr):
         if isinstance(expr, basestring):
             # assume it is a filename
-            expr = ExtExpr(expr)
+            expr = LinearExpr(expr)
 
         u = Uniform()
         # expr in (0, 0.0, False, '')
