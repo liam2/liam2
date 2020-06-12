@@ -1301,11 +1301,9 @@ class SubscriptedGlobal(GlobalVariable):
 
 
 def index_array_by_variables(array, context, axes):
-    # TODO: either parse expressions instead of only simple Variable, or take variable value directly in
-    # context instead of creating a Variable and using expr_eval
-    expressions = tuple(Variable(context.entity, axis_name)
-                        for axis_name in axes.names)
-    columns = tuple(expr_eval(expr, context) for expr in expressions)
+    # XXX: if we do not need to customize used variables, we can simplify this to:
+    # axes_groups = tuple(axis[context[axis.name]] for axis in axes)
+    columns = [context[name] for name in axes.names]
     axes_groups = tuple(axis[col] for axis, col in zip(axes, columns))
     return array.points[axes_groups]
 
