@@ -107,14 +107,13 @@ class Choice(NumpyRandom):
             #       outcome3))
 
             data = {'u': np.random.uniform(size=size)}
+            u = Variable(context.entity, 'u')
             expr = a[-1]
             # iterate in reverse and skip last
-            pairs = zip(cdf[-2::-1], a[-2::-1])
-            for i, (proba_x, outcome_x) in enumerate(pairs):
-                data['p%d' % i] = proba_x
-                expr = Where(ComparisonOp('<', Variable(None, 'u'),
-                                          Variable(None, 'p%d' % i)),
-                             outcome_x, expr)
+            for i, proba_i, outcome_i in zip(range(len(a) - 1, 0, -1), cdf[-2::-1], a[-2::-1]):
+                data['p%d' % i] = proba_i
+                expr = Where(ComparisonOp('<', u, Variable(context.entity, 'p%d' % i)),
+                             outcome_i, expr)
             local_ctx = context.clone(fresh_data=True, entity_data=data)
             return expr.evaluate(local_ctx)
         else:
