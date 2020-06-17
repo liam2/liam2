@@ -200,7 +200,6 @@ class Exp(NumexprFunction):
 
 def expand_with_defaults(d, old_array_axes, children_axes, new_array_axes):
     old_id_axis = old_array_axes.id
-    num_birth = len(children_axes.id)
     len_before = len(old_id_axis)
     for name, value in d.items():
         if name == '__globals__':
@@ -219,6 +218,7 @@ def expand_with_defaults(d, old_array_axes, children_axes, new_array_axes):
         # whether it is possible.
         if isinstance(value, np.ndarray) and value.shape == (len_before,):
             # TODO: I should make sure this case never happens (so that I can remove the FIXME above)
+            num_birth = len(children_axes.id)
             extra = get_default_vector(num_birth, value.dtype)
             d[name] = np.concatenate((value, extra))
         elif isinstance(value, la.Array) and value.axes is old_array_axes:
@@ -345,14 +345,10 @@ class New(FilteredExpression):
         # result is the ids of the new individuals corresponding to the source
         # entity
         if to_give_birth is not None:
-            # working with indices is usually faster and allows us to avoid enlarging to_give_bith to match
+            # working with indices is usually faster and allows us to avoid enlarging to_give_birth to match
             # the source_entity new length when the source_entity is the same as the target entity
             to_give_birth_indices = filter_to_indices(to_give_birth.data)
             result = la.full(source_entity.array.axes, -1, dtype=int)
-
-            # Note that np.place is a bit faster, but is currently buggy when
-            # working with columns of structured arrays.
-            # See https://github.com/numpy/numpy/issues/2462
             result.i[to_give_birth_indices] = children['id'].ignore_labels()
             return result
         else:
