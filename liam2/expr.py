@@ -514,22 +514,25 @@ class Expr(object):
         return False
 
     def get_tmp_varname(self, context):
-        tmp_varname = "temp_%d" % self.num_tmp
+        tmp_varname = '__temp_{}'.format(self.num_tmp)
         Expr.num_tmp += 1
         return tmp_varname
 
-    def add_tmp_var(self, context, result):
+    def add_tmp_var(self, context, value):
         tmp_varname = self.get_tmp_varname(context)
         if tmp_varname in context:
+            prev_value = context[tmp_varname]
             # should be consistent but nan != nan
-            if isinstance(result, np.ndarray):
-                assert array_nan_equal(context[tmp_varname], result)
+            if isinstance(value, la.Array):
+                assert value.equals(prev_value)
+            elif isinstance(value, np.ndarray):
+                assert array_nan_equal(value, prev_value)
             else:
-                assert result != result or context[tmp_varname] == result
+                assert value != value or value == prev_value
         # FIXME: we should never modify the context in-place. We should rather
         #        have a build_context method.
-        context[tmp_varname] = result
-        return Variable(context.entity, tmp_varname, gettype(result))
+        context[tmp_varname] = value
+        return Variable(context.entity, tmp_varname, gettype(value))
 
 
 class EvaluableExpression(Expr):
@@ -1317,27 +1320,22 @@ def index_array_by_variables(array, context, axes_to_index=None):
 
 # TODO: this class shouldn't be needed. GlobalArray should be handled in the
 # context
-class GlobalArray(Variable):
+class GlobalArray(EvaluableExpression, Variable):
     def __init__(self, name, dtype=None, autoindex=None):
+        # we should NOT call EvaluableExpression.__init__(self)
         Variable.__init__(self, None, name, dtype)
         # convert to tuple so that it is hashable
         if isinstance(autoindex, list):
             autoindex = tuple(autoindex)
         self.autoindex = autoindex
 
-    def as_simple_expr(self, context):
-        globals_data = context.global_tables
-        result = index_array_by_variables(globals_data[self.name], context, self.autoindex)
-        # XXX: maybe I should just use self.name?
-        # FIXME013: use self.add_tmp_var, because in combination with autoindex,
-        # the variable could have a different value
-        tmp_varname = '__%s' % self.name
-        if tmp_varname in context:
-            array = context[tmp_varname]
-            assert isinstance(array, la.Array)
-            assert context[tmp_varname].equals(result)
-        context[tmp_varname] = result
-        return Variable(context.entity, tmp_varname)
+    def get_tmp_varname(self, context):
+        tmp_varname = '__{}_{}'.format(self.name, self.num_tmp)
+        Expr.num_tmp += 1
+        return tmp_varname
+
+    def evaluate(self, context):
+        return index_array_by_variables(context.global_tables[self.name], context, self.autoindex)
 
 
 class GlobalTable(object):
