@@ -618,7 +618,6 @@ class Load(FunctionExpr):
 
 class View(FunctionExpr):
     def compute(self, context, obj=None):
-        print(la.__version__)
         if obj is None:
             def entity():
                 return context.entity_name
@@ -653,5 +652,5 @@ functions = {
     'seed': Seed,
     'array': Array,
     'load': Load,
-    'view': View,
+    # 'view': View,
 }
