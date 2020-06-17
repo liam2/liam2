@@ -1,4 +1,4 @@
-choices,gender,
+__outcome__,gender,
 ,FALSE,TRUE
 1,0.2,0.3
 2,0.3,0.5

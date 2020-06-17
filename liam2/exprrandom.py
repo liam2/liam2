@@ -51,10 +51,11 @@ class Choice(NumpyRandom):
         (a, p, size, replace), kwargs = NumpyRandom._eval_args(self, context)
         return (a, size, replace, p), kwargs
 
-    def compute(self, context, a, size=None, replace=True, p=None):
+    def compute(self, context, a, size=None, replace=True, p=None, outcome_axis='__outcome__',
+                autoindex='__other_axes__'):
         if isinstance(a, la.Array):
             assert p is None
-            # FIXME13: rename to outcome or __outcome__ and make the dimension name configurable
+
             # TODO: add support for generating several variables at once
             # e.g.
             # agegroup, gender
@@ -63,16 +64,18 @@ class Choice(NumpyRandom):
             #       30,  0.16, 0.15
             #       60,  0.13, 0.14
             #       90,  0.04, 0.05
-            outcomes_axis = a.axes['outcomes']
-            outcomes = outcomes_axis.labels
-            other_axes = a.axes - outcomes_axis
+            # resulting in:
+            # __variable__,
+            # agegroup, gender
+            #       30,  False
+            #       60,   True
+            outcome_axis = a.axes[outcome_axis]
+            if autoindex == '__other_axes__':
+                autoindex = a.axes - outcome_axis
+            a = index_array_by_variables(a, context, autoindex)
 
-            if other_axes:
-                a = index_array_by_variables(a, context, other_axes)
-                p = np.asarray(a.transpose('outcomes'))
-            else:
-                p = np.asarray(a)
-            a = outcomes
+            p = np.asarray(a.transpose(outcome_axis))
+            a = outcome_axis.labels
 
         if isinstance(p, (list, np.ndarray)) and len(p) and not np.isscalar(p[0]):
             assert len(p) == len(a)

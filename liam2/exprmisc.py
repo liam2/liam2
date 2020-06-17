@@ -550,26 +550,24 @@ class LinearExpr(FunctionExpr):
             # self.args.need = load_ndarray(fpath, float)
             self.args = (coefficients,) + self.args[1:]
 
-    def compute(self, context, coefficients):
+    def compute(self, context, coefficients, variable_axis='__variable__', autoindex='__other_axes__'):
         assert isinstance(coefficients, la.Array)
 
-        variable_axis = coefficients.axes['__variable__']
-        other_axes = coefficients.axes - variable_axis
+        variable_axis = coefficients.axes[variable_axis]
+        if autoindex == '__other_axes__':
+            autoindex = coefficients.axes - variable_axis
 
         expr = None
         for name in variable_axis.labels:
             coef_value = coefficients[name]
 
             # automatically index other (remaining) dimensions
-            # TODO: this should be configurable: autoindex='__all__'
-            if other_axes:
-                coef_value = index_array_by_variables(coef_value, context, other_axes)
+            coef_value = index_array_by_variables(coef_value, context, autoindex)
 
             coef_var = self.add_tmp_var(context, coef_value)
             if name != '__constant__':
                 # XXX: should I reuse variables instances defined in the entity at
                 # context.entity.variables[name]
-                # XXX: parse expressions instead of only simple Variable?
                 v = Variable(context.entity, name)
                 term = BinaryOp('*', v, coef_var)
             else:

@@ -1300,11 +1300,18 @@ class SubscriptedGlobal(GlobalVariable):
         return expr_eval(self.key, context)
 
 
-def index_array_by_variables(array, context, axes):
-    # XXX: if we do not need to customize used variables, we can simplify this to:
-    # axes_groups = tuple(axis[context[axis.name]] for axis in axes)
-    columns = [context[name] for name in axes.names]
-    axes_groups = tuple(axis[col] for axis, col in zip(axes, columns))
+def index_array_by_variables(array, context, axes_to_index=None):
+    if axes_to_index is None:
+        return array
+
+    if not isinstance(axes_to_index, la.AxisCollection):
+        axes_to_index = array.axes[axes_to_index]
+
+    if not axes_to_index:
+        return array
+
+    assert all(axis in array.axes for axis in axes_to_index)
+    axes_groups = tuple(axis[context[axis.name]] for axis in axes_to_index)
     return array.points[axes_groups]
 
 
@@ -1320,9 +1327,7 @@ class GlobalArray(Variable):
 
     def as_simple_expr(self, context):
         globals_data = context.global_tables
-        result = globals_data[self.name]
-        if self.autoindex is not None:
-            result = index_array_by_variables(result, context, result.axes[self.autoindex])
+        result = index_array_by_variables(globals_data[self.name], context, self.autoindex)
         # XXX: maybe I should just use self.name?
         # FIXME013: use self.add_tmp_var, because in combination with autoindex,
         # the variable could have a different value
