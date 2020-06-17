@@ -2951,8 +2951,7 @@ entities:
                 - assertTrue(num10 > 0)
                 - assertEqual(num0 + num5 + num10, num_total)
 
-                # FIXME13: rename axis in .csv file
-                - global_choice: choice(CHOICE2D.rename('choices', 'outcomes'))
+                - global_choice: choice(CHOICE2D)
                 # TODO: use a single 2D groupby (gender & not gender)
                 - w: groupby(global_choice, filter=not gender, percent=True)
                 - w1: w[1]
@@ -2969,7 +2968,7 @@ entities:
                 - assertTrue(47 < m2 and m2 < 53) # should be approx 50%
                 - assertTrue(17 < m3 and m3 < 23) # should be approx 20%
 
-                - global_choice: choice(CHOICE2DT.rename('choices', 'outcomes'))
+                - global_choice: choice(CHOICE2DT)
                 - w: groupby(global_choice, filter=not gender, percent=True)
                 - w1: w[1]
                 - w2: w[2]
