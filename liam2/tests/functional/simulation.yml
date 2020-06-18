@@ -2993,14 +2993,17 @@ entities:
                 #  TRUE   TRUE 0.1 0.1 0.1 0.7
                 - outcome: choice('ext_choice_ambiguous.csv')
                 - actual: groupby(work, gender, outcome) / groupby(work, gender)
+
+                # TODO: specifying axes explicitly is a workaround for larray bad broadcasting of anonymous axes
                 - min_: array([[[60,  5,  5,  5],
-                               [ 5, 60,  5,  5]],
-                              [[ 5,  5, 60,  5],
-                               [ 5,  5,  5, 60]]]) / 100
+                                [ 5, 60,  5,  5]],
+                               [[ 5,  5, 60,  5],
+                                [ 5,  5,  5, 60]]], actual.axes) / 100
                 - max_: array([[[80, 15, 15, 15],
-                               [15, 80, 15, 15]],
-                              [[15, 15, 80, 15],
-                               [15, 15, 15, 80]]]) / 100
+                                [15, 80, 15, 15]],
+                               [[15, 15, 80, 15],
+                                [15, 15, 15, 80]]], actual.axes) / 100
+
                 - check: min_ < actual and actual < max_
                 - assertTrue(check.all())
 
@@ -3187,7 +3190,69 @@ entities:
                 - v3: age + 3
                 - v4: age + 4
                 - v5: age + 5
+
+                # 1D array with implicit axes
                 - arr: array([v3, v1, v2, v5, v0, v4])
+                - assertEqual(arr.shape, (6, count()))
+                - assertEqual(arr.axes.names, [None, 'id'])
+
+                # 1D array with explicit axes
+                - arr: array([v3, v1, v2, v5, v0, v4], axes=[6, id.id])
+                - assertEqual(arr.shape, (6, count()))
+                - assertEqual(arr.axes.names, [None, 'id'])
+
+                # 1D array with explicit axes
+                - arr: array([v3, v1, v2, v5, v0, v4], axes=[Axis(6, 'n'), id.id])
+                - assertEqual(arr.shape, (6, count()))
+                - assertEqual(arr.axes.names, ['n', 'id'])
+
+                # sorting using Array.sort_values
+                # -------------------------------
+                - sorted_arr: arr.sort_values(axis='n')
+                # we use three different ways to access elements
+                - highest1: sorted_arr['n.i[-1]']
+                - highest2: sorted_arr[arr.n.i[-2]]
+                - highest3: sorted_arr.i[-3]
+                - assertEqual(highest1, v5)
+                - assertEqual(highest2, v4)
+                - assertEqual(highest3, v3)
+
+                # sum of 3 highest
+                - expected: highest1 + highest2 + highest3
+
+                # a) verbose syntax
+                - sum_highest: sorted_arr[sorted_arr.n.i[-3:]].sum('n')
+                - assertEqual(sum_highest, expected)
+
+                # b) shortcut syntax
+                - sum_highest: sorted_arr.sum('n.i[-3:]')
+                - assertEqual(sum_highest, expected)
+
+                # sorting using Array.labelsofsorted (indirect sort)
+                # --------------------------------------------------
+                - sorted_n: arr.labelsofsorted('n')
+                # sadly some values of n are ambiguous with ids so we have to specify arr.n
+                - highest1: arr[arr.n[sorted_n['n.i[-1]']]]
+                - highest2: arr[arr.n[sorted_n.i[-2]]]
+                - highest3: arr[arr.n[sorted_n.i[-3]]]
+                - assertEqual(highest1, v5)
+                - assertEqual(highest2, v4)
+                - assertEqual(highest3, v3)
+
+                # sum of 3 highest
+                - expected: highest1 + highest2 + highest3
+
+                # a) verbose syntax
+                - sum_highest: arr[arr.n[sorted_n.i[-3:]]].sum('n')
+                - assertEqual(sum_highest, expected)
+
+                # b) shortcut syntax
+                - sum_highest: arr.sum(arr.n[sorted_n.i[-3:]])
+                - assertEqual(sum_highest, expected)
+
+                # sorting using sort()
+                # --------------------
+                # TODO: deprecate sort() (it returns an np.ndarray)
                 - sorted_arr: sort(arr, axis=0)
                 - highest1: sorted_arr[-1]
                 - highest2: sorted_arr[-2]
@@ -3195,9 +3260,21 @@ entities:
                 - assertEqual(highest1, v5)
                 - assertEqual(highest2, v4)
                 - assertEqual(highest3, v3)
-                # sum of 3 highest
-                - sum_highest: sorted_arr[-3:].sum(axis=0)
-                - assertEqual(sum_highest, highest1 + highest2 + highest3)
+
+                # 2D array with implicit axes
+                # ---------------------------
+                - arr2d: array([[id    , id + 1],
+                                [id + 2, id + 3],
+                                [id + 4, id + 5]])
+                - assertEqual(arr2d.shape, (3, 2, count()))
+                - assertEqual(arr2d.axes.names, [None, None, 'id'])
+
+                # 2D array with explicit axes
+                - arr2d: array([[id    , id + 1],
+                                [id + 2, id + 3],
+                                [id + 4, id + 5]], axes=[3, 2, id.id])
+                - assertEqual(arr2d.shape, (3, 2, count()))
+                - assertEqual(arr2d.axes.names, [None, None, 'id'])
 
             generate():
                 - new('person', number=100000,

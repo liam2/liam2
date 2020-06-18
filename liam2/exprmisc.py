@@ -586,9 +586,20 @@ class Seed(FunctionExpr):
         np.random.seed(seed)
 
 
+def _get_axes(value):
+    if isinstance(value, (tuple, list)):
+        return (len(value),) + _get_axes(value[0])
+    elif isinstance(value, la.Array):
+        return tuple(value.axes)
+    else:
+        return ()
+
+
 class Array(FunctionExpr):
-    def compute(self, context, expr):
-        return np.array(expr)
+    def compute(self, context, expr, axes=None, meta=None, dtype=None):
+        if axes is None:
+            axes = _get_axes(expr)
+        return la.Array(expr, axes=axes, meta=meta, dtype=dtype)
 
     # XXX: is this correct?
     dtype = firstarg_dtype
