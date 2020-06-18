@@ -389,11 +389,21 @@ class Entity(object):
         return symbols
 
     def parse_expr(self, k, v, context):
+        if isinstance(k, basestring) and '[' in k:
+            first_opening_bracket = k.index('[')
+            last_closing_bracket = k.rindex(']')
+            key_str = k[first_opening_bracket + 1:last_closing_bracket]
+            key_expr = parse(key_str, context)
+            # trim target
+            k = k[:first_opening_bracket]
+        else:
+            key_expr = None
+
         # I prefer listing bool explicitly even if not necessary because isinstance(True, int) is True
         if isinstance(v, (bool, int, float, list, dict)):
-            return Assignment(k, self, v)
+            return Assignment(k, self, v, key_expr=key_expr)
         elif isinstance(v, basestring):
-            return Assignment(k, self, parse(v, context))
+            return Assignment(k, self, parse(v, context), key_expr=key_expr)
         else:
             # lets be explicit about it
             return None

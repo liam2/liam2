@@ -3276,6 +3276,45 @@ entities:
                 - assertEqual(arr2d.shape, (3, 2, count()))
                 - assertEqual(arr2d.axes.names, [None, None, 'id'])
 
+            test_setitem():
+                # 1D array (with wildcard axis) target, constant key, constant value
+                - arr: array([0, 1, 2])
+                - arr[1]: 42
+                - assertEqual(arr, [0, 42, 2])
+
+                # 1D array (with wildcard axis) target, expr key, constant value
+                - arr: array([0, 11, 2, 3, 14])
+                - arr[arr > 9]: 42
+                - assertEqual(arr, [0, 42, 2, 3, 42])
+
+                # 1D array (with wildcard axis) target, expr key, expr value
+                - arr: array([0, 11, 2, 3, 14])
+                - arr[arr > 9]: arr[arr > 9] + 1
+                - assertEqual(arr, [0, 12, 2, 3, 15])
+
+                # column (id axis) target, constant key, constant value
+                - backup: age[1]
+                - age[1]: 999
+                - assertEqual(age[1], 999)
+                - age[1]: backup
+                - assertEqual(age[1], backup)
+
+                # column (id axis) target, expr key, constant value
+                - backup: age.copy()
+                - count_above_50: count(age > 50)
+                - assertTrue(count_above_50 > 0)
+
+                - assertEqual(count(age > 50 and age < 999), count_above_50)
+                - assertEqual(count(age == 999), 0)
+
+                - age[age > 50]: 999
+                - assertEqual(count(age > 50 and age < 999), 0)
+                - assertEqual(count(age == 999), count_above_50)
+
+                - age: backup
+                - assertEqual(count(age > 50 and age < 999), count_above_50)
+                - assertEqual(count(age == 999), 0)
+
             generate():
                 - new('person', number=100000,
                       age=randint(0, 98),
@@ -3505,6 +3544,7 @@ simulation:
                    test_choice,
                    show_weight,
                    test_array,
+                   test_setitem,
                    test_default_value,
                    test_show,
                    test_load,

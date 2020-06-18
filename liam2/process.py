@@ -63,25 +63,31 @@ class Return(Process):
 
 
 class Assignment(Process):
-    def __init__(self, name, entity, expr):
+    def __init__(self, name, entity, expr, key_expr=None):
         super(Assignment, self).__init__(name, entity)
         self.expr = expr
         self.temporary = name not in entity.fields.names
+        if key_expr is not None and name is None:
+            raise ValueError("cannot assign a subset of an unknown variable")
+        self.key_expr = key_expr
 
     def run(self, context):
         value = expr_eval(self.expr, context)
+
         # Assignment to a field with a name == None is valid: it simply means
         # the result must not be stored. This happens when a user does not
         # store anywhere the result of an expression (it usually has side
         # effects -- csv, new, remove, ...).
-        if self.name is not None:
-            self.store_result(value, context)
+        if self.name is None:
+            return
 
-    def store_result(self, result, context):
-        if isinstance(result, (np.ndarray, la.Array)):
-            res_type = result.dtype.type
+        key_value = expr_eval(self.key_expr, context)
+
+        # store the result
+        if isinstance(value, (np.ndarray, la.Array)):
+            res_type = value.dtype.type
         else:
-            res_type = type(result)
+            res_type = type(value)
 
         if self.temporary:
             target = self.entity.temp_variables
@@ -89,7 +95,7 @@ class Assignment(Process):
             # we cannot store/cache self.entity.array[self.name] because the
             # array object can change (eg when enlarging it due to births)
             target = self.entity.array
-            result = np.asarray(result)
+
             # TODO: assert type for temporary variables too
             target_type_idx = type_to_idx[target[self.name].dtype.type]
             res_type_idx = type_to_idx[res_type]
@@ -100,8 +106,11 @@ class Assignment(Process):
                                  self.name,
                                  idx_to_type[target_type_idx].__name__))
 
-        # the whole column is updated
-        target[self.name] = result
+        if key_value is None:
+            # the whole column is updated
+            target[self.name] = value
+        else:
+            target[self.name][key_value] = value
 
         # invalidate cache
         period = context.period

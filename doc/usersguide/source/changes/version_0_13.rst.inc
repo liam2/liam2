@@ -15,6 +15,15 @@ New features
 * added ability for an importing model to entirely remove an imported model global, function,
   macro or field by setting it to `~`. See :ref:`Importing other models <import_models>`.
 
+* one can now set the value of array and column subsets in addition to whole array or columns. For example,
+  one can write:
+
+      work[unemployed]: False
+
+  instead of
+
+      work: if(unemployed, False, work)
+
 * added view()
 
 
