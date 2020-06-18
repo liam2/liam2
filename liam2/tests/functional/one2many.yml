@@ -85,9 +85,9 @@ entities:
                 # hh_id            0        1
                 # age    [0, 10, 30] [20, 40]
                 # weight [5,  4,  2] [ 3,  1]
-                - hh_id:  array([ 0,  0,  1,  0,  1])
-                - age:    array([ 0, 10, 20, 30, 40])
-                - weight: array([5,  4,  3,  2,  1])
+                - hh_id:  array([0,  0,  1,  0,  1], axes=id.id)
+                - age:    array([0, 10, 20, 30, 40], axes=id.id)
+                - weight: array([5,  4,  3,  2,  1], axes=id.id)
 
 simulation:
     init:
