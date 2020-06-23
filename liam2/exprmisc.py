@@ -405,6 +405,10 @@ class Dump(TableExpression):
         #            expressions.insert(0, Variable('period'))
         #            id_pos += 1
 
+        # this is a minor speed optimization (to avoid transforming to indices for each column)
+        if isinstance(filter_value, la.Array) and np.issubdtype(filter_value.dtype, np.bool_):
+            filter_value = filter_value.nonzero()
+
         columns = []
         for expr in expressions:
             if filter_value is False:
