@@ -39,7 +39,7 @@ class TestSimple(StringExprTestCase):
         self.eval_ctx = EvaluationContext(entity_name='person',
                                           entities_data=data)
         self.parse_ctx = {
-            'person': {'age': Variable('age'), 'dead': Variable('dead')},
+            'person': {'age': Variable(None, 'age'), 'dead': Variable(None, 'dead')},
             '__entity__': 'person'
         }
 
