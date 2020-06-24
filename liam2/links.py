@@ -20,14 +20,14 @@ counting_typemap = {bool: int, int: int, float: float}
 
 class Link(object):
     def __init__(self, name, link_field, target_entity_name,
-                 target_entity=None):
+                 target_entity=None, entity=None):
         # the leading underscores are necessary to not collide with
         # user-defined fields via __getattr__.
         self._name = name
         self._link_field = link_field
         self._target_entity_name = target_entity_name
         self._target_entity = target_entity
-        self._entity = None
+        self._entity = entity
 
     def _attach(self, entity):
         self._entity = entity
@@ -51,6 +51,12 @@ class Link(object):
         # they can point to ids outside the filter)
         return context.clone(fresh_data=True,
                              entity_name=self._target_entity_name)
+
+    def _reverse_link(self):
+        cls = _reverse_cls[self.__class__]
+        name = "_reverse_{}_link".format(self._name)
+        return cls(name, self._link_field, target_entity_name=self._entity.name, target_entity=self._entity,
+                   entity=self._target_entity)
 
     def __str__(self):
         return self._name
@@ -94,6 +100,11 @@ class One2Many(Link):
     def max(self, *args, **kwargs):
         return Max(self, *args, **kwargs)
 
+
+_reverse_cls = {
+    Many2One: One2Many,
+    One2Many: Many2One,
+}
 
 class PrefixingLink(object):
     def __init__(self, entity, macros, links, prefix):

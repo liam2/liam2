@@ -13,6 +13,7 @@ from liam2.data import append_carray_to_table, ColumnArray
 from liam2.expr import Expr, Variable, type_to_idx, idx_to_type, expr_eval, expr_cache
 from liam2.context import EntityContext
 from liam2 import utils
+from liam2.links import LinkGet
 
 
 class BreakpointException(Exception):
@@ -72,7 +73,14 @@ class Assignment(Process):
         self.key_expr = key_expr
 
     def run(self, context):
-        value = expr_eval(self.expr, context)
+        expr = self.expr
+
+        # this is a small hack to set the correct "current" entity when setting values via a One2Many link
+        if isinstance(expr, LinkGet) and expr.link._entity != context.entity:
+            assert expr.link._target_entity is context.entity
+            context = context.clone(fresh_data=True, entity_name=expr.link._entity.name)
+
+        value = expr_eval(expr, context)
 
         # Assignment to a field with a name == None is valid: it simply means
         # the result must not be stored. This happens when a user does not

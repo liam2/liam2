@@ -17,6 +17,7 @@ from liam2.data import (merge_arrays, get_fields, ColumnArray, index_table, buil
 from liam2.expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable, GlobalArray, Expr, BinaryOp,
                         MethodSymbol, normalize_type)
 from liam2.exprtools import parse
+from liam2.links import One2Many, Many2One
 from liam2.process import Assignment, ProcessGroup, While, If, Function, Return
 from liam2.utils import (count_occurrences, field_str_to_type, size2str, WarnOverrideDict, split_signature, argspec,
                          UserDeprecationWarning)
@@ -398,6 +399,24 @@ class Entity(object):
             k = k[:first_opening_bracket]
         else:
             key_expr = None
+
+        if isinstance(k, basestring) and '.' in k:
+            if key_expr is not None:
+                raise ValueError("assigning to a subset of a link is currently not supported")
+
+            link_name, var_name = k.split('.')
+            link = self.links[link_name]
+            target_entity = link._target_entity
+            expr = parse(v, parse_context)
+
+            if isinstance(link, One2Many):
+                # this requires a small hack in process.Assign to set the correct "current" entity in the context
+                expr = link._reverse_link().get(expr)
+            else:
+                assert isinstance(link, Many2One)
+                key_expr = Variable(self, link._link_field, int)
+            return Assignment(var_name, target_entity, expr=expr, key_expr=key_expr)
+
         # I prefer listing bool explicitly even if not necessary because isinstance(True, int) is True
         if isinstance(v, (bool, int, float, list, dict)):
             return Assignment(k, self, v, key_expr=key_expr)

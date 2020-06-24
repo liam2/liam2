@@ -97,6 +97,8 @@ entities:
             - clone_id:     {type: int, initialdata: False}
             - weight:       {type: int, initialdata: False}
             - region_id:    {type: int, initialdata: False}
+            - test_set:     {type: int, initialdata: False}
+            - test_age:     {type: int, initialdata: False}
 
             # period and id are usually implicit, but we include them here
             # anyway for the sake of testing
@@ -279,6 +281,12 @@ entities:
                 - qshow(count(aligned),
                         sum(num_persons, filter=aligned))
 
+            test_set_via_link():
+                # set the variable on the person entity, expression is computed in the household entity
+                - persons.region_id: region_id * 2
+                - assertEqual(persons.max(region_id), region_id * 2)
+                - assertEqual(persons.min(region_id), region_id * 2)
+
     person:
         fields:
             # period and id are implicit
@@ -306,6 +314,8 @@ entities:
             - undefaulted_float_variable:  {type: float, initialdata: False}
             - defaulted_integer_variable:  {type: int, initialdata: False, default: 99}
             - undefaulted_integer_variable:  {type: int, initialdata: False}
+
+            - region_id: {type: int, initialdata: False}
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -3318,6 +3328,22 @@ entities:
                 - assertEqual(count(age > 50 and age < 999), count_above_50)
                 - assertEqual(count(age == 999), 0)
 
+            test_set_via_link():
+                - household.test_set: hh_id + 1
+                - assertEqual(household.test_set, hh_id + 1)
+
+                # Note that when several individuals (e.g. persons) link to the same target (e.g. household) it will
+                # actually set the value for that target several times, the last value "wins".
+
+                # It is the modeller responsibility to make sure that all the values that each target receive are
+                # the same, or that keeping only the *last* one (the one with the highest id) is desired.
+
+                # For example, if we try to set a "test_age" field on a household with the age of each person on the
+                # household, there are in many cases several persons with different ages in the household but only the
+                # age of the person with the highest id of the household will be kept.
+                - household.test_age: age
+                - assertEqual(household.test_age, age[household.get(persons.max(id))])
+
             generate():
                 - new('person', number=100000,
                       age=randint(0, 98),
@@ -3532,6 +3558,7 @@ simulation:
                    test_o2m,
                    test_lag_o2m,
                    test_mixed_links,
+                   test_set_via_link,
 
                    # output
                    test_groupby,
@@ -3558,6 +3585,7 @@ simulation:
             composition,
             test_align_abs_link,
             test_align_link,
+            test_set_via_link,
 #            dump_csv_h,
         ]
 

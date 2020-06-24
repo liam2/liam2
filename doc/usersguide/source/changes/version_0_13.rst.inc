@@ -24,6 +24,17 @@ New features
 
       work: if(unemployed, False, work)
 
+* added the ability to set field values via links. For example, in a household entity with a "persons" One2Many link to
+  the persons composing this household, if you want to set a "household_head_id" field in the person entity with the id
+  of the eldest person in the household, you could write:
+
+      - persons.household_head_id: persons.max(id, age == persons.max(age))
+
+  instead of computing it like this in the "person" entity:
+
+      - household_max_age: household.get(persons.max(age))
+      - household_head_id: household.get(persons.max(id, age == household_max_age))
+
 
 Miscellaneous improvements
 --------------------------

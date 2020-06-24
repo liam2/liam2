@@ -492,9 +492,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         filter_expr = self._getfilter(context, filter)
         if filter_expr is not None:
-            reverse_link = Many2One("reverse", link._link_field,
-                                    context.entity.name)
-            target_filter = LinkGet(reverse_link, filter_expr, False)
+            target_filter = link._reverse_link().get(filter_expr, missing_value=False)
             target_filter_value = expr_eval(target_filter, target_context)
 
             # It is often not a good idea to pre-filter columns like this
