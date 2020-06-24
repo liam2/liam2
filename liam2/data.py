@@ -352,8 +352,10 @@ class LColumnArray(object):
         elif isinstance(value, la.Array) and value.shape:
             value_axis = value.axes.id
             if not value_axis.iscompatible(id_axis):
-                raise ValueError("incompatible id axis between value column ({}) and LColumnArray ({})"
-                                 .format(repr(value_axis), repr(id_axis)))
+                raise ValueError("incompatible id axis between value column and LColumnArray:\n"
+                                 "length: {} vs {}\n"
+                                 "ids: {} vs {}"
+                                 .format(len(value_axis), len(id_axis), repr(value_axis), repr(id_axis)))
             return value
         else:
             # expand scalars (like ndarray does) so that we don't have to
