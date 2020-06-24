@@ -142,7 +142,8 @@ class Symbol(Node):
 
     def to_ast(self, context):
         name = self.name
-        entity_context = context[context['__entity__']]
+        entity_name = context['__entity__']
+        entity_context = context[entity_name]
         globals_context = context['__globals__']
 
         if name in entity_context:
@@ -150,7 +151,7 @@ class Symbol(Node):
         elif name in globals_context:
             return globals_context[name]
         else:
-            raise NameError("name '{}' is not defined".format(name))
+            raise NameError("name '{}' is not defined in '{}'".format(name, entity_name))
 
     def __str__(self):
         return self.name
