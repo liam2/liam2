@@ -15,8 +15,6 @@ New features
 * added ability for an importing model to entirely remove an imported model global, function,
   macro or field by setting it to `~`. See :ref:`Importing other models <import_models>`.
 
-* added view()
-
 
 Miscellaneous improvements
 --------------------------
