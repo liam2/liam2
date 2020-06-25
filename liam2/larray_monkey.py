@@ -5,7 +5,12 @@ import numpy as np
 import larray as la
 from larray.core.expr import ExprNode
 from larray.core.array import make_numpy_broadcastable
-from larray.core.group import _range_to_slice
+try:
+    from larray.core.group import _range_to_slice as _idx_seq_to_slice
+except ImportError:
+    # support larray 0.33+
+    from larray.core.group import _idx_seq_to_slice
+
 from larray.util.misc import _isnoneslice
 
 from liam2.compat import long
@@ -146,7 +151,7 @@ def _key_to_raw_and_axes(self, key, collapse_slices=False, translate_key=True):
         seq_types = (tuple, list, np.ndarray)
         # TODO: we should only do this if there are no Array key (with axes corresponding to the range)
         # otherwise we will be translating them back to a range afterwards
-        key = [_range_to_slice(axis_key, len(axis)) if isinstance(axis_key, seq_types) else axis_key
+        key = [_idx_seq_to_slice(axis_key, len(axis)) if isinstance(axis_key, seq_types) else axis_key
                for axis_key, axis in zip(key, self)]
 
     # transform non-Array advanced keys (list and ndarray) to Array
