@@ -281,6 +281,8 @@ class LColumnArray(object):
             if isinstance(array, (np.ndarray, ColumnArray)):
                 if axes is None and 'id' in array.dtype.names:
                     axes = la.AxisCollection([la.Axis(array['id'], 'id')])
+                if axes is not None and not isinstance(axes, la.AxisCollection):
+                    axes = la.AxisCollection(axes)
                 self.axes = axes
                 self.dtype = array.dtype
                 for name in array.dtype.names:
