@@ -38,7 +38,7 @@ max_vars = 0
 #    return a[:]
 
 
-def global_symbols(globals_def):
+def get_global_symbols(globals_def):
     symbols = {}
     for name, global_def in globals_def.items():
         if not isinstance(global_def, dict):

@@ -8,7 +8,7 @@ import numpy as np
 
 from liam2 import config
 from liam2.compat import input
-from liam2.entities import global_symbols
+from liam2.entities import get_global_symbols
 from liam2.expr import expr_eval, Variable
 from liam2.exprtools import parse, functions
 
@@ -47,7 +47,7 @@ class Console(object):
         self.eval_ctx = eval_ctx
 
         globals_def = eval_ctx.simulation.globals_def
-        globals_parse_ctx = {'__globals__': global_symbols(globals_def)}
+        globals_parse_ctx = {'__globals__': get_global_symbols(globals_def)}
         parse_ctx = globals_parse_ctx.copy()
         parse_ctx.update((entity.name, entity.all_symbols(globals_parse_ctx))
                          for entity in eval_ctx.entities.values())

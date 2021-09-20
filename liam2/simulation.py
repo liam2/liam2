@@ -18,7 +18,7 @@ from liam2 import larray_monkey
 from liam2.compat import basestring
 from liam2.context import EvaluationContext
 from liam2.data import VoidSource, H5Source, H5Sink, LColumnArray
-from liam2.entities import Entity, global_symbols
+from liam2.entities import Entity, get_global_symbols
 from liam2.utils import (time2str, timed, gettime, validate_dict, expand_wild, multi_get, multi_set, merge_dicts,
                          merge_items, field_str_to_type, fields_yaml_to_type, UserDeprecationWarning, Or, del_none)
 from liam2 import config
@@ -405,7 +405,7 @@ class Simulation(object):
         for entity in entities.values():
             entity.attach_and_resolve_links(entities)
 
-        global_parse_context = {'__globals__': global_symbols(globals_def),
+        global_parse_context = {'__globals__': get_global_symbols(globals_def),
                                 '__entities__': entities}
         parsing_context = global_parse_context.copy()
         parsing_context.update((entity.name, entity.all_symbols(global_parse_context))
