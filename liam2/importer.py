@@ -48,7 +48,7 @@ converters = {bool: to_bool,
               str: lambda v: v}
 
 
-def convert(iterable, fields, positions=None):
+def convert(iterable, fields, positions=None, fpath=None):
     funcs = [converters[type_] for _, type_ in fields]
     if positions is None:
         for row in iterable:
@@ -67,8 +67,17 @@ def convert(iterable, fields, positions=None):
             # tuple(x for x in y) but the stream is usually consumed by
             # fromiter which only accepts tuples (because a[i] = x works only
             # when x is a tuple)
-            yield tuple(func(row[pos])
-                        for func, pos in zip(funcs, positions))
+            try:
+                yield tuple(func(row[pos])
+                            for func, pos in zip(funcs, positions))
+            except Exception as e:
+                lines = ""
+                for func, pos, (field_name, field_type) in zip(funcs, positions, fields):
+                    try:
+                        _ = func(row[pos])
+                    except Exception as e:
+                        lines += "- field {} is supposed to be of type {}\n".format(field_name, field_type)
+                raise TypeError("Wrong type when processing file {}: \n{}".format(fpath, lines))
 
 
 def convert_2darray(iterable, celltype):
@@ -260,7 +269,7 @@ class CSV(object):
             positions = [available.index(name) for name, _ in fields]
         self.rewind()
         self.next()
-        return convert(self.data_stream, fields, positions)
+        return convert(self.data_stream, fields, positions, fpath = self.fpath)
 
     def as_array(self, fields=None):
         if fields is None:

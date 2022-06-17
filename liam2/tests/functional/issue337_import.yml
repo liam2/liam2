@@ -1,0 +1,14 @@
+output: issue337.h5
+
+entities:
+    person:
+        fields:
+            # period and id are implicit
+            - co_alive:   bool
+            - gender:     bool
+            - partner_id: int
+            - hh_id:      bool
+            - f_id:       int
+            - m_id:       bool
+
+        path: param/issue337_person.csv

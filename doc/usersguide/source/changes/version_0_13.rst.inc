@@ -19,3 +19,4 @@ Fixes
 * Fix error message when checking fields definitions (:pr:`133`).
 * Allow to import import files from within import files as in simulation console files (closes :issue:`302`).
 * Allow the use of while as a keyword and a function to avoid silent mistakes (closes :issue:`314`).
+* Improve error message when catching type errors during import
