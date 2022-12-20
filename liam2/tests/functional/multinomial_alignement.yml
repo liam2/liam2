@@ -1,0 +1,31 @@
+import: test_issue.yml.template
+
+entities:
+    household:
+        processes:
+            create():
+                - new('household', number=4)
+
+            test_multinomial_alignement():
+                # 3 alternatives : a, b and c
+                - score_a: array([0.7, 0.3, 0.4, 0.5])
+                - score_b: array([0.0, 0.2, 0.6, 0.25])
+                - score_c: array([0.3, 0.5, 0.0, 0.25])
+
+                - scores: array([score_a, score_b, score_c])
+                - needs: array([1.5, 2, 0.5])
+
+                # 2D array that can be used for choice()
+                - results: align(scores, needs)
+
+                # result from the python ipfn module
+                - ipfn_results: array([???])
+
+                - assertIsClose(results, ipfn_results)
+
+simulation:
+    init:
+        - household: [create]
+
+    processes:
+        - household: [test_multinomial_alignment]

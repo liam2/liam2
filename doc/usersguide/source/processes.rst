@@ -1075,13 +1075,18 @@ or in combination with an alignment (see below).
 align
 ~~~~~
 
-Now that we have computed a score (risk) for an event happening, we might want
+Now that we have computed a score (risk) for one or several happening, we might want
 to use alignment so the number of events occuring per category matches a
-proportion defined externaly.
+proportion or amount defined externaly.
 
 There are different ways to choose which individuals are taken. The methodology
-used for now by LIAM2 is called "alignment by sorting", that is, for each
-category, the N individuals with the highest scores are selected.
+used for now by LIAM2 is called "alignment by sorting" for binary alignement, 
+that is, for each category, the N individuals with the highest scores are selected.
+When absolute numbers are used instead of proportions, the algorithm can be either
+"alignement by sorting" or "sidewalk". The "sidewalk" method traverse individuals 
+in some random order, does a cumulative sum of the probability and each time there
+is a change of the integer part of the accumulated probability, the corresponding
+individual is selected.
 
 The score computation is not done internally by the align() function, but is
 rather computed by an expression given by the modeller. One will usually use
@@ -1097,10 +1102,21 @@ modeller choose.
 To know more about the alignment process reading "Evaluating Alignment Methods
 in Dynamic Microsimulation Models", by Li and O'Donoghue is advised.
 
+It is possible to use alignement for more than two alternatives, by specifying
+an array of scores and an array of proportions (or absolute numbers). In this
+case, the alignement method used is iterative proportional fitting, where the
+matrix of probabilities is altered in such a way that the sum of the probabilities
+for each alternative matches some target given by the user, but the sum of
+probabilities remains 1 for each individual.
+
+To know more about the multinomial alignment process reading "Logit Scaling:
+A General Method for Alignment in Microsimulation models", by Peter Stephensen
+is advised.
+
 An alignment expression takes the following general form: ::
 
     align(score,
-          proportions
+          proportions_or_numbers
           [, filter=conditions]
           [, take=conditions]
           [, leave=conditions]
@@ -1110,6 +1126,7 @@ An alignment expression takes the following general form: ::
           [, link=link_name]
           [, secondary_axis=column_name]
           [, errors="default"|"carry"]
+          [, method="bysorting"|"sidewalk"]
 
 For example, it could look like: ::
 
@@ -1121,29 +1138,30 @@ For example, it could look like: ::
 
 Now let us examine each argument in turn:
 
- * **score**: it must be an expression (or a simple variable) returning
-   a numerical value. It will be used to rank individuals. One will usually
-   use logit_score() to compute the score, but it can be computed in any other
-   way a modeller choose. Note that the score is not modified in any way
-   within the align() function, so if one wants a random factor, it should be
-   added manually (or through the use of a function like logit_score which
-   includes one).
+ * **score**: it must be either an expression (or a simple variable) returning
+   a numerical value or an array of such expressions. It will be used to rank 
+   individuals. One will usually use logit_score() to compute the score, but
+   it can be computed in any other way a modeller choose. Note that the score
+   is not modified in any way within the align() function, so if one wants a
+   random factor, it should be added manually (or through the use of a function
+   like logit_score which includes one).
 
- * **proportions**: the target proportions for each category. This argument can
-   take many forms. The most common one will probably be a
-   string holding the name of a file containing the alignment data (like in
-   the example above) but it can be any of the following:
+ * **proportions_or_numbers**: the target proportions or absolute numbers for
+   each category. This argument can take many forms. The most common one will 
+   probably be a string holding the name of a file containing the alignment data
+   (like in the example above). It can be any
+   of the following,:
 
-    + a single scalar, for aligning with a constant proportion.
+    + a single scalar , for aligning with a constant proportion.
     + a list of scalars, for aligning with constant proportions per category.
     + an expression returning a single scalar.
-    + an expression returning an n-dimensional array. expressions and
+    + an expression returning an k-dimensional array of length n. Expressions and
       possible values will be retrieved from that array, so you can simply
       use: ::
 
         align(score_expr, array_expr)
 
-    + a list of expressions returning scalars [expr1, expr2].
+    + a list of expressions returning scalars [expr1, expr2, expr3, ...].
     + a string treated as a filename. That file should be in the "array"
       format described in the :ref:`import_data` section. In that case, the
       proportions, expressions (column names) and possible values are read
@@ -1252,6 +1270,14 @@ Now let us examine each argument in turn:
     In the current version of LIAM2, *errors* can only be used in combination
     with the *link* argument.
 
+  * **method**: is the name of the method to do the alignment when absolute
+    numbers are used insted of proportions. The default "bysorting" method
+    sorts the individuals by score and takes as many individuals as necessary
+    by descending order of score. The "sidewalk" method traverse individuals
+    in some random order, does a cumulative sum of the probability and each
+    time there is a change of the integer part of the accumulated probability,
+    the corresponding individual is selected.
+
 In practice alignment data is often separate for men and women. In that case,
 one will usually use the following form: ::
 
@@ -1352,42 +1378,6 @@ Here is an example using the link argument: ::
                                filter=is_candidate,
                                link=persons, secondary_axis=gender,
                                errors='carry')
-
-
-.. _align_abs:
-.. index:: align_abs
-
-align_abs
-~~~~~~~~~
-
-align_abs is equivalent to align(), except that it aligns to absolute numbers
-instead of proportions. It also supports one additional argument to change the
-algorithm used.
-
-The general form of align_abs is : ::
-
-    align_abs(score,
-              need,
-              [filter=conditions,]
-              [take=conditions,]
-              [leave=conditions,]
-              [expressions=expressions,]
-              [possible_values=pvalues,]
-              [frac_need="uniform"|"round"|"cutoff",]
-              [link=link_name,]
-              [secondary_axis=column_name,]
-              [errors="default"|"carry",]
-              [method="bysorting"|"sidewalk"])
-
-In addition to all the arguments supported by *align()*, *align_abs()* also
-supports an optional "method" argument:
-
-  * **method**: is the name of the method to do the alignment.
-    The default "bysorting" method sorts the individuals by score and takes as
-    many individuals as necessary by descending order of score. The "sidewalk"
-    method traverse individuals in some random order, does a cumulative sum
-    of the probability and each time there is a change of the integer part of
-    the accumulated probability, the corresponding individual is selected.
 
 
 .. index:: logit_regr
