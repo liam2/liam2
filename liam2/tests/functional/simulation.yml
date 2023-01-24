@@ -27,6 +27,7 @@ globals:
         type: float
 
     CHOICE2D:
+#        command: load()
         path: param/choice2d.csv
         type: float
 
@@ -316,6 +317,9 @@ entities:
             - undefaulted_integer_variable:  {type: int, initialdata: False}
 
             - region_id: {type: int, initialdata: False}
+
+#            - array_var_anon_axis: {type: float, axes: ['id', 3], initialdata: False, output: False}
+#            - array_var_named_axis: {type: float, axes: ['id', 'lag=1..3'], initialdata: False, output: False}
 
         links:
             partner: {type: many2one, target: person, field: partner_id}
@@ -1082,6 +1086,18 @@ entities:
                 # expr_index
                 - assertEqual(periodic.WEMRA[period - 1], fake_wemra_pm1)
                 - vector_idx: periodic.MINR[yearofbirth + 65]
+
+                # SETTING globals
+                # ---------------
+#                - backup: WEMRA
+#                - WEMRA[period]: 100
+#                - assertEqual(WEMRA, 100)
+#                - assertEqual(periodic.WEMRA, 100)
+#                - WEMRA[period]: backup
+
+#                - periodic.NEWGLOBAL: 200
+#                - assertEqual(WEMRA, 200)
+#                - assertEqual(periodic.WEMRA, 200)
 
             test_other_globals():
                 # with a PERIOD column

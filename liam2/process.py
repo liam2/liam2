@@ -26,6 +26,7 @@ class ReturnException(Exception):
 
 
 class Process(object):
+    # TODO: invert entity and name
     def __init__(self, name, entity):
         self.name = name
         self.entity = entity
@@ -67,7 +68,6 @@ class Assignment(Process):
     def __init__(self, name, entity, expr, key_expr=None):
         super(Assignment, self).__init__(name, entity)
         self.expr = expr
-        self.temporary = name not in entity.fields.names
         if key_expr is not None and name is None:
             raise ValueError("cannot assign a subset of an unknown variable")
         self.key_expr = key_expr
@@ -97,7 +97,7 @@ class Assignment(Process):
         else:
             res_type = type(value)
 
-        if self.temporary:
+        if self.name not in self.entity.fields.names:
             target = self.entity.temp_variables
         else:
             # we cannot store/cache self.entity.array[self.name] because the
@@ -127,6 +127,61 @@ class Assignment(Process):
             period = int(period)
         expr_cache.invalidate(period, context.entity_name,
                               Variable(self.entity, self.name))
+
+    def expressions(self):
+        if isinstance(self.expr, Expr):
+            yield self.expr
+
+
+# TODO: ideally, this should be done by a normal assignment to a special "globals" entity but this would need changes
+#       all over the codebase so it's not a short term goal
+class GlobalAssignment(Process):
+    def __init__(self, name, fieldname, expr, key_expr=None):
+        assert name is not None
+        super(GlobalAssignment, self).__init__(name=name, entity=None)
+        self.fieldname = fieldname
+        self.expr = expr
+        self.key_expr = key_expr
+
+    def run(self, context):
+        value = expr_eval(self.expr, context)
+
+        key_value = expr_eval(self.key_expr, context)
+
+        # store the result
+        # if isinstance(value, (np.ndarray, la.Array)):
+        #     res_type = value.dtype.type
+        # else:
+        #     res_type = type(value)
+
+        target = context.global_tables
+        subscript_key = self.name
+        if self.fieldname is not None:
+            target = target[subscript_key]
+            subscript_key = self.fieldname
+
+        # target_type_idx = type_to_idx[target[self.name].dtype.type]
+        # res_type_idx = type_to_idx[res_type]
+        # if res_type_idx > target_type_idx:
+        #     raise Exception(
+        #         "trying to store %s value into '%s' field which is of "
+        #         "type %s" % (idx_to_type[res_type_idx].__name__,
+        #                      self.name,
+        #                      idx_to_type[target_type_idx].__name__))
+
+        if key_value is None:
+            print(type(target))
+            target[subscript_key] = value
+        else:
+            target[subscript_key][key_value] = value
+
+        # invalidate cache
+        # period = context.period
+        # if isinstance(period, np.ndarray):
+        #     assert np.isscalar(period) or not period.shape
+        #     period = int(period)
+        # expr_cache.invalidate(period, context.entity_name,
+        #                       Variable(self.entity, self.name))
 
     def expressions(self):
         if isinstance(self.expr, Expr):

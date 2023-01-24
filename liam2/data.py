@@ -1056,6 +1056,9 @@ def index_tables(globals_def, entities, fpath):
                 # present in the input file but where not asked for by the
                 # modeller. They are not accessible anyway.
                 array = add_and_drop_fields(array, global_type)
+                # FIXME: I need to convert this into an LColumnArray (so that indexing becomes saner and works for
+                #        setitem) but that class needs to be generalized to support having no id axis
+                # array = LColumnArray(array)
             attrs = global_data.attrs
             dim_names = getattr(attrs, 'dimensions', None)
             if dim_names is not None:

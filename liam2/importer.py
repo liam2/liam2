@@ -16,7 +16,7 @@ import yaml
 import larray as la
 
 from liam2.compat import basestring, csv_open
-from liam2.expr import get_default_array
+from liam2.expr import get_default_array, normalize_type
 from liam2.utils import (validate_dict, merge_dicts, merge_items, invert_dict, countlines, skip_comment_cells,
                          strip_rows, PrettyTable, unique, duplicates, unique_duplicate, prod, field_str_to_type,
                          fields_yaml_to_type, fromiter, MB)
@@ -473,11 +473,50 @@ def interpolate(target, arrays, id_periods, fields):
             rowtofill = nextrow_for_id[rowtofill]
 
 
-def load_ndarray(fpath, celltype=None):
+# EXCEL_PATTERN = re.compile(r'(?P<fpath>[^.]+)\.xlsx(/(?P<sheet>[^!]+)(!(?P<range>.+))?)?')
+H5_PATTERN = re.compile(r'.h(5|df|df5)')
+
+
+def load(fpath, **kwargs):
+    """
+
+    Parameters
+    ----------
+    fpath
+
+    Returns
+    -------
+
+    Examples
+    --------
+    >>> load("fname.xlsx")
+    >>> load("fname.xlsx/Sheet1")
+    >>> load("fname.xlsx/Sheet1!$A$1:$A$10 ? na='toto', ")
+    >>> load("fname.csv")
+    >>> load("fname.h(5|df|df5)/path")
+    """
+    _, ext = os.path.splitext(fpath)
+    if ext in {'.xls', '.xlsx', '.xlsb', '.xlsm'}:
+        return la.read_excel(fpath, **kwargs)
+    elif ext == '.csv':
+        if 'dialect' not in kwargs:
+            kwargs['dialect'] = 'liam2'
+        return la.read_csv(fpath, **kwargs)
+    elif ext in {'.h5', '.hdf', '.hdf5'}:
+        return la.read_hdf(fpath, **kwargs)
+    else:
+        raise ValueError('{ext} is not a supported file extension'.format(ext=ext))
+
+
+def load_ndarray(fpath, celltype=None, **kwargs):
     print(" - reading", fpath)
-    # FIXME: implement celltype
-    a = la.read_csv(fpath, dialect='liam2')
-    # print(a.info)
+    # FIXME: make sure the following situation raise a sensible error:
+    # * duplicate column headers
+    # * duplicate row headers
+    # * incoherent row lengths vs
+    a = load(fpath, **kwargs)
+    if celltype is not None and normalize_type(a.dtype.type) != celltype:
+        return a.astype(celltype)
     return a
     # FIXME: clean this up
     with open(fpath, "rb") as f:
@@ -567,15 +606,18 @@ def load_def(localdir, ent_name, section_def, required_fields):
                         % ent_name)
 
     if 'type' in section_def:
-        csv_filename = section_def.get('path', ent_name + ".csv")
+        section_def = section_def.copy()
+        csv_filename = section_def.pop('path', ent_name + ".csv")
         csv_filepath = complete_path(localdir, csv_filename)
-        str_type = section_def['type']
+        str_type = section_def.pop('type')
         if isinstance(str_type, basestring):
             celltype = field_str_to_type(str_type, "array '%s'" % ent_name)
         else:
+            # assert False
             assert isinstance(str_type, type)
             celltype = str_type
-        return 'ndarray', load_ndarray(csv_filepath, celltype)
+        section_def.pop('autoindex', None)
+        return 'ndarray', load_ndarray(csv_filepath, celltype, **section_def)
 
     fields_def = section_def.get('fields')
     if fields_def is not None:

@@ -18,7 +18,7 @@ from liam2.expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTa
                         MethodSymbol, normalize_type)
 from liam2.exprtools import parse
 from liam2.links import One2Many, Many2One
-from liam2.process import Assignment, ProcessGroup, While, If, Function, Return
+from liam2.process import Assignment, ProcessGroup, While, If, Function, Return, GlobalAssignment
 from liam2.utils import (count_occurrences, field_str_to_type, size2str, WarnOverrideDict, split_signature, argspec,
                          UserDeprecationWarning)
 from liam2.tfunc import ValueForPeriod, Lag, Duration
@@ -400,34 +400,53 @@ class Entity(object):
         else:
             key_expr = None
 
+        expr = parse(v, parse_context)
+
+        global_symbols = parse_context['__globals__']
         if isinstance(k, basestring) and '.' in k:
             if key_expr is not None:
                 raise ValueError("assigning to a subset of a link is currently not supported")
 
-            link_name, var_name = k.split('.')
-            link = self.links[link_name]
-            target_entity = link._target_entity
-            expr = parse(v, parse_context)
+            obj_name, attr_name = k.split('.')
+            if obj_name in self.links:
+                link = self.links[obj_name]
+                target_entity = link._target_entity
 
-            if isinstance(link, One2Many):
-                # this requires a small hack in process.Assign to set the correct "current" entity in the context
-                expr = link._reverse_link().get(expr)
+                if isinstance(link, One2Many):
+                    # this requires a small hack in process.Assign to set the correct "current" entity in the context
+                    expr = link._reverse_link().get(expr)
+                else:
+                    assert isinstance(link, Many2One)
+                    key_expr = Variable(self, link._link_field, int)
+                return Assignment(attr_name, target_entity, expr=expr, key_expr=key_expr)
+            elif obj_name in global_symbols:
+                global_symbol = global_symbols[obj_name]
+                assert isinstance(global_symbol, GlobalTable)
+                return GlobalAssignment(obj_name, attr_name, expr=expr, key_expr=key_expr)
+
+        elif k in global_symbols:
+            global_symbol = global_symbols[k]
+            if isinstance(global_symbol, GlobalVariable):
+                assert k == global_symbol.name, "{} != {}".format(k, global_symbol.name)
+                return GlobalAssignment('periodic', k, expr=expr, key_expr=key_expr)
             else:
-                assert isinstance(link, Many2One)
-                key_expr = Variable(self, link._link_field, int)
-            return Assignment(var_name, target_entity, expr=expr, key_expr=key_expr)
+                assert isinstance(global_symbol, (GlobalArray, GlobalTable))
+                # assigning the "entire" (modulo key_expr) table (or array)
+                return GlobalAssignment(k, None, expr=expr, key_expr=key_expr)
 
         # I prefer listing bool explicitly even if not necessary because isinstance(True, int) is True
         if isinstance(v, (bool, int, float, list, dict)):
             return Assignment(k, self, v, key_expr=key_expr)
         elif isinstance(v, basestring):
-            return Assignment(k, self, parse(v, parse_context), key_expr=key_expr)
+            return Assignment(k, self, expr, key_expr=key_expr)
         else:
             # lets be explicit about it
             return None
 
     @staticmethod
     def get_group_parse_context(parse_context, varnames):
+        """complete the current entity parsing context with Variable() for each name in varnames"""
+
         ent_name = parse_context['__entity__']
         entity = parse_context['__entities__'][ent_name]
         group_parse_context = parse_context.copy()
@@ -454,8 +473,12 @@ class Entity(object):
             raise ValueError("no processes in '%s'" % k)
         group_expressions = [list(elem.items())[0] if isinstance(elem, dict) else (None, elem)
                              for elem in items]
-        group_predictors = self.collect_predictors(group_expressions, in_process_group=True)
-        group_parse_context = self.get_group_parse_context(parse_context, group_predictors)
+        group_assignments = self.collect_predictors(group_expressions, in_process_group=True)
+        # remove assignments to globals
+        # globals
+        global_symbols = parse_context['__globals__']
+        group_assignments = [p for p in group_assignments if p not in global_symbols]
+        group_parse_context = self.get_group_parse_context(parse_context, group_assignments)
         sub_processes = [(k, self.parse_process(k, v, group_parse_context))
                          for k, v in group_expressions]
         return ProcessGroup(k, self, sub_processes, purge)

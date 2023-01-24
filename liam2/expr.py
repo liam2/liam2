@@ -1133,6 +1133,7 @@ class GlobalVariable(EvaluableExpression):
 
     def __init__(self, tablename, name, dtype):
         self.tablename = tablename
+        assert name is not None
         self.name = name
         self._dtype = dtype
 

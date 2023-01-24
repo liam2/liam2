@@ -135,26 +135,60 @@ class AutoFlushFile(object):
         return getattr(self.f, key)
 
 
-def time2str(seconds, precise=True):
-    minutes = seconds // 60
-    hours = minutes // 60
-    seconds %= 60
-    minutes %= 60
-    l = []
-    if hours > 0:
-        l.append("%d hour%s" % (hours, 's' if hours > 1 else ''))
-    if minutes > 0:
-        l.append("%d minute%s" % (minutes, 's' if minutes > 1 else ''))
-    if precise:
-        if seconds >= 0.005:
-            l.append("%.2f second%s" % (seconds, 's' if seconds > 1 else ''))
-        elif not l:
-            l = ["%d ms" % (seconds * 1000)]
-    else:
-        if int(seconds) or not l:
-            l.append("%d second%s" % (seconds, 's' if seconds > 1 else ''))
+def time2str(seconds, precision="ns"):
+    """Format a duration in seconds as a string using given precision.
 
-    return ' '.join(l)
+    Parameters
+    ----------
+    seconds : float
+        Duration (in seconds) to format.
+    precision : str, optional
+        Precision of the output. Defaults to "ns".
+
+    Returns
+    -------
+    str
+
+    Examples
+    --------
+    >>> time2str(3605.2785)
+    >>> time2str(3727.1234567890123456789, precision="ns")
+    >>> time2str(3727.2785, precision="hour")
+
+    """
+    # for Python 3.7+, we could use a dict (and rely on dict ordering)
+    divisors = [
+        ('ns', 1000),
+        ('µs', 1000),
+        ('ms', 1000),
+        ('second', 60),
+        ('minute', 60),
+        ('hour', 24),
+        ('day', 365),
+    ]
+    precision_map = {
+        'day': 6,
+        'hour': 5,
+        'minute': 4,
+        'second': 3,
+        'ms': 2,
+        'µs': 1,
+        'ns': 0,
+    }
+    int_precision = precision_map[precision]
+    inv_precision = {v: k for k, v in precision_map.items()}
+
+    values = []
+    str_parts = []
+    ns = int(seconds * 10 ** 9)
+    value = ns
+    for cur_precision, (unit, divisor_for_next) in enumerate(divisors):
+        next_value, cur_value = divmod(value, divisor_for_next)
+        if cur_value > 0 and cur_precision >= int_precision:
+            str_parts.append("%d %s%s" % (cur_value, unit, 's' if cur_value > 1 and cur_precision > 2 else ''))
+        values.append((unit, cur_value))
+        value = next_value
+    return ' '.join(str_parts[::-1])
 
 
 def size2str(value):

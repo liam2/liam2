@@ -445,6 +445,8 @@ class Dump(TableExpression):
                 newcol = np.full(numrows, col, dtype=dtype)
                 columns[idx] = newcol
             elif isinstance(col, la.Array):
+                # TODO: add test for this
+                # if col.ndim > 1 and 'id' in col.axes.names and col.axes[0].name != 'id':
                 if col.ndim > 1 and col.axes[0].name != 'id':
                     # move id axis first
                     col = col.transpose('id')
@@ -532,7 +534,7 @@ class Where(NumexprFunction):
         return coerce_types(context, self.iftrue, self.iffalse)
 
 
-# TODO: add class to handle loading a single coefficient (array) from a file
+# TODO: add class to handle loading a single (coefficient) array from a file
 # this is called linear_expr because it is a linear combination of variables, even though the variables
 # being combined can be non-linear. See discussion in issue #269.
 class LinearExpr(FunctionExpr):
@@ -618,11 +620,11 @@ class Load(FunctionExpr):
 
         FunctionExpr.__init__(self, fname, type=type, fields=fields)
 
-    def compute(self, context, fname, type=None, fields=None):
+    def compute(self, context, fname, type=None, fields=None, **kwargs):
         # using abspath does not change anything except it makes relative paths using ".." easier to read
         file_path = os.path.abspath(os.path.join(config.input_directory, fname))
         if type is not None:
-            return load_ndarray(file_path, type)
+            return load_ndarray(file_path, type, **kwargs)
         elif fields is not None:
             return load_table(file_path, fields)
 
