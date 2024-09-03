@@ -537,6 +537,7 @@ entities:
             factorial2(n):
                 - while n > 1:
                     - return n * factorial2(n - 1)
+                # when n is 0 or 1, just return n
                 - return n
 
             factorial3(n):
@@ -703,8 +704,14 @@ entities:
 #                        - show("i:", i, "/ n + i:", n + i)
 #                        - show("age:", age)
 
-                 # two variables
+                 # two variables (=> need to implement/expose zip)
 #                - for:
+#                    variables: index, letter
+#                    in: zip([0, 1, 2], ["a", "b", "c"])
+#                    code:
+#                        - show("index", index, "letter", letter)
+
+#                - for index, letter in array.items():
 #                    variables: index, letter
 #                    in: zip([0, 1, 2], ["a", "b", "c"])
 #                    code:
