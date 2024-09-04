@@ -36,8 +36,6 @@ class Chart(FunctionExpr, FileProducer):
     check_length = True
 
     def get_colors(self, n):
-        from matplotlib import cm
-
         # compute a range which includes the end (1.0)
         if n == 1:
             ratios = [0.0]
@@ -48,7 +46,7 @@ class Chart(FunctionExpr, FileProducer):
         # start from end
         ratios = [1.0 - r for r in ratios]
 
-        cmap = cm.get_cmap('OrRd')
+        cmap = plt.get_cmap('OrRd')
         return [cmap(f) for f in ratios]
 
     def prepare(self, args, kwargs):
@@ -90,8 +88,8 @@ class Chart(FunctionExpr, FileProducer):
     def compute(self, context, *args, **kwargs):
         entity = context.entity
         period = context.period
-
         fig = plt.figure()
+        ax = fig.add_subplot(projection=self.projection)
 
         data, axes = self.prepare(args, kwargs)
         colors = kwargs.pop('colors', None)
@@ -100,25 +98,23 @@ class Chart(FunctionExpr, FileProducer):
         fname = self._get_fname(kwargs)
         grid = kwargs.pop('grid', self.show_grid)
         maxticks = kwargs.pop('maxticks', self.maxticks)
-        projection = self.projection
 
         if self.show_legend:
             self.set_legend(axes[0], colors)
             axes = axes[1:]
         if self.show_axes:
-            self.set_axes(axes, maxticks, projection)
+            self.set_axes(ax, axes, maxticks)
         left, right = kwargs.pop('xmin', None), kwargs.pop('xmax', None)
         bottom, top = kwargs.pop('ymin', None), kwargs.pop('ymax', None)
         self._draw(data, colors, **kwargs)
         if self.show_axes:
-            ax = plt.gca(projection=projection)
             # setting x/ylim need to happen after draw, so that the "keep
             # last value" behavior of setting them to None works, otherwise
             # it breaks awfully (eg sets ylim to 0, 1)
             ax.set_xlim(left=left, right=right, emit=False)
             ax.set_ylim(bottom=bottom, top=top, emit=False)
 
-        plt.grid(grid)
+        ax.grid(grid)
         if fname is None:
             plt.show()
         else:
@@ -138,8 +134,7 @@ class Chart(FunctionExpr, FileProducer):
         raise NotImplementedError()
 
     def _set_axis_method(name):
-        def set_axis(self, axis, maxticks=20, projection=None):
-            ax = plt.gca(projection=projection)
+        def set_axis(self, ax, axis, maxticks=20):
             numvalues = len(axis)
             numticks = min(maxticks, numvalues)
             step = int(math.ceil(numvalues / float(numticks)))
@@ -162,13 +157,13 @@ class Chart(FunctionExpr, FileProducer):
         proxies = [plt.Rectangle((0, 0), 1, 1, fc=color) for color in colors]
         plt.legend(proxies, axis.labels, title=axis.name)
 
-    def set_axes(self, axes, maxticks=20, projection=None):
+    def set_axes(self, ax, axes, maxticks=20):
         ndim = len(axes)
-        self.set_xaxis(axes[0], maxticks, projection)
+        self.set_xaxis(ax, axes[0], maxticks)
         if ndim > 1:
-            self.set_yaxis(axes[1], maxticks, projection)
+            self.set_yaxis(ax, axes[1], maxticks)
         if ndim > 2:
-            self.set_zaxis(axes[2], maxticks, projection)
+            self.set_zaxis(ax, axes[2], maxticks)
 
 
 class BoxPlot(Chart):
