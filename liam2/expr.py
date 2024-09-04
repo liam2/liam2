@@ -252,6 +252,19 @@ def binop(opname, kind='binary', reverse=False):
     return op
 
 
+# workaround for broken global_dict argument in numexpr
+def evaluate_with_globals(ex, local_dict, global_dict, **kwargs):
+    if isinstance(local_dict, dict):
+        local_dict = local_dict.copy()
+        local_dict.update(global_dict)
+    else:
+        assert isinstance(local_dict, EntityContext)
+        local_dict = local_dict.copy()
+        for k, v in global_dict.items():
+            local_dict[k] = v
+    return evaluate(ex, local_dict, **kwargs)
+
+
 class Expr:
     # XXX: I wonder if those couldn't be computed automatically by using
     # isinstance(v, Expr)
@@ -357,7 +370,9 @@ class Expr:
 
         s = simple_expr.as_string()
         constants = {'nan': float('nan'), 'inf': float('inf')}
-        res = evaluate(s, local_ctx, constants, truediv='auto')
+        # numexpr 2.8.5+ (at least as of 2.10.1) broke the second (global_dict)
+        # argument (which is ignored), hence the workaround
+        res = evaluate_with_globals(s, local_ctx, constants, truediv='auto')
         if isinstance(res, np.ndarray) and not res.shape:
             # convert to scalar (equivalent to the now deprecated np.asscalar(res))
             res = res.item()
