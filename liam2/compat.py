@@ -100,6 +100,13 @@ if sys.version_info[:2] >= (3, 3):
         varkw = varkw[0] if varkw else None
         defaults = [p.default for p in pos_or_kw if p.default is not Parameter.empty]
         defaults = defaults if defaults else None
-        return inspect.ArgSpec(args, varargs, varkw, defaults)
+        #     'kwonlyargs' is a list of keyword-only parameter names.
+        kwonlyargs = []
+        #     'kwonlydefaults' is a dictionary mapping names from kwonlyargs to defaults.
+        kwonlydefaults = {}
+        #     'annotations' is a dictionary mapping parameter names to annotations.
+        annotations = {}
+        return inspect.FullArgSpec(args, varargs, varkw, defaults,
+                                   kwonlyargs, kwonlydefaults, annotations)
 else:
     getargspec = inspect.getargspec
