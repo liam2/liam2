@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function
 import types
 
 import numpy as np
+import larray as la
 
 from liam2 import config
 from liam2.compat import with_metaclass
@@ -119,7 +120,7 @@ class NumpyFunction(FunctionExpr):
             # Note that types.BuiltinFunctionType and types.BuiltinMethodType
             # are the same object (equal to <type 'builtin_function_or_method'>)
             return func
-        else:
+        elif isinstance(func, types.MethodType):
             # This is necessary because class attributes set to functions are
             # automatically converted to methods !
             # >>> def f():
@@ -130,8 +131,10 @@ class NumpyFunction(FunctionExpr):
             # <function f at 0x02844470>
             # >>> A.m
             # <unbound method A.f>
-            assert isinstance(func, types.MethodType), str(type(func))
             return func.im_func
+        else:
+            # <class 'numpy._ArrayFunctionDispatcher'>
+            return func
 
     # subclasses can override this by a class-constant
     @classproperty

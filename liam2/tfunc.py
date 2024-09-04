@@ -84,9 +84,9 @@ class Duration(TimeFunction):
         value = expr_eval(bool_expr, context)
 
         # using a full int so that the "store" type check works
-        result = value.astype(np.int)
+        result = value.astype(int)
         res_size = len(entity.array)
-        last_period_true = np.full(res_size, period + 1, dtype=np.int)
+        last_period_true = np.full(res_size, period + 1, dtype=int)
 
         id_to_rownum = context.id_to_rownum
         still_running = value.copy()
@@ -125,9 +125,9 @@ class TimeAverage(TimeFunction):
 
         res_size = len(entity.array)
 
-        num_values = np.zeros(res_size, dtype=np.int)
+        num_values = np.zeros(res_size, dtype=int)
         # current period
-        last_period_wh_value = np.full(res_size, context.period, dtype=np.int)
+        last_period_wh_value = np.full(res_size, context.period, dtype=int)
 
         sum_values = np.zeros(res_size, dtype=np.float)
         id_to_rownum = context.id_to_rownum
