@@ -262,6 +262,19 @@ def binop(opname, kind='binary', reverse=False):
     return op
 
 
+# workaround for broken global_dict argument in numexpr
+def evaluate_with_globals(ex, local_dict, global_dict, **kwargs):
+    if isinstance(local_dict, dict):
+        local_dict = local_dict.copy()
+        local_dict.update(global_dict)
+    else:
+        assert isinstance(local_dict, EntityContext)
+        local_dict = local_dict.copy()
+        for k, v in global_dict.items():
+            local_dict[k] = v
+    return evaluate(ex, local_dict, **kwargs)
+
+
 class Expr(object):
     # XXX: I wonder if those couldn't be computed automatically by using
     # isinstance(v, Expr)
@@ -359,15 +372,20 @@ class Expr(object):
         constants = {'nan': float('nan'), 'inf': float('inf')}
         if numexpr_eval:
             try:
-                res = evaluate(s, local_ctx, constants, truediv='auto')
+                # numexpr 2.8.5+ (at least as of 2.10.1) broke the second (global_dict)
+                # argument (which is ignored), hence the workaround
+                res = evaluate_with_globals(s, local_ctx, constants, truediv='auto')
+                # res = evaluate(s, local_ctx, constants, truediv='auto')
                 if expr_axes is not None:
                     # This relies on the fact that currently all the expression we evaluate through numexpr preserve
                     # array shapes, but if we ever use numexpr reduction capabilities, we will be in trouble
                     res = la.Array(res, expr_axes)
             except Exception:
                 if debug:
-                    print("evaluate failed")
-                    print("s:", s)
+                    print()
+                    print("Evaluate failed")
+                    print("===============")
+                    print("string_expr:", s)
                     print("local context:", local_ctx)
                     print("constants:", constants)
                 raise
