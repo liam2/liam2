@@ -59,13 +59,13 @@ cdef extern from "khash.h":
         PyObject **keys
         Py_ssize_t *vals
 
-    inline kh_pymap_t* kh_init_pymap()
-    inline void kh_destroy_pymap(kh_pymap_t*)
-    inline void kh_clear_pymap(kh_pymap_t*)
-    inline khint_t kh_get_pymap(kh_pymap_t*, PyObject*)
-    inline void kh_resize_pymap(kh_pymap_t*, khint_t)
-    inline khint_t kh_put_pymap(kh_pymap_t*, PyObject*, int*)
-    inline void kh_del_pymap(kh_pymap_t*, khint_t)
+    kh_pymap_t* kh_init_pymap()
+    void kh_destroy_pymap(kh_pymap_t*)
+    void kh_clear_pymap(kh_pymap_t*)
+    khint_t kh_get_pymap(kh_pymap_t*, PyObject*)
+    void kh_resize_pymap(kh_pymap_t*, khint_t)
+    khint_t kh_put_pymap(kh_pymap_t*, PyObject*, int*)
+    void kh_del_pymap(kh_pymap_t*, khint_t)
 
     bint kh_exist_pymap(kh_pymap_t*, khiter_t)
 
@@ -75,13 +75,13 @@ cdef extern from "khash.h":
         PyObject **keys
         Py_ssize_t *vals
 
-    inline kh_pyset_t* kh_init_pyset()
-    inline void kh_destroy_pyset(kh_pyset_t*)
-    inline void kh_clear_pyset(kh_pyset_t*)
-    inline khint_t kh_get_pyset(kh_pyset_t*, PyObject*)
-    inline void kh_resize_pyset(kh_pyset_t*, khint_t)
-    inline khint_t kh_put_pyset(kh_pyset_t*, PyObject*, int*)
-    inline void kh_del_pyset(kh_pyset_t*, khint_t)
+    kh_pyset_t* kh_init_pyset()
+    void kh_destroy_pyset(kh_pyset_t*)
+    void kh_clear_pyset(kh_pyset_t*)
+    khint_t kh_get_pyset(kh_pyset_t*, PyObject*)
+    void kh_resize_pyset(kh_pyset_t*, khint_t)
+    khint_t kh_put_pyset(kh_pyset_t*, PyObject*, int*)
+    void kh_del_pyset(kh_pyset_t*, khint_t)
 
     bint kh_exist_pyset(kh_pyset_t*, khiter_t)
 
@@ -93,13 +93,13 @@ cdef extern from "khash.h":
         kh_cstr_t *keys
         Py_ssize_t *vals
 
-    inline kh_str_t* kh_init_str()
-    inline void kh_destroy_str(kh_str_t*)
-    inline void kh_clear_str(kh_str_t*)
-    inline khint_t kh_get_str(kh_str_t*, kh_cstr_t)
-    inline void kh_resize_str(kh_str_t*, khint_t)
-    inline khint_t kh_put_str(kh_str_t*, kh_cstr_t, int*)
-    inline void kh_del_str(kh_str_t*, khint_t)
+    kh_str_t* kh_init_str()
+    void kh_destroy_str(kh_str_t*)
+    void kh_clear_str(kh_str_t*)
+    khint_t kh_get_str(kh_str_t*, kh_cstr_t)
+    void kh_resize_str(kh_str_t*, khint_t)
+    khint_t kh_put_str(kh_str_t*, kh_cstr_t, int*)
+    void kh_del_str(kh_str_t*, khint_t)
 
     bint kh_exist_str(kh_str_t*, khiter_t)
 
@@ -109,13 +109,13 @@ cdef extern from "khash.h":
         int64_t *keys
         Py_ssize_t *vals
 
-    inline kh_int64_t* kh_init_int64()
-    inline void kh_destroy_int64(kh_int64_t*)
-    inline void kh_clear_int64(kh_int64_t*)
-    inline khint_t kh_get_int64(kh_int64_t*, int64_t)
-    inline void kh_resize_int64(kh_int64_t*, khint_t)
-    inline khint_t kh_put_int64(kh_int64_t*, int64_t, int*)
-    inline void kh_del_int64(kh_int64_t*, khint_t)
+    kh_int64_t* kh_init_int64()
+    void kh_destroy_int64(kh_int64_t*)
+    void kh_clear_int64(kh_int64_t*)
+    khint_t kh_get_int64(kh_int64_t*, int64_t)
+    void kh_resize_int64(kh_int64_t*, khint_t)
+    khint_t kh_put_int64(kh_int64_t*, int64_t, int*)
+    void kh_del_int64(kh_int64_t*, khint_t)
 
     bint kh_exist_int64(kh_int64_t*, khiter_t)
 
@@ -125,13 +125,13 @@ cdef extern from "khash.h":
         int32_t *keys
         Py_ssize_t *vals
 
-    inline kh_int32_t* kh_init_int32()
-    inline void kh_destroy_int32(kh_int32_t*)
-    inline void kh_clear_int32(kh_int32_t*)
-    inline khint_t kh_get_int32(kh_int32_t*, int32_t)
-    inline void kh_resize_int32(kh_int32_t*, khint_t)
-    inline khint_t kh_put_int32(kh_int32_t*, int32_t, int*)
-    inline void kh_del_int32(kh_int32_t*, khint_t)
+    kh_int32_t* kh_init_int32()
+    void kh_destroy_int32(kh_int32_t*)
+    void kh_clear_int32(kh_int32_t*)
+    khint_t kh_get_int32(kh_int32_t*, int32_t)
+    void kh_resize_int32(kh_int32_t*, khint_t)
+    khint_t kh_put_int32(kh_int32_t*, int32_t, int*)
+    void kh_del_int32(kh_int32_t*, khint_t)
 
     bint kh_exist_int32(kh_int32_t*, khiter_t)
 
@@ -757,7 +757,7 @@ def group_indices_nd(list columns, object filter_value):
             for j in range(ndim):
                 dim_id_map = dim_id_maps[j]
                 count = <int32_t>len(dim_id_map)
-                dim_id = (packed_id / divisor) % count
+                dim_id = (packed_id // divisor) % count
                 dim_val = dim_id_map[dim_id]
                 Py_INCREF(dim_val)
                 PyTuple_SET_ITEM(tup, j, dim_val)
