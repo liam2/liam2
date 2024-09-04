@@ -144,7 +144,7 @@ def filter_to_indices(ndarray[int8_t, cast=True] values):
     This is equivalent to: values.nonzero()[0]
 
     Arguments:
-     * values: a vector of bool ((ndarray[bool8])
+     * values: a vector of bool ((ndarray[bool_])
 
     Returns:
      * ndarray[int32] indices where values is True
@@ -176,9 +176,9 @@ def group_count_bool(ndarray[int8_t, cast=True] values, object filter_value):
     with an optional filter.
 
     Arguments:
-     * values: a vector of boolean values ((ndarray[bool8])
+     * values: a vector of boolean values ((ndarray[bool_])
      * filter_value: either a single boolean (True) meaning there is no filter
-                     or a vector of boolean values (ndarray[bool8]) which
+                     or a vector of boolean values (ndarray[bool_]) which
                      filters out all values where the filter is False
     Returns:
      * count_false: number of occurrences of False
@@ -199,7 +199,7 @@ def group_count_bool(ndarray[int8_t, cast=True] values, object filter_value):
         count_false = <int32_t>n - count_true
     else:
         assert isinstance(filter_value, np.ndarray) and (
-                   filter_value.dtype.type is np.bool8)
+                   filter_value.dtype.type is np.bool_)
         bool_filter = filter_value
 
         count_values = 0
@@ -282,7 +282,7 @@ def _group_labels_int32(ndarray[int32_t] values, object filter_value):
     else:
         # a filter column is provided
         assert isinstance(filter_value, np.ndarray) and (
-                   filter_value.dtype.type is np.bool8)
+                   filter_value.dtype.type is np.bool_)
         bool_filter = filter_value
         for i in range(n):
             keep_value = bool_filter[i]
@@ -355,7 +355,7 @@ def _group_labels_int32_light(ndarray[int32_t] values, object filter_value):
                 count += 1
     else:
         assert isinstance(filter_value, np.ndarray) and (
-                   filter_value.dtype.type is np.bool8)
+                   filter_value.dtype.type is np.bool_)
         bool_filter = filter_value
         for i in range(n):
             keep_value = bool_filter[i]
@@ -423,7 +423,7 @@ def _group_labels_generic(ndarray[object] values, object filter_value):
                 count += 1
     else:
         assert isinstance(filter_value, np.ndarray) and (
-                   filter_value.dtype.type is np.bool8)
+                   filter_value.dtype.type is np.bool_)
         bool_filter = filter_value
         for i in range(n):
             keep_value = bool_filter[i]
@@ -492,7 +492,7 @@ def _group_labels_generic_light(ndarray[object] values, object filter_value):
                 count += 1
     else:
         assert isinstance(filter_value, np.ndarray) and (
-                   filter_value.dtype.type is np.bool8)
+                   filter_value.dtype.type is np.bool_)
         bool_filter = filter_value
         for i in range(n):
             keep_value = bool_filter[i]
@@ -530,14 +530,14 @@ def _group_labels(ndarray values, object filter_value):
 
     Arguments:
      * values: vector (ndarray) of any Python object.
-               bool8 and int32 have fast paths.
+               bool_ and int32 have fast paths.
      * filter_value: can have any of the following values:
        - a single bool (True): meaning there is no filter/take all values
                                except NaNs
        - a single integer (-1): filter out all negative values (this is only
                                 valid when values is an integer column:
                                 int8 or int32).
-       - a vector of bool (np.bool8): filter out all values where the filter
+       - a vector of bool (np.bool_): filter out all values where the filter
                                       is False
 
     Returns:
@@ -560,7 +560,7 @@ def _group_labels(ndarray values, object filter_value):
         assert value_type in (np.int8, np.int32, np.intc), \
                "bad value type %s" % value_type
 
-    if value_type is np.bool8:
+    if value_type is np.bool_:
         n = <int32_t>len(values)
         count_false, count_true = group_count_bool(values, filter_value)
         if count_false == 0 and count_true == 0:
@@ -590,7 +590,7 @@ def _group_labels(ndarray values, object filter_value):
 
         if filter_value is not True:
             assert (isinstance(filter_value, np.ndarray) and
-                    filter_value.dtype.type is np.bool8)
+                    filter_value.dtype.type is np.bool_)
             bool_filter = filter_value
             labels[~bool_filter] = -1
         return reverse, labels, counts
@@ -614,11 +614,11 @@ def _group_labels_light(ndarray values, object filter_value):
 
     Arguments:
      * values: vector (ndarray) of any Python object.
-               bool8 and int32 have fast paths.
+               np.bool_ and int32 have fast paths.
      * filter_value: can be either:
        - a single bool (True): meaning there is no filter/take all values
                                except NaNs
-       - a vector of bool (np.bool8): filter out all values where the filter
+       - a vector of bool (np.bool_): filter out all values where the filter
                                       is False
 
     Returns:
@@ -631,14 +631,14 @@ def _group_labels_light(ndarray values, object filter_value):
         ndarray[int8_t, cast=True] bool_filter
 
     value_type = values.dtype.type
-    if value_type is np.bool8:
+    if value_type is np.bool_:
         # In this case, we could cast to int8 instead but the minor performance
         # improvement (86ms -> 83ms) is not worth having a "varying" return
         # type.
         labels = values.astype(np.int32)
         if filter_value is not True:
             assert (isinstance(filter_value, np.ndarray) and
-                    filter_value.dtype.type is np.bool8)
+                    filter_value.dtype.type is np.bool_)
             bool_filter = filter_value
             labels[~bool_filter] = -1
 
@@ -665,12 +665,12 @@ def group_indices_nd(list columns, object filter_value):
     match this combination.
 
     Arguments:
-     * columns: a list of vectors (ndarray) of any type, though only bool8
+     * columns: a list of vectors (ndarray) of any type, though only np.bool_
                 and int32 have fast paths.
      * filter_value: can be either:
        - a single bool (True): meaning there is no filter/take all values
                                except NaNs
-       - a vector of bool (np.bool8): filter out all values where the filter
+       - a vector of bool (np.bool_): filter out all values where the filter
                                       is False
     Returns:
       {(dim1_val0, ..., dimN_val0): indices (ndarray[int32]) for that group,
@@ -700,7 +700,7 @@ def group_indices_nd(list columns, object filter_value):
     assert ndim > 0
     assert filter_value is True or \
            (isinstance(filter_value, np.ndarray) and
-            filter_value.dtype.type is np.bool8)
+            filter_value.dtype.type is np.bool_)
 
     values = columns[0]
     if ndim > 1:
