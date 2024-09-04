@@ -782,7 +782,9 @@ class FillArgSpecMeta(FillFuncNameMeta):
                 # we set varkw to None
                 spec = spec[:2] + (None,) + spec[3:]
             extra = (list(kwonly.keys()), kwonly, {})
-            cls.argspec = NiceArgSpec._make(spec + extra)
+            # strip kwonlyargs, kwonlydefaults and annotations
+            simple_spec = spec[:4]
+            cls.argspec = NiceArgSpec._make(simple_spec + extra)
 
     def get_compute_func(cls):
         raise NotImplementedError()
