@@ -13,7 +13,6 @@ from liam2.context import context_length
 from liam2.expr import Expr, Variable, expr_eval, missing_values, always
 from liam2.exprbases import FilteredExpression
 from liam2.groupby import GroupBy
-from liam2.links import LinkGet, Many2One
 from liam2.partition import partition_nd, filter_to_indices
 from liam2.importer import load_ndarray
 from liam2.utils import PrettyTable

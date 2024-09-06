@@ -4,7 +4,6 @@ from __future__ import absolute_import, division, print_function
 import random
 
 import numpy as np
-import larray as la
 
 
 # noinspection PyNoneFunctionAssignment
