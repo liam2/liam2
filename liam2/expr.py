@@ -1,7 +1,6 @@
 # encoding: utf-8
 from __future__ import absolute_import, division, print_function
 
-import inspect
 import types
 from collections import Counter
 

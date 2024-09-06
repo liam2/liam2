@@ -263,7 +263,7 @@ def safe_take(a, indices, missing_value):
 # we provide our own version of fromiter because it swallows any exception
 # occurring within the iterable if the count argument is used
 try:
-    from cutils import fromiter
+    from liam2.cutils import fromiter
 except ImportError:
     def fromiter(iterable, dtype, count=-1):
         if count == -1:
@@ -1552,7 +1552,7 @@ def isnan(a):
     raising a TypeError if the argument is an array of non-numeric.
     """
     if isinstance(a, np.ndarray):
-        return np.issubsctype(a, np.floating) and np.isnan(a)
+        return np.issubdtype(a.dtype, np.floating) and np.isnan(a)
     else:
         return np.isnan(a)
 

@@ -4,7 +4,6 @@ from __future__ import absolute_import, division, print_function
 import types
 
 import numpy as np
-import larray as la
 
 from liam2 import config
 from liam2.compat import with_metaclass
