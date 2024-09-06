@@ -1,8 +1,4 @@
 #! /usr/bin/env python
-# -*- coding: utf-8 -*-
-
-from __future__ import print_function
-
 import os
 import re
 import sys
@@ -244,7 +240,7 @@ setup(
 
         # we fix a precise version of larray because we monkey-patch a private method of it and this is probably
         # going to be more brittle than usual. See larray_monkey.py for more details.
-        'larray == 0.32.*',
+        'larray == 0.34.*',
         'numexpr >= 2.6.6',
         'numpy >= 1.8',
         'tables >= 3',
