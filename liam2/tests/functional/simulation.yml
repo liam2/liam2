@@ -168,9 +168,9 @@ entities:
                 - assertEqual(total_population, total_women + total_men)
                 - show("total population:", total_population, "=", total_women, "women +", total_men, "men")
 
-                # ALIGN_LINK has one axis: sex=women/men (0.2 for women, 0.22 for men)
-                - needed_women: trunc(round(sum(num_women) * ALIGN_LINK[0]))
-                - needed_men: trunc(round(sum(num_men) * ALIGN_LINK[1]))
+                # ALIGN_LINK has one axis: gender=False/True (0.2 for women, 0.22 for men)
+                - needed_women: trunc(round(sum(num_women) * ALIGN_LINK[False]))
+                - needed_men: trunc(round(sum(num_men) * ALIGN_LINK[True]))
                 - needed_total: needed_women + needed_men
                 - show("needed:", needed_total, "=", needed_women, "women +", needed_men, "men")
 
@@ -204,8 +204,8 @@ entities:
                 - assertEqual(candidate_total, candidate_women + candidate_men)
                 - show("candidates:", candidate_total, "=", candidate_women, "women +", candidate_men, "men")
 
-                - needed_women: trunc(round(candidate_women * ALIGN_LINK[0]))
-                - needed_men: trunc(round(candidate_men * ALIGN_LINK[1]))
+                - needed_women: trunc(round(candidate_women * ALIGN_LINK[False]))
+                - needed_men: trunc(round(candidate_men * ALIGN_LINK[True]))
                 - needed_total: needed_women + needed_men
                 - show("needed:", needed_total, "=", needed_women, "women +", needed_men, "men")
 
