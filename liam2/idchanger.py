@@ -1,7 +1,10 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 from os.path import splitext, basename
+import csv
+import heapq
+import math
+import operator
+import os
+import tempfile
 import time
 
 import tables
@@ -89,10 +92,6 @@ def table_apply_map(input_table, new_parent, fields_maps):
     output_table.flush()
 
 
-import csv
-import tempfile
-import os
-
 def csv_rows(filename):
     with open(filename) as fp:
         yield from csv.reader(fp)
@@ -114,14 +113,6 @@ def mergesort(sorted_filenames, columns, nway=2):
         for filename in merge_filenames:
             os.remove(filename)
     return sorted_filenames[0]
-
-
-MB = 2 ** 20
-
-import operator
-import heapq
-import numpy as np
-import math
 
 
 def sort_table(input_table, col_names, new_parent=None, new_name=None, nway=2, buffersize=10 * MB):

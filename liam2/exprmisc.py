@@ -1,6 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import os
 import random
 
@@ -14,7 +11,6 @@ import larray as la
 from larray.core.array import concat
 
 from liam2 import config
-from liam2.compat import zip, basestring, long
 from liam2.data import LColumnArray
 from liam2.expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp, LogicalOp, getdtype, coerce_types,
                         expr_eval, as_simple_expr, as_string, collect_variables, get_default_vector,
@@ -466,7 +462,7 @@ class Dump(TableExpression):
                              % (numrows, str(bad_lengths)))
 
         if limit is not None:
-            assert isinstance(limit, (int, long))
+            assert isinstance(limit, int)
             columns = [col[:limit] for col in columns]
 
         # Transform to Python lists of normal Python types (ie no numpy types).
@@ -543,7 +539,7 @@ class LinearExpr(FunctionExpr):
         FunctionExpr.__init__(self, *args, **kwargs)
 
         coefficients = self.args[0]
-        if isinstance(coefficients, basestring):
+        if isinstance(coefficients, str):
             fpath = os.path.join(config.input_directory, coefficients)
             coefficients = load_ndarray(fpath)
             # XXX: store args in a list so that we can modify it?
@@ -584,7 +580,7 @@ class LinearExpr(FunctionExpr):
 class Seed(FunctionExpr):
     def compute(self, context, seed=None):
         if seed is not None:
-            seed = long(seed)
+            seed = int(seed)
             print("using fixed random seed: %d" % seed)
         else:
             print("resetting random seed")

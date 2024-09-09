@@ -1,12 +1,10 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import yaml
 from yaml import Loader, SafeLoader
 
 _marked_classes = {t: type("Marked" + t.__name__.title(), (t,),
                            {'start': None, 'end': None})
                    for t in (dict, list, str)}
+
 
 def _wrap(method_name):
     def wrapped(constructor, node):

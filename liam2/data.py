@@ -1,13 +1,9 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import time
 
 import tables
 import numpy as np
 import larray as la
 
-from liam2.compat import basestring
 from liam2 import config
 from liam2.partition import filter_to_indices
 from liam2.expr import normalize_type, get_default_value, get_default_array, get_default_vector, gettype
@@ -68,7 +64,7 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
     table.flush()
 
 
-class ColumnArray(object):
+class ColumnArray:
     def __init__(self, array=None):
         if array is not None:
             columns = {}
@@ -91,7 +87,7 @@ class ColumnArray(object):
             self.columns = {}
 
     def __getitem__(self, key):
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             return self.columns[key]
         else:
             # int, slice, ndarray
@@ -103,7 +99,7 @@ class ColumnArray(object):
     def __setitem__(self, key, value):
         """does not copy value except if a type conversion is necessary"""
 
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             length = len(self)
             if isinstance(value, la.Array) and value.shape:
                 raise TypeError("la.Array not supported in ColumnArray, you should use LColumnArray instead")
@@ -274,7 +270,7 @@ class ColumnArray(object):
             self[name] = get_default_vector(length, output_dtype[name], default_values[name])
 
 
-class LColumnArray(object):
+class LColumnArray:
     def __init__(self, array=None, axes=None):
         if array is not None:
             columns = {}
@@ -306,7 +302,7 @@ class LColumnArray(object):
             self.columns = {}
 
     def __getitem__(self, key):
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             return self.columns[key]
         else:
             # int, slice, ndarray or bool LArray
@@ -324,7 +320,7 @@ class LColumnArray(object):
     def __setitem__(self, key, value):
         """does not copy value except if a type conversion is necessary"""
 
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             value = self._prepare_column(value)
             if key in self.columns:
                 # converting to existing dtype
@@ -959,7 +955,7 @@ def index_table_light(table, index='period'):
     return rows_per_period
 
 
-class IndexedTable(object):
+class IndexedTable:
     def __init__(self, table, period_index, id2rownum_per_period):
         self.table = table
         self.period_index = period_index
@@ -987,7 +983,7 @@ class IndexedTable(object):
         return min(self.period_index.keys())
 
 
-class DataSet(object):
+class DataSet:
     pass
 
 
@@ -1096,12 +1092,12 @@ def index_tables(globals_def, entities, fpath):
     return input_file, {'globals': globals_data, 'entities': entities_tables}
 
 
-class DataSource(object):
+class DataSource:
     def close(self):
         pass
 
 
-class DataSink(object):
+class DataSink:
     def close(self):
         pass
 

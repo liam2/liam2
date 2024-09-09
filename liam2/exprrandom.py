@@ -1,13 +1,9 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import os
 
 import numpy as np
 import larray as la
 
 from liam2 import config
-from liam2.compat import basestring
 from liam2.expr import firstarg_dtype, ComparisonOp, Variable, expr_eval, index_array_by_variables
 from liam2.exprbases import NumpyRandom, make_np_class, make_np_classes
 from liam2.exprmisc import Where
@@ -29,7 +25,7 @@ class Choice(NumpyRandom):
         NumpyRandom.__init__(self, *args, **kwargs)
 
         probabilities = self.args[0]
-        if isinstance(probabilities, basestring):
+        if isinstance(probabilities, str):
             fpath = os.path.join(config.input_directory, probabilities)
             probabilities = load_ndarray(fpath)
             # XXX: store args in a list so that we can modify it?

@@ -1,13 +1,9 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import os
 
 import numpy as np
 import larray as la
 
 from liam2 import config
-from liam2.compat import zip, basestring
 from liam2.align_link import align_link_nd
 from liam2.context import context_length
 from liam2.expr import Expr, Variable, expr_eval, missing_values, always
@@ -205,7 +201,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         super(AlignmentAbsoluteValues, self).__init__(*args, **kwargs)
 
         need = self.args[1]
-        if isinstance(need, basestring):
+        if isinstance(need, str):
             fpath = os.path.join(config.input_directory, need)
             need = load_ndarray(fpath, float)
             # XXX: store args in a list so that we can modify it?
@@ -389,7 +385,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
             possible_values = [np.array(pv) for pv in possible_values]
 
         if frac_need not in ('uniform', 'cutoff', 'round'):
-            cls = ValueError if isinstance(frac_need, basestring) else TypeError
+            cls = ValueError if isinstance(frac_need, str) else TypeError
             raise cls("frac_need should be one of: 'uniform', 'cutoff' or "
                       "'round'")
 
@@ -594,7 +590,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                 continue
             hh[source_row].append(target_row)
 
-        class FakeContainer(object):
+        class FakeContainer:
             def __init__(self, length):
                 self.length = length
 

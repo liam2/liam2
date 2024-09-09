@@ -1,6 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import argparse
 import os
 from os.path import splitext
@@ -12,7 +9,6 @@ import warnings
 import yaml
 
 from liam2 import config
-from liam2.compat import PY2
 from liam2.console import Console
 from liam2.context import EvaluationContext
 from liam2.data import entities_from_h5, H5Source
@@ -38,11 +34,7 @@ def write_traceback(ex_type, e, tb):
         with open(error_path, 'w') as f:
             traceback.print_exception(ex_type, e, tb, file=f)
             if hasattr(e, 'liam2context'):
-                context = e.liam2context
-                if PY2:
-                    encoding = sys.getdefaultencoding()
-                    context = context.encode(encoding, 'replace')
-                f.write(context)
+                f.write(e.liam2context)
         return error_path
     except IOError as log_ex:
         print("WARNING: could not save technical error log "

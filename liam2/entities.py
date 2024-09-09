@@ -1,6 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import collections
 import re
 import sys
@@ -11,7 +8,6 @@ import numpy as np
 import tables
 
 from liam2 import config
-from liam2.compat import basestring
 from liam2.data import (merge_arrays, get_fields, ColumnArray, index_table, build_period_array,
                         index_per_period_to_axis_per_period, LColumnArray)
 from liam2.expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable, GlobalArray, Expr, BinaryOp,
@@ -72,7 +68,7 @@ def get_global_symbols(globals_def):
 # This is an awful workaround for the fact that tables.Array does not support
 # fancy indexes with negative indices.
 # See https://github.com/PyTables/PyTables/issues/360
-class DiskBackedArray(object):
+class DiskBackedArray:
     def __init__(self, arr):
         self.arr = arr
 
@@ -87,7 +83,7 @@ class DiskBackedArray(object):
         return len(self.arr)
 
 
-class Field(object):
+class Field:
     def __init__(self, name, dtype, input=True, output=True, default_value=None):
         self.name = name
         self.dtype = dtype
@@ -162,7 +158,7 @@ class FieldCollection(list):
         return dict((f.name, f.default_value) for f in self)
 
 
-class Entity(object):
+class Entity:
     def __init__(self, name, fields=None, links=None, macro_strings=None,
                  process_strings=None, array=None):
         """
@@ -303,9 +299,9 @@ class Entity(object):
         if in_process_group:
             # I prefer listing bool explicitly even if not necessary because isinstance(True, int) is True
             iswhile = k is not None and re.match("while[ (].*", k)
-            return not iswhile and isinstance(v, (basestring, bool, int, float, list, dict))
+            return not iswhile and isinstance(v, (str, bool, int, float, list, dict))
         else:
-            return isinstance(v, (basestring, bool, int, float))
+            return isinstance(v, (str, bool, int, float))
 
     @staticmethod
     def collect_predictors(items, in_process_group=False):
@@ -390,7 +386,7 @@ class Entity(object):
         return symbols
 
     def parse_expr(self, k, v, parse_context):
-        if isinstance(k, basestring) and '[' in k:
+        if isinstance(k, str) and '[' in k:
             first_opening_bracket = k.index('[')
             last_closing_bracket = k.rindex(']')
             key_str = k[first_opening_bracket + 1:last_closing_bracket]
@@ -403,7 +399,7 @@ class Entity(object):
         expr = parse(v, parse_context)
 
         global_symbols = parse_context['__globals__']
-        if isinstance(k, basestring) and '.' in k:
+        if isinstance(k, str) and '.' in k:
             if key_expr is not None:
                 raise ValueError("assigning to a subset of a link is currently not supported")
 
@@ -437,7 +433,7 @@ class Entity(object):
         # I prefer listing bool explicitly even if not necessary because isinstance(True, int) is True
         if isinstance(v, (bool, int, float, list, dict)):
             return Assignment(k, self, v, key_expr=key_expr)
-        elif isinstance(v, basestring):
+        elif isinstance(v, str):
             return Assignment(k, self, expr, key_expr=key_expr)
         else:
             # lets be explicit about it
@@ -537,7 +533,7 @@ Please use this instead:
                              "If you need several processes to "
                              "write to the same variable, you "
                              "should rather use functions.")
-        elif isinstance(v, (basestring, bool, int, float)):
+        elif isinstance(v, (str, bool, int, float)):
             if k in self.fields.names:
                 msg = """defining a process outside of a function is deprecated because it is ambiguous. You should:
  * wrap the '{name}: {expr}' assignment inside a function like this:

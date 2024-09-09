@@ -1,6 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import os
 import math
 import sys
@@ -8,7 +5,6 @@ import sys
 import numpy as np
 import larray as la
 
-from liam2.compat import basestring, PY2
 from liam2 import config
 from liam2.expr import FunctionExpr
 from liam2.utils import get_axes, ExceptionOnGetAttr, ndim, FileProducer
@@ -20,7 +16,7 @@ try:
 except ImportError as e:
     msg = "charts functionality is not available because 'matplotlib.pyplot' could not be imported (%s)." % e
     print("Warning:", msg)
-    if not config.debug and not PY2:
+    if not config.debug:
         e = ImportError(msg).with_traceback(sys.exc_info()[2])
     plt = ExceptionOnGetAttr(e)
 
@@ -239,7 +235,7 @@ class Plot(Chart):
         styles = kwargs.pop('styles', None)
         if len(args) > 1:
             # every odd is a string => we have styles, yeah !
-            if all(isinstance(a, basestring) for a in args[1::2]):
+            if all(isinstance(a, str) for a in args[1::2]):
                 styles = args[1::2]
                 args = args[::2]
         self.styles = styles

@@ -1,6 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 from itertools import groupby
 from operator import itemgetter
 
@@ -8,7 +5,6 @@ import numpy as np
 import numexpr as ne
 import larray as la
 
-from liam2.compat import zip, basestring
 from liam2.expr import Expr, Variable, getdtype, expr_eval, missing_values, get_default_value, always, FunctionExpr
 from liam2.context import context_length
 from liam2.partition import filter_to_indices
@@ -18,7 +14,7 @@ from liam2.utils import removed
 counting_typemap = {bool: int, int: int, float: float}
 
 
-class Link(object):
+class Link:
     def __init__(self, name, link_field, target_entity_name,
                  target_entity=None, entity=None):
         # the leading underscores are necessary to not collide with
@@ -68,7 +64,7 @@ class Link(object):
 
 class Many2One(Link):
     def get(self, key, *args, **kwargs):
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             entity = self._target_entity
 
             # We could use entity.variables instead but since local variables
@@ -106,7 +102,7 @@ _reverse_cls = {
     One2Many: Many2One,
 }
 
-class PrefixingLink(object):
+class PrefixingLink:
     def __init__(self, entity, macros, links, prefix):
         self.entity = entity
         self.macros = macros

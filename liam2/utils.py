@@ -1,6 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import ast
 from collections import defaultdict, deque, namedtuple
 import itertools
@@ -15,7 +12,6 @@ import numpy as np
 import numexpr as ne
 import larray as la
 
-from liam2.compat import zip, basestring
 from liam2 import config
 
 
@@ -33,7 +29,7 @@ class classproperty(property):
         return self.fget.__get__(None, owner)()
 
 
-class ExceptionOnGetAttr(object):
+class ExceptionOnGetAttr:
     """
     ExceptionOnGetAttr can be used when an optional part is missing
     so that an exception is only raised if the object is actually used.
@@ -123,7 +119,7 @@ def englishenum(iterable):
     return ', '.join(l)
 
 
-class AutoFlushFile(object):
+class AutoFlushFile:
     def __init__(self, f):
         self.f = f
 
@@ -397,7 +393,7 @@ def _make_aggregate(func):
     return method
 
 
-class IrregularNDArray(object):
+class IrregularNDArray:
     """
     A wrapper for collections of arrays (eg list of arrays or arrays of
     arrays) to make them act somewhat like a 2D (numpy) array. This makes it
@@ -433,7 +429,7 @@ def get_axes(data):
         return la.AxisCollection(data.shape)
 
 
-class ProgressBar(object):
+class ProgressBar:
     def __init__(self, maximum=100):
         pass
 
@@ -569,7 +565,7 @@ def table2str(table, missing):
     return '\n'.join(' | '.join(row) for row in lines)
 
 
-class PrettyTable(object):
+class PrettyTable:
     def __init__(self, data, missing=None):
         assert isinstance(data, (tuple, list))
         self.data = data
@@ -987,7 +983,7 @@ def validate_dict(d, target, context=''):
         validate_value(v, section_def, subcontext)
 
 
-class Or(object):
+class Or:
     def __init__(self, *options):
         self.options = options
 
@@ -1160,11 +1156,6 @@ class ExplainTypeError(type):
             funcname = cls.funcname
             msg = e.args[0].replace('__init__()', funcname)
 
-            def repl_py2(matchobj):
-                needed, given = int(matchobj.group(1)), int(matchobj.group(3))
-                word = matchobj.group(2)
-                return '%d %s (%d given)' % (needed - 1, word, given - 1)
-
             def repl_py3_toomany_from_to(matchobj):
                 nfrom, nto, given = [int(matchobj.group(n)) for n in (1, 2, 4)]
                 word = matchobj.group(3)
@@ -1183,8 +1174,6 @@ class ExplainTypeError(type):
                 missing = int(matchobj.group(1))
                 return 'missing %d positional argument' % (missing - 1)
 
-            # Python2 style
-            msg = re.sub(r'(\d+) (arguments?) \((\d+) given\)', repl_py2, msg)
             # Python3 style for too many args in the presence of default values
             msg = re.sub(r'from (\d+) to (\d+) positional (arguments?) but (\d+) were given',
                          repl_py3_toomany_from_to, msg)
@@ -1246,7 +1235,7 @@ def _argspec(*args, **kwonlyargs):
                 kwonlyargs=['d'], kwonlydefaults={'d': None}, annotations={})
     """
     def lastitem_startswith(l, s):
-        return l and isinstance(l[-1], basestring) and l[-1].startswith(s)
+        return l and isinstance(l[-1], str) and l[-1].startswith(s)
     args = list(args)
     varkw = args.pop()[2:] if lastitem_startswith(args, '**') else None
     varargs = args.pop()[1:] if lastitem_startswith(args, '*') else None
@@ -1292,14 +1281,14 @@ def argspec(*args, **kwonlyargs):
     >>> str(argspec('a, b, c=1, *d, **e, f=None'))
     'a, b, c=1, *d, **e, f=None'
     """
-    if len(args) == 1 and isinstance(args[0], basestring):
+    if len(args) == 1 and isinstance(args[0], str):
         str_args = args[0].split(',') if args[0] else []
         str_args = [a.strip().split('=') for a in str_args]
         args = [(a[0], ast.literal_eval(a[1])) if len(a) > 1 else a[0]
                 for a in str_args]
 
         def star(a):
-            return isinstance(a, basestring) and '*' in a
+            return isinstance(a, str) and '*' in a
         if any(star(a) for a in args):
             while not star(args[-1]):
                 k, v = args.pop()
@@ -1322,7 +1311,7 @@ def split_signature(signature):
 # miscellaneous tools
 # -------------------
 
-class FileProducer(object):
+class FileProducer:
     argspec = argspec(suffix='', fname=None)
 
     # default extension if only suffix is defined
