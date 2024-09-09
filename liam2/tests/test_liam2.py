@@ -10,7 +10,7 @@ os.environ["DEBUG"] = "TRUE"
 from liam2.simulation import Simulation
 from liam2.importer import csv2h5
 
-use_travis = os.environ.get('USE_TRAVIS', None) == 'true'
+ON_CI = os.environ.get('USE_TRAVIS', None) == 'true'
 test_root = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -40,17 +40,16 @@ def test_examples():
     import_files = ('demo_import.yml',)
     # Cannot display charts/pop up windows on Travis
     tests_needing_qt = ('demo02.yml', 'demo03.yml', 'demo04.yml', 'demo06.yml')
-    excluded = tests_needing_qt if use_travis else ()
+    excluded = tests_needing_qt if ON_CI else ()
     for func, test_file in iterate_directory('examples', import_files, excluded):
         yield func, test_file
 
 
 def test_functional():
     import_files = ('import_issue154.yml', 'import.yml',)
-    # those are not runnable by themselves
+    # those are not runnable by themselves (meant to be imported by other simulations)
     excluded = ('imported1.yml', 'imported2.yml')
-    # XXX: why are static.yml and generate.yml excluded???
-    if use_travis:
+    if ON_CI:
         # exclude test_erf because scipy is a big dependency for a single function
         # exclude generate.yml because it does not test anything in itself but takes a few seconds
         excluded += ('test_erf.yml', 'generate.yml')
