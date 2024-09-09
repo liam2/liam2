@@ -27,7 +27,8 @@ try:
     from qtpy import QtWidgets
     from vitables.vtapp import VTApp
 except ImportError as e:
-    msg = "the 'view' command is not available because 'vitables' does not seem to be installed correctly (%s)." % e
+    msg = (f"the 'view' command is not available because 'vitables' does not "
+           f"seem to be installed correctly ({e}).")
     print("Warning:", msg)
     if not config.debug:
         e = ImportError(msg).with_traceback(sys.exc_info()[2])

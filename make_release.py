@@ -23,6 +23,7 @@ from shutil import copytree, copy2, rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
 
 
+USER = 'cic'
 WEBSITE = 'liam2.plan.be'
 TMP_PATH = r"c:\tmp\liam2_new_release"
 # not using tempfile.mkdtemp to be able to resume an aborted release
@@ -56,13 +57,13 @@ def size2str(value):
         if value > 1024.0:
             value /= 1024.0
             unit = "Mb"
-        return "%.2f %s" % (value, unit)
+        return f"{value:.2f} {unit}"
     else:
-        return "%d %s" % (value, unit)
+        return f"{value:d} {unit}"
 
 
 def generate(fname, **kwargs):
-    with open('%s.tmpl' % fname) as in_f, open(fname, 'w') as out_f:
+    with open(f'{fname}.tmpl') as in_f, open(fname, 'w') as out_f:
         out_f.write(in_f.read().format(**kwargs))
 
 
@@ -101,7 +102,7 @@ def git_remote_last_rev(url, branch=None):
     """
     if branch is None:
         branch = 'refs/heads/master'
-    output = call('git ls-remote %s %s' % (url, branch))
+    output = call(f'git ls-remote {url} {branch}')
     for line in output.splitlines():
         if line.endswith(branch):
             return line.split()[0]
@@ -119,8 +120,7 @@ def branchname(statusline):
 
 
 def yes(msg, default='y'):
-    choices = ' (%s/%s) ' % tuple(c.capitalize() if c == default else c
-                                  for c in ('y', 'n'))
+    choices = " (Y/n) " if default == 'y' else " (y/N) "
     answer = None
     while answer not in ('', 'y', 'n'):
         if answer is not None:
@@ -179,7 +179,7 @@ def long_release_name(release_name):
     dotcount = release_name.count('.')
     if dotcount >= 2:
         return release_name
-    assert dotcount == 1, "%s contains %d dots" % (release_name, dotcount)
+    assert dotcount == 1, f"{release_name} contains {dotcount:d} dots"
     pos = pretag_pos(release_name)
     if pos is not None:
         return release_name[:pos] + '.0' + release_name[pos:]
@@ -270,7 +270,7 @@ def rst2txt(s):
 
 def relname2fname(release_name):
     short_version = short(strip_pretags(release_name))
-    return r"version_%s.rst.inc" % short_version.replace('.', '_')
+    return fr"version_{short_version.replace('.', '_')}.rst.inc"
 
 
 def release_changes(context):
@@ -325,8 +325,8 @@ def test_executable(relpath):
 
 
 def create_source_archive(release_name, rev):
-    call(r'git archive --format zip --output ..\LIAM2-%s-src.zip %s'
-         % (release_name, rev))
+    fpath = fr"..\LIAM2-{release_name}-src.zip"
+    call(f'git archive --format zip --output {fpath} {rev}')
 
 
 def copy_release(release_name):
@@ -344,23 +344,23 @@ def copy_release(release_name):
           r'win64\documentation\LIAM2UserGuide.chm')
     # stuff not in the bundles
     copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
-          r'LIAM2UserGuide-%s.pdf' % release_name)
+          fr'LIAM2UserGuide-{release_name}.pdf')
     copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
-          r'LIAM2UserGuide-%s.chm' % release_name)
+          fr'LIAM2UserGuide-{release_name}.chm')
     copytree(r'build\doc\usersguide\build\html', 'htmldoc')
     copytree(r'build\doc\usersguide\build\web',
-             r'webdoc\%s' % short(release_name))
+             fr'webdoc\{short(release_name)}')
 
 
 def create_bundle_archives(release_name):
     chdir('win32')
-    zip_pack(r'..\LIAM2Suite-%s-win32.zip' % release_name, '*')
+    zip_pack(fr'..\LIAM2Suite-{release_name}-win32.zip', '*')
     chdir('..')
     chdir('win64')
-    zip_pack(r'..\LIAM2Suite-%s-win64.zip' % release_name, '*')
+    zip_pack(fr'..\LIAM2Suite-{release_name}-win64.zip', '*')
     chdir('..')
     chdir('htmldoc')
-    zip_pack(r'..\LIAM2UserGuide-%s-html.zip' % release_name, '*')
+    zip_pack(fr'..\LIAM2UserGuide-{release_name}-html.zip', '*')
     chdir('..')
 
 
@@ -369,10 +369,10 @@ def check_bundle_archives(release_name):
     checks the bundles unpack correctly
     """
     makedirs('test')
-    zip_unpack('LIAM2Suite-%s-win32.zip' % release_name, r'test\win32')
-    zip_unpack('LIAM2Suite-%s-win64.zip' % release_name, r'test\win64')
-    zip_unpack('LIAM2UserGuide-%s-html.zip' % release_name, r'test\htmldoc')
-    zip_unpack('LIAM2-%s-src.zip' % release_name, r'test\src')
+    zip_unpack(f'LIAM2Suite-{release_name}-win32.zip', r'test\win32')
+    zip_unpack(f'LIAM2Suite-{release_name}-win64.zip', r'test\win64')
+    zip_unpack(f'LIAM2UserGuide-{release_name}-html.zip', r'test\htmldoc')
+    zip_unpack(f'LIAM2-{release_name}-src.zip', r'test\src')
     rmtree('test')
 
 # -------------------------------- #
@@ -390,7 +390,7 @@ def check_local_repo(context):
     branch, release_name = context['branch'], context['release_name']
     repository, rev = context['repository'], context['rev']
 
-    s = "Using local repository at: %s !" % repository
+    s = f"Using local repository at: {repository} !"
     print("\n", s, "\n", "=" * len(s), "\n", sep='')
 
     status = call('git status -s -b')
@@ -398,30 +398,30 @@ def check_local_repo(context):
     statusline, lines = lines[0], lines[1:]
     curbranch = branchname(statusline)
     if curbranch != branch:
-        print("%s is not the current branch (%s). "
-              "Please use 'git checkout %s'." % (branch, curbranch, branch))
+        print(f"{branch} is not the current branch ({curbranch}). "
+              f"Please use 'git checkout {branch}'.")
         exit(1)
 
     if lines:
         uncommited = sum(1 for line in lines if line[1] in 'MDAU')
         untracked = sum(1 for line in lines if line.startswith('??'))
-        print('Warning: there are %d files with uncommitted changes '
-              'and %d untracked files:' % (uncommited, untracked))
+        print(f'Warning: there are {uncommited} files with uncommitted changes '
+              f'and {untracked} untracked files:')
         print('\n'.join(lines))
         if no('Do you want to continue?'):
             exit(1)
 
-    ahead = call('git log --format=format:%%H origin/%s..%s' % (branch, branch))
+    ahead = call(f'git log --format=format:%H origin/{branch}..{branch}')
     num_ahead = len(ahead.splitlines())
-    print("Branch '%s' is %d commits ahead of 'origin/%s'"
-          % (branch, num_ahead, branch), end='')
+    print(f"Branch '{branch}' is {num_ahead} commits ahead of "
+          f"'origin/{branch}'", end='')
     if num_ahead:
         if yes(', do you want to push?'):
             do('Pushing changes', call, 'git push')
     else:
         print()
 
-    if no('Release version %s (%s)?' % (release_name, rev)):
+    if no(f'Release version {release_name} ({rev})?'):
         exit(1)
 
 
@@ -447,7 +447,7 @@ def clone_repository(context):
     # alternative to modify the "working copy clone" directly is worse because
     # it needs more complicated path handling that the 2 push approach.
     do('Cloning repository', call,
-       'git clone -b {branch} {repository} build'.format(**context))
+       f"git clone -b {context['branch']} {context['repository']} build")
 
 
 def check_clone(context):
@@ -484,7 +484,7 @@ def test_executables(context):
         return
 
     for arch in ('win32', 'win-amd64'):
-        test_executable(r'build\exe.%s-2.7' % arch)
+        test_executable(fr'build\exe.{arch}-2.7')
 
 
 def update_changelog(context):
@@ -500,25 +500,24 @@ def update_changelog(context):
     fpath = r'doc\usersguide\source\changes.rst'
     with open(fpath) as f:
         lines = f.readlines()
-        title = "Version %s" % short(release_name)
+        title = f"Version {short(release_name)}"
         if lines[5] != title + '\n':
-            print("changes.rst not modified (the last release is not %s)"
-                  % title)
+            print(f"changes.rst not modified (the last release is not {title})")
             return
         release_date = lines[8]
         if release_date != "In development.\n":
-            print('changes.rst not modified (the last release date is "%s" '
-                  'instead of "In development.", was it already released?)'
-                  % release_date)
+            print(f'changes.rst not modified (the last release date is '
+                  f'"{release_date}" instead of "In development.", '
+                  f'was it already released?)')
             return
-        lines[8] = "Released on {}.\n".format(date.today().isoformat())
+        lines[8] = f"Released on {date.today().isoformat()}.\n"
     with open(fpath, 'w') as f:
         f.writelines(lines)
     with open(fpath) as f:
         print('\n'.join(f.read().decode('utf-8-sig').splitlines()[:20]))
     if no('Does the full changelog look right?'):
         exit(1)
-    call('git commit -m "update release date in changes.rst" %s' % fpath)
+    call(f'git commit -m "update release date in changes.rst" {fpath}')
 
 
 def build_doc(context):
@@ -561,7 +560,7 @@ def tag_release(context):
         return
 
     release_name = context['release_name']
-    call('git tag -a {name} -m "tag release {name}"'.format(name=release_name))
+    call(f'git tag -a {release_name} -m "tag release {release_name}"')
 
 
 def upload(context):
@@ -573,14 +572,13 @@ def upload(context):
     release_name = context['release_name']
 
     # pscp is the scp provided in PuTTY's installer
-    base_url = '%s@%s:%s' % ('cic', WEBSITE, WEBSITE)
+    base_url = f'{USER}@{WEBSITE}:{WEBSITE}'
     # 1) archives
-    subprocess.call(r'pscp * %s/download' % base_url)
+    subprocess.call(fr'pscp * {base_url}/download')
 
     # 2) documentation
     chdir('webdoc')
-    subprocess.call(r'pscp -r %s %s/documentation' % (short(release_name),
-                                                      base_url))
+    subprocess.call(fr'pscp -r {short(release_name)} {base_url}/documentation')
 
 
 def pull(context):
@@ -590,8 +588,8 @@ def pull(context):
     # pull the changelog commits to the branch (usually master)
     # and the release tag (which refers to the last commit)
     chdir(context['repository'])
-    do('Pulling changes in {repository}'.format(**context),
-       call, 'git pull --ff-only --tags {build_dir} {branch}'.format(**context))
+    do(f"Pulling changes in {context['repository']}", call,
+       f"git pull --ff-only --tags {context['build_dir']} {context['branch']}")
 
 
 def push(context):
@@ -599,8 +597,8 @@ def push(context):
         return
 
     chdir(context['repository'])
-    do('Pushing main repository changes to GitHub',
-       call, 'git push origin {branch} --follow-tags'.format(**context))
+    do('Pushing website changes to GitHub', call,
+       f"git push origin {context['branch']} --follow-tags")
 
 
 def cleanup(context):
@@ -609,6 +607,7 @@ def cleanup(context):
     rmtree('win64')
     # build is needed by the website script
 #    rmtree('build')
+
 
 # ------------ #
 # end of steps #
@@ -665,7 +664,7 @@ def make_release(release_name='dev', steps=':', branch='master'):
         release_name = long_release_name(release_name)
 
     repository = abspath(dirname(__file__))
-    rev = git_remote_last_rev(repository, 'refs/heads/%s' % branch)
+    rev = git_remote_last_rev(repository, f'refs/heads/{branch}')
     public_release = release_name != 'dev'
     if not public_release:
         # take first 7 digits of commit hash
@@ -682,11 +681,12 @@ def make_release(release_name='dev', steps=':', branch='master'):
         else:
             step_func(context)
 
+
 if __name__ == '__main__':
     argv = sys.argv
     if len(argv) < 2:
-        print("Usage: %s release_name|dev [step|startstep:stopstep] [branch]"
-              % argv[0])
+        print(f"Usage: {argv[0]} release_name|dev [step|startstep:stopstep] "
+              f"[branch]")
         print("steps:", ', '.join(f.__name__ for f, _ in steps_funcs))
         sys.exit()
 

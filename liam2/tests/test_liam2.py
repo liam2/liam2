@@ -73,7 +73,7 @@ def printnow(*args, **kwargs):
 
 def run_func(func, *args, **kwargs):
     verb = 'Importing' if func is csv2h5 else 'Running'
-    printnow('{} {}...'.format(verb, os.path.relpath(args[0], test_root)), end=' ')
+    printnow(f'{verb} {os.path.relpath(args[0], test_root)}...', end=' ')
 
     # capture stdout and stderr
     sys.stdout = StringIO()
@@ -94,14 +94,14 @@ def run_func(func, *args, **kwargs):
     if exc_value is None:
         printnow("done.")
         if stderr_content:
-            printnow("STDERR\n======\n{}\n".format(stderr_content))
+            printnow(f"STDERR\n======\n{stderr_content}\n")
         return "ok"
     else:
         printnow("FAILED.\n")
         if stdout_content:
-            printnow("STDOUT\n======\n{}\n".format(stdout_content))
+            printnow(f"STDOUT\n======\n{stdout_content}\n")
         if stderr_content:
-            printnow("STDERR\n======\n{}\n".format(stderr_content))
+            printnow(f"STDERR\n======\n{stderr_content}\n")
         # print errors to stdout instead of stderr to avoid PyCharm
         # randomly mixing up stdout and stderr output
         printnow("TRACEBACK\n=========")
@@ -113,12 +113,12 @@ def run_func(func, *args, **kwargs):
 
 
 def run_tests():
-    print_title('Using test root: {}'.format(test_root))
+    print_title(f'Using test root: {test_root}')
     all_tests = chain(test_examples(), test_functional())
     results = [run_func(func, test_file) for func, test_file in all_tests]
     num_failed = sum(r == "failed" for r in results)
     print()
-    print("ran %d tests, %d failed" % (len(results), num_failed))
+    print(f"ran {len(results)} tests, {num_failed} failed")
     if num_failed > 0:
         sys.exit(1)
 

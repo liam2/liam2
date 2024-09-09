@@ -50,7 +50,7 @@ def deprecated(f, old=None, new=None, msg=None):
     if msg is None:
         if new is None:
             new = f.__name__
-        msg = "%s is deprecated, please use %s instead" % (old, new)
+        msg = f"{old} is deprecated, please use {new} instead"
 
     def func(*args, **kwargs):
         # TODO: when we will be able to link expressions to line numbers in the
@@ -66,7 +66,7 @@ def removed(f, old=None, new=None, msg=None):
     if msg is None:
         if new is None:
             new = f.__name__
-        msg = "%s does not exist anymore, please use %s instead" % (old, new)
+        msg = f"{old} does not exist anymore, please use {new} instead"
 
     def func(*args, **kwargs):
         raise SyntaxError(msg)
@@ -91,29 +91,29 @@ def find_first(char, s, depth=0):
             stack.append(match[c])
         elif c in closing:
             if not stack or c != stack.pop():
-                raise ValueError("syntax error: imbalanced parentheses or "
-                                 "brackets in string: %s" % s)
+                raise ValueError(f"syntax error: imbalanced parentheses or "
+                                 f"brackets in string: {s}")
     if stack:
-        raise ValueError("syntax error: missing parenthesis or "
-                         "bracket in string: %s" % s)
+        raise ValueError(f"syntax error: missing parenthesis or "
+                         f"bracket in string: {s}")
     return -1
 
 
-def englishenum(iterable):
+def english_enum(iterable):
     """
     Returns an "english enumeration" of the strings in the iterable.
-    >>> englishenum(['a', 'b', 'c'])
+    >>> english_enum(['a', 'b', 'c'])
     'a, b, and c'
-    >>> englishenum('abc')
+    >>> english_enum('abc')
     'a, b, and c'
-    >>> englishenum('ab')
+    >>> english_enum('ab')
     'a and b'
-    >>> englishenum('a')
+    >>> english_enum('a')
     'a'
     """
     l = list(iterable)
     if len(l) == 2:
-        return '%s and %s' % tuple(l)
+        return f'{l[0]} and {l[1]}'
     elif len(l) > 2:
         l[-1] = 'and ' + l[-1]
     return ', '.join(l)
@@ -181,7 +181,8 @@ def time2str(seconds, precision="ns"):
     for cur_precision, (unit, divisor_for_next) in enumerate(divisors):
         next_value, cur_value = divmod(value, divisor_for_next)
         if cur_value > 0 and cur_precision >= int_precision:
-            str_parts.append("%d %s%s" % (cur_value, unit, 's' if cur_value > 1 and cur_precision > 2 else ''))
+            plural_marker = 's' if cur_value > 1 and cur_precision > 2 else ''
+            str_parts.append(f"{cur_value} {unit}{plural_marker}")
         values.append((unit, cur_value))
         value = next_value
     return ' '.join(str_parts[::-1])
@@ -206,8 +207,8 @@ def size2str(value):
     """
     units = ["bytes", "Kb", "Mb", "Gb", "Tb", "Pb"]
     scale = int(math.log(value, 1024)) if value else 0
-    fmt = "%.2f %s" if scale else "%d %s"
-    return fmt % (value / 1024.0 ** scale, units[scale])
+    fmt_value = f"{value / 1024.0 ** scale:.2f}" if scale else f"{value}"
+    return f"{fmt_value} {units[scale]}"
 
 
 # def mem_usage():
@@ -229,7 +230,7 @@ def gettime(func, *args, **kwargs):
 def timed(func, *args, **kwargs):
     elapsed, res = gettime(func, *args, **kwargs)
     if config.show_timings:
-        print("done (%s elapsed)." % time2str(elapsed))
+        print(f"done ({time2str(elapsed)} elapsed).")
     else:
         print("done.")
     return res
@@ -347,7 +348,7 @@ def expand(value, shape):
     if np.isscalar(shape):
         shape = (shape,)
     if isinstance(value, (np.ndarray, la.Array)) and value.shape:
-        # assert value.shape == shape, "%s != %s" % (value.shape, shape)
+        # assert value.shape == shape, f"{value.shape} != {shape}"
         # FIXME: this assertion fails because we are sloppy in
         # AlignmentAbsoluteValues.align_link (target_context is not filtered)
         return value
@@ -507,7 +508,7 @@ def format_value(value, missing):
         if value != value:
             return missing
         else:
-            return '%.2f' % value
+            return f'{value:.2f}'
     elif isinstance(value, np.ndarray) and value.shape:
         # print the whole array on one line (ie prevent numpy default wrapping)
         # This is also faster than np.array_str(value, max_line_width=np.inf)
@@ -692,7 +693,7 @@ class WarnOverrideDict(dict):
         intersect = set(d1.keys()) & set(d2.keys())
         if intersect:
             print("Warning: name collision for:",
-                  ",".join("%s (%s vs %s)" % (k, type(d1[k]), d2[k])
+                  ",".join(f"{k} ({type(d1[k])} vs {d2[k]})"
                            for k in sorted(intersect)))
 
 
@@ -906,25 +907,23 @@ def validate_dict_keys(d, required=(), optional=(), context='', extra_allowed=Fa
         invalid_keys = used_keys - valid_keys
     missing_keys = required_keys - used_keys
     if invalid_keys:
-        kind, keys = 'invalid', invalid_keys
+        error_kind, keys = 'invalid', invalid_keys
     elif missing_keys:
-        kind, keys = 'missing', missing_keys
+        error_kind, keys = 'missing', missing_keys
     else:
-        kind, keys = '', []
+        return
 
-    if keys:
-        if context:
-            template = "%%s keyword(s) in %s: '%%s'" % context
-        else:
-            template = "%s keyword(s): '%s'"
-        raise SyntaxError(template % (kind, "', '".join(keys)))
+    ctx = f" in {context}" if context else ""
+    bad_keys = "', '".join(keys)
+    raise SyntaxError(f"{error_kind} keyword(s){ctx}: '{bad_keys}'")
 
 
 def validate_list(l, target, context):
     assert len(target) == 1
     target_element = target[0]
     if not isinstance(l, list):
-        raise Exception("invalid structure for '%s': it should be a list and it is a %s" % (context, typename(l)))
+        raise Exception(f"invalid structure for '{context}': it should be a "
+                        f"list but it is a {typename(l)}")
     for v in l:
         validate_value(v, target_element, context)
 
@@ -958,7 +957,8 @@ def validate_dict(d, target, context=''):
     """
     assert isinstance(target, dict)
     if not isinstance(d, dict):
-        raise Exception("invalid structure for '%s': it should be a map and it is a %s" % (context, typename(d)))
+        raise Exception(f"invalid structure for '{context}': it should be a "
+                        f"map and it is a {typename(d)}")
     target_keys = target.keys()
     required = set(k[1:] for k in target_keys if k.startswith('#'))
     optional = set(k for k in target_keys if not k.startswith('#'))
@@ -978,8 +978,8 @@ def validate_dict(d, target, context=''):
         else:
             # this shouldn't happen unless target is an empty dictionary
             assert not target
-            raise KeyError('empty section def at: %s' % context)
-        subcontext = context + ' -> ' + k if context else k
+            raise KeyError(f'empty section def at: {context}')
+        subcontext = f"{context} -> {k}" if context else k
         validate_value(v, section_def, subcontext)
 
 
@@ -1020,13 +1020,13 @@ def validate_value(v, target, context=''):
     >>> validate_value(1, float, 'test')
     Traceback (most recent call last):
     ...
-    Exception: invalid structure for 'test': it should be a float and it is a int
+    Exception: invalid structure for 'test': it should be a float but it is a int
     >>> validate_value(True, bool, 'test')
     >>> validate_value(True, int, 'test')  # yes, this works because isinstance(bool_instance, int) is True
     >>> validate_value(1, bool, 'test')    # ... but the opposite is not true
     Traceback (most recent call last):
     ...
-    Exception: invalid structure for 'test': it should be a bool and it is a int
+    Exception: invalid structure for 'test': it should be a bool but it is a int
 
     Tests for lists
 
@@ -1035,11 +1035,11 @@ def validate_value(v, target, context=''):
     >>> validate_value(1, [int])
     Traceback (most recent call last):
     ...
-    Exception: invalid structure for '': it should be a list and it is a int
+    Exception: invalid structure for '': it should be a list but it is a int
     >>> validate_value(["abc"], [int])
     Traceback (most recent call last):
     ...
-    Exception: invalid structure for '': it should be a int and it is a str
+    Exception: invalid structure for '': it should be a int but it is a str
 
     Simple tests for dict (see validate_dict for more tests)
 
@@ -1076,8 +1076,9 @@ def validate_value(v, target, context=''):
         correct_type_options = [option for option in target.options if isinstance(v, optiontype(option))]
         if not correct_type_options:
             valid_class_names = [cls.__name__ for cls in target.valid_classes]
-            raise Exception("invalid structure for '%s': it should be one of %s but it is a(n) %s"
-                            % (context, ', '.join(valid_class_names), typename(v)))
+            raise Exception(f"invalid structure for '{context}': it should be "
+                            f"one of {', '.join(valid_class_names)} but it is "
+                            f"a(n) {typename(v)}")
         elif len(correct_type_options) == 1:
             validate_value(v, correct_type_options[0], context)
         else:
@@ -1087,17 +1088,18 @@ def validate_value(v, target, context=''):
                     return
                 except Exception:
                     pass
-            raise Exception("invalid structure for '%s': it should be one of %s but it is %r"
-                            % (context, ', '.join(repr(o) for o in target.options), v))
+            options_str = ', '.join(repr(o) for o in target.options)
+            raise Exception(f"invalid structure for '{context}': it should be "
+                            f"one of {options_str} but it is {v!r}")
     elif isinstance(target, type):
         if not isinstance(v, target):
-            raise Exception("invalid structure for '%s': it should be a %s and it is a %s"
-                            % (context, target.__name__, typename(v)))
+            raise Exception(f"invalid structure for '{context}': it should be "
+                            f"a {target.__name__} but it is a {typename(v)}")
     else:
         # target is an instance of a type, in that case, it must be equal to that instance
         if v != target:
-            raise Exception("invalid structure for '%s': it should be %r but it is %r"
-                            % (context, target, v))
+            raise Exception(f"invalid structure for '{context}': "
+                            f"it should be {target!r} but it is {v!r}")
 
 
 # fields handling
@@ -1110,8 +1112,7 @@ def field_str_to_type(str_type, context):
     Converts a (field) string type to its Python type.
     """
     if str_type not in str_to_type:
-        raise SyntaxError("'%s' is not a valid type for %s."
-                          % (str_type, context))
+        raise SyntaxError(f"'{str_type}' is not a valid type for {context}.")
     return str_to_type[str_type]
 
 
@@ -1120,7 +1121,7 @@ def fields_str_to_type(str_fields_list):
     Converts a field list (list of tuple) with string types to a list with
     Python types.
     """
-    return [(name, field_str_to_type(type_, "field '%s'" % name))
+    return [(name, field_str_to_type(type_, f"field '{name}'"))
             for name, type_ in str_fields_list]
 
 
@@ -1160,19 +1161,19 @@ class ExplainTypeError(type):
                 nfrom, nto, given = [int(matchobj.group(n)) for n in (1, 2, 4)]
                 word = matchobj.group(3)
                 verb = 'were' if given != 2 else 'was'
-                return 'from %d to %d positional %s but %d %s given' \
-                       % (nfrom - 1, nto - 1, word, given - 1, verb)
+                return (f'from {nfrom - 1} to {nto - 1} positional {word} '
+                        f'but {given - 1} {verb} given')
 
             def repl_py3_toomany(matchobj):
                 needed, given = int(matchobj.group(1)), int(matchobj.group(3))
                 word = matchobj.group(2)
                 verb = 'were' if given != 2 else 'was'
-                return 'takes %d positional %s but %d %s given' \
-                       % (needed - 1, word, given - 1, verb)
+                return (f'takes {needed - 1} positional {word} '
+                        f'but {given - 1} {verb} given')
 
             def repl_py3_missing(matchobj):
                 missing = int(matchobj.group(1))
-                return 'missing %d positional argument' % (missing - 1)
+                return f'missing {missing - 1} positional argument'
 
             # Python3 style for too many args in the presence of default values
             msg = re.sub(r'from (\d+) to (\d+) positional (arguments?) but (\d+) were given',
@@ -1292,7 +1293,7 @@ def argspec(*args, **kwonlyargs):
         if any(star(a) for a in args):
             while not star(args[-1]):
                 k, v = args.pop()
-                assert k not in kwonlyargs, "several kwonlyargs named %s" % k
+                assert k not in kwonlyargs, f"several kwonlyargs named {k}"
                 kwonlyargs[k] = v
     return _argspec(*args, **kwonlyargs)
 
@@ -1328,8 +1329,8 @@ class FileProducer:
         fname = kwargs.pop('fname', None)
 
         if fname is not None and suffix:
-            raise ValueError("%s() can't have both 'suffix' and 'fname' "
-                             "arguments" % self.__class__.__name__.lower())
+            raise ValueError(f"{self.__class__.__name__.lower()}() cannot have "
+                             f"both 'suffix' and 'fname' arguments")
         if fname is None and (suffix or self.fname_required):
             suffix = "_" + suffix if suffix else ""
             fname = "{entity}_{period}" + suffix + self.ext

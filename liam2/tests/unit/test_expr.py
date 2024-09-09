@@ -12,8 +12,7 @@ from liam2 import links
 
 class ArrayTestCase(unittest.TestCase):
     def assertArrayEqual(self, first, other):
-        assert np.array_equal(first, other), "got: %s\nexpected: %s" % (first,
-                                                                        other)
+        assert np.array_equal(first, other), f"got: {first}\nexpected: {other}"
 
 
 def evaluate(s, parse_ctx, eval_ctx):

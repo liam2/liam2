@@ -5,11 +5,11 @@ import numpy as np
 
 def assertResultEq(d1, d2):
     d1k, d2k = sorted(d1.keys()), sorted(d2.keys())
-    assert d1k == d2k, "result keys differ: got: %s vs expected: %s" % (d1, d2)
+    assert d1k == d2k, f"result keys differ: got: {d1} vs expected: {d2}"
     for k in d1k:
         v1, v2 = d1[k], d2[k]
         assert np.array_equal(v1, v2), \
-               "%s value differs. we get: %s\nexpected: %s" % (k, v1, v2)
+            f"{k} value differs. we get: {v1}\nexpected: {v2}"
     print(".", end="")
 
 

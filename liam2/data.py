@@ -102,11 +102,13 @@ class ColumnArray:
         if isinstance(key, str):
             length = len(self)
             if isinstance(value, la.Array) and value.shape:
-                raise TypeError("la.Array not supported in ColumnArray, you should use LColumnArray instead")
+                raise TypeError("la.Array not supported in ColumnArray, "
+                                "you should use LColumnArray instead")
             if isinstance(value, np.ndarray) and value.shape:
                 if len(value) != length:
-                    raise ValueError("could not broadcast input array from shape ({}) into shape ({})"
-                                     .format(len(value), length))
+                    raise ValueError(f"could not broadcast input array from "
+                                     f"shape ({len(value)}) "
+                                     f"into shape ({length})")
                 column = value
             else:
                 # expand scalars (like ndarray does) so that we don't have to
@@ -344,16 +346,15 @@ class LColumnArray:
         id_axis = self.axes.id
         if isinstance(value, np.ndarray) and value.shape:
             if len(value) != len(id_axis):
-                raise ValueError("could not broadcast input array from shape ({}) into shape ({})"
-                                 .format(len(value), len(id_axis)))
+                raise ValueError(f"could not broadcast input array from shape "
+                                 f"({len(value)}) into shape ({len(id_axis)})")
             return la.Array(value, self.axes)
         elif isinstance(value, la.Array) and value.shape:
             value_axis = value.axes.id
             if not value_axis.iscompatible(id_axis):
-                raise ValueError("incompatible id axis between value column and LColumnArray:\n"
-                                 "length: {} vs {}\n"
-                                 "ids: {} vs {}"
-                                 .format(len(value_axis), len(id_axis), repr(value_axis), repr(id_axis)))
+                raise ValueError(f"incompatible id axis between value column and LColumnArray:\n"
+                                 f"length: {len(value_axis)} vs {len(id_axis)}\n"
+                                 f"ids: {repr(value_axis)} vs {repr(id_axis)}")
             return value
         else:
             # expand scalars (like ndarray does) so that we don't have to
@@ -400,9 +401,9 @@ class LColumnArray:
         """key must be a vector of int indices"""
 
         if not isinstance(key, np.ndarray):
-            raise ValueError("key is {} and not ndarray".format(type(key).__name__))
+            raise ValueError(f"key is {type(key).__name__} and not ndarray")
         if not np.issubdtype(key.dtype, np.integer):
-            raise ValueError("key dtype is {} and not one of the integer types".format(key.dtype))
+            raise ValueError(f"key dtype is {key.dtype} and not one of the integer types")
         self.axes = la.AxisCollection(self.axes.id.subaxis(key))
 
         # using gc.collect() after each column update frees a bit of memory but slows things down significantly.
@@ -550,32 +551,35 @@ def assert_valid_type(array, wanted_type, context=None):
         actual_names = set(name for name, _ in actual_fields)
         missing = wanted_names - actual_names
         if missing:
-            raise Exception("Missing field(s) in hdf5 input file: %s"
-                            % ', '.join(missing))
+            raise Exception("Missing field(s) in hdf5 input file:",
+                            ', '.join(missing))
+
+        common_names = wanted_names & actual_names
 
         # check that types match
-        common_fields1 = sorted((name, type_) for name, type_ in actual_fields
-                                if name in wanted_names)
-        common_fields2 = sorted((name, type_) for name, type_ in wanted_fields
-                                if name in actual_names)
+        actual_types = sorted((name, type_) for name, type_ in actual_fields
+                              if name in common_names)
+        wanted_types = sorted((name, type_) for name, type_ in wanted_fields
+                              if name in common_names)
         bad_fields = []
-        for (name1, t1), (name2, t2) in zip(common_fields1, common_fields2):
+        for (name1, actual_type), (name2, wanted_type) in zip(actual_types, wanted_types):
             # this can happen if we have duplicates in wanted_fields
-            assert name1 == name2, "%s != %s" % (name1, name2)
-            if t1 != t2:
-                bad_fields.append((name1, t2.__name__, t1.__name__))
+            assert name1 == name2, f"{name1} != {name2}"
+            if actual_type != wanted_type:
+                bad_fields.append((name1, wanted_type.__name__, actual_type.__name__))
         if bad_fields:
-            bad_fields_str = "\n".join(" - %s: %s instead of %s" % f
-                                       for f in bad_fields)
+            bad_fields_str = "\n".join(
+                f" - {name}: {actual} instead of {wanted}"
+                for name, wanted, actual in bad_fields)
             raise Exception("Field types in hdf5 input file differ from those "
-                            "defined in the simulation:\n%s" % bad_fields_str)
+                            f"defined in the simulation:\n{bad_fields_str}")
     else:
         assert isinstance(wanted_type, type)
         actual_type = normalize_type(array.dtype.type)
         if actual_type != wanted_type:
-            raise Exception("Field type for '%s' in hdf5 input file is '%s' "
-                            "instead of '%s'" % (context, actual_type.__name__,
-                                                 wanted_type.__name__))
+            raise Exception(f"Field type for '{context}' in hdf5 input file "
+                            f"is '{actual_type.__name__}' "
+                            f"instead of '{wanted_type.__name__}'")
 
 
 def add_and_drop_fields(array, output_fields, default_values=None,
@@ -682,8 +686,8 @@ def merge_arrays(array1, array2, result_fields='union', default_values=None):
     elif result_fields == 'array1':
         output_fields = fields1
     else:
-        raise ValueError('%s in not a valid value for result_fields argument' %
-                         result_fields)
+        raise ValueError(f'{result_fields} in not a valid value '
+                         f'for result_fields argument')
 
     output_dtype = np.dtype(output_fields)
 
@@ -899,9 +903,8 @@ def index_table(table):
         period, row_id = row['period'], row['id']
         if period != current_period:
             if current_period is not None and period < current_period:
-                msg = "data is not ordered by period " \
-                      "({} at data line {} is < {})"
-                raise Exception(msg.format(period, idx + 1, current_period))
+                raise Exception(f"data is not ordered by period ({period} at "
+                                f"data line {idx + 1} is < {current_period})")
             if start_row is not None:
                 rows_per_period[current_period] = start_row, idx
                 # assumes the data is sorted on period then id
@@ -914,11 +917,11 @@ def index_table(table):
             extra = [-1] * (row_id - max_id_so_far)
             temp_id_to_rownum.extend(extra)
         if temp_id_to_rownum[row_id] != -1:
-            msg = "duplicate row for id {} for period {} (at data line {})"
             # idx + 1 is correct for ViTables, which starts counting at 1, but
             # is still off by one (or more) for .csv files because of headers
             # and comments
-            raise Exception(msg.format(row_id, period, idx + 1))
+            raise Exception(f"duplicate row for id {row_id} for period "
+                            f"{period} (at data line {idx + 1})")
         temp_id_to_rownum[row_id] = idx - start_row
         max_id_so_far = max(max_id_so_far, row_id)
     if current_period is not None:
@@ -944,8 +947,8 @@ def index_table_light(table, index='period'):
         if value != current_value:
             # 0 > None is True
             if value < current_value:
-                msg = "data is not ordered by {} ({} at data line {} is < {})"
-                raise Exception(msg.format(index, value, idx + 1, current_value))
+                raise Exception(f"data is not ordered by {index} ({value} at "
+                                f"data line {idx + 1} is < {current_value})")
             if start_row is not None:
                 rows_per_period[current_value] = (start_row, idx)
             start_row = idx
@@ -966,7 +969,7 @@ class IndexedTable:
     # stick with something simple for now.
     def read(self, period, ids=None, field=None):
         if period not in self.period_index:
-            raise Exception('no data for period %d' % period)
+            raise Exception(f'no data for period {period}')
         if ids is None:
             start, stop = self.period_index[period]
             return self.table.read(start=start, stop=stop, field=field)
@@ -1016,7 +1019,7 @@ def handle_constant_globals(globals_def):
 
 
 def index_tables(globals_def, entities, fpath):
-    print("reading data from %s ..." % fpath)
+    print(f"reading data from {fpath} ...")
     input_file = tables.open_file(fpath)
     try:
         input_root = input_file.root
@@ -1038,8 +1041,8 @@ def index_tables(globals_def, entities, fpath):
                 continue
 
             if name not in globals_node:
-                raise Exception("could not find 'globals/%s' in the input "
-                                "data file" % name)
+                raise Exception(f"could not find 'globals/{name}' in the "
+                                f"input data file")
 
             global_data = getattr(globals_node, name)
 
@@ -1063,7 +1066,7 @@ def index_tables(globals_def, entities, fpath):
                 # prefer to work with simple lists
                 # also files serialized using Python2 are "bytes" not "str"
                 dim_names = [str(dim_name) for dim_name in dim_names]
-                pvalues = [getattr(attrs, 'dim%d_pvalues' % i)
+                pvalues = [getattr(attrs, f'dim{i}_pvalues')
                            for i in range(len(dim_names))]
                 axes = [la.Axis(labels, axis_name)
                         for axis_name, labels in zip(dim_names, pvalues)]
@@ -1202,7 +1205,7 @@ class H5Sink(DataSink):
                     output_table = output_file.create_table(
                         output_entities, entity.name,
                         entity.fields.in_output.dtype,
-                        title="%s table" % entity.name)
+                        title=f"{entity.name} table")
                     output_index = {}
 
                 # entity.indexed_output_table = IndexedTable(output_table,
@@ -1211,7 +1214,7 @@ class H5Sink(DataSink):
                 entity.output_index = output_index
                 entity.output_rows = output_rows
                 entity.table = output_table
-                print("done (%s elapsed)." % time2str(time.time() - start_time))
+                print(f"done ({time2str(time.time() - start_time)} elapsed).")
         except:
             output_file.close()
             raise

@@ -18,7 +18,7 @@ try:
     # set interactive mode
     # plt.ion()
 except ImportError as e:
-    msg = "charts functionality is not available because 'matplotlib.pyplot' could not be imported (%s)." % e
+    msg = f"charts functionality is not available because 'matplotlib.pyplot' could not be imported ({e})."
     print("Warning:", msg)
     if not config.debug:
         e = ImportError(msg).with_traceback(sys.exc_info()[2])
@@ -51,8 +51,7 @@ class Chart(FunctionExpr, FileProducer):
 
     def prepare(self, args, kwargs):
         ndim_req = self.ndim_req
-        dimerror = ValueError("%s() only works on %d or %d dimensional data"
-                              % (self.funcname, ndim_req - 1, ndim_req))
+        dimerror = False
         if self.check_length and len(args) > 1:
             if all(np.isscalar(a) for a in args):
                 args = [np.asarray(args)]
@@ -61,6 +60,7 @@ class Chart(FunctionExpr, FileProducer):
                 if any(len(a) != length for a in args):
                     raise ValueError("when plotting multiple arrays, they must "
                                      "have compatible axes")
+        data = None
         if len(args) == 1:
             data = args[0]
             if not isinstance(data, (np.ndarray, la.Array)):
@@ -80,11 +80,13 @@ class Chart(FunctionExpr, FileProducer):
                 else:
                     data = data[np.newaxis]
             else:
-                raise dimerror
+                dimerror = True
         elif all(ndim(a) == ndim_req - 1 for a in args):
             data = args
         else:
-            raise dimerror
+            dimerror = True
+        if dimerror:
+            raise ValueError(f"{self.funcname}() only works on {ndim_req - 1} or {ndim_req} dimensional data")
         return data, get_axes(data)
 
     def compute(self, context, *args, **kwargs):
@@ -126,7 +128,7 @@ class Chart(FunctionExpr, FileProducer):
             exts = [exts[0]] + ['.' + ext for ext in exts[1:]]
             for ext in exts:
                 fname = (root + ext).format(entity=entity.name, period=period)
-                print("writing to", fname, "...", end=' ')
+                print(f"writing to {fname} ...", end=' ')
                 plt.savefig(os.path.join(config.output_directory, fname))
 
         # explicit close is needed for Qt backend
@@ -141,12 +143,12 @@ class Chart(FunctionExpr, FileProducer):
             numticks = min(maxticks, numvalues)
             step = int(math.ceil(numvalues / float(numticks)))
 
-            set_axis_ticks = getattr(ax, 'set_%sticks' % name)
+            set_axis_ticks = getattr(ax, f'set_{name}ticks')
             set_axis_ticks(np.arange(0, numvalues, step))
             if axis.name is not None:
-                set_axis_label = getattr(ax, 'set_%slabel' % name)
+                set_axis_label = getattr(ax, f'set_{name}label')
                 set_axis_label(axis.name)
-            set_axis_ticklabels = getattr(ax, 'set_%sticklabels' % name)
+            set_axis_ticklabels = getattr(ax, f'set_{name}ticklabels')
             set_axis_ticklabels(axis.labels[::step])
         return set_axis
     set_xaxis = _set_axis_method('x')
@@ -228,7 +230,7 @@ class Scatter(Chart):
 
 
 class Plot(Chart):
-    show_grid = True
+    show_grid = False
 
     def __init__(self, *args, **kwargs):
         Chart.__init__(self, *args, **kwargs)
@@ -267,7 +269,7 @@ class StackPlot(Chart):
 
 
 class Bar(Chart):
-    show_grid = True
+    show_grid = False
 
     def _draw(self, data, colors, **kwargs):
         data = np.asarray(data)
@@ -289,7 +291,7 @@ class Bar(Chart):
 
 
 class BarH(Bar):
-    show_grid = True
+    show_grid = False
 
     def _draw(self, data, colors, **kwargs):
         data = np.asarray(data)

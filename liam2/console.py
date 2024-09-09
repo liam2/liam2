@@ -17,11 +17,11 @@ period_required = \
     "the 'period' command before evaluating any query"
 
 help_template = """
-%s
+{header}
     help:            print this help
     help [function]: print the available arguments for a function
     q[uit] or exit:  quit the program
-    %s
+    {extra_commands}
     entities:        list the available entities
     entity [name]:   set the current entity to another entity
     periods:         list the available periods for the current entity
@@ -58,7 +58,7 @@ class Console:
         try:
             return self.eval_ctx.entities[name]
         except KeyError:
-            print("entity '%s' does not exist" % name)
+            print(f"entity '{name}' does not exist")
             self.list_entities()
             return None
 
@@ -94,8 +94,8 @@ class Console:
             period = self.period
             if period is not None and period not in self._list_periods():
                 self.period = None
-                raise InvalidPeriod("entity '%s' has no data for period %d"
-                                    % (self.entity.name, self.period))
+                raise InvalidPeriod(f"entity '{self.entity.name}' has no data "
+                                    f"for period {self.period}")
 
     def _list_periods(self):
         return self.eval_ctx.entity_data.list_periods()
@@ -104,8 +104,8 @@ class Console:
         if self.entity is None:
             raise Exception(entity_required)
 
-        periods = self._list_periods()
-        print("available periods: %s" % ', '.join(str(p) for p in periods))
+        periods = ', '.join(str(p) for p in self._list_periods())
+        print(f"available periods: {periods}")
 
     def _display_period(self):
         if self.period is None:
@@ -117,8 +117,8 @@ class Console:
         try:
             period = int(period)
             if self.entity is not None and period not in self._list_periods():
-                raise InvalidPeriod("entity '%s' has no data for period %d"
-                                    % (self.entity.name, period))
+                raise InvalidPeriod(f"entity '{self.entity.name}' has no data "
+                                    f"for period {period}")
             self.period = period
             self._display_period()
         except InvalidPeriod:
@@ -141,10 +141,11 @@ class Console:
         print("globals:")
         for k, v in self.eval_ctx.global_tables.items():
             if isinstance(v, np.ndarray) and v.dtype.names:
-                details = ": " + ", ".join(v.dtype.names)
+                field_names = ', '.join(v.dtype.names)
+                details = f": {field_names}"
             else:
                 details = ""
-            print("* %s%s" % (k, details))
+            print(f"* {k}{details}")
 
     def list_functions(self):
         # TODO: group functions by module
@@ -179,15 +180,16 @@ class Console:
 
     def run(self, debugger=False):
         if debugger:
-            help_text = help_template % (
-                "Commands:", """
+            help_text = help_template.format(
+                header="Commands:",
+                extra_commands="""
     s[tep]:          execute the next process
     r[esume]:        resume normal execution
 """)
         else:
-            help_text = help_template % (
-                "Welcome to LIAM2 interactive console.",
-                "")
+            help_text = help_template.format(
+                header="Welcome to LIAM2 interactive console.",
+                extra_commands="")
         if not debugger:
             print(help_text)
         self._display_entity()
@@ -246,6 +248,6 @@ class Console:
     def display_function_help(self, funcname):
         func = functions[funcname]
         argstr = str(func.argspec) if hasattr(func, 'argspec') else ''
-        print('{}({})'.format(funcname, argstr))
+        print(f'{funcname}({argstr})')
         if func.__doc__:
             print(func.__doc__)

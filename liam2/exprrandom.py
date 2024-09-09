@@ -110,8 +110,8 @@ class Choice(NumpyRandom):
             expr = a[-1]
             # iterate in reverse and skip last
             for i, proba_i, outcome_i in zip(range(len(a) - 1, 0, -1), cdf[-2::-1], a[-2::-1]):
-                data['p%d' % i] = proba_i
-                expr = Where(ComparisonOp('<', u, Variable(context.entity, 'p%d' % i)),
+                data[f'p{i}'] = proba_i
+                expr = Where(ComparisonOp('<', u, Variable(context.entity, f'p{i}')),
                              outcome_i, expr)
             local_ctx = context.clone(fresh_data=True, entity_data=data)
             return expr.evaluate(local_ctx)

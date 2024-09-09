@@ -25,7 +25,7 @@ def dropfields(input_path, output_path, todrop):
                                  if fname not in todrop])
         size = (len(table) * table.dtype.itemsize) / 1024.0 / 1024.0
         # noinspection PyProtectedMember
-        print(" * copying table %s (%.2f Mb) ..." % (table._v_name, size),
+        print(f" * copying table {table._v_name} ({size:.2f} Mb) ...",
               end=' ')
         copy_table(table, output_entities, output_dtype)
         print("done.")
@@ -38,12 +38,12 @@ if __name__ == '__main__':
     import sys
     import platform
 
-    print("LIAM HDF5 drop fields %s using Python %s (%s)\n" % \
-          (__version__, platform.python_version(), platform.architecture()[0]))
+    print(f"LIAM2 HDF5 drop fields {__version__} using Python "
+          f"{platform.python_version()} ({platform.architecture()[0]})\n")
 
     args = sys.argv
     if len(args) < 4:
-        print("Usage: %s inputpath outputpath field1 [field2 ...]" % args[0])
+        print(f"Usage: {args[0]} inputpath outputpath field1 [field2 ...]")
         sys.exit()
 
     timed(dropfields, args[1], args[2], args[3:])

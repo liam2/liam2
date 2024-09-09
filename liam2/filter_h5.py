@@ -7,7 +7,7 @@ __version__ = "0.4"
 
 
 def filter_h5(input_path, output_path, condition, copy_globals=True):
-    print("filtering for '%s'" % condition)
+    print(f"filtering for '{condition}'")
     input_file = tables.open_file(input_path)
     output_file = tables.open_file(output_path, mode="w")
 
@@ -30,14 +30,15 @@ if __name__ == '__main__':
     import sys
     import platform
 
-    print("LIAM HDF5 filter %s using Python %s (%s)\n" %
-          (__version__, platform.python_version(), platform.architecture()[0]))
+    py_ver = platform.python_version()
+    arch = platform.architecture()[0]
+    print(f"LIAM2 HDF5 filter {__version__} using Python {py_ver} ({arch})\n")
 
     args = dict(enumerate(sys.argv))
     if len(args) < 4:
-        print("""Usage: {} inputpath outputpath condition [copy_globals]
+        print(f"""Usage: {args[0]} inputpath outputpath condition [copy_globals]
 where condition is an expression
-      copy_globals is True (default)|False""".format(args[0]))
+      copy_globals is True (default)|False""")
         sys.exit()
 
     timed(filter_h5, args[1], args[2], args[3], eval(args.get(4, 'True')))

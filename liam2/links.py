@@ -33,10 +33,9 @@ class Link:
         try:
             self._target_entity = entities[target_name]
         except KeyError:
-            raise Exception("Target of '%s' link in entity '%s' is an "
-                            "unknown entity (%s)" % (self._name,
-                                                     self._entity.name,
-                                                     target_name))
+            raise Exception(f"Target of '{self._name}' link in entity "
+                            f"'{self._entity.name}' is an unknown entity "
+                            f"({target_name})")
 
     def _target_context(self, context):
         # we need a "fresh" context (fresh_data=True) so that if we come from
@@ -50,7 +49,7 @@ class Link:
 
     def _reverse_link(self):
         cls = _reverse_cls[self.__class__]
-        name = "_reverse_{}_link".format(self._name)
+        name = f"_reverse_{self._name}_link"
         return cls(name, self._link_field, target_entity_name=self._entity.name, target_entity=self._entity,
                    entity=self._target_entity)
 
@@ -58,8 +57,9 @@ class Link:
         return self._name
 
     def __repr__(self):
-        return "%s(%s, %s, %s)" % (self.__class__.__name__, self._name,
-                                   self._link_field, self._target_entity_name)
+        link_cls = self.__class__.__name__
+        target_entity = self._target_entity_name
+        return f"{link_cls}({self._name}, {self._link_field}, {target_entity})"
 
 
 class Many2One(Link):
@@ -101,6 +101,7 @@ _reverse_cls = {
     Many2One: One2Many,
     One2Many: Many2One,
 }
+
 
 class PrefixingLink:
     def __init__(self, entity, macros, links, prefix):
@@ -160,7 +161,7 @@ class LinkExpression(FunctionExpr):
         args, kwargs = self._original_args
         link, args = args[0], args[1:]
         # noinspection PyProtectedMember
-        return self.format(link._name + "." + self.funcname, args, kwargs)
+        return self.format(f"{link._name}.{self.funcname}", args, kwargs)
 
 
 class LinkGet(LinkExpression):
@@ -247,7 +248,7 @@ class LinkGet(LinkExpression):
     def __repr__(self):
         if (self.missing_value is None and
                 isinstance(self.target_expr, Variable)):
-            return '%s.%s' % (self.link, self.target_expr)
+            return f'{self.link}.{self.target_expr}'
         else:
             return super(LinkGet, self).__repr__()
 
@@ -262,7 +263,7 @@ class Aggregate(LinkExpression):
     def compute(self, context, link, target_expr, target_filter=None, weights=None):
         # assert isinstance(context, EntityContext), \
         #         "one2many aggregates in groupby are currently not supported"
-        assert isinstance(link, One2Many), "%s (%s)" % (link, type(link))
+        assert isinstance(link, One2Many), f"{link} ({type(link)})"
 
         # eg (in household entity):
         # persons: {type: one2many, target: person, field: hh_id}
@@ -314,7 +315,7 @@ class Aggregate(LinkExpression):
 
         if isinstance(expr_value, np.ndarray) and expr_value.shape:
             assert len(source_rows) == len(expr_value), \
-                "%d != %d" % (len(source_rows), len(expr_value))
+                f"{len(source_rows)} != {len(expr_value)}"
 
         return self.eval_rows(source_rows, expr_value, weights_value, context)
 
@@ -430,8 +431,8 @@ def removed_functions():
         ('minlink', Min),
         ('maxlink', Max)
     ]
-    return {name: removed(func, "%s(link, ...)" % name,
-                          "link.%s(...)" % name[:-4])
+    return {name: removed(func, f"{name}(link, ...)",
+                          f"link.{name[:-4]}(...)")
             for name, func in to_remove}
 
 

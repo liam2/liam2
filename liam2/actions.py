@@ -29,7 +29,7 @@ class QuickShow(Show):
 
     def compute(self, context, *args):
         titles = [str(expr) for expr in self.args]
-        print('\n'.join('%s: %s' % (title, value)
+        print('\n'.join(f'{title}: {value}'
                         for title, value in zip(titles, args)),
               end=' ')
 
@@ -146,10 +146,8 @@ class RemoveIndividuals(FunctionExpr):
 #        id_to_rownum[ids] = np.arange(len(ids), dtype=int)
 #        entity.id_to_rownum = id_to_rownum
         if config.log_level == "processes":
-            print("%d %s(s) removed (%d -> %d)"
-                  % (filter_value.sum(), entity.name, len_before,
-                     len(entity.array)),
-                  end=' ')
+            print(f"{filter_value.sum()} {entity.name}(s) removed "
+                  f"({len_before} -> {len(entity.array)})", end=' ')
 
         # TODO: in the case of remove(), we should update (take a subset of) all
         # the cache keys matching the entity, but with the current code,
@@ -171,7 +169,7 @@ class Assert(FunctionExpr):
 
     def __init__(self, *args, **kwargs):
         assert self.argspec.args[-1] == 'msg', \
-               "%s.compute MUST have 'msg' as its last argument" % self.__class__.__name__
+            f"{self.__class__.__name__}.compute MUST have 'msg' as its last argument"
         FunctionExpr.__init__(self, *args, **kwargs)
 
     def evaluate(self, context):
@@ -191,7 +189,7 @@ class Assert(FunctionExpr):
                 else:
                     if isinstance(msg, tuple):
                         msg = ' '.join(str(v) for v in msg)
-                    msg = '{}: {}'.format(failure, msg)
+                    msg = f'{failure}: {msg}'
                 if config.assertions == "warn":
                     # if config.log_level == "processes":
                     print("FAILED:", msg, end=' ')
@@ -233,9 +231,9 @@ class ComparisonAssert(Assert):
             details = ''
         if not result:
             op = self.inv_op
-            # use %r to print values. At least for floats on python2, this yields to a better precision.
-            return "%s %s %s (%r %s %r)%s" % (self.args[0], op, self.args[1],
-                                              v1, op, v2, details)
+            # use !r to print values. At least for floats on python2, this yields to a better precision.
+            # TODO: check if that still makes any difference on Python3
+            return f"{self.args[0]} {op} {self.args[1]} ({v1!r} {op} {v2!r}){details}"
 
     def compare(self, v1, v2):
         raise NotImplementedError()
@@ -252,7 +250,7 @@ class AssertEqual(ComparisonAssert):
                 isinstance(v2, (np.ndarray, la.Array))):
             v1, v2 = np.asarray(v1), np.asarray(v2)
             if v1.shape != v2.shape:
-                return False, ' (shape differ: %s vs %s)' % (v1.shape, v2.shape)
+                return False, f' (shape differ: {v1.shape} vs {v2.shape})'
             result = np.array_equal(v1, v2)
             nan_v1, nan_v2 = isnan(v1), isnan(v2)
             if (not result and np.any(nan_v1 | nan_v2) and
@@ -301,10 +299,10 @@ class AssertRaises(Assert):
             return "expression did not raise any exception"
         except expected_exception as e:
             if config.debug:
-                print("exception raised (as expected): %r" % e, end=' ')
+                print(f"exception raised (as expected): {e!r}", end=' ')
             return False
         except Exception as e:
-            return "expression raised another exception (%r)" % e
+            return f"expression raised another exception ({e!r})"
 
 
 functions = {

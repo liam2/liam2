@@ -23,15 +23,16 @@ from liam2.tfunc import ValueForPeriod, Lag, Duration
 default_value_by_strtype = {"bool": False, "float": np.nan, 'int': -1}
 max_vars = 0
 
+
 # def compress_column(a, level):
-#    arr = bcolz.carray(a, cparams=bcolz.cparams(level))
-#    print "%d -> %d (%.2f)" % (arr.nbytes, arr.cbytes,
-#                               float(arr.nbytes) / arr.cbytes),
-#    return arr
+#     arr = bcolz.carray(a, cparams=bcolz.cparams(level))
+#     comp_ratio = float(arr.nbytes) / arr.cbytes
+#     print(f"{arr.nbytes} -> {arr.cbytes} ({comp_ratio:.2f})", end=' ')
+#     return arr
 #
 #
 # def decompress_column(a):
-#    return a[:]
+#     return a[:]
 
 
 def get_global_symbols(globals_def):
@@ -60,7 +61,7 @@ def get_global_symbols(globals_def):
                     for name, type_ in global_type)
         else:
             global_type = global_def['type']
-            assert isinstance(global_type, type), "not a type: %s" % global_type
+            assert isinstance(global_type, type), f"not a type: {global_type}"
             symbols[name] = GlobalArray(name, global_type, autoindex)
     return symbols
 
@@ -108,17 +109,15 @@ class Field:
                 default_value = fielddef.pop('default', default_value_by_strtype[strtype])
                 if fielddef:
                     invalid_keywords = [str(definition) for definition in sorted(fielddef.keys())]
-                    raise SyntaxError(
-                        'invalid keyword(s) found in field {} definition: {}'.format(
-                            name, ', '.join(invalid_keywords)
-                            )
-                        )
+                    raise SyntaxError(f'invalid keyword(s) found in field '
+                                      f'{name} definition: '
+                                      f'{", ".join(invalid_keywords)}')
             elif isinstance(fielddef, str):
                 strtype = fielddef
                 default_value = default_value_by_strtype[strtype]
             else:
                 raise Exception('invalid field definition')
-            dtype = field_str_to_type(strtype, "field '%s'" % name)
+            dtype = field_str_to_type(strtype, f"field '{name}'")
         else:
             # it is a type object itself
             assert isinstance(fielddef, type)
@@ -194,8 +193,8 @@ class Entity:
                            in count_occurrences(fields.names)
                            if num > 1]
         if duplicate_names:
-            raise Exception("duplicate fields in entity '%s': %s"
-                            % (self.name, ', '.join(duplicate_names)))
+            raise Exception(f"duplicate fields in entity '{self.name}': "
+                            f"{', '.join(duplicate_names)}")
 
         fnames = set(fields.names)
         if 'id' not in fnames:
@@ -423,7 +422,7 @@ class Entity:
         elif k in global_symbols:
             global_symbol = global_symbols[k]
             if isinstance(global_symbol, GlobalVariable):
-                assert k == global_symbol.name, "{} != {}".format(k, global_symbol.name)
+                assert k == global_symbol.name, f"{k} != {global_symbol.name}"
                 return GlobalAssignment('periodic', k, expr=expr, key_expr=key_expr)
             else:
                 assert isinstance(global_symbol, (GlobalArray, GlobalTable))
@@ -466,7 +465,7 @@ class Entity:
     def parse_process_group(self, k, items, parse_context, purge=True):
         # items is a list of [dict (assignment) or string (action)]
         if items is None:
-            raise ValueError("no processes in '%s'" % k)
+            raise ValueError(f"no processes in '{k}'")
         group_expressions = [list(elem.items())[0] if isinstance(elem, dict) else (None, elem)
                              for elem in items]
         group_assignments = self.collect_predictors(group_expressions, in_process_group=True)
@@ -491,11 +490,11 @@ class Entity:
                 code_def = v
             else:
                 argnames, code_def = [], v
-                template = """\
+                warnings.warn(f"""\
 Function definitions should have parentheses after their name even if they have no argument.
-Please change "{name}:" to "{name}():".
-You probably want to use the "upgrade" command to automatically convert your model file to the new syntax."""
-                warnings.warn(template.format(name=k), UserDeprecationWarning)
+Please change "{k}:" to "{k}():".
+You probably want to use the "upgrade" command to automatically convert your model file to the new syntax.""",
+                              UserDeprecationWarning)
             method_context = self.get_group_parse_context(parse_context, argnames)
             code = self.parse_process_group(k + "_code", code_def,
                                             method_context,
@@ -505,28 +504,23 @@ You probably want to use the "upgrade" command to automatically convert your mod
             args = v.get('args', '')
             code = v.get('code', '')
             result = v.get('return', '')
-            oldargs = "\n      args: {}".format(args) \
+            oldargs = f"\n      args: {args}" \
                 if args else ''
             oldcode = "\n      code:\n          - ..." \
                 if code else ''
-            newcode = "\n      - ..." if code else ''
-            oldresult = "\n      return: " + result \
+            newcode = "\n      - ..."\
+                if code else ''
+            oldresult = f"\n      return: {result}" \
                 if result else ''
-            newresult = "\n      - return " + result \
+            newresult = f"\n      - return {result}" \
                 if result else ''
-            template = """
+            raise SyntaxError(f"""
 This syntax for defining functions with arguments or a return value is not
 supported anymore:
-{funcname}:{oldargs}{oldcode}{oldresult}
+{k}:{oldargs}{oldcode}{oldresult}
 
 Please use this instead:
-{funcname}({newargs}):{newcode}{newresult}"""
-            msg = template.format(funcname=k, oldargs=oldargs,
-                                  oldcode=oldcode,
-                                  oldresult=oldresult,
-                                  newargs=args, newcode=newcode,
-                                  newresult=newresult)
-            raise SyntaxError(msg)
+{k}({args}):{newcode}{newresult}""")
         elif isinstance(v, dict) and 'predictor' in v:
             raise ValueError("Using the 'predictor' keyword is "
                              "not supported anymore. "
@@ -535,31 +529,30 @@ Please use this instead:
                              "should rather use functions.")
         elif isinstance(v, (str, bool, int, float)):
             if k in self.fields.names:
-                msg = """defining a process outside of a function is deprecated because it is ambiguous. You should:
- * wrap the '{name}: {expr}' assignment inside a function like this:
-        compute_{name}:  # you can name it any way you like but simply '{name}' is not recommended !
-            - {name}: {expr}
- * update the simulation.processes list to use 'compute_{name}' (the function name) instead of '{name}'.
+                msg = f"""defining a process outside of a function is deprecated because it is ambiguous. You should:
+ * wrap the '{k}: {v}' assignment inside a function like this:
+        compute_{k}:  # you can name it any way you like but simply '{k}' is not recommended !
+            - {k}: {v}
+ * update the simulation.processes list to use 'compute_{k}' (the function name) instead of '{k}'.
 """
             else:
-                msg = """defining a process outside of a function is deprecated because it is ambiguous.
-1) If '{name}: {expr}' is an assignment ('{name}' stores the result of '{expr}'), you should:
+                msg = f"""defining a process outside of a function is deprecated because it is ambiguous.
+1) If '{k}: {v}' is an assignment ('{k}' stores the result of '{v}'), you should:
  * wrap the assignment inside a function, for example, like this:
-        compute_{name}:  # you can name it any way you like but simply '{name}' is not recommended !
-            - {name}: {expr}
- * update the simulation.processes list to use 'compute_{name}' (the function name) instead of '{name}'.
- * add '{name}' in the entities fields with 'output: False'
-2) otherwise if '{expr}' is an expression which does not return any value, you can simply transform it into a function,
+        compute_{k}:  # you can name it any way you like but simply '{k}' is not recommended !
+            - {k}: {v}
+ * update the simulation.processes list to use 'compute_{k}' (the function name) instead of '{k}'.
+ * add '{k}' in the entities fields with 'output: False'
+2) otherwise if '{v}' is an expression which does not return any value, you can simply transform it into a function,
    like this:
-        {name}:
-            - {expr}
+        {k}:
+            - {v}
             """
-            warnings.warn(msg.format(name=k, expr=v),
-                          UserDeprecationWarning)
+            warnings.warn(msg, UserDeprecationWarning)
             # TODO: it would be cleaner if the process was wrapped in a function
             return self.parse_expr(k, v, parse_context)
         else:
-            raise Exception("unknown expression type for %s: %s (%s)" % (k, v, type(v)))
+            raise Exception(f"unknown expression type for {k}: {v} ({type(v)})")
 
     def parse_process(self, k, v, parse_context):
         """
@@ -569,7 +562,8 @@ Please use this instead:
         """
         if k == 'while':
             if isinstance(v, dict):
-                raise SyntaxError("""
+                cond_expr = v['cond']
+                raise SyntaxError(f"""
 This syntax for while is not supported anymore:
 - while:
   cond: {cond_expr}
@@ -578,7 +572,7 @@ This syntax for while is not supported anymore:
 Please use this instead:
 - while {cond_expr}:
   - ...
-""".format(cond_expr=v['cond']))
+""")
             else:
                 raise ValueError("while is a reserved keyword")
         elif k is not None and re.match("while[ (].*", k):
@@ -605,7 +599,7 @@ Please use this instead:
             e = SyntaxError("return is a reserved keyword. To return "
                             "from a function, use 'return expr' "
                             "instead of 'return: expr'")
-            e.liam2context = "while parsing: return: {}".format(v)
+            e.liam2context = f"while parsing: return: {v}"
             raise e
         elif k is None and isinstance(v, str) and v.startswith('return'):
             assert len(v) == 6 or v[6] == ' '
@@ -620,7 +614,7 @@ Please use this instead:
         elif self.is_expr(k, v, in_process_group=True):
             return self.parse_expr(k, v, parse_context)
         else:
-            raise Exception("unknown expression type for %s: %s (%s)" % (k, v, type(v)))
+            raise Exception(f"unknown expression type for {k}: {v} ({type(v)})")
 
     def parse_processes(self, parse_context):
         # TODO: when defining a process outside of a function is no longer allowed, simplify this code
@@ -750,10 +744,9 @@ Please use this instead:
             avgsize = sum(v.dtype.itemsize if isinstance(v, np.ndarray) else 0
                           for v in local_vars) / num_locals
             if config.log_level in ("functions", "processes"):
-                print(("purging {} variables (max {}), will free {} of memory "
-                       "(avg field size: {} b)".format(num_locals, max_vars,
-                                                       size2str(temp_mem),
-                                                       avgsize)))
+                print(f"purging {num_locals} variables (max {max_vars}), "
+                      f"will free {size2str(temp_mem)} of memory "
+                      f"(avg field size: {avgsize} b)")
         for var in local_var_names:
             del temp_vars[var]
 
@@ -765,13 +758,13 @@ Please use this instead:
         # also flush it to disk
         # noinspection PyProtectedMember
         h5file = self.output_index_node._v_file
-        h5file.create_array(self.output_index_node, "_%d" % period,
-                            self.id_to_rownum, "Period %d index" % period)
+        h5file.create_array(self.output_index_node, f"_{period}",
+                            self.id_to_rownum, f"Period {period} index")
 
         # if an old index exists (this is not the case for the first period!),
         # point to the one on the disk, instead of the one in memory,
         # effectively clearing the one in memory
-        idxname = '_%d' % (period - 1)
+        idxname = f'_{period - 1}'
         if idxname in self.output_index_node:
             prev_disk_array = getattr(self.output_index_node, idxname)
             # DiskBackedArray is a workaround for pytables#360 (see above)
@@ -782,10 +775,8 @@ Please use this instead:
             temp_mem = sum(v.nbytes for v in self.temp_variables.values()
                            if isinstance(v, np.ndarray))
             main_mem = self.array.nbytes
-            print("mem used: %s (main: %s / temp: %s)"
-                  % (size2str(temp_mem + main_mem),
-                     size2str(main_mem),
-                     size2str(temp_mem)))
+            print(f"mem used: {size2str(temp_mem + main_mem)} "
+                  f"(main: {size2str(main_mem)} / temp: {size2str(temp_mem)})")
 
         # erase all temporary variables which have been computed this period
         self.temp_variables = {}
@@ -800,9 +791,9 @@ Please use this instead:
             self.flush_index(period)
             self.table.flush()
 
-    #     def compress_period_data(self, level):
+    # def compress_period_data(self, level):
     #     compressed = bcolz.ctable(self.array, cparams=bcolz.cparams(level))
-    #     print "%d -> %d (%f)" % compressed._get_stats()
+    #     print("{:d} -> {:d} ({:f})".format(compressed._get_stats()))
 
     def optimize_processes(self):
         """
@@ -859,7 +850,7 @@ Please use this instead:
         #                 seen[subexpr] = subexpr
 
     def __repr__(self):
-        return "<Entity '%s'>" % self.name
+        return f"<Entity '{self.name}'>"
 
     def __str__(self):
         return self.name

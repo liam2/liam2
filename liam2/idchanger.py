@@ -82,9 +82,10 @@ def table_apply_map(input_table, new_parent, fields_maps):
                 try:
                     value = value_map[value]
                 except KeyError:
-                    print("WARNING: row {row} has {fname} == {value} and this does not correspond to an existing id "
-                          "in the '{table}' table, this value has not been modified !"
-                          .format(row=i, fname=fname, value=value, table=input_table.name))
+                    print(f"WARNING: row {i} has {fname} == {value} and this "
+                          f"does not correspond to an existing id in the "
+                          f"'{input_table.name}' table, this value has not been "
+                          f"modified !")
             newrow[fname] = value
         newrow.append()
         if i % 1000 == 0:
@@ -325,12 +326,12 @@ def change_ids(input_path, output_path, changes, shuffle=False):
 
             new_ids = get_shrink_dict(table.col('id'), shuffle=shuffle)
             if -1 in new_ids:
-                raise Exception('found id == -1 in %s which is invalid (only link '
-                                'columns can be -1)' % ent_name)
+                raise Exception(f'found id == -1 in {ent_name} which is '
+                                f'invalid (only link columns can be -1)')
             # -1 links should stay -1
             new_ids[-1] = -1
             idmaps[ent_name] = new_ids
-            print("done (%s elapsed)." % time2str(time.time() - start_time))
+            print(f"done ({time2str(time.time() - start_time)} elapsed).")
 
     print(" * modifying ids")
     fields_maps = {ent_name: {'id': idmaps[ent_name]}
@@ -381,18 +382,17 @@ def fields_from_entity(entity):
 
 
 if __name__ == '__main__':
-    with tables.open_file('c:/tmp/is/flanders.h5', 'a') as t:
-        sort_table(t.root.entities.person, ['period', 'id'], buffersize=10000)
-
     import sys
     import platform
 
-    print("LIAM2 HDF5 idchanger %s using Python %s (%s)\n" %
-          (__version__, platform.python_version(), platform.architecture()[0]))
+    pyver = platform.python_version()
+    arch = platform.architecture()[0]
+    print(f"LIAM2 HDF5 idchanger {__version__} using Python {pyver} ({arch})\n")
 
     args = sys.argv
     if len(args) < 4:
-        print("""Usage: {} action inputpath outputpath [link_fields|entities]
+        print(f"""\
+Usage: {basename(args[0])} action inputpath outputpath [link_fields|entities]
     where:
       * action must be either 'shuffle', 'shrink' or 'sort'.
         'shuffle' will randomize ids (but keep links consistent)
@@ -410,7 +410,7 @@ if __name__ == '__main__':
       * entities, if given should have the following format:
         entityname1,entityname2,...
         if not given, all entities present in the file will be sorted.
-""".format(basename(args[0])))
+""")
         sys.exit()
 
     action = args[1]

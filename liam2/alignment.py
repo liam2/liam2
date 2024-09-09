@@ -29,11 +29,11 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
     value_idx = filter_to_indices(axis_values == value)
     num_idx = len(value_idx)
     if not num_idx:
-        raise Exception('missing alignment data for %s %s' % (axis_name, value))
+        raise Exception(f'missing alignment data for {axis_name} {value}')
     if num_idx > 1:
-        raise Exception('invalid alignment data for %s %s: there are %d cells'
-                        'for that value (instead of one)'
-                        % (num_idx, axis_name, value))
+        raise Exception(f'invalid alignment data for {num_idx} {axis_name}: '
+                        f'there are {value} cells for that value '
+                        f'(instead of one)')
     value_idx = value_idx[0]
     complete_idx = [slice(None) for _ in range(need.ndim)]
     complete_idx[axis_num] = value_idx
@@ -104,10 +104,11 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
         score_max = max(score)
         score_min = min(score)
         if score_max > 1 or score_min < 0:
-            raise Exception("""Score values are in the interval {} - {}.
+            raise Exception(f"""\
+Score values are in the interval {score_min} - {score_max}.
 Sidewalk alignment can only be used with a score between 0 and 1.
 You may want to use a logistic function.
-""".format(score_min, score_max))
+""")
 
     for members_indices, group_need in zip(groups, need.flat):
         if len(members_indices):
@@ -154,11 +155,9 @@ You may want to use a logistic function.
                 elif method == 'sidewalk':
                     proba_sum = sum(score[sorted_global_indices])
                     if maybe_to_take > round(proba_sum):
-                        raise ValueError(
-                            "Cannot use 'sidewalk' with need = {} > sum of probabilities = round({})".format(
-                                maybe_to_take, proba_sum
-                                )
-                            )
+                        raise ValueError(f"Cannot use 'sidewalk' with need = "
+                                         f"{maybe_to_take} > sum of "
+                                         f"probabilities = round({proba_sum})")
                     u = np.random.uniform() + np.arange(maybe_to_take)
                     # on the random sample, score are cumulated and then, we
                     # extract indices of each value before each value of u
@@ -174,19 +173,20 @@ You may want to use a logistic function.
                 total_overflow += num_always - affected
 
     num_aligned = int(np.sum(aligned))
-    # this assertion is only valid in the non weighted case
+    # this assertion is only valid in the non-weighted case
     should_be_aligned = total_affected + total_overflow - total_underflow
-    assert num_aligned == should_be_aligned, "%d != %d (%d + %d - %d)" % \
-        (num_aligned, should_be_aligned, total_affected, total_overflow, total_underflow)
+    assert num_aligned == should_be_aligned, \
+        (f"{num_aligned} != {should_be_aligned} "
+         f"({total_affected} + {total_overflow} - {total_underflow})")
     num_partitioned = sum(len(g) for g in groups)
     if config.log_level == "processes":
-        print(" %d/%d" % (num_aligned, num_partitioned), end=" ")
+        print(f" {num_aligned}/{num_partitioned}", end=" ")
         if (take_filter is not None) or (leave_filter is not None):
-            print("[take %d, leave %d]" % (take, leave), end=" ")
+            print(f"[take {take}, leave {leave}]", end=" ")
         if total_underflow:
-            print("UNDERFLOW: %d" % total_underflow, end=" ")
+            print(f"UNDERFLOW: {total_underflow}", end=" ")
         if total_overflow:
-            print("OVERFLOW: %d" % total_overflow, end=" ")
+            print(f"OVERFLOW: {total_overflow}", end=" ")
 
     return aligned
 
@@ -248,9 +248,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
         assert isinstance(need, la.Array)
 
         if len(expressions) != len(possible_values):
-            raise Exception("align() expressions and possible_values "
-                            "have different length: %d vs %d"
-                            % (len(expressions), len(possible_values)))
+            raise Exception(
+                f"align() expressions and possible_values have different "
+                f"length: {len(expressions)} vs {len(possible_values)}")
 
         if 'period' in [str(e) for e in expressions]:
             period = context.period
@@ -326,15 +326,15 @@ class AlignmentAbsoluteValues(FilteredExpression):
                 # _handle_frac_need instead of after like it does now).
                 self.past_error = np.zeros(need.shape, dtype=int)
 
-            print("adding %d individuals from last period error"
-                  % np.sum(self.past_error))
+            print(f"adding {np.sum(self.past_error)} individuals from last "
+                  f"period error")
             need += self.past_error
 
         return need
 
     def _display_unaligned(self, expressions, ids, columns, unaligned):
-        print("Warning: %d individual(s) do not fit in any alignment "
-              "category" % np.sum(unaligned))
+        print(f"Warning: {np.sum(unaligned)} individual(s) do not fit in "
+              f"any alignment category")
         header = ['id'] + [str(e) for e in expressions]
         columns = [ids] + columns
         num_rows = len(ids)
@@ -393,9 +393,9 @@ class AlignmentAbsoluteValues(FilteredExpression):
             raise Exception("the 'secondary_axis' argument is only valid in "
                             "combination with the 'link' argument")
         if not isinstance(secondary_axis, (type(None), int, Variable)):
-            raise Exception("'secondary_axis' should be either an integer or "
-                            "an axis name (but got '%s' which is of type '%s')"
-                            % (secondary_axis, type(secondary_axis)))
+            raise Exception(f"'secondary_axis' should be either an integer or "
+                            f"an axis name (but got '{secondary_axis}' which "
+                            f"is of type '{type(secondary_axis)}')")
 
         func = self.align_no_link if link is None else self.align_link
         return func(context, score, need, filter, take, leave, expressions,
@@ -468,15 +468,15 @@ class AlignmentAbsoluteValues(FilteredExpression):
             try:
                 secondary_axis = need.axes.names.index(axis_name)
             except ValueError:
-                raise ValueError("invalid value for secondary_axis: there is "
-                                 "no axis named '%s' in the need array"
-                                 % axis_name)
+                raise ValueError(f"invalid value for secondary_axis: "
+                                 f"there is no axis named '{axis_name}' in "
+                                 f"the need array")
         elif isinstance(secondary_axis, int):
             if secondary_axis >= need.ndim:
-                raise Exception("%d is an invalid value for secondary_axis: "
-                                "it should be smaller than the number of "
-                                "dimension of the need array (%d)"
-                                % (secondary_axis, need.ndim))
+                raise Exception(f"{secondary_axis} is an invalid value for "
+                                f"secondary_axis: it should be smaller than the "
+                                f"number of dimension of the need array "
+                                f"({need.ndim})")
         else:
             assert secondary_axis is None
 

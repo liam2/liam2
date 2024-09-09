@@ -16,15 +16,13 @@ class GroupByArray(la.Array):
         if row_totals is not None:
             height = prod(data.shape[:-1])
             if len(row_totals) != height:
-                raise Exception('size of row totals vector (%s) does not '
-                                'match array shape (%s)' % (len(row_totals),
-                                                            height))
+                raise Exception(f'size of row totals vector ({len(row_totals)})'
+                                f' does not match array shape ({height})')
         if col_totals is not None:
             width = data.shape[-1] if row_totals is None else data.shape[-1] + 1
             if len(col_totals) != width:
-                raise Exception('size of col totals vector (%s) does not '
-                                'match array shape (%s)' % (len(col_totals),
-                                                            width))
+                raise Exception(f'size of col totals vector ({len(col_totals)})'
+                                f' does not match array shape ({width})')
         self.row_totals = row_totals
         self.col_totals = col_totals
 

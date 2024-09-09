@@ -94,7 +94,7 @@ class RankMatching(Matching):
         set1len = set1filtervalue.sum()
         set2len = set2filtervalue.sum()
         numtomatch = min(set1len, set2len)
-        print("matching with %d/%d individuals" % (set1len, set2len))
+        print(f"matching with {set1len}/{set2len} individuals")
         result = np.full(context_length(context), -1, dtype=int)
         if not numtomatch:
             return result
@@ -170,7 +170,7 @@ class SequentialMatching(Matching):
         set2filtervalue = expr_eval(set2filterexpr, context)
         set1len = set1filtervalue.sum()
         set2len = set2filtervalue.sum()
-        print("matching with %d/%d individuals" % (set1len, set2len), end='')
+        print(f"matching with {set1len}/{set2len} individuals", end='')
 
         # TODO: instead of filtering "v.name not in global_tables", we should keep the whole Variable instance and use
         #       that in context.subset, context_keep, et. al. But adding support for Variable in all those
@@ -221,8 +221,7 @@ class SequentialMatching(Matching):
             # we cannot simply take the [:min(set1len, set2len)] indices like in
             # the non-optimized case and iterate over that because we don't know
             # how many groups we will need to match.
-            print(" (%d/%d groups)"
-                  % (context_length(set1), context_length(set2)))
+            print(f" ({context_length(set1)}/{context_length(set2)} groups)")
 
         if isinstance(orderby, str):
             orderbyvalue = np.zeros(context_length(set1))

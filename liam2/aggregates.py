@@ -322,7 +322,7 @@ def wpercentile(a, weights=None, q=50, weights_type='freq'):
     sorted_values = a[ind_sorted]
     sorted_weights = weights[ind_sorted]
     cum_weight = np.cumsum(sorted_weights)
-    assert np.isclose(cum_weight[-1], n), "cum_weight (%f) != n (%f)" % (cum_weight[-1], n)
+    assert np.isclose(cum_weight[-1], n), f"cum_weight ({cum_weight[-1]:f}) != n ({n:f})"
     cum_weight_m1 = cum_weight - 1
 
     # compute target cumulative weight for requested percentile(s)
@@ -386,8 +386,8 @@ class Gini(WeightedFilteredAggregateFunction):
             sumw = cumw[-1]
             sumvalw = cumvalw[-1]
             if sumvalw == 0:
-                print("WARNING: gini(%s, filter=%s): value * weight is all zeros (or nan) for filter"
-                      % (self.args[0], self.args[1]))
+                print(f"WARNING: gini({self.args[0]}, filter={self.args[1]}): "
+                      f"value * weight is all zeros (or nan) for filter")
             # FWIW, this formula with all weights equal to 1 simplifies to the "usual" gini formula without weights,
             # as seen below. Using c = cumxw for concision:
             # cumw = np.arange(1, n + 1)
@@ -403,8 +403,8 @@ class Gini(WeightedFilteredAggregateFunction):
             cumval = np.cumsum(sorted_values, dtype=float)
             sumval = cumval[-1]
             if sumval == 0:
-                print("WARNING: gini(%s, filter=%s): expression is all zeros (or nan) for filter"
-                      % (self.args[0], self.args[1]))
+                print(f"WARNING: gini({self.args[0]}, filter={self.args[1]}): "
+                      f"expression is all zeros (or nan) for filter")
             # From Wikipedia (https://en.wikipedia.org/wiki/Gini_coefficient)
             # G = 1/n * (n + 1 - 2 * (sum((n + 1 - i) * a[i]) / sum(a[i])))
             #                        i=1..n                    i=1..n

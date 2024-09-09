@@ -60,9 +60,9 @@ def upgrade_str(content):
 
 def upgrade_one(inpath, outpath=None):
     if outpath is not None:
-        print("Upgrading '%s'..." % inpath, end=' ')
+        print(f"Upgrading '{inpath}'...", end=' ')
     else:
-        print("* '%s'..." % inpath, end=' ')
+        print(f"* '{inpath}'...", end=' ')
 
     if outpath is None:
         outpath = inpath
@@ -81,9 +81,9 @@ def upgrade_one(inpath, outpath=None):
             backup_path = filename + ".bak"
             i = 2
             while os.path.exists(backup_path):
-                backup_path = filename + ".bak{}".format(i)
+                backup_path = filename + f".bak{i}"
                 i += 1
-            # print("original model copied to: '%s'" % backup_path)
+            # print(f"original model copied to: '{backup_path}'")
             with open(backup_path, "wb") as f:
                 f.write(content)
         else:
@@ -94,9 +94,9 @@ def upgrade_one(inpath, outpath=None):
             f.write(updated_content)
 
         if backup_path is not None:
-            print("done (original copied to '%s')" % backup_path)
+            print(f"done (original copied to '{backup_path}')")
         else:
-            print("done (written to '%s')" % outpath)
+            print(f"done (written to '{outpath}')")
     else:
         print("skipped (nothing to update)")
 
@@ -106,7 +106,7 @@ def upgrade(pattern, outpath=None):
         pattern = os.path.join(pattern, '*.yml')
     fnames = glob(pattern)
     if not fnames:
-        raise ValueError("No file found matching: {}".format(os.path.abspath(pattern)))
+        raise ValueError(f"No file found matching: {os.path.abspath(pattern)}")
 
     if len(fnames) > 1 and outpath is not None:
         raise ValueError("Cannot specify output path when using multiple input files")
@@ -117,11 +117,12 @@ def upgrade(pattern, outpath=None):
 if __name__ == '__main__':
     import sys
 
-    print("LIAM2 model upgrader %s\n" % __version__)
+    print(f"LIAM2 model upgrader {__version__}\n")
 
     args = sys.argv
     if len(args) < 2:
-        print("""\
+        cmd = args[0]
+        print(f"""\
 Usage
 =====
 
@@ -148,7 +149,7 @@ Usage
   {cmd} models/*.yml
   {cmd} */*.yml
   {cmd} examples/demo0?.yml
-""".format(cmd=args[0]))
+""")
         sys.exit()
     try:
         upgrade(args[1], args[2] if len(args) > 2 else None)

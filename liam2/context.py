@@ -61,7 +61,7 @@ class EvaluationContext:
                           'period', 'entity_name', 'filter_expr',
                           'entities_data', 'entity_data'}
         for k, v in kwargs.items():
-            assert k in allowed_kwargs, "%s is not a valid kwarg" % k
+            assert k in allowed_kwargs, f"{k} is not a valid kwarg"
             setattr(res, k, v)
         return res
 
@@ -71,8 +71,7 @@ class EvaluationContext:
 
     @entity.setter
     def entity(self, value):
-        assert value.name in self.entities, '%s not in %s' % (value,
-                                                              self.entities)
+        assert value.name in self.entities, f'{value} not in {self.entities}'
         self.entity_name = value.name
 
     @property
@@ -264,7 +263,7 @@ class EntityContext:
         res = self.copy()
         allowed_kwargs = {'eval_ctx', 'entity', 'extra'}
         for k, v in kwargs.items():
-            assert k in allowed_kwargs, "%s is not a valid kwarg" % k
+            assert k in allowed_kwargs, f"{k} is not a valid kwarg"
             setattr(res, k, v)
         return res
 
@@ -328,8 +327,8 @@ def context_subset(context, index=None, keys=None):
     else:
         assert np.issubdtype(index.dtype, np.bool_)
         assert len(index) == context_length(context), \
-            "boolean index has length %d instead of %d" % \
-            (len(index), context_length(context))
+            (f"boolean index has length {len(index)} "
+             f"instead of {context_length(context)}")
         index = filter_to_indices(index)
         length = len(index)
 
@@ -411,8 +410,8 @@ def context_length(ctx):
         for k, value in ctx.items():
             if isinstance(value, np.ndarray):
                 if usual_len is not None and len(value) != usual_len:
-                    raise Exception('incoherent array lengths: %s''s is %d '
-                                    'while the len of others is %d' %
-                                    (k, len(value), usual_len))
+                    raise Exception(f'incoherent array lengths: {k} is '
+                                    f'{len(value)} while the len of others is '
+                                    f'{usual_len}')
                 usual_len = len(value)
         return usual_len

@@ -274,7 +274,7 @@ class NumexprFunction(AbstractFunction):
 
     def as_string(self):
         args, kwargs = as_string((self.args, self.kwargs))
-        return '%s(%s)' % (self.funcname, self.format_args_str(args, kwargs))
+        return f'{self.funcname}({self.format_args_str(args, kwargs)})'
 
 
 class TableExpression(FunctionExpr):

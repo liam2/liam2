@@ -32,9 +32,9 @@ class Min(CompoundExpression):
         for arg in args[2:]:
             expr = Where(ComparisonOp('<', expr, arg), expr, arg)
 
-            # args = [Symbol('x%d' % i) for i in range(len(self.args))]
+            # args = [Symbol(f'x{i}') for i in range(len(self.args))]
             # ctx = {'__entity__': 'x',
-            #        'x': {'x%d' % i: a for i, a in enumerate(self.args)}}
+            #        'x': {f'x{i}': a for i, a in enumerate(self.args)}}
             # where = Symbol('where')
             # expr = where(a < b, a, b)
             # for arg in self.args[2:]:
@@ -226,7 +226,7 @@ def expand_with_defaults(d, old_array_axes, children_axes, new_array_axes):
             d[name] = new_column
         elif isinstance(value, la.Array) and 'id' in value.axes:
             # TODO: I should make sure this case never happens (so that I can remove the FIXME above)
-            # raise NotImplementedError("other id axis for {}".format(name))
+            # raise NotImplementedError(f"other id axis for {name}")
             extra = la.full(children_axes, get_default_value(value.dtype))
             d[name] = concat((value, extra), 'id')
 
@@ -311,7 +311,7 @@ class New(FilteredExpression):
                                                filter_expr)
             for k, v in kwargs.items():
                 if k not in array.dtype.names:
-                    print("WARNING: {} is unknown, ignoring it!".format(k))
+                    print(f"WARNING: {k} is unknown, ignoring it!")
                     continue
                 value = expr_eval(v, child_context)
                 if isinstance(value, la.Array):
@@ -324,9 +324,8 @@ class New(FilteredExpression):
         assert isinstance(children, LColumnArray)
         num_rows = len(array)
         if config.log_level == "processes":
-            print("%d new %s(s) (%d -> %d)" % (num_birth, target_entity.name,
-                                               num_rows, num_rows + num_birth),
-                  end=' ')
+            print(f"{num_birth} new {target_entity.name}(s) "
+                  f"({num_rows} -> {num_rows + num_birth})", end=' ')
         old_array_axes = array.axes
         array.append(children)
         new_array_axes = array.axes
@@ -458,8 +457,9 @@ class Dump(TableExpression):
         bad_lengths = {str_expr: col.shape[0] for col, str_expr in zip(columns, str_expressions)
                        if col.shape[0] != numrows}
         if bad_lengths:
-            raise ValueError("first dimension of some columns are not the same length as the id column (%d): %s"
-                             % (numrows, str(bad_lengths)))
+            raise ValueError(f"first dimension of some columns are not the "
+                             f"same length as the id column "
+                             f"({numrows}): {str(bad_lengths)}")
 
         if limit is not None:
             assert isinstance(limit, int)
@@ -523,7 +523,7 @@ class Where(NumexprFunction):
 
     def as_string(self):
         args = as_string((self.cond, self.iftrue, self.iffalse))
-        return 'where(%s)' % self.format_args_str(args, [])
+        return f'where({self.format_args_str(args, [])})'
 
     def dtype(self, context):
         assert getdtype(self.cond, context) == bool
@@ -581,7 +581,7 @@ class Seed(FunctionExpr):
     def compute(self, context, seed=None):
         if seed is not None:
             seed = int(seed)
-            print("using fixed random seed: %d" % seed)
+            print(f"using fixed random seed: {seed}")
         else:
             print("resetting random seed")
         random.seed(seed)

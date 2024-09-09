@@ -56,8 +56,8 @@ def convert(iterable, fields, positions=None):
             if rowlen is None:
                 rowlen = len(row)
             elif len(row) != rowlen:
-                raise Exception("invalid row length (%d != %d): %s"
-                                % (len(row), rowlen, row))
+                raise Exception(f"invalid row length ({len(row)} != {rowlen}): "
+                                f"{row}")
 
             # Note that [x for x in y] is generally faster than
             # tuple(x for x in y) but the stream is usually consumed by
@@ -130,8 +130,8 @@ def detect_column_types(iterable):
     for i, colname in enumerate(header):
         coltype = coltypes[i]
         if coltype == 0:
-            print("Warning: column %s is all empty, assuming it is float"
-                  % colname)
+            print(f"Warning: column {colname} is all empty, assuming it is "
+                  f"float")
             coltypes[i] = 3
     num2type = [None, bool, int, float, str]
     return [(name, num2type[coltype])
@@ -144,8 +144,8 @@ def transpose_table(data):
 
     for rownum, row in enumerate(data, 1):
         if len(row) != numcols:
-            raise Exception('line %d has %d columns instead of %d !'
-                            % (rownum, len(row), numcols))
+            raise Exception(f'line {rownum} has {len(row)} columns instead of '
+                            f'{numcols} !')
 
     return [[data[rownum][colnum] for rownum in range(numrows)]
             for colnum in range(numcols)]
@@ -251,8 +251,8 @@ class CSV:
             available = self.field_names
             missing = set(name for name, _ in fields) - set(available)
             if missing:
-                raise Exception("%s does not contain any field(s) named: %s"
-                                % (self.fpath, ", ".join(missing)))
+                raise Exception(f"{self.fpath} does not contain any field(s) "
+                                f"named: {', '.join(missing)}")
             positions = [available.index(name) for name, _ in fields]
         self.rewind()
         self.next()
@@ -284,7 +284,7 @@ def compression_str2filter(compression):
         else:
             complib, complevel = compression, 5
 
-        return ("(using %s level %d compression)" % (complib, complevel),
+        return (f"(using {complib} level {complevel} compression)",
                 tables.Filters(complevel=complevel, complib=complib))
     else:
         return "uncompressed", None
@@ -315,7 +315,7 @@ def stream_to_table(h5file, node, name, fields, datastream, numlines=None,
     # np.array(l[:max_rows])
     datastream = iter(datastream)
     msg, filters = compression_str2filter(compression)
-    print(" - storing %s..." % msg)
+    print(f" - storing {msg}...")
     dtype = np.dtype(fields)
     table = h5file.create_table(node, name, dtype, title=title, filters=filters)
     # buffered load
@@ -347,7 +347,7 @@ def array_to_disk_array(node, name, array, title='', compression=None):
     # noinspection PyProtectedMember
     h5file = node._v_file
     msg, filters = compression_str2filter(compression)
-    print(" - storing %s..." % msg)
+    print(f" - storing {msg}...")
     array_data = np.asarray(array)
     if filters is not None:
         disk_array = h5file.create_carray(node, name, array_data, title,
@@ -363,7 +363,7 @@ def array_to_disk_array(node, name, array, title='', compression=None):
         # attrs.dim1_pvalues = array([d, e])
         # ...
         for i, axis in enumerate(array.axes):
-            setattr(attrs, 'dim%d_pvalues' % i, axis.labels)
+            setattr(attrs, f'dim{i}_pvalues', axis.labels)
     return disk_array
 
 
@@ -408,11 +408,11 @@ def interpolate(target, arrays, id_periods, fields):
     size = sum(row_for_id[period].nbytes for period in periods)
 
     if bcolz is not None:
-        print(" * compressing index (%.2f Mb)..." % (size / MB), end=' ')
+        print(f" * compressing index ({size / MB:.2f} Mb)...", end=' ')
         for period in periods:
             row_for_id[period] = bcolz.carray(row_for_id[period])
         csize = sum(row_for_id[period].cbytes for period in periods)
-        print("done. (%.2f Mb)" % (csize / MB))
+        print(f"done. ({csize / MB:.2f} Mb)")
     else:
         print('bcolz package not found (bcolz is required to use compression '
               'during interpolate)')
@@ -501,7 +501,7 @@ def load(fpath, **kwargs):
     elif ext in {'.h5', '.hdf', '.hdf5'}:
         return la.read_hdf(fpath, **kwargs)
     else:
-        raise ValueError('{ext} is not a supported file extension'.format(ext=ext))
+        raise ValueError(f'{ext} is not a supported file extension')
 
 
 def load_ndarray(fpath, celltype=None, **kwargs):
@@ -522,7 +522,7 @@ def load_ndarray(fpath, celltype=None, **kwargs):
         str_table = []
         for line in line_stream:
             if any(value == '' for value in line):
-                raise Exception("empty cell found in %s" % fpath)
+                raise Exception(f"empty cell found in {fpath}")
             str_table.append(line)
     ndim = len(header)
 
@@ -533,12 +533,11 @@ def load_ndarray(fpath, celltype=None, **kwargs):
 
     unique_last_d, dupe_last_d = unique_duplicate(last_d_pvalues)
     if dupe_last_d:
-        print(("Duplicate column header value(s) (for '%s') in '%s': %s"
-              % (header[-1], fpath,
-                 ", ".join(str(v) for v in dupe_last_d))))
-        raise Exception("bad data in '%s': found %d "
-                        "duplicate column header value(s)"
-                        % (fpath, len(dupe_last_d)))
+        dupe_str = ', '.join(str(v) for v in dupe_last_d)
+        print((f"Duplicate column header value(s) (for '{header[-1]}') in "
+               f"'{fpath}': {dupe_str}"))
+        raise Exception(f"bad data in '{fpath}': found {len(dupe_last_d)} "
+                        f"duplicate column header value(s)")
 
     # handle other dimensions header
 
@@ -552,11 +551,10 @@ def load_ndarray(fpath, celltype=None, **kwargs):
         # combinations.
         dupe_combos = list(duplicates(zip(*headers)))
         if dupe_combos:
-            print(("Duplicate row header value(s) in '%s':" % fpath))
-            print((PrettyTable(dupe_combos)))
-            raise Exception("bad alignment data in '%s': found %d "
-                            "duplicate row header value(s)"
-                            % (fpath, len(dupe_combos)))
+            print(f"Duplicate row header value(s) in '{fpath}':")
+            print(PrettyTable(dupe_combos))
+            raise Exception(f"bad alignment data in '{fpath}': found "
+                            f"{len(dupe_combos)} duplicate row header value(s)")
 
     possible_values = [np.array(list(unique(pvalues))) for pvalues in headers]
     possible_values.append(np.array(unique_last_d))
@@ -567,14 +565,11 @@ def load_ndarray(fpath, celltype=None, **kwargs):
     # transform the 2d table into a 1d list
     str_table = list(chain.from_iterable(str_table))
     if len(str_table) != num_possible_values:
-        raise Exception("incoherent data in '%s': %d data cells "
-                        "found while it should be %d based on the number "
-                        "of possible values in headers (%s)"
-                        % (fpath,
-                           len(str_table),
-                           num_possible_values,
-                           ' * '.join(str(len(values))
-                                      for values in possible_values)))
+        pvalues_shape = ' * '.join(str(len(pv)) for pv in possible_values)
+        raise Exception(f"incoherent data in '{fpath}': {len(str_table)} data "
+                        f"cells found while it should be {num_possible_values} "
+                        f"based on the number of possible values in headers "
+                        f"({pvalues_shape})")
 
     # TODO: compare time with numpy built-in conversion:
     # if dtype is None, numpy tries to detect the best type itself
@@ -597,9 +592,8 @@ def load_table(fpath, fields=None, newnames=None, delimiter=None, transpose=Fals
 
 def load_def(localdir, ent_name, section_def, required_fields):
     if 'type' in section_def and 'fields' in section_def:
-        raise Exception("invalid structure for '%s': "
-                        "type and fields sections are mutually exclusive"
-                        % ent_name)
+        raise Exception(f"invalid structure for '{ent_name}': type and fields "
+                        f"sections are mutually exclusive")
 
     if 'type' in section_def:
         section_def = section_def.copy()
@@ -607,7 +601,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         csv_filepath = complete_path(localdir, csv_filename)
         str_type = section_def.pop('type')
         if isinstance(str_type, str):
-            celltype = field_str_to_type(str_type, "array '%s'" % ent_name)
+            celltype = field_str_to_type(str_type, f"array '{ent_name}'")
         else:
             # assert False
             assert isinstance(str_type, type)
@@ -619,8 +613,8 @@ def load_def(localdir, ent_name, section_def, required_fields):
     if fields_def is not None:
         for fdef in fields_def:
             if isinstance(fdef, str):
-                raise SyntaxError("invalid field declaration: '%s', you are "
-                                  "probably missing a ':'" % fdef)
+                raise SyntaxError(f"invalid field declaration: '{fdef}', "
+                                  f"you are probably missing a ':'")
         if all(isinstance(fdef, dict) for fdef in fields_def):
             fields = fields_yaml_to_type(fields_def)
         else:
@@ -701,8 +695,8 @@ def load_def(localdir, ent_name, section_def, required_fields):
             total_fields = set.union(*[set(f.field_names) for f in files])
             missing = set(name for name, _ in target_fields) - total_fields
             if missing:
-                raise Exception("the following fields were not found in any "
-                                "file: %s" % ", ".join(missing))
+                raise Exception(f"the following fields were not found in any "
+                                f"file: {', '.join(missing)}")
 
         total_lines = len(id_periods)
 
@@ -820,7 +814,7 @@ def csv2h5(fpath, buffersize=10 * MB):
             const_node = h5file.create_group("/", "globals", "Globals")
             for global_name, global_def in globals_def.items():
                 print()
-                print(" %s" % global_name)
+                print(f" {global_name}")
                 req_fields = [('PERIOD', int)] \
                     if global_name == 'periodic' else []
 
@@ -835,7 +829,7 @@ def csv2h5(fpath, buffersize=10 * MB):
                     fields, numlines, datastream, csvfile = info
                     stream_to_table(h5file, const_node, global_name, fields,
                                     datastream, numlines,
-                                    title="%s table" % global_name,
+                                    title=f"{global_name} table",
                                     buffersize=buffersize,
                                     # FIXME: handle invert
                                     compression=compression)
@@ -848,7 +842,7 @@ def csv2h5(fpath, buffersize=10 * MB):
         ent_node = h5file.create_group("/", "entities", "Entities")
         for ent_name, entity_def in content['entities'].items():
             print()
-            print(" %s" % ent_name)
+            print(f" {ent_name}")
             kind, info = load_def(localdir, ent_name,
                                   entity_def, [('period', int), ('id', int)])
             assert kind == "table"
@@ -856,7 +850,7 @@ def csv2h5(fpath, buffersize=10 * MB):
 
             stream_to_table(h5file, ent_node, ent_name, fields,
                             datastream, numlines,
-                            title="%s table" % ent_name,
+                            title=f"{ent_name} table",
                             invert=entity_def.get('invert', []),
                             buffersize=buffersize, compression=compression)
             if csvfile is not None:

@@ -27,7 +27,7 @@ for module in (actions, aggregates, alignment, charts, groupby, links, matching,
 
 
 def to_ast(expr, context):
-    # print("to_ast(%s) in entity: %s" % (expr, context['__entity__']))
+    # print(f"to_ast({expr}) in entity: {context['__entity__']}")
     if isinstance(expr, Node):
         return expr.to_ast(context)
     elif isinstance(expr, list):
@@ -64,10 +64,10 @@ def binop(opname, kind='binary', reversed=False):
 class Node:
     # make sure we do not use "normal" python logical operators (and, or, not)
     def __nonzero__(self):
-        raise Exception("Improper use of boolean operators, you probably "
-                        "forgot parenthesis around operands of an 'and' or "
-                        "'or' expression. The complete expression cannot be "
-                        "displayed but it contains: '%s'." % str(self))
+        raise Exception(f"Improper use of boolean operators, you probably "
+                        f"forgot parenthesis around operands of an 'and' or "
+                        f"'or' expression. The complete expression cannot be "
+                        f"displayed but it contains: '{str(self)}'.")
 
     __lt__ = binop('<', 'comparison')
     __le__ = binop('<=', 'comparison')
@@ -147,7 +147,7 @@ class Symbol(Node):
         elif name in globals_context:
             return globals_context[name]
         else:
-            raise NameError("name '{}' is not defined in '{}'".format(name, entity_name))
+            raise NameError(f"name '{name}' is not defined in '{entity_name}'")
 
     def __str__(self):
         return self.name
@@ -164,7 +164,7 @@ class SubscriptNode(Node):
         return to_ast(self.node, context)[to_ast(self.key, context)]
 
     def __str__(self):
-        return '%s[%s]' % (self.node, self.key)
+        return f'{self.node}[{self.key}]'
 
 
 class AttrNode(Node):
@@ -181,7 +181,7 @@ class AttrNode(Node):
         return getattr(to_ast(self.node, context), self.key)
 
     def __str__(self):
-        return '%s.%s' % (self.node, self.key)
+        return f'{self.node}.{self.key}'
 
 
 class UnaryOpNode(Node):
@@ -264,7 +264,7 @@ class CallNode(Node):
         return callable_ast(*args, **kwargs)
 
     def __str__(self):
-        return '%s(%s, %s)' % (self.callable_, self.args, self.kwargs)
+        return f'{self.callable_}({self.args}, {self.kwargs})'
 
 # household.get(age * sex)
 #

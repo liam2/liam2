@@ -3,8 +3,9 @@
 # script to start a new release cycle
 # Licence: GPLv3
 from os.path import join
-from make_release import relname2fname, short, long_release_name
 from shutil import copy
+
+from make_release import relname2fname, short, long_release_name
 
 
 def add_release(release_name):
@@ -18,28 +19,25 @@ def add_release(release_name):
 
     # include release changelog in changes.rst
     fpath = r'doc\usersguide\source\changes.rst'
-    changelog_template = """{title}
-{underline}
+    with open(fpath) as f:
+        lines = f.readlines()
+        title = f"Version {short(release_name)}"
+        if lines[5] == title + '\n':
+            print(f"changes.rst not modified (it already contains {title})")
+            return
+        this_version = f"""{title}
+{"=" * len(title)}
 
 In development.
 
-.. include:: {fpath}
-
-
+.. include:: {'changes/' + fname}
+   
+    
 """
-
-    with open(fpath) as f:
-        lines = f.readlines()
-        title = "Version %s" % short(release_name)
-        if lines[5] == title + '\n':
-            print("changes.rst not modified (it already contains %s)" % title)
-            return
-        this_version = changelog_template.format(title=title,
-                                                 underline="=" * len(title),
-                                                 fpath='changes/' + fname)
         lines[5:5] = this_version.splitlines(True)
     with open(fpath, 'w') as f:
         f.writelines(lines)
+
 
 if __name__ == '__main__':
     from sys import argv

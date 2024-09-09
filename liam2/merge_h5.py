@@ -42,7 +42,7 @@ def merge_group(parent1, parent2, name, output_file, index_col):
         if ent_name in ent_names1:
             table1 = getattr(group1, ent_name)
             # noinspection PyProtectedMember
-            print(" * indexing table from %s ..." % group1._v_file.filename,
+            print(f" * indexing table from {group1._v_file.filename} ...",
                   end=' ')
             input1_rows = index_table_light(table1, index_col)
             print("done.")
@@ -53,7 +53,7 @@ def merge_group(parent1, parent2, name, output_file, index_col):
         if ent_name in ent_names2:
             table2 = getattr(group2, ent_name)
             # noinspection PyProtectedMember
-            print(" * indexing table from %s ..." % group2._v_file.filename,
+            print(f" * indexing table from {group2._v_file.filename} ...",
                   end=' ')
             input2_rows = index_table_light(table2, index_col)
             print("done.")
@@ -121,12 +121,12 @@ if __name__ == '__main__':
     import sys
     import platform
 
-    print("LIAM HDF5 merge %s using Python %s (%s)\n" %
-          (__version__, platform.python_version(), platform.architecture()[0]))
+    print(f"LIAM HDF5 merge {__version__} using Python "
+          f"{platform.python_version()} ({platform.architecture()[0]})\n")
 
     args = sys.argv
     if len(args) < 4:
-        print("Usage: %s inputpath1 inputpath2 outputpath" % args[0])
+        print(f"Usage: {args[0]} inputpath1 inputpath2 outputpath")
         sys.exit()
 
     timed(merge_h5, args[1], args[2], args[3])

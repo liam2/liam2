@@ -114,7 +114,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
                 unfillable_bins[values] = sn > sa
 
                 rel_need[values] = np.float64(sn) / sa
-    print("missing %d individuals" % np.sum(still_needed))
+    print(f"missing {np.sum(still_needed)} individuals")
     return aligned, still_needed
 
 

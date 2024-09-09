@@ -17,19 +17,16 @@ def unique_dupes(a):
 
 def diff_array(array1, array2, showdiffs=10, raiseondiff=False):
     if len(array1) != len(array2):
-        print("length is different: %d vs %d" % (len(array1),
-                                                 len(array2)))
+        print(f"length is different: {len(array1)} vs {len(array2)}")
         ids1 = array1['id']
         ids2 = array2['id']
         all_ids = np.union1d(ids1, ids2)
         notin1 = np.setdiff1d(ids1, all_ids)
         notin2 = np.setdiff1d(ids2, all_ids)
         if notin1:
-            print("the following ids are not present in file 1:",
-                  notin1)
+            print("the following ids are not present in file 1:", notin1)
         elif notin2:
-            print("the following ids are not present in file 2:",
-                  notin2)
+            print("the following ids are not present in file 2:", notin2)
         else:
             # some ids must be duplicated
             if len(ids1) > len(all_ids):
@@ -49,7 +46,7 @@ def diff_array(array1, array2, showdiffs=10, raiseondiff=False):
     fnames2 = set(array2.dtype.names)
     # use merge_items instead of fnames1 | fnames2 to preserve ordering
     for fname, _ in merge_items((fields1, fields2)):
-        print("  - %s:" % fname, end=' ')
+        print(f"  - {fname}:", end=' ')
         if fname not in fnames1:
             print("missing in file 1")
             continue
@@ -74,7 +71,7 @@ def diff_array(array1, array2, showdiffs=10, raiseondiff=False):
                 print("(length)")
             else:
                 diff_indices = filter_to_indices(col1 != col2)
-                print("(%d differences)" % len(diff_indices))
+                print(f"({len(diff_indices)} differences)")
                 ids = array1['id']
                 if len(diff_indices) > showdiffs:
                     diff_indices = diff_indices[:showdiffs]
@@ -117,7 +114,7 @@ def diff_h5(input1_path, input2_path, numdiff=10):
         input1_periods = list(input1_rows.keys())
         input2_periods = list(input2_rows.keys())
         if input1_periods != input2_periods:
-            print("periods are different in both files for '%s'" % ent_name)
+            print(f"periods are different in both files for '{ent_name}'")
 
         for period in sorted(set(input1_periods) & set(input2_periods)):
             print("* period:", period)
@@ -137,12 +134,14 @@ if __name__ == '__main__':
     import sys
     import platform
 
-    print("LIAM HDF5 diff %s using Python %s (%s)\n" % \
-          (__version__, platform.python_version(), platform.architecture()[0]))
+    print(f"LIAM HDF5 diff {__version__} using "
+          f"Python {platform.python_version()} "
+          f"({platform.architecture()[0]})")
+    print()
 
     args = sys.argv
     if len(args) < 3:
-        print("Usage: %s inputpath1 inputpath2 [numdiff]" % args[0])
+        print(f"Usage: {args[0]} inputpath1 inputpath2 [numdiff]")
         sys.exit()
 
     if len(args) > 3:

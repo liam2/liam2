@@ -82,9 +82,9 @@ def _key_to_axis_indices_dict(self, key):
                 common_axes = axis_key.axes & self
                 could_be_a_filter = len(common_axes) >= 1
                 if could_be_a_filter:
-                    raise ValueError("boolean subset key ({}) is ambiguous because it can be interpreted "
-                                     "either as a filter on the array or as a key on a boolean axis ({})"
-                                     .format(axis_key, ', '.join(bool_axes_names)))
+                    raise ValueError(f"boolean subset key ({axis_key}) is ambiguous because it can be interpreted "
+                                     f"either as a filter on the array or as a key on a boolean axis "
+                                     f"({', '.join(bool_axes_names)})")
                 filtered_key.append(axis_key)
             else:
                 # MONKEY PATCH END OF ADDED LINES

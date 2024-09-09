@@ -29,7 +29,7 @@ class Manager:
         return decorated
 
     def free(self, nbytes):
-        print("mem is full, puring %d elements from cache" % len(self.cache))
+        print(f"mem is full, puring {len(self.cache)} elements from cache")
         self.cache.clear()
 
 

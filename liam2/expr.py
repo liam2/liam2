@@ -10,7 +10,7 @@ from liam2.compat import getargspec
 from liam2.cache import Cache
 from liam2.config import debug
 from liam2.context import EntityContext, EvaluationContext
-from liam2.utils import (ExplainTypeError, safe_take, IrregularNDArray, NiceArgSpec, englishenum, make_hashable,
+from liam2.utils import (ExplainTypeError, safe_take, IrregularNDArray, NiceArgSpec, english_enum, make_hashable,
                          add_context, array_nan_equal)
 
 
@@ -75,7 +75,7 @@ def get_default_value(column_or_dtype, default_value=None):
     if default_value is None:
         default_value = missing_values[normalized_type]
     assert isinstance(default_value, normalized_type), \
-        "%s is not of type %s" % (default_value, normalized_type)
+        f"{default_value} is not of type {normalized_type}"
     return default_value
 
 
@@ -182,7 +182,7 @@ def ispresent(values):
         # return values != missing_values[bool]
         return True
     else:
-        raise Exception('%s is not a supported type for ispresent' % dt)
+        raise Exception(f'{dt} is not a supported type for ispresent')
 
 
 def collect_variables(expr):
@@ -217,8 +217,8 @@ def expr_eval(expr, context):
             # print("vars", expr.collect_variables())
             for var in expr.collect_variables():
                 if var.name not in globals_names and var not in context:
-                    raise Exception("variable '%s' is unknown (it is either "
-                                    "not defined or not computed yet)" % var)
+                    raise Exception(f"variable '{var}' is unknown (it is "
+                                    f"either not defined or not computed yet)")
             return expr.evaluate(context)
 
             # there are several flaws with this approach:
@@ -297,10 +297,10 @@ class Expr:
     # makes sure we do not use "normal" python logical operators
     # (and, or, not)
     def __nonzero__(self):
-        raise Exception("Improper use of boolean operators, you probably "
-                        "forgot parenthesis around operands of an 'and' or "
-                        "'or' expression. The complete expression cannot be "
-                        "displayed but it contains: '%s'." % str(self))
+        raise Exception(f"Improper use of boolean operators, you probably "
+                        f"forgot parenthesis around operands of an 'and' or "
+                        f"'or' expression. The complete expression cannot be "
+                        f"displayed but it contains: '{str(self)}'.")
 
     def evaluate(self, context):
         # period = context.period
@@ -397,7 +397,7 @@ class Expr:
         #     expr_cache[cache_key] = res
         #     if cached_result is not None:
         #         assert np.array_equal(res, cached_result), \
-        #             "%s != %s" % (res, cached_result)
+        #             f"{res} != {cached_result}"
         return res
 
     def as_simple_expr(self, context):
@@ -417,8 +417,9 @@ class Expr:
 
     def __getattr__(self, key):
         if key == '_variables':
-            raise AttributeError("%s (of type '%s') has no attribute '%s'"
-                                     % (self, self.__class__.__name__, key))
+            class_name = self.__class__.__name__
+            raise AttributeError(f"{self} (of type '{class_name}')"
+                                 f" has no attribute '{key}'")
         else:
             return ExprAttribute(self, key)
         # if key in {'data', 'dtype', 'itemsize', 'nbytes', 'ndim', 'shape', 'size',
@@ -449,8 +450,9 @@ class Expr:
         #     # I would like to implement a[bool_idx_wh_axis] instead in LArray
         #     return ExprAttribute(self, key)
         # else:
-        #     raise AttributeError("%s (of type '%s') has no attribute '%s'"
-        #                          % (self, self.__class__.__name__, key))
+        #     class_name = self.__class__.__name__
+        #     raise AttributeError(f"{self} (of type '{class_name}')"
+        #                          f" has no attribute '{key}'")
 
     def traverse(self):
         for child in self.children:
@@ -529,7 +531,7 @@ class Expr:
         return False
 
     def get_tmp_varname(self, context):
-        tmp_varname = '__temp_{}'.format(self.num_tmp)
+        tmp_varname = f'__temp_{self.num_tmp}'
         Expr.num_tmp += 1
         return tmp_varname
 
@@ -576,12 +578,12 @@ class SubscriptedExpr(EvaluableExpression):
     def __repr__(self):
         key = self.key
         if isinstance(key, slice):
-            key_str = '%s:%s' % (key.start, key.stop)
+            key_str = f'{key.start}:{key.stop}'
             if key.step is not None:
-                key_str += ':%s' % key.step
+                key_str += f':{key.step}'
         else:
             key_str = str(key)
-        return '%s[%s]' % (self.expr, key_str)
+        return f'{self.expr}[{key_str}]'
 
     def evaluate(self, context):
         expr_value = expr_eval(self.expr, context)
@@ -718,7 +720,7 @@ class ExprAttribute(EvaluableExpression):
         self.key = key
 
     def __repr__(self):
-        return '%s.%s' % (self.expr, self.key)
+        return f'{self.expr}.{self.key}'
 
     def evaluate(self, context):
         expr_value = expr_eval(self.expr, context)
@@ -726,16 +728,18 @@ class ExprAttribute(EvaluableExpression):
         if hasattr(expr_value, key_value):
             return getattr(expr_value, key_value)
         else:
-            raise AttributeError("%s (of type '%s') has no attribute '%s'"
-                                 % (self, type(expr_value).__name__, key_value))
+            class_name = type(expr_value).__name__
+            raise AttributeError(f"{self} (of type '{class_name}') "
+                                 f"has no attribute '{key_value}'")
 
     def __call__(self, *args, **kwargs):
         return DynamicFunctionCall(self, *args, **kwargs)
 
     def __getattr__(self, key):
         if key == '_variables':
-            raise AttributeError("%s (of type '%s') has no attribute '%s'"
-                                 % (self, self.__class__.__name__, key))
+            class_name = self.__class__.__name__
+            raise AttributeError(f"{self} (of type '{class_name}') "
+                                 f"has no attribute '{key}'")
         else:
             return ExprAttribute(self, key)
 
@@ -779,10 +783,10 @@ class FillArgSpecMeta(FillFuncNameMeta):
                 #         defaults=(1,))
                 spec = getargspec(compute)
             except TypeError:
-                raise Exception('%s is not a pure-Python function so its '
-                                'signature needs to be specified '
-                                'explicitly. See exprmisc.Uniform for an '
-                                'example' % compute.__name__)
+                raise Exception(f'{compute.__name__} is not a pure-Python '
+                                f'function so its signature needs to be '
+                                f'specified explicitly. See exprmisc.Uniform '
+                                f'for an example')
             # On Python >= 3, method attributes appear as functions on the *class* itself
             # (they only appear as methods on the class instances)
             # for methods, strip "self" and "context" args
@@ -826,15 +830,15 @@ class AbstractFunction(Expr, metaclass=FillFuncNameMeta):
         availkwargnames = set(kwargs.keys())
         dupeargnames = availposargnames & availkwargnames
         if dupeargnames:
-            raise TypeError("%s() got multiple values for argument '%s'"
-                            % (funcname, dupeargnames.pop()))
+            raise TypeError(f"{funcname}() got multiple values for "
+                            f"argument '{dupeargnames.pop()}'")
 
         # Check that we do not have invalid kwargs
         extra_kwargs = availkwargnames - allowed_kwargs
         # def f(**kwargs) => argspec.varkw = 'kwargs'
         if extra_kwargs and self.argspec.varkw is None:
-            raise TypeError("%s() got an unexpected keyword argument '%s'"
-                            % (funcname, extra_kwargs.pop()))
+            raise TypeError(f"{funcname}() got an unexpected keyword "
+                            f"argument '{extra_kwargs.pop()}'")
 
         # Check that we do not have too many args
         if self.argspec.varargs is None and nargs > maxargs:
@@ -843,11 +847,12 @@ class AbstractFunction(Expr, metaclass=FillFuncNameMeta):
             # + 1 to be consistent with Python (to account for self) but
             # those will be modified again (-1) in ExplainTypeError
             posargs = str(nreqargs + 1) if nreqargs == maxargs \
-                else "from %d to %d" % (nreqargs + 1, maxargs + 1)
+                else f"from {nreqargs + 1} to {maxargs + 1}"
 
-            msg = "%s() takes %s positional argument%s but %d were given"
-            raise TypeError(msg % (funcname, posargs,
-                                   's' if maxargs > 1 else '', nargs + 1))
+            plural_marker = 's' if maxargs > 1 else ''
+            raise TypeError(f"{funcname}() takes "
+                            f"{posargs} positional argument{plural_marker} "
+                            f"but {nargs + 1} were given")
 
         # Check that we have all required args (passed either as args or kwargs)
         missing = [name for name in reqargnames
@@ -859,11 +864,10 @@ class AbstractFunction(Expr, metaclass=FillFuncNameMeta):
             # f() missing 3 required positional arguments: 'a', 'b', and 'c'
             # + 1 to be consistent with Python (to account for self) but
             # those will be modified again (-1) in ExplainTypeError
-            raise TypeError("%s() missing %d positional argument%s: %s"
-                            % (funcname,
-                               nmissing + 1,
-                               's' if nmissing > 1 else '',
-                               englishenum(repr(a) for a in missing)))
+            plural_marker = 's' if nmissing > 1 else ''
+            arg_names = english_enum(repr(a) for a in missing)
+            raise TypeError(f"{funcname}() missing {nmissing + 1} positional "
+                            f"argument{plural_marker}: {arg_names}")
 
         # save original arguments before we mess with them
         self._original_args = args, sorted(kwargs.items())
@@ -903,14 +907,13 @@ class AbstractFunction(Expr, metaclass=FillFuncNameMeta):
         :param kwargs: list of (k, v) where both k and v are strings
         :return: a single string
         """
-        return ', '.join(list(args) + ['%s=%s' % (k, v) for k, v in kwargs])
+        return ', '.join(list(args) + [f'{k}={v}' for k, v in kwargs])
 
     @staticmethod
     def format(funcname, args, kwargs):
         args = [repr(a) for a in args]
         kwargs = [(str(k), repr(v)) for k, v in kwargs]
-        return '%s(%s)' % (funcname,
-                           AbstractFunction.format_args_str(args, kwargs))
+        return f'{funcname}({AbstractFunction.format_args_str(args, kwargs)})'
 
     def __repr__(self):
         return self.format(self.funcname, *self._original_args)
@@ -949,8 +952,7 @@ class FunctionExpr(EvaluableExpression, AbstractFunction, metaclass=FillArgSpecM
             no_eval = self.no_eval
             assert isinstance(no_eval, tuple) and \
                 all(isinstance(f, str) for f in no_eval), \
-                "no_eval should be a tuple of strings but %r is a %s" \
-                % (no_eval, type(no_eval))
+                f"no_eval should be a tuple of strings but {no_eval!r} is a {type(no_eval)}"
             no_eval = set(no_eval)
 
             argspec = self.argspec
@@ -1043,7 +1045,7 @@ class UnaryOp(Expr):
         return self.__class__(self.op, as_simple_expr(self.expr, context))
 
     def as_string(self):
-        return "(%s%s)" % (self.op, as_string(self.expr))
+        return f"({self.op}{as_string(self.expr)})"
 
     def dtype(self, context):
         return getdtype(self.expr, context)
@@ -1052,7 +1054,7 @@ class UnaryOp(Expr):
     def __repr__(self):
         nicerop = {'~': 'not '}
         niceop = nicerop.get(self.op, self.op)
-        return "(%s%r)" % (niceop, self.expr)
+        return f"({niceop}{self.expr!r})"
 
 
 class BinaryOp(Expr):
@@ -1071,7 +1073,7 @@ class BinaryOp(Expr):
     # We can't simply use __str__ because of where vs if
     def as_string(self):
         expr1, expr2 = as_string(self.expr1), as_string(self.expr2)
-        return "(%s %s %s)" % (expr1, self.op, expr2)
+        return f"({expr1} {self.op} {expr2})"
 
     def dtype(self, context):
         return coerce_types(context, self.expr1, self.expr2)
@@ -1080,7 +1082,7 @@ class BinaryOp(Expr):
     def __repr__(self):
         nicerop = {'&': 'and', '|': 'or'}
         niceop = nicerop.get(self.op, self.op)
-        return "(%r %s %r)" % (self.expr1, niceop, self.expr2)
+        return f"({self.expr1!r} {niceop} {self.expr2!r})"
 
 
 class DivisionOp(BinaryOp):
@@ -1091,8 +1093,8 @@ class LogicalOp(BinaryOp):
     def assertbool(self, expr, context):
         dt = getdtype(expr, context)
         if dt is not bool:
-            raise Exception("operands to logical operators need to be "
-                            "boolean but %s is %s" % (expr, dt))
+            raise Exception(f"operands to logical operators need to be boolean "
+                            f"but {expr} is {dt}")
 
     # TODO: move the tests to a typecheck phase and use dtype = always(bool)
     def dtype(self, context):
@@ -1127,7 +1129,7 @@ class Variable(Expr):
         # self.used = 0
 
     def __repr__(self):
-        return "%s.%s" % (self.entity, self.name)
+        return f"{self.entity}.{self.name}"
 
     def __str__(self):
         return self.name
@@ -1157,12 +1159,12 @@ class GlobalVariable(EvaluableExpression):
         if self.name is None:
             return self.tablename
         else:
-            return "%s.%s" % (self.tablename, self.name)
+            return f"{self.tablename}.{self.name}"
 
     def get_tmp_varname(self, context):
         period = self._eval_key(context)
         if isinstance(period, int):
-            return '__%s_%s_%s' % (self.tablename, self.name, period)
+            return f'__{self.tablename}_{self.name}_{period}'
         else:
             return EvaluableExpression.get_tmp_varname(self, context)
 
@@ -1176,7 +1178,7 @@ class GlobalVariable(EvaluableExpression):
             return globals_table
 
         if self.name not in globals_table.dtype.fields:
-            raise Exception("Unknown global: %s" % self.name)
+            raise Exception(f"Unknown global: {self.name}")
 
         key = self._eval_key(context)
         # TODO: this row computation should be encapsulated in the
@@ -1209,7 +1211,7 @@ class GlobalVariable(EvaluableExpression):
             start, stop = translated_key.start, translated_key.stop
             step = translated_key.step
             if step is not None and step != 1:
-                raise NotImplementedError("step != 1 (%d)" % step)
+                raise NotImplementedError(f"step != 1 ({step})")
             larray_start = isinstance(start, la.Array) and start.shape
             larray_stop = isinstance(stop, la.Array) and stop.shape
             array_start = isinstance(start, np.ndarray) and start.shape
@@ -1314,7 +1316,7 @@ class SubscriptedGlobal(GlobalVariable):
         self.key = key
 
     def __repr__(self):
-        return '%s[%s]' % (self.name, self.key)
+        return f'{self.name}[{self.key}]'
 
     def _eval_key(self, context):
         return expr_eval(self.key, context)
@@ -1347,7 +1349,7 @@ class GlobalArray(EvaluableExpression, Variable):
         self.autoindex = autoindex
 
     def get_tmp_varname(self, context):
-        tmp_varname = '__{}_{}'.format(self.name, self.num_tmp)
+        tmp_varname = f'__{self.name}_{self.num_tmp}'
         Expr.num_tmp += 1
         return tmp_varname
 
@@ -1373,7 +1375,8 @@ class GlobalTable:
     def __repr__(self):
         # Remember this is the expression (only used via qshow, ...), so we do
         # not want to print the data in here
-        return 'Table(%s)' % ', '.join([name for name, _ in self.fields])
+        field_names = ', '.join(name for name, _ in self.fields)
+        return f'Table({field_names})'
 
 
 # XXX: can we factorise this with FunctionExpr et al.?
@@ -1444,10 +1447,10 @@ class MethodSymbol:
         return MethodCall(self.entity, self.name, args, kwargs)
 
     def __repr__(self):
-        return 'MethodSymbol({}, {})'.format(self.name, self.entity)
+        return f'MethodSymbol({self.name}, {self.entity})'
 
     def __str__(self):
-        return '{}.{}'.format(self.entity, self.name)
+        return f'{self.entity}.{self.name}'
 
 
 # a specialized/simplified version of SubscriptedExpr
@@ -1463,12 +1466,12 @@ class DelayedGroup(EvaluableExpression):
     def __repr__(self):
         key = self.key
         if isinstance(key, slice):
-            key_str = '%s:%s' % (key.start, key.stop)
+            key_str = f'{key.start}:{key.stop}'
             if key.step is not None:
-                key_str += ':%s' % key.step
+                key_str += f':{key.step}'
         else:
             key_str = str(key)
-        return 'X.%s[%s]' % (self.axis_ref.name, key_str)
+        return f'X.{self.axis_ref.name}[{key_str}]'
 
     def evaluate(self, context):
         return self.axis_ref[expr_eval(self.key, context)]
@@ -1498,5 +1501,6 @@ class NotHashable(Expr):
 
     def __init__(self):
         pass
+
 
 not_hashable = NotHashable()

@@ -35,14 +35,14 @@ def show_top_times(what, times, count):
     total for top 5 zeros: 0 ms
     """
     total = sum(t for n, t in times)
-    print("top %d %s:" % (count, what))
+    print(f"top {count} {what}:")
     for name, timing in times[:count]:
         try:
             percent = 100.0 * timing / total
         except ZeroDivisionError:
             percent = 100
-        print(" - %s: %s (%d%%)" % (name, time2str(timing), percent))
-    print("total for top %d %s:" % (count, what), end=' ')
+        print(f" - {name}: {time2str(timing)} ({percent:.0f}%)")
+    print(f"total for top {count} {what}:", end=' ')
     print(time2str(sum(timing for name, timing in times[:count])))
 
 
@@ -90,7 +90,7 @@ def handle_imports(content, directory):
     # merged_content = merge(merged_content, imported1.yml)  # merged content has priority over imported1 content
     for fname in imported_files[::-1]:
         import_path = os.path.abspath(os.path.join(directory, fname))
-        print("importing: '%s'" % import_path)
+        print(f"importing: '{import_path}'")
         import_directory = os.path.dirname(import_path)
         with open(import_path) as f:
             imported_content = yaml.safe_load(f)
@@ -243,8 +243,8 @@ class Simulation:
         elif input_method == 'void':
             data_source = VoidSource()
         else:
-            raise ValueError("'%s' is an invalid value for 'method'. It should "
-                             "be either 'h5' or 'void'")
+            raise ValueError(f"'{input_method}' is an invalid value for "
+                             f"'method'. It should be either 'h5' or 'void'")
 
         self.data_source = data_source
         self.data_sink = H5Sink(output_path)
@@ -289,7 +289,7 @@ class Simulation:
         for k, v in content.get('globals', {}).items():
             if isinstance(v, dict):
                 if "type" in v:
-                    v["type"] = field_str_to_type(v["type"], "array '%s'" % k)
+                    v["type"] = field_str_to_type(v["type"], f"array '{k}'")
                 else:
                     # TODO: fields should be optional (would use all the fields
                     # provided in the file)
@@ -301,7 +301,7 @@ class Simulation:
             seed = simulation_def.get('random_seed')
         if seed is not None:
             seed = int(seed)
-            print("using fixed random seed: %d" % seed)
+            print(f"using fixed random seed: {seed}")
             random.seed(seed)
             np.random.seed(seed)
 
@@ -375,7 +375,7 @@ class Simulation:
         if not os.path.isabs(output_dir):
             output_dir = os.path.join(simulation_dir, output_dir)
         if not os.path.exists(output_dir):
-            print("creating directory: '%s'" % output_dir)
+            print(f"creating directory: '{output_dir}'")
             os.makedirs(output_dir)
         config.output_directory = output_dir
 
@@ -464,7 +464,7 @@ class Simulation:
         init_processes = []
         for ent_name, proc_names in init_def:
             if ent_name not in entities:
-                raise Exception("Entity '%s' not found" % ent_name)
+                raise Exception(f"Entity '{ent_name}' not found")
 
             entity = entities[ent_name]
             used_entities.add(ent_name)
@@ -491,7 +491,7 @@ class Simulation:
         unused_entities = declared_entities - used_entities
         if unused_entities:
             suffix = 'y' if len(unused_entities) == 1 else 'ies'
-            print("WARNING: entit%s without any executed process:" % suffix,
+            print(f"WARNING: entit{suffix} without any executed process:",
                   ','.join(sorted(unused_entities)))
 
         input_method = input_def.get('method', 'h5')
@@ -593,15 +593,15 @@ class Simulation:
             ind_per_sec = str(int(total_objects / main_elapsed_time)) \
                 if main_elapsed_time else 'inf'
 
-            print("""
+            print(f"""
 ==========================================
  simulation done
 ==========================================
- * %s elapsed
- * %s individuals on average
- * %s individuals/s/period on average
+ * {time2str(time.time() - start_time)} elapsed
+ * {avg_objects} individuals on average
+ * {ind_per_sec} individuals/s/period on average
 ==========================================
-""" % (time2str(time.time() - start_time), avg_objects, ind_per_sec))
+""")
 
             show_top_processes(process_time, 10)
 #            if config.debug:
@@ -632,8 +632,8 @@ class Simulation:
                     os.remove(output_path)
                     os.rmdir(dirname)
                 except OSError:
-                    print("WARNING: could not delete temporary directory: %r"
-                          % dirname)
+                    print(f"WARNING: could not delete temporary directory: "
+                          f"{dirname!r}")
 
     def simulate_period(self, eval_ctx, period_idx, period, processes, entities,
                         main_start_time, process_time, init=False):
@@ -647,14 +647,14 @@ class Simulation:
         print("period", period, end=" " if config.log_level == "periods" else "\n")
         if init and config.log_level in ("functions", "processes"):
             for entity in entities:
-                print("  * %s: %d individuals" % (entity.name, len(entity.array)))
+                print(f"  * {entity.name}: {len(entity.array)} individuals")
         else:
             if config.log_level in ("functions", "processes"):
                 print("- loading input data")
                 for entity in entities:
                     print("  *", entity.name, "...", end=' ')
                     timed(entity.load_period_data, period)
-                    print("    -> %d individuals" % len(entity.array))
+                    print(f"    -> {len(entity.array)} individuals")
             else:
                 for entity in entities:
                     entity.load_period_data(period)
@@ -671,7 +671,7 @@ class Simulation:
                 eval_ctx.entity_name = process.entity.name
 
                 if config.log_level in ("functions", "processes"):
-                    print("- %d/%d" % (p_num, num_processes), process.name,
+                    print(f"- {p_num}/{num_processes}", process.name,
                           end=' ')
                     print("...", end=' ')
                 if period_idx % periodicity == 0:
@@ -684,7 +684,7 @@ class Simulation:
                 process_time[process.name] += elapsed
                 if config.log_level in ("functions", "processes"):
                     if config.show_timings:
-                        print("done (%s elapsed)." % time2str(elapsed))
+                        print(f"done ({time2str(elapsed)} elapsed).")
                     else:
                         print("done.")
                 self.start_console(eval_ctx)
@@ -694,23 +694,23 @@ class Simulation:
             for entity in entities:
                 print("  *", entity.name, "...", end=' ')
                 timed(entity.store_period_data, period)
-                print("    -> %d individuals" % len(entity.array))
+                print(f"    -> {len(entity.array)} individuals")
         else:
             for entity in entities:
                 entity.store_period_data(period)
-        #            print(" - compressing period data")
-        #            for entity in entities:
-        #                print("  *", entity.name, "..."),
-        #                for level in range(1, 10, 2):
-        #                    print("   %d:" % level),
-        #                    timed(entity.compress_period_data, level)
+        # print(" - compressing period data")
+        # for entity in entities:
+        #     print("  *", entity.name, "..."),
+        #     for level in range(1, 10, 2):
+        #         print(f"   {level}:"),
+        #         timed(entity.compress_period_data, level)
         self.period_objects[period] = sum(len(entity.array) for entity in entities)
         period_elapsed_time = time.time() - period_start_time
         if config.log_level in ("functions", "processes"):
-            print("period %d" % period, end=' ')
+            print(f"period {period}", end=' ')
         print("done", end=' ')
         if config.show_timings:
-            print("(%s elapsed)" % time2str(period_elapsed_time), end="")
+            print(f"({time2str(period_elapsed_time)} elapsed)", end="")
             if init:
                 print(".")
             else:
@@ -720,8 +720,7 @@ class Simulation:
                 avg_time = main_elapsed_time / periods_done
                 # future_time = period_elapsed_time * 0.4 + avg_time * 0.6
                 remaining_time = avg_time * remaining_periods
-                print(" - estimated remaining time: %s."
-                      % time2str(remaining_time))
+                print(f" - estimated remaining time: {time2str(remaining_time)}.")
         else:
             print()
 

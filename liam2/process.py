@@ -44,7 +44,7 @@ class Process:
         raise NotImplementedError()
 
     def __repr__(self):
-        return "<process '%s'>" % self.name
+        return f"<process '{self.name}'>"
 
 
 class Return(Process):
@@ -104,11 +104,11 @@ class Assignment(Process):
             target_type_idx = type_to_idx[target[self.name].dtype.type]
             res_type_idx = type_to_idx[res_type]
             if res_type_idx > target_type_idx:
-                raise Exception(
-                    "trying to store %s value into '%s' field which is of "
-                    "type %s" % (idx_to_type[res_type_idx].__name__,
-                                 self.name,
-                                 idx_to_type[target_type_idx].__name__))
+                res_type_name = idx_to_type[res_type_idx].__name__
+                target_type_name = idx_to_type[target_type_idx].__name__
+                raise Exception(f"Cannot store {res_type_name} value into "
+                                f"'{self.name}' field which is of type "
+                                f"{target_type_name}")
 
         if key_value is None:
             # the whole column is updated
@@ -159,11 +159,10 @@ class GlobalAssignment(Process):
         # target_type_idx = type_to_idx[target[self.name].dtype.type]
         # res_type_idx = type_to_idx[res_type]
         # if res_type_idx > target_type_idx:
-        #     raise Exception(
-        #         "trying to store %s value into '%s' field which is of "
-        #         "type %s" % (idx_to_type[res_type_idx].__name__,
-        #                      self.name,
-        #                      idx_to_type[target_type_idx].__name__))
+        #     raise Exception(f"trying to store "
+        #                     f"{idx_to_type[res_type_idx].__name__} value into "
+        #                     f"'{self.name}' field which is of type "
+        #                     f"{idx_to_type[target_type_idx].__name__}")
 
         if key_value is None:
             print(type(target))
@@ -297,7 +296,7 @@ class ProcessGroup(Process):
         self.calls[(period, self.name)] += 1
         num_calls = self.calls[(period, self.name)]
         if num_calls > 1:
-            return '{}_{}'.format(self.name, num_calls)
+            return f'{self.name}_{num_calls}'
         else:
             return self.name
 
@@ -311,12 +310,11 @@ class ProcessGroup(Process):
         h5file = config.autodump_file
         name = self._tablename(period)
         dtype = np.dtype([(k, v.dtype) for k, v in fields])
-        table = h5file.create_table('/{}'.format(period), name, dtype,
+        table = h5file.create_table(f'/{period}', name, dtype,
                                     createparents=True)
 
         fnames = [k for k, _ in fields]
-        print("writing {} to {}/{}/{} ...".format(', '.join(fnames),
-                                                  fname, period, name))
+        print(f"writing {', '.join(fnames)} to {fname}/{period}/{name} ...")
 
         entity_context = EntityContext(context, self.entity)
         append_carray_to_table(entity_context, table, numrows)
@@ -329,8 +327,8 @@ class ProcessGroup(Process):
 
         fname, numrows = config.autodiff
         h5file = config.autodump_file
-        tablepath = '/p{}/{}'.format(period, self._tablename(period))
-        print("comparing with {}{} ...".format(fname, tablepath))
+        tablepath = f'/p{period}/{self._tablename(period)}'
+        print(f"comparing with {fname}{tablepath} ...")
         if tablepath in h5file:
             table = h5file.getNode(tablepath)
             disk_array = ColumnArray.from_table(table, stop=numrows)
@@ -418,16 +416,16 @@ class Function(Process):
         backup_extra = context.entity_data.extra
 
         if len(args) != len(self.argnames):
-            raise TypeError("%s() takes exactly %d arguments (%d given)" %
-                            (self.name, len(self.argnames), len(args)))
+            raise TypeError(f"{self.name}() takes exactly {len(self.argnames)} "
+                            f"arguments ({len(args)} given)")
 
         # TODO: this should be done in a separate "validate" phase. Unsure we can reliably do it in __init__ in
         # case we decide to parse methods before fields for some reason.
         for name in self.argnames:
             if name in self.entity.fields.names:
-                raise ValueError("function '%s' cannot have an argument named "
-                                 "'%s' because there is a field with the "
-                                 "same name" % (self.name, name))
+                raise ValueError(f"function '{self.name}' cannot have an "
+                                 f"argument named '{name}' because there is a "
+                                 f"field with the same name")
 
         # contextual filter should not transfer to the called function (even
         # if that would somewhat make sense) because in many cases the

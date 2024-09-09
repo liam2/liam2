@@ -37,8 +37,8 @@ def write_traceback(ex_type, e, tb):
                 f.write(e.liam2context)
         return error_path
     except IOError as log_ex:
-        print("WARNING: could not save technical error log "
-              "({} on '{}')".format(log_ex.strerror, log_ex.filename))
+        print(f"WARNING: could not save technical error log "
+              f"({log_ex.strerror} on '{log_ex.filename}')")
     except Exception as log_ex:
         print(log_ex)
     return None
@@ -62,7 +62,7 @@ def print_exception_simplified(ex_type, e, tb):
     error_log_path = write_traceback(ex_type, e, tb)
     if isinstance(e, yaml.parser.ParserError):
         # eg, inconsistent spacing, no space after a - in a list, ...
-        printerr("SYNTAX ERROR {}".format(str(e.problem_mark).strip()))
+        printerr(f"SYNTAX ERROR {str(e.problem_mark).strip()}")
     elif isinstance(e, yaml.scanner.ScannerError):
         # eg, tabs, missing colon for mapping. The reported problem is
         # different when it happens on the first line (no context_mark) and
@@ -80,13 +80,13 @@ def print_exception_simplified(ex_type, e, tb):
             mark = e.problem_mark
         if msg:
             msg = ": " + msg
-        printerr("SYNTAX ERROR {}{}".format(str(mark).strip(), msg))
+        printerr(f"SYNTAX ERROR {str(mark).strip()}{msg}")
     elif isinstance(e, yaml.reader.ReaderError):
         if e.encoding == 'utf8':
-            printerr("\nERROR in '{}': invalid character found, this probably "
+            printerr(f"\nERROR in '{e.name}': invalid character found, this probably "
                      "means you have used non ASCII characters (accents and "
                      "other non-english characters) and did not save your file "
-                     "using the UTF8 encoding".format(e.name))
+                     "using the UTF8 encoding")
         else:
             printerr("\nERROR:", str(e))
     elif isinstance(e, SyntaxError):
@@ -107,7 +107,7 @@ def print_exception_simplified(ex_type, e, tb):
 
 
 def simulate(args):
-    print("Using simulation file: '{}'".format(args.fpath))
+    print(f"Using simulation file: '{args.fpath}'")
 
     simulation = Simulation.from_yaml(args.fpath,
                                       input_dir=args.input_path,
@@ -137,7 +137,7 @@ def simulate(args):
 def explore(fpath):
     _, ext = splitext(fpath)
     ftype = 'data' if ext in ('.h5', '.hdf5') else 'simulation'
-    print("Using {} file: '{}'".format(ftype, fpath))
+    print(f"Using {ftype} file: '{fpath}'")
     if ftype == 'data':
         globals_def, entities = entities_from_h5(fpath)
         simulation = Simulation(globals_def, None, None, None, None,
@@ -231,30 +231,25 @@ class PrintVersionsAction(argparse.Action):
         except ImportError:
             bn_version = 'N/A'
 
-        py_version = '{} ({})'.format(platform.python_version(),
-                                      platform.architecture()[0])
+        py_version = f'{platform.python_version()} ({platform.architecture()[0]})'
         # these should be kept sorted alphabetically for required then
         # alphabetically for optional.
         # we do not include PyQt because it is an indirect dependency. It might
         # be a good idea to include those too, but the list will get long in
         # that case.
-        print("""
-python {py}
-larray {la}
-numexpr {ne}
-numpy {np}
-pandas {pd}
-pytables {pt}
-pyyaml {yml}
-bcolz {bc}
-bottleneck {bn}
-matplotlib {mpl}
-vitables {vt}
-""".format(py=py_version, la=la.__version__, ne=ne.__version__,
-           np=np.__version__, pd=pd.__version__, pt=pt.__version__,
-           yml=yaml.__version__,
-           bc=bcolz_version, bn=bn_version, mpl=mpl_version, vt=vt_version,
-           ))
+        print(f"""
+python {py_version}
+larray {la.__version__}
+numexpr {ne.__version__}
+numpy {np.__version__}
+pandas {pd.__version__}
+pytables {pt.__version__}
+pyyaml {yaml.__version__}
+bcolz {bcolz_version}
+bottleneck {bn_version}
+matplotlib {mpl_version}
+vitables {vt_version}
+""")
         parser.exit()
 
 
@@ -327,14 +322,15 @@ def main():
 will be backed up (to filename.bak) and the upgrade will be
 done in-place."""
     parser_upgrade.add_argument('output', help=out_help, nargs='?')
-    parser_upgrade.epilog = """A few examples:
+    cmd = parser_upgrade.prog
+    parser_upgrade.epilog = f"""A few examples:
 
     {cmd} simulation.yml
     {cmd} simulation.yml simulation_after_upgrade.yml
     {cmd} examples/*.yml
     {cmd} examples/demo0?.yml
     {cmd} */*.yml
-""".format(cmd=parser_upgrade.prog)
+"""
 
     # create the parser for the "view" command
     parser_import = subparsers.add_parser('view', help='view data')
@@ -369,7 +365,7 @@ done in-place."""
     elif action == "view":
         func, args = display, (parsed_args.file,)
     else:
-        raise ValueError("invalid action: {}".format(action))
+        raise ValueError(f"invalid action: {action}")
     return func(*args)
 
 
@@ -377,7 +373,8 @@ if __name__ == '__main__':
     sys.stdout = AutoFlushFile(sys.stdout)
     sys.stderr = AutoFlushFile(sys.stderr)
 
-    print("LIAM2 {} ({})".format(__version__[:-2] if __version__.endswith('.0') else __version__, platform.architecture()[0]))
+    short_version = __version__[:-2] if __version__.endswith('.0') else __version__
+    print(f"LIAM2 {short_version} ({platform.architecture()[0]})")
     print()
 
     main()
