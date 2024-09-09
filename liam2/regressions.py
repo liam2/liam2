@@ -1,7 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
-from liam2.compat import basestring
 from liam2.alignment import Alignment
 from liam2.expr import Expr, Variable, BinaryOp, ComparisonOp, missing_values, getdtype, always
 from liam2.exprbases import CompoundExpression
@@ -27,7 +23,7 @@ class LogitScore(CompoundExpression):
     funcname = 'logit_score'
 
     def build_expr(self, context, expr):
-        if isinstance(expr, basestring):
+        if isinstance(expr, str):
             # assume it is a filename
             expr = ExtExpr(expr)
 

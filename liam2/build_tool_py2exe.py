@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from distutils.core import setup
 
 import py2exe

@@ -162,7 +162,7 @@ def load_agespine(input_path):
 
 # ================================
 
-class TextImporter(object):
+class TextImporter:
     keywords = None
 
     def __init__(self, input_path, fields, obj_type, renames):

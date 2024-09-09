@@ -1,9 +1,7 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
+import os
 
 import numpy as np
 
-from liam2.compat import basestring
 from liam2.expr import firstarg_dtype, ComparisonOp, Variable
 from liam2.exprbases import NumpyRandom, make_np_class, make_np_classes
 from liam2.exprmisc import Where

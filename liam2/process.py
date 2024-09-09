@@ -1,12 +1,8 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import collections
 
 import numpy as np
 
 from liam2 import config
-from liam2.compat import basestring
 from liam2.diff_h5 import diff_array
 from liam2.data import append_carray_to_table, ColumnArray
 from liam2.expr import Expr, Variable, type_to_idx, idx_to_type, expr_eval, expr_cache
@@ -23,7 +19,7 @@ class ReturnException(Exception):
         self.result = result
 
 
-class Process(object):
+class Process:
     def __init__(self, name, entity):
         self.name = name
         self.entity = entity
@@ -308,7 +304,7 @@ class Function(Process):
         Process.__init__(self, name, entity)
 
         assert isinstance(argnames, list)
-        assert all(isinstance(a, basestring) for a in argnames)
+        assert all(isinstance(a, str) for a in argnames)
         self.argnames = argnames
 
         assert code is None or isinstance(code, ProcessGroup)

@@ -1,6 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import csv
 import os.path
 import re
@@ -14,7 +11,6 @@ except ImportError:
 import tables
 import yaml
 
-from liam2.compat import basestring, csv_open
 from liam2.expr import get_default_array
 from liam2.utils import (validate_dict, merge_dicts, merge_items, invert_dict, countlines, skip_comment_cells,
                          strip_rows, PrettyTable, unique, duplicates, unique_duplicate, prod, field_str_to_type,
@@ -159,11 +155,11 @@ def eval_with_template(s, template_context):
     return eval(s.format(**template_context), {'__builtins__': None})
 
 
-class CSV(object):
+class CSV:
     eval_re = re.compile(r'eval\((.*)\)')
 
     def __init__(self, fpath, newnames=None, delimiter=None, transpose=False):
-        f = csv_open(fpath)
+        f = open(fpath, 'r', newline='', encoding='utf8')
         if delimiter is None:
             dialect = csv.Sniffer().sniff(f.read(1024))
 #            dialect = csv.Sniffer().sniff(f.read(1024), ',:|\t')
@@ -564,7 +560,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
         csv_filename = section_def.get('path', ent_name + ".csv")
         csv_filepath = complete_path(localdir, csv_filename)
         str_type = section_def['type']
-        if isinstance(str_type, basestring):
+        if isinstance(str_type, str):
             celltype = field_str_to_type(str_type, "array '%s'" % ent_name)
         else:
             assert isinstance(str_type, type)
@@ -574,7 +570,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
     fields_def = section_def.get('fields')
     if fields_def is not None:
         for fdef in fields_def:
-            if isinstance(fdef, basestring):
+            if isinstance(fdef, str):
                 raise SyntaxError("invalid field declaration: '%s', you are "
                                   "probably missing a ':'" % fdef)
         if all(isinstance(fdef, dict) for fdef in fields_def):
@@ -625,7 +621,7 @@ def load_def(localdir, ent_name, section_def, required_fields):
             if isinstance(files_def[0], dict):
                 # handle YAML ordered dict structure
                 files_items = [list(d.items())[0] for d in files_def]
-            elif isinstance(files_def[0], basestring):
+            elif isinstance(files_def[0], str):
                 files_items = [(path, {}) for path in files_def]
             else:
                 raise Exception("invalid structure for 'files'")

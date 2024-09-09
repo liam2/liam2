@@ -1,13 +1,9 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import sys
 import textwrap
 
 import numpy as np
 
 from liam2 import config
-from liam2.compat import input
 from liam2.entities import global_symbols
 from liam2.expr import expr_eval, Variable
 from liam2.exprtools import parse, functions
@@ -42,7 +38,7 @@ class InvalidPeriod(ValueError):
     pass
 
 
-class Console(object):
+class Console:
     def __init__(self, eval_ctx):
         self.eval_ctx = eval_ctx
 

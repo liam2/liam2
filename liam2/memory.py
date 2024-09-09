@@ -1,6 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import math
 from types import BuiltinFunctionType, FunctionType
 
@@ -8,7 +5,7 @@ from types import BuiltinFunctionType, FunctionType
 from liam2.utils import prod
 
 
-class Manager(object):
+class Manager:
     def __init__(self, cache):
         self.cache = cache
 
@@ -36,7 +33,7 @@ class Manager(object):
         self.cache.clear()
 
 
-class ManagedModule(object):
+class ManagedModule:
     def __init__(self, module, manager, sizefuncs):
         self.module = module
         self.manager = manager

@@ -1,11 +1,7 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import ast
 import re
 import types
 
-from liam2.compat import basestring
 from liam2.expr import UnaryOp, BinaryOp, LogicalOp, ComparisonOp
 from liam2.utils import add_context
 
@@ -63,7 +59,7 @@ def binop(opname, kind='binary', reversed=False):
     return op
 
 
-class Node(object):
+class Node:
     # make sure we do not use "normal" python logical operators (and, or, not)
     def __nonzero__(self):
         raise Exception("Improper use of boolean operators, you probably "
@@ -314,7 +310,7 @@ def _parse(s, interactive=False):
     """
     low level parsing function (string -> Node)
     """
-    if not isinstance(s, basestring):
+    if not isinstance(s, str):
         return s
 
     # \b matches a word boundary

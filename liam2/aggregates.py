@@ -1,6 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import numpy as np
 
 from liam2.expr import (Variable, BinaryOp, getdtype, expr_eval, ispresent, FunctionExpr, always, firstarg_dtype,

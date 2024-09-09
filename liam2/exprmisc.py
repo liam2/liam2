@@ -1,6 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 from itertools import chain
 import os
 import random
@@ -13,7 +10,6 @@ except ImportError:
     scipy = None
 
 from liam2 import config
-from liam2.compat import zip, basestring, long
 from liam2.expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp, LogicalOp, getdtype, coerce_types,
                         expr_eval, as_simple_expr, as_string, collect_variables, get_default_array, get_default_vector,
                         FunctionExpr, always, firstarg_dtype, expr_cache)
@@ -433,7 +429,7 @@ class Dump(TableExpression):
                              % (numrows, str(bad_lengths)))
 
         if limit is not None:
-            assert isinstance(limit, (int, long))
+            assert isinstance(limit, int)
             columns = [col[:limit] for col in columns]
 
         # Transform to Python lists of normal Python types (ie no numpy types).
@@ -582,7 +578,7 @@ class ExtExpr(CompoundExpression):
 class Seed(FunctionExpr):
     def compute(self, context, seed=None):
         if seed is not None:
-            seed = long(seed)
+            seed = int(seed)
             print("using fixed random seed: %d" % seed)
         else:
             print("resetting random seed")

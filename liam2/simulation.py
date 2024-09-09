@@ -1,6 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import tempfile
 import time
 import os.path
@@ -13,7 +10,6 @@ import numpy as np
 import tables
 import yaml
 
-from liam2.compat import basestring
 from liam2.context import EvaluationContext
 from liam2.data import VoidSource, H5Source, H5Sink
 from liam2.entities import Entity, global_symbols
@@ -68,7 +64,7 @@ def expand_periodic_fields(content):
 
 def handle_imports(content, directory):
     import_files = content.get('import', [])
-    if isinstance(import_files, basestring):
+    if isinstance(import_files, str):
         import_files = [import_files]
     for fname in import_files[::-1]:
         import_path = os.path.abspath(os.path.join(directory, fname))
@@ -97,7 +93,7 @@ def handle_imports(content, directory):
     return content
 
 
-class Simulation(object):
+class Simulation:
     yaml_layout = {
         'import': None,
         'globals': {
@@ -313,7 +309,7 @@ class Simulation(object):
             autodump = simulation_def.get('autodump')
         if autodump is True:
             autodump = 'autodump.h5'
-        if isinstance(autodump, basestring):
+        if isinstance(autodump, str):
             # by default autodump will dump all rows
             autodump = (autodump, None)
         config.autodump = autodump
@@ -322,7 +318,7 @@ class Simulation(object):
             autodiff = simulation_def.get('autodiff')
         if autodiff is True:
             autodiff = 'autodump.h5'
-        if isinstance(autodiff, basestring):
+        if isinstance(autodiff, str):
             # by default autodiff will compare all rows
             autodiff = (autodiff, None)
         config.autodiff = autodiff
@@ -448,7 +444,7 @@ class Simulation(object):
             used_entities.add(ent_name)
             for proc_def in proc_defs:
                 # proc_def is simply a process name
-                if isinstance(proc_def, basestring):
+                if isinstance(proc_def, str):
                     # use the default periodicity of 1
                     proc_name, periodicity = proc_def, 1
                 else:

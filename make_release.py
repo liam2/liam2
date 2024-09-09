@@ -6,8 +6,6 @@
 # * git, pscp and outlook in PATH
 # * all tools used for building the doc & exe in PATH
 # * website directory in ../liam2-website
-from __future__ import print_function
-
 import errno
 import fnmatch
 import os
@@ -16,7 +14,6 @@ import stat
 import subprocess
 import sys
 # import tempfile
-import urllib
 import zipfile
 
 from datetime import date
@@ -24,8 +21,6 @@ from os import chdir, makedirs
 from os.path import exists, abspath, dirname
 from shutil import copytree, copy2, rmtree as _rmtree
 from subprocess import check_output, STDOUT, CalledProcessError
-
-from liam2.compat import input
 
 WEBSITE = 'liam2.plan.be'
 TMP_PATH = r"c:\tmp\liam2_new_release"

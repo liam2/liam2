@@ -1,7 +1,10 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 from os.path import splitext, basename
+import csv
+import heapq
+import math
+import operator
+import os
+import tempfile
 import time
 
 import tables

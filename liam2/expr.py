@@ -1,12 +1,10 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
+import inspect
 import types
 from collections import Counter
 
 import numpy as np
 
-from liam2.compat import basestring, PY2, zip, with_metaclass, getargspec
+from liam2.compat import getargspec
 from liam2.cache import Cache
 from liam2.context import EntityContext, EvaluationContext
 from liam2.utils import (LabeledArray, ExplainTypeError, safe_take, IrregularNDArray, NiceArgSpec, englishenum, make_hashable,
@@ -254,7 +252,7 @@ def binop(opname, kind='binary', reverse=False):
     return op
 
 
-class Expr(object):
+class Expr:
     # XXX: I wonder if those couldn't be computed automatically by using
     # isinstance(v, Expr)
     __children__ = ()
@@ -679,11 +677,10 @@ class FillArgSpecMeta(FillFuncNameMeta):
                                 'example' % compute.__name__)
             # On Python >= 3, method attributes appear as functions on the *class* itself
             # (they only appear as methods on the class instances)
-            if isinstance(compute, types.MethodType) or not PY2:
-                # for methods, strip "self" and "context" args
-                args = [arg for arg in spec.args
-                        if arg not in {'self', 'context'}]
-                spec = (args,) + spec[1:]
+            # for methods, strip "self" and "context" args
+            args = [arg for arg in spec.args
+                    if arg not in {'self', 'context'}]
+            spec = (args,) + spec[1:]
             kwonly = cls.kwonlyargs
             # if we have a varkw variable but it was only needed because of
             # kwonly args
@@ -699,7 +696,7 @@ class FillArgSpecMeta(FillFuncNameMeta):
         raise NotImplementedError()
 
 
-class AbstractFunction(with_metaclass(FillFuncNameMeta, Expr)):
+class AbstractFunction(Expr, metaclass=FillFuncNameMeta):
     __children__ = ('args', 'kwargs')
 
     funcname = None
@@ -813,7 +810,7 @@ class AbstractFunction(with_metaclass(FillFuncNameMeta, Expr)):
 
 # this needs to stay in the expr module because of ExprAttribute, which uses
 # DynamicFunctionCall -> GenericFunctionCall -> FunctionExpr
-class FunctionExpr(with_metaclass(FillArgSpecMeta, EvaluableExpression, AbstractFunction)):
+class FunctionExpr(EvaluableExpression, AbstractFunction, metaclass=FillArgSpecMeta):
     """
     Base class for defining (python-level) functions. That is, if you want to
     make a new function available in LIAM2 models, you should inherit from this
@@ -843,7 +840,7 @@ class FunctionExpr(with_metaclass(FillArgSpecMeta, EvaluableExpression, Abstract
         if self.no_eval:
             no_eval = self.no_eval
             assert isinstance(no_eval, tuple) and \
-                all(isinstance(f, basestring) for f in no_eval), \
+                all(isinstance(f, str) for f in no_eval), \
                 "no_eval should be a tuple of strings but %r is a %s" \
                 % (no_eval, type(no_eval))
             no_eval = set(no_eval)
@@ -1190,7 +1187,7 @@ class GlobalArray(Variable):
         return Variable(context.entity, tmp_varname)
 
 
-class GlobalTable(object):
+class GlobalTable:
     def __init__(self, name, fields):
         """fields is a list of tuples (name, type)"""
 
@@ -1261,7 +1258,7 @@ class VariableMethodHybrid(Variable):
 #         return GenericFunctionCall(method, *self.args, **self.kwargs)
 
 
-class MethodSymbol(object):
+class MethodSymbol:
     def __init__(self, name, entity):
         self.name = name
         self.entity = entity

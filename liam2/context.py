@@ -1,12 +1,9 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import numpy as np
 
 from liam2.utils import unique
 
 
-class EvaluationContext(object):
+class EvaluationContext:
     def __init__(self, simulation=None, entities=None, global_tables=None,
                  period=None, entity_name=None, filter_expr=None,
                  entities_data=None):
@@ -160,7 +157,7 @@ class EvaluationContext(object):
         return self.clone(entity_data=empty_context(length))
 
 
-class EntityContext(object):
+class EntityContext:
     def __init__(self, eval_ctx, entity, extra=None):
         self.eval_ctx = eval_ctx
         self.entity = entity

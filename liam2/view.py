@@ -1,6 +1,3 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 #       Copyright (C) 2005-2007 Carabos Coop. V. All rights reserved
 #       Copyright (C) 2008-2013 Vicent Mas. All rights reserved
 #
@@ -24,7 +21,6 @@ import warnings
 import sys
 
 from liam2 import config
-from liam2.compat import PY2
 from liam2.utils import ExceptionOnGetAttr
 
 try:
@@ -33,7 +29,7 @@ try:
 except ImportError as e:
     msg = "the 'view' command is not available because 'vitables' does not seem to be installed correctly (%s)." % e
     print("Warning:", msg)
-    if not config.debug and not PY2:
+    if not config.debug:
         e = ImportError(msg).with_traceback(sys.exc_info()[2])
     VTApp = ExceptionOnGetAttr(e)
     QtWidgets = ExceptionOnGetAttr(e)

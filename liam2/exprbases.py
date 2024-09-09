@@ -1,12 +1,8 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import types
 
 import numpy as np
 
 from liam2 import config
-from liam2.compat import with_metaclass
 from liam2.context import context_length
 from liam2.expr import (FunctionExpr, not_hashable, getdtype, as_simple_expr, as_string, get_default_value, ispresent,
                         LogicalOp, AbstractFunction, always, FillArgSpecMeta)
@@ -44,7 +40,7 @@ from liam2.utils import classproperty, argspec, split_signature
 #         return self._complete_expr
 
 
-class CompoundExpression(with_metaclass(FillArgSpecMeta, AbstractFunction)):
+class CompoundExpression(AbstractFunction, metaclass=FillArgSpecMeta):
     """
     function expression written in terms of other expressions
     """
@@ -124,7 +120,7 @@ class NumpyFunction(FunctionExpr):
             # automatically converted to methods !
             # >>> def f():
             # ...     pass
-            # >>> class A(object):
+            # >>> class A:
             # ...     m = f
             # >>> f
             # <function f at 0x02844470>

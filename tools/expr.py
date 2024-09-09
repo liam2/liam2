@@ -1,5 +1,3 @@
-from __future__ import division
-
 import re
 from orderedset import OrderedSet
 
@@ -97,7 +95,7 @@ def extract_common_subset(e1, e2, flattened=False):
     return None, e1, e2
 
 
-class Expr(object):
+class Expr:
     def __lt__(self, other):
         return ComparisonOp('<', self, other)
     def __le__(self, other):
@@ -935,7 +933,7 @@ class LinkValue(Variable):
     def __init__(self, name, key, missing_value):
         Variable.__init__(self, '%s.%s' % (name, key), int)
 
-class Link(object):
+class Link:
     def __init__(self, name, link_field, target_entity, renames):
         # the leading underscores are necessary to not collide with user-defined
         # fields via __getattr__.

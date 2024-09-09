@@ -1,12 +1,8 @@
-# encoding: utf-8
-from __future__ import absolute_import, division, print_function
-
 import time
 
 import tables
 import numpy as np
 
-from liam2.compat import basestring
 from liam2 import config
 from liam2.expr import normalize_type, get_default_value, get_default_array, get_default_vector, gettype
 from liam2.utils import loop_wh_progress, time2str, safe_put, LabeledArray, timed, MB
@@ -64,7 +60,7 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
     table.flush()
 
 
-class ColumnArray(object):
+class ColumnArray:
     def __init__(self, array=None):
         columns = {}
         if array is not None:
@@ -88,7 +84,7 @@ class ColumnArray(object):
             self.columns = columns
 
     def __getitem__(self, key):
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             return self.columns[key]
         else:
             # int, slice, ndarray
@@ -101,7 +97,7 @@ class ColumnArray(object):
     def __setitem__(self, key, value):
         """does not copy value except if a type conversion is necessary"""
 
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             if isinstance(value, np.ndarray) and value.shape:
                 column = value
             else:
@@ -685,7 +681,7 @@ def index_table_light(table, index='period'):
     return rows_per_period
 
 
-class IndexedTable(object):
+class IndexedTable:
     def __init__(self, table, period_index, id2rownum_per_period):
         self.table = table
         self.period_index = period_index
@@ -713,7 +709,7 @@ class IndexedTable(object):
         return min(self.period_index.keys())
 
 
-class DataSet(object):
+class DataSet:
     pass
 
 
@@ -817,12 +813,12 @@ def index_tables(globals_def, entities, fpath):
     return input_file, {'globals': globals_data, 'entities': entities_tables}
 
 
-class DataSource(object):
+class DataSource:
     def close(self):
         pass
 
 
-class DataSink(object):
+class DataSink:
     def close(self):
         pass
 
