@@ -10,6 +10,10 @@ from liam2.expr import FunctionExpr
 from liam2.utils import get_axes, ExceptionOnGetAttr, ndim, FileProducer
 
 try:
+    import matplotlib
+
+    matplotlib.use('QtAgg')
+
     import matplotlib.pyplot as plt
     # set interactive mode
     # plt.ion()
