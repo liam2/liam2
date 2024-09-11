@@ -41,18 +41,26 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
     return expressions, possible_values, need
 
 
-def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
+def align_get_indices_nd(ctx_length, groups, need: np.ndarray,
+                         filter_value,
+                         score,
                          take_filter=None, leave_filter=None,
                          method="bysorting"):
     assert isinstance(need, np.ndarray) and \
         np.issubdtype(need.dtype, np.integer)
-
-    filter_value = filter_value.data if isinstance(filter_value, la.Array) else filter_value
-    score = score.data if isinstance(score, la.Array) else score
-    take_filter = take_filter.data if isinstance(take_filter, la.Array) else take_filter
-    leave_filter = leave_filter.data if isinstance(leave_filter, la.Array) else leave_filter
-
+    assert (filter_value is None or
+            isinstance(filter_value, np.ndarray) and
+            np.issubdtype(filter_value.dtype, np.bool_))
+    assert (take_filter is None or
+            isinstance(take_filter, bool) or
+            (isinstance(take_filter, np.ndarray) and
+             np.issubdtype(take_filter.dtype, np.bool_)))
+    assert (leave_filter is None or
+            isinstance(leave_filter, bool) or
+            (isinstance(leave_filter, np.ndarray) and
+             np.issubdtype(leave_filter.dtype, np.bool_)))
     assert score is None or isinstance(score, (bool, int, float, np.ndarray))
+    assert method in {'bysorting', 'sidewalk'}
 
     if filter_value is not None:
         bool_filter_value = filter_value.copy()
@@ -445,11 +453,16 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # noinspection PyAugmentAssignment
         need = need * self._get_need_correction(groups, possible_values)
         need = self._handle_frac_need(need, frac_need)
-        need = self._add_past_error(context, need, errors)
-        need = np.asarray(need)
         # FIXME: either handle past_error in no link (currently, the past
         #        error is added... but never computed, so always 0 !) or raise
         #        an error in case errors='carry" is used with no link.
+        need = self._add_past_error(context, need, errors)
+        need = np.asarray(need)
+
+        filter_value = filter_value.data if isinstance(filter_value, la.Array) else filter_value
+        score = score.data if isinstance(score, la.Array) else score
+        take = take.data if isinstance(take, la.Array) else take
+        leave = leave.data if isinstance(leave, la.Array) else leave
         return align_get_indices_nd(ctx_length, groups, need, filter_value,
                                     score, take, leave, method)
 
