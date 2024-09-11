@@ -247,18 +247,6 @@ def expr_eval(expr, context):
         raise
 
 
-def binop(opname, kind='binary', reverse=False):
-    def op(self, other):
-        classes = {'binary': BinaryOp,
-                   'division': DivisionOp,
-                   'logical': LogicalOp,
-                   'comparison': ComparisonOp}
-        class_ = classes[kind]
-        return class_(opname, other, self) \
-            if reverse else class_(opname, self, other)
-    return op
-
-
 # workaround for broken global_dict argument in numexpr
 def evaluate_with_globals(ex, local_dict, global_dict, **kwargs):
     if isinstance(local_dict, dict):
