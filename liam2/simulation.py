@@ -34,7 +34,7 @@ def show_top_times(what, times, count):
      - a: 0 ms (100%)
     total for top 5 zeros: 0 ms
     """
-    total = sum(t for n, t in times)
+    total = sum(timing for name, timing in times)
     print(f"top {count} {what}:")
     for name, timing in times[:count]:
         try:

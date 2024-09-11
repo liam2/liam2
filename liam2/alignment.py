@@ -64,7 +64,7 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
         if isinstance(take_filter, bool):
             take_filter = np.asarray([take_filter])
         take_intersect = take_filter & bool_filter_value
-        take = np.sum(take_intersect)
+        num_take = np.sum(take_intersect)
 
         # XXX: it would probably be faster to leave the filters as boolean
         # vector and do
@@ -77,17 +77,17 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
         take_indices = filter_to_indices(take_intersect)
         maybe_filter &= ~take_filter
     else:
-        take = 0
+        num_take = 0
         take_indices = None
 
     if leave_filter is not None:
         if isinstance(leave_filter, bool):
             leave_filter = np.asarray([leave_filter])
         leave_filter = np.asarray(leave_filter)
-        leave = np.sum(leave_filter & bool_filter_value)
+        num_leave = np.sum(leave_filter & bool_filter_value)
         maybe_filter &= ~leave_filter
     else:
-        leave = 0
+        num_leave = 0
 
     if take_filter is not None or leave_filter is not None:
         maybe_indices = filter_to_indices(maybe_filter)
@@ -182,7 +182,7 @@ You may want to use a logistic function.
     if config.log_level == "processes":
         print(f" {num_aligned}/{num_partitioned}", end=" ")
         if (take_filter is not None) or (leave_filter is not None):
-            print(f"[take {take}, leave {leave}]", end=" ")
+            print(f"[take {num_take}, leave {num_leave}]", end=" ")
         if total_underflow:
             print(f"UNDERFLOW: {total_underflow}", end=" ")
         if total_overflow:

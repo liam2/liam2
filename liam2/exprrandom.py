@@ -47,8 +47,8 @@ class Choice(NumpyRandom):
         (a, p, size, replace), kwargs = NumpyRandom._eval_args(self, context)
         return (a, size, replace, p), kwargs
 
-    def compute(self, context, a, size=None, replace=True, p=None, outcome_axis='__outcome__',
-                autoindex='__other_axes__'):
+    def compute(self, context, a, size=None, replace=True, p=None,
+                outcome_axis='__outcome__', autoindex='__other_axes__'):
         if isinstance(a, la.Array):
             assert p is None
 

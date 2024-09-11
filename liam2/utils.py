@@ -993,11 +993,11 @@ class Or:
                      for option in self.options)
 
 
-def validate_value(v, target, context=''):
+def validate_value(value, target, context=''):
     """
     Parameters
     ----------
-    v : object
+    value : object
         value to validate
     target : None, bool, int, float, str, list, dict or Or
         target to validate against
@@ -1066,40 +1066,42 @@ def validate_value(v, target, context=''):
         # None is meant as "any" object/value not validated
         return
     if isinstance(target, dict):
-        validate_dict(v, target, context)
+        validate_dict(value, target, context)
     elif isinstance(target, list):
-        validate_list(v, target, context)
+        validate_list(value, target, context)
     elif isinstance(target, Or):
         def optiontype(option):
             return option if isinstance(option, type) else type(option)
 
-        correct_type_options = [option for option in target.options if isinstance(v, optiontype(option))]
+        correct_type_options = [option for option in target.options
+                                if isinstance(value, optiontype(option))]
         if not correct_type_options:
             valid_class_names = [cls.__name__ for cls in target.valid_classes]
             raise Exception(f"invalid structure for '{context}': it should be "
                             f"one of {', '.join(valid_class_names)} but it is "
-                            f"a(n) {typename(v)}")
+                            f"a(n) {typename(value)}")
         elif len(correct_type_options) == 1:
-            validate_value(v, correct_type_options[0], context)
+            validate_value(value, correct_type_options[0], context)
         else:
             for potential_target in correct_type_options:
                 try:
-                    validate_value(v, potential_target, context)
+                    validate_value(value, potential_target, context)
                     return
                 except Exception:
                     pass
             options_str = ', '.join(repr(o) for o in target.options)
             raise Exception(f"invalid structure for '{context}': it should be "
-                            f"one of {options_str} but it is {v!r}")
+                            f"one of {options_str} but it is {value!r}")
     elif isinstance(target, type):
-        if not isinstance(v, target):
+        if not isinstance(value, target):
             raise Exception(f"invalid structure for '{context}': it should be "
-                            f"a {target.__name__} but it is a {typename(v)}")
+                            f"a {target.__name__} but it is a {typename(value)}")
     else:
-        # target is an instance of a type, in that case, it must be equal to that instance
-        if v != target:
+        # target is an instance of a type, in that case, it must be equal to
+        # that instance
+        if value != target:
             raise Exception(f"invalid structure for '{context}': "
-                            f"it should be {target!r} but it is {v!r}")
+                            f"it should be {target!r} but it is {value!r}")
 
 
 # fields handling
