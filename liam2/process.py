@@ -93,9 +93,7 @@ class Assignment(Process):
         else:
             res_type = type(value)
 
-        if self.name not in self.entity.fields.names:
-            target = self.entity.temp_variables
-        else:
+        if self.name in self.entity.fields.names:
             # we cannot store/cache self.entity.array[self.name] because the
             # array object can change (eg when enlarging it due to births)
             target = self.entity.array
@@ -109,6 +107,8 @@ class Assignment(Process):
                 raise Exception(f"Cannot store {res_type_name} value into "
                                 f"'{self.name}' field which is of type "
                                 f"{target_type_name}")
+        else:
+            target = self.entity.temp_variables
 
         if key_value is None:
             # the whole column is updated
