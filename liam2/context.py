@@ -344,7 +344,8 @@ def context_subset(context, index=None, keys=None):
             if isinstance(value, np.ndarray) and value.shape:
                 value = value[index]
             elif isinstance(value, la.Array):
-                if value.axes[0].name == 'id':
+                if value.ndim == 1 and value.axes[0].name == 'id':
+                    # avoid computing the new axes (id axis) for each column
                     if new_column_axes is None:
                         old_column_axes = value.axes
                         new_column_axes = la.AxisCollection(old_column_axes.id.subaxis(index))
