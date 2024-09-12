@@ -131,13 +131,13 @@ class AutoFlushFile:
         return getattr(self.f, key)
 
 
-def time2str(seconds, precision="auto"):
+def time2str(ns, precision="auto"):
     """Format a duration in seconds as a string using given precision.
 
     Parameters
     ----------
-    seconds : float
-        Duration (in seconds) to format.
+    ns : int
+        Duration in ns to format.
     precision : str, optional
         Precision of the output. Defaults to 'auto', which displays the
         highest non-zero unit, if its value is above 100, and the two
@@ -149,26 +149,25 @@ def time2str(seconds, precision="auto"):
 
     Examples
     --------
-    >>> time2str(3723.004005006, precision="ns")
+    >>> time2str(3_723_004_005_006, precision="ns")
     '1 hour 2 minutes 3 seconds 4 ms 5 µs 6 ns'
-    >>> time2str(3603.000005, precision="ns")
+    >>> time2str(3_603_000_005_000, precision="ns")
     '1 hour 3 seconds 5 µs'
-    >>> time2str(3750, precision="ns")
+    >>> time2str(3_750_000_000_000, precision="ns")
     '1 hour 2 minutes 30 seconds'
-    >>> time2str(3750, precision="minute")
+    >>> time2str(3_750_000_000_000, precision="minute")
     '1 hour 2 minutes'
-    >>> time2str(3750.0001, precision="minute")
+    >>> time2str(3_750_000_100_000, precision="minute")
     '1 hour 3 minutes'
-    >>> time2str(62.4)
+    >>> time2str(62_400_000_000)
     '1 minute 2 seconds'
-    >>> time2str(3750)
+    >>> time2str(3_750_000_000_000)
     '1 hour 2 minutes'
-    >>> time2str(0.1001)
+    >>> time2str(100_444_000)
     '100 ms'
-    >>> time2str(0.0991)
-    '99 ms 100 µs'
+    >>> time2str(99_001_000)
+    '99 ms 1 µs'
     """
-    ns = round(seconds * 10 ** 9)
     if ns == 0:
         return f"0 {precision if precision != 'auto' else 'second'}"
 
@@ -205,9 +204,10 @@ def time2str(seconds, precision="auto"):
     parts = parts[::-1]
     # if the first (biggest) value is > 99, only show 1 unit, otherwise show 2
     if precision == 'auto':
-        num_units_to_show = 1 if parts[0][0] > 99 else 2
+        threshold = 99 if ns > 10 ** 9 else 9
+        num_units_to_show = 1 if parts[0][0] > threshold else 2
         precision = unit_per_rank[len(parts) - num_units_to_show]
-        return time2str(seconds, precision)
+        return time2str(ns, precision)
 
     return ' '.join(f"{unit_value} {unit}{'s' if unit_value > 1 and unit[-1] != 's' else ''}"
                     for unit_value, unit in parts
@@ -248,9 +248,9 @@ def size2str(value):
 
 
 def gettime(func, *args, **kwargs):
-    start = time.time()
+    start = time.perf_counter_ns()
     res = func(*args, **kwargs)
-    return time.time() - start, res
+    return time.perf_counter_ns() - start, res
 
 
 def timed(func, *args, **kwargs):

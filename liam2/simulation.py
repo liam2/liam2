@@ -529,7 +529,7 @@ class Simulation:
         return {entity.name: entity for entity in self.entities}
 
     def run_single(self, run_console=False, run_num=None):
-        start_time = time.time()
+        start_time = time.perf_counter_ns()
 
         input_dataset = timed(self.data_source.load,
                               self.globals_def,
@@ -579,7 +579,7 @@ class Simulation:
         try:
             self.simulate_period(eval_ctx, 0, self.start_period - 1, self.init_processes,
                                  self.entities, None, process_time, init=True)
-            main_start_time = time.time()
+            main_start_time = time.perf_counter_ns()
             periods = range(self.start_period,
                             self.start_period + self.periods)
             for period_idx, period in enumerate(periods):
@@ -589,15 +589,15 @@ class Simulation:
             total_objects = sum(self.period_objects[period] for period in periods)
             avg_objects = str(total_objects // self.periods) \
                 if self.periods else 'N/A'
-            main_elapsed_time = time.time() - main_start_time
-            ind_per_sec = str(int(total_objects / main_elapsed_time)) \
+            main_elapsed_time = time.perf_counter_ns() - main_start_time
+            ind_per_sec = str(int(total_objects * 10 ** 9 / main_elapsed_time)) \
                 if main_elapsed_time else 'inf'
 
             print(f"""
 ==========================================
  simulation done
 ==========================================
- * {time2str(time.time() - start_time)} elapsed
+ * {time2str(time.perf_counter_ns() - start_time)} elapsed
  * {avg_objects} individuals on average
  * {ind_per_sec} individuals/s/period on average
 ==========================================
@@ -637,7 +637,7 @@ class Simulation:
 
     def simulate_period(self, eval_ctx, period_idx, period, processes, entities,
                         main_start_time, process_time, init=False):
-        period_start_time = time.time()
+        period_start_time = time.perf_counter_ns()
 
         # set current period
         eval_ctx.period = period
@@ -705,7 +705,7 @@ class Simulation:
         #         print(f"   {level}:"),
         #         timed(entity.compress_period_data, level)
         self.period_objects[period] = sum(len(entity.array) for entity in entities)
-        period_elapsed_time = time.time() - period_start_time
+        period_elapsed_time = time.perf_counter_ns() - period_start_time
         if config.log_level in ("functions", "processes"):
             print(f"period {period}", end=' ')
         print("done", end=' ')
@@ -714,7 +714,7 @@ class Simulation:
             if init:
                 print(".")
             else:
-                main_elapsed_time = time.time() - main_start_time
+                main_elapsed_time = time.perf_counter_ns() - main_start_time
                 periods_done = period_idx + 1
                 remaining_periods = self.periods - periods_done
                 avg_time = main_elapsed_time / periods_done

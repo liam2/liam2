@@ -1178,7 +1178,7 @@ class H5Sink(DataSink):
                     print("skipped (no column in output)")
                     continue
 
-                start_time = time.time()
+                start_time = time.perf_counter_ns()
 
                 # main table
                 table = entities_tables.get(ent_name)
@@ -1214,7 +1214,7 @@ class H5Sink(DataSink):
                 entity.output_index = output_index
                 entity.output_rows = output_rows
                 entity.table = output_table
-                print(f"done ({time2str(time.time() - start_time)} elapsed).")
+                print(f"done ({time2str(time.perf_counter_ns() - start_time)} elapsed).")
         except:
             output_file.close()
             raise

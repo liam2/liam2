@@ -321,7 +321,7 @@ def change_ids(input_path, output_path, changes, shuffle=False):
         idmaps = {}
         for ent_name in changes.keys():
             print("    -", ent_name, "...", end=' ')
-            start_time = time.time()
+            start_time = time.perf_counter_ns()
             table = getattr(input_entities, ent_name)
 
             new_ids = get_shrink_dict(table.col('id'), shuffle=shuffle)
@@ -331,7 +331,7 @@ def change_ids(input_path, output_path, changes, shuffle=False):
             # -1 links should stay -1
             new_ids[-1] = -1
             idmaps[ent_name] = new_ids
-            print(f"done ({time2str(time.time() - start_time)} elapsed).")
+            print(f"done ({time2str(time.perf_counter_ns() - start_time)} elapsed).")
 
     print(" * modifying ids")
     fields_maps = {ent_name: {'id': idmaps[ent_name]}
