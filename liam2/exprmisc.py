@@ -194,7 +194,11 @@ class Exp(NumexprFunction):
     dtype = always(float)
 
 
-def expand_with_defaults(d, old_array_axes, children_axes, new_array_axes):
+def expand_with_defaults(d: dict,
+                         old_array_axes: la.AxisCollection,
+                         children_axes: la.AxisCollection,
+                         new_array_axes: la.AxisCollection):
+    assert isinstance(d, dict)
     old_id_axis = old_array_axes.id
     len_before = len(old_id_axis)
     for name, value in d.items():
