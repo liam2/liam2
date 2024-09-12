@@ -519,7 +519,7 @@ class Expr:
         return False
 
     def get_tmp_varname(self, context):
-        tmp_varname = f'__temp_{self.num_tmp}'
+        tmp_varname = f'__temp_{Expr.num_tmp}'
         Expr.num_tmp += 1
         return tmp_varname
 
