@@ -1025,7 +1025,7 @@ def validate_value(value, target, context=''):
     ----------
     value : object
         value to validate
-    target : None, bool, int, float, str, list, dict or Or
+    target : None, bool, int, float, str, list, dict, type or Or
         target to validate against
     context : str, optional
         string describing where we are in the whole structure to validate. For example, if we are validating one
