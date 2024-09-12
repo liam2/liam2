@@ -131,7 +131,7 @@ class AutoFlushFile:
         return getattr(self.f, key)
 
 
-def time2str(seconds, precision="ns"):
+def time2str(seconds, precision="auto"):
     """Format a duration in seconds as a string using given precision.
 
     Parameters
@@ -139,7 +139,9 @@ def time2str(seconds, precision="ns"):
     seconds : float
         Duration (in seconds) to format.
     precision : str, optional
-        Precision of the output. Defaults to "ns".
+        Precision of the output. Defaults to 'auto', which displays the
+        highest non-zero unit, if its value is above 100, and the two
+        highest otherwise.
 
     Returns
     -------
@@ -147,11 +149,29 @@ def time2str(seconds, precision="ns"):
 
     Examples
     --------
-    >>> time2str(3605.2785)
-    >>> time2str(3727.1234567890123456789, precision="ns")
-    >>> time2str(3727.2785, precision="hour")
-
+    >>> time2str(3723.004005006, precision="ns")
+    '1 hour 2 minutes 3 seconds 4 ms 5 µs 6 ns'
+    >>> time2str(3603.000005, precision="ns")
+    '1 hour 3 seconds 5 µs'
+    >>> time2str(3750, precision="ns")
+    '1 hour 2 minutes 30 seconds'
+    >>> time2str(3750, precision="minute")
+    '1 hour 2 minutes'
+    >>> time2str(3750.0001, precision="minute")
+    '1 hour 3 minutes'
+    >>> time2str(62.4)
+    '1 minute 2 seconds'
+    >>> time2str(3750)
+    '1 hour 2 minutes'
+    >>> time2str(0.1001)
+    '100 ms'
+    >>> time2str(0.0991)
+    '99 ms 100 µs'
     """
+    ns = round(seconds * 10 ** 9)
+    if ns == 0:
+        return f"0 {precision if precision != 'auto' else 'second'}"
+
     # for Python 3.7+, we could use a dict (and rely on dict ordering)
     divisors = [
         ('ns', 1000),
@@ -162,7 +182,7 @@ def time2str(seconds, precision="ns"):
         ('hour', 24),
         ('day', 365),
     ]
-    precision_map = {
+    rank_per_unit = {
         'day': 6,
         'hour': 5,
         'minute': 4,
@@ -171,21 +191,27 @@ def time2str(seconds, precision="ns"):
         'µs': 1,
         'ns': 0,
     }
-    int_precision = precision_map[precision]
-    inv_precision = {v: k for k, v in precision_map.items()}
+    unit_per_rank = invert_dict(rank_per_unit)
+    target_unit_rank = rank_per_unit[precision] if precision != 'auto' else 0
+    ns_multiplier = prod([divisor_for_next for unit, divisor_for_next in divisors
+                          if rank_per_unit[unit] < target_unit_rank])
+    value = round(ns / ns_multiplier)
+    parts = []
+    for unit, divisor_for_next in divisors[target_unit_rank:]:
+        value, unit_value = divmod(value, divisor_for_next)
+        parts.append((unit_value, unit))
+        if value == 0:
+            break
+    parts = parts[::-1]
+    # if the first (biggest) value is > 99, only show 1 unit, otherwise show 2
+    if precision == 'auto':
+        num_units_to_show = 1 if parts[0][0] > 99 else 2
+        precision = unit_per_rank[len(parts) - num_units_to_show]
+        return time2str(seconds, precision)
 
-    values = []
-    str_parts = []
-    ns = int(seconds * 10 ** 9)
-    value = ns
-    for cur_precision, (unit, divisor_for_next) in enumerate(divisors):
-        next_value, cur_value = divmod(value, divisor_for_next)
-        if cur_value > 0 and cur_precision >= int_precision:
-            plural_marker = 's' if cur_value > 1 and cur_precision > 2 else ''
-            str_parts.append(f"{cur_value} {unit}{plural_marker}")
-        values.append((unit, cur_value))
-        value = next_value
-    return ' '.join(str_parts[::-1])
+    return ' '.join(f"{unit_value} {unit}{'s' if unit_value > 1 and unit[-1] != 's' else ''}"
+                    for unit_value, unit in parts
+                    if unit_value > 0)
 
 
 def size2str(value):
