@@ -264,7 +264,6 @@ class Expr:
     # XXX: I wonder if those couldn't be computed automatically by using
     # isinstance(v, Expr)
     __children__ = ()
-    num_tmp = 0
 
     def __init__(self):
         raise NotImplementedError()
@@ -518,13 +517,24 @@ class Expr:
                 return True
         return False
 
+
+
+class EvaluableExpression(Expr):
+    num_tmp = 0
+
+    def evaluate(self, context):
+        raise NotImplementedError()
+
     def get_tmp_varname(self, context):
-        tmp_varname = f'__temp_{Expr.num_tmp}'
-        Expr.num_tmp += 1
+        tmp_varname = f'__temp_{EvaluableExpression.num_tmp}'
+        EvaluableExpression.num_tmp += 1
         return tmp_varname
 
-    def add_tmp_var(self, context, value):
+    def add_tmp_var(self, context: EvaluationContext, value):
         tmp_varname = self.get_tmp_varname(context)
+        # assert tmp_varname not in context, f"{tmp_varname} is already in the context"
+        # this can happen because some subclasses reuse temporary variable names
+        # (for example for periodic globals
         if tmp_varname in context:
             prev_value = context[tmp_varname]
             # should be consistent but nan != nan
@@ -538,11 +548,6 @@ class Expr:
         #        have a build_context method.
         context[tmp_varname] = value
         return Variable(context.entity, tmp_varname, gettype(value))
-
-
-class EvaluableExpression(Expr):
-    def evaluate(self, context):
-        raise NotImplementedError()
 
     def as_simple_expr(self, context):
         return self.add_tmp_var(context, self.evaluate(context))
