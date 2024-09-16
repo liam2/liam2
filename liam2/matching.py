@@ -223,6 +223,8 @@ class SequentialMatching(Matching):
             # how many groups we will need to match.
             print(f" ({context_length(set1)}/{context_length(set2)} groups)")
 
+        assert all(isinstance(set1[k], la.Array) for k in used_variables1)
+
         if isinstance(orderby, str):
             orderbyvalue = np.zeros(context_length(set1))
             for name in used_variables1:
@@ -266,8 +268,8 @@ class SequentialMatching(Matching):
             # local_var_names = {'__ids__'} | used_variables1
             local_ctx['__ids__'] = set1['__ids__'][sorted_idx]
             # using .data instead of .i is marginally faster
-            local_ctx.update((k, set1[k].data[sorted_idx] if isinstance(set1[k], la.Array) else set1[k][sorted_idx])
-                             for k in used_variables1)
+            # set1 "columns" are supposed to be all la.Array instances
+            local_ctx.update((k, set1[k].data[sorted_idx]) for k in used_variables1)
 
             eval_ctx = context.clone(entity_data=local_ctx)
             set2_scores = expr_eval(score, eval_ctx)

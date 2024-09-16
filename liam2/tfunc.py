@@ -126,6 +126,7 @@ class TimeAverage(TimeFunction):
         # current period
         last_period_wh_value = np.full(res_size, context.period, dtype=int)
 
+        # FIXME: this is broken (but no test picked this up)
         sum_values = np.zeros(res_size, dtype=np.float)
         id_to_rownum = context.id_to_rownum
         while period >= baseperiod:

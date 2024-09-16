@@ -1,5 +1,5 @@
 from liam2.alignment import Alignment
-from liam2.expr import Expr, Variable, BinaryOp, ComparisonOp, missing_values, getdtype, always
+from liam2.expr import NumExprEvaluable, Variable, BinaryOp, ComparisonOp, missing_values, getdtype, always, Expr
 from liam2.exprbases import CompoundExpression
 from liam2.exprmisc import Exp, Max, Where, Logit, Logistic, LinearExpr
 from liam2.exprrandom import Normal, Uniform
@@ -29,7 +29,7 @@ class LogitScore(CompoundExpression):
 
         u = Uniform()
         # expr in (0, 0.0, False, '')
-        if not isinstance(expr, Expr) and not expr:
+        if isinstance(expr, (int, float, bool, str)) and not expr:
             expr = u
         else:
             epsilon = Logit(u)

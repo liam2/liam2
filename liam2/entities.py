@@ -10,7 +10,7 @@ import tables
 from liam2 import config
 from liam2.data import (merge_arrays, get_fields, ColumnArray, index_table, build_period_array,
                         index_per_period_to_axis_per_period, LColumnArray)
-from liam2.expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable, GlobalArray, Expr, BinaryOp,
+from liam2.expr import (Variable, VariableMethodHybrid, GlobalVariable, GlobalTable, GlobalArray, NumExprEvaluable, BinaryOp,
                         MethodSymbol, normalize_type)
 from liam2.exprtools import parse
 from liam2.links import One2Many, Many2One
@@ -583,7 +583,7 @@ Please use this instead:
                 if k[6] == " "
                 else parse(k[5:].strip(), parse_context)
                 )
-            assert isinstance(cond, Expr)
+            assert isinstance(cond, NumExprEvaluable)
             code = self.parse_process_group("while_code", v, parse_context,
                                             purge=False)
             return While(k, self, cond, code)
@@ -591,7 +591,7 @@ Please use this instead:
             if not isinstance(v, list):
                 raise SyntaxError("if is a reserved keyword")
             cond = parse(k[3:].strip(), parse_context)
-            assert isinstance(cond, Expr)
+            assert isinstance(cond, NumExprEvaluable)
             code = self.parse_process_group("if_code", v, parse_context,
                                             purge=False)
             return If(k, self, cond, code)
@@ -824,7 +824,7 @@ Please use this instead:
         for p in self.processes.values():
             for expr in p.expressions():
                 for subexpr in expr.traverse():
-                    if isinstance(subexpr, Expr) and \
+                    if isinstance(subexpr, NumExprEvaluable) and \
                             not isinstance(subexpr, Variable):
                         expr_count[subexpr] += 1
         print()

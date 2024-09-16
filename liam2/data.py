@@ -64,6 +64,7 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
     table.flush()
 
 
+# TODO: this class should not be needed
 class ColumnArray:
     def __init__(self, array=None):
         if array is not None:
@@ -279,8 +280,11 @@ class LColumnArray:
             if isinstance(array, (np.ndarray, ColumnArray)):
                 if axes is None and 'id' in array.dtype.names:
                     axes = la.AxisCollection([la.Axis(array['id'], 'id')])
+                # TODO: we should probably check for the case where axes is not None
+                #       and 'id' in array.dtype.names
                 if axes is not None and not isinstance(axes, la.AxisCollection):
                     axes = la.AxisCollection(axes)
+
                 self.axes = axes
                 self.dtype = array.dtype
                 for name in array.dtype.names:

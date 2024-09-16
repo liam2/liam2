@@ -6,7 +6,7 @@ import larray as la
 from liam2 import config
 from liam2.align_link import align_link_nd
 from liam2.context import context_length
-from liam2.expr import Expr, Variable, expr_eval, missing_values, always
+from liam2.expr import NumExprEvaluable, Variable, expr_eval, missing_values, always
 from liam2.exprbases import FilteredExpression
 from liam2.groupby import GroupBy
 from liam2.partition import partition_nd, filter_to_indices
@@ -406,9 +406,10 @@ class AlignmentAbsoluteValues(FilteredExpression):
                             f"is of type '{type(secondary_axis)}')")
 
         func = self.align_no_link if link is None else self.align_link
-        return func(context, score, need, filter, take, leave, expressions,
-                    possible_values, errors, frac_need, link, secondary_axis,
-                    method)
+        np_res = func(context, score, need, filter, take, leave, expressions,
+                      possible_values, errors, frac_need, link, secondary_axis,
+                      method)
+        return self.to_larray(context, np_res)
 
     def align_no_link(self, context, score, need, filter, take, leave,
                       expressions, possible_values, errors, frac_need, link,
@@ -476,7 +477,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                             target_context)
 
         # handle secondary axis
-        if isinstance(secondary_axis, Expr):
+        if isinstance(secondary_axis, NumExprEvaluable):
             axis_name = str(secondary_axis)
             try:
                 secondary_axis = need.axes.names.index(axis_name)

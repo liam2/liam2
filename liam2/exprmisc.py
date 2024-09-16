@@ -2,6 +2,9 @@ import os
 import random
 
 import numpy as np
+
+from liam2.context import EvaluationContext
+
 try:
     import scipy
     import scipy.special as special
@@ -14,7 +17,8 @@ from liam2 import config
 from liam2.data import LColumnArray
 from liam2.expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp, LogicalOp, getdtype, coerce_types,
                         expr_eval, as_simple_expr, as_string, collect_variables, get_default_vector,
-                        FunctionExpr, always, firstarg_dtype, expr_cache, index_array_by_variables, get_default_value)
+                        FunctionExpr, always, firstarg_dtype, expr_cache, index_array_by_variables, get_default_value,
+                        NumExprEvaluable, prepare_simple_expr)
 from liam2.exprbases import FilteredExpression, CompoundExpression, NumexprFunction, TableExpression, NumpyChangeArray
 from liam2.importer import load_ndarray, load_table
 from liam2.partition import filter_to_indices
@@ -217,6 +221,7 @@ def expand_with_defaults(d: dict,
         # temporaries to store them in the entity somewhere, but I am unsure
         # whether it is possible.
         if isinstance(value, np.ndarray) and value.shape == (len_before,):
+            assert False
             # TODO: I should make sure this case never happens (so that I can remove the FIXME above)
             num_birth = len(children_axes.id)
             extra = get_default_vector(num_birth, value.dtype)
@@ -229,8 +234,9 @@ def expand_with_defaults(d: dict,
             new_column.data[len_before:] = get_default_value(value.dtype)
             d[name] = new_column
         elif isinstance(value, la.Array) and 'id' in value.axes:
-            # TODO: I should make sure this case never happens (so that I can remove the FIXME above)
-            # raise NotImplementedError(f"other id axis for {name}")
+            # the original value/"column" can have more axes than just id
+            # TODO: investigate why the assert fails when using "is" instead of "equals"
+            assert value.axes.id.equals(old_id_axis)
             extra = la.full(children_axes, get_default_value(value.dtype))
             d[name] = concat((value, extra), 'id')
 
@@ -335,7 +341,10 @@ class New(FilteredExpression):
         new_array_axes = array.axes
         children_axes = children.axes
         expand_with_defaults(target_entity.temp_variables, old_array_axes, children_axes, new_array_axes)
-        expand_with_defaults(target_context.entity_data.extra, old_array_axes, children_axes, new_array_axes)
+        assert isinstance(target_context, EvaluationContext)
+        if target_context.entity_name in target_context.extra_per_entity:
+            current_extra = target_context.extra_per_entity.get(target_context.entity_name, {})
+            expand_with_defaults(current_extra, old_array_axes, children_axes, new_array_axes)
         id_to_rownum_tail = np.arange(num_rows, num_rows + num_birth)
         target_entity.id_to_rownum = np.concatenate((target_entity.id_to_rownum, id_to_rownum_tail))
 
@@ -491,6 +500,7 @@ class Where(NumexprFunction):
     funcname = 'if'
     argspec = argspec('cond, iftrue, iffalse')
 
+
     @property
     def cond(self):
         return self.args[0]
@@ -503,27 +513,56 @@ class Where(NumexprFunction):
     def iffalse(self):
         return self.args[2]
 
-    def as_simple_expr(self, context):
-        cond = as_simple_expr(self.cond, context)
+    # def as_simple_expr(self, context):
+    #     cond = as_simple_expr(self.cond, context)
+    #
+    #     # filter is stored as an unevaluated expression
+    #     context_filter = context.filter_expr
+    #     local_ctx = context.clone()
+    #     if context_filter is None:
+    #         local_ctx.filter_expr = self.cond
+    #     else:
+    #         # filter = filter and cond
+    #         local_ctx.filter_expr = LogicalOp('&', context_filter, self.cond)
+    #     iftrue = as_simple_expr(self.iftrue, local_ctx)
+    #
+    #     if context_filter is None:
+    #         local_ctx.filter_expr = UnaryOp('~', self.cond)
+    #     else:
+    #         # filter = filter and not cond
+    #         local_ctx.filter_expr = LogicalOp('&', context_filter,
+    #                                           UnaryOp('~', self.cond))
+    #     iffalse = as_simple_expr(self.iffalse, local_ctx)
+    #     return Where(cond, iftrue, iffalse)
+    #
+    def prepare_simple_expr(self, context: EvaluationContext) -> (NumExprEvaluable, dict):
+        print("prepare_simple_expr", self)
+        args, kwargs = self.children
+        cond_expr, iftrue, iffalse = args
+
+        simple_cond_expr, cond_funcs = prepare_simple_expr(cond_expr, context)
 
         # filter is stored as an unevaluated expression
         context_filter = context.filter_expr
         local_ctx = context.clone()
         if context_filter is None:
-            local_ctx.filter_expr = self.cond
+            local_ctx.filter_expr = simple_cond_expr
         else:
             # filter = filter and cond
-            local_ctx.filter_expr = LogicalOp('&', context_filter, self.cond)
-        iftrue = as_simple_expr(self.iftrue, local_ctx)
+            local_ctx.filter_expr = LogicalOp('&', context_filter, simple_cond_expr)
+        simple_iftrue_expr, iftrue_funcs = prepare_simple_expr(iftrue, local_ctx)
 
+        # TODO: can we really reuse local_ctx for both branches, just modifying
+        #       filter_expr inplace?
         if context_filter is None:
-            local_ctx.filter_expr = UnaryOp('~', self.cond)
+            local_ctx.filter_expr = UnaryOp('~', simple_cond_expr)
         else:
             # filter = filter and not cond
             local_ctx.filter_expr = LogicalOp('&', context_filter,
-                                              UnaryOp('~', self.cond))
-        iffalse = as_simple_expr(self.iffalse, local_ctx)
-        return Where(cond, iftrue, iffalse)
+                                              UnaryOp('~', simple_cond_expr))
+        simple_iffalse_expr, iffalse_funcs = prepare_simple_expr(iffalse, local_ctx)
+        combined_funcs = cond_funcs | iftrue_funcs | iffalse_funcs
+        return Where(simple_cond_expr, simple_iftrue_expr, simple_iffalse_expr), combined_funcs
 
     def as_string(self):
         args = as_string((self.cond, self.iftrue, self.iffalse))
@@ -551,6 +590,9 @@ class LinearExpr(FunctionExpr):
             # XXX: but we should be able to do better than a list, eg.
             # self.args.need = load_ndarray(fpath, float)
             self.args = (coefficients,) + self.args[1:]
+
+    def prepare_simple_expr(self, context: EvaluationContext) -> (NumExprEvaluable, dict):
+        pass
 
     def compute(self, context, coefficients, variable_axis='__variable__', autoindex='__other_axes__'):
         assert isinstance(coefficients, la.Array)

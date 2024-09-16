@@ -981,16 +981,17 @@ def validate_dict(d, target, context=''):
     Exception: invalid structure for 'optkey': it should be 'good' but it is 'bad'
     >>> validate_dict({'reqkey': 'good', 'extrakey': 'good'}, target2)
     """
-    assert isinstance(target, dict)
     if not isinstance(d, dict):
         raise Exception(f"invalid structure for '{context}': it should be a "
                         f"map and it is a {typename(d)}")
+    assert isinstance(target, dict)
     target_keys = target.keys()
     required = set(k[1:] for k in target_keys if k.startswith('#'))
     optional = set(k for k in target_keys if not k.startswith('#'))
     anykey = '*' in optional
     if anykey:
         optional.remove('*')
+
     # in case we have a * in there, we should only make sure that required keys
     # are present, otherwise we have to also check if provided keys are valid
     validate_dict_keys(d, required, optional, context, extra_allowed=anykey)

@@ -4,6 +4,8 @@ import sys
 import traceback
 from itertools import chain
 
+import larray as la
+
 # we want debug output. This must be done before importing liam2
 os.environ["DEBUG"] = "TRUE"
 
@@ -12,6 +14,10 @@ from liam2.importer import csv2h5
 
 ON_CI = os.environ.get('USE_TRAVIS', None) == 'true'
 test_root = os.path.abspath(os.path.dirname(__file__))
+
+
+if not ON_CI:
+    la.run_editor_on_exception(usercode_traceback=False, usercode_frame=False)
 
 
 def run_simulation(fpath):

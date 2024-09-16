@@ -8,7 +8,8 @@ from liam2.utils import unique
 class EvaluationContext:
     def __init__(self, simulation=None, entities=None, global_tables=None,
                  period=None, entity_name=None, filter_expr=None,
-                 entities_data=None):
+                 entities_data=None,
+                 subset_axes=None):
         """
         :param simulation: Simulation
         :param entities: dict of entities {name: entity}
@@ -30,6 +31,10 @@ class EvaluationContext:
             entities_data = {name: EntityContext(self, entity)
                              for name, entity in entities.items()}
         self.entities_data = entities_data
+        # should only be used on subsets, not when the context
+        # contains only normal EntityContexts
+        self.subset_axes = subset_axes
+        self.extra_per_entity = {}
 
     def copy(self, fresh_data=False):
         # FIXME: when fresh_data is False, entities_data should clone each
@@ -94,6 +99,8 @@ class EvaluationContext:
     def __getitem__(self, key):
         if key == 'period':
             return self.period
+        elif self.entity_name in self.extra_per_entity and key in self.extra_per_entity[self.entity_name]:
+            return self.extra_per_entity[self.entity_name][key]
         else:
             return self.entity_data[key]
 
@@ -105,7 +112,15 @@ class EvaluationContext:
 
     def __setitem__(self, key, value):
         # XXX: how do we set a new global?
-        self.entity_data[key] = value
+        entity_extra = self.extra_per_entity.setdefault(self.entity_name, {})
+        if key not in entity_extra:
+            print(f"adding '{key}' to context")
+        else:
+            print(f"updating '{key}' value in context")
+
+        entity_extra[key] = value
+        # assert False
+        # self.entity_data[key] = value
 
     def __contains__(self, key):
         from liam2.expr import Variable
@@ -125,11 +140,15 @@ class EvaluationContext:
 
     def keys(self, extra=True):
         entity_data = self.entity_data
+
         if isinstance(entity_data, EntityContext):
-            return entity_data.keys(extra)
+            entity_keys = entity_data.keys(extra)
         else:
             assert isinstance(entity_data, dict)
-            return list(entity_data.keys())
+            entity_keys = list(entity_data.keys())
+        if extra and self.entity_name in self.extra_per_entity:
+            entity_keys.extend(self.extra_per_entity[self.entity_name].keys())
+        return entity_keys
 
     def items(self):
         return [(k, self[k]) for k in self.keys()]
@@ -163,53 +182,55 @@ class EvaluationContext:
 
 
 class EntityContext:
-    def __init__(self, eval_ctx, entity, extra=None):
+    def __init__(self, eval_ctx, entity): #, extra=None):
         self.eval_ctx = eval_ctx
         self.entity = entity
-        if extra is None:
-            extra = {}
-        self.extra = extra
+        # if extra is None:
+        #     extra = {}
+        # self.extra = extra
 
+    # TODO: period should be passed as an argument instead of being taken from
+    #       the eval_ctx
     def __getitem__(self, key):
         if key == 'period':
             return self.eval_ctx.period
 
-        try:
-            return self.extra[key]
-        except KeyError:
-            period = self.eval_ctx.period
-            entity = self.entity
-            array_period = entity.array_period
-            if period == array_period:
+        # try:
+        #     return self.extra[key]
+        # except KeyError:
+        period = self.eval_ctx.period
+        entity = self.entity
+        array_period = entity.array_period
+        if period == array_period:
+            try:
+                return entity.temp_variables[key]
+            except KeyError:
                 try:
-                    return entity.temp_variables[key]
-                except KeyError:
-                    try:
-                        array = entity.array
-                        data = array[key]
-                        assert isinstance(data, la.Array)
-                        return data
-                    except ValueError:
-                        raise KeyError(key)
-            else:
-                # FIXME: lags will break if used from a context subset (eg in
-                # new() or groupby(): all individuals will be returned instead
-                # of only the "filtered" ones.
-                if (entity.array_lag is not None and array_period is not None and
-                        period == array_period - 1 and key in entity.array_lag.dtype.fields):
-                    data = entity.array_lag[key]
+                    array = entity.array
+                    data = array[key]
                     assert isinstance(data, la.Array)
                     return data
+                except ValueError:
+                    raise KeyError(key)
+        else:
+            # FIXME: lags will break if used from a context subset (eg in
+            # new() or groupby(): all individuals will be returned instead
+            # of only the "filtered" ones.
+            if (entity.array_lag is not None and array_period is not None and
+                    period == array_period - 1 and key in entity.array_lag.dtype.fields):
+                data = entity.array_lag[key]
+                assert isinstance(data, la.Array)
+                return data
 
-                bounds = entity.output_rows.get(period)
-                if bounds is not None:
-                    startrow, stoprow = bounds
-                    axis = self.entity.id_axis_per_period[period]
-                else:
-                    startrow, stoprow = 0, 0
-                    axis = la.Axis(np.empty(0, dtype=int), 'id')
-                data = entity.table.read(start=startrow, stop=stoprow, field=key)
-                return la.Array(data, axis)
+            bounds = entity.output_rows.get(period)
+            if bounds is not None:
+                startrow, stoprow = bounds
+                axis = self.entity.id_axis_per_period[period]
+            else:
+                startrow, stoprow = 0, 0
+                axis = la.Axis(np.empty(0, dtype=int), 'id')
+            data = entity.table.read(start=startrow, stop=stoprow, field=key)
+            return la.Array(data, axis)
 
     # is the current array period the same as the context period?
     @property
@@ -217,6 +238,7 @@ class EntityContext:
         return self.entity.array_period == self.eval_ctx.period
 
     def __setitem__(self, key, value):
+        assert False
         self.extra[key] = value
 
     def __delitem__(self, key):
@@ -238,13 +260,14 @@ class EntityContext:
                          key in entity.array_lag.dtype.fields)
         keyintable = (entity.table is not None and
                       key in entity.table.dtype.fields)
-        return key in self.extra or keyinarray or keyinlagarray or keyintable
+        # return key in self.extra or keyinarray or keyinlagarray or keyintable
+        return keyinarray or keyinlagarray or keyintable
 
     def keys(self, extra=True):
         res = list(self.entity.array.dtype.names)
         res.extend(sorted(self.entity.temp_variables.keys()))
-        if extra:
-            res.extend(sorted(self.extra.keys()))
+        # if extra:
+        #     res.extend(sorted(self.extra.keys()))
         # in theory, this should not be needed because we present defining a function argument with the same
         # name than an entity field
         assert list(unique(res)) == res
@@ -353,10 +376,14 @@ def context_subset(context, index=None, keys=None):
                     if value.axes == old_column_axes:
                         value = la.Array(value.data[index], new_column_axes)
                     else:
+                        # FIXME: add a test case for this (and fix it)
                         print("WARNING: incoherent axes collection")
                 else:
+                    # FIXME: add a test case for this (and fix it)
                     print("WARNING: id not first axis")
             result[key] = value
+    # if keys:
+    #     la.edit()
     return result
 
 

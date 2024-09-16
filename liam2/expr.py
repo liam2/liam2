@@ -122,8 +122,30 @@ def as_simple_expr(expr, context):
         return expr
 
 
-def as_string(expr):
+def prepare_simple_expr(expr, context):
     if isinstance(expr, Expr):
+        return expr.prepare_simple_expr(context)
+    elif isinstance(expr, list):
+        # FIXME
+        assert False
+        return [prepare_simple_expr(e, context) for e in expr]
+    elif isinstance(expr, tuple):
+        exprs = []
+        combined_funcs = {}
+        for e in expr:
+            prepared_expr, funcs = prepare_simple_expr(e, context)
+            exprs.append(prepared_expr)
+            combined_funcs |= funcs
+        return tuple(exprs), combined_funcs
+    elif isinstance(expr, dict):
+        assert False, "diiiiiict"
+    else:
+        # probably a scalar
+        return expr, {}
+
+
+def as_string(expr):
+    if isinstance(expr, NumExprEvaluable):
         return expr.as_string()
     elif isinstance(expr, list):
         return [as_string(e) for e in expr]
@@ -134,7 +156,7 @@ def as_string(expr):
 
 
 def traverse_expr(expr):
-    if isinstance(expr, Expr):
+    if isinstance(expr, NumExprEvaluable):
         for node in expr.traverse():
             yield node
     elif isinstance(expr, (tuple, list)):
@@ -156,7 +178,7 @@ def gettype(value):
 
 
 def getdtype(expr, context):
-    if isinstance(expr, Expr):
+    if isinstance(expr, NumExprEvaluable):
         return expr.dtype(context)
     else:
         return gettype(expr)
@@ -186,7 +208,7 @@ def ispresent(values):
 
 
 def collect_variables(expr):
-    if isinstance(expr, Expr):
+    if isinstance(expr, NumExprEvaluable):
         return expr.collect_variables()
     elif isinstance(expr, (tuple, list)):
         all_vars = [collect_variables(e) for e in expr]
@@ -253,10 +275,13 @@ def evaluate_with_globals(ex, local_dict, global_dict, **kwargs):
         local_dict = local_dict.copy()
         local_dict.update(global_dict)
     else:
-        assert isinstance(local_dict, EntityContext)
-        local_dict = local_dict.copy()
-        for k, v in global_dict.items():
-            local_dict[k] = v
+        # assert isinstance(local_dict, (EntityContext, EvaluationContext))
+        assert isinstance(local_dict, EvaluationContext)
+        # new_extra = local_dict.extra.copy()
+        # for k, v in global_dict.items():
+        #     new_extra[k] = v
+        local_dict = {k: local_dict[k] for k in local_dict.keys()}
+        local_dict.update(global_dict)
     return evaluate(ex, local_dict, **kwargs)
 
 
@@ -289,114 +314,6 @@ class Expr:
                         f"'or' expression. The complete expression cannot be "
                         f"displayed but it contains: '{str(self)}'.")
 
-    def evaluate(self, context):
-        # period = context.period
-        #
-        # if isinstance(period, np.ndarray):
-        #     assert np.isscalar(period) or not period.shape
-        #     period = int(period)
-
-        # cache_key = (self, period, context.entity_name, context.filter_expr)
-        # try:
-        #     cached_result = expr_cache.get(cache_key, None)
-        #     # FIXME: lifecycle functions should invalidate all variables!
-        #     if cached_result is not None:
-        #         return cached_result
-        # except TypeError:
-        #     # The cache_key failed to hash properly, so the expr is not
-        #     # cacheable. It *should* be because of a not_hashable expr
-        #     # somewhere within cache_key[3].
-        #     cache_key = None
-
-        simple_expr = self.as_simple_expr(context)
-        if isinstance(simple_expr, Variable) and simple_expr.name in context:
-            return context[simple_expr.name]
-
-        # check for labeled arrays, to work around the fact that numexpr
-        # does not preserve ndarray subclasses.
-
-        # avoid checking for arrays types in the past, because that is a
-        # costly operation (context[var_name] fetches the column from disk
-        # in that case). This probably prevents us from doing stuff like
-        # align(lag(groupby() / groupby())), but it is a limitation I can
-        # live with to avoid hitting the disk twice for each disk access.
-
-        # TODO: I should rewrite this whole mess when my "dtype" method
-        # supports ndarrays and la.Array so that I can get the dtype from
-        # the expression instead of from actual values.
-        expr_axes = None
-        numexpr_eval = True
-        assert isinstance(context, EvaluationContext), type(context)
-        local_ctx = context.entity_data
-        assert isinstance(local_ctx, (dict, EntityContext)), type(context)
-        # if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
-        for var in simple_expr.collect_variables():
-            assert var.entity is None or var.entity is context.entity, \
-                "should not have happened (as_simple_expr should " \
-                "have transformed non-local variables)"
-
-            # var_name should always be in the context at this point
-            # because missing temporaries should have been already caught
-            # in expr_eval
-            # value = context[var.name]
-            value = local_ctx[var.name]
-
-            # check that LArrays (if any) have all the same axes and bypass numexpr otherwise
-            if isinstance(value, la.Array):
-                if expr_axes is None:
-                    expr_axes = value.axes
-                else:
-                    if value.axes != expr_axes:
-                        # TODO: what I should do instead is to make all arguments numpy-broadcastable (via larray)
-                        #       but then let numexpr compute the expression anyway
-                        numexpr_eval = False
-
-        # TODO: when numexpr_eval is False, we should bypass the string roundtrip
-        s = simple_expr.as_string()
-        constants = {'nan': float('nan'), 'inf': float('inf')}
-        if numexpr_eval:
-            try:
-                # numexpr 2.8.5+ (at least as of 2.10.1) broke the second (global_dict)
-                # argument (which is ignored), hence the workaround
-                res = evaluate_with_globals(s, local_ctx, constants, truediv='auto')
-                # res = evaluate(s, local_ctx, constants, truediv='auto')
-                if expr_axes is not None:
-                    # This relies on the fact that currently all the expression we evaluate through numexpr preserve
-                    # array shapes, but if we ever use numexpr reduction capabilities, we will be in trouble
-                    res = la.Array(res, expr_axes)
-            except Exception:
-                if debug:
-                    print()
-                    print("Evaluate failed")
-                    print("===============")
-                    print("string_expr:", s)
-                    print("local context:", local_ctx)
-                    print("constants:", constants)
-                raise
-        else:
-            res = eval(s, constants, local_ctx)
-
-        if isinstance(res, np.ndarray) and not res.shape:
-            # convert to scalar (equivalent to the now deprecated np.asscalar(res))
-            res = res.item()
-
-        # if cache_key is not None:
-        #     expr_cache[cache_key] = res
-        #     if cached_result is not None:
-        #         assert np.array_equal(res, cached_result), \
-        #             f"{res} != {cached_result}"
-        return res
-
-    def as_simple_expr(self, context):
-        """
-        evaluate any construct that is not supported by numexpr and
-        create temporary variables for them
-        """
-        raise NotImplementedError()
-
-    def as_string(self):
-        raise NotImplementedError()
-
     def __getitem__(self, key):
         # TODO: we should be able to know at "compile" time if this is a
         # scalar or a vector and disallow getitem in case of a scalar
@@ -409,37 +326,9 @@ class Expr:
                                  f" has no attribute '{key}'")
         else:
             return ExprAttribute(self, key)
-        # if key in {'data', 'dtype', 'itemsize', 'nbytes', 'ndim', 'shape', 'size',
-        #            'axes', 'points', 'row_totals', 'col_totals',
-        #            # aggregates
-        #            'all', 'any', 'max', 'mean', 'min', 'prod', 'ptp', 'std',
-        #            'sum', 'var', 'cumprod', 'cumsum',
-        #            # element-wise
-        #            'astype', 'clip', 'copy', 'round',
-        #            # inplace
-        #            'fill', 'partition', 'sort',
-        #            # indirect
-        #            'argmax', 'argmin', 'argpartition', 'argsort',
-        #            # other
-        #            'nonzero', 'reshape', 'transpose',
-        #            # should go away when I implement len()
-        #            '__len__'}:
-        #     # excluded (and it would take some convincing to add them):
-        #     # base, byteswap, ctypes, data, dump, dumps, getfield, item,
-        #     # itemset, newbyteorder, put, resize, setfield, setflags, swapaxes,
-        #     # take, trace, view
-        #
-        #     # excluded for now (I am open if anybody asks for them):
-        #     # choose, compress, conj, conjugate, diagonal, dot, flags, flat,
-        #     # flatten, imag, ravel, real, repeat, squeeze, strides
-        #
-        #     # compress (select using a boolean index for one axis) is nice but
-        #     # I would like to implement a[bool_idx_wh_axis] instead in LArray
-        #     return ExprAttribute(self, key)
-        # else:
-        #     class_name = self.__class__.__name__
-        #     raise AttributeError(f"{self} (of type '{class_name}')"
-        #                          f" has no attribute '{key}'")
+
+    def evaluate(self, context: EvaluationContext):
+        raise NotImplementedError()
 
     def traverse(self):
         for child in self.children:
@@ -477,6 +366,12 @@ class Expr:
                                   if not badvar(v))
         return self._variables
 
+    def to_larray(self, context: EvaluationContext, value: np.ndarray):
+        entity_data = context.entity_data
+        assert isinstance(entity_data, EntityContext) or context.subset_axes
+        assert isinstance(value, np.ndarray), f"value is not a np.ndarrray ({type(value)})"
+        return la.Array(value, context.entity.array.axes.id)
+
     # TODO: make equivalent/commutative expressions compare equal and hash to
     # the same thing.
     def __eq__(self, other):
@@ -511,6 +406,146 @@ class Expr:
         return hash((self.__class__.__name__, self.value,
                      make_hashable(self.children)))
 
+
+class NumExprEvaluable(Expr):
+    def evaluate(self, context):
+        # period = context.period
+        #
+        # if isinstance(period, np.ndarray):
+        #     assert np.isscalar(period) or not period.shape
+        #     period = int(period)
+
+        # cache_key = (self, period, context.entity_name, context.filter_expr)
+        # try:
+        #     cached_result = expr_cache.get(cache_key, None)
+        #     # FIXME: lifecycle functions should invalidate all variables!
+        #     if cached_result is not None:
+        #         return cached_result
+        # except TypeError:
+        #     # The cache_key failed to hash properly, so the expr is not
+        #     # cacheable. It *should* be because of a not_hashable expr
+        #     # somewhere within cache_key[3].
+        #     cache_key = None
+        simple_expr, tmp_var_funcs = self.prepare_simple_expr(context)
+        # TODO: unsure if I should copy context before modifying it?!?
+        for key, func in tmp_var_funcs.items():
+            context[key] = func(context)
+
+        # simple_expr = self.as_simple_expr(context)
+        if isinstance(simple_expr, Variable):
+            # assert simple_expr.name in context
+            return context[simple_expr.name]
+
+        # check for labeled arrays, to work around the fact that numexpr
+        # does not preserve ndarray subclasses.
+
+        # avoid checking for arrays types in the past, because that is a
+        # costly operation (context[var_name] fetches the column from disk
+        # in that case). This probably prevents us from doing stuff like
+        # align(lag(groupby() / groupby())), but it is a limitation I can
+        # live with to avoid hitting the disk twice for each disk access.
+
+        # TODO: I should rewrite this whole mess when my "dtype" method
+        # supports ndarrays and la.Array so that I can get the dtype from
+        # the expression instead of from actual values.
+        expr_axes = None
+        numexpr_eval = True
+        assert isinstance(context, EvaluationContext), type(context)
+        local_ctx = context #.entity_data
+        # assert isinstance(local_ctx, (dict, EntityContext)), type(context)
+        assert isinstance(local_ctx, EvaluationContext), type(context)
+        # if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
+        for var in simple_expr.collect_variables():
+            assert var.entity is None or var.entity is context.entity, \
+                "should not have happened (as_simple_expr should " \
+                "have transformed non-local variables)"
+
+            # var_name should always be in the context at this point
+            # because missing temporaries should have been already caught
+             # in expr_eval
+            # value = context[var.name]
+            value = local_ctx[var.name]
+
+            # check that LArrays (if any) have all the same axes and bypass numexpr otherwise
+            if isinstance(value, la.Array):
+                if expr_axes is None:
+                    expr_axes = value.axes
+                else:
+                    if value.axes != expr_axes:
+                        # TODO: what I should do instead is to make all arguments numpy-broadcastable (via larray)
+                        #       but then let numexpr compute the expression anyway
+                        numexpr_eval = False
+
+        # TODO: when numexpr_eval is False, we should bypass the string roundtrip
+        s = simple_expr.as_string()
+        constants = {'nan': float('nan'), 'inf': float('inf')}
+        if numexpr_eval:
+            try:
+                # numexpr 2.8.5+ (at least as of 2.10.1) broke the second (global_dict)
+                # argument (which is ignored), hence the workaround
+                assert isinstance(local_ctx, EvaluationContext), type(context)
+                res = evaluate_with_globals(s, local_ctx, constants, truediv='auto')
+                # res = evaluate(s, local_ctx, constants, truediv='auto')
+                if expr_axes is not None:
+                    # This relies on the fact that currently all the expression we evaluate through numexpr preserve
+                    # array shapes, but if we ever use numexpr reduction capabilities, we will be in trouble
+                    res = la.Array(res, expr_axes)
+            except Exception:
+                if debug:
+                    print()
+                    print("Evaluate failed")
+                    print("===============")
+                    print("string_expr:", s)
+                    print("local context:", local_ctx)
+                    print("constants:", constants)
+                raise
+        else:
+            res = eval(s, constants, local_ctx)
+
+        if isinstance(res, np.ndarray) and not res.shape:
+            # convert to scalar (equivalent to the now deprecated np.asscalar(res))
+            res = res.item()
+
+        # if cache_key is not None:
+        #     expr_cache[cache_key] = res
+        #     if cached_result is not None:
+        #         assert np.array_equal(res, cached_result), \
+        #             f"{res} != {cached_result}"
+        return res
+
+    # def as_simple_expr(self, context):
+    #     """
+    #     evaluate any construct that is not supported by numexpr and
+    #     create temporary variables for them
+    #     """
+    #     raise NotImplementedError()
+
+    def prepare_simple_expr(self, context: EvaluationContext) -> ('NumExprEvaluable', dict):
+        """
+        create temporary variables for any construct that is not supported by
+        numexpr and return a dict of functions to evaluate them.
+
+        Dict ordering determine evaluation order. Since the expr ast tree
+        is traversed depth-first to construct the dict, this should work
+        """
+        children_funcs = {}
+        children_expr = []
+        for child in self.children:
+            child_expr, child_funcs = prepare_simple_expr(child, context)
+            children_expr.append(child_expr)
+            children_funcs |= child_funcs
+
+        return self.prepare_simple_expr_with_children_prepared(context, children_expr, children_funcs)
+
+    # def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs):
+    #     args, kwargs = children_expr
+    #     return self.__class__(*args, **dict(kwargs)), children_funcs
+    def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs):
+        raise NotImplementedError()
+
+    def as_string(self):
+        raise NotImplementedError()
+
     def __contains__(self, expr):
         for node in self.traverse():
             if expr == node:
@@ -518,23 +553,28 @@ class Expr:
         return False
 
 
-
-class EvaluableExpression(Expr):
+class NotNumExprEvaluable(Expr):
     num_tmp = 0
 
     def evaluate(self, context):
+        children_value = expr_eval(self.children, context)
+        return self.evaluate_with_children_evaluated(children_value, context)
+
+    def evaluate_with_children_evaluated(self, children_value, context):
         raise NotImplementedError()
 
     def get_tmp_varname(self, context):
-        tmp_varname = f'__temp_{EvaluableExpression.num_tmp}'
-        EvaluableExpression.num_tmp += 1
+        tmp_varname = f'__temp_{NotNumExprEvaluable.num_tmp}'
+        NotNumExprEvaluable.num_tmp += 1
         return tmp_varname
 
     def add_tmp_var(self, context: EvaluationContext, value):
+        assert isinstance(context, EvaluationContext)
+
         tmp_varname = self.get_tmp_varname(context)
         # assert tmp_varname not in context, f"{tmp_varname} is already in the context"
         # this can happen because some subclasses reuse temporary variable names
-        # (for example for periodic globals
+        # (for example for periodic globals)
         if tmp_varname in context:
             prev_value = context[tmp_varname]
             # should be consistent but nan != nan
@@ -544,13 +584,57 @@ class EvaluableExpression(Expr):
                 assert array_nan_equal(value, prev_value)
             else:
                 assert value != value or value == prev_value
+
+        # this works in most cases, except when this is needed during matching (e.g. "link in score expression")
+        # because in that case, the context.entity_data is not an EntityContext but a simple dict
+        # context.entity_data.extra[tmp_varname] = value
+        if isinstance(context.entity_data, dict):
+            context.entity_data[tmp_varname] = value
+        else:
+            context.entity_data.extra[tmp_varname] = value
+        # print(f"added {tmp_varname} in context")
         # FIXME: we should never modify the context in-place. We should rather
         #        have a build_context method.
-        context[tmp_varname] = value
+        # context[tmp_varname] = value
         return Variable(context.entity, tmp_varname, gettype(value))
 
-    def as_simple_expr(self, context):
-        return self.add_tmp_var(context, self.evaluate(context))
+    # def as_simple_expr(self, context):
+    #     return self.add_tmp_var(context, self.evaluate(context))
+
+    def prepare_simple_expr(self, context: EvaluationContext) -> (NumExprEvaluable, dict):
+        """
+        create temporary variables for any construct that is not supported by
+        numexpr and return a dict of functions to evaluate them.
+
+        Dict ordering determine evaluation order. Since the expr ast tree
+        is traversed depth-first to construct the dict, this should work
+        """
+        children_expr, children_funcs = self.prepare_children(context)
+        return self.prepare_simple_expr_with_children_prepared(context, children_expr, children_funcs)
+
+    def prepare_children(self, context):
+        children_funcs = {}
+        children_expr = []
+        for child in self.children:
+            child_expr, child_funcs = prepare_simple_expr(child, context)
+            children_expr.append(child_expr)
+            children_funcs |= child_funcs
+        return children_expr, children_funcs
+
+    def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs) -> (NumExprEvaluable, dict):
+        # by definition NotNumExprEvlauable expressions are not evaluable by numexpr
+        # and thus their children nodes need to be evaluated "as variable" and thus their
+        # expression is not used
+        tmp_varname = self.get_tmp_varname(context)
+        # TODO: each subclass which is able to determine dtype statically should
+        #       so so. There are many cases where this is not possible though
+        #       (e.g. ExprAttribute)
+        tmp_var = Variable(context.entity, tmp_varname, dtype=None) #getdtype(value))
+        # FIXME: tmp_varname should include entity name (but it should still be
+        #        a single dict
+        return tmp_var, children_funcs | {tmp_varname: self.evaluate}
+
+
 
 
 def non_scalar_array(a):
@@ -561,7 +645,7 @@ def non_scalar_larray(a):
     return isinstance(a, la.Array) and a.shape
 
 
-class SubscriptedExpr(EvaluableExpression):
+class SubscriptedExpr(NotNumExprEvaluable):
     __children__ = ('expr', 'key')
 
     def __init__(self, expr, key):
@@ -578,9 +662,12 @@ class SubscriptedExpr(EvaluableExpression):
             key_str = str(key)
         return f'{self.expr}[{key_str}]'
 
-    def evaluate(self, context):
-        expr_value = expr_eval(self.expr, context)
-        key = expr_eval(self.key, context)
+
+    # def evaluate(self, context):
+    def evaluate_with_children_evaluated(self, children_value, context):
+        expr_value, key_value = children_value
+        # expr_value = expr_eval(self.expr, context)
+        # key = expr_eval(self.key, context)
         filter_expr = context.filter_expr
 
         # When there is a contextual filter, we modify the key to avoid
@@ -663,49 +750,49 @@ class SubscriptedExpr(EvaluableExpression):
 
             # XXX: couldn't we use np.take(mode='clip') instead of all this mumbo-jumbo? (and implement it in LArray)
             if non_scalar_array(filter_value):
-                if isinstance(key, tuple):
+                if isinstance(key_value, tuple):
                     # nd-key
-                    key = tuple(fixkey(k, filter_value) for k in key)
-                    if any(k is None for k in key):
+                    key_value = tuple(fixkey(k, filter_value) for k in key_value)
+                    if any(k is None for k in key_value):
                         return missing_value
-                elif isinstance(key, slice):
+                elif isinstance(key_value, slice):
                     raise NotImplementedError()
                 else:
                     # scalar or array key
-                    key = fixkey(key, filter_value)
-                    if key is None:
+                    key_value = fixkey(key_value, filter_value)
+                    if key_value is None:
                         return missing_value
             elif non_scalar_larray(filter_value):
-                if isinstance(key, tuple):
+                if isinstance(key_value, tuple):
                     # nd-key
-                    key = tuple(fixkey(k, filter_value) for k in key)
-                    if any(k is None for k in key):
+                    key_value = tuple(fixkey(k, filter_value) for k in key_value)
+                    if any(k is None for k in key_value):
                         return missing_value
-                elif isinstance(key, slice):
+                elif isinstance(key_value, slice):
                     raise NotImplementedError()
                 else:
                     # scalar or array key
-                    key = fixkey(key, filter_value)
-                    if key is None:
+                    key_value = fixkey(key_value, filter_value)
+                    if key_value is None:
                         return missing_value
             else:
                 if not filter_value:
-                    if (non_scalar_array(key) or
-                        (isinstance(key, tuple) and
-                         any(non_scalar_array(k) for k in key))):
+                    if (non_scalar_array(key_value) or
+                        (isinstance(key_value, tuple) and
+                         any(non_scalar_array(k) for k in key_value))):
                         # scalar filter, array or tuple key
                         if isinstance(expr_value, la.core.array.ArrayPointsIndexer):
                             expr_value = expr_value.array
                         return np.full_like(expr_value, missing_value)
-                    elif isinstance(key, slice):
+                    elif isinstance(key_value, slice):
                         raise NotImplementedError()
                     else:
                         # scalar (or tuple of scalars) key
                         return missing_value
-        return expr_value[key]
+        return expr_value[key_value]
 
 
-class ExprAttribute(EvaluableExpression):
+class ExprAttribute(NotNumExprEvaluable):
     __children__ = ('expr', 'key')
 
     def __init__(self, expr, key):
@@ -715,6 +802,9 @@ class ExprAttribute(EvaluableExpression):
     def __repr__(self):
         return f'{self.expr}.{self.key}'
 
+    # def evaluate_with_children_evaluated(self, children_value, context):
+    #     expr_value, key_value = children_value
+    #
     def evaluate(self, context):
         expr_value = expr_eval(self.expr, context)
         key_value = expr_eval(self.key, context)
@@ -727,6 +817,9 @@ class ExprAttribute(EvaluableExpression):
 
     def __call__(self, *args, **kwargs):
         return DynamicFunctionCall(self, *args, **kwargs)
+
+    # TODO: I don't think this method is necessary (we could rely on Expr.__getattr__
+    #       which does the same thing)
 
     def __getattr__(self, key):
         if key == '_variables':
@@ -912,9 +1005,12 @@ class AbstractFunction(Expr, metaclass=FillFuncNameMeta):
         return self.format(self.funcname, *self._original_args)
 
 
-# this needs to stay in the expr module because of ExprAttribute, which uses
+# This is a base class for all liam2-provided functions which are *not*
+# implemented by numexpr
+
+# This needs to stay in the expr module because of ExprAttribute, which uses
 # DynamicFunctionCall -> GenericFunctionCall -> FunctionExpr
-class FunctionExpr(EvaluableExpression, AbstractFunction, metaclass=FillArgSpecMeta):
+class FunctionExpr(NotNumExprEvaluable, AbstractFunction, metaclass=FillArgSpecMeta):
     """
     Base class for defining (python-level) functions. That is, if you want to
     make a new function available in LIAM2 models, you should inherit from this
@@ -988,6 +1084,9 @@ class FunctionExpr(EvaluableExpression, AbstractFunction, metaclass=FillArgSpecM
         args, kwargs = self._eval_args(context)
         return self.compute(context, *args, **kwargs)
 
+    # def prepare_simple_expr(self, context: EvaluationContext) -> (NumExprEvaluable, dict):
+    #     return ..., ...
+
 
 class GenericFunctionCall(FunctionExpr):
     """
@@ -1027,15 +1126,20 @@ class DynamicFunctionCall(GenericFunctionCall):
 # Operators #
 #############
 
-class UnaryOp(Expr):
+class UnaryOp(NumExprEvaluable):
     __children__ = ('expr',)
 
     def __init__(self, op, expr):
         self.op = op
         self.expr = expr
 
-    def as_simple_expr(self, context):
-        return self.__class__(self.op, as_simple_expr(self.expr, context))
+    # def as_simple_expr(self, context):
+    #     return self.__class__(self.op, as_simple_expr(self.expr, context))
+
+    def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs) -> (NumExprEvaluable, dict):
+        assert len(children_expr) == 1
+        subexpr = children_expr[0]
+        return self.__class__(self.op, subexpr), children_funcs
 
     def as_string(self):
         return f"({self.op}{as_string(self.expr)})"
@@ -1050,7 +1154,7 @@ class UnaryOp(Expr):
         return f"({niceop}{self.expr!r})"
 
 
-class BinaryOp(Expr):
+class BinaryOp(NumExprEvaluable):
     __children__ = ('expr1', 'expr2')
 
     def __init__(self, op, expr1, expr2):
@@ -1058,10 +1162,20 @@ class BinaryOp(Expr):
         self.expr1 = expr1
         self.expr2 = expr2
 
-    def as_simple_expr(self, context):
-        expr1 = as_simple_expr(self.expr1, context)
-        expr2 = as_simple_expr(self.expr2, context)
-        return self.__class__(self.op, expr1, expr2)
+    # def as_simple_expr(self, context: EvaluationContext) -> NumExprEvaluable:
+    #     expr1 = as_simple_expr(self.expr1, context)
+    #     expr2 = as_simple_expr(self.expr2, context)
+    #     return self.__class__(self.op, expr1, expr2)
+
+    def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs) -> (NumExprEvaluable, dict):
+        expr1, expr2 = children_expr
+        return self.__class__(self.op, expr1, expr2), children_funcs
+
+    # def prepare_simple_expr(self, context: EvaluationContext) -> (NumExprEvaluable, dict):
+    #     expr1, non_simple_funcs1 = prepare_simple_expr(self.expr1, context)
+    #     expr2, non_simple_funcs2 = prepare_simple_expr(self.expr2, context)
+    #     # TODO: might want to use collections.ChainMap instead of a real dict?
+    #     return self.__class__(self.op, expr1, expr2), non_simple_funcs1 | non_simple_funcs2
 
     # We can't simply use __str__ because of where vs if
     def as_string(self):
@@ -1109,7 +1223,7 @@ class ComparisonOp(BinaryOp):
 # Variables #
 #############
 
-class Variable(Expr):
+class Variable(NumExprEvaluable):
     __children__ = ()
 
     def __init__(self, entity, name, dtype=None):
@@ -1131,6 +1245,9 @@ class Variable(Expr):
     def as_simple_expr(self, context):
         return self
 
+    def prepare_simple_expr(self, context):
+        return self, {}
+
     def dtype(self, context):
         if self._dtype is None and self.name in context:
             return gettype(context[self.name])
@@ -1139,7 +1256,7 @@ class Variable(Expr):
 
 
 # class GlobalVariable(Variable):
-class GlobalVariable(EvaluableExpression):
+class GlobalVariable(NotNumExprEvaluable):
     __children__ = ()
 
     def __init__(self, tablename, name, dtype):
@@ -1159,7 +1276,7 @@ class GlobalVariable(EvaluableExpression):
         if isinstance(period, int):
             return f'__{self.tablename}_{self.name}_{period}'
         else:
-            return EvaluableExpression.get_tmp_varname(self, context)
+            return NotNumExprEvaluable.get_tmp_varname(self, context)
 
     def _eval_key(self, context):
         return context.period
@@ -1331,10 +1448,11 @@ def index_array_by_variables(array, context, axes_to_index=None):
 
 
 # TODO: this class shouldn't be needed. GlobalArray should be handled in the
-# context
-class GlobalArray(EvaluableExpression, Variable):
+#       context
+class GlobalArray(NotNumExprEvaluable, Variable):
     def __init__(self, name, dtype=None, autoindex=None):
-        # we should NOT call EvaluableExpression.__init__(self)
+        # we should NOT call EvaluableExpression.__init__(self) because
+        # it raises NotImplementedError
         Variable.__init__(self, None, name, dtype)
         # convert to tuple so that it is hashable
         if isinstance(autoindex, list):
@@ -1342,12 +1460,15 @@ class GlobalArray(EvaluableExpression, Variable):
         self.autoindex = autoindex
 
     def get_tmp_varname(self, context):
-        tmp_varname = f'__{self.name}_{self.num_tmp}'
-        Expr.num_tmp += 1
-        return tmp_varname
+        # we do not need to add an integer counter because all uses of the same
+        # GlobalArray in a single process/expression will always have the same
+        # autoindex and thus the same selection (as long as we do not allow
+        # random components in autoindex)
+        return f'__{self.name}_auto_indexed'
 
     def evaluate(self, context):
-        return index_array_by_variables(context.global_tables[self.name], context, self.autoindex)
+        return index_array_by_variables(context.global_tables[self.name],
+                                        context, self.autoindex)
 
 
 class GlobalTable:
@@ -1379,7 +1500,7 @@ class GlobalTable:
 # signatures then parse method bodies) OR move AbstractFunction's function call
 # arguments normalization functionality to an external function and call it
 # within MethodCall.evaluate
-class MethodCall(EvaluableExpression):
+class MethodCall(NotNumExprEvaluable):
     __children__ = ('args', 'kwargs')
 
     def __init__(self, entity, name, args, kwargs):
@@ -1447,7 +1568,7 @@ class MethodSymbol:
 
 
 # a specialized/simplified version of SubscriptedExpr
-class DelayedGroup(EvaluableExpression):
+class DelayedGroup(NotNumExprEvaluable):
     __children__ = ('axis_ref', 'key')
 
     def __init__(self, axis_name, key):
@@ -1489,7 +1610,7 @@ class DelayedAxisReferenceFactory:
 X = DelayedAxisReferenceFactory()
 
 
-class NotHashable(Expr):
+class NotHashable(NumExprEvaluable):
     __hash__ = None
 
     def __init__(self):

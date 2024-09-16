@@ -115,7 +115,7 @@ entities:
                                    logit_regr(0.0, align='al_p_mmkt_m.csv'),
                                    logit_regr(0.0, align='al_p_mmkt_f.csv')),
                                 False)
-                # abs() simply returns the absolute value of its argument
+                # abs() returns the absolute value of its argument
                 # this ranks women depending on their distance to the average
                 # age of available men
                 - difficult_match: if(to_couple and ISFEMALE,
@@ -257,3 +257,5 @@ simulation:
     start_period: 2016
     periods: 2
     default_entity: person
+    logging:
+         level: processes

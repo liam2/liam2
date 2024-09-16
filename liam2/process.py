@@ -6,8 +6,8 @@ import larray as la
 from liam2 import config
 from liam2.diff_h5 import diff_array
 from liam2.data import append_carray_to_table, ColumnArray
-from liam2.expr import Expr, Variable, type_to_idx, idx_to_type, expr_eval, expr_cache
-from liam2.context import EntityContext
+from liam2.expr import NumExprEvaluable, Variable, type_to_idx, idx_to_type, expr_eval, expr_cache
+from liam2.context import EntityContext, EvaluationContext
 from liam2 import utils
 from liam2.links import LinkGet
 
@@ -27,10 +27,11 @@ class Process:
         self.name = name
         self.entity = entity
 
-    def run_guarded(self, context):
+    def run_guarded(self, context: EvaluationContext):
         try:
             # purge extra
-            context.entity_data.extra = {}
+            # context.entity_data.extra = {}
+            context.extra_per_entity = {}
             self.run(context)
         except BreakpointException:
             # XXX: store this directly in the (evaluation) context instead of
@@ -56,7 +57,7 @@ class Return(Process):
         raise ReturnException(expr_eval(self.result_expr, context))
 
     def expressions(self):
-        if isinstance(self.result_expr, Expr):
+        if isinstance(self.result_expr, NumExprEvaluable):
             yield self.result_expr
 
 
@@ -68,7 +69,7 @@ class Assignment(Process):
             raise ValueError("cannot assign a subset of an unknown variable")
         self.key_expr = key_expr
 
-    def run(self, context):
+    def run(self, context: EvaluationContext):
         expr = self.expr
 
         # this is a small hack to set the correct "current" entity when setting values via a One2Many link
@@ -94,6 +95,10 @@ class Assignment(Process):
             res_type = type(value)
 
         if self.name in self.entity.fields.names:
+            # TODO: investigate why the assert fails
+            # assert (isinstance(value, la.Array) and
+            #         value.axes.id.equals(self.entity.array.axes.id))
+
             # we cannot store/cache self.entity.array[self.name] because the
             # array object can change (eg when enlarging it due to births)
             target = self.entity.array
@@ -125,7 +130,7 @@ class Assignment(Process):
                               Variable(self.entity, self.name))
 
     def expressions(self):
-        if isinstance(self.expr, Expr):
+        if isinstance(self.expr, NumExprEvaluable):
             yield self.expr
 
 
@@ -179,7 +184,7 @@ class GlobalAssignment(Process):
         #                       Variable(self.entity, self.name))
 
     def expressions(self):
-        if isinstance(self.expr, Expr):
+        if isinstance(self.expr, NumExprEvaluable):
             yield self.expr
 
 
@@ -206,7 +211,7 @@ class While(Process):
             expr_cache.clear()
 
     def expressions(self):
-        if isinstance(self.cond, Expr):
+        if isinstance(self.cond, NumExprEvaluable):
             yield self.cond
         for e in self.code.expressions():
             yield e
@@ -231,7 +236,7 @@ class If(Process):
             self.code.run_guarded(context)
 
     def expressions(self):
-        if isinstance(self.cond, Expr):
+        if isinstance(self.cond, NumExprEvaluable):
             yield self.cond
         for e in self.code.expressions():
             yield e
@@ -406,14 +411,15 @@ class Function(Process):
         assert code is None or isinstance(code, ProcessGroup)
         self.code = code
 
-    def run_guarded(self, context, *args, **kwargs):
+    def run_guarded(self, context: EvaluationContext, *args, **kwargs):
         # XXX: wouldn't some form of cascading context make all this junk much
         # cleaner? Context(globalvars, localvars) (globalvars contain both
         # entity fields and global temporaries)
 
         backup = self.backup_and_purge_locals()
         # in case the function call is in the middle of a larger expression (see issue #186)
-        backup_extra = context.entity_data.extra
+        backup_extra = context.extra_per_entity
+        # backup_extra = context.entity_data.extra
 
         if len(args) != len(self.argnames):
             raise TypeError(f"{self.name}() takes exactly {len(self.argnames)} "
@@ -456,7 +462,8 @@ class Function(Process):
             result = r.result
         self.purge_and_restore_locals(backup)
         # restore extra
-        context.entity_data.extra = backup_extra
+        context.extra_per_entity = backup_extra
+        # context.entity_data.extra = backup_extra
         return result
 
     def expressions(self):

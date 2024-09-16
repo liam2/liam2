@@ -5,7 +5,8 @@ import numpy as np
 import numexpr as ne
 import larray as la
 
-from liam2.expr import Expr, Variable, getdtype, expr_eval, missing_values, get_default_value, always, FunctionExpr
+from liam2.expr import NumExprEvaluable, Variable, getdtype, expr_eval, missing_values, get_default_value, always, \
+    FunctionExpr, Expr
 from liam2.context import context_length
 from liam2.partition import filter_to_indices
 from liam2.utils import removed
@@ -329,7 +330,6 @@ class Sum(Aggregate):
         # bincount, and using a value too high will uselessly increase the size
         # of the array returned by bincount
         idx_for_missing = context_length(context)
-
         missing_int = missing_values[int]
 
         # filter out missing values: those where the object pointed to does not
@@ -342,8 +342,18 @@ class Sum(Aggregate):
         if weights_value is not None:
             expr_value = expr_value * weights_value
         counts = self.count(source_rows, expr_value, weights_value)
+
+        # TODO: investigate why this assertion fails
+        # assert idx_for_missing >= len(counts), f"{idx_for_missing} < {len(counts)}"
         # missing entries are filled with zeros, so it works nicely in this case (sum/count)
-        counts.resize(idx_for_missing)
+        try:
+            counts.resize(idx_for_missing)
+        except ValueError:
+            # the try except is necessary because ndarray.resize does not seem
+            # to play nice with debug
+            new_counts = np.zeros(idx_for_missing, dtype=counts.dtype)
+            new_counts[:len(counts)] = counts
+            counts = new_counts
         return counts
 
     # XXX: does not depend on self => move to class method?

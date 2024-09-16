@@ -3,9 +3,9 @@ import types
 import numpy as np
 
 from liam2 import config
-from liam2.context import context_length
+from liam2.context import context_length, EvaluationContext
 from liam2.expr import (FunctionExpr, not_hashable, getdtype, as_simple_expr, as_string, get_default_value, ispresent,
-                        LogicalOp, AbstractFunction, always, FillArgSpecMeta)
+                        LogicalOp, AbstractFunction, always, FillArgSpecMeta, NumExprEvaluable, prepare_simple_expr)
 from liam2.utils import classproperty, argspec, split_signature
 
 
@@ -50,26 +50,66 @@ class CompoundExpression(AbstractFunction, metaclass=FillArgSpecMeta):
     def get_compute_func(cls):
         return cls.build_expr
 
-    def as_simple_expr(self, context):
-        # This will effectively trigger evaluation of expressions arguments
-        # which are not handled by numexpr functions such has all expressions
-        # inheriting from EvaluableExpression (e.g, uniform()) and their result
-        # will be stored as a temporary variables in the context. The subtlety
-        # to remember is that if a CompoundExpression "duplicates" arguments
-        # (such as Logit), those must be either duplicate-safe or
-        # EvaluableExpression. For example, if numexpr someday supports random
-        # generators, we will be in trouble if we use it as-is. This means we
-        # cannot keep the "compiled" expression, because the "temporary
-        # variables" would only have a value in the first period, when the
-        # expr is "compiled". This would tick the balance in favor of keeping a
-        # build_context method.
-        args = [as_simple_expr(arg, context) for arg in self.args]
-        kwargs = {name: as_simple_expr(arg, context)
-                  for name, arg in self.kwargs}
+    def evaluate(self, context: EvaluationContext):
+        simple_expr, tmp_var_funcs = self.prepare_simple_expr(context)
+        # TODO: unsure if I should copy context before modifying it?!?
+        for key, func in tmp_var_funcs.items():
+            context[key] = func(context)
+        return simple_expr.evaluate(context)
+
+    # def as_simple_expr(self, context):
+    #     # This will effectively trigger evaluation of expressions arguments
+    #     # which are not handled by numexpr functions such has all expressions
+    #     # inheriting from EvaluableExpression (e.g, uniform()) and their result
+    #     # will be stored as a temporary variables in the context. The subtlety
+    #     # to remember is that if a CompoundExpression "duplicates" arguments
+    #     # (such as Logit), those must be either duplicate-safe or
+    #     # EvaluableExpression. For example, if numexpr someday supports random
+    #     # generators, we will be in trouble if we use it as-is. This means we
+    #     # cannot keep the "compiled" expression, because the "temporary
+    #     # variables" would only have a value in the first period, when the
+    #     # expr is "compiled". This would tick the balance in favor of keeping a
+    #     # build_context method.
+    #     args = [as_simple_expr(arg, context) for arg in self.args]
+    #     kwargs = {name: as_simple_expr(arg, context)
+    #               for name, arg in self.kwargs}
+    #     expr = self.build_expr(context, *args, **kwargs)
+    #     # We need this because self.build_expr returns an Expr which can
+    #     # contain CompoundExpressions
+    #     return expr.as_simple_expr(context)
+
+    def prepare_simple_expr(self, context: EvaluationContext) -> ('NumExprEvaluable', dict):
+        """
+        create temporary variables for any construct that is not supported by
+        numexpr and return a dict of functions to evaluate them.
+
+        Dict ordering determine evaluation order. Since the expr ast tree
+        is traversed depth-first to construct the dict, this should work
+        """
+        children_funcs = {}
+        children_expr = []
+        for child in self.children:
+            print(self.__class__, "prepare_simple_expr child", child)
+            child_expr, child_funcs = prepare_simple_expr(child, context)
+            children_expr.append(child_expr)
+            children_funcs |= child_funcs
+
+        return self.prepare_simple_expr_with_children_prepared(context, children_expr, children_funcs)
+
+    def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs):
+        args, kwargs = children_expr
+        # kwargs are stored as sorted tuples
+        kwargs = dict(kwargs)
+        for arg in args:
+            assert arg is None or isinstance(arg, (NumExprEvaluable, int, float, str))
+        # args = [as_simple_expr(arg, context) for arg in self.args]
+        # kwargs = {name: as_simple_expr(arg, context)
+        #           for name, arg in self.kwargs}
         expr = self.build_expr(context, *args, **kwargs)
         # We need this because self.build_expr returns an Expr which can
         # contain CompoundExpressions
-        return expr.as_simple_expr(context)
+        final_expr, new_funcs = expr.prepare_simple_expr(context)
+        return final_expr, children_funcs | new_funcs
 
     def build_expr(self, context, *args, **kwargs):
         raise NotImplementedError()
@@ -150,14 +190,17 @@ class NumpyChangeArray(NumpyFunction):
         func = self.get_compute_func()
         new_values = func(*args, **kwargs)
 
-        if filter_value is None:
-            return new_values
-        else:
+        if filter_value is not None:
             # we cannot do this yet because dtype() currently requires
             # context (and I don't want to change the signature of compute
-            # just for that) assert dtype(old_values) == dtype(new_values)
+            # just for that)
+            # assert dtype(old_values) == dtype(new_values)
             old_values = args[0]
-            return np.where(filter_value, new_values, old_values)
+            new_values = np.where(filter_value, new_values, old_values)
+
+        # FIXME: sometimes (e.g. clip, it is already an la.Array)
+        return self.to_larray(context, new_values)
+        # return new_values
 
 
 class NumpyCreateArray(NumpyFunction):
@@ -170,6 +213,9 @@ class NumpyCreateArray(NumpyFunction):
         if filter_value is not None:
             missing_value = get_default_value(values)
             values = np.where(filter_value, values, missing_value)
+        # FIXME: for this to work, the context
+        #        needs to contain the current subset_id_axis
+        # return self.to_larray(context, values)
         return values
 
 
@@ -262,14 +308,14 @@ class WeightedFilteredAggregateFunction(FunctionExpr):
         return values, weights
 
 
-class NumexprFunction(AbstractFunction):
+class NumexprFunction(NumExprEvaluable, AbstractFunction):
     """For functions which are present as-is in numexpr"""
     # argspec need to be given manually for each function
     argspec = None
 
-    def as_simple_expr(self, context):
-        args, kwargs = as_simple_expr((self.args, self.kwargs), context)
-        return self.__class__(*args, **dict(kwargs))
+    def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs):
+        args, kwargs = children_expr
+        return self.__class__(*args, **dict(kwargs)), children_funcs
 
     def as_string(self):
         args, kwargs = as_string((self.args, self.kwargs))

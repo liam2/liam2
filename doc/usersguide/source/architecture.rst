@@ -77,10 +77,13 @@ a new function:
      
      * NumpyCreateArray: subclass for functions which create arrays out of
        nothing (usually random functions).
+       -> add id axis
      * NumpyChangeArray: subclass for functions which take an array as input
        and give another array as output (eg clip, round).
+       -> add id axis
      * NumpyAggregate: subclass for aggregate functions. eg. count, min,
        max, std, median.
+       -> add id axis
 
   b) FunctionExpr: subclass for functions. eg. trunc, lag, duration, ...
 
