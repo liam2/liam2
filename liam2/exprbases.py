@@ -167,11 +167,10 @@ class NumpyCreateArray(NumpyFunction):
         func = self.get_compute_func()
         values = func(*args, **kwargs)
 
-        if filter_value is None:
-            return values
-        else:
+        if filter_value is not None:
             missing_value = get_default_value(values)
-            return np.where(filter_value, values, missing_value)
+            values = np.where(filter_value, values, missing_value)
+        return values
 
 
 class NumpyRandom(NumpyCreateArray):
