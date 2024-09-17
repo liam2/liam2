@@ -89,7 +89,7 @@ class CompoundExpression(AbstractFunction, metaclass=FillArgSpecMeta):
         children_funcs = {}
         children_expr = []
         for child in self.children:
-            print(self.__class__, "prepare_simple_expr child", child)
+            # print(self.__class__, "prepare_simple_expr child", child)
             child_expr, child_funcs = prepare_simple_expr(child, context)
             children_expr.append(child_expr)
             children_funcs |= child_funcs

@@ -493,7 +493,7 @@ class NumExprEvaluable(Expr):
             if isinstance(value, la.Array):
                 if expr_axes is None:
                     expr_axes = value.axes
-                    print("expr_axes", expr_axes)
+                    # print("expr_axes", expr_axes)
                 else:
                     if value.axes != expr_axes:
                         # TODO: what I should do instead is to make all arguments numpy-broadcastable (via larray)

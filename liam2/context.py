@@ -113,10 +113,10 @@ class EvaluationContext:
     def __setitem__(self, key, value):
         # XXX: how do we set a new global?
         entity_extra = self.extra_per_entity.setdefault(self.entity_name, {})
-        if key not in entity_extra:
-            print(f"adding '{key}' to context")
-        else:
-            print(f"updating '{key}' value in context")
+        # if key not in entity_extra:
+        #     print(f"adding '{key}' to context")
+        # else:
+        #     print(f"updating '{key}' value in context")
 
         entity_extra[key] = value
         # assert False

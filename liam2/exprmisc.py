@@ -536,7 +536,7 @@ class Where(NumexprFunction):
     #     return Where(cond, iftrue, iffalse)
     #
     def prepare_simple_expr(self, context: EvaluationContext) -> (NumExprEvaluable, dict):
-        print("prepare_simple_expr", self)
+        # print("prepare_simple_expr", self)
         args, kwargs = self.children
         cond_expr, iftrue, iffalse = args
 

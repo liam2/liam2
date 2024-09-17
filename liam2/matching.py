@@ -178,7 +178,7 @@ class SequentialMatching(Matching):
         str_score = simple_score.as_string()
         score_expr = JITExpression(str_score)
 
-        print(f"{score_funcs=}")
+        # print(f"{score_funcs=}")
         # TODO: instead of filtering "v.name not in global_tables", we should keep the whole Variable instance and use
         #       that in context.subset, context_keep, et. al. But adding support for Variable in all those
         #       functions would be some significant work.
