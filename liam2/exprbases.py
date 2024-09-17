@@ -116,9 +116,18 @@ class CompoundExpression(AbstractFunction, metaclass=FillArgSpecMeta):
 
 
 class FilteredExpression(FunctionExpr):
-    @staticmethod
-    def _getfilter(context, filter):
-        ctx_filter = context.filter_expr
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.contextual_filter = None
+
+    def prepare_simple_expr(self, context: EvaluationContext) -> ('NumExprEvaluable', dict):
+        if context.filter_expr is not None:
+            self.contextual_filter = context.filter_expr
+        return super().prepare_simple_expr(context)
+
+    def _get_combined_filter(self, context, filter):
+        ctx_filter = self.contextual_filter
+        # ctx_filter = context.filter_expr
         # FIXME: this is a hack and shows that the not_hashable filter_expr in
         #  context is not really a good solution. We should rather add a flag
         # in the context "ishardsubset" or something like that.

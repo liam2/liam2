@@ -100,7 +100,7 @@ class Sum(FilteredExpression):
     no_eval = ('expr', 'filter', 'weights')
 
     def compute(self, context, expr, filter=None, weights=None, skip_na=True):
-        filter_expr = self._getfilter(context, filter)
+        filter_expr = self._get_combined_filter(context, filter)
         if filter_expr is not None:
             expr = BinaryOp('*', expr, filter_expr)
         if weights is not None:

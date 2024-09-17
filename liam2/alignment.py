@@ -420,7 +420,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         need, expressions, possible_values = \
             self._eval_need(context, need, expressions, possible_values)
 
-        filter_value = expr_eval(self._getfilter(context, filter), context)
+        filter_value = expr_eval(self._get_combined_filter(context, filter), context)
         if filter_value is not None:
             if isinstance(filter_value, la.Array):
                 filter_value = filter_value.data
@@ -499,7 +499,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
         # this is a one2many, so the link column is on the target side
         link_column = target_context[link._link_field]
 
-        filter_expr = self._getfilter(context, filter)
+        filter_expr = self._get_combined_filter(context, filter)
         if filter_expr is not None:
             target_filter = link._reverse_link().get(filter_expr, missing_value=False)
             target_filter_value = expr_eval(target_filter, target_context)

@@ -89,9 +89,9 @@ class RankMatching(Matching):
     no_eval = ('set1filter', 'set2filter')
 
     def compute(self, context, set1filter, set2filter, orderby1, orderby2):
-        set1filterexpr = self._getfilter(context, set1filter)
+        set1filterexpr = self._get_combined_filter(context, set1filter)
         set1filtervalue = expr_eval(set1filterexpr, context)
-        set2filterexpr = self._getfilter(context, set2filter)
+        set2filterexpr = self._get_combined_filter(context, set2filter)
         set2filtervalue = expr_eval(set2filterexpr, context)
         set1len = set1filtervalue.sum()
         set2len = set2filtervalue.sum()
@@ -166,9 +166,9 @@ class SequentialMatching(Matching):
             assert isinstance(pool_size, int)
             assert pool_size > 0
 
-        set1filterexpr = self._getfilter(context, set1filter)
+        set1filterexpr = self._get_combined_filter(context, set1filter)
         set1filtervalue = expr_eval(set1filterexpr, context)
-        set2filterexpr = self._getfilter(context, set2filter)
+        set2filterexpr = self._get_combined_filter(context, set2filter)
         set2filtervalue = expr_eval(set2filterexpr, context)
         set1len = set1filtervalue.sum()
         set2len = set2filtervalue.sum()

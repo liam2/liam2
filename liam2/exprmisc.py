@@ -282,7 +282,7 @@ class New(FilteredExpression):
             target_context = context.clone(fresh_data=True,
                                            entity_name=target_entity.name)
 
-        filter_expr = self._getfilter(context, filter)
+        filter_expr = self._get_combined_filter(context, filter)
         if filter_expr is not None:
             to_give_birth = expr_eval(filter_expr, context)
             num_birth = to_give_birth.sum()
