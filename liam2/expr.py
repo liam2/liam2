@@ -17,6 +17,7 @@ from liam2.utils import (ExplainTypeError, safe_take, IrregularNDArray, NiceArgS
 try:
     import numexpr
 #    numexpr.set_num_threads(1)
+    print("using numexpr")
     evaluate = numexpr.evaluate
 except ImportError:
     numexpr = None
@@ -289,6 +290,7 @@ class Expr:
     # XXX: I wonder if those couldn't be computed automatically by using
     # isinstance(v, Expr)
     __children__ = ()
+    _variables = None
 
     def __init__(self):
         raise NotImplementedError()
@@ -407,7 +409,20 @@ class Expr:
                      make_hashable(self.children)))
 
 
+# This is an Abstract class
 class NumExprEvaluable(Expr):
+    _all_numexpr_evaluable = None
+
+    @property
+    def is_all_numexpr_evaluable(self):
+        value = self._all_numexpr_evaluable
+        if value is None:
+            evaluable_types = (NumExprEvaluable, int, float, bool)
+            value = all(isinstance(node, evaluable_types)
+                        for node in self.traverse())
+            self._all_numexpr_evaluable = value
+        return value
+
     def evaluate(self, context):
         # period = context.period
         #
@@ -431,7 +446,15 @@ class NumExprEvaluable(Expr):
         for key, func in tmp_var_funcs.items():
             context[key] = func(context)
 
-        # simple_expr = self.as_simple_expr(context)
+        return simple_expr.fast_evaluate(context)
+
+    def fast_evaluate(self, context):
+        # self must be a simple expr
+        # and context must contain all tmp_vars
+        assert self.is_all_numexpr_evaluable
+
+        simple_expr = self
+
         if isinstance(simple_expr, Variable):
             # assert simple_expr.name in context
             return context[simple_expr.name]
@@ -470,6 +493,7 @@ class NumExprEvaluable(Expr):
             if isinstance(value, la.Array):
                 if expr_axes is None:
                     expr_axes = value.axes
+                    print("expr_axes", expr_axes)
                 else:
                     if value.axes != expr_axes:
                         # TODO: what I should do instead is to make all arguments numpy-broadcastable (via larray)

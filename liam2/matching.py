@@ -2,10 +2,12 @@ import random
 
 import numpy as np
 import larray as la
+from numexpr import evaluate
 
-from liam2.expr import expr_eval, always, expr_cache
+from liam2.expr import expr_eval, always, expr_cache, prepare_simple_expr, evaluate_with_globals
 from liam2.exprbases import FilteredExpression
 from liam2.context import context_length, context_delete, context_subset, context_keep
+from liam2.numexpr_compat import JITExpression
 from liam2.utils import loop_wh_progress
 
 try:
@@ -172,6 +174,11 @@ class SequentialMatching(Matching):
         set2len = set2filtervalue.sum()
         print(f"matching with {set1len}/{set2len} individuals", end='')
 
+        simple_score, score_funcs = prepare_simple_expr(score, context)
+        str_score = simple_score.as_string()
+        score_expr = JITExpression(str_score)
+
+        print(f"{score_funcs=}")
         # TODO: instead of filtering "v.name not in global_tables", we should keep the whole Variable instance and use
         #       that in context.subset, context_keep, et. al. But adding support for Variable in all those
         #       functions would be some significant work.
@@ -251,6 +258,8 @@ class SequentialMatching(Matching):
         # prefix all keys except __len__
         matching_ctx = {'__other_' + k if k != '__len__' else k: v
                         for k, v in set2.items()}
+        constants = {'nan': float('nan'), 'inf': float('inf')}
+        matching_ctx.update(constants)
 
         def match_cell(idx, sorted_idx, pool_size):
             global matching_ctx
@@ -271,8 +280,13 @@ class SequentialMatching(Matching):
             # set1 "columns" are supposed to be all la.Array instances
             local_ctx.update((k, set1[k].data[sorted_idx]) for k in used_variables1)
 
-            eval_ctx = context.clone(entity_data=local_ctx)
-            set2_scores = expr_eval(score, eval_ctx)
+            # eval_ctx = context.clone(entity_data=local_ctx)
+            # set2_scores = simple_score.fast_evaluate(eval_ctx)
+            # set2_scores = evaluate_with_globals(str_score, local_ctx, constants, truediv='auto')
+            # set2_scores = evaluate(str_score, local_ctx, truediv='auto')
+            set2_scores = score_expr.evaluate(local_ctx, {})
+            # set2_scores = np.ones(set2_size)
+
             if isinstance(set2_scores, la.Array):
                 assert set2_scores.ndim == 1 and set2_scores.axes[0].name == 'id'
                 cell2_idx = set2_scores.data.argmax()
