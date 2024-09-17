@@ -1,4 +1,4 @@
-# 290ms -> 6s 468ms -> 1s 693ms
+# 290ms -> 6s 468ms -> 1s 693ms -> 245ms
 # This is a LIAM2 simulation file.
 
 # In this example, we will implement simple marriage and divorce functions and
@@ -258,5 +258,6 @@ simulation:
     start_period: 2016
     periods: 2
     default_entity: person
+    random_seed: 1234
     logging:
          level: processes
