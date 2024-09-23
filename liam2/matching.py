@@ -286,15 +286,16 @@ class SequentialMatching(Matching):
             # set1 "columns" are supposed to be all la.Array instances
             local_ctx.update((k, set1[k].data[sorted_idx]) for k in used_variables1)
 
+            eval_ctx = context.clone(entity_data=local_ctx)
             if score_tmpvar_funcs:
                 for key, func in score_tmpvar_funcs.items():
-                    local_ctx[key] = func(local_ctx)
+                    eval_ctx[key] = func(eval_ctx)
 
-            # eval_ctx = context.clone(entity_data=local_ctx)
             # set2_scores = simple_score.fast_evaluate(eval_ctx)
             # set2_scores = evaluate_with_globals(str_score, local_ctx, constants, truediv='auto')
             # set2_scores = evaluate(str_score, local_ctx, truediv='auto')
-            set2_scores = score_expr.evaluate(local_ctx, {})
+            set2_scores = score_expr.evaluate(eval_ctx, {})
+
             # set2_scores = np.ones(set2_size)
 
             if isinstance(set2_scores, la.Array):
