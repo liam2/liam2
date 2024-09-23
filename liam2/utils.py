@@ -11,6 +11,7 @@ import warnings
 import numpy as np
 import numexpr as ne
 import larray as la
+from larray import AxisCollection
 
 from liam2 import config
 
@@ -420,6 +421,7 @@ def _make_aggregate(func):
     return method
 
 
+# FIXME: we should provide IrregularLArray instead !
 class IrregularNDArray:
     """
     A wrapper for collections of arrays (eg list of arrays or arrays of
@@ -1389,3 +1391,22 @@ def array_nan_equal(a, b):
 
 
 MB = 2 ** 20
+
+
+def union_axes(axes_seqs):
+    collections = [axes_seq for axes_seq in axes_seqs
+                   if isinstance(axes_seq, AxisCollection)]
+    num_col = len(collections)
+    if num_col == 0:
+        return None
+    elif num_col == 1:
+        return collections[0]
+
+    first_col = collections[0]
+    if all(col is first_col for col in collections[1:]):
+        return first_col
+    elif all(col is first_col for col in collections[1:]):
+        # FIXME: I should make sure this case never happens within LIAM2
+        print("WARNING: collection equal but not is")
+    else:
+        return first_col.union(*collections[1:])

@@ -1,5 +1,6 @@
 import types
 
+import larray
 import numpy as np
 
 from liam2 import config
@@ -143,9 +144,9 @@ class FilteredExpression(FunctionExpr):
             filter_expr = ctx_filter
         else:
             filter_expr = None
-        if filter_expr is not None and \
-                getdtype(filter_expr, context) is not bool:
-            raise Exception("filter must be a boolean expression")
+        # if filter_expr is not None and \
+        #         getdtype(filter_expr, context) is not bool:
+        #     raise Exception("filter must be a boolean expression")
         return filter_expr
 
 
@@ -190,15 +191,17 @@ class NumpyFunction(FunctionExpr):
 class NumpyChangeArray(NumpyFunction):
     def __init__(self, *args, **kwargs):
         # the first argument should be the array to work on ('a')
-        assert self.argspec.args[0] == 'a'
+        assert self.argspec.args[0] == 'a', (f"internal error: first argument "
+                                             f"in argspec should be 'a' "
+                                             f"({', '.join(self.argspec.args)})")
         NumpyFunction.__init__(self, *args, **kwargs)
 
     def compute(self, context, *args, **kwargs):
         filter_value = kwargs.pop('filter', None)
 
         func = self.get_compute_func()
-        new_values = func(*args, **kwargs)
 
+        new_values = func(*args, **kwargs)
         if filter_value is not None:
             # we cannot do this yet because dtype() currently requires
             # context (and I don't want to change the signature of compute
@@ -208,6 +211,12 @@ class NumpyChangeArray(NumpyFunction):
             new_values = np.where(filter_value, new_values, old_values)
 
         # FIXME: sometimes (e.g. clip, it is already an la.Array)
+        # FIXME: sometimes the input is not a column (no id axis)
+        #        it can be a scalar or an ndarray with another dimension
+        #        for example:
+        #        - q: array([0, 10, 40, 50, 60, 90, 100])
+        #        - res: percentile([1, 2, 3], q=q)
+        #        - assertEqual(round(res, 10), [1.0, 1.2, 1.8, 2.0, 2.2, 2.8, 3.0])
         return self.to_larray(context, new_values)
         # return new_values
 
@@ -325,6 +334,10 @@ class NumexprFunction(NumExprEvaluable, AbstractFunction):
     def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs):
         args, kwargs = children_expr
         return self.__class__(*args, **dict(kwargs)), children_funcs
+
+    def result_axes_with_known_children(self, context, children_axes):
+        args_axes, kwargs_axes = children_axes
+        return args_axes[0]
 
     def as_string(self):
         args, kwargs = as_string((self.args, self.kwargs))

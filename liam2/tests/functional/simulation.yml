@@ -1088,10 +1088,11 @@ entities:
                 # -----------------------------
                 # no index
                 - assertEqual(periodic.WEMRA, fake_wemra)
-                # const_index
+                # const index
                 - assertEqual(periodic.MINR[2005], 13620.2)
-                # expr_index
+                # scalar expr index
                 - assertEqual(periodic.WEMRA[period - 1], fake_wemra_pm1)
+                # vector expr index
                 - vector_idx: periodic.MINR[yearofbirth + 65]
 
                 # SETTING globals
@@ -3215,7 +3216,8 @@ entities:
                        "total population", sum(weight))
 
             test_array():
-                # 1D array with implicit axis
+                # 1D array with implicit (non-id) axis
+                # ====================================
                 - arr: array([0, 1, 2])
                 - assertEqual(arr, [0, 1, 2])
 
@@ -3227,22 +3229,25 @@ entities:
                 - v5: age + 5
 
                 # 2D array with implicit axes
+                # ===========================
                 - arr: array([v3, v1, v2, v5, v0, v4])
                 - assertEqual(arr.shape, (6, count()))
                 - assertEqual(arr.axes.names, [None, 'id'])
 
                 # 2D array with explicit axes, one anonymous
+                # ==========================================
                 - arr: array([v3, v1, v2, v5, v0, v4], axes=[6, id.id])
                 - assertEqual(arr.shape, (6, count()))
                 - assertEqual(arr.axes.names, [None, 'id'])
 
                 # 2D array with explicit named axes
+                # =================================
                 - arr: array([v3, v1, v2, v5, v0, v4], axes=[Axis(6, 'n'), id.id])
                 - assertEqual(arr.shape, (6, count()))
                 - assertEqual(arr.axes.names, ['n', 'id'])
 
-                # sorting using Array.sort_values
-                # -------------------------------
+                # 1) sorting using Array.sort_values
+                # ----------------------------------
                 - sorted_arr: arr.sort_values(axis='n')
                 # we use three different ways to access elements
                 - highest1: sorted_arr['n.i[-1]']
@@ -3263,8 +3268,8 @@ entities:
                 - sum_highest: sorted_arr.sum('n.i[-3:]')
                 - assertEqual(sum_highest, expected)
 
-                # sorting using Array.labelsofsorted (indirect sort)
-                # --------------------------------------------------
+                # 2) sorting using Array.labelsofsorted (indirect sort)
+                # -----------------------------------------------------
                 - sorted_n: arr.labelsofsorted('n')
                 # sadly some values of n are ambiguous with ids so we have to specify arr.n
                 - highest1: arr[arr.n[sorted_n['n.i[-1]']]]
@@ -3285,31 +3290,39 @@ entities:
                 - sum_highest: arr.sum(arr.n[sorted_n.i[-3:]])
                 - assertEqual(sum_highest, expected)
 
-                # sorting using sort()
-                # --------------------
+                # 3) sorting using sort()
+                # -----------------------
                 # TODO: deprecate sort() (it returns an np.ndarray)
                 - sorted_arr: sort(arr, axis=0)
-                - highest1: sorted_arr[-1]
-                - highest2: sorted_arr[-2]
-                - highest3: sorted_arr[-3]
+                - highest1: sorted_arr.i[-1]
+                - highest2: sorted_arr.i[-2]
+                - highest3: sorted_arr.i[-3]
                 - assertEqual(highest1, v5)
                 - assertEqual(highest2, v4)
                 - assertEqual(highest3, v3)
 
-                # 2D array with implicit axes
+                - sorted_arr: sort(arr, axis='n')
+                - highest1: sorted_arr.i[-1]
+                - highest2: sorted_arr.i[-2]
+                - highest3: sorted_arr.i[-3]
+                - assertEqual(highest1, v5)
+                - assertEqual(highest2, v4)
+                - assertEqual(highest3, v3)
+
+                # 3D array with implicit axes
                 # ---------------------------
-                - arr2d: array([[id    , id + 1],
+                - arr3d: array([[id    , id + 1],
                                 [id + 2, id + 3],
                                 [id + 4, id + 5]])
-                - assertEqual(arr2d.shape, (3, 2, count()))
-                - assertEqual(arr2d.axes.names, [None, None, 'id'])
+                - assertEqual(arr3d.shape, (3, 2, count()))
+                - assertEqual(arr3d.axes.names, [None, None, 'id'])
 
-                # 2D array with explicit axes
-                - arr2d: array([[id    , id + 1],
+                # 3D array with explicit axes
+                - arr3d: array([[id    , id + 1],
                                 [id + 2, id + 3],
                                 [id + 4, id + 5]], axes=[3, 2, id.id])
-                - assertEqual(arr2d.shape, (3, 2, count()))
-                - assertEqual(arr2d.axes.names, [None, None, 'id'])
+                - assertEqual(arr3d.shape, (3, 2, count()))
+                - assertEqual(arr3d.axes.names, [None, None, 'id'])
 
             test_setitem():
                 # 1D array (with wildcard axis) target, constant key, constant value

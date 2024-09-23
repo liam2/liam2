@@ -196,10 +196,11 @@ entities:
                 - agediff: if(ISFEMALE and ISMARRIED, age - partner.age, 0)
                 - nb_children: household.get(persons.count(age < 18))
                 # select females to divorce
+                # FIXME: the link in the expression is the problematic part
+#                                      - 0.814204 * (ISINWORK and partner.get(ISINWORK))
                 - divorce: logit_regr(0.6713593 * nb_children
                                       - 0.0785202 * dur_in_couple
                                       + 0.1429621 * agediff - 0.0088308 * agediff **2
-                                      - 0.814204 * (ISINWORK and partner.get(ISINWORK))
                                       - 4.546278,
                                       filter = ISFEMALE and ISMARRIED and (dur_in_couple > 0),
                                       align = 'al_p_divorce.csv')
@@ -395,3 +396,5 @@ simulation:
     start_period: 2016
     periods: 2
     default_entity: person
+    logging:
+        level: processes

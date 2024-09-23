@@ -33,7 +33,7 @@ class EvaluationContext:
         self.entities_data = entities_data
         # should only be used on subsets, not when the context
         # contains only normal EntityContexts
-        self.subset_axes = subset_axes
+        self.subset_ids = subset_axes
         self.extra_per_entity = {}
 
     def copy(self, fresh_data=False):
@@ -125,14 +125,22 @@ class EvaluationContext:
     def __contains__(self, key):
         from liam2.expr import Variable
         if isinstance(key, Variable):
+            raise TypeError("wtf! Variable instances as keys are not supported by getitem !")
             entity, name = key.entity, key.name
             if entity is None:
                 # FIXME: this is wrong (but currently needed because some
                 # Variable are created without entity)
                 return True
             else:
-                return name in self.entities_data[entity.name]
+                entity_name = entity.name
+                if entity_name in self.extra_per_entity:
+                    if name in self.extra_per_entity[entity_name]:
+                        return True
+                return name in self.entities_data[entity_name]
         else:
+            if self.entity_name in self.extra_per_entity:
+                if key in self.extra_per_entity[self.entity_name]:
+                    return True
             return key in self.entity_data
 
     def length(self):
@@ -244,7 +252,7 @@ class EntityContext:
     def __delitem__(self, key):
         del self.extra[key]
 
-    def __contains__(self, key):
+    def __contains__(self, key: str):
         entity = self.entity
         period = self.eval_ctx.period
         array_period = entity.array_period

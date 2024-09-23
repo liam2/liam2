@@ -6,7 +6,7 @@ import larray as la
 from liam2 import config
 from liam2.align_link import align_link_nd
 from liam2.context import context_length
-from liam2.expr import NumExprEvaluable, Variable, expr_eval, missing_values, always
+from liam2.expr import NumExprEvaluable, Variable, expr_eval, missing_values, always, Expr
 from liam2.exprbases import FilteredExpression
 from liam2.groupby import GroupBy
 from liam2.partition import partition_nd, filter_to_indices
@@ -477,7 +477,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
                             target_context)
 
         # handle secondary axis
-        if isinstance(secondary_axis, NumExprEvaluable):
+        if isinstance(secondary_axis, Expr):
             axis_name = str(secondary_axis)
             try:
                 secondary_axis = need.axes.names.index(axis_name)

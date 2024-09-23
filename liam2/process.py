@@ -6,7 +6,7 @@ import larray as la
 from liam2 import config
 from liam2.diff_h5 import diff_array
 from liam2.data import append_carray_to_table, ColumnArray
-from liam2.expr import NumExprEvaluable, Variable, type_to_idx, idx_to_type, expr_eval, expr_cache
+from liam2.expr import NumExprEvaluable, Variable, type_to_idx, idx_to_type, expr_eval, expr_cache, Expr
 from liam2.context import EntityContext, EvaluationContext
 from liam2 import utils
 from liam2.links import LinkGet
@@ -57,7 +57,7 @@ class Return(Process):
         raise ReturnException(expr_eval(self.result_expr, context))
 
     def expressions(self):
-        if isinstance(self.result_expr, NumExprEvaluable):
+        if isinstance(self.result_expr, Expr):
             yield self.result_expr
 
 
@@ -130,7 +130,7 @@ class Assignment(Process):
                               Variable(self.entity, self.name))
 
     def expressions(self):
-        if isinstance(self.expr, NumExprEvaluable):
+        if isinstance(self.expr, Expr):
             yield self.expr
 
 
@@ -184,7 +184,7 @@ class GlobalAssignment(Process):
         #                       Variable(self.entity, self.name))
 
     def expressions(self):
-        if isinstance(self.expr, NumExprEvaluable):
+        if isinstance(self.expr, Expr):
             yield self.expr
 
 
@@ -211,7 +211,7 @@ class While(Process):
             expr_cache.clear()
 
     def expressions(self):
-        if isinstance(self.cond, NumExprEvaluable):
+        if isinstance(self.cond, Expr):
             yield self.cond
         for e in self.code.expressions():
             yield e
@@ -236,7 +236,7 @@ class If(Process):
             self.code.run_guarded(context)
 
     def expressions(self):
-        if isinstance(self.cond, NumExprEvaluable):
+        if isinstance(self.cond, Expr):
             yield self.cond
         for e in self.code.expressions():
             yield e

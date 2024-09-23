@@ -16,13 +16,13 @@ from larray.core.array import concat
 from liam2 import config
 from liam2.data import LColumnArray
 from liam2.expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp, LogicalOp, getdtype, coerce_types,
-                        expr_eval, as_simple_expr, as_string, collect_variables, get_default_vector,
+                        expr_eval, as_string, collect_variables, get_default_vector,
                         FunctionExpr, always, firstarg_dtype, expr_cache, index_array_by_variables, get_default_value,
                         NumExprEvaluable, prepare_simple_expr)
 from liam2.exprbases import FilteredExpression, CompoundExpression, NumexprFunction, TableExpression, NumpyChangeArray
 from liam2.importer import load_ndarray, load_table
 from liam2.partition import filter_to_indices
-from liam2.utils import PrettyTable, argspec
+from liam2.utils import PrettyTable, argspec, union_axes
 
 
 # TODO: implement functions in expr to generate "Expr" nodes at the python level
@@ -142,7 +142,8 @@ class Clip(NumpyChangeArray):
 
 
 class Sort(NumpyChangeArray):
-    np_func = np.sort
+    np_func = la.Array.sort_values # np.sort
+    argspec = argspec('a, key=None, axis=None, ascending=True')
 
 
 # ------------------------------------
@@ -187,15 +188,27 @@ class Abs(NumexprFunction):
     argspec = argspec('expr')
     dtype = always(float)
 
+    def result_axes_with_known_children(self, context, children_axes):
+        args_axes, kwargs_axes = children_axes
+        return args_axes[0]
+
 
 class Log(NumexprFunction):
     argspec = argspec('expr')
     dtype = always(float)
 
+    def result_axes_with_known_children(self, context, children_axes):
+        args_axes, kwargs_axes = children_axes
+        return args_axes[0]
+
 
 class Exp(NumexprFunction):
     argspec = argspec('expr')
     dtype = always(float)
+
+    def result_axes_with_known_children(self, context, children_axes):
+        args_axes, kwargs_axes = children_axes
+        return args_axes[0]
 
 
 def expand_with_defaults(d: dict,
@@ -221,7 +234,7 @@ def expand_with_defaults(d: dict,
         # temporaries to store them in the entity somewhere, but I am unsure
         # whether it is possible.
         if isinstance(value, np.ndarray) and value.shape == (len_before,):
-            assert False
+            # assert False
             # TODO: I should make sure this case never happens (so that I can remove the FIXME above)
             num_birth = len(children_axes.id)
             extra = get_default_vector(num_birth, value.dtype)
@@ -500,6 +513,9 @@ class Where(NumexprFunction):
     funcname = 'if'
     argspec = argspec('cond, iftrue, iffalse')
 
+    def result_axes_with_known_children(self, context, children_axes):
+        args_axes, kwargs_axes = children_axes
+        return union_axes(args_axes)
 
     @property
     def cond(self):
@@ -591,8 +607,8 @@ class LinearExpr(FunctionExpr):
             # self.args.need = load_ndarray(fpath, float)
             self.args = (coefficients,) + self.args[1:]
 
-    def prepare_simple_expr(self, context: EvaluationContext) -> (NumExprEvaluable, dict):
-        pass
+    # def prepare_simple_expr(self, context: EvaluationContext) -> (NumExprEvaluable, dict):
+    #     pass
 
     def compute(self, context, coefficients, variable_axis='__variable__', autoindex='__other_axes__'):
         assert isinstance(coefficients, la.Array)

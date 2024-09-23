@@ -1,4 +1,5 @@
 import numpy as np
+import larray as la
 
 from liam2.expr import (Variable, BinaryOp, getdtype, expr_eval, ispresent, FunctionExpr, always, firstarg_dtype,
                         ComparisonOp, missing_values)
@@ -352,9 +353,14 @@ class Percentile(WeightedFilteredAggregateFunction):
     def compute(self, context, expr, q, filter=None, skip_na=True, weights=None, weights_type='sampling'):
         values, weights = self.get_filtered_values_weights(expr, filter_values=filter, weights=weights, skip_na=skip_na)
         if weights is None:
-            return np.percentile(values, q)
+            np_res = np.percentile(values, q)
         else:
-            return wpercentile(values, weights, q, weights_type=weights_type)
+            np_res = wpercentile(values, weights, q, weights_type=weights_type)
+        if np.isscalar(q):
+            assert np.isscalar(np_res)
+            return np_res
+        else:
+            return la.Array(np_res, la.Axis(q, 'percentile'))
 
 
 # TODO: use nanmedian (np & bn)

@@ -11,7 +11,7 @@ from liam2.cache import Cache
 from liam2.config import debug
 from liam2.context import EntityContext, EvaluationContext
 from liam2.utils import (ExplainTypeError, safe_take, IrregularNDArray, NiceArgSpec, english_enum, make_hashable,
-                         add_context, array_nan_equal)
+                         add_context, array_nan_equal, union_axes)
 
 
 try:
@@ -127,9 +127,13 @@ def prepare_simple_expr(expr, context):
     if isinstance(expr, Expr):
         return expr.prepare_simple_expr(context)
     elif isinstance(expr, list):
-        # FIXME
-        assert False
-        return [prepare_simple_expr(e, context) for e in expr]
+        exprs = []
+        combined_funcs = {}
+        for e in expr:
+            prepared_expr, funcs = prepare_simple_expr(e, context)
+            exprs.append(prepared_expr)
+            combined_funcs |= funcs
+        return exprs, combined_funcs
     elif isinstance(expr, tuple):
         exprs = []
         combined_funcs = {}
@@ -146,7 +150,7 @@ def prepare_simple_expr(expr, context):
 
 
 def as_string(expr):
-    if isinstance(expr, NumExprEvaluable):
+    if isinstance(expr, Expr):
         return expr.as_string()
     elif isinstance(expr, list):
         return [as_string(e) for e in expr]
@@ -157,7 +161,7 @@ def as_string(expr):
 
 
 def traverse_expr(expr):
-    if isinstance(expr, NumExprEvaluable):
+    if isinstance(expr, Expr):
         for node in expr.traverse():
             yield node
     elif isinstance(expr, (tuple, list)):
@@ -179,7 +183,7 @@ def gettype(value):
 
 
 def getdtype(expr, context):
-    if isinstance(expr, NumExprEvaluable):
+    if isinstance(expr, Expr):
         return expr.dtype(context)
     else:
         return gettype(expr)
@@ -209,13 +213,24 @@ def ispresent(values):
 
 
 def collect_variables(expr):
-    if isinstance(expr, NumExprEvaluable):
+    if isinstance(expr, Expr):
         return expr.collect_variables()
     elif isinstance(expr, (tuple, list)):
         all_vars = [collect_variables(e) for e in expr]
         return set.union(*all_vars) if all_vars else set()
     else:
         return set()
+
+
+def result_axes(expr, context):
+    if isinstance(expr, Expr):
+        return expr.result_axes(context)
+    elif isinstance(expr, tuple):
+        return tuple(result_axes(e, context) for e in expr)
+    elif isinstance(expr, list):
+        return [result_axes(e, context) for e in expr]
+    else:
+        return None
 
 
 def expr_eval(expr, context):
@@ -238,10 +253,10 @@ def expr_eval(expr, context):
             # we do not have any "compile/check" step yet.
             # TODO: also check for globals
             # print("vars", expr.collect_variables())
-            for var in expr.collect_variables():
-                if var.name not in globals_names and var not in context:
-                    raise Exception(f"variable '{var}' is unknown (it is "
-                                    f"either not defined or not computed yet)")
+            # for var in expr.collect_variables():
+            #     if var.name not in globals_names and var not in context:
+            #         raise Exception(f"variable '{var}' is unknown (it is "
+            #                         f"either not defined or not computed yet)")
             return expr.evaluate(context)
 
             # there are several flaws with this approach:
@@ -273,17 +288,17 @@ def expr_eval(expr, context):
 # workaround for broken global_dict argument in numexpr
 def evaluate_with_globals(ex, local_dict, global_dict, **kwargs):
     if isinstance(local_dict, dict):
-        local_dict = local_dict.copy()
-        local_dict.update(global_dict)
+        combined_dict = local_dict.copy()
+        combined_dict.update(global_dict)
     else:
         # assert isinstance(local_dict, (EntityContext, EvaluationContext))
         assert isinstance(local_dict, EvaluationContext)
         # new_extra = local_dict.extra.copy()
         # for k, v in global_dict.items():
         #     new_extra[k] = v
-        local_dict = {k: local_dict[k] for k in local_dict.keys()}
-        local_dict.update(global_dict)
-    return evaluate(ex, local_dict, **kwargs)
+        combined_dict = {k: local_dict[k] for k in local_dict.keys() if k in local_dict}
+        combined_dict.update(global_dict)
+    return evaluate(ex, combined_dict, **kwargs)
 
 
 class Expr:
@@ -368,11 +383,54 @@ class Expr:
                                   if not badvar(v))
         return self._variables
 
-    def to_larray(self, context: EvaluationContext, value: np.ndarray):
+    # * if we call this after computing the result_value, we should use (and thus
+    #   take as argument) children values
+    # * but if we do this, I _think_ we will have to actually convert
+    #   all expr (node) result as LArray, which is _probably_ as significant
+    #   overhead (especially with few individuals)
+    # * if we call this before, that's harder to implement
+    # * either way we can cache the result to reuse for subsequent calls
+    #   for that to work, we should specialize the id axis (only store the name)
+    # * other axes could vary too. For example:
+    #   - q1: array([0, 25, 50, 100])
+    #   - q2: array([0, 10, 40, 50, 60, 90, 100])
+    #   - q: if(period > 2010, q1, q2)
+    #   - percentile(age, q=q)
+    # * limiting LIAM2 to static shapes/axes per expression would be a shame
+    #   because some useful things like income[2010:] would vary depending on
+    #   the period
+    # * it is ok though if the non-static axes expressions execute slower
+    # * it might be possible to "flag" the expression (each node?) as being
+    #   known axes or not and execute differently. Might need different nodes
+    # * I think requiring exprs to output either scalar, ndarray(len(context))
+    #   or la.Array is reasonable
+    #   => we would *not* support numpy arrays for multi-dimensional stuff
+    #   => we can rely on np
+    # * most operations result in known axes but one non-static op could propagate
+    #   across several "processes"
+    def result_axes(self, context):
+        children_axes = [result_axes(child, context) for child in self.children]
+        return self.result_axes_with_known_children(context, children_axes)
+
+    def result_axes_with_known_children(self, context, children_axes):
+        return context.entity.array.axes #.id
+
+    def to_larray(self, context: EvaluationContext, value):
         entity_data = context.entity_data
-        assert isinstance(entity_data, EntityContext) or context.subset_axes
-        assert isinstance(value, np.ndarray), f"value is not a np.ndarrray ({type(value)})"
-        return la.Array(value, context.entity.array.axes.id)
+        assert isinstance(entity_data, EntityContext) or context.subset_ids
+        # assert isinstance(value, np.ndarray), f"value is not a np.ndarrray ({type(value)})"
+        if isinstance(value, np.ndarray):
+            return la.Array(value, self.result_axes(context))
+        # elif isinstance(value, la.Array):
+        #     # FIXME: no, do not do this, we should rely on value axes
+        #     #        (or maybe not call to_larray at all?)
+        #     expected_axes = self.result_axes(context)
+        #     if value.axes != expected_axes:
+        #         raise ValueError(f"result axes ({value.axes}) differ from "
+        #                          f"expected axes ({expected_axes}) !")
+        else:
+            assert np.isscalar(value) or isinstance(value, la.Array)
+            return value
 
     # TODO: make equivalent/commutative expressions compare equal and hash to
     # the same thing.
@@ -417,8 +475,8 @@ class NumExprEvaluable(Expr):
     def is_all_numexpr_evaluable(self):
         value = self._all_numexpr_evaluable
         if value is None:
-            evaluable_types = (NumExprEvaluable, int, float, bool)
-            value = all(isinstance(node, evaluable_types)
+            # evaluable_types = (NumExprEvaluable, int, float, bool)
+            value = all(np.isscalar(node) or isinstance(node, NumExprEvaluable)
                         for node in self.traverse())
             self._all_numexpr_evaluable = value
         return value
@@ -612,10 +670,11 @@ class NotNumExprEvaluable(Expr):
         # this works in most cases, except when this is needed during matching (e.g. "link in score expression")
         # because in that case, the context.entity_data is not an EntityContext but a simple dict
         # context.entity_data.extra[tmp_varname] = value
-        if isinstance(context.entity_data, dict):
-            context.entity_data[tmp_varname] = value
-        else:
-            context.entity_data.extra[tmp_varname] = value
+        # if isinstance(context.entity_data, dict):
+        #     context.entity_data[tmp_varname] = value
+        # else:
+        #     context.entity_data.extra[tmp_varname] = value
+        context[tmp_varname] = value
         # print(f"added {tmp_varname} in context")
         # FIXME: we should never modify the context in-place. We should rather
         #        have a build_context method.
@@ -651,7 +710,7 @@ class NotNumExprEvaluable(Expr):
         # expression is not used
         tmp_varname = self.get_tmp_varname(context)
         # TODO: each subclass which is able to determine dtype statically should
-        #       so so. There are many cases where this is not possible though
+        #       do so. There are many cases where this is not possible though
         #       (e.g. ExprAttribute)
         tmp_var = Variable(context.entity, tmp_varname, dtype=None) #getdtype(value))
         # FIXME: tmp_varname should include entity name (but it should still be
@@ -675,6 +734,18 @@ class SubscriptedExpr(NotNumExprEvaluable):
     def __init__(self, expr, key):
         self.expr = expr
         self.key = key
+        self.contextual_filter = None
+
+    def result_axes_with_known_children(self, context, children_axes):
+        expr_axes, key_axes = children_axes
+        raw_broadcasted_key, res_axes, transpose_indices = self.axes._key_to_raw_and_axes()
+
+        return context.entity.array.axes #.id
+
+    def prepare_simple_expr(self, context: EvaluationContext) -> ('NumExprEvaluable', dict):
+        if context.filter_expr is not None:
+            self.contextual_filter = context.filter_expr
+        return super().prepare_simple_expr(context)
 
     def __repr__(self):
         key = self.key
@@ -686,13 +757,13 @@ class SubscriptedExpr(NotNumExprEvaluable):
             key_str = str(key)
         return f'{self.expr}[{key_str}]'
 
-
     # def evaluate(self, context):
     def evaluate_with_children_evaluated(self, children_value, context):
         expr_value, key_value = children_value
         # expr_value = expr_eval(self.expr, context)
         # key = expr_eval(self.key, context)
-        filter_expr = context.filter_expr
+        filter_expr = self.contextual_filter
+        # filter_expr = context.filter_expr
 
         # When there is a contextual filter, we modify the key to avoid
         # crashes (IndexError).
@@ -1191,6 +1262,9 @@ class BinaryOp(NumExprEvaluable):
     #     expr2 = as_simple_expr(self.expr2, context)
     #     return self.__class__(self.op, expr1, expr2)
 
+    def result_axes_with_known_children(self, context, children_axes):
+        return union_axes(children_axes)
+
     def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs) -> (NumExprEvaluable, dict):
         expr1, expr2 = children_expr
         return self.__class__(self.op, expr1, expr2), children_funcs
@@ -1237,9 +1311,9 @@ class LogicalOp(BinaryOp):
 class ComparisonOp(BinaryOp):
     # TODO: move the test to a typecheck phase and use dtype = always(bool)
     def dtype(self, context):
-        if coerce_types(context, self.expr1, self.expr2) is None:
-            raise TypeError("operands to comparison operators need to be of "
-                            "compatible types")
+        # if coerce_types(context, self.expr1, self.expr2) is None:
+        #     raise TypeError("operands to comparison operators need to be of "
+        #                     "compatible types")
         return bool
 
 
@@ -1266,15 +1340,22 @@ class Variable(NumExprEvaluable):
         return self.name
     as_string = __str__
 
-    def as_simple_expr(self, context):
-        return self
+    # def as_simple_expr(self, context):
+    #     return self
+
+    def result_axes(self, context):
+        return "id"
 
     def prepare_simple_expr(self, context):
         return self, {}
 
     def dtype(self, context):
-        if self._dtype is None and self.name in context:
-            return gettype(context[self.name])
+        if self._dtype is None:
+            if self.name in context:
+                return gettype(context[self.name])
+            else:
+                raise ValueError(f"cannot compute dtype for Variable "
+                                 f"{self.name}")
         else:
             return self._dtype
 
