@@ -7,7 +7,7 @@ import larray as la
 
 from liam2.expr import NumExprEvaluable, Variable, getdtype, expr_eval, missing_values, get_default_value, always, \
     FunctionExpr, Expr
-from liam2.context import context_length
+from liam2.context import context_length, EvaluationContext
 from liam2.partition import filter_to_indices
 from liam2.utils import removed
 
@@ -38,7 +38,8 @@ class Link:
                             f"'{self._entity.name}' is an unknown entity "
                             f"({target_name})")
 
-    def _target_context(self, context):
+    def _target_context(self, context: EvaluationContext):
+        assert isinstance(context, EvaluationContext)
         # we need a "fresh" context (fresh_data=True) so that if we come from
         #  a subset context (dict instead of EntityContext, eg in a new()
         # child), the target_expr must be evaluated on an unfiltered
@@ -261,7 +262,8 @@ class Aggregate(LinkExpression):
     def target_filter(self):
         return self.args[2]
 
-    def compute(self, context, link, target_expr, target_filter=None, weights=None):
+    def compute(self, context: EvaluationContext,
+                link, target_expr, target_filter=None, weights=None):
         # assert isinstance(context, EntityContext), \
         #         "one2many aggregates in groupby are currently not supported"
         assert isinstance(link, One2Many), f"{link} ({type(link)})"

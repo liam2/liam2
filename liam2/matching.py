@@ -174,11 +174,17 @@ class SequentialMatching(Matching):
         set2len = set2filtervalue.sum()
         print(f"matching with {set1len}/{set2len} individuals", end='')
 
-        simple_score, score_funcs = prepare_simple_expr(score, context)
+        simple_score, score_tmpvar_funcs = prepare_simple_expr(score, context)
+        if score_tmpvar_funcs:
+            print()
+            print("!!!!!!!!!!!")
+            print("SCORE FUNCS")
+            print("!!!!!!!!!!!")
+            print(score_tmpvar_funcs)
         str_score = simple_score.as_string()
         score_expr = JITExpression(str_score)
 
-        # print(f"{score_funcs=}")
+        # print(f"{score_tmpvar_funcs=}")
         # TODO: instead of filtering "v.name not in global_tables", we should keep the whole Variable instance and use
         #       that in context.subset, context_keep, et. al. But adding support for Variable in all those
         #       functions would be some significant work.
@@ -279,6 +285,10 @@ class SequentialMatching(Matching):
             # using .data instead of .i is marginally faster
             # set1 "columns" are supposed to be all la.Array instances
             local_ctx.update((k, set1[k].data[sorted_idx]) for k in used_variables1)
+
+            if score_tmpvar_funcs:
+                for key, func in score_tmpvar_funcs.items():
+                    local_ctx[key] = func(local_ctx)
 
             # eval_ctx = context.clone(entity_data=local_ctx)
             # set2_scores = simple_score.fast_evaluate(eval_ctx)

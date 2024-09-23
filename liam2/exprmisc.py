@@ -142,7 +142,7 @@ class Clip(NumpyChangeArray):
 
 
 class Sort(NumpyChangeArray):
-    np_func = la.Array.sort_values # np.sort
+    np_func = la.Array.sort_values
     argspec = argspec('a, key=None, axis=None, ascending=True')
 
 
