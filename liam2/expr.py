@@ -253,10 +253,10 @@ def expr_eval(expr, context):
             # we do not have any "compile/check" step yet.
             # TODO: also check for globals
             # print("vars", expr.collect_variables())
-            # for var in expr.collect_variables():
-            #     if var.name not in globals_names and var not in context:
-            #         raise Exception(f"variable '{var}' is unknown (it is "
-            #                         f"either not defined or not computed yet)")
+            for var in expr.collect_variables():
+                if var.name not in globals_names and var not in context:
+                    raise Exception(f"variable '{var}' is unknown (it is "
+                                    f"either not defined or not computed yet)")
             return expr.evaluate(context)
 
             # there are several flaws with this approach:

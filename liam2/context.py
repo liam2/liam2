@@ -125,7 +125,7 @@ class EvaluationContext:
     def __contains__(self, key):
         from liam2.expr import Variable
         if isinstance(key, Variable):
-            raise TypeError("wtf! Variable instances as keys are not supported by getitem !")
+            # raise TypeError("wtf! Variable instances as keys are not supported by getitem !")
             entity, name = key.entity, key.name
             if entity is None:
                 # FIXME: this is wrong (but currently needed because some
