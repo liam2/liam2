@@ -33,7 +33,10 @@ class EvaluationContext:
         self.entities_data = entities_data
         # should only be used on subsets, not when the context
         # contains only normal EntityContexts
-        self.subset_ids = subset_axes
+        # we only actually support subsets with a single 'id' axis, but for
+        # performance reasons, we store the entire AxisCollection instead of
+        # just the id axis
+        self.subset_axes = subset_axes
         self.extra_per_entity = {}
 
     def copy(self, fresh_data=False):
@@ -64,7 +67,7 @@ class EvaluationContext:
         res = self.copy(fresh_data=fresh_data)
         allowed_kwargs = {'simulation', 'entities', 'global_tables',
                           'period', 'entity_name', 'filter_expr',
-                          'entities_data', 'entity_data'}
+                          'entities_data', 'entity_data', 'subset_axes'}
         for k, v in kwargs.items():
             assert k in allowed_kwargs, f"{k} is not a valid kwarg"
             setattr(res, k, v)
@@ -179,14 +182,22 @@ class EvaluationContext:
         only used to compute the cache key
         :return:
         """
-        data_subset = context_subset(self.entity_data, index, keys)
-        return self.clone(entity_data=data_subset, filter_expr=filter_expr)
+        entity_data = self.entity_data
+        data_subset: dict = context_subset(entity_data, index, keys)
+        if 'id' in data_subset:
+            subset_axes = data_subset['id'].axes
+        else:
+            orig_id_axis = entity_data['id'].id
+            subset_axes = la.AxisCollection(orig_id_axis.subaxis(index))
+        return self.clone(entity_data=data_subset, filter_expr=filter_expr,
+                          subset_axes=subset_axes)
 
-    def empty(self, length=None):
+    def empty(self, length=None, subset_axes=None):
         """
         returns a copy of the context with the same length but no data.
         """
-        return self.clone(entity_data=empty_context(length))
+        kwargs = dict(subset_axes=subset_axes) if subset_axes is not None else {}
+        return self.clone(entity_data=empty_context(length), **kwargs)
 
 
 class EntityContext:
@@ -335,7 +346,7 @@ def empty_context(length):
     return {'__len__': length}
 
 
-def context_subset(context, index=None, keys=None):
+def context_subset(context, index=None, keys=None) -> dict:
     """index can *at least* be a bool ndarray or an ndarray of indices
     """
     # if keys is None, take all fields

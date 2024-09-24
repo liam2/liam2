@@ -417,10 +417,11 @@ class Expr:
 
     def to_larray(self, context: EvaluationContext, value):
         entity_data = context.entity_data
-        assert isinstance(entity_data, EntityContext) or context.subset_ids
+        assert isinstance(entity_data, EntityContext) or context.subset_axes
         # assert isinstance(value, np.ndarray), f"value is not a np.ndarrray ({type(value)})"
         if isinstance(value, np.ndarray):
             return la.Array(value, self.result_axes(context))
+            # return la.Array(value, context.entity.array.axes)
         # elif isinstance(value, la.Array):
         #     # FIXME: no, do not do this, we should rely on value axes
         #     #        (or maybe not call to_larray at all?)

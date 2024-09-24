@@ -319,7 +319,8 @@ class New(FilteredExpression):
 
         extra_ids = np.arange(num_individuals, num_individuals + num_birth)
         children_axes = la.AxisCollection(la.Axis(extra_ids, 'id'))
-        children = self._initial_values(array, to_give_birth, children_axes, default_values)
+        children = self._initial_values(array, to_give_birth, children_axes,
+                                        default_values)
         if num_birth:
             children['id'] = extra_ids
             children['period'] = context.period
@@ -328,18 +329,18 @@ class New(FilteredExpression):
                               self._collect_kwargs_variables(kwargs)]
             if to_give_birth is None:
                 assert not used_variables
-                child_context = context.empty(num_birth)
+                children_context = context.empty(num_birth, children_axes)
             else:
-                child_context = context.subset(to_give_birth, used_variables,
-                                               filter_expr)
+                children_context = context.subset(to_give_birth, used_variables,
+                                                  filter_expr)
             for k, v in kwargs.items():
                 if k not in array.dtype.names:
                     print(f"WARNING: {k} is unknown, ignoring it!")
                     continue
-                value = expr_eval(v, child_context)
+                value = expr_eval(v, children_context)
                 if isinstance(value, la.Array):
-                    # the whole point is to set child fields using expressions computed on the parent, so the ids will
-                    # not match !
+                    # the whole point is to set child fields using expressions
+                    # computed on the parent, so the ids will not match !
                     value = value.ignore_labels('id')
                 children[k] = value
 

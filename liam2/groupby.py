@@ -142,6 +142,11 @@ class GroupBy(TableExpression):
             for e in expressions:
                 all_vars |= collect_variables(e)
             all_vars_names = [v.name for v in all_vars]
+            # TODO: this is necessary so that EvaluationContext.subset can
+            #       figure out the id axis. But requiring the id *column*
+            #       to be present, is actually more than we need
+            if 'id' not in all_vars_names:
+                all_vars_names.insert(0, 'id')
 
             # FIXME: use the actual filter_expr instead of not_hashable
             filtered_context = context.subset(filter_value, all_vars_names, not_hashable)

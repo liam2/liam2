@@ -275,8 +275,11 @@ class NumpyRandom(NumpyCreateArray):
         else:
             return la.Array(res)
 
-    def result_axes(self, context):
-        return context.entity.array.axes
+    def result_axes(self, context: EvaluationContext):
+        if context.subset_axes is not None:
+            return context.subset_axes
+        else:
+            return context.entity.array.axes
 
 
 class NumpyAggregate(NumpyFunction):
