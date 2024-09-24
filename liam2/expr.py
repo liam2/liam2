@@ -512,10 +512,6 @@ class NumExprEvaluable(Expr):
 
         simple_expr = self
 
-        if isinstance(simple_expr, Variable):
-            # assert simple_expr.name in context
-            return context[simple_expr.name]
-
         # check for labeled arrays, to work around the fact that numexpr
         # does not preserve ndarray subclasses.
 
@@ -1339,11 +1335,8 @@ class Variable(NumExprEvaluable):
         return self.name
     as_string = __str__
 
-    # def as_simple_expr(self, context):
-    #     return self
-
-    def result_axes(self, context):
-        return "id"
+    def fast_evaluate(self, context):
+        return context[self.name]
 
     def prepare_simple_expr(self, context):
         return self, {}
