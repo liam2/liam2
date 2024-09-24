@@ -408,27 +408,25 @@ class Expr:
     #   => we can rely on np
     # * most operations result in known axes but one non-static op could propagate
     #   across several "processes"
-    def result_axes(self, context):
-        children_axes = [result_axes(child, context) for child in self.children]
-        return self.result_axes_with_known_children(context, children_axes)
 
-    def result_axes_with_known_children(self, context, children_axes):
-        return context.entity.array.axes #.id
+    # def result_axes(self, context):
+    #     children_axes = [result_axes(child, context) for child in self.children]
+    #     return self.result_axes_with_known_children(context, children_axes)
+
+    # def result_axes_with_known_children(self, context, children_axes):
+    #     return context.entity.array.axes #.id
+
+    def result_axes(self, context: EvaluationContext):
+        if context.subset_axes is not None:
+            return context.subset_axes
+        else:
+            return context.entity.array.axes
 
     def to_larray(self, context: EvaluationContext, value):
         entity_data = context.entity_data
         assert isinstance(entity_data, EntityContext) or context.subset_axes
-        # assert isinstance(value, np.ndarray), f"value is not a np.ndarrray ({type(value)})"
         if isinstance(value, np.ndarray):
             return la.Array(value, self.result_axes(context))
-            # return la.Array(value, context.entity.array.axes)
-        # elif isinstance(value, la.Array):
-        #     # FIXME: no, do not do this, we should rely on value axes
-        #     #        (or maybe not call to_larray at all?)
-        #     expected_axes = self.result_axes(context)
-        #     if value.axes != expected_axes:
-        #         raise ValueError(f"result axes ({value.axes}) differ from "
-        #                          f"expected axes ({expected_axes}) !")
         else:
             assert np.isscalar(value) or isinstance(value, la.Array) or isinstance(value, tuple)
             return value
