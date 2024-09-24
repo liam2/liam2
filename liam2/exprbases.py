@@ -5,7 +5,7 @@ import numpy as np
 
 from liam2 import config
 from liam2.context import context_length, EvaluationContext
-from liam2.expr import (FunctionExpr, not_hashable, getdtype, as_simple_expr, as_string, get_default_value, ispresent,
+from liam2.expr import (FunctionExpr, not_hashable, getdtype, as_string, get_default_value, ispresent,
                         LogicalOp, AbstractFunction, always, FillArgSpecMeta, NumExprEvaluable, prepare_simple_expr)
 from liam2.utils import classproperty, argspec, split_signature
 
@@ -18,10 +18,6 @@ from liam2.utils import classproperty, argspec, split_signature
 #     def evaluate(self, context):
 #         context = self.build_context(context)
 #         return expr_eval(self.complete_expr, context)
-#
-#     def as_simple_expr(self, context):
-#         context = self.build_context(context)
-#         return self.complete_expr.as_simple_expr(context)
 #
 #     def build_context(self, context):
 #         return context
@@ -58,27 +54,6 @@ class CompoundExpression(AbstractFunction, metaclass=FillArgSpecMeta):
             context[key] = func(context)
         return simple_expr.evaluate(context)
 
-    # def as_simple_expr(self, context):
-    #     # This will effectively trigger evaluation of expressions arguments
-    #     # which are not handled by numexpr functions such has all expressions
-    #     # inheriting from EvaluableExpression (e.g, uniform()) and their result
-    #     # will be stored as a temporary variables in the context. The subtlety
-    #     # to remember is that if a CompoundExpression "duplicates" arguments
-    #     # (such as Logit), those must be either duplicate-safe or
-    #     # EvaluableExpression. For example, if numexpr someday supports random
-    #     # generators, we will be in trouble if we use it as-is. This means we
-    #     # cannot keep the "compiled" expression, because the "temporary
-    #     # variables" would only have a value in the first period, when the
-    #     # expr is "compiled". This would tick the balance in favor of keeping a
-    #     # build_context method.
-    #     args = [as_simple_expr(arg, context) for arg in self.args]
-    #     kwargs = {name: as_simple_expr(arg, context)
-    #               for name, arg in self.kwargs}
-    #     expr = self.build_expr(context, *args, **kwargs)
-    #     # We need this because self.build_expr returns an Expr which can
-    #     # contain CompoundExpressions
-    #     return expr.as_simple_expr(context)
-
     def prepare_simple_expr(self, context: EvaluationContext) -> ('NumExprEvaluable', dict):
         """
         create temporary variables for any construct that is not supported by
@@ -90,7 +65,6 @@ class CompoundExpression(AbstractFunction, metaclass=FillArgSpecMeta):
         children_funcs = {}
         children_expr = []
         for child in self.children:
-            # print(self.__class__, "prepare_simple_expr child", child)
             child_expr, child_funcs = prepare_simple_expr(child, context)
             children_expr.append(child_expr)
             children_funcs |= child_funcs
@@ -103,9 +77,6 @@ class CompoundExpression(AbstractFunction, metaclass=FillArgSpecMeta):
         kwargs = dict(kwargs)
         for arg in args:
             assert arg is None or isinstance(arg, (NumExprEvaluable, int, float, str))
-        # args = [as_simple_expr(arg, context) for arg in self.args]
-        # kwargs = {name: as_simple_expr(arg, context)
-        #           for name, arg in self.kwargs}
         expr = self.build_expr(context, *args, **kwargs)
         # We need this because self.build_expr returns an Expr which can
         # contain CompoundExpressions
@@ -218,7 +189,6 @@ class NumpyChangeArray(NumpyFunction):
         #        - res: percentile([1, 2, 3], q=q)
         #        - assertEqual(round(res, 10), [1.0, 1.2, 1.8, 2.0, 2.2, 2.8, 3.0])
         return self.to_larray(context, new_values)
-        # return new_values
 
 
 class NumpyCreateArray(NumpyFunction):

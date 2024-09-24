@@ -530,30 +530,7 @@ class Where(NumexprFunction):
     def iffalse(self):
         return self.args[2]
 
-    # def as_simple_expr(self, context):
-    #     cond = as_simple_expr(self.cond, context)
-    #
-    #     # filter is stored as an unevaluated expression
-    #     context_filter = context.filter_expr
-    #     local_ctx = context.clone()
-    #     if context_filter is None:
-    #         local_ctx.filter_expr = self.cond
-    #     else:
-    #         # filter = filter and cond
-    #         local_ctx.filter_expr = LogicalOp('&', context_filter, self.cond)
-    #     iftrue = as_simple_expr(self.iftrue, local_ctx)
-    #
-    #     if context_filter is None:
-    #         local_ctx.filter_expr = UnaryOp('~', self.cond)
-    #     else:
-    #         # filter = filter and not cond
-    #         local_ctx.filter_expr = LogicalOp('&', context_filter,
-    #                                           UnaryOp('~', self.cond))
-    #     iffalse = as_simple_expr(self.iffalse, local_ctx)
-    #     return Where(cond, iftrue, iffalse)
-    #
     def prepare_simple_expr(self, context: EvaluationContext) -> (NumExprEvaluable, dict):
-        # print("prepare_simple_expr", self)
         args, kwargs = self.children
         cond_expr, iftrue, iffalse = args
 

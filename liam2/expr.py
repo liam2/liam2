@@ -112,17 +112,6 @@ def coerce_types(context, *args):
     return idx_to_type[max(dtype_indices)]
 
 
-def as_simple_expr(expr, context):
-    if isinstance(expr, Expr):
-        return expr.as_simple_expr(context)
-    elif isinstance(expr, list):
-        return [as_simple_expr(e, context) for e in expr]
-    elif isinstance(expr, tuple):
-        return tuple([as_simple_expr(e, context) for e in expr])
-    else:
-        return expr
-
-
 def prepare_simple_expr(expr, context):
     if isinstance(expr, Expr):
         return expr.prepare_simple_expr(context)
@@ -533,7 +522,7 @@ class NumExprEvaluable(Expr):
         # if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
         for var in simple_expr.collect_variables():
             assert var.entity is None or var.entity is context.entity, \
-                "should not have happened (as_simple_expr should " \
+                "should not have happened (prepare_simple_expr should " \
                 "have transformed non-local variables)"
 
             # var_name should always be in the context at this point
@@ -590,13 +579,6 @@ class NumExprEvaluable(Expr):
         #             f"{res} != {cached_result}"
         return res
 
-    # def as_simple_expr(self, context):
-    #     """
-    #     evaluate any construct that is not supported by numexpr and
-    #     create temporary variables for them
-    #     """
-    #     raise NotImplementedError()
-
     def prepare_simple_expr(self, context: EvaluationContext) -> ('NumExprEvaluable', dict):
         """
         create temporary variables for any construct that is not supported by
@@ -614,9 +596,6 @@ class NumExprEvaluable(Expr):
 
         return self.prepare_simple_expr_with_children_prepared(context, children_expr, children_funcs)
 
-    # def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs):
-    #     args, kwargs = children_expr
-    #     return self.__class__(*args, **dict(kwargs)), children_funcs
     def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs):
         raise NotImplementedError()
 
@@ -676,9 +655,6 @@ class NotNumExprEvaluable(Expr):
         # context[tmp_varname] = value
         return Variable(context.entity, tmp_varname, gettype(value))
 
-    # def as_simple_expr(self, context):
-    #     return self.add_tmp_var(context, self.evaluate(context))
-
     def prepare_simple_expr(self, context: EvaluationContext) -> (NumExprEvaluable, dict):
         """
         create temporary variables for any construct that is not supported by
@@ -730,12 +706,6 @@ class SubscriptedExpr(NotNumExprEvaluable):
         self.expr = expr
         self.key = key
         self.contextual_filter = None
-
-    def result_axes_with_known_children(self, context, children_axes):
-        expr_axes, key_axes = children_axes
-        raw_broadcasted_key, res_axes, transpose_indices = self.axes._key_to_raw_and_axes()
-
-        return context.entity.array.axes #.id
 
     def prepare_simple_expr(self, context: EvaluationContext) -> ('NumExprEvaluable', dict):
         if context.filter_expr is not None:
@@ -1223,9 +1193,6 @@ class UnaryOp(NumExprEvaluable):
         self.op = op
         self.expr = expr
 
-    # def as_simple_expr(self, context):
-    #     return self.__class__(self.op, as_simple_expr(self.expr, context))
-
     def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs) -> (NumExprEvaluable, dict):
         assert len(children_expr) == 1
         subexpr = children_expr[0]
@@ -1252,23 +1219,9 @@ class BinaryOp(NumExprEvaluable):
         self.expr1 = expr1
         self.expr2 = expr2
 
-    # def as_simple_expr(self, context: EvaluationContext) -> NumExprEvaluable:
-    #     expr1 = as_simple_expr(self.expr1, context)
-    #     expr2 = as_simple_expr(self.expr2, context)
-    #     return self.__class__(self.op, expr1, expr2)
-
-    def result_axes_with_known_children(self, context, children_axes):
-        return union_axes(children_axes)
-
     def prepare_simple_expr_with_children_prepared(self, context, children_expr, children_funcs) -> (NumExprEvaluable, dict):
         expr1, expr2 = children_expr
         return self.__class__(self.op, expr1, expr2), children_funcs
-
-    # def prepare_simple_expr(self, context: EvaluationContext) -> (NumExprEvaluable, dict):
-    #     expr1, non_simple_funcs1 = prepare_simple_expr(self.expr1, context)
-    #     expr2, non_simple_funcs2 = prepare_simple_expr(self.expr2, context)
-    #     # TODO: might want to use collections.ChainMap instead of a real dict?
-    #     return self.__class__(self.op, expr1, expr2), non_simple_funcs1 | non_simple_funcs2
 
     # We can't simply use __str__ because of where vs if
     def as_string(self):
