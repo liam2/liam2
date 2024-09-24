@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import larray as la
+from larray import AxisCollection
 
 from liam2 import config
 from liam2.expr import firstarg_dtype, ComparisonOp, Variable, expr_eval, index_array_by_variables
@@ -120,6 +121,20 @@ class Choice(NumpyRandom):
 
     dtype = firstarg_dtype
 
+class MultiVariateNormal(NumpyRandom):
+    np_func = np.random.multivariate_normal
+    funcname = 'multivariate_normal'
+    argspec = argspec("mean, cov, size=None, check_valid='warn', tol=1e-8",
+                      **NumpyRandom.kwonlyargs)
+    # if dtypefunc is not None:
+    #     dtype = dtypefunc
+    def result_axes(self, context): #, args, kwargs):
+        res_axes = context.entity.array.axes
+        assert isinstance(res_axes, AxisCollection)
+        # FIXME: this only fixes the example !!!
+        return res_axes + la.Axis(2, 'n')
+
+
 # need to be explicitly defined because used internally
 Normal = make_random("normal(loc=0.0, scale=1.0, size=None)", float)
 # WARNING: the docstring was wrong (size is None instead of 1) in numpy < 1.9 !
@@ -130,6 +145,8 @@ functions = {
     'choice': Choice,
     'normal': Normal,
     'uniform': Uniform,
+    'multivariate_normal': MultiVariateNormal,
+
 }
 
 functions.update(make_np_classes(NumpyRandom, """
@@ -142,7 +159,6 @@ gamma(shape, scale=1.0, size=None)
 gumbel(loc=0.0, scale=1.0, size=None)
 laplace(loc=0.0, scale=1.0, size=None)
 lognormal(mean=0.0, sigma=1.0, size=None)
-multivariate_normal(mean, cov, size=None)
 noncentral_chisquare(df, nonc, size=None)
 noncentral_f(dfnum, dfden, nonc, size=None)
 pareto(a, size=None)

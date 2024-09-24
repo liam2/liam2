@@ -1,6 +1,6 @@
 import types
 
-import larray
+import larray as la
 import numpy as np
 
 from liam2 import config
@@ -241,8 +241,8 @@ class NumpyRandom(NumpyCreateArray):
     def _eval_args(self, context):
         args, kwargs = NumpyCreateArray._eval_args(self, context)
         if 'size' in self.argspec.args:
-            pos = self.argspec.args.index('size')
-            size = args[pos]
+            arg_pos = self.argspec.args.index('size')
+            size = args[arg_pos]
 
             # The original functions return a scalar when size is None, and an
             # array of length one when size is 1.
@@ -252,7 +252,7 @@ class NumpyRandom(NumpyCreateArray):
             # kwargs), but I do not think it is a good idea. Adding a new
             # "sentinel" value (e.g. -1 or "scalar") is probably better.
             if size is None:
-                args = args[:pos] + (context_length(context),) + args[pos + 1:]
+                args = args[:arg_pos] + (context_length(context),) + args[arg_pos + 1:]
         return args, kwargs
 
     def compute(self, context, *args, **kwargs):
@@ -262,7 +262,21 @@ class NumpyRandom(NumpyCreateArray):
         res = super(NumpyRandom, self).compute(context, *args, **kwargs)
         if config.debug and config.log_level == "processes":
             print("random sequence position after:", np.random.get_state()[2])
-        return res
+
+        arg_pos = self.argspec.args.index('size')
+        size = args[arg_pos]
+        assert size is not None
+        specified_size = self.args[arg_pos]
+        # TODO: This might not be the best way to detect unspecified size
+        #       (see TODO above).
+        size_not_specified = specified_size is None
+        if size_not_specified:
+            return la.Array(res, self.result_axes(context))
+        else:
+            return la.Array(res)
+
+    def result_axes(self, context):
+        return context.entity.array.axes
 
 
 class NumpyAggregate(NumpyFunction):
