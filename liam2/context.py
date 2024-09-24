@@ -400,6 +400,7 @@ def context_subset(context, index=None, keys=None) -> dict:
                 else:
                     # FIXME: add a test case for this (and fix it)
                     print("WARNING: id not first axis")
+                    value = value[value.id.i[index]]
             result[key] = value
     # if keys:
     #     la.edit()
