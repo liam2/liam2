@@ -1,7 +1,7 @@
 import numpy as np
 import larray as la
 
-from liam2.context import context_length
+from liam2.context import context_length, EvaluationContext
 from liam2.expr import expr_eval, getdtype, hasvalue, FunctionExpr, always, firstarg_dtype, get_default_value
 from liam2.utils import safe_put
 
@@ -20,6 +20,7 @@ class TimeFunction(FunctionExpr):
         if isinstance(filler, str) and filler == 'auto':
             filler = get_default_value(values)
         result = np.full(context_length(context), filler, dtype=values.dtype)
+        print("fill_missing_values", "past ids", len(ids), "current period length", len(result))
         if len(ids):
             id_to_rownum = context.id_to_rownum
             # if there was more objects in the past than in the current
@@ -39,6 +40,7 @@ class TimeFunction(FunctionExpr):
         result = expr_eval(expr, sub_context)
         if isinstance(result, (np.ndarray, la.Array)) and result.shape:
             ids = sub_context['id']
+            print("ids", len(ids), "fill", fill)
             if fill is None:
                 return ids, result
             else:
@@ -53,7 +55,8 @@ class ValueForPeriod(TimeFunction):
     funcname = 'value_for_period'
 
     def compute(self, context, expr, period, missing='auto'):
-        return self.value_for_period(expr, period, context, missing)
+        np_res = self.value_for_period(expr, period, context, missing)
+        return self.to_larray(context, np_res)
 
     dtype = firstarg_dtype
 
@@ -65,7 +68,12 @@ class ValueForPeriod(TimeFunction):
 class Lag(TimeFunction):
     def compute(self, context, expr, num_periods=1, missing='auto'):
         period = context.period - num_periods
-        return self.value_for_period(expr, period, context, missing)
+        np_res = self.value_for_period(expr, period, context, missing)
+        return self.to_larray(context, np_res)
+
+    def result_axes(self, context: EvaluationContext):
+        print("yaaaaa")
+        return super().result_axes(context)
 
     dtype = firstarg_dtype
 
@@ -103,7 +111,7 @@ class Duration(TimeFunction):
             still_running &= period_value | missing
             last_period_true[period_value] = period
             period -= 1
-        return result
+        return self.to_larray(context, result)
 
     # TODO: move the check to __init__ and use dtype = always(int)
     def dtype(self, context):
