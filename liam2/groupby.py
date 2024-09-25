@@ -105,7 +105,9 @@ class GroupBy(TableExpression):
                   'pvalues': None, 'axes': None, 'totals': True}
 
     # noinspection PyNoneFunctionAssignment
-    def compute(self, context, *expressions, **kwargs):
+    def compute(self, context, *expressions,
+                expr=None, filter=None, percent=False,
+                pvalues=None, axes=None, totals=True):
         if not expressions:
             raise TypeError("groupby() takes at least 1 argument")
 
@@ -119,25 +121,16 @@ class GroupBy(TableExpression):
                 raise TypeError("groupby() takes expressions as arguments, "
                                 "not a list of expressions")
 
-        # On python 3, we could clean up this code (keyword only arguments).
-        expr = kwargs.pop('expr', None)
         if expr is None:
             expr = Count()
 
-#        by = kwargs.pop('by', None)
-        filter_value = kwargs.pop('filter', None)
-        percent = kwargs.pop('percent', False)
-        possible_values = kwargs.pop('pvalues', None)
-        axes = kwargs.pop('axes', None)
-        if possible_values is not None and axes is not None:
-            raise ValueError("cannot use both possible_values and axes arguments in groupby")
-
-        totals = kwargs.pop('totals', True)
+        if pvalues is not None and axes is not None:
+            raise ValueError("cannot use both pvalues and axes arguments in groupby")
 
         expr_vars = collect_variables(expr)
         expr_vars_names = [v.name for v in expr_vars]
 
-        if filter_value is not None:
+        if filter is not None:
             all_vars = expr_vars.copy()
             for e in expressions:
                 all_vars |= collect_variables(e)
@@ -149,7 +142,7 @@ class GroupBy(TableExpression):
                 all_vars_names.insert(0, 'id')
 
             # FIXME: use the actual filter_expr instead of not_hashable
-            filtered_context = context.subset(filter_value, all_vars_names, not_hashable)
+            filtered_context = context.subset(filter, all_vars_names, not_hashable)
         else:
             filtered_context = context
 
@@ -157,18 +150,18 @@ class GroupBy(TableExpression):
         filtered_columns = [expand(c, context_length(filtered_context)) for c in filtered_columns]
 
         if axes is not None:
-            possible_values = [axis.labels for axis in axes]
+            pvalues = [axis.labels for axis in axes]
 
         # We pre-filtered columns instead of passing the filter to partition_nd
         # because it is a bit faster this way. The indices are still correct,
         # because we use them on a filtered_context.
-        groups, possible_values = partition_nd(filtered_columns, True, possible_values)
+        groups, pvalues = partition_nd(filtered_columns, True, pvalues)
         if not groups:
             return la.Array([])
 
         if axes is None:
             axes = la.AxisCollection([la.Axis(axis_labels, name=str(e))
-                                      for axis_labels, e in zip(possible_values, expressions)])
+                                      for axis_labels, e in zip(pvalues, expressions)])
 
         shape = axes.shape
 

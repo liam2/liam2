@@ -39,23 +39,22 @@ class CSV(FunctionExpr, FileProducer):
     ext = '.csv'
     fname_required = True
 
-    def compute(self, context, *args, **kwargs):
+    def compute(self, context, *args, mode='w', fname=None, suffix=''):
         table = (la.Array, PrettyTable)
         sequence = (list, tuple)
         if (len(args) > 1 and
                 not any(isinstance(arg, table + sequence) for arg in args)):
             args = (args,)
 
-        mode = kwargs.pop('mode', 'w')
         if mode not in ('w', 'a'):
             raise ValueError("csv() mode argument must be either "
                              "'w' (overwrite) or 'a' (append)")
 
-        fname = self._get_fname(kwargs)
+        fname_pattern = self._get_fname(fname, suffix)
 
         entity = context.entity
         period = context.period
-        fname = fname.format(entity=entity.name, period=period)
+        fname = fname_pattern.format(entity=entity.name, period=period)
         if config.log_level in ("functions", "processes"):
             print("writing to", fname, "...", end=' ')
 

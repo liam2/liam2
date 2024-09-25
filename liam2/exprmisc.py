@@ -395,12 +395,8 @@ class Dump(TableExpression):
     kwonlyargs = {'filter': None, 'missing': None, 'header': True,
                   'limit': None}
 
-    def compute(self, context, *args, **kwargs):
-        filter_value = kwargs.pop('filter', None)
-        missing = kwargs.pop('missing', None)
-        # periods = kwargs.pop('periods', None)
-        header = kwargs.pop('header', True)
-        limit = kwargs.pop('limit', None)
+    def compute(self, context, *args,
+                filter=None, missing=None, header=True, limit=None):
         entity = context.entity
 
         if args:
@@ -428,19 +424,19 @@ class Dump(TableExpression):
         #            id_pos += 1
 
         # this is a minor speed optimization (to avoid transforming to indices for each column)
-        if isinstance(filter_value, la.Array) and np.issubdtype(filter_value.dtype, np.bool_):
-            filter_value = filter_value.nonzero()
+        if isinstance(filter, la.Array) and np.issubdtype(filter.dtype, np.bool_):
+            filter = filter.nonzero()
 
         columns = []
         for expr in expressions:
-            if filter_value is False:
+            if filter is False:
                 # dtype does not matter much
                 expr_value = np.empty(0)
             else:
                 # TODO: set filter before evaluating expressions
                 expr_value = expr_eval(expr, context)
-                if filter_value is not None and isinstance(expr_value, (np.ndarray, la.Array)) and expr_value.shape:
-                    expr_value = expr_value[filter_value]
+                if filter is not None and isinstance(expr_value, (np.ndarray, la.Array)) and expr_value.shape:
+                    expr_value = expr_value[filter]
             columns.append(expr_value)
 
         ids = columns[id_pos]

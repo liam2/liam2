@@ -1351,14 +1351,10 @@ class FileProducer:
     # do we need to return a file name if neither suffix nor fname are defined?
     fname_required = False
 
-    def _get_fname(self, kwargs):
+    def _get_fname(self, fname, suffix):
         """
-        Returns a filename depending on the given kwargs.
-        Note that kwargs are **popped in-place** !
+        Returns a filename depending on the given suffix and fname.
         """
-        suffix = kwargs.pop('suffix', '')
-        fname = kwargs.pop('fname', None)
-
         if fname is not None and suffix:
             raise ValueError(f"{self.__class__.__name__.lower()}() cannot have "
                              f"both 'suffix' and 'fname' arguments")

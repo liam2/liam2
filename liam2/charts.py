@@ -49,7 +49,7 @@ class Chart(FunctionExpr, FileProducer):
         cmap = plt.get_cmap('OrRd')
         return [cmap(f) for f in ratios]
 
-    def prepare(self, args, kwargs):
+    def prepare(self, args, **kwargs):
         ndim_req = self.ndim_req
         dimerror = False
         if self.check_length and len(args) > 1:
@@ -89,40 +89,40 @@ class Chart(FunctionExpr, FileProducer):
             raise ValueError(f"{self.funcname}() only works on {ndim_req - 1} or {ndim_req} dimensional data")
         return data, get_axes(data)
 
-    def compute(self, context, *args, **kwargs):
+    def compute(self, context, *args, colors=None, grid=None, maxticks=None,
+                xmin=None, xmax=None, ymin=None, ymax=None,
+                fname=None, suffix='', **kwargs):
         entity = context.entity
         period = context.period
         fig = plt.figure()
         ax = fig.add_subplot(projection=self.projection)
 
-        data, axes = self.prepare(args, kwargs)
-        colors = kwargs.pop('colors', None)
+        data, axes = self.prepare(args, **kwargs)
         if colors is None:
             colors = self.get_colors(len(axes[0]))
-        fname = self._get_fname(kwargs)
-        grid = kwargs.pop('grid', self.show_grid)
-        maxticks = kwargs.pop('maxticks', self.maxticks)
-
+        fname_pattern = self._get_fname(fname, suffix)
+        if grid is None:
+            grid = self.show_grid
+        if maxticks is None:
+            maxticks = self.maxticks
         if self.show_legend:
             self.set_legend(axes[0], colors)
             axes = axes[1:]
         if self.show_axes:
             self.set_axes(ax, axes, maxticks)
-        left, right = kwargs.pop('xmin', None), kwargs.pop('xmax', None)
-        bottom, top = kwargs.pop('ymin', None), kwargs.pop('ymax', None)
         self._draw(data, colors, **kwargs)
         if self.show_axes:
             # setting x/ylim need to happen after draw, so that the "keep
             # last value" behavior of setting them to None works, otherwise
             # it breaks awfully (eg sets ylim to 0, 1)
-            ax.set_xlim(left=left, right=right, emit=False)
-            ax.set_ylim(bottom=bottom, top=top, emit=False)
+            ax.set_xlim(left=xmin, right=xmax, emit=False)
+            ax.set_ylim(bottom=ymin, top=ymax, emit=False)
 
         ax.grid(grid)
         if fname is None:
             plt.show()
         else:
-            root, exts = os.path.splitext(fname)
+            root, exts = os.path.splitext(fname_pattern)
             exts = exts.split('&')
             # the first extension already contains a ".", but not the others
             exts = [exts[0]] + ['.' + ext for ext in exts[1:]]
@@ -176,10 +176,10 @@ class BoxPlot(Chart):
     # boxplot works fine with several arrays of different lengths
     check_length = False
 
-    def prepare(self, args, kwargs):
+    def prepare(self, args, **kwargs):
         if len(args) > 1:
             args = (args,)
-        data, axes = super(BoxPlot, self).prepare(args, kwargs)
+        data, axes = super(BoxPlot, self).prepare(args, **kwargs)
         self.label_axis = axes[0]
         return data, axes
 
@@ -201,9 +201,8 @@ class Scatter(Chart):
     show_axes = False
     colorbar_threshold = 10
 
-    def prepare(self, args, kwargs):
+    def prepare(self, args, c='b', **kwargs):
         axes = [la.Axis(np.unique(arg)) for arg in args]
-        c = kwargs.get('c', 'b')
         unq_colors = np.unique(c)
         if len(unq_colors) >= self.colorbar_threshold:
             # we will add a colorbar in this case, so we do not need a legend
@@ -213,18 +212,17 @@ class Scatter(Chart):
             axes = [la.Axis(unq_colors)] + axes
         return args, axes
 
-    def _draw(self, data, colors, **kwargs):
+    def _draw(self, data, colors, *, cmap=None, r=None, s=None, **kwargs):
         from matplotlib.colors import ListedColormap
 
-        if 'cmap' not in kwargs:
-            kwargs['cmap'] = ListedColormap(colors)
-        r = kwargs.pop('r', None)
+        if cmap is None:
+            cmap = ListedColormap(colors)
         if r is not None:
-            if kwargs.get('s') is not None:
+            if s is not None:
                 raise Exception('cannot specify both r and s arguments to '
                                 'scatter')
-            kwargs['s'] = np.pi * np.asarray(r) ** 2
-        sc = plt.scatter(*data, **kwargs)
+            s = np.pi * np.asarray(r) ** 2
+        sc = plt.scatter(*data, cmap=cmap, s=s, **kwargs)
         if len(colors) >= self.colorbar_threshold:
             plt.colorbar(sc)
 
@@ -236,16 +234,15 @@ class Plot(Chart):
         Chart.__init__(self, *args, **kwargs)
         self.styles = None
 
-    def prepare(self, args, kwargs):
+    def prepare(self, args, styles=None, **kwargs):
         # "inline" styles have priority over kwarg styles
-        styles = kwargs.pop('styles', None)
         if len(args) > 1:
             # every odd is a string => we have styles, yeah !
             if all(isinstance(a, str) for a in args[1::2]):
                 styles = args[1::2]
                 args = args[::2]
         self.styles = styles
-        return super(Plot, self).prepare(args, kwargs)
+        return super(Plot, self).prepare(args, **kwargs)
 
     def _draw(self, data, colors, **kwargs):
         data = np.asarray(data)
@@ -271,11 +268,10 @@ class StackPlot(Chart):
 class Bar(Chart):
     show_grid = False
 
-    def _draw(self, data, colors, **kwargs):
+    def _draw(self, data, colors, *, x=None, color=None, **kwargs):
         data = np.asarray(data)
         numvalues = len(data[0])
 
-        x = kwargs.pop('x', None)
         if x is None:
             x = np.arange(numvalues)
         # use an explicit align='center' because this is only the default for matplotlib >= 2.0
@@ -283,21 +279,19 @@ class Bar(Chart):
         kw.update(kwargs)
         # we need to handle bottom explicitly to stack several rows
         bottom = np.zeros(numvalues, dtype=data[0].dtype)
-        for row, color in zip(data, colors):
-            if 'color' not in kwargs:
-                kw['color'] = color
-            plt.bar(x, height=row, bottom=bottom, **kw)
+        for row, cycle_color in zip(data, colors):
+            row_color = color if color is not None else cycle_color
+            plt.bar(x, height=row, bottom=bottom, color=row_color, **kw)
             bottom += row
 
 
 class BarH(Bar):
     show_grid = False
 
-    def _draw(self, data, colors, **kwargs):
+    def _draw(self, data, colors, *, y=None, color=None, **kwargs):
         data = np.asarray(data)
         numvalues = len(data[0])
 
-        y = kwargs.pop('y', None)
         if y is None:
             y = np.arange(numvalues)
         # use an explicit align='center' because this is only the default for matplotlib >= 2.0
@@ -305,10 +299,9 @@ class BarH(Bar):
         kw.update(kwargs)
         # we need to handle left explicitly to stack several rows
         left = np.zeros(numvalues, dtype=data.dtype)
-        for row, color in zip(data, colors):
-            if 'color' not in kwargs:
-                kw['color'] = color
-            plt.barh(y, width=row, left=left, **kw)
+        for row, cycle_color in zip(data, colors):
+            row_color = color if color is not None else cycle_color
+            plt.barh(y, width=row, left=left, color=row_color, **kw)
             left += row
 
 
@@ -317,7 +310,7 @@ class Pie(Chart):
     show_legend = False
     ndim_req = 1
 
-    def _draw(self, data, colors, **kwargs):
+    def _draw(self, data, colors, *, title=None, **kwargs):
         if isinstance(data, la.Array):
             labels = data.axes[0].labels
             title = data.axes[0].name
@@ -329,7 +322,6 @@ class Pie(Chart):
         kw = dict(labels=labels, colors=self.get_colors(len(data)),
                   autopct='%1.1f%%', startangle=90, title=title)
         kw.update(kwargs)
-        title = kw.pop('title', None)
         if title is not None:
             plt.title(title)
         plt.pie(data, **kw)

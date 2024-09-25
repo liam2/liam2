@@ -41,6 +41,8 @@ class CompoundExpression(AbstractFunction, metaclass=FillArgSpecMeta):
     """
     function expression written in terms of other expressions
     """
+    # TODO: with Python3, we might be able to determine this from function
+    #       signatures
     kwonlyargs = {}
 
     @classmethod
@@ -167,19 +169,17 @@ class NumpyChangeArray(NumpyFunction):
                                              f"({', '.join(self.argspec.args)})")
         NumpyFunction.__init__(self, *args, **kwargs)
 
-    def compute(self, context, *args, **kwargs):
-        filter_value = kwargs.pop('filter', None)
-
+    def compute(self, context, *args, filter=None, **kwargs):
         func = self.get_compute_func()
 
         new_values = func(*args, **kwargs)
-        if filter_value is not None:
+        if filter is not None:
             # we cannot do this yet because dtype() currently requires
             # context (and I don't want to change the signature of compute
             # just for that)
             # assert dtype(old_values) == dtype(new_values)
             old_values = args[0]
-            new_values = np.where(filter_value, new_values, old_values)
+            new_values = np.where(filter, new_values, old_values)
 
         # FIXME: sometimes (e.g. clip, it is already an la.Array)
         # FIXME: sometimes the input is not a column (no id axis)
@@ -192,15 +192,13 @@ class NumpyChangeArray(NumpyFunction):
 
 
 class NumpyCreateArray(NumpyFunction):
-    def compute(self, context, *args, **kwargs):
-        filter_value = kwargs.pop('filter', None)
-
+    def compute(self, context, *args, filter=None, **kwargs):
         func = self.get_compute_func()
         values = func(*args, **kwargs)
 
-        if filter_value is not None:
+        if filter is not None:
             missing_value = get_default_value(values)
-            values = np.where(filter_value, values, missing_value)
+            values = np.where(filter, values, missing_value)
         # FIXME: for this to work, the context
         #        needs to contain the current subset_id_axis
         # return self.to_larray(context, values)
@@ -255,10 +253,7 @@ class NumpyAggregate(NumpyFunction):
         assert self.argspec.args[0] == 'a'
         NumpyFunction.__init__(self, *args, **kwargs)
 
-    def compute(self, context, *args, **kwargs):
-        filter_value = kwargs.pop('filter', None)
-        skip_na = kwargs.pop('skip_na', True)
-
+    def compute(self, context, *args, filter=None, skip_na=True, **kwargs):
         values, args = args[0], args[1:]
         values = np.asanyarray(values)
 
@@ -273,15 +268,15 @@ class NumpyAggregate(NumpyFunction):
         if values.shape:
             if values.ndim == 1:
                 if skip_na and not usenanfunc:
-                    if filter_value is not None:
+                    if filter is not None:
                         # we should *not* use an inplace operation because
-                        # filter_value can be a simple variable
-                        filter_value = filter_value & ispresent(values)
+                        # filter can be a simple variable
+                        filter = filter & ispresent(values)
                     else:
-                        filter_value = ispresent(values)
-                if filter_value is not None and filter_value is not True:
-                    values = values[filter_value]
-            elif values.ndim > 1 and filter_value is not None:
+                        filter = ispresent(values)
+                if filter is not None and filter is not True:
+                    values = values[filter]
+            elif values.ndim > 1 and filter is not None:
                 raise Exception("filter argument is not supported on arrays "
                                 "with more than 1 dimension")
         args = (values,) + args
