@@ -1,4 +1,3 @@
-from os.path import splitext, basename
 import csv
 import heapq
 import math
@@ -6,6 +5,7 @@ import operator
 import os
 import tempfile
 import time
+from pathlib import Path
 
 import tables
 import numpy as np
@@ -391,8 +391,9 @@ if __name__ == '__main__':
 
     args = sys.argv
     if len(args) < 4:
+        prog_name = Path(args[0]).name
         print(f"""\
-Usage: {basename(args[0])} action inputpath outputpath [link_fields|entities]
+Usage: {prog_name} action inputpath outputpath [link_fields|entities]
     where:
       * action must be either 'shuffle', 'shrink' or 'sort'.
         'shuffle' will randomize ids (but keep links consistent)
@@ -417,7 +418,7 @@ Usage: {basename(args[0])} action inputpath outputpath [link_fields|entities]
     inputpath = args[2]
     outputpath = args[3]
 
-    _, ext = splitext(inputpath)
+    ext = Path(inputpath).suffix
     if ext in ('.h5', '.hdf5'):
         if action != 'sort':
             if len(args) < 5 and action != 'sort':

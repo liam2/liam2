@@ -5,6 +5,7 @@ import operator
 from collections import defaultdict
 import random
 import warnings
+from pathlib import Path
 
 import numpy as np
 import tables
@@ -77,7 +78,7 @@ def expand_periodic_fields(content):
         multi_set(content, 'globals/periodic', {'fields': periodic})
 
 
-def handle_imports(content, directory):
+def handle_imports(content: dict, directory: Path):
     imported_files = content.get('import', [])
     if isinstance(imported_files, str):
         imported_files = [imported_files]
@@ -89,10 +90,10 @@ def handle_imports(content, directory):
     # merged_content = merge(local_content, imported2.yml)   # local content has priority over imported2 content
     # merged_content = merge(merged_content, imported1.yml)  # merged content has priority over imported1 content
     for fname in imported_files[::-1]:
-        import_path = os.path.abspath(os.path.join(directory, fname))
+        import_path = (directory / fname).resolve()
         print(f"importing: '{import_path}'")
-        import_directory = os.path.dirname(import_path)
-        with open(import_path) as f:
+        import_directory = import_path.parent
+        with import_path.open() as f:
             imported_content = yaml.safe_load(f)
 
         expand_periodic_fields(imported_content)
@@ -255,13 +256,15 @@ class Simulation:
         self.minimal_output = minimal_output
 
     @classmethod
-    def from_str(cls, yaml_str, simulation_dir='',
-                 input_dir=None, input_file=None,
+    def from_str(cls, yaml_str, simulation_dir: Path = None,
+                 input_dir: Path = None, input_file=None,
                  output_dir=None, output_file=None,
                  start_period=None, periods=None, seed=None,
                  skip_shows=None, skip_timings=None, log_level=None,
                  assertions=None, autodump=None, autodiff=None,
                  runs=None):
+        if simulation_dir is None:
+            simulation_dir = Path('.')
         content = yaml.safe_load(yaml_str)
         expand_periodic_fields(content)
         content = handle_imports(content, simulation_dir)
@@ -360,23 +363,23 @@ class Simulation:
 
         input_def = simulation_def['input']
         if input_dir is None:
-            input_dir = input_def.get('path', '')
-        if not os.path.isabs(input_dir):
-            input_dir = os.path.join(simulation_dir, input_dir)
+            input_dir = Path(input_def.get('path', '.'))
+        if not input_dir.is_absolute():
+            input_dir = simulation_dir / input_dir
         config.input_directory = input_dir
 
         if input_file is None:
             input_file = input_def.get('file', '')
-        input_path = os.path.join(input_dir, input_file)
+        input_path = input_dir / input_file
 
         output_def = simulation_def['output']
         if output_dir is None:
-            output_dir = output_def.get('path', '')
-        if not os.path.isabs(output_dir):
-            output_dir = os.path.join(simulation_dir, output_dir)
-        if not os.path.exists(output_dir):
+            output_dir = Path(output_def.get('path', '.'))
+        if not output_dir.is_absolute():
+            output_dir = simulation_dir / output_dir
+        if not output_dir.exists():
             print(f"creating directory: '{output_dir}'")
-            os.makedirs(output_dir)
+            output_dir.mkdir(parents=True)
         config.output_directory = output_dir
 
         minimal_output = False
@@ -384,14 +387,14 @@ class Simulation:
             output_file = output_def.get('file', '')
 
         if output_file:
-            output_path = os.path.join(output_dir, output_file)
+            output_path = output_dir / output_file
         else:
             # using a temporary directory instead of a temporary file
             # because tempfile.* only returns file-like objects (which
             # pytables does not support) or directories, not file names.
-            tmp_dir = tempfile.mkdtemp(prefix='liam2-', suffix='-tmp',
-                                       dir=output_dir)
-            output_path = os.path.join(tmp_dir, 'simulation.h5')
+            tmp_dir = Path(tempfile.mkdtemp(prefix='liam2-', suffix='-tmp',
+                                            dir=output_dir))
+            output_path = tmp_dir / 'simulation.h5'
             minimal_output = True
 
         entities = {}
@@ -505,15 +508,17 @@ class Simulation:
                           output_path, default_entity, runs, minimal_output)
 
     @classmethod
-    def from_yaml(cls, fpath,
+    def from_yaml(cls, fpath: Path | str,
                   input_dir=None, input_file=None,
                   output_dir=None, output_file=None,
                   start_period=None, periods=None, seed=None,
                   skip_shows=None, skip_timings=None, log_level=None,
                   assertions=None, autodump=None, autodiff=None,
                   runs=None):
+        if not isinstance(fpath, Path):
+            fpath = Path(fpath)
         with open(fpath) as f:
-            return cls.from_str(f, os.path.dirname(os.path.abspath(fpath)),
+            return cls.from_str(f, fpath.resolve().parent,
                                 input_dir, input_file,
                                 output_dir, output_file,
                                 start_period, periods, seed,
@@ -559,7 +564,7 @@ class Simulation:
             else:  # config.autodiff
                 fname, _ = config.autodiff
                 mode = 'r'
-            fpath = os.path.join(config.output_directory, fname)
+            fpath = config.output_directory / fname
             h5_autodump = tables.open_file(fpath, mode=mode)
             config.autodump_file = h5_autodump
         else:
@@ -627,10 +632,10 @@ class Simulation:
                 h5_autodump.close()
             if self.minimal_output:
                 output_path = self.data_sink.output_path
-                dirname = os.path.dirname(output_path)
+                dirname = output_path.parent
                 try:
-                    os.remove(output_path)
-                    os.rmdir(dirname)
+                    output_path.unlink()
+                    dirname.rmdir()
                 except OSError:
                     print(f"WARNING: could not delete temporary directory: "
                           f"{dirname!r}")

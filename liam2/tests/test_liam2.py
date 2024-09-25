@@ -1,4 +1,5 @@
 from io import StringIO
+from pathlib import Path
 import os
 import sys
 import traceback
@@ -13,7 +14,7 @@ from liam2.simulation import Simulation
 from liam2.importer import csv2h5
 
 ON_CI = os.environ.get('USE_TRAVIS', None) == 'true'
-test_root = os.path.abspath(os.path.dirname(__file__))
+test_root = Path(__file__).parent.resolve()
 
 
 if not ON_CI:
@@ -29,16 +30,18 @@ def run_simulation(fpath):
 
 # we can't name this function anything containing "test" otherwise nosetests tries to execute it
 def iterate_directory(directory, import_files, excluded_files):
-    directory_path = os.path.join(test_root, directory)
+    directory_path = test_root / directory
     excluded_files = excluded_files + import_files
 
     # run import files before other tests to allow other tests to use created files
     for import_file in import_files:
-        yield csv2h5, os.path.join(directory_path, import_file)
+        yield csv2h5, directory_path / import_file
 
-    for test_file in os.listdir(directory_path):
-        if test_file.endswith('.yml') and test_file not in excluded_files:
-            yield run_simulation, os.path.join(directory_path, test_file)
+    for test_file in directory_path.iterdir():
+        assert isinstance(test_file, Path)
+
+        if test_file.suffix == '.yml' and test_file.name not in excluded_files:
+            yield run_simulation, test_file
 
 
 # test generator for nosetests (must return test_func, args)
@@ -77,15 +80,15 @@ def printnow(*args, **kwargs):
     sys.stdout.flush()
 
 
-def run_func(func, *args, **kwargs):
+def run_func(func, test_file: Path, *args, **kwargs):
     verb = 'Importing' if func is csv2h5 else 'Running'
-    printnow(f'{verb} {os.path.relpath(args[0], test_root)}...', end=' ')
+    printnow(f'{verb} {test_file.relative_to(test_root)}...', end=' ')
 
     # capture stdout and stderr
     sys.stdout = StringIO()
     sys.stderr = StringIO()
     try:
-        func(*args, **kwargs)
+        func(test_file, *args, **kwargs)
         exc_type, exc_value, exc_traceback = None, None, None
     except Exception as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()

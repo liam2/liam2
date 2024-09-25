@@ -1,10 +1,11 @@
 import os
+from pathlib import Path
 
 # TODO: most of these (except possibly input_directory) should be moved to
 # Simulation attributes (or in the context)
 debug = os.environ.get("DEBUG", "False").lower() == "true"
-input_directory = "."
-output_directory = "."
+input_directory = Path(".")
+output_directory = Path(".")
 skip_shows = False
 # should be one of raise, warn, skip
 assertions = "raise"

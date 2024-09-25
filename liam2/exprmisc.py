@@ -573,8 +573,7 @@ class LinearExpr(FunctionExpr):
 
         coefficients = self.args[0]
         if isinstance(coefficients, str):
-            fpath = os.path.join(config.input_directory, coefficients)
-            coefficients = load_ndarray(fpath)
+            coefficients = load_ndarray(config.input_directory / coefficients)
             # XXX: store args in a list so that we can modify it?
             # self.args[1] = load_ndarray(fpath, float)
             # XXX: but we should be able to do better than a list, eg.
@@ -653,8 +652,8 @@ class Load(FunctionExpr):
         FunctionExpr.__init__(self, fname, type=type, fields=fields)
 
     def compute(self, context, fname, type=None, fields=None, **kwargs):
-        # using abspath does not change anything except it makes relative paths using ".." easier to read
-        file_path = os.path.abspath(os.path.join(config.input_directory, fname))
+        # using resolve() does not change anything except it makes relative paths using ".." easier to read
+        file_path = (config.input_directory / fname).resolve()
         if type is not None:
             return load_ndarray(file_path, type, **kwargs)
         elif fields is not None:

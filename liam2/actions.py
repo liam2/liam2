@@ -58,7 +58,7 @@ class CSV(FunctionExpr, FileProducer):
         if config.log_level in ("functions", "processes"):
             print("writing to", fname, "...", end=' ')
 
-        file_path = os.path.abspath(os.path.join(config.output_directory, fname))
+        file_path = (config.output_directory / fname).resolve()
         with open(file_path, mode, newline='', encoding='utf8') as f:
             writer = csv.writer(f)
             for arg in args:

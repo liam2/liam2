@@ -27,8 +27,7 @@ class Choice(NumpyRandom):
 
         probabilities = self.args[0]
         if isinstance(probabilities, str):
-            fpath = os.path.join(config.input_directory, probabilities)
-            probabilities = load_ndarray(fpath)
+            probabilities = load_ndarray(config.input_directory / probabilities)
             # XXX: store args in a list so that we can modify it?
             # self.args[1] = load_ndarray(fpath, float)
             # XXX: but we should be able to do better than a list, eg.

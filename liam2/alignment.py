@@ -210,8 +210,7 @@ class AlignmentAbsoluteValues(FilteredExpression):
 
         need = self.args[1]
         if isinstance(need, str):
-            fpath = os.path.join(config.input_directory, need)
-            need = load_ndarray(fpath, float)
+            need = load_ndarray(config.input_directory / need, float)
             # XXX: store args in a list so that we can modify it?
             # self.args[1] = load_ndarray(fpath, float)
             # XXX: but we should be able to do better than a list, eg.

@@ -29,8 +29,7 @@ def write_traceback(ex_type, e, tb):
         # its default value of "." is used and thus we get the "old"
         # behaviour: error.log in the working directory
         out_dir = config.output_directory
-        error_path = os.path.join(out_dir, 'error.log')
-        error_path = os.path.abspath(error_path)
+        error_path = (out_dir / 'error.log').resolve()
         with open(error_path, 'w') as f:
             traceback.print_exception(ex_type, e, tb, file=f)
             if hasattr(e, 'liam2context'):
@@ -106,7 +105,7 @@ def print_exception_simplified(ex_type, e, tb):
         printerr("the technical error log can be found at", error_log_path)
 
 
-def simulate(args):
+def simulate(args: argparse.Namespace):
     print(f"Using simulation file: '{args.fpath}'")
 
     simulation = Simulation.from_yaml(args.fpath,

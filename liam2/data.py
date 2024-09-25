@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 
 import tables
 import numpy as np
@@ -1147,13 +1148,13 @@ class H5Source(DataSource):
 
 
 class H5Sink(DataSink):
-    def __init__(self, output_path):
+    def __init__(self, output_path: Path):
         self.output_path = output_path
         self.h5out = None
 
     def prepare(self, globals_def, entities, input_dataset, start_period):
         """copy input (if any) to output and create output index"""
-        output_file = tables.open_file(self.output_path, mode="w")
+        output_file = tables.open_file(str(self.output_path), mode="w")
 
         try:
             globals_data = input_dataset.get('globals')

@@ -129,7 +129,7 @@ class Chart(FunctionExpr, FileProducer):
             for ext in exts:
                 fname = (root + ext).format(entity=entity.name, period=period)
                 print(f"writing to {fname} ...", end=' ')
-                plt.savefig(os.path.join(config.output_directory, fname))
+                plt.savefig(config.output_directory / fname)
 
         # explicit close is needed for Qt backend
         plt.close(fig)

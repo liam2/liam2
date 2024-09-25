@@ -2,6 +2,7 @@ import csv
 import os.path
 import re
 from itertools import islice, chain
+from pathlib import Path
 
 import numpy as np
 try:
@@ -158,7 +159,8 @@ def eval_with_template(s, template_context):
 class CSV:
     eval_re = re.compile(r'eval\((.*)\)')
 
-    def __init__(self, fpath, newnames=None, delimiter=None, transpose=False):
+    def __init__(self, fpath: Path | str, newnames=None, delimiter=None,
+                 transpose=False):
         f = open(fpath, 'r', newline='', encoding='utf8')
         if delimiter is None:
             dialect = csv.Sniffer().sniff(f.read(1024))
@@ -268,12 +270,15 @@ class CSV:
                         count=self.numlines)
 
 
-def complete_path(prefix, path):
+def complete_path(prefix: Path, path: Path | str):
     """make a path absolute by prefixing it if necessary"""
-    if os.path.isabs(path):
+    assert isinstance(prefix, Path)
+    if not isinstance(path, Path):
+        path = Path(path)
+    if path.is_absolute():
         return path
     else:
-        return os.path.join(prefix, path)
+        return prefix / path
 
 
 def compression_str2filter(compression):
@@ -504,7 +509,7 @@ def load(fpath, **kwargs):
         raise ValueError(f'{ext} is not a supported file extension')
 
 
-def load_ndarray(fpath, celltype=None, **kwargs):
+def load_ndarray(fpath: Path, celltype=None, **kwargs):
     print(" - reading", fpath)
     # FIXME: make sure the following situation raise a sensible error:
     # * duplicate column headers
@@ -590,7 +595,7 @@ def load_table(fpath, fields=None, newnames=None, delimiter=None, transpose=Fals
     return array
 
 
-def load_def(localdir, ent_name, section_def, required_fields):
+def load_def(localdir: Path, ent_name, section_def, required_fields):
     if 'type' in section_def and 'fields' in section_def:
         raise Exception(f"invalid structure for '{ent_name}': type and fields "
                         f"sections are mutually exclusive")
@@ -730,7 +735,9 @@ def load_def(localdir, ent_name, section_def, required_fields):
         return 'table', (target_fields, total_lines, iter(target), None)
 
 
-def csv2h5(fpath, buffersize=10 * MB):
+def csv2h5(fpath: Path, buffersize=10 * MB):
+    if not isinstance(fpath, Path):
+        fpath = Path(fpath)
     with open(fpath) as f:
         content = yaml.safe_load(f)
 
@@ -794,7 +801,7 @@ def csv2h5(fpath, buffersize=10 * MB):
         }
     }
     from liam2.simulation import handle_imports
-    localdir = os.path.dirname(os.path.abspath(fpath))
+    localdir = fpath.resolve().parent
     content = handle_imports(content, localdir)
     validate_dict(content, yaml_layout)
 
@@ -804,7 +811,7 @@ def csv2h5(fpath, buffersize=10 * MB):
     print("Importing in", h5_filepath)
     h5file = None
     try:
-        h5file = tables.open_file(h5_filepath, mode="w", title="CSV import")
+        h5file = tables.open_file(str(h5_filepath), mode="w", title="CSV import")
 
         globals_def = content.get('globals', {})
         if globals_def:
