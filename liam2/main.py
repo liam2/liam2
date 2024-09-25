@@ -1,5 +1,4 @@
 import argparse
-import os
 from os.path import splitext
 import platform
 import traceback
@@ -105,24 +104,10 @@ def print_exception_simplified(ex_type, e, tb):
         printerr("the technical error log can be found at", error_log_path)
 
 
-def simulate(args: argparse.Namespace):
-    print(f"Using simulation file: '{args.fpath}'")
-
-    simulation = Simulation.from_yaml(args.fpath,
-                                      input_dir=args.input_path,
-                                      input_file=args.input_file,
-                                      output_dir=args.output_path,
-                                      output_file=args.output_file,
-                                      start_period=args.startperiod,
-                                      periods=args.periods, seed=args.seed,
-                                      skip_shows=args.skipshows,
-                                      skip_timings=args.skiptimings,
-                                      log_level=args.loglevel,
-                                      assertions=args.assertions,
-                                      autodump=args.autodump,
-                                      autodiff=args.autodiff)
-
-    simulation.run(args.interactive)
+def simulate(fpath, run_console=False, **kwargs):
+    print(f"Using simulation file: '{fpath}'")
+    simulation = Simulation.from_yaml(fpath, **kwargs)
+    simulation.run(run_console)
     # import cProfile as profile
     # print("profiling...")
     # profile.runctx('simulation.run(False)', vars(), {},
@@ -354,7 +339,21 @@ done in-place."""
 
     action = parsed_args.action
     if action == 'run':
-        return simulate(parsed_args)
+        return simulate(parsed_args.fpath,
+                        input_dir=parsed_args.input_path,
+                        input_file=parsed_args.input_file,
+                        output_dir=parsed_args.output_path,
+                        output_file=parsed_args.output_file,
+                        start_period=parsed_args.startperiod,
+                        periods=parsed_args.periods, 
+                        seed=parsed_args.seed,
+                        skip_shows=parsed_args.skipshows,
+                        skip_timings=parsed_args.skiptimings,
+                        log_level=parsed_args.loglevel,
+                        assertions=parsed_args.assertions,
+                        autodump=parsed_args.autodump,
+                        autodiff=parsed_args.autodiff,
+                        run_console=parsed_args.interactive)
     elif action == "import":
         return csv2h5(parsed_args.file)
     elif action == "explore":

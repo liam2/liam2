@@ -10,7 +10,7 @@ import larray as la
 # we want debug output. This must be done before importing liam2
 os.environ["DEBUG"] = "TRUE"
 
-from liam2.simulation import Simulation
+from liam2.main import simulate
 from liam2.importer import csv2h5
 
 ON_CI = os.environ.get('USE_TRAVIS', None) == 'true'
@@ -24,8 +24,7 @@ if not ON_CI:
 def run_simulation(fpath):
     # We should NOT override output_dir here because it breaks tests and examples which load back what they
     # write (e.g. demo_load.yml)
-    simulation = Simulation.from_yaml(fpath, log_level='processes')
-    simulation.run()
+    simulate(fpath, log_level='processes')
 
 
 # we can't name this function anything containing "test" otherwise nosetests tries to execute it
