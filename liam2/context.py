@@ -39,7 +39,7 @@ class EvaluationContext:
         self.subset_axes = subset_axes
         self.extra_per_entity = {}
 
-    def copy(self, fresh_data=False):
+    def copy(self, fresh_data=False) -> 'EvaluationContext':
         # FIXME: when fresh_data is False, entities_data should clone each
         #        EntityContext and set their eval_ctx attribute to the newly created
         #        EvaluationContext (res), otherwise each EntityContext still points to
@@ -63,7 +63,7 @@ class EvaluationContext:
         #                      in self.entities_data.items()}
         return res
 
-    def clone(self, fresh_data=False, **kwargs):
+    def clone(self, fresh_data=False, **kwargs) -> 'EvaluationContext':
         res = self.copy(fresh_data=fresh_data)
         allowed_kwargs = {'simulation', 'entities', 'global_tables',
                           'period', 'entity_name', 'filter_expr',
