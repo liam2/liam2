@@ -40,6 +40,7 @@ except ImportError:
         complete_globals.update(eval_context)
         return eval(expr, complete_globals, {})
 
+# expr_eval_counts = Counter()
 expr_cache = Cache()
 timings = Counter()
 
@@ -544,6 +545,7 @@ class NumExprEvaluable(Expr):
         s = simple_expr.as_string()
         constants = {'nan': float('nan'), 'inf': float('inf')}
         if numexpr_eval:
+            # expr_eval_counts['numexpr'] += 1
             try:
                 # numexpr 2.8.5+ (at least as of 2.10.1) broke the second (global_dict)
                 # argument (which is ignored), hence the workaround
@@ -564,6 +566,7 @@ class NumExprEvaluable(Expr):
                     print("constants:", constants)
                 raise
         else:
+            # expr_eval_counts['python'] += 1
             res = eval(s, constants, local_ctx)
 
         if isinstance(res, np.ndarray) and not res.shape:

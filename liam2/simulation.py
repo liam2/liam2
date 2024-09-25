@@ -634,6 +634,9 @@ class Simulation:
                 except OSError:
                     print(f"WARNING: could not delete temporary directory: "
                           f"{dirname!r}")
+        # if config.debug:
+        #     print("eval counts")
+        #     print(expr.expr_eval_counts)
 
     def simulate_period(self, eval_ctx, period_idx, period, processes, entities,
                         main_start_time, process_time, init=False):
