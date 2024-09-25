@@ -167,7 +167,8 @@ class GroupBy(TableExpression):
 
         def eval_expr_on_subset(indices):
             # we use not_hashable to avoid storing the subset in the cache
-            return expr_eval(expr, filtered_context.subset(indices, expr_vars_names, not_hashable))
+            sub_context = filtered_context.subset(indices, expr_vars_names, not_hashable)
+            return expr_eval(expr, sub_context)
 
         # evaluate the expression on each group
 
