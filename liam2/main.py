@@ -354,18 +354,17 @@ done in-place."""
 
     action = parsed_args.action
     if action == 'run':
-        func, args = simulate, (parsed_args,)
+        return simulate(parsed_args)
     elif action == "import":
-        func, args = csv2h5, (parsed_args.file,)
+        return csv2h5(parsed_args.file)
     elif action == "explore":
-        func, args = explore, (parsed_args.file,)
+        return explore(parsed_args.file)
     elif action == "upgrade":
-        func, args = upgrade, (parsed_args.input, parsed_args.output)
+        return upgrade(parsed_args.input, parsed_args.output)
     elif action == "view":
-        func, args = display, (parsed_args.file,)
+        return display(parsed_args.file)
     else:
         raise ValueError(f"invalid action: {action}")
-    return func(*args)
 
 
 if __name__ == '__main__':
