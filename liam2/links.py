@@ -244,9 +244,12 @@ class LinkGet(LinkExpression):
         result_values = target_values[target_rows]
 
         # it is a bit faster with numexpr (mixed_links: 0.22s -> 0.17s)
-        return link_get_expr.evaluate({'ids': target_ids, 'rows': target_rows,
-                                       'values': result_values,
-                                       'mi': missing_int, 'mv': missing_value})
+        result = link_get_expr.evaluate({'ids': target_ids,
+                                         'rows': target_rows,
+                                         'values': result_values,
+                                         'mi': missing_int,
+                                         'mv': missing_value})
+        return self.to_larray(context, result)
 
     def __repr__(self):
         if (self.missing_value is None and

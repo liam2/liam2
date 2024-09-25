@@ -187,8 +187,13 @@ class EvaluationContext:
         if 'id' in data_subset:
             subset_axes = data_subset['id'].axes
         else:
-            orig_id_axis = entity_data['id'].id
-            subset_axes = la.AxisCollection(orig_id_axis.subaxis(index))
+            orig_id_column = entity_data['id']
+            if index is None:
+                subset_axes = orig_id_column.axes
+            else:
+                orig_id_axis = orig_id_column.id
+                subset_axes = la.AxisCollection(orig_id_axis.subaxis(index))
+
         return self.clone(entity_data=data_subset, filter_expr=filter_expr,
                           subset_axes=subset_axes)
 
