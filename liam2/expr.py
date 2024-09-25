@@ -517,7 +517,6 @@ class NumExprEvaluable(Expr):
         assert isinstance(context, EvaluationContext), type(context)
         local_ctx = context #.entity_data
         # assert isinstance(local_ctx, (dict, EntityContext)), type(context)
-        assert isinstance(local_ctx, EvaluationContext), type(context)
         # if isinstance(local_ctx, EntityContext) and local_ctx.is_array_period:
         for var in simple_expr.collect_variables():
             assert var.entity is None or var.entity is context.entity, \
@@ -526,7 +525,7 @@ class NumExprEvaluable(Expr):
 
             # var_name should always be in the context at this point
             # because missing temporaries should have been already caught
-             # in expr_eval
+            # in expr_eval
             # value = context[var.name]
             value = local_ctx[var.name]
 
