@@ -245,7 +245,10 @@ def expr_eval(expr, context):
                 if var.name not in globals_names and var not in context:
                     raise Exception(f"variable '{var}' is unknown (it is "
                                     f"either not defined or not computed yet)")
-            return expr.evaluate(context)
+            expr_result = expr.evaluate(context)
+            # this is still not the case for links
+            # assert not isinstance(expr_result, np.ndarray)
+            return expr_result
 
             # there are several flaws with this approach:
             # 1) I don't get action times (csv et al)

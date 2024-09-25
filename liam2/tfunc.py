@@ -20,7 +20,6 @@ class TimeFunction(FunctionExpr):
         if isinstance(filler, str) and filler == 'auto':
             filler = get_default_value(values)
         result = np.full(context_length(context), filler, dtype=values.dtype)
-        print("fill_missing_values", "past ids", len(ids), "current period length", len(result))
         if len(ids):
             id_to_rownum = context.id_to_rownum
             # if there was more objects in the past than in the current
@@ -37,10 +36,12 @@ class TimeFunction(FunctionExpr):
     @staticmethod
     def value_for_period(expr, period, context, fill='auto'):
         sub_context = context.clone(fresh_data=True, period=period)
+        # TODO: maybe result_axes() for the base case (subset_axes is None)
+        #       should take the current period into account instead?
+        sub_context.subset_axes = sub_context['id'].axes
         result = expr_eval(expr, sub_context)
         if isinstance(result, (np.ndarray, la.Array)) and result.shape:
             ids = sub_context['id']
-            print("ids", len(ids), "fill", fill)
             if fill is None:
                 return ids, result
             else:
@@ -70,10 +71,6 @@ class Lag(TimeFunction):
         period = context.period - num_periods
         np_res = self.value_for_period(expr, period, context, missing)
         return self.to_larray(context, np_res)
-
-    def result_axes(self, context: EvaluationContext):
-        print("yaaaaa")
-        return super().result_axes(context)
 
     dtype = firstarg_dtype
 
@@ -160,7 +157,8 @@ class TimeAverage(TimeFunction):
                 sum_values += period_value
                 last_period_wh_value[has_value] = period
             period -= 1
-        return sum_values / num_values
+        result = sum_values / num_values
+        return self.to_larray(context, result)
 
     dtype = always(float)
 
@@ -198,7 +196,7 @@ class TimeSum(TimeFunction):
 
                 sum_values += period_value
             period -= 1
-        return sum_values
+        return self.to_larray(context, sum_values)
 
     dtype = firstarg_dtype
 

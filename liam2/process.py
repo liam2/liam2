@@ -86,7 +86,6 @@ class Assignment(Process):
         if self.name is None:
             return
 
-        assert not isinstance(value, np.ndarray)
         key_value = expr_eval(self.key_expr, context)
 
         # store the result
