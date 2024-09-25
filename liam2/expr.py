@@ -430,7 +430,7 @@ class Expr:
         #         raise ValueError(f"result axes ({value.axes}) differ from "
         #                          f"expected axes ({expected_axes}) !")
         else:
-            assert np.isscalar(value) or isinstance(value, la.Array)
+            assert np.isscalar(value) or isinstance(value, la.Array) or isinstance(value, tuple)
             return value
 
     # TODO: make equivalent/commutative expressions compare equal and hash to
