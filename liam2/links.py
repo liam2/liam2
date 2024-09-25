@@ -2,12 +2,12 @@ from itertools import groupby
 from operator import itemgetter
 
 import numpy as np
-import numexpr as ne
 import larray as la
 
-from liam2.expr import NumExprEvaluable, Variable, getdtype, expr_eval, missing_values, get_default_value, always, \
+from liam2.expr import Variable, getdtype, expr_eval, missing_values, get_default_value, always, \
     FunctionExpr, Expr
 from liam2.context import context_length, EvaluationContext
+from liam2.numexpr_compat import JITExpression
 from liam2.partition import filter_to_indices
 from liam2.utils import removed
 
@@ -166,6 +166,8 @@ class LinkExpression(FunctionExpr):
         return self.format(f"{link._name}.{self.funcname}", args, kwargs)
 
 
+link_get_expr = JITExpression("where((ids != mi) & (rows != mi), values, mv)")
+
 class LinkGet(LinkExpression):
     funcname = "get"
     no_eval = ('target_expr',)
@@ -242,10 +244,9 @@ class LinkGet(LinkExpression):
         result_values = target_values[target_rows]
 
         # it is a bit faster with numexpr (mixed_links: 0.22s -> 0.17s)
-        return ne.evaluate("where((ids != mi) & (rows != mi), values, mv)",
-                           {'ids': target_ids, 'rows': target_rows,
-                            'values': result_values, 'mi': missing_int,
-                            'mv': missing_value})
+        return link_get_expr.evaluate({'ids': target_ids, 'rows': target_rows,
+                                       'values': result_values,
+                                       'mi': missing_int, 'mv': missing_value})
 
     def __repr__(self):
         if (self.missing_value is None and

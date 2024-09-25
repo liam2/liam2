@@ -14,6 +14,7 @@ import larray as la
 from larray import AxisCollection
 
 from liam2 import config
+from liam2.numexpr_compat import JITExpression
 
 
 def make_hashable(obj):
@@ -309,6 +310,8 @@ def safe_put(a, ind, v):
         a[-1] = last_value
 
 
+safe_take_expr = JITExpression('where((indices < 0) | (indices >= maxidx), missing, result)')
+
 def safe_take(a, indices, missing_value):
     """
     like np.take but out-of-bounds indices return the missing value
@@ -320,7 +323,7 @@ def safe_take(a, indices, missing_value):
     else:
         res_axes = None
     context = {'indices': indices, 'maxidx': len(a), 'missing': missing_value, 'result': result}
-    fixed_result = ne.evaluate('where((indices < 0) | (indices >= maxidx), missing, result)', context)
+    fixed_result = safe_take_expr.evaluate(context)
     if res_axes is not None:
         return la.Array(fixed_result, res_axes)
     return fixed_result
