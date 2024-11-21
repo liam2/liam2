@@ -424,7 +424,46 @@ def _make_aggregate(func):
     return method
 
 
-# FIXME: we should provide IrregularLArray instead !
+def _make_la_aggregate(func):
+    def method(self, axis=None):
+        # TODO: support named axis
+        if axis == 1:
+            result = la.empty(self.data.axes, dtype=self.data[0].dtype)
+            result_data = result.data
+            for i, a in enumerate(self.data):
+                result_data[i] = func(a)
+            return result
+        else:
+            raise NotImplementedError("axis != 1")
+    return method
+
+
+class IrregularLArray:
+    """
+    A wrapper for collections of arrays (eg list of arrays or arrays of
+    arrays) to make them act somewhat like a 2D (numpy) array. This makes it
+    possible to have irregular lengths in the second dimension.
+
+    TODO:
+    * generalize to ND (ND-1 regular + 1 irregular)
+    * data should be an la.Array
+    * last axis should be named
+    """
+    def __init__(self, data):
+        self.data = data
+
+    prod = _make_la_aggregate(np.prod)
+    sum = _make_la_aggregate(np.sum)
+    min = _make_la_aggregate(np.min)
+    max = _make_la_aggregate(np.max)
+
+    def __getattr__(self, key):
+        return getattr(self.data, key)
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+
 class IrregularNDArray:
     """
     A wrapper for collections of arrays (eg list of arrays or arrays of

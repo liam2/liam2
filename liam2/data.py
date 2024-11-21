@@ -16,11 +16,15 @@ def anyarray_to_disk(node, name, array):
     if array.dtype.names is None:
         array_to_disk_array(node, name, array, title=name)
     else:
+        # TODO: either implement a to_carray method in LColumnArray or
+        #       support LColumnArray natively in append_carray_to_table
+        if isinstance(array, LColumnArray):
+            array = ColumnArray([(k, v.data) for k, v in array.columns.items()])
+
         # noinspection PyProtectedMember
         h5file = node._v_file
         table = h5file.create_table(node, name, array.dtype, title=name)
-        table.append(array)
-        table.flush()
+        append_carray_to_table(array, table)
 
 
 def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
@@ -31,7 +35,8 @@ def append_carray_to_table(array, table, numlines=None, buffersize=10 * MB):
         must be indexable by field name and each field value must be array-like.
         must contain at least all table fields (but can contain more).
     table : table-like
-        Any object with .append(np.ndarray[structured_dtype]) and .flush() methods should work. tables.Table.
+        Any object with .append(np.ndarray[structured_dtype]) and .flush()
+        methods should work. tables.Table.
     numlines : int, optional
         Number of lines to append. Defaults to all lines.
     buffersize : int, optional
@@ -279,13 +284,21 @@ class LColumnArray:
         if array is not None:
             columns = {}
             if isinstance(array, (np.ndarray, ColumnArray)):
-                if axes is None and 'id' in array.dtype.names:
-                    axes = la.AxisCollection([la.Axis(array['id'], 'id')])
-                # TODO: we should probably check for the case where axes is not None
-                #       and 'id' in array.dtype.names
-                if axes is not None and not isinstance(axes, la.AxisCollection):
-                    axes = la.AxisCollection(axes)
+                assert array.dtype.names is not None and array.ndim == 1
+                if axes is None:
+                    row_axis = self.make_row_axis_from_column(array)
+                    axes = la.AxisCollection([row_axis])
 
+                else:
+                    if not isinstance(axes, la.AxisCollection):
+                        axes = la.AxisCollection(axes)
+                    row_axis = axes[0]
+                    row_axis_from_column = self.make_row_axis_from_column(array)
+                    if not row_axis_from_column.iscompatible(row_axis):
+                        raise ValueError(f"axis from column "
+                                         f"({row_axis_from_column!r}) is not "
+                                         f"compatible with row axis from "
+                                         f"axes argument ({row_axis!r})")
                 self.axes = axes
                 self.dtype = array.dtype
                 for name in array.dtype.names:
@@ -308,7 +321,27 @@ class LColumnArray:
             self.dtype = None
             self.columns = {}
 
+    @property
+    def _row_axis(self):
+        return self.axes[0]
+
+    def make_row_axis_from_column(self, array):
+        if 'id' in array.dtype.names:
+            return la.Axis(array['id'], 'id')
+        elif 'period' in array.dtype.names:
+            return la.Axis(array['period'], 'period')
+        # for globals
+        elif 'PERIOD' in array.dtype.names:
+            return la.Axis(array['PERIOD'], 'period')
+        else:
+            return la.Axis(len(array))
+
     def __getitem__(self, key):
+        assert isinstance(self.axes, la.AxisCollection)
+        # TODO: we should use self.axes._key_to_raw_and_axes()
+        #       so that we can support more interesting keys:
+        #       * strings in the other (non-column) axis
+        #       * both axes at the same time
         if isinstance(key, str):
             return self.columns[key]
         else:
@@ -318,7 +351,7 @@ class LColumnArray:
                 key = filter_to_indices(key.data)
             assert not isinstance(key, la.Array)
             ca = LColumnArray()
-            ca.axes = la.AxisCollection(self.axes.id.subaxis(key))
+            ca.axes = la.AxisCollection(self._row_axis.subaxis(key))
             ca.columns = {colname: la.Array(colvalue.data[key], ca.axes)
                           for colname, colvalue in self.columns.items()}
             ca.dtype = self.dtype
@@ -348,18 +381,21 @@ class LColumnArray:
                 column.data[key] = value[name]
 
     def _prepare_column(self, value):
-        id_axis = self.axes.id
+        row_axis = self._row_axis
         if isinstance(value, np.ndarray) and value.shape:
-            if len(value) != len(id_axis):
+            if len(value) != len(row_axis):
                 raise ValueError(f"could not broadcast input array from shape "
-                                 f"({len(value)}) into shape ({len(id_axis)})")
+                                 f"({len(value)}) into shape ({len(row_axis)})")
             return la.Array(value, self.axes)
         elif isinstance(value, la.Array) and value.shape:
-            value_axis = value.axes.id
-            if not value_axis.iscompatible(id_axis):
-                raise ValueError(f"incompatible id axis between value column and LColumnArray:\n"
-                                 f"length: {len(value_axis)} vs {len(id_axis)}\n"
-                                 f"ids: {repr(value_axis)} vs {repr(id_axis)}")
+            # row_axis_name = row_axis.name
+            assert value.ndim == 1
+            value_row_axis = value.axes[0]
+            if not value_row_axis.iscompatible(row_axis):
+                raise ValueError(f"incompatible row axis between value column "
+                                 f"and LColumnArray:\n"
+                                 f"length: {len(value_row_axis)} vs {len(row_axis)}\n"
+                                 f"ids: {repr(value_row_axis)} vs {repr(row_axis)}")
             return value
         else:
             # expand scalars (like ndarray does) so that we don't have to
@@ -399,7 +435,7 @@ class LColumnArray:
         self.dtype = np.dtype(fields)
 
     def __len__(self):
-        return len(self.axes.id) if self.axes is not None else 0
+        return len(self._row_axis) if self.axes is not None else 0
 
     # this is an inplace method so the old memory for each column can be freed before all columns have been changed
     def keep(self, key):
@@ -409,7 +445,7 @@ class LColumnArray:
             raise ValueError(f"key is {type(key).__name__} and not ndarray")
         if not np.issubdtype(key.dtype, np.integer):
             raise ValueError(f"key dtype is {key.dtype} and not one of the integer types")
-        self.axes = la.AxisCollection(self.axes.id.subaxis(key))
+        self.axes = la.AxisCollection(self._row_axis.subaxis(key))
 
         # using gc.collect() after each column update frees a bit of memory but slows things down significantly.
         for name, column in self.columns.items():
@@ -417,17 +453,18 @@ class LColumnArray:
             self.columns[name] = la.Array(column.data[key], self.axes)
 
     # this is an inplace method so the old memory for each column can be freed before all columns have been changed
-    def append(self, array):
-        assert array.dtype == self.dtype, (array.dtype, self.dtype)
-        assert all(isinstance(array[name], la.Array) for name in array.dtype.names)
-        self.axes = la.AxisCollection(self.axes.id.extend(array.axes.id))
+    def append(self, other: 'LColumnArray'):
+        assert isinstance(other, LColumnArray)
+        assert other.dtype == self.dtype, (other.dtype, self.dtype)
+        assert all(isinstance(other[name], la.Array) for name in other.dtype.names)
+        self.axes = la.AxisCollection(self._row_axis.extend(other.axes[0]))
 
         # using gc.collect() after each column update frees a bit of memory but slows things down significantly.
         for name, column in self.columns.items():
             # intentionally not using la.concat() to avoid computing the new id axis for each column
             # XXX: we could update the LArray object inplace (only change .data and .axes) but I don't think it's
             #      worth it
-            self.columns[name] = la.Array(np.concatenate((column.data, array[name].data)), self.axes)
+            self.columns[name] = la.Array(np.concatenate((column.data, other[name].data)), self.axes)
 
     def append_to_table(self, table, buffersize=10 * MB):
         ca = ColumnArray([(k, v.data) for k, v in self.columns.items()])
@@ -484,8 +521,9 @@ class LColumnArray:
             table_start += buffer_rows
             array_start += buffer_rows
             numlines -= buffer_rows
-        # intentionally modifying the id axis inplace because it is referenced in each column (and in the LCA)
-        ca.axes.id.labels = ca['id']
+        # intentionally modifying the id axis inplace because it is referenced
+        # in each column (and in the LCA)
+        ca.axes['id'].labels = ca['id']
         return ca
 
     def to_carray(self):
@@ -515,8 +553,9 @@ class LColumnArray:
             start += buffer_rows
             stop += buffer_rows
             numlines -= buffer_rows
-        # intentionally modifying the id_axis inplace because it is referenced in each column (and in the LCA)
-        ca.axes.id.labels = ca['id']
+        # intentionally modifying the id_axis inplace because it is referenced
+        # in each column (and in the LCA)
+        ca.axes['id'].labels = ca['id']
         return ca
 
     def add_and_drop_fields(self, names_to_keep, output_fields, default_values):
@@ -1008,12 +1047,16 @@ def load_path_globals(globals_def):
 
         kind, info = load_def(localdir, name, global_def, [])
         if kind == 'table':
+            # TODO:: load_def should return an LColumnArray directly !
             fields, numlines, datastream, csvfile = info
             array = stream_to_array(fields, datastream, numlines)
+            array = LColumnArray(array)
             csvfile.close()
         else:
             assert kind == 'ndarray'
             array = info
+            assert array.dtype.names is None
+            assert isinstance(array, la.Array)
         globals_data[name] = array
     return globals_data
 
@@ -1031,7 +1074,8 @@ def index_tables(globals_def, entities, fpath):
 
         def must_load_from_input_file(gdef):
             return isinstance(gdef, dict) and 'path' not in gdef
-        any_global_from_input_file = any(must_load_from_input_file(gdef) for gdef in globals_def.values())
+        any_global_from_input_file = any(must_load_from_input_file(gdef)
+                                         for gdef in globals_def.values())
         if any_global_from_input_file and 'globals' not in input_root:
             raise Exception('could not find any globals in the input data file '
                             '(but some are declared in the simulation file)')
@@ -1051,31 +1095,31 @@ def index_tables(globals_def, entities, fpath):
 
             global_data = getattr(globals_node, name)
 
-            global_type = global_def.get('type', global_def.get('fields'))
+            expected_global_type = global_def.get('type', global_def.get('fields'))
             # TODO: move the checking (assertValidType) to a separate function
-            assert_valid_type(global_data, global_type, context=name)
+            assert_valid_type(global_data, expected_global_type, context=name)
             array = global_data.read()
-            if isinstance(global_type, list):
+            if isinstance(expected_global_type, list):
                 # make sure we do not keep in memory columns which are
                 # present in the input file but where not asked for by the
                 # modeller. They are not accessible anyway.
-                array = add_and_drop_fields(array, global_type)
-                # FIXME: I need to convert this into an LColumnArray (so that indexing becomes saner and works for
-                #        setitem) but that class needs to be generalized to support having no id axis
-                # array = LColumnArray(array)
+                array = add_and_drop_fields(array, expected_global_type)
+                array = LColumnArray(array)
+
             attrs = global_data.attrs
             dim_names = getattr(attrs, 'dimensions', None)
             if dim_names is not None:
                 # we serialise dim_names as a numpy array so that it is
                 # stored as a native hdf type and not a pickle but we
                 # prefer to work with simple lists
-                # also files serialized using Python2 are "bytes" not "str"
+                # also files serialised using Python2 are "bytes" not "str"
                 dim_names = [str(dim_name) for dim_name in dim_names]
                 pvalues = [getattr(attrs, f'dim{i}_pvalues')
                            for i in range(len(dim_names))]
                 axes = [la.Axis(labels, axis_name)
                         for axis_name, labels in zip(dim_names, pvalues)]
                 array = la.Array(array, axes)
+            assert isinstance(array, (la.Array, LColumnArray))
             globals_data[name] = array
 
         input_entities = input_root.entities

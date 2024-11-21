@@ -509,7 +509,7 @@ def load(fpath, **kwargs):
         raise ValueError(f'{ext} is not a supported file extension')
 
 
-def load_ndarray(fpath: Path, celltype=None, **kwargs):
+def load_ndarray(fpath: Path, celltype=None, **kwargs) -> la.Array:
     print(" - reading", fpath)
     # FIXME: make sure the following situation raise a sensible error:
     # * duplicate column headers

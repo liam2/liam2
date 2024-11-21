@@ -13,7 +13,8 @@ class EvaluationContext:
         """
         :param simulation: Simulation
         :param entities: dict of entities {name: entity}
-        :param global_tables: dict of ndarrays (structured or not)
+        :param global_tables: dict
+            elements can be scalars, ndarrays (structured or not), LColumnArray
         :param period: int of the current period
         :param entity_name: name (str) of the current entity
         :param filter_expr: contextual filter expression (Expr)
@@ -21,6 +22,8 @@ class EvaluationContext:
                               EntityContext or dict of dict)
         :return:
         """
+        assert isinstance(global_tables, dict)
+
         self.simulation = simulation
         self.entities = entities
         self.global_tables = global_tables

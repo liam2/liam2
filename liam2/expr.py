@@ -9,7 +9,7 @@ from liam2.cache import Cache
 from liam2.config import debug
 from liam2.context import EntityContext, EvaluationContext
 from liam2.utils import (ExplainTypeError, safe_take, IrregularNDArray, NiceArgSpec, english_enum, make_hashable,
-                         add_context, array_nan_equal, union_axes)
+                         add_context, array_nan_equal, IrregularLArray)
 
 
 try:
@@ -419,7 +419,7 @@ class Expr:
         if isinstance(value, np.ndarray):
             return la.Array(value, self.result_axes(context))
         else:
-            assert np.isscalar(value) or isinstance(value, la.Array) or isinstance(value, tuple)
+            assert np.isscalar(value) or isinstance(value, (tuple, la.Array, IrregularLArray))
             return value
 
     # TODO: make equivalent/commutative expressions compare equal and hash to
@@ -1335,8 +1335,15 @@ class GlobalVariable(NotNumExprEvaluable):
         return context.period
 
     def evaluate(self, context):
+        np_res = self.np_evaluate(context)
+        return self.to_larray(context, np_res)
+
+    def np_evaluate(self, context):
+        from liam2.data import LColumnArray
+
         globals_data = context.global_tables
         globals_table = globals_data[self.tablename]
+        assert isinstance(globals_table, LColumnArray)
         if self.name is None:
             return globals_table
 
@@ -1354,7 +1361,25 @@ class GlobalVariable(NotNumExprEvaluable):
                 globals_periods = globals_table['PERIOD']
             except ValueError:
                 globals_periods = globals_table['period']
-            base_period = globals_periods[0]
+            # FIXME: this key -> translated_key translation *really* should be
+            #        done by an larray method
+            #        the current code is very fragile:
+            #        * if there are gaps in the periods in the global array,
+            #          the translated_key will be wrong and the data will be
+            #          shifted
+            #        * when some periods are outside the bounds (eg before
+            #          the first period), this happily provides a negative index
+            #          or an index > len(array). This will be handled by
+            #          safe_take below but I feel it should be handled earlier
+            #        This whole thing is problematic on LArray (how ironic)
+            #        because of how the missing labels are handled.
+            #        We should add a new Axis.index_with_missing method
+            #        (or a new optional flag argument to Axis.index) in LArray
+            #        (maybe by monkeypatching it) and use it here to compute
+            #        translated_key. We *might* want to add a corresponding
+            #        method on Array to combine label translation to indice +
+            #        take value in array
+            base_period = globals_periods.i[0]
             if isinstance(key, slice):
                 translated_key = slice(key.start - base_period,
                                        key.stop - base_period,
@@ -1369,8 +1394,10 @@ class GlobalVariable(NotNumExprEvaluable):
         missing_value = get_default_value(column)
 
         if isinstance(translated_key, (np.ndarray, la.Array)) and translated_key.shape:
-            return safe_take(column, translated_key, missing_value)
+            assert isinstance(column, la.Array)
+            return safe_take(column.data, translated_key, missing_value)
         elif isinstance(translated_key, slice):
+            assert isinstance(column, la.Array)
             start, stop = translated_key.start, translated_key.stop
             step = translated_key.step
             if step is not None and step != 1:
@@ -1399,9 +1426,13 @@ class GlobalVariable(NotNumExprEvaluable):
                 if (lengths == length0).all():
                     # constant length => result is a 2D array:
                     # num_individuals x slice_length
-                    period_axis = la.Axis(length0).rename('_')
-                    indices = (start + la.sequence(period_axis)).rename('_', None)
-                    return safe_take(column, indices, missing_value)
+                    column_axis = column.axes[0]
+                    assert column_axis.name == 'period'
+                    # we cannot use real period values given that they can be
+                    # different for each individual
+                    period_axis = la.Axis(length0).rename('period')
+                    indices = (start + la.sequence(period_axis))
+                    return safe_take(column.data, indices, missing_value)
                 else:
                     # varying length => result is an array (num_individuals) of
                     # 1D arrays (slice lengths)
@@ -1417,12 +1448,13 @@ class GlobalVariable(NotNumExprEvaluable):
                     #       case so that something like this works:
                     #       for a1, a2, a3 in la.zip_array_values((arr1, arr2, arr3)): a3[...] = a1 + a2
                     res_data = result.values(id_axis).array.data
-                    for i, (start_for_id, stop_for_id) in enumerate(la.zip_array_values((start, stop), axes=id_axis)):
-                        res_data[i] = column[start_for_id:stop_for_id]
+                    for i, (start_for_id, stop_for_id) in enumerate(la.zip_array_values((start, stop),
+                                                                                        axes=id_axis)):
+                        res_data[i] = column.i[start_for_id:stop_for_id]
                     # for res_for_id, start_for_id, stop_for_id in la.zip_array_values((result, start, stop),
                     #                                                                  axes=id_axis):
                     #     res_for_id[:] = column[start_for_id:stop_for_id]
-                    return IrregularNDArray(result)
+                    return IrregularLArray(result)
             elif array_start or array_stop:
                 lengths = stop - start
                 length0 = lengths[0]
@@ -1457,11 +1489,11 @@ class GlobalVariable(NotNumExprEvaluable):
                 # for indices out of bounds but I do not know if it would be
                 # better. Since this version is easier to implement, lets go for
                 # it for now.
-                return column[translated_key]
+                return column.i[translated_key]
         else:
             # scalar key
             out_of_bounds = (translated_key < 0) or (translated_key >= numrows)
-            return column[translated_key] if not out_of_bounds \
+            return column.i[translated_key] if not out_of_bounds \
                 else missing_value
 
     def __getitem__(self, key):
