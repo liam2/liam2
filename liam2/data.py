@@ -325,6 +325,10 @@ class LColumnArray:
     def _row_axis(self):
         return self.axes[0]
 
+    @property
+    def shape(self):
+        return (len(self._row_axis),)
+
     def make_row_axis_from_column(self, array):
         if 'id' in array.dtype.names:
             return la.Axis(array['id'], 'id')
