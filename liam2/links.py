@@ -4,8 +4,8 @@ from operator import itemgetter
 import numpy as np
 import larray as la
 
-from liam2.expr import Variable, getdtype, expr_eval, missing_values, get_default_value, always, \
-    FunctionExpr, Expr
+from liam2.expr import (Variable, getdtype, expr_eval, missing_values,
+                        get_default_value, always, FunctionExpr, Expr)
 from liam2.context import context_length, EvaluationContext
 from liam2.numexpr_compat import JITExpression
 from liam2.partition import filter_to_indices

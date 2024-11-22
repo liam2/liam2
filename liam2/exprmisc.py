@@ -638,7 +638,7 @@ class Array(FunctionExpr):
             axes = _get_axes(expr)
         return la.Array(expr, axes=axes, meta=meta, dtype=dtype)
 
-    # XXX: is this correct?
+    # take expr dtype
     dtype = firstarg_dtype
 
 
