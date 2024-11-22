@@ -1440,9 +1440,10 @@ class GlobalVariable(NotNumExprEvaluable):
                     #       case so that something like this works:
                     #       for a1, a2, a3 in la.zip_array_values((arr1, arr2, arr3)): a3[...] = a1 + a2
                     res_data = result.values(id_axis).array.data
+                    column_data = column.data
                     for i, (start_for_id, stop_for_id) in enumerate(la.zip_array_values((start, stop),
                                                                                         axes=id_axis)):
-                        res_data[i] = column.i[start_for_id:stop_for_id]
+                        res_data[i] = column_data[start_for_id:stop_for_id]
                     # for res_for_id, start_for_id, stop_for_id in la.zip_array_values((result, start, stop),
                     #                                                                  axes=id_axis):
                     #     res_for_id[:] = column[start_for_id:stop_for_id]

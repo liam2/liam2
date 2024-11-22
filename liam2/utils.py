@@ -427,6 +427,7 @@ def _make_la_aggregate(func):
     def method(self, axis=None):
         # TODO: support named axis
         if axis == 1:
+            assert isinstance(self.data, la.Array)
             result = la.empty(self.data.axes, dtype=self.data[0].dtype)
             result_data = result.data
             for i, a in enumerate(self.data):
