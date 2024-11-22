@@ -1335,10 +1335,6 @@ class GlobalVariable(NotNumExprEvaluable):
         return context.period
 
     def evaluate(self, context):
-        np_res = self.np_evaluate(context)
-        return self.to_larray(context, np_res)
-
-    def np_evaluate(self, context):
         from liam2.data import LColumnArray
 
         globals_data = context.global_tables
@@ -1352,18 +1348,16 @@ class GlobalVariable(NotNumExprEvaluable):
 
         key = self._eval_key(context)
         # TODO: this row computation should be encapsulated in the
-        # globals_table object and the index column should be configurable
-        # TODO: global_table should be an LArray or LFrame with a 'period' axis
-        #       (or whatever object which returns LArray with a period axis)
+        #       globals_table object and the index column should be configurable
         colnames = globals_table.dtype.names
         if 'period' in colnames or 'PERIOD' in colnames:
             try:
                 globals_periods = globals_table['PERIOD']
             except ValueError:
                 globals_periods = globals_table['period']
-            # FIXME: this key -> translated_key translation *really* should be
-            #        done by an larray method
-            #        the current code is very fragile:
+            # FIXME: this key -> translated_key translation should *really* be
+            #        done by an larray method.
+            #        The current code is very fragile:
             #        * if there are gaps in the periods in the global array,
             #          the translated_key will be wrong and the data will be
             #          shifted
