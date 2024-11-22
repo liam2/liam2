@@ -259,7 +259,7 @@ class LinkGet(LinkExpression):
             return super(LinkGet, self).__repr__()
 
 
-class Aggregate(LinkExpression):
+class One2ManyAggregate(LinkExpression):
     no_eval = ('target_expr', 'target_filter', 'weights')
 
     @property
@@ -330,7 +330,7 @@ class Aggregate(LinkExpression):
         raise NotImplementedError()
 
 
-class Sum(Aggregate):
+class Sum(One2ManyAggregate):
     def eval_rows(self, source_rows, expr_value, weights_value, context):
         # We can't use a negative value because that is not allowed by
         # bincount, and using a value too high will uselessly increase the size
@@ -413,7 +413,7 @@ class Avg(Sum):
     dtype = always(float)
 
 
-class Min(Aggregate):
+class Min(One2ManyAggregate):
     aggregate_func = min
 
     def eval_rows(self, source_rows, expr_value, weights_value, context):
