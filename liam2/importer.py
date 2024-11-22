@@ -269,6 +269,10 @@ class CSV:
         return fromiter(datastream, dtype=np.dtype(fields),
                         count=self.numlines)
 
+    def as_col_array(self, fields=None):
+        from liam2.data import LColumnArray
+        return LColumnArray(self.as_array(fields))
+
 
 def complete_path(prefix: Path, path: Path | str):
     """make a path absolute by prefixing it if necessary"""
@@ -590,7 +594,7 @@ def load_ndarray(fpath: Path, celltype=None, **kwargs) -> la.Array:
 
 def load_table(fpath, fields=None, newnames=None, delimiter=None, transpose=False):
     csv_file = CSV(fpath, newnames=newnames, delimiter=delimiter, transpose=transpose)
-    array = csv_file.as_array(fields)
+    array = csv_file.as_col_array(fields)
     csv_file.close()
     return array
 
