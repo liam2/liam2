@@ -114,7 +114,8 @@ class Choice(NumpyRandom):
                 expr = Where(ComparisonOp('<', u, Variable(context.entity, f'p{i}')),
                              outcome_i, expr)
             local_ctx = context.clone(fresh_data=True, entity_data=data)
-            return expr.evaluate(local_ctx)
+            np_res = expr.evaluate(local_ctx)
+            return self.to_larray(context, np_res)
         else:
             return NumpyRandom.compute(self, context, a, size, replace, p)
 
