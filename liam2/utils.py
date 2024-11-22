@@ -464,27 +464,6 @@ class IrregularLArray:
         return self.data[key]
 
 
-class IrregularNDArray:
-    """
-    A wrapper for collections of arrays (eg list of arrays or arrays of
-    arrays) to make them act somewhat like a 2D (numpy) array. This makes it
-    possible to have irregular lengths in the second dimension.
-    """
-    def __init__(self, data):
-        self.data = data
-
-    prod = _make_aggregate(np.prod)
-    sum = _make_aggregate(np.sum)
-    min = _make_aggregate(np.min)
-    max = _make_aggregate(np.max)
-
-    def __getattr__(self, key):
-        return getattr(self.data, key)
-
-    def __getitem__(self, key):
-        return self.data[key]
-
-
 def get_axes(data):
     sequence = (tuple, list)
     if isinstance(data, la.Array):

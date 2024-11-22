@@ -8,8 +8,9 @@ from liam2.compat import getargspec
 from liam2.cache import Cache
 from liam2.config import debug
 from liam2.context import EntityContext, EvaluationContext
-from liam2.utils import (ExplainTypeError, safe_take, IrregularNDArray, NiceArgSpec, english_enum, make_hashable,
-                         add_context, array_nan_equal, IrregularLArray)
+from liam2.utils import (ExplainTypeError, safe_take, NiceArgSpec, english_enum,
+                         make_hashable, add_context, array_nan_equal,
+                         IrregularLArray)
 
 
 try:
@@ -1398,8 +1399,8 @@ class GlobalVariable(NotNumExprEvaluable):
                 raise NotImplementedError(f"step != 1 ({step})")
             larray_start = isinstance(start, la.Array) and start.shape
             larray_stop = isinstance(stop, la.Array) and stop.shape
-            array_start = isinstance(start, np.ndarray) and start.shape
-            array_stop = isinstance(stop, np.ndarray) and stop.shape
+            assert (not isinstance(start, np.ndarray) and
+                    not isinstance(stop, np.ndarray))
             if larray_start or larray_stop:
                 # TODO: we should deprecate this case
                 lengths = stop - start
@@ -1449,33 +1450,6 @@ class GlobalVariable(NotNumExprEvaluable):
                     #                                                                  axes=id_axis):
                     #     res_for_id[:] = column[start_for_id:stop_for_id]
                     return IrregularLArray(result)
-            elif array_start or array_stop:
-                lengths = stop - start
-                length0 = lengths[0]
-                if not array_start:
-                    start = np.repeat(start, len(lengths))
-                if np.all(lengths == length0):
-                    # constant length => result is a 2D array:
-                    # num_individuals x slice_length
-                    result = np.empty((len(lengths), length0), dtype=column.dtype)
-                    # we assume there are more individuals than there are
-                    # "periods" (or other ticks) in the table.
-                    # XXX: We might want to actually test that it is true and
-                    # loop on the individuals instead if that is not the case
-                    for i in range(length0):
-                        result[:, i] = safe_take(column, start + i, missing_value)
-                    return result
-                else:
-                    # varying length => result is an array (num_individuals) of
-                    # 1D arrays (slice lengths)
-                    # each "item" of the result is a view, so we pay "only" for
-                    # all the arrays overhead, not for the data itself.
-                    result = np.empty(len(lengths), dtype=object)
-                    if not isinstance(stop, np.ndarray) or not stop.shape:
-                        stop = np.repeat(stop, len(lengths))
-                    for i in range(len(lengths)):
-                        result[i] = column[start[i]:stop[i]]
-                    return IrregularNDArray(result)
             else:
                 # out of bounds slices bounds are "dropped" silently (like in
                 # python) -- ie the length of the slice returned can be
