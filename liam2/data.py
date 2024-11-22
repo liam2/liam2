@@ -422,6 +422,10 @@ class LColumnArray:
         self._update_dtype()
 
     def _update_dtype(self):
+        # TODO: it seems to me like the order of fields in the new dtype is
+        #       kinda bogus as it should keep the same order as self.columns.
+        #       It might be the case but then the code below is strangely
+        #       complicated
         # handle fields already present (iterate over old dtype to preserve order)
         if self.dtype is not None:
             old_fields = self.dtype.names
