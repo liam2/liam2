@@ -324,7 +324,8 @@ class One2ManyAggregate(LinkExpression):
             assert len(source_rows) == len(expr_value), \
                 f"{len(source_rows)} != {len(expr_value)}"
 
-        return self.eval_rows(source_rows, expr_value, weights_value, context)
+        np_res = self.eval_rows(source_rows, expr_value, weights_value, context)
+        return self.to_larray(context, np_res)
 
     def eval_rows(self, source_rows, expr_value, context):
         raise NotImplementedError()
