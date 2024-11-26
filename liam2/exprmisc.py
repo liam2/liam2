@@ -654,6 +654,10 @@ class Load(FunctionExpr):
     def compute(self, context, fname, type=None, fields=None, **kwargs):
         # using resolve() does not change anything except it makes relative paths using ".." easier to read
         file_path = (config.input_directory / fname).resolve()
+        # FIXME: check that exactly one of type or fields is given
+        # TODO: ideally, we should allow type is None
+        #       => load_ndarray or autodetect???
+        #       but that can come later as an improvement
         if type is not None:
             return load_ndarray(file_path, type, **kwargs)
         elif fields is not None:
