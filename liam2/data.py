@@ -355,6 +355,10 @@ class LColumnArray:
                 key = filter_to_indices(key.data)
             assert not isinstance(key, la.Array)
             ca = LColumnArray()
+            # FIXME: this is wrong for single int keys and it fails on the next
+            #        line with: "number of axes (1) does not match number of
+            #        dimensions of data (0)". See FIXME at the end of
+            #        issue252.yml
             ca.axes = la.AxisCollection(self._row_axis.subaxis(key))
             ca.columns = {colname: la.Array(colvalue.data[key], ca.axes)
                           for colname, colvalue in self.columns.items()}
