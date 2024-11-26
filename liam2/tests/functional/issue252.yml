@@ -8,12 +8,12 @@ entities:
                 # first try without missing= (this already worked)
                 - csv(dump(id, tmp), fname='float_roundtrip.csv')
                 - table: load('output/float_roundtrip.csv', fields=[('id', int), ('tmp', float)])
-                - assertEqual(table[0][1], 0.12345678901234568)
+                - assertEqual(table['tmp'][0], 0.12345678901234568)
 
                 # with missing= (this failed)
                 - csv(dump(id, tmp, missing='nan'), fname='float_roundtrip_with_missing.csv')
                 - table: load('output/float_roundtrip_with_missing.csv', fields=[('id', int), ('tmp', float)])
-                - assertEqual(table[0][1], 0.12345678901234568)
+                - assertEqual(table['tmp'][0], 0.12345678901234568)
 
                 # check that we use the "short"/nice float representation in .csv files
                 # (this needs to be checked manually though as this tests only verify the roundtrip
@@ -23,5 +23,9 @@ entities:
                 - csv(dump(id, tmp1, tmp2), fname='float_roundtrip2.csv')
                 - table: load('output/float_roundtrip2.csv',
                               fields=[('id', int), ('tmp1', float), ('tmp2', float)])
-                - assertEqual(table[0][1], 1.1)
-                - assertEqual(table[0][2], 453.78)
+                # FIXME: this fails because LColumnArray does not like
+                #        single int keys
+                # - assertEqual(table[0]['tmp1'], 1.1)
+                # - assertEqual(table[0]['tmp2'], 453.78)
+                - assertEqual(table['tmp1'][0], 1.1)
+                - assertEqual(table['tmp2'][0], 453.78)
