@@ -1,8 +1,17 @@
-.. About LIAM2 ..
-.. =========== ..
+Important Notice
+================
 
-LIAM2 is a tool to develop (different kinds of) :ref:`microsimulation
-<microsimulation>` models.
+
+The LIAM2 project is **DISCONTINUED** and this repository is
+**NO LONGER MAINTAINED.**
+
+
+About LIAM2
+-----------
+
+LIAM2 is a tool to develop (different kinds of) `microsimulation
+<https://liam2.readthedocs.io/en/stable/intro.html#about-microsimulation>`_
+models.
 
 The goal of the project is to let modellers concentrate on what is strictly
 specific to their model without having to worry about the technical details.
@@ -16,6 +25,19 @@ almost any microsimulation model as long as it uses cross-sectional ageing, ie
 all individuals are simulated at the same time for one period, then for the next
 period, etc.
 
+Downloads
+---------
+
+All in one bundles for the last LIAM2 release can be downloaded from the
+`releases page <https://github.com/liam2/liam2/releases>`_. Each bundle
+contains the LIAM2 software, a demonstration model, and documentation.
+
+Documentation
+-------------
+
+The documentation for LIAM2 can be found online at
+`Read the Docs <https://liam2.readthedocs.io/en/stable/>`_.
+
 License
 -------
 
@@ -24,29 +46,10 @@ LIAM2 is licensed under the `GNU General Public License (GPL) version 3
 copy, modify and redistribute this software provided you follow a few
 conditions. See the license text for details.
 
-Staying informed
-----------------
-
-You can get notified of new versions and other LIAM2-related announcements by
-either using `our website <http://liam2.plan.be>`_
-`RSS feed <http://liam2.plan.be/rss.html>`_ or subscribing to the
-`LIAM2-announce mailing list <http://groups.google.com/group/liam2-announce>`_
-on Google Groups.
-
-.. raw:: html
-
-   <p>
-   You can do so by entering your email address here:
-   </p>
-   <form action="http://groups.google.com/group/liam2-announce/boxsubscribe">
-   <input type="text" name="email:" id="subscribe-email"/>
-   <input type="submit" name="sub" value="Subscribe">
-   </form>
-
 Credits
 -------
 
 The software is primarily being developed at the Federal Planning Bureau
 (Belgium), with testing and funding by CEPS/INSTEAD (Luxembourg) and IGSS
-(Luxembourg), and funding from the European Commission. See the
-:ref:`credits page <credits>` for details.
+(Luxembourg), and funding from the European Commission. See the `credits page
+<https://liam2.readthedocs.io/en/stable/credits.html>`_ for details.
