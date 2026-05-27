@@ -4,10 +4,9 @@ import random
 
 import numpy as np
 try:
-    import scipy
-    import scipy.special as special
+    import scipy.special as scipy_special
 except ImportError:
-    scipy = None
+    scipy_special = None
 
 from liam2 import config
 from liam2.expr import (Variable, UnaryOp, BinaryOp, ComparisonOp, DivisionOp, LogicalOp, getdtype, coerce_types,
@@ -162,14 +161,11 @@ class Trunc(FunctionExpr):
 
 class Erf(FunctionExpr):
     def compute(self, context, expr):
-        if scipy is None:
+        if scipy_special is None:
             raise ImportError(
                 "Failed to import scipy, which is required for erf(). Please make sure scipy is installed and working.",
                 )
-        if isinstance(expr, np.ndarray):
-            return special.erf(expr)
-        else:
-            return scipy.math.erf(expr)
+        return scipy_special.erf(expr)
 
     dtype = always(float)
 
