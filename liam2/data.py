@@ -546,14 +546,16 @@ def build_period_array(input_table, fields_to_keep, output_fields, input_rows,
     target_period = periods_before[-1]
 
     # computing is_present
-    max_id = len(input_index[target_period]) - 1
+    target_index_length = len(input_index[target_period])
     period_id_to_rownum = None
     present_in_period = None
-    is_present = np.zeros(max_id + 1, dtype=bool)
+    is_present = np.zeros(target_index_length, dtype=bool)
     for period in periods_before:
         period_id_to_rownum = input_index[period]
         present_in_period = period_id_to_rownum != -1
-        present_in_period.resize(max_id + 1, refcheck=False)
+        # we can use refcheck=False because we are sure present_in_period owns
+        # its memory
+        present_in_period.resize(target_index_length, refcheck=False)
         is_present |= present_in_period
 
     # if all individuals are present in the target period, we are done already!
@@ -564,7 +566,7 @@ def build_period_array(input_table, fields_to_keep, output_fields, input_rows,
         return input_array, period_id_to_rownum
 
     # building id_to_rownum for the target period
-    id_to_rownum = np.full(max_id + 1, -1, dtype=int)
+    id_to_rownum = np.full(target_index_length, -1, dtype=int)
     rownum = 0
     for row_id, present in enumerate(is_present):
         if present:
