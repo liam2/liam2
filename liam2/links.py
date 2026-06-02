@@ -313,7 +313,13 @@ class Sum(Aggregate):
         if weights_value is not None:
             expr_value = expr_value * weights_value
         counts = self.count(source_rows, expr_value, weights_value)
-        # missing entries are filled with zeros, so it works nicely in this case (sum/count)
+        if len(counts) == idx_for_missing:
+            return counts.copy()
+        else:
+            res_counts = np.zeros(idx_for_missing, dtype=counts.dtype)
+            res_counts[:len(counts)] = counts[:idx_for_missing]
+            return res_counts
+
         counts.resize(idx_for_missing)
         return counts
 
