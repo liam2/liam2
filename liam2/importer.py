@@ -24,7 +24,7 @@ def to_int(v):
     else:
         return int(v)
 
-NaN = np.NaN
+NaN = np.nan
 
 
 def to_float(v):
