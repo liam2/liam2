@@ -303,6 +303,9 @@ class New(FilteredExpression):
             else:
                 child_context = context.subset(to_give_birth, used_variables,
                                                filter_expr)
+            # It is unfortunate that we relied on iteration order on Python 2
+            # because this makes it impossible to reproduce the results we
+            # had using liam2 0.12
             for k, v in kwargs.items():
                 if k not in array.dtype.names:
                     print("WARNING: {} is unknown, ignoring it!".format(k))
