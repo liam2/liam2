@@ -157,9 +157,6 @@ if build_exe:
         # is a bit cleaner)
         "path": cxfreeze_searchpath,
 
-        # compress zip archive
-        "compressed": True,
-
         # optimize pyc files (strip docstrings and asserts)
         "optimize": 2,
 
