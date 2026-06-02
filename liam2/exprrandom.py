@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 
+from liam2 import config
 from liam2.expr import firstarg_dtype, ComparisonOp, Variable
 from liam2.exprbases import NumpyRandom, make_np_class, make_np_classes
 from liam2.exprmisc import Where
@@ -63,7 +64,13 @@ class Choice(NumpyRandom):
             #    if(u < proba2, outcome2,
             #       outcome3))
 
+            if config.debug and config.log_level == "processes":
+                print()
+                print("random sequence position before:", np.random.get_state()[2])
             data = {'u': np.random.uniform(size=size)}
+            if config.debug and config.log_level == "processes":
+                print()
+                print("random sequence position after:", np.random.get_state()[2])
             expr = a[-1]
             # iterate in reverse and skip last
             pairs = zip(cdf[-2::-1], a[-2::-1])
