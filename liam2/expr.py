@@ -125,8 +125,11 @@ def as_string(expr):
         return [as_string(e) for e in expr]
     elif isinstance(expr, tuple):
         return tuple([as_string(e) for e in expr])
-    else:
+    elif isinstance(expr, str):
+        # strings need to be quoted
         return repr(expr)
+    else:
+        return str(expr)
 
 
 def traverse_expr(expr):
