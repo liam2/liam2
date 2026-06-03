@@ -107,29 +107,7 @@ class NumpyFunction(FunctionExpr):
 
     @classmethod
     def get_compute_func(cls):
-        func = cls.np_func
-        if func is None:
-            return None
-        # types.FunctionType is required on Python3
-        elif isinstance(func, (types.BuiltinFunctionType, types.FunctionType)):
-            # Note that types.BuiltinFunctionType and types.BuiltinMethodType
-            # are the same object (equal to <type 'builtin_function_or_method'>)
-            return func
-        elif isinstance(func, types.MethodType):
-            # This is necessary because class attributes set to functions are
-            # automatically converted to methods !
-            # >>> def f():
-            # ...     pass
-            # >>> class A:
-            # ...     m = f
-            # >>> f
-            # <function f at 0x02844470>
-            # >>> A.m
-            # <unbound method A.f>
-            return func.im_func
-        else:
-            # <class 'numpy._ArrayFunctionDispatcher'>
-            return func
+        return cls.np_func
 
     # subclasses can override this by a class-constant
     @classproperty
