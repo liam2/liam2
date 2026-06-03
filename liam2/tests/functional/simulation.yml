@@ -1342,24 +1342,27 @@ entities:
                 #    => we check that all "nan" are taken / aligned
                 # and we have to check separately for men and women
 
-                - isnan: nan_age != nan_age
+                # Note that we use "isnan_" instead of just "isnan" because
+                # "isnan" is a builtin numexpr function (starting from numexpr
+                # 2.12)
+                - isnan_: nan_age != nan_age
 
                 # women
 
                 # more than 10% women are "nan"
-                - morenan: count(not gender and isnan) > num_women * 0.1
+                - morenan: count(not gender and isnan_) > num_women * 0.1
                 # we use min as a lesser all()
-                - all_taken_nan: min(isnan, filter=not gender and float_aligned)
+                - all_taken_nan: min(isnan_, filter=not gender and float_aligned)
                 - all_nan_taken: min(float_aligned,
-                                     filter=not gender and isnan)
+                                     filter=not gender and isnan_)
                 - assertTrue(if(morenan, all_taken_nan, all_nan_taken))
 
                 # men
 
                 # more than 20% men are "nan"
-                - morenan: count(gender and isnan) > num_men * 0.2
-                - all_taken_nan: min(isnan, filter=gender and float_aligned)
-                - all_nan_taken: min(float_aligned, filter=gender and isnan)
+                - morenan: count(gender and isnan_) > num_men * 0.2
+                - all_taken_nan: min(isnan_, filter=gender and float_aligned)
+                - all_nan_taken: min(float_aligned, filter=gender and isnan_)
 
                 - assertTrue(if(morenan, all_taken_nan, all_nan_taken))
 
