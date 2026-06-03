@@ -37,7 +37,7 @@ LIAM2 is built on top of a number of other open-source packages. See below for t
 
 Required dependencies:
 
-- Python 2.7 or 3.5+ (32b or 64b) - http://www.python.org/
+- Python 3.10+ (64b) - http://www.python.org/
 - Numpy 1.8.0 or later - http://www.numpy.org/
 - PyTables 3 or later - http://www.pytables.org
 - Numexpr 2.0 or later - https://github.com/pydata/numexpr
@@ -46,13 +46,11 @@ Required dependencies:
 
 Optional dependencies:
 
-* to view hdf5 files: vitables 2.1 - http://vitables.org
+* to view hdf5 files: vitables 2.1 or later - http://vitables.org
 
-  It requires PyQt4 - http://www.riverbankcomputing.com/software/pyqt/download
+  It requires PyQt
 
 * to generate plots and charts: matplotlib 1.2 or later - http://matplotlib.org/
-
-  It requires python-dateutil - http://labix.org/python-dateutil and pyparsing - http://pyparsing.wikispaces.com/
 
 * to build the documentation to html (other formats need additional packages):
 
@@ -65,7 +63,7 @@ Optional dependencies:
 
 * to create standalone executables:
 
-  cx-freeze 4.3 or later - http://cx-freeze.sourceforge.net/
+  Nuitka
 
 There are several options to install all those packages. In order of increasing difficulty:
 
@@ -73,22 +71,20 @@ There are several options to install all those packages. In order of increasing 
 
 * `Using Miniconda (all platforms)`_
 * `Getting binary packages using apt-get (GNU/linux debian-based distributions)`_
-* `Getting binary packages from Christoph Gohlke (Windows only)`_
-* `Getting third-party packages directly from their authors`_
 
 
 ..
    Using Anaconda (all platforms)
    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   1. Install Anaconda 2.1 or later (Python 2.7 or 3.X). It includes out of the box all required dependencies,
+   1. Install Anaconda 2.1 or later (Python 3.X). It includes out of the box all required dependencies,
       matplotlib and sphinx. We recommend using the 64-bit version if you have a 64bit OS.
 
       https://www.anaconda.com/download/
 
    2. Install ViTables. In a command prompt, type: ::
 
-       pip install https://github.com/gdementen/ViTables/archive/682eda12f8965715200dd326764cd0c7194d91fc.zip
+       pip install vitables
 
    Note that using other Python distributions should probably work, but we have
    not tested that. As of this writing, Python(x,y) and WinPython are both missing
@@ -98,22 +94,22 @@ There are several options to install all those packages. In order of increasing 
 Using Miniconda (all platforms)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. Install Miniconda for your platform (Python 2.7 or 3.X). We recommend using the 64-bit version if you have a
+1. Install Miniconda for your platform (Python 3.X). We recommend using the 64-bit version if you have a
    64bit OS. https://conda.io/miniconda.html
 
 2. Install required dependencies by typing in a command prompt: ::
 
-    conda install numpy pytables=3.2 numexpr pyyaml cython
+    conda install numpy pytables numexpr pyyaml cython
 
 3. You can also install the optional dependencies:
 
    - to generate plots and charts: ::
 
-       conda install matplotlib qt=4 pytables=3.2
+       conda install matplotlib qtpy pyqt
 
    - to view hdf5 files via vitables: ::
 
-       pip install https://github.com/gdementen/ViTables/archive/682eda12f8965715200dd326764cd0c7194d91fc.zip
+       pip install vitables
 
    - to build the documentation to html (other formats need additional packages): ::
 
@@ -130,7 +126,7 @@ Getting binary packages using apt-get (GNU/linux debian-based distributions)
 
 Install the required dependencies: ::
 
-    sudo apt-get install python2.7 python-numpy python-tables python-numexpr python-yaml cython
+    sudo apt-get install python python-numpy python-tables python-numexpr python-yaml cython
 
 You can also install the optional dependencies:
 
@@ -150,36 +146,6 @@ You can also install the optional dependencies:
   the same individual): ::
 
     pip install bcolz
-
-
-Getting binary packages from Christoph Gohlke (Windows only)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-1. Install Python 2.7 or 3.X (either 32 bits or 64 bits version):
-   http://www.python.org/download/releases/
-
-2. Get and use the installers for all LIAM2 dependencies from:
-   http://www.lfd.uci.edu/~gohlke/pythonlibs/
-
-   Make sure you take the version of each package which match the version of Python you have chosen.
-
-
-Getting third-party packages directly from their authors
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-1. Install Python 2.7 or 3.X (either 32 bits or 64 bits version):
-   http://www.python.org/download/releases/
-
-2. Install all third-party packages manually. The problem with this approach is that there is not a single way which
-   works for all our dependencies.
-
-   * Some packages provide binary installers for Windows (but often not for 64-bit), some do not.
-   * Some require a C compiler and have some dependencies of their own before they can be installed.
-   * Some can be installed via "pip install [package_name]" but some do not.
-   * In that case one usually has to download the source and do "python setup.py install".
-
-   In short, this approach takes a lot of time, so I would only recommend it as a last resort, especially if you want
-   a 64-bit version of LIAM2 on Windows.
 
 
 Install LIAM2 itself from source
