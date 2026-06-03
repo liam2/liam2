@@ -1,48 +1,15 @@
 #! /usr/bin/env python
-
 import os
 import re
-import sys
-import fnmatch
-from os.path import join
-from itertools import chain
 
-from setuptools import setup
-from setuptools.extension import Extension
+from setuptools import Extension, setup
+from Cython.Build import cythonize
 
-# not using the try-except here as cython is not really optional now
-# if we ever make it optional again, we should uncomment it
-# try:
-from Cython.Distutils import build_ext
-# except ImportError:
-#     build_ext = None
 import numpy as np
-
-
-command = sys.argv[1] if len(sys.argv) > 1 else None
-build_exe = command == 'build_exe'
-
-if build_exe:
-    # when building executables, we need to use "build" so that C extensions are
-    # built too ("build" does both "build_ext" and "build_exe"). We do not use
-    # build in all cases because we do not want to change the normal "build"
-    # behavior when not building executables.
-    sys.argv[1] = "build"
-    from cx_Freeze import Executable, setup
-
 
 # ============= #
 # generic tools #
 # ============= #
-
-def allfiles(pattern, path='.'):
-    """
-    like glob.glob(pattern) but also include files in subdirectories
-    """
-    return (join(dirpath, f)
-            for dirpath, dirnames, files in os.walk(path)
-            for f in fnmatch.filter(files, pattern))
-
 
 def int_version(release_name):
     """
@@ -93,94 +60,6 @@ def read_local(fname):
     with open(os.path.join(os.path.dirname(__file__), fname)) as f:
         return f.read()
 
-
-# ============ #
-# main options #
-# ============ #
-
-options = {}
-extra_kwargs = {}
-
-
-# ============== #
-# cython options #
-# ============== #
-
-# Add the output directory of cython build_ext to cxfreeze search path so that
-# build_exe finds and copies C extensions
-# XXX: this is always the case currently
-if build_ext is not None:
-    class MyBuildExt(build_ext):
-        def finalize_options(self):
-            build_ext.finalize_options(self)
-
-            if build_exe:
-                # need to be done in-place, otherwise build_exe_options['path'] will use
-                # the unmodified version because it is computed before build_ext is
-                # called
-                cxfreeze_searchpath.insert(0, self.build_lib)
-    extra_kwargs['cmdclass'] = {"build_ext": MyBuildExt}
-
-    ext_modules = [Extension("liam2.cpartition", ["liam2/cpartition.pyx"],
-                             include_dirs=[np.get_include()]),
-                   Extension("liam2.cutils", ["liam2/cutils.pyx"],
-                             include_dirs=[np.get_include()])]
-    extra_kwargs['ext_modules'] = ext_modules
-    options["build_ext"] = {}
-
-
-# ================= #
-# cx_freeze options #
-# ================= #
-
-if build_exe:
-    def vitables_data_files():
-        try:
-            import vitables
-        except ImportError:
-            return []
-
-        module_path = os.path.dirname(vitables.__file__)
-        files = chain(allfiles('*.ui', module_path),
-                      allfiles('*.ini', module_path),
-                      allfiles('*', join(module_path, 'icons')))
-        return [(fname, join('vitables', fname[len(module_path) + 1:]))
-                for fname in files]
-
-    cxfreeze_searchpath = sys.path + ['liam2']
-
-    build_exe_options = {
-        # path to find Python modules (we could have modified sys.path but this
-        # is a bit cleaner)
-        "path": cxfreeze_searchpath,
-
-        # optimize pyc files (strip docstrings and asserts)
-        "optimize": 2,
-
-        # strip paths in __file__ attributes
-        "replace_paths": [("*", "")],
-
-        "includes": ["matplotlib.backends.backend_qt4agg", "matplotlib.backends.backend_qt5agg"],
-        "packages": ["vitables.plugins"],
-        # matplotlib => calendar, distutils, unicodedata
-        # matplotlib.backends.backend_tkagg => Tkconstants, Tkinter
-        # Qt .ui file loading (for PyTables) => logging, xml
-        # ctypes, io are required now
-        "excludes": [
-            # linux-specific modules
-            "_codecs", "_codecs_cn", "_codecs_hk", "_codecs_iso2022", "_codecs_jp",
-            "_codecs_kr", "_codecs_tw",
-
-            # common modules
-            "Tkconstants", "Tkinter", "scipy", "tcl"
-        ],
-        'include_files': vitables_data_files(),
-    }
-
-    options["build_exe"] = build_exe_options
-    extra_kwargs['executables'] = [Executable("liam2/main.py")]
-
-
 # ========== #
 # main stuff #
 # ========== #
@@ -194,6 +73,13 @@ def get_version(filepath):
         return None
 
 
+np_include_dir = np.get_include()
+extensions = [
+    Extension("liam2.cpartition", ["liam2/cpartition.pyx"],
+              include_dirs=[np_include_dir]),
+    Extension("liam2.cutils", ["liam2/cutils.pyx"],
+              include_dirs=[np_include_dir])
+]
 version = get_version('./liam2/version.py')
 
 
@@ -216,7 +102,6 @@ classifiers = [
 
 setup(
     name="liam2",
-    # cx_freeze wants only ints and dots (full version number)
     version=int_version(version),
     author="Gaëtan de Menten",
     author_email="gdementen@gmail.com",
@@ -226,7 +111,6 @@ setup(
     description="Microsimulation platform",
     long_description=read_local('README.rst'),
     classifiers=classifiers,
-    options=options,
     packages=['liam2'],
     include_package_data=True,
     entry_points={
@@ -246,5 +130,5 @@ setup(
         view=['vitables'],
         test=['flake8', 'nose', 'matplotlib'],
     ),
-    **extra_kwargs
+    ext_modules=cythonize(extensions),
 )
