@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # LIAM2 User Guide build configuration file, created by
 # sphinx-quickstart on Fri Feb 04 10:08:07 2011.
 #
@@ -10,7 +8,6 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-from __future__ import print_function
 
 import os
 import sys
