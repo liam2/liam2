@@ -598,12 +598,12 @@ class LabeledArray(np.ndarray):
     #     print '   result is %s' % repr(res)
     #     return res
 
-    def __array_wrap__(self, out_arr, context=None):
+    def __array_wrap__(self, arr, context=None, return_scalar=False):
         # print 'In __array_wrap__:'
         # print '   self is %s' % repr(self)
         # print '   arr is %s' % repr(out_arr)
         # print '   context is %s' % repr(context)
-        res = np.ndarray.__array_wrap__(self, out_arr, context)
+        res = np.ndarray.__array_wrap__(self, arr, context, return_scalar)
         res.col_totals = None
         res.row_totals = None
         # print '   result is %s' % repr(res)
