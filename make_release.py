@@ -66,43 +66,84 @@ def generate(fname, **kwargs):
 
 
 def _remove_readonly(function, path, excinfo):
-    if function in (os.rmdir, os.remove) and excinfo[1].errno == errno.EACCES:
+    if function in {os.rmdir, os.remove, os.unlink} and excinfo[1].errno == errno.EACCES:
         # add write permission to owner
         os.chmod(path, stat.S_IWUSR)
         # retry removing
         function(path)
     else:
-        raise
+        raise Exception(f"Cannot remove {path}")
 
 
 def rmtree(path):
     _rmtree(path, onerror=_remove_readonly)
 
 
+def force_decode(s, encodings=('utf8', 'cp1252')):
+    if isinstance(s, str):
+        return s
+    assert isinstance(s, bytes)
+    for encoding in encodings:
+        try:
+            return s.decode(encoding)
+        except UnicodeDecodeError:
+            pass
+    return s.decode('ascii', 'replace')
+
+
 def call(*args, **kwargs):
+    assert len(args) == 1 and isinstance(args[0], list)
     try:
-        return check_output(*args, stderr=STDOUT, **kwargs)
+        res = check_output(*args, stderr=STDOUT, **kwargs)
+        if 'universal_newlines' not in kwargs:
+            return force_decode(res)
+        else:
+            return res
     except CalledProcessError as e:
-        print(e.output)
+        print(f"""
+
+call failed
+===========
+{' '.join(args[0])}
+
+output
+======
+{force_decode(e.output)}""")
+        raise e
+    except FileNotFoundError as e:
+        print(f"""
+
+call failed
+===========
+{' '.join(args[0])}""")
         raise e
 
 
 def echocall(*args, **kwargs):
-    print(' '.join(args))
+    assert len(args) == 1 and isinstance(args[0], list)
+    end = kwargs.pop('end', '\n')
+    print(' '.join(args[0]), end=end, flush=True)
     return call(*args, **kwargs)
 
 
-def git_remote_last_rev(url, branch=None):
+def git_remote_last_rev(repository, branch='master'):
     """
-    :param url: url of the remote repository
-    :param branch: an optional branch (defaults to 'refs/heads/master')
-    :return: name/hash of the last revision
+    Parameters
+    ----------
+    repository : str
+        Name or url of the remote repository
+    branch : str, optional
+        Branch. Defaults to 'master'.
+
+    Returns
+    -------
+    str
+        hash of the last revision
     """
-    if branch is None:
-        branch = 'refs/heads/master'
-    output = call('git ls-remote %s %s' % (url, branch))
+    output = call(['git', 'ls-remote', '--heads', repository, branch])
+    suffix = f'refs/heads/{branch}'
     for line in output.splitlines():
-        if line.endswith(branch):
+        if line.endswith(suffix):
             return line.split()[0]
     raise Exception("Could not determine revision number")
 
@@ -275,8 +316,8 @@ def relname2fname(release_name):
 def release_changes(context):
     directory = r"doc\usersguide\source\changes"
     fname = relname2fname(context['release_name'])
-    with open(os.path.join(context['build_dir'], directory, fname)) as f:
-        return f.read().decode('utf-8-sig')
+    with open(os.path.join(context['build_dir'], directory, fname), encoding='utf-8-sig') as f:
+        return f.read()
 
 
 def update_versions(release_name):
@@ -298,64 +339,60 @@ def test_executable(relpath):
     print()
     makedirs('testoutput')
     outpath = abspath('testoutput')
-    runcmd = relpath + '/main --output-path ' + outpath + ' run '
-    importcmd = relpath + '/main import '
+    runcmd = [relpath + '/main', '--output-path', outpath, 'run']
+    importcmd = [relpath + '/main', 'import']
     testspath = 'liam2/tests/functional/'
     demospath = 'liam2/tests/examples/'
-    echocall(runcmd + testspath + 'static.yml')
-    echocall(runcmd + testspath + 'generate.yml')
-    echocall(importcmd + testspath + 'import.yml')
-    echocall(runcmd + testspath + 'simulation.yml')
-    echocall(runcmd + testspath + 'variant.yml')
-    echocall(runcmd + testspath + 'matching.yml')
-    echocall(runcmd + demospath + 'demo01.yml')
-    echocall(importcmd + demospath + 'demo_import.yml')
-    echocall(runcmd + demospath + 'demo01.yml')
-    echocall(runcmd + demospath + 'demo02.yml')
-    echocall(runcmd + demospath + 'demo03.yml')
-    echocall(runcmd + demospath + 'demo04.yml')
-    echocall(runcmd + demospath + 'demo05.yml')
-    echocall(runcmd + demospath + 'demo06.yml')
-    echocall(runcmd + demospath + 'demo07.yml')
-    echocall(runcmd + demospath + 'demo08.yml')
-    echocall(runcmd + demospath + 'demo09.yml')
-    echocall(runcmd + demospath + 'demo10.yml')
+    echocall(runcmd + [testspath + 'static.yml'])
+    echocall(runcmd + [testspath + 'generate.yml'])
+    echocall(importcmd + [testspath + 'import.yml'])
+    echocall(runcmd + [testspath + 'simulation.yml'])
+    echocall(runcmd + [testspath + 'variant.yml'])
+    echocall(runcmd + [testspath + 'matching.yml'])
+    echocall(runcmd + [demospath + 'demo01.yml'])
+    echocall(importcmd + [demospath + 'demo_import.yml'])
+    echocall(runcmd + [demospath + 'demo01.yml'])
+    echocall(runcmd + [demospath + 'demo02.yml'])
+    echocall(runcmd + [demospath + 'demo03.yml'])
+    echocall(runcmd + [demospath + 'demo04.yml'])
+    echocall(runcmd + [demospath + 'demo05.yml'])
+    echocall(runcmd + [demospath + 'demo06.yml'])
+    echocall(runcmd + [demospath + 'demo07.yml'])
+    echocall(runcmd + [demospath + 'demo08.yml'])
+    echocall(runcmd + [demospath + 'demo09.yml'])
+    echocall(runcmd + [demospath + 'demo10.yml'])
     rmtree('testoutput')
 
 
 def create_source_archive(release_name, rev):
-    call(r'git archive --format zip --output ..\LIAM2-%s-src.zip %s'
-         % (release_name, rev))
+    call(['git', 'archive', '--format', 'zip',
+          '--output', fr'..\LIAM2-{release_name}-src.zip', rev])
 
 
 def copy_release(release_name):
-    copytree(r'build\bundle\editor', r'win32\editor')
-    copytree(r'build\bundle\editor', r'win64\editor')
-    copytree(r'build\liam2\tests\examples', r'win32\examples')
-    copytree(r'build\liam2\tests\examples', r'win64\examples')
-    copytree(r'build\build\exe.win32-2.7', r'win32\liam2')
-    copytree(r'build\build\exe.win-amd64-2.7', r'win64\liam2')
-    makedirs(r'win32\documentation')
-    makedirs(r'win64\documentation')
-    copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
-          r'win32\documentation\LIAM2UserGuide.chm')
-    copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
-          r'win64\documentation\LIAM2UserGuide.chm')
+    # create bundle
+    # -------------
+    copytree(r'build\bundle\editor', r'bundle\editor')
+    copytree(r'build\liam2\tests\examples', r'bundle\examples')
+    copytree(r'build\main.dist', r'bundle\liam2')
+    copytree(r'build\doc\usersguide\build\html', r'bundle\documentation')
+    # makedirs(r'bundle\documentation')
+    # copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
+    #       r'bundle\documentation\LIAM2UserGuide.chm')
+
     # stuff not in the bundles
-    copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
-          r'LIAM2UserGuide-%s.pdf' % release_name)
-    copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
-          r'LIAM2UserGuide-%s.chm' % release_name)
+    # ------------------------
+    # copy2(r'build\doc\usersguide\build\latex\LIAM2UserGuide.pdf',
+    #       r'LIAM2UserGuide-%s.pdf' % release_name)
+    # copy2(r'build\doc\usersguide\build\htmlhelp\LIAM2UserGuide.chm',
+    #       r'LIAM2UserGuide-%s.chm' % release_name)
     copytree(r'build\doc\usersguide\build\html', 'htmldoc')
-    copytree(r'build\doc\usersguide\build\web',
-             r'webdoc\%s' % short(release_name))
+    # copytree(r'build\doc\usersguide\build\fpb_web',
+    #          r'webdoc\%s' % short(release_name))
 
 
 def create_bundle_archives(release_name):
-    chdir('win32')
-    zip_pack(r'..\LIAM2Suite-%s-win32.zip' % release_name, '*')
-    chdir('..')
-    chdir('win64')
+    chdir('bundle')
     zip_pack(r'..\LIAM2Suite-%s-win64.zip' % release_name, '*')
     chdir('..')
     chdir('htmldoc')
@@ -368,8 +405,7 @@ def check_bundle_archives(release_name):
     checks the bundles unpack correctly
     """
     makedirs('test')
-    zip_unpack('LIAM2Suite-%s-win32.zip' % release_name, r'test\win32')
-    zip_unpack('LIAM2Suite-%s-win64.zip' % release_name, r'test\win64')
+    zip_unpack('LIAM2Suite-%s-win64.zip' % release_name, r'test\bundle')
     zip_unpack('LIAM2UserGuide-%s-html.zip' % release_name, r'test\htmldoc')
     zip_unpack('LIAM2-%s-src.zip' % release_name, r'test\src')
     rmtree('test')
@@ -392,7 +428,7 @@ def check_local_repo(context):
     s = "Using local repository at: %s !" % repository
     print("\n", s, "\n", "=" * len(s), "\n", sep='')
 
-    status = call('git status -s -b')
+    status = call(['git', 'status', '-s', '-b'])
     lines = status.splitlines()
     statusline, lines = lines[0], lines[1:]
     curbranch = branchname(statusline)
@@ -410,13 +446,12 @@ def check_local_repo(context):
         if no('Do you want to continue?'):
             exit(1)
 
-    ahead = call('git log --format=format:%%H origin/%s..%s' % (branch, branch))
-    num_ahead = len(ahead.splitlines())
+    num_ahead = int(call(['git', 'rev-list', f'upstream/{branch}..{branch}', '--count']))
     print("Branch '%s' is %d commits ahead of 'origin/%s'"
           % (branch, num_ahead, branch), end='')
     if num_ahead:
         if yes(', do you want to push?'):
-            do('Pushing changes', call, 'git push')
+            do('Pushing changes', call, ['git', 'push'])
     else:
         print()
 
@@ -445,8 +480,10 @@ def clone_repository(context):
     # "working copy clone" (eg ~/devel/liam2) then to GitHub from there. The
     # alternative to modify the "working copy clone" directly is worse because
     # it needs more complicated path handling that the 2 push approach.
+    branch = context['branch']
+    repository = context['repository']
     do('Cloning repository', call,
-       'git clone -b {branch} {repository} build'.format(**context))
+       ['git', 'clone', '-b', branch, repository, 'build'])
 
 
 def check_clone(context):
@@ -454,7 +491,7 @@ def check_clone(context):
 
     # check last commit
     print()
-    print(call('git log -1').decode('utf8', 'replace'))
+    print(echocall(['git', 'log', '-1'], end='\n'))
     print()
 
     if no('Does that last commit look right?'):
@@ -473,7 +510,7 @@ def build_exe(context):
     context['test_release'] = True if context['public_release'] \
         else yes('Do you want to test the executables after they are created?')
 
-    call('build_exe.bat')
+    call(['build_exe.bat'])
 
 
 def test_executables(context):
@@ -482,8 +519,7 @@ def test_executables(context):
     if not context.get('test_release', True):
         return
 
-    for arch in ('win32', 'win-amd64'):
-        test_executable(r'build\exe.%s-2.7' % arch)
+    test_executable('main.dist')
 
 
 def update_changelog(context):
@@ -503,6 +539,9 @@ def update_changelog(context):
         if lines[5] != title + '\n':
             print("changes.rst not modified (the last release is not %s)"
                   % title)
+            if strip_pretags(release_name) != release_name:
+                print("Note that pre-releases do not need to update the date "
+                      "of the (final) release in the changelog")
             return
         release_date = lines[8]
         if release_date != "In development.\n":
@@ -513,17 +552,17 @@ def update_changelog(context):
         lines[8] = "Released on {}.\n".format(date.today().isoformat())
     with open(fpath, 'w') as f:
         f.writelines(lines)
-    with open(fpath) as f:
-        print('\n'.join(f.read().decode('utf-8-sig').splitlines()[:20]))
+    with open(fpath, encoding='utf-8-sig') as f:
+        print('\n'.join(f.read().splitlines()[:20]))
     if no('Does the full changelog look right?'):
         exit(1)
-    call('git commit -m "update release date in changes.rst" %s' % fpath)
+    call(['git', 'commit', '-m', 'update release date in changes.rst', fpath])
 
 
 def build_doc(context):
     chdir(context['build_dir'])
     chdir('doc')
-    call('buildall.bat')
+    call(['buildall.bat'])
 
 
 def create_archives(context):
@@ -560,7 +599,8 @@ def tag_release(context):
         return
 
     release_name = context['release_name']
-    call('git tag -a {name} -m "tag release {name}"'.format(name=release_name))
+    msg = f'tag release {release_name}'
+    echocall(['git', 'tag', '-a', release_name, '-m', msg])
 
 
 def upload(context):
@@ -589,9 +629,10 @@ def pull(context):
     # pull the changelog commits to the branch (usually master)
     # and the release tag (which refers to the last commit)
     chdir(context['repository'])
+    build_dir = context['build_dir']
+    branch = context['branch']
     do('Pulling changes in {repository}'.format(**context),
-       call, 'git pull --ff-only --tags {build_dir} {branch}'.format(**context))
-
+       call, ['git', 'pull', '--ff-only', '--tags', build_dir, branch])
 
 def push(context):
     if not context['public_release']:
@@ -599,13 +640,12 @@ def push(context):
 
     chdir(context['repository'])
     do('Pushing main repository changes to GitHub',
-       call, 'git push origin {branch} --follow-tags'.format(**context))
+       call, ['git', 'push', 'origin', context['branch'], '--follow-tags'])
 
 
 def cleanup(context):
     chdir(context['tmp_dir'])
-    rmtree('win32')
-    rmtree('win64')
+    rmtree('bundle')
     # build is needed by the website script
 #    rmtree('build')
 
@@ -637,7 +677,7 @@ steps_funcs = [
     (pull, ''),
     # >>> need internet from here
     (push, ''),
-    (upload, 'Uploading'),
+    # (upload, 'Uploading'),
     (cleanup, 'Cleaning up')
 ]
 
@@ -664,7 +704,7 @@ def make_release(release_name='dev', steps=':', branch='master'):
         release_name = long_release_name(release_name)
 
     repository = abspath(dirname(__file__))
-    rev = git_remote_last_rev(repository, 'refs/heads/%s' % branch)
+    rev = git_remote_last_rev(repository, branch)
     public_release = release_name != 'dev'
     if not public_release:
         # take first 7 digits of commit hash
