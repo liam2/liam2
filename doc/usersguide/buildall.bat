@@ -1,5 +1,6 @@
 @echo off
-call make web
+rem HTML with analytics
+rem call make fpb_web
 call make html
 
 rem call make htmlhelp
