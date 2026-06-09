@@ -30,13 +30,13 @@ extensions = ['sphinx.ext.extlinks']
 
 numpydoc_baseurl = 'https://numpy.org/doc/stable/reference/'
 extlinks = {
-    'issue': ('https://github.com/liam2/liam2/issues/%s', 'issue '),
-    'pr': ('https://github.com/liam2/liam2/pull/%s', 'pull request '),
+    'issue': ('https://github.com/liam2/liam2/issues/%s', 'issue %s'),
+    'pr': ('https://github.com/liam2/liam2/pull/%s', 'pull request %s'),
     # For base numpy (no occurence)
     # 'numpy': (numpydoc_baseurl + 'generated/numpy.%s.html', 'numpy.'),
     # Works only for numpy.random module
-    'numpy_random': (numpydoc_baseurl + 'random/generated/numpy.%s.html', 'numpy_random.'),
-    }
+    'numpy_random': (numpydoc_baseurl + 'random/generated/numpy.%s.html', 'numpy.%s'),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -216,7 +216,7 @@ latex_logo = "logo_en.pdf"
 #latex_show_urls = False
 
 # Additional stuff for the LaTeX preamble.
-latex_preamble = '''
+latex_preamble = r'''
 % Redefine these colors to your liking in the preamble.
 \definecolor{TitleColor}{rgb}{0.126,0.263,0.361}
 \definecolor{InnerLinkColor}{rgb}{0.208,0.374,0.486}

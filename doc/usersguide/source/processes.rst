@@ -24,25 +24,31 @@ variables, operators, constants, globals and functions which explain how to
 compute a value.
 
 Expression syntax looks like many other programming languages (>>> denotes an
-interactive prompt): ::
+interactive prompt):
 
-  >>> 1 + 2
-  3
-  >>> 1.5 * 2.0 - 0.5 * 5.0
-  0.5
+.. code-block:: python
+
+    >>> 1 + 2
+    3
+    >>> 1.5 * 2.0 - 0.5 * 5.0
+    0.5
 
 Numeric constants with a fractional part (e.g. 3.0, 1.6) have type
 float, others (e.g. 1, 2, 20) have type int.
 
-Operations with mixed types (int and float) return floats. ::
+Operations with mixed types (int and float) return floats.
 
-  >>> 4 - 0.5 * 3
-  2.5
+.. code-block:: python
 
-Parentheses (()) can be used for grouping. For example: ::
+    >>> 4 - 0.5 * 3
+    2.5
 
-  >>> (2.5 - 0.5) * 4
-  8.0
+Parentheses (()) can be used for grouping. For example:
+
+.. code-block:: python
+
+    >>> (2.5 - 0.5) * 4
+    8.0
 
 LIAM2 supports many common operators:
 
@@ -54,7 +60,9 @@ LIAM2 supports many common operators:
    will evaluate to 0.5 instead of 0 as in many programming languages. If you
    are only interested in the integer part of that result (for example,
    if you know the result has no decimal part), you can use the *trunc*
-   function: ::
+   function:
+
+   .. code-block:: python
 
      >>> trunc(3 / 2)
      1
@@ -498,8 +506,7 @@ defaults to *True*.
 
 .. index:: percentile
 
-- **percentile(expr, percent[, filter=condition][, skip_na=True][, weights=expr][, weights_type='sampling'])**:
-percentile
+- **percentile(expr, percent[, filter=condition][, skip_na=True][, weights=expr][, weights_type='sampling'])**: percentile
 
 .. index:: gini
 
@@ -1967,13 +1974,13 @@ below each other. ::
 
 Will produce a file with a layout like this: ::
 
-  | table 1 value at row 1, col 1 | col 2 |   ... | col N |
-  |                           ... |   ... |   ... |   ... |
-  |                  row N, col 1 | col 2 |   ... | col N |
-  | and here goes another table   |       |       |       |
-  | table 2 value at row 1, col 1 |   ... | col N |       |
-  |                           ... |   ... |   ... |       |
-  |                  row N, col 1 |   ... | col N |       |
+  table 1 value at row 1, col 1 | col 2 |   ... | col N
+                            ... |   ... |   ... |   ...
+                   row N, col 1 | col 2 |   ... | col N
+  and here goes another table   |       |       |
+  table 2 value at row 1, col 1 |   ... | col N |
+                            ... |   ... |   ... |
+                   row N, col 1 |   ... | col N |
 
 You can also output several rows with a single command by enclosing values
 between brackets: ::
@@ -1991,8 +1998,8 @@ between brackets: ::
 
 Will produce a file with a layout like this: ::
 
-| this is | a header      |
-| with    | several lines |
+  this is | a header
+  with    | several lines
 
 
 .. index:: dump
@@ -2489,13 +2496,14 @@ Type "help" in the console for the list of available commands. In addition to
 those commands, you can type any expression that is allowed in the simulation
 file and have the result directly. Show is implicit for all operations.
 
-*examples* ::
+*examples*
+
+.. code-block:: python
 
     >>> avg(age)
     53.7131819615
 
     >>> groupby(trunc(age / 20), gender, expr=count(inwork))
-
     trunc(age / 20) | gender |      |
                     |  False | True | total
                   0 |     14 |   18 |    32
