@@ -447,7 +447,7 @@ def check_local_repo(context):
             exit(1)
 
     num_ahead = int(call(['git', 'rev-list', f'upstream/{branch}..{branch}', '--count']))
-    print("Branch '%s' is %d commits ahead of 'origin/%s'"
+    print("Branch '%s' is %d commits ahead of 'upstream/%s'"
           % (branch, num_ahead, branch), end='')
     if num_ahead:
         if yes(', do you want to push?'):
@@ -640,7 +640,7 @@ def push(context):
 
     chdir(context['repository'])
     do('Pushing main repository changes to GitHub',
-       call, ['git', 'push', 'origin', context['branch'], '--follow-tags'])
+       call, ['git', 'push', 'upstream', context['branch'], '--follow-tags'])
 
 
 def cleanup(context):
