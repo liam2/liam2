@@ -101,7 +101,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
                 # unfillable stays unchanged in this case
                 filled_bins[values] = sn <= 0
 
-                # using np.float64 to workaround an issue with numpy 1.8
+                # using np.float64 to work around an issue with numpy 1.8
                 # https://github.com/numpy/numpy/issues/4636
                 rel_need[values] = np.float64(sn) / sa
         else:
