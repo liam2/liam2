@@ -669,9 +669,9 @@ def index_table_light(table, index='period'):
     # merge_h5 though).
     for idx, row in enumerate(table):
         value = row[index]
-        if value != current_value:
+        if current_value is None or value != current_value:
             # 0 > None is True
-            if value < current_value:
+            if current_value is not None and value < current_value:
                 msg = "data is not ordered by {} ({} at data line {} is < {})"
                 raise Exception(msg.format(index, value, idx + 1, current_value))
             if start_row is not None:
