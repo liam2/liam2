@@ -25,13 +25,25 @@ def group_context(used_variables, setfilter, context):
 
     # group_indices_nd returns a dict {value_or_tuple: array_of_indices}
     d = group_indices_nd(columns, setfilter)
-
-    keylists = zip(*list(d.keys())) if len(columns) > 1 else [list(d.keys())]
+    # the result of this operation will vary depending on the Python version
+    # d.keys()/d.values() iteration order was not the same in Python 2.7
+    # It will not be possible to reproduce results across Python versions in
+    # the presence of random-using expressions unless we sort keylists in
+    # *both* versions. Since I do not plan on ever doing another
+    # Python 2.7-based release, it is pointless to do so.
+    if len(columns) > 1:
+        # transform (dim0_val0, .., dimN_val0), (dim0_val0, .., dimN_val1), ...
+        #        to (dim0_val0, .., dim0_val0), ..., (dimN_val0, .., dimN_valN)
+        keylists = zip(*list(d.keys()))
+    else:
+        # d.keys() is just (dim0_val0, dim0_val1, dim0_val2, ...)
+        keylists = [list(d.keys())]
     keyarrays = [np.array(c) for c in keylists]
 
     # we want a 1d array of arrays, not the 2d array that np.array(d.values())
     # produces if we have a list of arrays with all the same length
     idcol = context['id']
+    # np.array of np.array
     ids_by_group = np.empty(len(d), dtype=object)
     ids_by_group[:] = [idcol[v] for v in d.values()]
 
