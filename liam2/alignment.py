@@ -11,7 +11,7 @@ from liam2.groupby import GroupBy
 from liam2.links import LinkGet, Many2One
 from liam2.partition import partition_nd, filter_to_indices
 from liam2.importer import load_ndarray
-from liam2.utils import PrettyTable, LabeledArray
+from liam2.utils import PrettyTable, LabeledArray, warn_non_unique
 
 
 def kill_axis(axis_name, value, expressions, possible_values, need):
@@ -102,6 +102,10 @@ def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
 Sidewalk alignment can only be used with a score between 0 and 1.
 You may want to use a logistic function.
 """.format(score_min, score_max))
+    else:
+        assert method == 'bysorting'
+        if isinstance(score, np.ndarray):
+            warn_non_unique(score, "score")
 
     for members_indices, group_need in zip(groups, need.flat):
         if len(members_indices):

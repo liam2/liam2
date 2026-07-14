@@ -1558,3 +1558,18 @@ def array_nan_equal(a, b):
 
 
 MB = 2 ** 20
+
+
+def warn_non_unique(array, array_name):
+    unique_vals, counts = np.unique(array, return_counts=True)
+    is_dupe_value = counts > 1
+    if is_dupe_value.any():
+        dupe_values = unique_vals[is_dupe_value]
+        dupe_counts = counts[is_dupe_value]
+        dupe_table = PrettyTable([[f'{array_name} value', 'count']] +
+                                 [[val, count]
+                                  for val, count
+                                  in zip(dupe_values, dupe_counts)])
+        print()
+        print(f"WARNING: {array_name} is non-unique => results might "
+              f"differ depending on LIAM2 version:\n", dupe_table)
