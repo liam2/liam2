@@ -250,10 +250,12 @@ def h5_sort(input_path, output_path, entities=None):
 
     if entities is None:
         with tables.open_file(input_path) as f:
-            entities = list(f.root.entities._v_children.keys())
+            entities = sorted(f.root.entities._v_children.keys())
     print(" * sorting entities tables")
-    to_sort = {'entities': {ent_name: sort_entity for ent_name in entities}}
-    h5_apply_rec_func(input_path, output_path, to_sort)
+    func_to_apply_per_node = {
+        'entities': {ent_name: sort_entity for ent_name in entities}
+    }
+    h5_apply_rec_func(input_path, output_path, func_to_apply_per_node)
 
 
 def fields_from_entity(entity):
@@ -317,7 +319,8 @@ if __name__ == '__main__':
                          for ent_name, fields in entities}
             # convert {ent_name: [target_ent1.fname1, target_ent2.fname2]}
             #      to {ent_name: [(target_ent1, fname1), (target_ent2, fname2)]}
-            for ent_name, fields in to_change.items():
+            for ent_name in entities:
+                fields = to_change[ent_name]
                 for i, fname in enumerate(fields):
                     fields[i] = \
                         fname.split('.') if '.' in fname else (ent_name, fname)
