@@ -184,6 +184,8 @@ class SequentialMatching(Matching):
             # because otherwise (if we did not group by them), we could have
             # groups containing individuals with different values of the
             # ordering variables (ie the ordering would not be respected).
+            # set1 and set2 are dicts of the form:
+            # {'field1': array1, 'field2': array2, 'idx': array_of_arrays_of_ids}
             set1 = group_context(used_variables1 | orderby_vars,
                                  set1filtervalue, context)
             set2 = group_context(used_variables2, set2filtervalue, context)
