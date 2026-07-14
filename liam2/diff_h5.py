@@ -5,7 +5,8 @@ from liam2.data import index_table_light, get_fields
 from liam2.partition import filter_to_indices
 from liam2.utils import PrettyTable, merge_items
 
-__version__ = "0.2"
+__version__ = "0.3"
+DEFAULT_DIFF_THRESHOLD = 1e-9
 
 
 def unique_dupes(a):
@@ -15,7 +16,10 @@ def unique_dupes(a):
     return unique_indices, a[is_dupe]
 
 
-def diff_array(array1, array2, showdiffs=10, raiseondiff=False):
+def diff_array(array1, array2, display_ndiffs=10, raiseondiff=False,
+               abs_diff_threshold=1e-9):
+    array_max_diff = 0.0
+    # use numdiffs=-1 will show all differences
     if len(array1) != len(array2):
         print("length is different: %d vs %d" % (len(array1),
                                                  len(array2)))
@@ -45,49 +49,78 @@ def diff_array(array1, array2, showdiffs=10, raiseondiff=False):
 
     fields1 = get_fields(array1)
     fields2 = get_fields(array2)
-    fnames1 = set(array1.dtype.names)
-    fnames2 = set(array2.dtype.names)
-    # use merge_items instead of fnames1 | fnames2 to preserve ordering
-    for fname, _ in merge_items((fields1, fields2)):
-        print("  - %s:" % fname, end=' ')
-        if fname not in fnames1:
+    field_names1 = set(array1.dtype.names)
+    field_names2 = set(array2.dtype.names)
+    # use merge_items instead of field_names1 | field_names2 to preserve
+    # ordering
+    for field_name, _ in merge_items((fields1, fields2)):
+        print("  - %s:" % field_name, end=' ')
+        if field_name not in field_names1:
             print("missing in file 1")
             continue
-        elif fname not in fnames2:
+        elif field_name not in field_names2:
             print("missing in file 2")
             continue
-        col1, col2 = array1[fname], array2[fname]
-        if np.issubdtype(col1.dtype, np.inexact):
-            if len(col1) == len(col2):
-                both_nan = np.isnan(col1) & np.isnan(col2)
-                eq = np.all(both_nan | (col1 == col2))
-            else:
-                eq = False
-        else:
-            eq = np.array_equal(col1, col2)
-
-        if eq:
-            print("ok")
-        else:
+        col1, col2 = array1[field_name], array2[field_name]
+        if len(col1) != len(col2):
             print("different", end=' ')
-            if len(col1) != len(col2):
-                print("(length)")
+            print("(length)")
+            continue
+
+        if np.issubdtype(col1.dtype, np.inexact):
+            both_nan = np.isnan(col1) & np.isnan(col2)
+            strict_eq = both_nan | (col1 == col2)
+            # kill all equal values (especially inf and -inf) and nans
+            # so that we can compute abs_diff without warning
+            col1_forabs = np.where(strict_eq, 0, col1)
+            col2_forabs = np.where(strict_eq, 0, col2)
+            abs_diff = np.abs(col2_forabs - col1_forabs)
+            eq = abs_diff <= abs_diff_threshold
+        else:
+            strict_eq = col1 == col2
+            if col1.dtype.kind == 'b':
+                abs_diff = col1 ^ col2
             else:
-                diff_indices = filter_to_indices(col1 != col2)
-                print("(%d differences)" % len(diff_indices))
-                ids = array1['id']
-                if len(diff_indices) > showdiffs:
-                    diff_indices = diff_indices[:showdiffs]
-                print(PrettyTable([['id',
-                                    fname + ' (file1)',
-                                    fname + ' (file2)']] +
-                                  [[ids[idx], col1[idx], col2[idx]]
-                                   for idx in diff_indices]))
-            if raiseondiff:
-                raise Exception('different')
+                abs_diff = np.abs(col2 - col1)
+            eq = strict_eq
+
+        field_max_diff = abs_diff.max()
+        array_max_diff = max(array_max_diff, field_max_diff)
+        if field_max_diff == 0:
+            print("ok")
+            continue
+        elif field_max_diff <= abs_diff_threshold:
+            print(f"ok (max diff: {field_max_diff})")
+            continue
+
+        print("different", end=' ')
+        diff_indices = filter_to_indices(~eq)
+        print("(%d differences)" % len(diff_indices))
+        ids = array1['id']
+        if display_ndiffs:
+            filtered_diff_values = abs_diff[diff_indices]
+            local_sort_indices = np.argsort(filtered_diff_values,
+                                            stable=True)[::-1]
+            if display_ndiffs != -1 and len(diff_indices) > display_ndiffs:
+                local_sort_indices = local_sort_indices[:display_ndiffs]
+            diff_indices = diff_indices[local_sort_indices]
+            header_rows = [
+                ['id', f'{field_name} (file1)', f'{field_name} (file2)',
+                 'abs diff']
+            ]
+            diff_rows = [
+                [ids[idx], str(col1[idx]), str(col2[idx]),
+                 str(abs_diff[idx])]
+                for idx in diff_indices
+            ]
+            print(PrettyTable(header_rows + diff_rows))
+        if raiseondiff:
+            raise Exception('different')
+    return array_max_diff
 
 
-def diff_h5(input1_path, input2_path, numdiff=10):
+def diff_h5(input1_path, input2_path, numdiffs=10, abs_diff_threshold=1e-9):
+    global_max_diff = 0.0
     input1_file = tables.open_file(input1_path, mode="r")
     input2_file = tables.open_file(input2_path, mode="r")
 
@@ -108,18 +141,23 @@ def diff_h5(input1_path, input2_path, numdiff=10):
             print("missing in file 2")
             continue
 
+        entity_max_diff = 0.0
         table1 = getattr(input1_entities, ent_name)
         input1_rows = index_table_light(table1)
 
         table2 = getattr(input2_entities, ent_name)
         input2_rows = index_table_light(table2)
 
-        input1_periods = list(input1_rows.keys())
-        input2_periods = list(input2_rows.keys())
+        input1_periods = set(input1_rows.keys())
+        input2_periods = set(input2_rows.keys())
         if input1_periods != input2_periods:
             print("periods are different in both files for '%s'" % ent_name)
+            print("periods only in file1:",
+                  sorted(input1_periods - input2_periods))
+            print("periods only in file2:",
+                  sorted(input2_periods - input1_periods))
 
-        for period in sorted(set(input1_periods) & set(input2_periods)):
+        for period in sorted(input1_periods & input2_periods):
             print("* period:", period)
             start, stop = input1_rows.get(period, (0, 0))
             array1 = table1.read(start, stop)
@@ -127,10 +165,16 @@ def diff_h5(input1_path, input2_path, numdiff=10):
             start, stop = input2_rows.get(period, (0, 0))
             array2 = table2.read(start, stop)
 
-            diff_array(array1, array2, numdiff)
-
+            max_diff = diff_array(array1, array2, numdiffs,
+                                  abs_diff_threshold=abs_diff_threshold)
+            print(f"max absolute difference for '{ent_name}' in {period}:", max_diff)
+            entity_max_diff = max(entity_max_diff, max_diff)
+        print(f"max absolute difference for '{ent_name}':", entity_max_diff)
+        global_max_diff = max(global_max_diff, entity_max_diff)
     input1_file.close()
     input2_file.close()
+    print(f"max absolute difference overall:", global_max_diff)
+    return global_max_diff
 
 
 if __name__ == '__main__':
@@ -142,11 +186,18 @@ if __name__ == '__main__':
 
     args = sys.argv
     if len(args) < 3:
-        print("Usage: %s inputpath1 inputpath2 [numdiff]" % args[0])
+        print(f"""\
+Usage: {args[0]} inputpath1 inputpath2 [numdiffs] [abs_diff_threshold]
+  where numdiffs defaults to 10 (use -1 to show all differences)
+    and abs_diff_threshold defaults to {DEFAULT_DIFF_THRESHOLD}""")
         sys.exit()
 
     if len(args) > 3:
-        numdiff = int(args[3])
+        numdiffs = int(args[3])
     else:
-        numdiff = 10
-    diff_h5(args[1], args[2], numdiff)
+        numdiffs = 10
+    if len(args) > 4:
+        abs_diff_threshold = float(args[4])
+    else:
+        abs_diff_threshold = DEFAULT_DIFF_THRESHOLD
+    diff_h5(args[1], args[2], numdiffs, abs_diff_threshold=abs_diff_threshold)
