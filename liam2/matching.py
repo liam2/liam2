@@ -195,8 +195,8 @@ class SequentialMatching(Matching):
         # would slow things down.
         context_keep(set1, used_variables1)
         context_keep(set2, used_variables2)
-
-        sorted_set1_indices = orderbyvalue.argsort()[::-1]
+        # stable requires numpy 2.0+
+        sorted_set1_indices = orderbyvalue.argsort(stable=True)[::-1]
 
         result = np.full(context_length(context), -1, dtype=int)
         id_to_rownum = context.id_to_rownum
