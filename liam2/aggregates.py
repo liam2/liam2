@@ -354,6 +354,8 @@ class Percentile(WeightedFilteredAggregateFunction):
         if weights is None:
             return np.percentile(values, q)
         else:
+            # TODO: use np.percentile/quantile weights argument from "recent"
+            #       numpy versions, instead of using our own weighted function
             return wpercentile(values, weights, q, weights_type=weights_type)
 
 
