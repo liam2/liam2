@@ -165,6 +165,7 @@ class Simulation:
             'autodump': None,
             'autodiff': None,
             'runs': int,
+            'v012_partial_compatibility': bool,
         }
     }
 
@@ -282,6 +283,12 @@ class Simulation:
             assertions = simulation_def.get('assertions', config.assertions)
         # TODO: check that the value is one of "raise", "skip", "warn"
         config.assertions = assertions
+
+        config.v012_partial_compatibility = (
+            simulation_def.get('v012_partial_compatibility',
+                               config.v012_partial_compatibility))
+        if config.v012_partial_compatibility:
+            print("Using version 0.12 (partial) compatibility mode")
 
         logging_def = simulation_def.get('logging', {})
         if log_level is None:

@@ -4,7 +4,8 @@ import random
 from liam2.expr import expr_eval, always, expr_cache
 from liam2.exprbases import FilteredExpression
 from liam2.context import context_length, context_delete, context_subset, context_keep
-from liam2.utils import loop_wh_progress
+from liam2.utils import loop_wh_progress, argsort_with_shuffle
+
 # FIXME: should be optional
 try:
     from liam2.cpartition import group_indices_nd
@@ -209,8 +210,8 @@ class SequentialMatching(Matching):
         # would slow things down.
         context_keep(set1, used_variables1)
         context_keep(set2, used_variables2)
-        # stable requires numpy 2.0+
-        sorted_set1_indices = orderbyvalue.argsort(stable=True)[::-1]
+        sorted_set1_indices = argsort_with_shuffle(orderbyvalue,
+                                                   "orderby")[::-1]
 
         result = np.full(context_length(context), -1, dtype=int)
         id_to_rownum = context.id_to_rownum

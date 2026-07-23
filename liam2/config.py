@@ -14,3 +14,4 @@ log_level = "functions"
 autodump = None
 autodump_file = None
 autodiff = None
+v012_partial_compatibility = False

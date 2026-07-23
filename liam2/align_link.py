@@ -2,12 +2,12 @@ import random
 
 import numpy as np
 
-from liam2.utils import warn_non_unique
+from liam2.utils import argsort_with_shuffle
 
 
 # noinspection PyNoneFunctionAssignment
 def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
-                  secondary_axis=None):
+                  secondary_axis=None, score_expr=None):
     # need and num_candidates are LabeledArray, but we don't need the extra
     # functionality from this point on
     need = np.asarray(need)
@@ -36,8 +36,7 @@ def align_link_nd(scores, need, num_candidates, hh, fcols_labels,
     still_needed_total = need.sum()
 
     aligned = np.zeros(len(hh), dtype=bool)
-    warn_non_unique(scores, "score")
-    sorted_indices = scores.argsort()[::-1]
+    sorted_indices = argsort_with_shuffle(scores, "score")[::-1]
     for sorted_idx in sorted_indices:
         if still_needed_total <= 0:
             print("total reached")

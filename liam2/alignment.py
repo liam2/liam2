@@ -11,7 +11,7 @@ from liam2.groupby import GroupBy
 from liam2.links import LinkGet, Many2One
 from liam2.partition import partition_nd, filter_to_indices
 from liam2.importer import load_ndarray
-from liam2.utils import PrettyTable, LabeledArray, warn_non_unique
+from liam2.utils import PrettyTable, LabeledArray, argsort_with_shuffle
 
 
 def kill_axis(axis_name, value, expressions, possible_values, need):
@@ -44,7 +44,8 @@ def kill_axis(axis_name, value, expressions, possible_values, need):
 
 def align_get_indices_nd(ctx_length, groups, need, filter_value, score,
                          take_filter=None, leave_filter=None,
-                         method="bysorting"):
+                         method="bysorting",
+                         score_expr=None):
     assert isinstance(need, np.ndarray) and \
         np.issubdtype(need.dtype, np.integer)
     assert score is None or isinstance(score, (bool, int, float, np.ndarray))
@@ -104,8 +105,6 @@ You may want to use a logistic function.
 """.format(score_min, score_max))
     else:
         assert method == 'bysorting'
-        if isinstance(score, np.ndarray):
-            warn_non_unique(score, "score")
 
     for members_indices, group_need in zip(groups, need.flat):
         if len(members_indices):
@@ -129,9 +128,11 @@ You may want to use a logistic function.
                     group_maybe_indices = members_indices
                 if isinstance(score, np.ndarray):
                     if method == 'bysorting':
-                        maybe_members_rank_value = score[group_maybe_indices]
+                        maybe_members_score = score[group_maybe_indices]
                         # TODO: use np.partition (np1.8+)
-                        sorted_local_indices = np.argsort(maybe_members_rank_value)
+                        remark = " for this group (excluding take and leave)"
+                        sorted_local_indices = argsort_with_shuffle(
+                            maybe_members_score, "score", remark)
                         sorted_global_indices = \
                             group_maybe_indices[sorted_local_indices]
                     elif method == 'sidewalk':
@@ -432,11 +433,12 @@ class AlignmentAbsoluteValues(FilteredExpression):
         need = self._handle_frac_need(need, frac_need)
         need = self._add_past_error(context, need, errors)
         need = np.asarray(need)
+        score_expr = self.args[0]
         # FIXME: either handle past_error in no link (currently, the past
         #        error is added... but never computed, so always 0 !) or raise
         #        an error in case errors='carry" is used with no link.
         return align_get_indices_nd(ctx_length, groups, need, filter_value,
-                                    score, take, leave, method)
+                                    score, take, leave, method, score_expr)
 
     def align_link(self, context, score, need, filter, take, leave,
                    expressions, possible_values, errors, frac_need, link,
@@ -583,9 +585,10 @@ class AlignmentAbsoluteValues(FilteredExpression):
         need = self._handle_frac_need(need, frac_need)
         need = self._add_past_error(context, need, errors)
         need = np.asarray(need)
+        score_expr = self.args[0]
         aligned, error = \
             align_link_nd(score, need, num_candidates, hh, fcols_labels,
-                          secondary_axis)
+                          secondary_axis, score_expr)
         self.past_error = error
         return aligned
 

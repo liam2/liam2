@@ -1560,16 +1560,72 @@ def array_nan_equal(a, b):
 MB = 2 ** 20
 
 
-def warn_non_unique(array, array_name):
-    unique_vals, counts = np.unique(array, return_counts=True)
-    is_dupe_value = counts > 1
-    if is_dupe_value.any():
-        dupe_values = unique_vals[is_dupe_value]
-        dupe_counts = counts[is_dupe_value]
-        dupe_table = PrettyTable([[f'{array_name} value', 'count']] +
-                                 [[val, count]
-                                  for val, count
-                                  in zip(dupe_values, dupe_counts)])
-        print()
-        print(f"WARNING: {array_name} is non-unique => results might "
-              f"differ depending on LIAM2 version:\n", dupe_table)
+def argsort_with_shuffle(array: np.ndarray,
+                         array_name: str,
+                         remark: str = '') -> np.ndarray:
+    """
+    Indirectly sorts array, randomly shuffling indices of same value cells
+
+    Parameters
+    ----------
+    array : np.ndarray
+        The array to be sorted.
+    array_name : str
+        The name of the array, used for warning messages.
+    remark : str, optional
+        Additional remark to be included in the warning message.
+
+    Returns
+    -------
+    np.ndarray
+        The indices that would sort the array, with same value cells randomly
+        shuffled.
+    """
+    if config.v012_partial_compatibility:
+        unique_vals, counts = np.unique(array, return_counts=True)
+        is_dupe_value = counts > 1
+        if is_dupe_value.any():
+            dupe_values = unique_vals[is_dupe_value]
+            dupe_counts = counts[is_dupe_value]
+            first_cell = f'{array_name} value'
+            header_rows = [[first_cell, 'count'],
+                           ['-' * len(first_cell), '-----']]
+            value_rows = [[str(val), count]
+                          for val, count in zip(dupe_values, dupe_counts)]
+            total_rows = len(array)
+            num_rows_with_dupe_val = dupe_counts.sum()
+            dupe_ratio = num_rows_with_dupe_val / total_rows
+            num_rows_with_unique_val = total_rows - num_rows_with_dupe_val
+            footer_rows = [
+                ['---------------------------------', '-----'],
+                ['Number of other unique values', num_rows_with_unique_val],
+                ['Total number of rows', total_rows],
+                ['Ratio duplicate / unique values', str(dupe_ratio)],
+            ]
+            if len(unique_vals) > 1:
+                min_diff = np.min(np.diff(unique_vals))
+                footer_rows.append(
+                    ['Minimum difference between values', str(min_diff)],
+                )
+            dupe_table = PrettyTable(header_rows + value_rows + footer_rows)
+            print(f"""
+WARNING: {array_name} argument which is used for ordering individuals has 
+    non-unique values.
+
+    The selected individuals might not be as random as expected and will differ
+    depending on the LIAM2 version. 
+
+    See the release notes for LIAM2 0.13 for details about this.
+
+    Unique {array_name} values{remark}:
+{dupe_table}
+""")
+        # stable requires numpy 2.0+
+        return array.argsort(stable=True)
+
+    # If we do not activate backward-compatibility (the default), we make sure
+    # to get good results even if we have several individuals with the same
+    # "score". Unfortunately, this makes it impossible to reproduce the results
+    # on LIAM2 0.12 because we consume more random values from the random
+    # stream.
+    return np.lexsort((np.random.random(len(array)), array))
