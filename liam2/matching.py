@@ -216,6 +216,8 @@ class SequentialMatching(Matching):
         id_to_rownum = context.id_to_rownum
 
         # prefix all keys except __len__
+        # dict iteration order will be different from Python 2.7, but it does
+        # not matter.
         matching_ctx = {'__other_' + k if k != '__len__' else k: v
                         for k, v in set2.items()}
 

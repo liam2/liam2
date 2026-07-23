@@ -33,6 +33,9 @@ def to_ast(expr, context):
     elif isinstance(expr, tuple):
         return tuple([to_ast(e, context) for e in expr])
     elif isinstance(expr, dict):
+        # dict iteration order will make the resulting dict slightly different
+        # depending on the Python version but unsure when you can have a dict
+        # passed to to_ast. User using a dict syntax in his code?
         return {k: to_ast(v, context) for k, v in expr.items()}
     elif isinstance(expr, slice):
         return slice(to_ast(expr.start, context),
