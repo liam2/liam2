@@ -1076,6 +1076,29 @@ When the score is known, it can be either used as-is: ::
 
 or in combination with an alignment (see below).
 
+.. _logit_score_safe_zone:
+
+.. warning:: ``logit_score()`` gives best results only if its input is roughly
+   between -6 and 6. When your input values falls outside of this safe zone,
+   you risk having it return the same value even if you pass different values
+   (the further away from this safe value range, the worse it gets).
+   If the input goes below -713 or beyond 37, it always returns 0 or 1
+   respectively. This is not a bug, just a consequence of the definition of the
+   logit and logistic functions when computed by a computer using normal
+   “64 bit” floating point numbers. Having several individuals with the same
+   score value is not ideal since ``logit_score()`` is mostly used to
+   sort individuals for alignment, and LIAM2 will choose randomly
+   between those individuals (and in LIAM2 0.12 and before, systematically
+   picked the same individuals). A relatively simple way to address this is
+   to rescale the real input expression to make sure it fits the “safe range”.
+   In the above example (and assuming that logit_expr1 only produces positive
+   values), that would be: ::
+
+        - logit_expr1_variable: <the logit_expr1 expression>
+        - scaled_logit_expr_1: (logit_expr1_variable * 6) / max(logit_expr1_variable)
+
+   Then use ``scaled_logit_expr1`` instead of ``logit_expr1``.
+
 
 .. index:: align, take, leave
 
@@ -1099,7 +1122,10 @@ modeller choose.
 
    It is usually a good idea to include a random component (like in
    logit_score) in the score expression because otherwise the individuals with
-   the smaller scores will never be selected.
+   the smaller scores will never be selected. In the case where the score
+   values are the same for several individuals (including when the score
+   expression is a constant) and not all of them need to be selected, the
+   selection between them will be random.
 
 To know more about the alignment process reading "Evaluating Alignment Methods
 in Dynamic Microsimulation Models", by Li and O'Donoghue is advised.
@@ -1130,11 +1156,10 @@ Now let us examine each argument in turn:
 
  * **score**: it must be an expression (or a simple variable) returning
    a numerical value. It will be used to rank individuals. One will usually
-   use logit_score() to compute the score, but it can be computed in any other
-   way a modeller choose. Note that the score is not modified in any way
-   within the align() function, so if one wants a random factor, it should be
-   added manually (or through the use of a function like logit_score which
-   includes one).
+   use ``logit_score()`` to compute the score, but it can be computed in any
+   other way a modeller choose. If several individuals have the same score,
+   ``align()`` will automatically break those ties randomly (by sorting
+   individuals by a random uniform variable **in addition** to the score).
 
  * **proportions**: the target proportions for each category. This argument can
    take many forms. The most common one will probably be a
@@ -1429,6 +1454,12 @@ which means that in this form, logit_regr is equivalent to: ::
   - to_give_birth: logit_regr(0.0,
                               filter=FEMALE and (age >= 15) and (age <= 50),
                               align='al_p_birth.csv')
+
+.. warning:: ``logit_regr()`` gives best results only if its score/input
+   expression gives values roughly between -6 and 6. When its input values
+   fall outside of this safe zone, one risks having it return the same value
+   even if the input values are different. See :ref:`the warning about this in
+   logit_score's documentation <logit_score_safe_zone>` for more details.
 
 
 other regressions
@@ -2439,9 +2470,9 @@ Optional keyword arguments include (among others, see above link):
        each different value of this argument.
 * *s*: to set the surface of each circle (mutually exclusive with the *r*
        argument).
-* *r*: to set the radius of each circle (`r=expr` is equivalent to
-       `s=pi * expr ** 2`). It is mutually exclusive with the *s* argument.
-       The *r* argument is specific to liam2.
+* *r*: to set the radius of each circle (``r=expr`` is equivalent to
+       ``s=pi * expr ** 2``). It is mutually exclusive with the *s* argument.
+       The *r* argument is specific to LIAM2.
 
 Examples: ::
 
@@ -2562,7 +2593,7 @@ expression or tuple of expressions, and it is only evaluated if the assertion fa
   compatible). This is only useful to compare arrays.
 - assertIsClose(expr1, expr2, msg=None): evaluates both expressions and check their
   results are almost equal.
-- assertRaises(exception_name, expr, msg=None): evaluate the `expr` expression and raises an assertion if it did NOT
+- assertRaises(exception_name, expr, msg=None): evaluate the ``expr`` expression and raises an assertion if it did NOT
   raise an Exception. This is mostly used internally to test that other assertions functions work but could be used
   in models to check that some bad condition does not actually happen.
 
