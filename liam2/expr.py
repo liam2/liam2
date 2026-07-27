@@ -801,7 +801,11 @@ class AbstractFunction(Expr, metaclass=FillFuncNameMeta):
                                       defaults[nposopt:])])
 
         args = args + tuple(extra_args)
-        kwargs = tuple(sorted(kwargs.items()))
+        # Contrary to LIAM2 version 0.12 and earlier (which used Python2), we
+        # do not need to sort kwargs. We can now rely on dict ordering to keep
+        # kwargs original order so that evaluation of each kwarg expression
+        # later happens in the order the user defined those expressions.
+        kwargs = tuple(kwargs.items())
         self.args = args
         self.kwargs = kwargs
         self._variables = None

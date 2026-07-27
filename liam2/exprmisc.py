@@ -303,9 +303,12 @@ class New(FilteredExpression):
             else:
                 child_context = context.subset(to_give_birth, used_variables,
                                                filter_expr)
-            # It is unfortunate that we relied on iteration order on Python 2
-            # because this makes it impossible to reproduce the results we
-            # had using liam2 0.12
+            # It is unfortunate that we relied on dict iteration order on
+            # LIAM2 0.12 and before (which ran on Python 2) because it made the
+            # evaluation order arbitrary and impossible to reproduce the
+            # results using version 0.13 and later.
+            # For version 0.13+ though, we use it on purpose since dict ordering
+            # is now guaranteed (since Python 3.7).
             for k, v in kwargs.items():
                 if k not in array.dtype.names:
                     print("WARNING: {} is unknown, ignoring it!".format(k))
