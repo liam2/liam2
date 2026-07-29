@@ -212,10 +212,16 @@ entities:
                 # temporary variable in score expression
                 # ======================================
                 - tmp: age ** 2
+                # using an (explicit) random uniform, to avoid having several
+                # individuals with the same orderby value, which are then
+                # sorted by an implicit random uniform, which is different
+                # for partner_id1 and partner_id2 making the test fail
+                - u: uniform(high=0.5)
                 - partner_id1: matching(set1filter=MALE, set2filter=FEMALE,
-                                        orderby=age, score=tmp - other.tmp)
+                                        orderby=age + u, 
+                                        score=tmp - other.tmp)
                 - partner_id2: matching(set1filter=MALE, set2filter=FEMALE,
-                                        orderby=age,
+                                        orderby=age + u,
                                         score=age ** 2 - other.age ** 2)
                 - assertEqual(partner_id1, partner_id2)
 
@@ -232,15 +238,17 @@ entities:
 
                 # matching in if()
                 # ================
+                # we use an uniform random for the same reason as above
+                - u: uniform(high=0.5)
                 - partner_id1: if(age >= 18,
                                   matching(set1filter=MALE,
                                            set2filter=FEMALE,
-                                           orderby=age,
+                                           orderby=age + u,
                                            score=- (other.age - age) ** 2),
                                   -1)
                 - partner_id2: matching(set1filter=MALE and age >= 18,
                                         set2filter=FEMALE and age >= 18,
-                                        orderby=age,
+                                        orderby=age + u,
                                         score=- (other.age - age) ** 2)
                 - assertEqual(partner_id1, partner_id2)
 
