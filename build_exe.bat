@@ -4,7 +4,7 @@ rem 1) an environment with all LIAM2 dependencies installed is activated
 rem 2) you have upx in your PATH
 python setup.py build_ext --inplace
 
-python -m nuitka --standalone --include-package=vitables.extensions --include-package-data=vitables:*.ui --include-package-data=vitables:*.ini --include-package-data=vitables.icons --enable-plugin=pyqt6 liam2\main.py
+python -m nuitka --standalone --lto=no --jobs=-1 --include-package=vitables.extensions --include-package-data=vitables:*.ui --include-package-data=vitables:*.ini --include-package-data=vitables.icons --enable-plugin=pyqt6 liam2\main.py
 
 rem Using upx makes the distribution quite a bit smaller but makes antivirus solutions (even more) prone to flag our executable as malware
 rem set DIST_DIR=main.dist\
